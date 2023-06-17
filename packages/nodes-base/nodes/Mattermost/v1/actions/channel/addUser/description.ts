@@ -1,10 +1,8 @@
-import {
-	ChannelProperties,
-} from '../../Interfaces';
+import type { ChannelProperties } from '../../Interfaces';
 
 export const channelAddUserDescription: ChannelProperties = [
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -15,18 +13,15 @@ export const channelAddUserDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'addUser',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['addUser'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The ID of the channel to invite user to.',
+		description:
+			'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -37,14 +32,11 @@ export const channelAddUserDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'addUser',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['addUser'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The ID of the user to invite into channel.',
+		description:
+			'The ID of the user to invite into channel. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

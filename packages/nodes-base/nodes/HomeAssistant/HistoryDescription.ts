@@ -1,32 +1,29 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const historyOperations = [
+export const historyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'history',
-				],
+				resource: ['history'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all state changes',
+				description: 'Get many state changes',
+				action: 'Get many state changes',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const historyFields = [
+export const historyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                history:getLogbookEntries                   */
 	/* -------------------------------------------------------------------------- */
@@ -36,16 +33,12 @@ export const historyFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'history',
-				],
+				operation: ['getAll'],
+				resource: ['history'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -53,15 +46,9 @@ export const historyFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'history',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['history'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -69,7 +56,7 @@ export const historyFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -79,12 +66,8 @@ export const historyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'history',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['history'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -93,36 +76,36 @@ export const historyFields = [
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The end of the period.',
+				description: 'The end of the period',
 			},
 			{
 				displayName: 'Entity IDs',
 				name: 'entityIds',
 				type: 'string',
 				default: '',
-				description: 'The entities IDs separated by comma.',
+				description: 'The entities IDs separated by comma',
 			},
 			{
 				displayName: 'Minimal Response',
 				name: 'minimalResponse',
 				type: 'boolean',
 				default: false,
-				description: 'To only return <code>last_changed</code> and state for states.',
+				description: 'Whether to only return <code>last_changed</code> and state for states',
 			},
 			{
 				displayName: 'Significant Changes Only',
 				name: 'significantChangesOnly',
 				type: 'boolean',
 				default: false,
-				description: 'Only return significant state changes.',
+				description: 'Whether to only return significant state changes',
 			},
 			{
 				displayName: 'Start Time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'The beginning of the period.',
+				description: 'The beginning of the period',
 			},
 		],
 	},
-] as INodeProperties[];
+];

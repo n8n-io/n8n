@@ -1,8 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const listOperations = [
+export const listOperations: INodeProperties[] = [
 	// ----------------------------------
 	//         list
 	// ----------------------------------
@@ -10,11 +8,10 @@ export const listOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -22,39 +19,44 @@ export const listOperations = [
 				name: 'Archive',
 				value: 'archive',
 				description: 'Archive/Unarchive a list',
+				action: 'Archive/unarchive a list',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new list',
+				action: 'Create a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the data of a list',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all the lists',
+				action: 'Get a list',
 			},
 			{
 				name: 'Get Cards',
 				value: 'getCards',
 				description: 'Get all the cards in a list',
+				action: 'Get all cards in a list',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many lists',
+				action: 'Get many lists',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
+				action: 'Update a list',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const listFields = [
+export const listFields: INodeProperties[] = [
 	// ----------------------------------
 	//         list:archive
 	// ----------------------------------
@@ -66,15 +68,11 @@ export const listFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'archive',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['archive'],
+				resource: ['list'],
 			},
 		},
-		description: 'The ID of the list to archive or unarchive.',
+		description: 'The ID of the list to archive or unarchive',
 	},
 	{
 		displayName: 'Archive',
@@ -83,15 +81,11 @@ export const listFields = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'archive',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['archive'],
+				resource: ['list'],
 			},
 		},
-		description: 'If the list should be archived or unarchived.',
+		description: 'Whether the list should be archived or unarchived',
 	},
 
 	// ----------------------------------
@@ -105,12 +99,8 @@ export const listFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the board the list should be created in',
@@ -124,12 +114,8 @@ export const listFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		description: 'The name of the list',
@@ -141,12 +127,8 @@ export const listFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -156,15 +138,14 @@ export const listFields = [
 				name: 'idListSource',
 				type: 'string',
 				default: '',
-				description: 'ID of the list to copy into the new list.',
+				description: 'ID of the list to copy into the new list',
 			},
 			{
 				displayName: 'Position',
 				name: 'pos',
 				type: 'string',
 				default: 'bottom',
-				description:
-					'The position of the new list. top, bottom, or a positive float.',
+				description: 'The position of the new list. top, bottom, or a positive float.',
 			},
 		],
 	},
@@ -180,15 +161,11 @@ export const listFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getCards',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getCards'],
+				resource: ['list'],
 			},
 		},
-		description: 'The ID of the list to get cards.',
+		description: 'The ID of the list to get cards',
 	},
 	{
 		displayName: 'Return All',
@@ -196,33 +173,27 @@ export const listFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getCards',
-				],
+				resource: ['list'],
+				operation: ['getCards'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getCards',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['list'],
+				operation: ['getCards'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -233,12 +204,8 @@ export const listFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getCards',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getCards'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -263,15 +230,11 @@ export const listFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
-		description: 'The ID of the list to get.',
+		description: 'The ID of the list to get',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -280,12 +243,8 @@ export const listFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -311,12 +270,8 @@ export const listFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		description: 'The ID of the board',
@@ -327,33 +282,27 @@ export const listFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['list'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['list'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -364,12 +313,8 @@ export const listFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -395,15 +340,11 @@ export const listFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
-		description: 'The ID of the list to update.',
+		description: 'The ID of the list to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -412,12 +353,8 @@ export const listFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -427,14 +364,14 @@ export const listFields = [
 				name: 'idBoard',
 				type: 'string',
 				default: '',
-				description: 'ID of a board the list should be moved to.',
+				description: 'ID of a board the list should be moved to',
 			},
 			{
 				displayName: 'Closed',
 				name: 'closed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the list is closed.',
+				description: 'Whether the list is closed',
 			},
 			{
 				displayName: 'Name',
@@ -448,16 +385,15 @@ export const listFields = [
 				name: 'pos',
 				type: 'string',
 				default: 'bottom',
-				description:
-					'The position of the list. top, bottom, or a positive float.',
+				description: 'The position of the list. top, bottom, or a positive float.',
 			},
 			{
 				displayName: 'Subscribed',
 				name: 'subscribed',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the acting user is subscribed to the list.',
+				description: 'Whether the acting user is subscribed to the list',
 			},
 		],
 	},
-] as INodeProperties[];
+];

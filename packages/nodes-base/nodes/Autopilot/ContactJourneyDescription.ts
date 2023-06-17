@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const contactJourneyOperations = [
+export const contactJourneyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactJourney',
-				],
+				resource: ['contactJourney'],
 			},
 		},
 		options: [
@@ -19,20 +16,19 @@ export const contactJourneyOperations = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to list',
+				action: 'Add a contact journey',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactJourneyFields = [
-
+export const contactJourneyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 contactJourney:add                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Trigger ID',
+		displayName: 'Trigger Name or ID',
 		name: 'triggerId',
 		required: true,
 		typeOptions: {
@@ -41,16 +37,13 @@ export const contactJourneyFields = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactJourney',
-				],
+				operation: ['add'],
+				resource: ['contactJourney'],
 			},
 		},
 		default: '',
-		description: 'List ID.',
+		description:
+			'List ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -59,15 +52,11 @@ export const contactJourneyFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactJourney',
-				],
+				operation: ['add'],
+				resource: ['contactJourney'],
 			},
 		},
 		default: '',
-		description: 'Can be ID or email.',
+		description: 'Can be ID or email',
 	},
-] as INodeProperties[];
+];

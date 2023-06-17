@@ -1,19 +1,25 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function driftApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {},
 		method,
@@ -23,7 +29,7 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	if (!Object.keys(query).length) {
@@ -37,17 +43,13 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('driftApi');
 
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
+			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'driftOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'driftOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

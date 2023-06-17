@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const goalOperations = [
+export const goalOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
+				resource: ['goal'],
 			},
 		},
 		options: [
@@ -19,51 +16,52 @@ export const goalOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a goal',
+				action: 'Create a goal',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a goal',
+				action: 'Delete a goal',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a goal',
+				action: 'Get a goal',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all goals',
+				description: 'Get many goals',
+				action: 'Get many goals',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a goal',
+				action: 'Update a goal',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const goalFields = [
-
+export const goalFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                goal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goal'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -78,12 +76,8 @@ export const goalFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -96,12 +90,8 @@ export const goalFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goal'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -115,9 +105,6 @@ export const goalFields = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -151,12 +138,8 @@ export const goalFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['goal'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -172,12 +155,8 @@ export const goalFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['goal'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -187,18 +166,16 @@ export const goalFields = [
 	/*                                goal:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['goal'],
+				operation: ['getAll'],
 			},
 		},
 		typeOptions: {
@@ -212,12 +189,8 @@ export const goalFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['goal'],
+				operation: ['getAll'],
 			},
 		},
 		typeOptions: {
@@ -225,7 +198,7 @@ export const goalFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -238,12 +211,8 @@ export const goalFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['goal'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -256,12 +225,8 @@ export const goalFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['goal'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -281,9 +246,6 @@ export const goalFields = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -306,4 +268,4 @@ export const goalFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

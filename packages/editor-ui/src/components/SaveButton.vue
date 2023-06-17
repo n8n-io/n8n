@@ -1,21 +1,23 @@
 <template>
-	<span :class="$style.container">
-		<span :class="$style.saved" v-if="saved">{{ savedLabel }}</span>
+	<span :class="$style.container" data-test-id="save-button">
+		<span :class="$style.saved" v-if="saved">{{ $locale.baseText('saveButton.saved') }}</span>
 		<n8n-button
 			v-else
-			:label="isSaving ? savingLabel : saveLabel"
+			:label="saveButtonLabel"
 			:loading="isSaving"
 			:disabled="disabled"
+			:class="$style.button"
+			:type="type"
 			@click="$emit('click')"
 		/>
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: "SaveButton",
+export default defineComponent({
+	name: 'SaveButton',
 	props: {
 		saved: {
 			type: Boolean,
@@ -28,15 +30,23 @@ export default Vue.extend({
 		},
 		saveLabel: {
 			type: String,
-			default: 'Save',
 		},
 		savingLabel: {
 			type: String,
-			default: 'Saving',
 		},
 		savedLabel: {
 			type: String,
-			default: 'Saved',
+		},
+		type: {
+			type: String,
+			default: 'primary',
+		},
+	},
+	computed: {
+		saveButtonLabel() {
+			return this.isSaving
+				? this.$locale.baseText('saveButton.saving')
+				: this.$locale.baseText('saveButton.save');
 		},
 	},
 });
@@ -44,15 +54,23 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .container {
-	width: 65px;
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	height: 30px;
+}
+
+.button {
+	height: 30px;
 }
 
 .saved {
-	color: $--custom-font-very-light;
+	color: $custom-font-very-light;
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 12px;
 	text-align: center;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-2xs);
+	min-width: 53px;
 }
 </style>

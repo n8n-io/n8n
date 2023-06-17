@@ -1,18 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -20,45 +17,48 @@ export const companyOperations = [
 				name: 'Get Factor Scores',
 				value: 'getFactor',
 				description: 'Get company factor scores and issue counts',
+				action: 'Get a company factor scores and issue counts',
 			},
 			{
 				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
-				description: 'Get company\'s historical factor scores',
+				description: "Get company's historical factor scores",
+				action: "Get a company's historical factor scores",
 			},
 			{
 				name: 'Get Historical Scores',
 				value: 'getHistoricalScore',
-				description: 'Get company\'s historical scores',
+				description: "Get company's historical scores",
+				action: "Get a company's historical scores",
 			},
 			{
 				name: 'Get Information and Scorecard',
 				value: 'getScorecard',
 				description: 'Get company information and summary of their scorecard',
+				action: 'Get company information and a summary of their scorecard',
 			},
 			{
 				name: 'Get Score Plan',
 				value: 'getScorePlan',
-				description: 'Get company\'s score improvement plan',
+				description: "Get company's score improvement plan",
+				action: "Get a company's score improvement plan",
 			},
 		],
 		default: 'getFactor',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 	{
 		displayName: 'Scorecard Identifier',
 		name: 'scorecardIdentifier',
-		description: 'Primary identifier of a company or scorecard, i.e. domain',
+		description: 'Primary identifier of a company or scorecard, i.e. domain.',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 				operation: [
 					'getScorecard',
 					'getFactor',
@@ -76,12 +76,8 @@ export const companyFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getScorePlan',
-				],
+				resource: ['company'],
+				operation: ['getScorePlan'],
 			},
 		},
 		required: true,
@@ -93,19 +89,12 @@ export const companyFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactor',
-					'getFactorHistorical',
-					'getHistoricalScore',
-					'getScorePlan',
-				],
+				resource: ['company'],
+				operation: ['getFactor', 'getFactorHistorical', 'getHistoricalScore', 'getScorePlan'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -113,18 +102,9 @@ export const companyFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactor',
-					'getFactorHistorical',
-					'getHistoricalScore',
-					'getScorePlan',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getFactor', 'getFactorHistorical', 'getHistoricalScore', 'getScorePlan'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -132,25 +112,20 @@ export const companyFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Number of results to return.',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactorHistorical',
-					'getHistoricalScore',
-				],
+				resource: ['company'],
+				operation: ['getFactorHistorical', 'getHistoricalScore'],
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 
 	// company:getFactor
@@ -159,12 +134,8 @@ export const companyFields = [
 		name: 'filters',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactor',
-				],
+				resource: ['company'],
+				operation: ['getFactor'],
 			},
 		},
 		type: 'collection',
@@ -180,7 +151,7 @@ export const companyFields = [
 			},
 			{
 				displayName: 'Severity In',
-				description: 'Filter issues by comma separated severity list',
+				description: 'Filter issues by comma-separated severity list',
 				name: 'severity_in',
 				type: 'string',
 				default: '',
@@ -196,13 +167,8 @@ export const companyFields = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactorHistorical',
-					'getHistoricalScore',
-				],
+				resource: ['company'],
+				operation: ['getFactorHistorical', 'getHistoricalScore'],
 			},
 		},
 		type: 'collection',
@@ -215,8 +181,6 @@ export const companyFields = [
 				name: 'date_from',
 				type: 'dateTime',
 				default: '',
-				required: false,
-
 			},
 			{
 				displayName: 'Date To',
@@ -224,7 +188,6 @@ export const companyFields = [
 				name: 'date_to',
 				type: 'dateTime',
 				default: '',
-				required: false,
 			},
 			{
 				displayName: 'Timing',
@@ -246,8 +209,7 @@ export const companyFields = [
 					},
 				],
 				default: 'daily',
-				required: false,
 			},
 		],
 	},
-] as INodeProperties[];
+];

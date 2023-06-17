@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const orderOperations = [
+export const orderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
+				resource: ['order'],
 			},
 		},
 		options: [
@@ -19,15 +16,14 @@ export const orderOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get an order',
+				action: 'Get an order',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const orderFields = [
-
+export const orderFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 order:get                         */
 	/* -------------------------------------------------------------------------- */
@@ -39,14 +35,10 @@ export const orderFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['order'],
+				operation: ['get'],
 			},
 		},
-		description: 'The identifier of the buyer’s checkout.',
+		description: 'The identifier of the buyer’s checkout',
 	},
-] as INodeProperties[];
+];

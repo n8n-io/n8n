@@ -1,24 +1,32 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import * as winston from 'winston';
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 
-import { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
+import { inspect } from 'util';
+import winston from 'winston';
 
-import * as callsites from 'callsites';
+import type { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
+
+import callsites from 'callsites';
 import { basename } from 'path';
-import config = require('../config');
+import config from '@/config';
 
-class Logger implements ILogger {
+export class Logger implements ILogger {
 	private logger: winston.Logger;
 
 	constructor() {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const level = config.get('logs.level');
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const output = (config.get('logs.output') as string).split(',').map((output) => output.trim());
+		const level = config.getEnv('logs.level');
+
+		const output = config
+			.getEnv('logs.output')
+			.split(',')
+			.map((output) => output.trim());
 
 		this.logger = winston.createLogger({
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			level,
+			silent: level === 'silent',
 		});
 
 		if (output.includes('console')) {
@@ -32,12 +40,13 @@ class Logger implements ILogger {
 					winston.format.printf(({ level, message, timestamp, metadata }) => {
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						return `${timestamp} | ${level.padEnd(18)} | ${message}${
-							Object.keys(metadata).length ? ` ${JSON.stringify(metadata)}` : ''
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+							Object.keys(metadata).length ? ` ${JSON.stringify(inspect(metadata))}` : ''
 						}`;
 					}),
 				);
 			} else {
-				format = winston.format.printf(({ message }) => message);
+				format = winston.format.printf(({ message }: { message: string }) => message);
 			}
 
 			this.logger.add(
@@ -55,16 +64,16 @@ class Logger implements ILogger {
 			);
 			this.logger.add(
 				new winston.transports.File({
-					filename: config.get('logs.file.location'),
+					filename: config.getEnv('logs.file.location'),
 					format: fileLogFormat,
-					maxsize: (config.get('logs.file.fileSizeMax') as number) * 1048576, // config * 1mb
-					maxFiles: config.get('logs.file.fileCountMax'),
+					maxsize: config.getEnv('logs.file.fileSizeMax') * 1048576, // config * 1mb
+					maxFiles: config.getEnv('logs.file.fileCountMax'),
 				}),
 			);
 		}
 	}
 
-	log(type: LogTypes, message: string, meta: object = {}) {
+	log(type: LogTypes, message: string, meta: object = {}): void {
 		const callsite = callsites();
 		// We are using the third array element as the structure is as follows:
 		// [0]: this file
@@ -86,23 +95,23 @@ class Logger implements ILogger {
 
 	// Convenience methods below
 
-	debug(message: string, meta: object = {}) {
+	debug(message: string, meta: object = {}): void {
 		this.log('debug', message, meta);
 	}
 
-	info(message: string, meta: object = {}) {
+	info(message: string, meta: object = {}): void {
 		this.log('info', message, meta);
 	}
 
-	error(message: string, meta: object = {}) {
+	error(message: string, meta: object = {}): void {
 		this.log('error', message, meta);
 	}
 
-	verbose(message: string, meta: object = {}) {
+	verbose(message: string, meta: object = {}): void {
 		this.log('verbose', message, meta);
 	}
 
-	warn(message: string, meta: object = {}) {
+	warn(message: string, meta: object = {}): void {
 		this.log('warn', message, meta);
 	}
 }

@@ -1,83 +1,73 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-} from './SharedFields';
+import { makeSimpleField } from './SharedFields';
 
-export const signatureOperations = [
+export const signatureOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
+				resource: ['signature'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a signature',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a signature',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many signatures',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a signature',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const signatureFields = [
+export const signatureFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            signature: create
 	// ----------------------------------------
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition to sign.',
+		description: 'ID of the petition to sign',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['signature'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person whose signature to create.',
+		description: 'ID of the person whose signature to create',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['signature'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,12 +80,8 @@ export const signatureFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['signature'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -104,7 +90,7 @@ export const signatureFields = [
 				name: 'comments',
 				type: 'string',
 				default: '',
-				description: 'Comments to leave when signing this petition.',
+				description: 'Comments to leave when signing this petition',
 			},
 		],
 	},
@@ -115,36 +101,28 @@ export const signatureFields = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition whose signature to retrieve.',
+		description: 'ID of the petition whose signature to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['signature'],
+				operation: ['get'],
 			},
 		},
 	},
 	{
 		displayName: 'Signature ID',
 		name: 'signatureId',
-		description: 'ID of the signature to retrieve.',
+		description: 'ID of the signature to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['signature'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -156,18 +134,14 @@ export const signatureFields = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition whose signatures to retrieve.',
+		description: 'ID of the petition whose signatures to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['signature'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -176,15 +150,11 @@ export const signatureFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['signature'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -193,21 +163,15 @@ export const signatureFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['signature'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -219,36 +183,28 @@ export const signatureFields = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition whose signature to update.',
+		description: 'ID of the petition whose signature to update',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['signature'],
+				operation: ['update'],
 			},
 		},
 	},
 	{
 		displayName: 'Signature ID',
 		name: 'signatureId',
-		description: 'ID of the signature to update.',
+		description: 'ID of the signature to update',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['signature'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -261,12 +217,8 @@ export const signatureFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'signature',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['signature'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -275,8 +227,8 @@ export const signatureFields = [
 				name: 'comments',
 				type: 'string',
 				default: '',
-				description: 'Comments to leave when signing this petition.',
+				description: 'Comments to leave when signing this petition',
 			},
 		],
 	},
-] as INodeProperties[];
+];

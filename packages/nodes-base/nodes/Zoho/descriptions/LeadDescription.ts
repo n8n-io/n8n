@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	address,
@@ -9,16 +7,15 @@ import {
 	makeGetAllFields,
 } from './SharedFields';
 
-export const leadOperations = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
+				resource: ['lead'],
 			},
 		},
 		options: [
@@ -26,62 +23,64 @@ export const leadOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a lead',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a lead',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a lead',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all leads',
+				action: 'Get a lead',
 			},
 			{
 				name: 'Get Fields',
 				value: 'getFields',
 				description: 'Get lead fields',
+				action: 'Get lead fields',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many leads',
+				action: 'Get many leads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a lead',
+				action: 'Update a lead',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             lead: create
 	// ----------------------------------------
 	{
 		displayName: 'Company',
 		name: 'Company',
-		description: 'Company at which the lead works.',
+		description: 'Company at which the lead works',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -93,12 +92,8 @@ export const leadFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -110,12 +105,8 @@ export const leadFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -125,14 +116,14 @@ export const leadFields = [
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
-				description: 'Annual revenue of the lead’s company.',
+				description: 'Annual revenue of the lead’s company',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('lead'),
@@ -147,7 +138,7 @@ export const leadFields = [
 				name: 'Designation',
 				type: 'string',
 				default: '',
-				description: 'Position of the lead at their company.',
+				description: 'Position of the lead at their company',
 			},
 			{
 				displayName: 'Email',
@@ -184,21 +175,21 @@ export const leadFields = [
 				name: 'Industry',
 				type: 'string',
 				default: '',
-				description: 'Industry to which the lead belongs.',
+				description: 'Industry to which the lead belongs',
 			},
 			{
 				displayName: 'Industry Type',
 				name: 'Industry_Type',
 				type: 'string',
 				default: '',
-				description: 'Type of industry to which the lead belongs.',
+				description: 'Type of industry to which the lead belongs',
 			},
 			{
 				displayName: 'Lead Source',
 				name: 'Lead_Source',
 				type: 'string',
 				default: '',
-				description: 'Source from which the lead was created.',
+				description: 'Source from which the lead was created',
 			},
 			{
 				displayName: 'Lead Status',
@@ -217,7 +208,7 @@ export const leadFields = [
 				name: 'No_of_Employees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees in the lead’s company.',
+				description: 'Number of employees in the lead’s company',
 			},
 			{
 				displayName: 'Phone',
@@ -264,18 +255,14 @@ export const leadFields = [
 	{
 		displayName: 'Company',
 		name: 'Company',
-		description: 'Company at which the lead works.',
+		description: 'Company at which the lead works',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -287,12 +274,8 @@ export const leadFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -304,12 +287,8 @@ export const leadFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -319,14 +298,14 @@ export const leadFields = [
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
-				description: 'Annual revenue of the lead’s company.',
+				description: 'Annual revenue of the lead’s company',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('lead'),
@@ -341,14 +320,15 @@ export const leadFields = [
 				name: 'Designation',
 				type: 'string',
 				default: '',
-				description: 'Position of the lead at their company.',
+				description: 'Position of the lead at their company',
 			},
 			{
 				displayName: 'Email',
 				name: 'Email',
 				type: 'string',
 				default: '',
-				description: 'Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created.',
+				description:
+					'Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created.',
 			},
 			{
 				displayName: 'Email Opt Out',
@@ -379,21 +359,21 @@ export const leadFields = [
 				name: 'Industry',
 				type: 'string',
 				default: '',
-				description: 'Industry to which the lead belongs.',
+				description: 'Industry to which the lead belongs',
 			},
 			{
 				displayName: 'Industry Type',
 				name: 'Industry_Type',
 				type: 'string',
 				default: '',
-				description: 'Type of industry to which the lead belongs.',
+				description: 'Type of industry to which the lead belongs',
 			},
 			{
 				displayName: 'Lead Source',
 				name: 'Lead_Source',
 				type: 'string',
 				default: '',
-				description: 'Source from which the lead was created.',
+				description: 'Source from which the lead was created',
 			},
 			{
 				displayName: 'Lead Status',
@@ -412,7 +392,7 @@ export const leadFields = [
 				name: 'No_of_Employees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees in the lead’s company.',
+				description: 'Number of employees in the lead’s company',
 			},
 			{
 				displayName: 'Phone',
@@ -459,18 +439,14 @@ export const leadFields = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to delete.',
+		description: 'ID of the lead to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['lead'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -481,18 +457,14 @@ export const leadFields = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to retrieve.',
+		description: 'ID of the lead to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['lead'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -508,18 +480,14 @@ export const leadFields = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to update.',
+		description: 'ID of the lead to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -531,12 +499,8 @@ export const leadFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -546,21 +510,21 @@ export const leadFields = [
 				name: 'Annual_Revenue',
 				type: 'number',
 				default: '',
-				description: 'Annual revenue of the lead’s company.',
+				description: 'Annual revenue of the lead’s company',
 			},
 			{
 				displayName: 'Company',
 				name: 'Company',
 				type: 'string',
 				default: '',
-				description: 'Company at which the lead works.',
+				description: 'Company at which the lead works',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('lead'),
@@ -575,7 +539,7 @@ export const leadFields = [
 				name: 'Designation',
 				type: 'string',
 				default: '',
-				description: 'Position of the lead at their company.',
+				description: 'Position of the lead at their company',
 			},
 			{
 				displayName: 'Email',
@@ -612,14 +576,14 @@ export const leadFields = [
 				name: 'Industry',
 				type: 'string',
 				default: '',
-				description: 'Industry to which the lead belongs.',
+				description: 'Industry to which the lead belongs',
 			},
 			{
 				displayName: 'Industry Type',
 				name: 'Industry_Type',
 				type: 'string',
 				default: '',
-				description: 'Type of industry to which the lead belongs.',
+				description: 'Type of industry to which the lead belongs',
 			},
 			{
 				displayName: 'Last Name',
@@ -632,7 +596,7 @@ export const leadFields = [
 				name: 'Lead_Source',
 				type: 'string',
 				default: '',
-				description: 'Source from which the lead was created.',
+				description: 'Source from which the lead was created',
 			},
 			{
 				displayName: 'Lead Status',
@@ -651,7 +615,7 @@ export const leadFields = [
 				name: 'No_of_Employees',
 				type: 'number',
 				default: '',
-				description: 'Number of employees in the lead’s company.',
+				description: 'Number of employees in the lead’s company',
 			},
 			{
 				displayName: 'Phone',
@@ -691,4 +655,4 @@ export const leadFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

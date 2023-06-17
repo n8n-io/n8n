@@ -1,46 +1,48 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a user',
 			},
 		],
 		default: 'get',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                user:create                          */
 	/* -------------------------------------------------------------------------- */
@@ -52,12 +54,8 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -70,12 +68,8 @@ export const userFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -84,7 +78,7 @@ export const userFields = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'Whether to activate the user',
 			},
 			{
@@ -126,6 +120,7 @@ export const userFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address associated with the user',
 			},
@@ -190,13 +185,13 @@ export const userFields = [
 				name: 'user_password',
 				type: 'string',
 				default: '',
-				description: 'The user\'s password',
+				description: "The user's password",
 			},
 			{
 				displayName: 'Password Needs Reset',
 				name: 'password_needs_reset',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'Whether to require a password reset when the user logs in',
 			},
 			{
@@ -207,21 +202,21 @@ export const userFields = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Roles',
+				displayName: 'Role Names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUserRoles',
 				},
-				default: '',
-				description: 'Roles of the user',
+				default: [],
+				description:
+					'Roles of the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Source',
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source',
 			},
 			{
 				displayName: 'State',
@@ -242,6 +237,7 @@ export const userFields = [
 				name: 'user_name',
 				type: 'string',
 				default: '',
+				// nodelinter-ignore-next-line
 				description: 'A username associated with the user (e.g. user_name.123)',
 			},
 			{
@@ -263,16 +259,12 @@ export const userFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['getAll'],
+				resource: ['user'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -280,15 +272,9 @@ export const userFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['user'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -296,7 +282,7 @@ export const userFields = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -305,12 +291,8 @@ export const userFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -323,24 +305,25 @@ export const userFields = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getColumns',
-					loadOptionsDependsOn: [
-						'operation',
-					],
+					loadOptionsDependsOn: ['operation'],
 				},
-				default: '',
-				description: 'A list of fields to return',
+				default: [],
+				description:
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
 				displayName: 'Filter',
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>',
+				description:
+					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',
@@ -386,12 +369,8 @@ export const userFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -404,15 +383,9 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				getOption: [
-					'user_name',
-				],
+				resource: ['user'],
+				operation: ['get'],
+				getOption: ['user_name'],
 			},
 		},
 		required: true,
@@ -425,15 +398,9 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				getOption: [
-					'id',
-				],
+				resource: ['user'],
+				operation: ['get'],
+				getOption: ['id'],
 			},
 		},
 		required: true,
@@ -446,12 +413,8 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -464,12 +427,8 @@ export const userFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		default: {},
@@ -482,17 +441,17 @@ export const userFields = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getColumns',
-					loadOptionsDependsOn: [
-						'operation',
-					],
+					loadOptionsDependsOn: ['operation'],
 				},
-				default: '',
-				description: 'A list of fields to return',
+				default: [],
+				description:
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
 				displayName: 'Return Values',
@@ -528,12 +487,8 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -546,12 +501,8 @@ export const userFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		default: {},
@@ -560,7 +511,7 @@ export const userFields = [
 				displayName: 'Active',
 				name: 'active',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'Whether to activate the user',
 			},
 			{
@@ -602,6 +553,7 @@ export const userFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The email address associated with the user',
 			},
@@ -666,13 +618,13 @@ export const userFields = [
 				name: 'user_password',
 				type: 'string',
 				default: '',
-				description: 'The user\'s password',
+				description: "The user's password",
 			},
 			{
 				displayName: 'Password Needs Reset',
 				name: 'password_needs_reset',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: 'Whether to require a password reset when the user logs in',
 			},
 			{
@@ -683,21 +635,21 @@ export const userFields = [
 				description: 'The main phone number of the user',
 			},
 			{
-				displayName: 'Roles',
+				displayName: 'Role Names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUserRoles',
 				},
-				default: '',
-				description: 'Roles of the user',
+				default: [],
+				description:
+					'Roles of the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Source',
 				name: 'source',
 				type: 'string',
 				default: '',
-				description: 'The source',
 			},
 			{
 				displayName: 'State',
@@ -718,6 +670,7 @@ export const userFields = [
 				name: 'user_name',
 				type: 'string',
 				default: '',
+				// nodelinter-ignore-next-line
 				description: 'A username associated with the user (e.g. user_name.123)',
 			},
 			{
@@ -729,4 +682,4 @@ export const userFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -1,25 +1,77 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	BINARY_ENCODING,
+import type {
+	JsonObject,
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+function getEnvironment(env: string) {
+	return {
+		sanbox: 'https://api-m.sandbox.paypal.com',
+		live: 'https://api-m.paypal.com',
+	}[env];
+}
 
+async function getAccessToken(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
-	const env = getEnvironment(credentials!.env as string);
-	const tokenInfo =  await getAccessToken.call(this);
-	const headerWithAuthentication = Object.assign({ },
-		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' });
+	const env = getEnvironment(credentials.env as string);
+	const data = Buffer.from(`${credentials.clientId}:${credentials.secret}`).toString(
+		BINARY_ENCODING,
+	);
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+	);
+	const options: OptionsWithUri = {
+		headers: headerWithAuthentication,
+		method: 'POST',
+		form: {
+			grant_type: 'client_credentials',
+		},
+		uri: `${env}/v1/oauth2/token`,
+		json: true,
+	};
+	try {
+		return await this.helpers.request(options);
+	} catch (error) {
+		throw new NodeOperationError(this.getNode(), error as Error);
+	}
+}
+
+export async function payPalApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	endpoint: string,
+	method: string,
+
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+): Promise<any> {
+	const credentials = await this.getCredentials('payPalApi');
+	const env = getEnvironment(credentials.env as string);
+	const tokenInfo = await getAccessToken.call(this);
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' },
+	);
 	const options = {
 		headers: headerWithAuthentication,
 		method,
@@ -29,66 +81,10 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 		json: true,
 	};
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-}
-
-function getEnvironment(env: string): string {
-	// @ts-ignore
-	return {
-		'sanbox': 'https://api.sandbox.paypal.com',
-		'live': 'https://api.paypal.com',
-	}[env];
-}
-
-async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('payPalApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-	const env = getEnvironment(credentials!.env as string);
-	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(BINARY_ENCODING);
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' });
-		const options: OptionsWithUri = {
-			headers: headerWithAuthentication,
-			method: 'POST',
-			form: {
-				grant_type: 'client_credentials',
-			},
-			uri: `${env}/v1/oauth2/token`,
-			json: true,
-		};
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeOperationError(this.getNode(), error);
-	}
-}
-
-/**
- * Make an API request to paginated paypal endpoint
- * and return all results
- */
-export async function payPalApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-
-	query!.page_size = 1000;
-
-	do {
-		responseData = await payPalApiRequest.call(this, endpoint, method, body, query, uri);
-		uri = getNext(responseData.links);
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		getNext(responseData.links) !== undefined
-	);
-
-	return returnData;
 }
 
 function getNext(links: IDataObject[]): string | undefined {
@@ -100,7 +96,36 @@ function getNext(links: IDataObject[]): string | undefined {
 	return undefined;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+/**
+ * Make an API request to paginated paypal endpoint
+ * and return all results
+ */
+export async function payPalApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: string,
+
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+): Promise<any> {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query!.page_size = 1000;
+
+	do {
+		responseData = await payPalApiRequest.call(this, endpoint, method, body, query, uri);
+		uri = getNext(responseData.links as IDataObject[]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (getNext(responseData.links as IDataObject[]) !== undefined);
+
+	return returnData;
+}
+
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -111,7 +136,10 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 }
 
 export function upperFist(s: string): string {
-	return s.split('.').map(e => {
-		return e.toLowerCase().charAt(0).toUpperCase() + e.toLowerCase().slice(1);
-	}).join(' ');
+	return s
+		.split('.')
+		.map((e) => {
+			return e.toLowerCase().charAt(0).toUpperCase() + e.toLowerCase().slice(1);
+		})
+		.join(' ');
 }

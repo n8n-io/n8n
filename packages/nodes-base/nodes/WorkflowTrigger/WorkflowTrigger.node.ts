@@ -1,5 +1,5 @@
-import { ITriggerFunctions } from 'n8n-core';
-import {
+import type {
+	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
@@ -17,6 +17,8 @@ export class WorkflowTrigger implements INodeType {
 		version: 1,
 		description: 'Triggers based on various lifecycle events, like when a workflow is activated',
 		eventTriggerDescription: '',
+		mockManualExecution: true,
+		activationMessage: 'Your workflow will now trigger executions on the event you have defined.',
 		defaults: {
 			name: 'Workflow Trigger',
 			color: '#ff6d5a',
@@ -34,8 +36,7 @@ export class WorkflowTrigger implements INodeType {
 					<ul>
 						<li><b>Active Workflow Updated</b>: Triggers when this workflow is updated</li>
 						<li><b>Workflow Activated</b>: Triggers when this workflow is activated</li>
-					</ul>
-				`,
+					</ul>`,
 				options: [
 					{
 						name: 'Active Workflow Updated',
@@ -52,7 +53,6 @@ export class WorkflowTrigger implements INodeType {
 		],
 	};
 
-
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const events = this.getNodeParameter('events', []) as activationType[];
 
@@ -68,15 +68,22 @@ export class WorkflowTrigger implements INodeType {
 			}
 			this.emit([
 				this.helpers.returnJsonArray([
-					{ event, timestamp: (new Date()).toISOString(), workflow_id: this.getWorkflow().id },
+					{ event, timestamp: new Date().toISOString(), workflow_id: this.getWorkflow().id },
 				]),
 			]);
 		}
 
-		const self = this;
-		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{ event: 'Manual execution', timestamp: (new Date()).toISOString(), workflow_id: self.getWorkflow().id }])]);
-		}
+		const manualTriggerFunction = async () => {
+			this.emit([
+				this.helpers.returnJsonArray([
+					{
+						event: 'Manual execution',
+						timestamp: new Date().toISOString(),
+						workflow_id: this.getWorkflow().id,
+					},
+				]),
+			]);
+		};
 
 		return {
 			manualTriggerFunction,

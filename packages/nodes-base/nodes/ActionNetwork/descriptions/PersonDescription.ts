@@ -1,48 +1,45 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-	personAdditionalFieldsOptions,
-} from './SharedFields';
+import { makeSimpleField, personAdditionalFieldsOptions } from './SharedFields';
 
-export const personOperations = [
+export const personOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
+				resource: ['person'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a person',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a person',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many people',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a person',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const personFields = [
+export const personFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              person: create
 	// ----------------------------------------
@@ -53,15 +50,11 @@ export const personFields = [
 		type: 'fixedCollection',
 		default: {},
 		placeholder: 'Add Email Address Field',
-		description: 'Person’s email addresses.',
+		description: 'Person’s email addresses',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -74,21 +67,21 @@ export const personFields = [
 						name: 'address',
 						type: 'string',
 						default: '',
-						description: 'Person\'s email address.',
+						description: "Person's email address",
 					},
 					{
 						displayName: 'Primary',
 						name: 'primary',
 						type: 'hidden',
 						default: true,
-						description: 'Whether this is the person\'s primary email address.',
+						description: "Whether this is the person's primary email address",
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
 						default: 'subscribed',
-						description: 'Subscription status of this email address.',
+						description: 'Subscription status of this email address',
 						options: [
 							{
 								name: 'Bouncing',
@@ -128,12 +121,8 @@ export const personFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		options: personAdditionalFieldsOptions,
@@ -145,18 +134,14 @@ export const personFields = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to retrieve.',
+		description: 'ID of the person to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['person'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -170,15 +155,11 @@ export const personFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['person'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -186,22 +167,17 @@ export const personFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 50,
-		description: 'The number of results to return.',
+		default: 25,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
+			maxValue: 25,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['person'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -213,18 +189,14 @@ export const personFields = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to update.',
+		description: 'ID of the person to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -237,14 +209,10 @@ export const personFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 		options: personAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

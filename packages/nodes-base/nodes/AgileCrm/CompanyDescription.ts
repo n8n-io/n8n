@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -19,34 +16,38 @@ export const companyOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new company',
+				action: 'Create a company',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a company',
+				action: 'Delete a company',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a company',
+				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all companies',
+				description: 'Get many companies',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update company properties',
+				action: 'Update a company',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
+export const companyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                  company:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -57,12 +58,8 @@ export const companyFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -78,36 +75,29 @@ export const companyFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 20,
-		description: 'Number of results to fetch.',
+		description: 'Max number of results to return',
 	},
 
 	{
@@ -130,12 +120,8 @@ export const companyFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: 'none',
@@ -146,7 +132,7 @@ export const companyFields = [
 		type: 'options',
 		options: [
 			{
-				name: 'Any filter',
+				name: 'Any Filter',
 				value: 'anyFilter',
 			},
 			{
@@ -156,35 +142,26 @@ export const companyFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'manual',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['manual'],
 			},
 		},
 		default: 'anyFilter',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify
 		default: false,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Filters',
@@ -195,18 +172,12 @@ export const companyFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'manual',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['manual'],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Condition',
 		options: [
 			{
@@ -218,7 +189,7 @@ export const companyFields = [
 						name: 'field',
 						type: 'string',
 						default: '',
-						description: 'Any searchable field.',
+						description: 'Any searchable field',
 					},
 					{
 						displayName: 'Condition Type',
@@ -226,32 +197,32 @@ export const companyFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'Equals',
-								value: 'EQUALS',
-							},
-							{
-								name: 'Not Equal',
-								value: 'NOTEQUALS',
-							},
-							{
-								name: 'Last',
-								value: 'LAST',
-							},
-							{
-								name: 'Between',
-								value: 'BETWEEN',
-							},
-							{
-								name: 'On',
-								value: 'ON',
+								name: 'After',
+								value: 'AFTER',
 							},
 							{
 								name: 'Before',
 								value: 'BEFORE',
 							},
 							{
-								name: 'After',
-								value: 'AFTER',
+								name: 'Between',
+								value: 'BETWEEN',
+							},
+							{
+								name: 'Equals',
+								value: 'EQUALS',
+							},
+							{
+								name: 'Last',
+								value: 'LAST',
+							},
+							{
+								name: 'Not Equal',
+								value: 'NOTEQUALS',
+							},
+							{
+								name: 'On',
+								value: 'ON',
 							},
 						],
 						default: 'EQUALS',
@@ -268,9 +239,7 @@ export const companyFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								condition_type: [
-									'BETWEEN',
-								],
+								condition_type: ['BETWEEN'],
 							},
 						},
 						default: '',
@@ -280,20 +249,15 @@ export const companyFields = [
 		],
 	},
 	{
-		displayName: 'See <a href="https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter" target="_blank">Agile CRM guide</a> to creating filters',
+		displayName:
+			'See <a href="https://github.com/agilecrm/rest-api#121-get-contacts-by-dynamic-filter" target="_blank">Agile CRM guide</a> to creating filters',
 		name: 'jsonNotice',
 		type: 'notice',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'json',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['json'],
 			},
 		},
 		default: '',
@@ -302,24 +266,14 @@ export const companyFields = [
 		displayName: 'Filters (JSON)',
 		name: 'filterJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				filterType: [
-					'json',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				filterType: ['json'],
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Options',
@@ -329,12 +283,8 @@ export const companyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -371,7 +321,7 @@ export const companyFields = [
 								name: 'field',
 								type: 'string',
 								default: '',
-								description: `The sorting field`,
+								description: 'The sorting field',
 							},
 						],
 					},
@@ -388,20 +338,15 @@ export const companyFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -410,18 +355,13 @@ export const companyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['company'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>.',
+		description:
+			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -431,15 +371,9 @@ export const companyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -447,29 +381,31 @@ export const companyFields = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'Company address.',
+				description: 'Company address',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'Company email.',
+				description: 'Company email',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Company name.',
+				description: 'Company name',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Company phone.',
+				description: 'Company phone',
 			},
 			{
 				displayName: 'Star Value',
@@ -513,19 +449,21 @@ export const companyFields = [
 					multipleValueButtonText: 'Add Tag',
 				},
 				default: [],
-				description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+				description:
+					'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
 			},
 			{
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				description: 'Companies websites.',
+				description: 'Companies websites',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -534,7 +472,7 @@ export const companyFields = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of website.',
+								description: 'Type of website',
 								options: [
 									{
 										name: 'Facebook',
@@ -598,7 +536,7 @@ export const companyFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				description: 'Custom Properties',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -613,21 +551,21 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.',
+								description: 'Property name',
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
 								default: '',
-								description: 'Property sub type.',
+								description: 'Property sub type',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Property value.',
+								description: 'Property value',
 							},
 						],
 					},
@@ -640,18 +578,14 @@ export const companyFields = [
 	/*                                  company:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'company ID',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['company'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -668,12 +602,8 @@ export const companyFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -684,20 +614,15 @@ export const companyFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -706,18 +631,13 @@ export const companyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['company'],
+				operation: ['update'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>.',
+		description:
+			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -727,15 +647,9 @@ export const companyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['update'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -743,15 +657,17 @@ export const companyFields = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'Company address.',
+				description: 'Company address',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'Company email.',
+				description: 'Company email',
 			},
 			{
 				displayName: 'Star Value',
@@ -795,33 +711,35 @@ export const companyFields = [
 					multipleValueButtonText: 'Add Tag',
 				},
 				default: [],
-				description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+				description:
+					'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Company name.',
+				description: 'Company name',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Company phone.',
+				description: 'Company phone',
 			},
 			{
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				description: 'Companys websites.',
+				default: {},
+				description: 'Companys websites',
 				typeOptions: {
 					multipleValues: true,
 				},
 				options: [
 					{
-						displayName: 'Website properties.',
+						displayName: 'Website Properties.',
 						name: 'websiteProperties',
 						values: [
 							{
@@ -830,7 +748,7 @@ export const companyFields = [
 								type: 'options',
 								required: true,
 								default: '',
-								description: 'Type of website.',
+								description: 'Type of website',
 								options: [
 									{
 										name: 'Facebook',
@@ -894,7 +812,7 @@ export const companyFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				description: 'Custom Properties',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -909,21 +827,21 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.',
+								description: 'Property name',
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
 								default: '',
-								description: 'Property sub type.',
+								description: 'Property sub type',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Property value.',
+								description: 'Property value',
 							},
 						],
 					},
@@ -931,5 +849,4 @@ export const companyFields = [
 			},
 		],
 	},
-
-] as INodeProperties[];
+];

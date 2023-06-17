@@ -1,16 +1,13 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'company',
-];
+const resource = ['company'];
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -21,10 +18,9 @@ export const companyOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieves the company for the currently authenticated user',
+				action: 'Retrieve the company for the currently authenticated user',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-
-] as INodeProperties[];
+];

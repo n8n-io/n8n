@@ -1,26 +1,25 @@
-import {
+import type {
 	IExecuteFunctions,
-	WAIT_TIME_UNLIMITED,
-} from 'n8n-core';
-
-import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, WAIT_TIME_UNLIMITED, NodeOperationError } from 'n8n-workflow';
 
-import * as basicAuth from 'basic-auth';
+import fs from 'fs';
+import stream from 'stream';
+import { promisify } from 'util';
+import basicAuth from 'basic-auth';
+import type { Response } from 'express';
+import formidable from 'formidable';
+import isbot from 'isbot';
+import { file as tmpFile } from 'tmp-promise';
 
-import { Response } from 'express';
-
-import * as fs from 'fs';
-
-import * as formidable from 'formidable';
-
+const pipeline = promisify(stream.pipeline);
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -59,9 +58,7 @@ export class Wait implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						incomingAuthentication: [
-							'basicAuth',
-						],
+						incomingAuthentication: ['basicAuth'],
 					},
 				},
 			},
@@ -70,9 +67,7 @@ export class Wait implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						incomingAuthentication: [
-							'headerAuth',
-						],
+						incomingAuthentication: ['headerAuth'],
 					},
 				},
 			},
@@ -95,14 +90,12 @@ export class Wait implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Webhook authentication',
+				displayName: 'Webhook Authentication',
 				name: 'incomingAuthentication',
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -120,7 +113,8 @@ export class Wait implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If and how incoming resume-webhook-requests to $resumeWebhookUrl should be authenticated for additional security.',
+				description:
+					'If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security',
 			},
 			{
 				displayName: 'Resume',
@@ -128,17 +122,17 @@ export class Wait implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'After time interval',
+						name: 'After Time Interval',
 						value: 'timeInterval',
 						description: 'Waits for a certain amount of time',
 					},
 					{
-						name: 'At specified time',
+						name: 'At Specified Time',
 						value: 'specificTime',
 						description: 'Waits until a specific date and time to continue',
 					},
 					{
-						name: 'On webhook call',
+						name: 'On Webhook Call',
 						value: 'webhook',
 						description: 'Waits for a webhook call before continuing',
 					},
@@ -156,9 +150,7 @@ export class Wait implements INodeType {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						resume: [
-							'specificTime',
-						],
+						resume: ['specificTime'],
 					},
 				},
 				default: '',
@@ -174,9 +166,7 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resume: [
-							'timeInterval',
-						],
+						resume: ['timeInterval'],
 					},
 				},
 				typeOptions: {
@@ -192,9 +182,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'timeInterval',
-						],
+						resume: ['timeInterval'],
 					},
 				},
 				options: [
@@ -219,19 +207,17 @@ export class Wait implements INodeType {
 				description: 'The time unit of the Wait Amount value',
 			},
 
-
 			// ----------------------------------
 			//         resume:webhook
 			// ----------------------------------
 			{
-				displayName: 'The webhook URL will be generated at run time. It can be referenced with the <strong>$resumeWebhookUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+				displayName:
+					'The webhook URL will be generated at run time. It can be referenced with the <strong>$execution.resumeUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				default: '',
@@ -242,12 +228,14 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				options: [
+					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
 					{
 						name: 'GET',
 						value: 'GET',
@@ -257,8 +245,16 @@ export class Wait implements INodeType {
 						value: 'HEAD',
 					},
 					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
 						name: 'POST',
 						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
 					},
 				],
 				default: 'GET',
@@ -270,9 +266,7 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				typeOptions: {
@@ -288,9 +282,7 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -300,12 +292,12 @@ export class Wait implements INodeType {
 						description: 'As soon as this node executes',
 					},
 					{
-						name: 'When last node finishes',
+						name: 'When Last Node Finishes',
 						value: 'lastNode',
 						description: 'Returns data of the last-executed node',
 					},
 					{
-						name: 'Using \'Respond to Webhook\' node',
+						name: "Using 'Respond to Webhook' Node",
 						value: 'responseNode',
 						description: 'Response defined in that node',
 					},
@@ -319,33 +311,32 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
-						responseMode: [
-							'lastNode',
-						],
+						resume: ['webhook'],
+						responseMode: ['lastNode'],
 					},
 				},
 				options: [
 					{
 						name: 'All Entries',
 						value: 'allEntries',
-						description: 'Returns all the entries of the last node. Always returns an array',
+						description: 'Returns all the entries of the last node. Always returns an array.',
 					},
 					{
 						name: 'First Entry JSON',
 						value: 'firstEntryJson',
-						description: 'Returns the JSON data of the first entry of the last node. Always returns a JSON object',
+						description:
+							'Returns the JSON data of the first entry of the last node. Always returns a JSON object.',
 					},
 					{
 						name: 'First Entry Binary',
 						value: 'firstEntryBinary',
-						description: 'Returns the binary data of the first entry of the last node. Always returns a binary file',
+						description:
+							'Returns the binary data of the first entry of the last node. Always returns a binary file.',
 					},
 				],
 				default: 'firstEntryJson',
-				description: 'What data should be returned. If it should return all the items as array or only the first item as object',
+				description:
+					'What data should be returned. If it should return all the items as array or only the first item as object.',
 			},
 			{
 				displayName: 'Property Name',
@@ -355,55 +346,47 @@ export class Wait implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
-						responseData: [
-							'firstEntryBinary',
-						],
+						resume: ['webhook'],
+						responseData: ['firstEntryBinary'],
 					},
 				},
 				description: 'Name of the binary property to return',
 			},
 			{
-				displayName: 'Limit wait time',
+				displayName: 'Limit Wait Time',
 				name: 'limitWaitTime',
 				type: 'boolean',
 				default: false,
-				description: `If no webhook call is received, the workflow will automatically
-							 resume execution after the specified limit type`,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 			},
 			{
-				displayName: 'Limit type',
+				displayName: 'Limit Type',
 				name: 'limitType',
 				type: 'options',
 				default: 'afterTimeInterval',
-				description: `Sets the condition for the execution to resume. Can be a specified date or after some time.`,
+				description:
+					'Sets the condition for the execution to resume. Can be a specified date or after some time.',
 				displayOptions: {
 					show: {
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				options: [
 					{
-						name: 'After time interval',
+						name: 'After Time Interval',
 						description: 'Waits for a certain amount of time',
 						value: 'afterTimeInterval',
 					},
 					{
-						name: 'At specified time',
+						name: 'At Specified Time',
 						description: 'Waits until the set date and time to continue',
 						value: 'atSpecifiedTime',
 					},
@@ -415,15 +398,9 @@ export class Wait implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						limitType: [
-							'afterTimeInterval',
-						],
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitType: ['afterTimeInterval'],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				typeOptions: {
@@ -439,15 +416,9 @@ export class Wait implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						limitType: [
-							'afterTimeInterval',
-						],
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitType: ['afterTimeInterval'],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				options: [
@@ -477,15 +448,9 @@ export class Wait implements INodeType {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						limitType: [
-							'atSpecifiedTime',
-						],
-						limitWaitTime: [
-							true,
-						],
-						resume: [
-							'webhook',
-						],
+						limitType: ['atSpecifiedTime'],
+						limitWaitTime: [true],
+						resume: ['webhook'],
 					},
 				},
 				default: '',
@@ -497,9 +462,7 @@ export class Wait implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						resume: [
-							'webhook',
-						],
+						resume: ['webhook'],
 					},
 				},
 				placeholder: 'Add Option',
@@ -511,30 +474,32 @@ export class Wait implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/httpMethod': [
-									'POST',
-								],
+								'/httpMethod': ['PATCH', 'PUT', 'POST'],
 							},
 						},
 						default: false,
-						description: 'Set to true if webhook will receive binary data',
+						description: 'Whether the webhook will receive binary data',
 					},
 					{
 						displayName: 'Binary Property',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
-						required: true,
 						displayOptions: {
 							show: {
-								binaryData: [
-									true,
-								],
+								binaryData: [true],
 							},
 						},
-						description: `Name of the binary property to which to write the data of
-									the received file. If the data gets received via "Form-Data Multipart"
-									it will be the prefix and a number starting with 0 will be attached to it.`,
+						description:
+							'Name of the binary property to which to write the data of the received file. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
+					},
+					{
+						displayName: 'Ignore Bots',
+						name: 'ignoreBots',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to ignore requests from bots like link previewers and web crawlers',
 					},
 					{
 						displayName: 'Response Data',
@@ -542,9 +507,7 @@ export class Wait implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseMode': [
-									'onReceived',
-								],
+								'/responseMode': ['onReceived'],
 							},
 						},
 						default: '',
@@ -557,17 +520,15 @@ export class Wait implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseData': [
-									'firstEntryJson',
-								],
-								'/responseMode': [
-									'lastNode',
-								],
+								'/responseData': ['firstEntryJson'],
+								'/responseMode': ['lastNode'],
 							},
 						},
 						default: '',
 						placeholder: 'application/xml',
-						description: 'Set a custom content-type to return if another one as the "application/json" should be returned',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+						description:
+							'Set a custom content-type to return if another one as the "application/json" should be returned',
 					},
 					{
 						displayName: 'Response Headers',
@@ -608,12 +569,8 @@ export class Wait implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/responseData': [
-									'firstEntryJson',
-								],
-								'/responseMode': [
-									'lastNode',
-								],
+								'/responseData': ['firstEntryJson'],
+								'/responseMode': ['lastNode'],
 							},
 						},
 						default: 'data',
@@ -625,7 +582,8 @@ export class Wait implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'webhook',
-						description: 'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes. Note: Does not support expressions.',
+						description:
+							'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes. Note: Does not support expressions.',
 					},
 					// {
 					// 	displayName: 'Raw Body',
@@ -643,12 +601,11 @@ export class Wait implements INodeType {
 					// },
 				],
 			},
-
 		],
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		// INFO: Currently (20.06.2021) 100% identical with Webook-Node
+		// INFO: Currently (20.06.2021) 100% identical with Webhook-Node
 		const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const req = this.getRequestObject();
@@ -656,9 +613,20 @@ export class Wait implements INodeType {
 		const headers = this.getHeaderData();
 		const realm = 'Webhook';
 
+		const ignoreBots = options.ignoreBots as boolean;
+		if (ignoreBots && isbot((headers as IDataObject)['user-agent'] as string)) {
+			return authorizationError(resp, realm, 403);
+		}
+
 		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -672,35 +640,44 @@ export class Wait implements INodeType {
 				return authorizationError(resp, realm, 401);
 			}
 
-			if (basicAuthData.name !== httpBasicAuth!.user || basicAuthData.pass !== httpBasicAuth!.password) {
+			if (
+				basicAuthData.name !== httpBasicAuth.user ||
+				basicAuthData.pass !== httpBasicAuth.password
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
 		} else if (incomingAuthentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
-			const httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			let httpHeaderAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
 				// Data is not defined on node so can not authenticate
 				return authorizationError(resp, realm, 500, 'No authentication data defined on node!');
 			}
 			const headerName = (httpHeaderAuth.name as string).toLowerCase();
-			const headerValue = (httpHeaderAuth.value as string);
+			const headerValue = httpHeaderAuth.value as string;
 
-			if (!headers.hasOwnProperty(headerName) || (headers as IDataObject)[headerName] !== headerValue) {
+			if (
+				!headers.hasOwnProperty(headerName) ||
+				(headers as IDataObject)[headerName] !== headerValue
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
 		}
 
-		// @ts-ignore
-		const mimeType = headers['content-type'] || 'application/json';
+		const mimeType = headers['content-type'] ?? 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			// @ts-ignore
 			const form = new formidable.IncomingForm({ multiples: true });
 
-			return new Promise((resolve, reject) => {
-
+			return new Promise((resolve, _reject) => {
 				form.parse(req, async (err, data, files) => {
 					const returnItem: INodeExecutionData = {
 						binary: {},
@@ -717,7 +694,7 @@ export class Wait implements INodeType {
 						const processFiles: formidable.File[] = [];
 						let multiFile = false;
 						if (Array.isArray(files[xfile])) {
-							processFiles.push(...files[xfile] as formidable.File[]);
+							processFiles.push(...(files[xfile] as formidable.File[]));
 							multiFile = true;
 						} else {
 							processFiles.push(files[xfile] as formidable.File);
@@ -729,68 +706,60 @@ export class Wait implements INodeType {
 							if (binaryPropertyName.endsWith('[]')) {
 								binaryPropertyName = binaryPropertyName.slice(0, -2);
 							}
-							if (multiFile === true) {
+							if (multiFile) {
 								binaryPropertyName += fileCount++;
 							}
 							if (options.binaryPropertyName) {
 								binaryPropertyName = `${options.binaryPropertyName}${count}`;
 							}
 
-							const fileJson = file.toJSON() as unknown as IDataObject;
-							const fileContent = await fs.promises.readFile(file.path);
-
-							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
+							const fileJson = file.toJSON();
+							returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
+								file.path,
+								fileJson.name || fileJson.filename,
+								fileJson.type as string,
+							);
 
 							count += 1;
 						}
 					}
 					resolve({
-						workflowData: [
-							[
-								returnItem,
-							],
-						],
+						workflowData: [[returnItem]],
 					});
 				});
-
 			});
 		}
 
 		if (options.binaryData === true) {
-			return new Promise((resolve, reject) => {
-				const binaryPropertyName = options.binaryPropertyName || 'data';
-				const data: Buffer[] = [];
+			const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
 
-				req.on('data', (chunk) => {
-					data.push(chunk);
-				});
+			try {
+				await pipeline(req, fs.createWriteStream(binaryFile.path));
 
-				req.on('end', async () => {
-					const returnItem: INodeExecutionData = {
-						binary: {},
-						json: {
-							headers,
-							params: this.getParamsData(),
-							query: this.getQueryData(),
-							body: this.getBodyData(),
-						},
-					};
+				const returnItem: INodeExecutionData = {
+					binary: {},
+					json: {
+						headers,
+						params: this.getParamsData(),
+						query: this.getQueryData(),
+						body: this.getBodyData(),
+					},
+				};
 
-					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(Buffer.concat(data));
+				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
+				returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
+					binaryFile.path,
+					mimeType,
+				);
 
-					return resolve({
-						workflowData: [
-							[
-								returnItem,
-							],
-						],
-					});
-				});
-
-				req.on('error', (error) => {
-					throw new NodeOperationError(this.getNode(), error);
-				});
-			});
+				return {
+					workflowData: [[returnItem]],
+				};
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error as Error);
+			} finally {
+				await binaryFile.cleanup();
+			}
 		}
 
 		const response: INodeExecutionData = {
@@ -805,7 +774,6 @@ export class Wait implements INodeType {
 		if (options.rawBody) {
 			response.binary = {
 				data: {
-					// @ts-ignore
 					data: req.rawBody.toString(BINARY_ENCODING),
 					mimeType,
 				},
@@ -819,14 +787,9 @@ export class Wait implements INodeType {
 
 		return {
 			webhookResponse,
-			workflowData: [
-				[
-					response,
-				],
-			],
+			workflowData: [[response]],
 		};
 	}
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const resume = this.getNodeParameter('resume', 0) as string;
@@ -882,7 +845,6 @@ export class Wait implements INodeType {
 			waitAmount *= 1000;
 
 			waitTill = new Date(new Date().getTime() + waitAmount);
-
 		} else {
 			// resume: dateTime
 			const dateTime = this.getNodeParameter('dateTime', 0) as string;
@@ -895,7 +857,7 @@ export class Wait implements INodeType {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				setTimeout(() => {
 					resolve([this.getInputData()]);
 				}, waitValue);

@@ -1,46 +1,39 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a user',
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 	{
 		displayName: 'Username',
 		name: 'username',
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Reddit ID of the user to retrieve.',
+		description: 'Reddit ID of the user to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -50,7 +43,7 @@ export const userFields = [
 		type: 'options',
 		required: true,
 		default: 'about',
-		description: 'Details of the user to retrieve.',
+		description: 'Details of the user to retrieve',
 		options: [
 			{
 				name: 'About',
@@ -75,12 +68,8 @@ export const userFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -89,21 +78,12 @@ export const userFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'overview',
-					'submitted',
-					'comments',
-					'gilded',
-				],
+				resource: ['user'],
+				operation: ['get'],
+				details: ['overview', 'submitted', 'comments', 'gilded'],
 			},
 		},
 	},
@@ -112,29 +92,18 @@ export const userFields = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'comments',
-					'gilded',
-					'overview',
-					'submitted',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['get'],
+				details: ['comments', 'gilded', 'overview', 'submitted'],
+				returnAll: [false],
 			},
 		},
 	},
-] as INodeProperties[];
+];

@@ -1,30 +1,19 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { OptionsWithUri } from 'request';
 
-import {
-	OptionsWithUri,
-} from 'request';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	TDtableMetadataColumns,
-	TDtableViewColumns,
-	TEndpointResolvedExpr,
-	TEndpointVariableName,
-} from './types';
+import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
-import {
-	schema,
-} from './Schema';
+import { schema } from './Schema';
 
-import {
+import type {
 	ICredential,
 	ICtx,
 	IDtableMetadataColumn,
@@ -34,10 +23,67 @@ import {
 	IRowObject,
 } from './Interfaces';
 
-import * as _ from 'lodash';
+const userBaseUri = (uri?: string) => {
+	if (uri === undefined) {
+		return uri;
+	}
 
-export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, ctx: ICtx, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, url: string | undefined = undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	if (uri.endsWith('/')) {
+		return uri.slice(0, -1);
+	}
 
+	return uri;
+};
+
+export function resolveBaseUri(ctx: ICtx) {
+	return ctx?.credentials?.environment === 'cloudHosted'
+		? 'https://cloud.seatable.io'
+		: userBaseUri(ctx?.credentials?.domain);
+}
+
+export async function getBaseAccessToken(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	ctx: ICtx,
+) {
+	if (ctx?.base?.access_token !== undefined) {
+		return;
+	}
+
+	const options: OptionsWithUri = {
+		headers: {
+			Authorization: `Token ${ctx?.credentials?.token}`,
+		},
+		uri: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
+		json: true,
+	};
+
+	ctx.base = await this.helpers.request(options);
+}
+
+function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
+	const endpointVariables: IEndpointVariables = {};
+	endpointVariables.access_token = ctx?.base?.access_token;
+	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
+
+	return endpoint.replace(
+		/({{ *(access_token|dtable_uuid|server) *}})/g,
+		(match: string, expr: string, name: TEndpointVariableName) => {
+			return endpointVariables[name] || match;
+		},
+	);
+}
+
+export async function seaTableApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	ctx: ICtx,
+	method: string,
+	endpoint: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	url: string | undefined = undefined,
+	option: IDataObject = {},
+): Promise<any> {
 	const credentials = await this.getCredentials('seaTableApi');
 
 	ctx.credentials = credentials as unknown as ICredential;
@@ -55,7 +101,7 @@ export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsF
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -64,15 +110,21 @@ export async function seaTableApiRequest(this: IExecuteFunctions | ILoadOptionsF
 	}
 
 	try {
-		//@ts-ignore
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function setableApiRequestAllItems(this: IExecuteFunctions | IPollFunctions, ctx: ICtx, propertyName: string, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-
+export async function setableApiRequestAllItems(
+	this: IExecuteFunctions | IPollFunctions,
+	ctx: ICtx,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+): Promise<any> {
 	if (query === undefined) {
 		query = {};
 	}
@@ -85,18 +137,35 @@ export async function setableApiRequestAllItems(this: IExecuteFunctions | IPollF
 	let responseData;
 
 	do {
-		responseData = await seaTableApiRequest.call(this, ctx, method, endpoint, body, query) as unknown as IRow[];
+		responseData = (await seaTableApiRequest.call(
+			this,
+			ctx,
+			method,
+			endpoint,
+			body,
+			query,
+		)) as unknown as IRow[];
 		//@ts-ignore
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.start = +query.start + segment;
 	} while (responseData && responseData.length > segment - 1);
 
 	return returnData;
 }
 
-
-export async function getTableColumns(this: ILoadOptionsFunctions | IExecuteFunctions | IPollFunctions, tableName: string, ctx: ICtx = {}): Promise<TDtableMetadataColumns> {
-	const { metadata: { tables } } = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`);
+export async function getTableColumns(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IPollFunctions,
+	tableName: string,
+	ctx: ICtx = {},
+): Promise<TDtableMetadataColumns> {
+	const {
+		metadata: { tables },
+	} = await seaTableApiRequest.call(
+		this,
+		ctx,
+		'GET',
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+	);
 	for (const table of tables) {
 		if (table.name === tableName) {
 			return table.columns;
@@ -105,31 +174,20 @@ export async function getTableColumns(this: ILoadOptionsFunctions | IExecuteFunc
 	return [];
 }
 
-export async function getTableViews(this: ILoadOptionsFunctions | IExecuteFunctions, tableName: string, ctx: ICtx = {}): Promise<TDtableViewColumns> {
-	const { views } = await seaTableApiRequest.call(this, ctx, 'GET', `/dtable-server/api/v1/dtables/{{dtable_uuid}}/views`, {}, { table_name: tableName });
+export async function getTableViews(
+	this: ILoadOptionsFunctions | IExecuteFunctions,
+	tableName: string,
+	ctx: ICtx = {},
+): Promise<TDtableViewColumns> {
+	const { views } = await seaTableApiRequest.call(
+		this,
+		ctx,
+		'GET',
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/views',
+		{},
+		{ table_name: tableName },
+	);
 	return views;
-}
-
-export async function getBaseAccessToken(this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, ctx: ICtx) {
-
-	if (ctx?.base?.access_token !== undefined) {
-		return;
-	}
-
-	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Token ${ctx?.credentials?.token}`,
-		},
-		uri: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
-		json: true,
-	};
-
-	ctx.base = await this.helpers.request!(options);
-}
-
-export function resolveBaseUri(ctx: ICtx) {
-	return (ctx?.credentials?.environment === 'cloudHosted')
-		? 'https://cloud.seatable.io' : userBaseUri(ctx?.credentials?.domain);
 }
 
 export function simplify(data: { results: IRow[] }, metadata: IDataObject) {
@@ -144,32 +202,45 @@ export function simplify(data: { results: IRow[] }, metadata: IDataObject) {
 	});
 }
 
-export function getColumns(data: { metadata: [{ key: string, name: string }] }) {
-	return data.metadata.reduce((obj, value) => Object.assign(obj, { [`${value.key}`]: value.name }), {});
+export function getColumns(data: { metadata: [{ key: string; name: string }] }) {
+	return data.metadata.reduce(
+		(obj, value) => Object.assign(obj, { [`${value.key}`]: value.name }),
+		{},
+	);
 }
 
-export function getDownloadableColumns(data: { metadata: [{ key: string, name: string, type: string }] }) {
-	return data.metadata.filter(row => (['image', 'file'].includes(row.type))).map(row => row.name);
+export function getDownloadableColumns(data: {
+	metadata: [{ key: string; name: string; type: string }];
+}) {
+	return data.metadata.filter((row) => ['image', 'file'].includes(row.type)).map((row) => row.name);
 }
 
-const uniquePredicate = (current: string, index: number, all: string[]) => all.indexOf(current) === index;
+const uniquePredicate = (current: string, index: number, all: string[]) =>
+	all.indexOf(current) === index;
 const nonInternalPredicate = (name: string) => !Object.keys(schema.internalNames).includes(name);
 const namePredicate = (name: string) => (named: IName) => named.name === name;
-export const nameOfPredicate = (names: ReadonlyArray<IName>) => (name: string) => names.find(namePredicate(name));
+export const nameOfPredicate = (names: readonly IName[]) => (name: string) =>
+	names.find(namePredicate(name));
+
+const normalize = (subject: string): string => (subject ? subject.normalize() : '');
+
+export const split = (subject: string): string[] =>
+	normalize(subject)
+		.split(/\s*((?:[^\\,]*?(?:\\[\s\S])*)*?)\s*(?:,|$)/)
+		.filter((s) => s.length)
+		.map((s) => s.replace(/\\([\s\S])/gm, ($0, $1) => $1));
 
 export function columnNamesToArray(columnNames: string): string[] {
-	return columnNames
-		? split(columnNames)
-			.filter(nonInternalPredicate)
-			.filter(uniquePredicate)
-		: []
-		;
+	return columnNames ? split(columnNames).filter(nonInternalPredicate).filter(uniquePredicate) : [];
 }
 
-export function columnNamesGlob(columnNames: string[], dtableColumns: TDtableMetadataColumns): string[] {
+export function columnNamesGlob(
+	columnNames: string[],
+	dtableColumns: TDtableMetadataColumns,
+): string[] {
 	const buffer: string[] = [];
-	const names: string[] = dtableColumns.map(c => c.name).filter(nonInternalPredicate);
-	columnNames.forEach(columnName => {
+	const names: string[] = dtableColumns.map((c) => c.name).filter(nonInternalPredicate);
+	columnNames.forEach((columnName) => {
 		if (columnName !== '*') {
 			buffer.push(columnName);
 			return;
@@ -186,22 +257,18 @@ export function rowsSequence(rows: IRow[]) {
 	const l = rows.length;
 	if (l) {
 		const [first] = rows;
-		if (first && first._seq !== undefined) {
+		if (first?._seq !== undefined) {
 			return;
 		}
 	}
-	for (let i = 0; i < l;) {
+	for (let i = 0; i < l; ) {
 		rows[i]._seq = ++i;
 	}
 }
 
 export function rowDeleteInternalColumns(row: IRow): IRow {
-	Object.keys(schema.internalNames).forEach(columnName => delete row[columnName]);
+	Object.keys(schema.internalNames).forEach((columnName) => delete row[columnName]);
 	return row;
-}
-
-export function rowsDeleteInternalColumns(rows: IRow[]) {
-	rows = rows.map(rowDeleteInternalColumns);
 }
 
 function rowFormatColumn(input: unknown): boolean | number | string | string[] | null {
@@ -213,8 +280,12 @@ function rowFormatColumn(input: unknown): boolean | number | string | string[] |
 		return input;
 	}
 
-	if (Array.isArray(input) && input.every(i => (typeof i === 'string'))) {
+	if (Array.isArray(input) && input.every((i) => typeof i === 'string')) {
 		return input;
+	} else if (Array.isArray(input) && input.every((i) => typeof i === 'object')) {
+		const returnItems = [] as string[];
+		input.every((i) => returnItems.push(i.display_value as string));
+		return returnItems;
 	}
 
 	return null;
@@ -242,8 +313,8 @@ export function rowMapKeyToName(row: IRow, columns: TDtableMetadataColumns): IRo
 	});
 
 	// pick each by its key for name
-	Object.keys(row).forEach(key => {
-		const column = columns.find(c => c.key === key);
+	Object.keys(row).forEach((key) => {
+		const column = columns.find((c) => c.key === key);
 		if (column) {
 			mappedRow[column.name] = row[key];
 		}
@@ -272,35 +343,3 @@ export const dtableSchemaColumns = (columns: TDtableMetadataColumns): TDtableMet
 
 export const updateAble = (columns: TDtableMetadataColumns): TDtableMetadataColumns =>
 	columns.filter(dtableSchemaIsUpdateAbleColumn);
-
-function endpointCtxExpr(this: void, ctx: ICtx, endpoint: string): string {
-	const endpointVariables: IEndpointVariables = {};
-	endpointVariables.access_token = ctx?.base?.access_token;
-	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
-
-	return endpoint.replace(/({{ *(access_token|dtable_uuid|server) *}})/g, (match: string, expr: string, name: TEndpointVariableName) => {
-		return endpointVariables[name] || match;
-	}) as TEndpointResolvedExpr;
-}
-
-
-const normalize = (subject: string): string => subject ? subject.normalize() : '';
-
-export const split = (subject: string): string[] =>
-	normalize(subject)
-		.split(/\s*((?:[^\\,]*?(?:\\[\s\S])*)*?)\s*(?:,|$)/)
-		.filter(s => s.length)
-		.map(s => s.replace(/\\([\s\S])/gm, ($0, $1) => $1))
-	;
-
-const userBaseUri = (uri?: string) => {
-	if (uri === undefined) {
-		return uri;
-	}
-
-	if (uri.endsWith('/')) {
-		return uri.slice(0, -1);
-	}
-
-	return uri;
-};

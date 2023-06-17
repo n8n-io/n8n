@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const customerOperations = [
+export const customerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
+				resource: ['customer'],
 			},
 		},
 		options: [
@@ -17,37 +16,41 @@ export const customerOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new customer',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a customer',
+				action: 'Get a customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all customers',
+				description: 'Get many customers',
+				action: 'Get many customers',
 			},
 			{
 				name: 'Properties',
 				value: 'properties',
 				description: 'Get customer property definitions',
+				action: 'Get customer properties',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a customer',
+				action: 'Update a customer',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const customerFields = [
-/* -------------------------------------------------------------------------- */
-/*                                customer:create                             */
-/* -------------------------------------------------------------------------- */
+export const customerFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                customer:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Resolve Data',
 		name: 'resolveData',
@@ -55,15 +58,13 @@ export const customerFields = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
-		description: 'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description:
+			'By default the response only contain the ID to resource. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -73,12 +74,8 @@ export const customerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
 		options: [
@@ -90,14 +87,15 @@ export const customerFields = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description:
+					'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',
@@ -118,7 +116,7 @@ export const customerFields = [
 					},
 				],
 				default: '',
-				description: 'Gender of this customer.',
+				description: 'Gender of this customer',
 			},
 			{
 				displayName: 'Job Title',
@@ -139,24 +137,19 @@ export const customerFields = [
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Location of the customer.',
+				description: 'Location of the customer',
 			},
 			{
 				displayName: 'Notes',
 				name: 'background',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: `Notes`,
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
-				description: 'Organization',
 			},
 			{
 				displayName: 'Photo Url',
@@ -174,12 +167,8 @@ export const customerFields = [
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
 		default: {},
@@ -193,45 +182,41 @@ export const customerFields = [
 						name: 'line1',
 						type: 'string',
 						default: '',
-						description: 'line1',
 					},
 					{
 						displayName: 'Line 2',
 						name: 'line2',
 						type: 'string',
 						default: '',
-						description: 'line2',
 					},
 					{
 						displayName: 'City',
 						name: 'city',
 						type: 'string',
 						default: '',
-						description: 'City',
 					},
 					{
 						displayName: 'State',
 						name: 'state',
 						type: 'string',
 						default: '',
-						description: 'State',
 					},
 					{
-						displayName: 'Country',
+						displayName: 'Country Name or ID',
 						name: 'country',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountriesCodes',
 						},
 						default: '',
-						description: 'Country',
 					},
 					{
 						displayName: 'Postal Code',
 						name: 'postalCode',
 						type: 'string',
 						default: '',
-						description: 'Postal code',
 					},
 				],
 			},
@@ -247,12 +232,8 @@ export const customerFields = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
 		default: {},
@@ -327,12 +308,8 @@ export const customerFields = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
 		default: {},
@@ -383,12 +360,8 @@ export const customerFields = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
 		default: {},
@@ -447,12 +420,8 @@ export const customerFields = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
 		default: {},
@@ -523,7 +492,7 @@ export const customerFields = [
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Social Profile handle (url for example)',
+						description: 'Social Profile handle (URL for example)',
 					},
 				],
 			},
@@ -539,12 +508,8 @@ export const customerFields = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['create'],
+				resource: ['customer'],
 			},
 		},
 		default: {},
@@ -564,25 +529,21 @@ export const customerFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                customer:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                customer:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['getAll'],
+				resource: ['customer'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -590,22 +551,16 @@ export const customerFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'customer',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['customer'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -615,12 +570,8 @@ export const customerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -697,17 +648,15 @@ export const customerFields = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query">Examples</a>',
+				description:
+					'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query">Examples</a>',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                customer:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                customer:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
@@ -716,19 +665,14 @@ export const customerFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customer'],
+				operation: ['get'],
 			},
 		},
-		description: 'Customer ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                customer:update                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                customer:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
@@ -736,15 +680,10 @@ export const customerFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['update'],
+				resource: ['customer'],
 			},
 		},
-		description: 'Customer ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -754,12 +693,8 @@ export const customerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'customer',
-				],
+				operation: ['update'],
+				resource: ['customer'],
 			},
 		},
 		options: [
@@ -771,14 +706,15 @@ export const customerFields = [
 					minValue: 1,
 				},
 				default: 1,
-				description: `Customer’s age`,
+				description: 'Customer’s age',
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `First name of the customer. When defined it must be between 1 and 40 characters.`,
+				description:
+					'First name of the customer. When defined it must be between 1 and 40 characters.',
 			},
 			{
 				displayName: 'Gender',
@@ -799,7 +735,7 @@ export const customerFields = [
 					},
 				],
 				default: '',
-				description: 'Gender of this customer.',
+				description: 'Gender of this customer',
 			},
 			{
 				displayName: 'Job Title',
@@ -820,24 +756,19 @@ export const customerFields = [
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Location of the customer.',
+				description: 'Location of the customer',
 			},
 			{
 				displayName: 'Notes',
 				name: 'background',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: `Notes`,
 			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
-				description: 'Organization',
 			},
 			{
 				displayName: 'Photo Url',
@@ -848,4 +779,4 @@ export const customerFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -1,16 +1,13 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'client',
-];
+const resource = ['client'];
 
-export const clientOperations = [
+export const clientOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -20,38 +17,40 @@ export const clientOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a client`,
+				description: 'Create a client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: `Delete a client`,
+				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
+				action: 'Get data of a client',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all clients',
+				description: 'Get data of many clients',
+				action: 'Get data of all clients',
 			},
 
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a client`,
+				description: 'Update a client',
+				action: 'Update a client',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
+];
 
-] as INodeProperties[];
-
-export const clientFields = [
-
+export const clientFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                client:getAll                               */
 	/* -------------------------------------------------------------------------- */
@@ -63,13 +62,11 @@ export const clientFields = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Returns a list of your clients.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -78,12 +75,8 @@ export const clientFields = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -91,7 +84,7 @@ export const clientFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -102,9 +95,7 @@ export const clientFields = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -113,14 +104,14 @@ export const clientFields = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active clients and false to return inactive clients.',
+				description: 'Whether to only return active clients and false to return inactive clients',
 			},
 			{
 				displayName: 'Updated Since',
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return clients that have been updated since the given date and time.',
+				description: 'Only return clients that have been updated since the given date and time',
 			},
 		],
 	},
@@ -129,40 +120,36 @@ export const clientFields = [
 	/*                                client:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
-		description: 'The ID of the client you are retrieving.',
+		description: 'The ID of the client you are retrieving',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                client:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
-		description: 'The ID of the client you want to delete.',
+		description: 'The ID of the client you want to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -174,15 +161,13 @@ export const clientFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
 		default: '',
 		required: true,
-		description: 'The name of the client.',
+		description: 'The name of the client',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -191,9 +176,7 @@ export const clientFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -204,14 +187,16 @@ export const clientFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.',
+				description:
+					'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Is Active',
@@ -227,20 +212,18 @@ export const clientFields = [
 	/*                                client:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Client Id',
+		displayName: 'Client ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
-		description: 'The ID of the client want to update.',
+		description: 'The ID of the client want to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -249,9 +232,7 @@ export const clientFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -262,14 +243,16 @@ export const clientFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: ' A textual representation of the client’s physical address. May include new line characters.',
+				description:
+					'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Is Active',
@@ -287,5 +270,4 @@ export const clientFields = [
 			},
 		],
 	},
-
-] as INodeProperties[];
+];

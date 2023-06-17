@@ -1,5 +1,5 @@
-import {
-	ICredentialDataDecryptedObject,
+import type {
+	IHookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -9,14 +9,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	IHookFunctions,
-} from 'n8n-core';
-
-import {
-	getAutomaticSecret,
-	taigaApiRequest,
-} from './GenericFunctions';
+import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
 
 // import {
 // 	createHmac,
@@ -33,7 +26,6 @@ export class TaigaTrigger implements INodeType {
 		description: 'Handle Taiga events via webhook',
 		defaults: {
 			name: 'Taiga Trigger',
-			color: '#772244',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -53,14 +45,15 @@ export class TaigaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUserProjects',
 				},
 				default: '',
-				description: 'Project ID',
 				required: true,
 			},
 			{
@@ -68,9 +61,7 @@ export class TaigaTrigger implements INodeType {
 				name: 'resources',
 				type: 'multiOptions',
 				required: true,
-				default: [
-					'all',
-				],
+				default: ['all'],
 				options: [
 					{
 						name: 'All',
@@ -104,9 +95,7 @@ export class TaigaTrigger implements INodeType {
 				name: 'operations',
 				type: 'multiOptions',
 				required: true,
-				default: [
-					'all',
-				],
+				default: ['all'],
 				description: 'Operations to listen to',
 				options: [
 					{
@@ -132,7 +121,7 @@ export class TaigaTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available projects to display them to user so that he can
+			// Get all the available projects to display them to user so that they can
 			// select them easily
 			async getUserProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -153,7 +142,6 @@ export class TaigaTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -161,7 +149,7 @@ export class TaigaTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const webhooks = await taigaApiRequest.call(this, 'GET', endpoint);
 
@@ -176,7 +164,7 @@ export class TaigaTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('taigaApi') as ICredentialDataDecryptedObject;
+				const credentials = await this.getCredentials('taigaApi');
 
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
@@ -247,9 +235,7 @@ export class TaigaTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(body),
-			],
+			workflowData: [this.helpers.returnJsonArray(body)],
 		};
 	}
 }

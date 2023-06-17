@@ -1,51 +1,44 @@
 <template>
-	<el-tag
-		:type="theme"
-		size="medium"
-		:disable-transitions="true"
-		:class="$style.container"
-	>
+	<el-tag :type="theme" size="medium" :disable-transitions="true" :class="$style.container">
 		<font-awesome-icon
-				:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
-				:class="theme === 'success' ? $style.icon : $style.dangerIcon"
+			:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
+			:class="theme === 'success' ? $style.icon : $style.dangerIcon"
 		/>
-		<div
-			:class="$style.banner"
-		>
+		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span
-						:class="theme === 'success' ? $style.message : $style.dangerMessage"
-					>
+					<span :class="theme === 'success' ? $style.message : $style.dangerMessage">
 						{{ message }}&nbsp;
 					</span>
-					<a v-if="details && !expanded" :class="$style.expandButton" @click="expand">More details</a>
+					<n8n-link v-if="details && !expanded" :bold="true" size="small" @click="expand">
+						<span :class="$style.moreDetails">More details</span>
+					</n8n-link>
 				</div>
 			</div>
 
+			<slot name="button" v-if="$slots.button" />
 			<n8n-button
-				v-if="buttonLabel"
+				v-else-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
-				:theme="theme"
+				:type="theme"
 				:loading="buttonLoading"
 				size="small"
-				type="outline"
-				:transparentBackground="true"
+				outline
 				@click.stop="onClick"
 			/>
 		</div>
 
 		<div v-if="expanded" :class="$style.details">
-			{{details}}
+			{{ details }}
 		</div>
 	</el-tag>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Banner',
 	data() {
 		return {
@@ -55,8 +48,7 @@ export default Vue.extend({
 	props: {
 		theme: {
 			type: String,
-			validator: (value: string): boolean =>
-				['success', 'danger'].indexOf(value) !== -1,
+			validator: (value: string): boolean => ['success', 'danger'].indexOf(value) !== -1,
 		},
 		message: {
 			type: String,
@@ -94,7 +86,9 @@ export default Vue.extend({
 .icon {
 	position: absolute;
 	left: 14px;
-	top: 18px;
+	top: 0;
+	bottom: 0;
+	margin: auto 0;
 }
 
 .dangerIcon {
@@ -133,10 +127,6 @@ export default Vue.extend({
 	align-items: center;
 }
 
-.expandButton {
-	font-weight: var(--font-weight-bold);
-}
-
 .details {
 	composes: message;
 	margin-top: var(--spacing-3xs);
@@ -144,4 +134,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 }
 
+.moreDetails {
+	font-size: var(--font-size-xs);
+}
 </style>

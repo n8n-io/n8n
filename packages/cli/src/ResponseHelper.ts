@@ -3,56 +3,87 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
+import picocolors from 'picocolors';
+import { ErrorReporterProxy as ErrorReporter, NodeApiError } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import {
+import type {
 	IExecutionDb,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IWorkflowDb,
-} from '.';
+} from '@/Interfaces';
+import { inDevelopment } from '@/constants';
 
 /**
  * Special Error which allows to return also an error code and http status code
- *
- * @export
- * @class ResponseError
- * @extends {Error}
  */
-export class ResponseError extends Error {
-	// The HTTP status code of  response
-	httpStatusCode?: number;
-
-	// The error code in the response
-	errorCode?: number;
-
-	// The error hint the response
-	hint?: string;
-
+abstract class ResponseError extends Error {
 	/**
 	 * Creates an instance of ResponseError.
-	 * @param {string} message The error message
-	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
-	 * @param {number} [httpStatusCode] The HTTP status code the response should have
-	 * @param {string} [hint] The error hint to provide a context (webhook related)
-	 * @memberof ResponseError
+	 * Must be used inside a block with `ResponseHelper.send()`.
 	 */
-	constructor(message: string, errorCode?: number, httpStatusCode?: number, hint?: string) {
+	constructor(
+		message: string,
+		// The HTTP status code of  response
+		readonly httpStatusCode: number,
+		// The error code in the response
+		readonly errorCode: number = httpStatusCode,
+		// The error hint the response
+		readonly hint: string | undefined = undefined,
+	) {
 		super(message);
 		this.name = 'ResponseError';
+	}
+}
 
-		if (errorCode) {
-			this.errorCode = errorCode;
-		}
-		if (httpStatusCode) {
-			this.httpStatusCode = httpStatusCode;
-		}
-		if (hint) {
-			this.hint = hint;
-		}
+export class BadRequestError extends ResponseError {
+	constructor(message: string, errorCode?: number) {
+		super(message, 400, errorCode);
+	}
+}
+
+export class AuthError extends ResponseError {
+	constructor(message: string) {
+		super(message, 401);
+	}
+}
+
+export class UnauthorizedError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 403, 403, hint);
+	}
+}
+
+export class NotFoundError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 404, 404, hint);
+	}
+}
+
+export class ConflictError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 409, 409, hint);
+	}
+}
+
+export class UnprocessableRequestError extends ResponseError {
+	constructor(message: string) {
+		super(message, 422);
+	}
+}
+
+export class InternalServerError extends ResponseError {
+	constructor(message: string, errorCode = 500) {
+		super(message, 500, errorCode);
+	}
+}
+
+export class ServiceUnavailableError extends ResponseError {
+	constructor(message: string, errorCode = 503) {
+		super(message, 503, errorCode);
 	}
 }
 
@@ -95,63 +126,83 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError, shouldLog = true) {
+interface ErrorResponse {
+	code: number;
+	message: string;
+	hint?: string;
+	stacktrace?: string;
+}
+
+export function sendErrorResponse(res: Response, error: Error) {
 	let httpStatusCode = 500;
-	if (error.httpStatusCode) {
-		httpStatusCode = error.httpStatusCode;
-	}
 
-	if (process.env.NODE_ENV !== 'production' && shouldLog) {
-		console.error('ERROR RESPONSE');
-		console.error(error);
-	}
-
-	const response = {
+	const response: ErrorResponse = {
 		code: 0,
-		message: 'Unknown error',
-		hint: '',
+		message: error.message ?? 'Unknown error',
 	};
 
-	if (error.name === 'NodeApiError') {
+	if (error instanceof ResponseError) {
+		if (inDevelopment) {
+			console.error(picocolors.red(error.httpStatusCode), error.message);
+		}
+
+		httpStatusCode = error.httpStatusCode;
+
+		if (error.errorCode) {
+			response.code = error.errorCode;
+		}
+		if (error.hint) {
+			response.hint = error.hint;
+		}
+	}
+
+	if (error instanceof NodeApiError) {
+		if (inDevelopment) {
+			console.error(picocolors.red(error.name), error.message);
+		}
+
 		Object.assign(response, error);
 	}
 
-	if (error.errorCode) {
-		response.code = error.errorCode;
-	}
-	if (error.message) {
-		response.message = error.message;
-	}
-	if (error.hint) {
-		response.hint = error.hint;
-	}
-	if (error.stack && process.env.NODE_ENV !== 'production') {
-		// @ts-ignore
-		response.stack = error.stack;
+	if (error.stack && inDevelopment) {
+		response.stacktrace = error.stack;
 	}
 
 	res.status(httpStatusCode).json(response);
 }
+
+const isUniqueConstraintError = (error: Error) =>
+	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
 
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
  * all the responses have the same format
  *
  *
- * @export
  * @param {(req: Request, res: Response) => Promise<any>} processFunction The actual function to process the request
- * @returns
  */
 
-export function send(processFunction: (req: Request, res: Response) => Promise<any>) {
-	return async (req: Request, res: Response) => {
+export function send<T, R extends Request, S extends Response>(
+	processFunction: (req: R, res: S) => Promise<T>,
+	raw = false,
+) {
+	return async (req: R, res: S) => {
 		try {
 			const data = await processFunction(req, res);
 
-			// Success response
-			sendSuccessResponse(res, data);
+			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (error) {
-			// Error response
+			if (error instanceof Error) {
+				if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+					ErrorReporter.error(error);
+				}
+
+				if (isUniqueConstraintError(error)) {
+					error.message = 'There is already an entry with this name';
+				}
+			}
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};
@@ -162,9 +213,7 @@ export function send(processFunction: (req: Request, res: Response) => Promise<a
  * As it contains a lot of references which normally would be saved as duplicate data
  * with regular JSON.stringify it gets flattened which keeps the references in place.
  *
- * @export
  * @param {IExecutionDb} fullExecutionData The data to flatten
- * @returns {IExecutionFlatted}
  */
 export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutionFlatted {
 	// Flatten the data
@@ -179,10 +228,11 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 		workflowId: fullExecutionData.workflowId,
 		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		workflowData: fullExecutionData.workflowData!,
+		status: fullExecutionData.status,
 	};
 
 	if (fullExecutionData.id !== undefined) {
-		returnData.id = fullExecutionData.id.toString();
+		returnData.id = fullExecutionData.id;
 	}
 
 	if (fullExecutionData.retryOf !== undefined) {
@@ -199,13 +249,11 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 /**
  * Unflattens the Execution data.
  *
- * @export
  * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
- * @returns {IExecutionResponse}
  */
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
-		id: fullExecutionData.id.toString(),
+		id: fullExecutionData.id,
 		workflowData: fullExecutionData.workflowData as IWorkflowDb,
 		data: parse(fullExecutionData.data),
 		mode: fullExecutionData.mode,
@@ -214,7 +262,18 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 		workflowId: fullExecutionData.workflowId,
+		status: fullExecutionData.status,
 	};
 
 	return returnData;
 }
+
+export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
+	Object.keys(obj).reduce((acc, k) => {
+		const pre = prefix.length ? prefix + '.' : '';
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k], pre + k));
+		//@ts-ignore
+		else acc[pre + k] = obj[k];
+		return acc;
+	}, {});

@@ -1,18 +1,23 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes: string[] = [];
 
 export class FormstackOAuth2Api implements ICredentialType {
 	name = 'formstackOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	displayName = 'Formstack OAuth2 API';
+
 	documentationUrl = 'formstackTrigger';
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',

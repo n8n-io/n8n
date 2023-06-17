@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.mailcheck",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Utility",
-		"Marketing & Content"
-	],
+	"categories": ["Utility", "Marketing & Content"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mailcheck/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailcheck/"
 			}
 		]
 	}

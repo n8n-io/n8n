@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const agentGroupOperations = [
+export const agentGroupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
+				resource: ['agentGroup'],
 			},
 		},
 		options: [
@@ -19,33 +16,38 @@ export const agentGroupOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an agent group',
+				action: 'Create an agent group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an agent group',
+				action: 'Delete an agent group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an agent group',
+				action: 'Get an agent group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all agent groups',
+				description: 'Retrieve many agent groups',
+				action: 'Get many agent groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an agent group',
+				action: 'Update an agent group',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const agentGroupFields = [
+export const agentGroupFields: INodeProperties[] = [
 	// ----------------------------------------
 	//            agentGroup: create
 	// ----------------------------------------
@@ -57,12 +59,8 @@ export const agentGroupFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['agentGroup'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -74,12 +72,8 @@ export const agentGroupFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['agentGroup'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -90,79 +84,77 @@ export const agentGroupFields = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Name/ID',
+				displayName: 'Escalate to Agent Name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
-				description: 'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Member Names/IDs',
+				displayName: 'Member Names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
-				displayName: 'Observer Names/IDs',
+				displayName: 'Observer Names or IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated agent IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Comma-separated agent IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
 				displayName: 'Unassigned For',
 				name: 'unassigned_for',
-				description: 'Time after which an escalation email is sent if a ticket in the group remains unassigned',
+				description:
+					'Time after which an escalation email is sent if a ticket in the group remains unassigned',
 				type: 'options',
 				default: '30m',
 				options: [
 					{
-						name: '30 Minutes',
-						value: '30m',
+						name: '1 Day',
+						value: '1d',
 					},
 					{
 						name: '1 Hour',
 						value: '1h',
 					},
 					{
-						name: '2 Hours',
-						value: '2h',
-					},
-					{
-						name: '8 Hours',
-						value: '8h',
-					},
-					{
 						name: '12 Hours',
 						value: '12h',
-					},
-					{
-						name: '1 Day',
-						value: '1d',
 					},
 					{
 						name: '2 Days',
 						value: '2d',
 					},
 					{
+						name: '2 Hours',
+						value: '2h',
+					},
+					{
 						name: '3 Days',
 						value: '3d',
+					},
+					{
+						name: '30 Minutes',
+						value: '30m',
+					},
+					{
+						name: '8 Hours',
+						value: '8h',
 					},
 				],
 			},
@@ -181,12 +173,8 @@ export const agentGroupFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['agentGroup'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -203,12 +191,8 @@ export const agentGroupFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['agentGroup'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -224,12 +208,8 @@ export const agentGroupFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['agentGroup'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -238,21 +218,15 @@ export const agentGroupFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['agentGroup'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -269,12 +243,8 @@ export const agentGroupFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['agentGroup'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -286,12 +256,8 @@ export const agentGroupFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'agentGroup',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['agentGroup'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -302,27 +268,25 @@ export const agentGroupFields = [
 				default: '',
 			},
 			{
-				displayName: 'Escalate to Agent Names/IDs',
+				displayName: 'Escalate to Agent Name or ID',
 				name: 'escalate_to',
 				type: 'options',
 				default: '',
-				description: 'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the agent to whom an escalation email is sent if a ticket in this group is unassigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
-				displayName: 'Member Names/IDs',
+				displayName: 'Member Names or IDs',
 				name: 'members',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Comma-separated IDs of agents who are members of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
@@ -332,58 +296,58 @@ export const agentGroupFields = [
 				default: '',
 			},
 			{
-				displayName: 'Observer Names/IDs',
+				displayName: 'Observer Names or IDs',
 				name: 'observers',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated agent user IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Comma-separated agent user IDs who are observers of this group. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getAgents',
-					],
+					loadOptionsMethod: 'getAgents',
 				},
 			},
 			{
 				displayName: 'Unassigned For',
 				name: 'unassigned_for',
-				description: 'Time after which an escalation email is sent if a ticket in the group remains unassigned',
+				description:
+					'Time after which an escalation email is sent if a ticket in the group remains unassigned',
 				type: 'options',
 				default: '30m',
 				options: [
 					{
-						name: '30 Minutes',
-						value: '30m',
+						name: '1 Day',
+						value: '1d',
 					},
 					{
 						name: '1 Hour',
 						value: '1h',
 					},
 					{
-						name: '2 Hours',
-						value: '2h',
-					},
-					{
-						name: '8 Hours',
-						value: '8h',
-					},
-					{
 						name: '12 Hours',
 						value: '12h',
-					},
-					{
-						name: '1 Day',
-						value: '1d',
 					},
 					{
 						name: '2 Days',
 						value: '2d',
 					},
 					{
+						name: '2 Hours',
+						value: '2h',
+					},
+					{
 						name: '3 Days',
 						value: '3d',
+					},
+					{
+						name: '30 Minutes',
+						value: '30m',
+					},
+					{
+						name: '8 Hours',
+						value: '8h',
 					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];

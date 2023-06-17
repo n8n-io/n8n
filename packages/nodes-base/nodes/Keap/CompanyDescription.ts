@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -19,23 +16,23 @@ export const companyOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a company',
+				action: 'Create a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all companies',
+				description: 'Retrieve many companies',
+				action: 'Get many companies',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 company:create                             */
-/* -------------------------------------------------------------------------- */
+export const companyFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company Name',
 		name: 'companyName',
@@ -43,12 +40,8 @@ export const companyFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['create'],
+				resource: ['company'],
 			},
 		},
 		default: '',
@@ -61,12 +54,8 @@ export const companyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['create'],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -80,9 +69,6 @@ export const companyFields = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -106,16 +92,12 @@ export const companyFields = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Address',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -187,12 +169,8 @@ export const companyFields = [
 		placeholder: 'Add Fax',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -227,12 +205,8 @@ export const companyFields = [
 		placeholder: 'Add Phone',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -256,25 +230,21 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 company:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['getAll'],
+				resource: ['company'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -282,15 +252,9 @@ export const companyFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'company',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['company'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -298,7 +262,7 @@ export const companyFields = [
 			maxValue: 200,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -308,12 +272,8 @@ export const companyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['getAll'],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -366,8 +326,9 @@ export const companyFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: `Comma-delimited list of Company properties to include in the response. (Fields such as notes, fax_number and custom_fields aren't included, by default.)`,
+				description:
+					"Comma-delimited list of Company properties to include in the response. (Fields such as notes, fax_number and custom_fields aren't included, by default.).",
 			},
 		],
 	},
-] as INodeProperties[];
+];

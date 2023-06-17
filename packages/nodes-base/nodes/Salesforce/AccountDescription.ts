@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const accountOperations = [
+export const accountOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
+				resource: ['account'],
 			},
 		},
 		options: [
@@ -19,76 +16,79 @@ export const accountOperations = [
 				name: 'Add Note',
 				value: 'addNote',
 				description: 'Add note to an account',
+				action: 'Add a note to an account',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an account',
+				action: 'Create an account',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new account, or update the current one if it already exists (upsert)',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get an account',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all accounts',
-			},
-			{
-				name: 'Get Summary',
-				value: 'getSummary',
-				description: `Returns an overview of account's metadata.`,
+				description:
+					'Create a new account, or update the current one if it already exists (upsert)',
+				action: 'Create or update an account',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an account',
+				action: 'Delete an account',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get an account',
+				action: 'Get an account',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many accounts',
+				action: 'Get many accounts',
+			},
+			{
+				name: 'Get Summary',
+				value: 'getSummary',
+				description: "Returns an overview of account's metadata",
+				action: 'Get an account summary',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an account',
+				action: 'Update an account',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const accountFields = [
-
+export const accountFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                account:create                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Match Against',
 		name: 'externalId',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getExternalIdFields',
-			loadOptionsDependsOn: [
-				'resource',
-			],
+			loadOptionsDependsOn: ['resource'],
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['upsert'],
 			},
 		},
-		description: `The field to check to see if the account already exists`,
+		description:
+			'The field to check to see if the account already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Value to Match',
@@ -98,15 +98,12 @@ export const accountFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['upsert'],
 			},
 		},
-		description: `If this value exists in the 'match against' field, update the account. Otherwise create a new one`,
+		description:
+			"If this value exists in the 'match against' field, update the account. Otherwise create a new one.",
 	},
 	{
 		displayName: 'Name',
@@ -116,13 +113,8 @@ export const accountFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		description: 'Name of the account. Maximum size is 255 characters.',
@@ -135,25 +127,18 @@ export const accountFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Account Source',
-				name: 'accountSource',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountSources',
-				},
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
 				default: '',
-				description: 'The source of the account record.',
+				description:
+					'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Annual Revenue',
@@ -163,42 +148,57 @@ export const accountFields = [
 					numberPrecision: 2,
 				},
 				default: '',
-				description: 'Estimated annual revenue of the account.',
+				description: 'Estimated annual revenue of the account',
+			},
+			{
+				displayName: 'Account Source Name or ID',
+				name: 'accountSource',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountSources',
+				},
+				default: '',
+				description:
+					'The source of the account record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Billing City',
 				name: 'billingCity',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 40 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Billing Country',
 				name: 'billingCountry',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 80 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Billing Postal Code',
 				name: 'billingPostalCode',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 20 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 20 characters.',
 			},
 			{
 				displayName: 'Billing State',
 				name: 'billingState',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 80 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Billing Street',
 				name: 'billingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for the billing address of this account.',
+				description: 'Street address for the billing address of this account',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -208,7 +208,7 @@ export const accountFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -216,21 +216,22 @@ export const accountFields = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -240,9 +241,6 @@ export const accountFields = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text description of the account. Limited to 32,000 KB.',
 			},
@@ -251,7 +249,7 @@ export const accountFields = [
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'Fax number for the account.',
+				description: 'Fax number for the account',
 			},
 			{
 				displayName: 'Jigsaw',
@@ -270,31 +268,40 @@ export const accountFields = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'integer',
+				type: 'number',
 				default: '',
-				description: 'Number of employees',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the account.',
+				description:
+					'The owner of the account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Parent ID',
+				name: 'parentId',
+				type: 'string',
+				default: '',
+				description: 'ID of the parent object, if any',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number for the account.',
+				description: 'Phone number for the account',
 			},
 			{
-				displayName: 'Record Type ID',
+				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getRecordTypes',
 				},
@@ -304,62 +311,60 @@ export const accountFields = [
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				description: 'A brief description of an organization’s line of business, based on its SIC code.',
+				default: '',
+				description:
+					'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountTypes',
 				},
-				description: 'Type of account',
-			},
-			{
-				displayName: 'Parent ID',
-				name: 'parentId',
-				type: 'string',
-				default: '',
-				description: 'ID of the parent object, if any.',
+				description:
+					'Type of account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Shipping City',
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. City maximum size is 40 characters',
+				description:
+					'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Shipping Country',
 				name: 'shippingCountry',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. Country maximum size is 80 characters.',
+				description:
+					'Details of the shipping address for this account. Country maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Shipping Postal Code',
 				name: 'shippingPostalCode',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. Postal code maximum size is 20 characters.',
+				description:
+					'Details of the shipping address for this account. Postal code maximum size is 20 characters.',
 			},
 			{
 				displayName: 'Shipping State',
 				name: 'shippingState',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. State maximum size is 80 characters.',
+				description:
+					'Details of the shipping address for this account. State maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Shipping Street',
 				name: 'shippingStreet',
 				type: 'string',
 				default: '',
-				description: 'The street address of the shipping address for this account. Maximum of 255 characters.',
+				description:
+					'The street address of the shipping address for this account. Maximum of 255 characters.',
 			},
 			{
 				displayName: 'Website',
@@ -382,15 +387,11 @@ export const accountFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['account'],
+				operation: ['update'],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 	{
 		displayName: 'Update Fields',
@@ -400,24 +401,29 @@ export const accountFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['account'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Account Source',
+				displayName: 'Account Number',
+				name: 'accountNumber',
+				type: 'string',
+				default: '',
+				description:
+					'Account number assigned to this account (not the unique ID). Maximum size is 40 characters.',
+			},
+			{
+				displayName: 'Account Source Name or ID',
 				name: 'accountSource',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getAccountSources',
 				},
 				default: '',
-				description: 'The source of the account record.',
+				description:
+					'The source of the account record. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Annual Revenue',
@@ -427,42 +433,46 @@ export const accountFields = [
 					numberPrecision: 2,
 				},
 				default: '',
-				description: 'Estimated annual revenue of the account.',
+				description: 'Estimated annual revenue of the account',
 			},
 			{
 				displayName: 'Billing City',
 				name: 'billingCity',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 40 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Billing Country',
 				name: 'billingCountry',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 80 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Billing Postal Code',
 				name: 'billingPostalCode',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 20 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 20 characters.',
 			},
 			{
 				displayName: 'Billing State',
 				name: 'billingState',
 				type: 'string',
 				default: '',
-				description: 'Details for the billing address of this account. Maximum size is 80 characters.',
+				description:
+					'Details for the billing address of this account. Maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Billing Street',
 				name: 'billingStreet',
 				type: 'string',
 				default: '',
-				description: 'Street address for the billing address of this account.',
+				description: 'Street address for the billing address of this account',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -472,7 +482,7 @@ export const accountFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Filter by custom fields ',
+				description: 'Filter by custom fields',
 				default: {},
 				options: [
 					{
@@ -480,21 +490,22 @@ export const accountFields = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field ID',
+								displayName: 'Field Name or ID',
 								name: 'fieldId',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The value to set on custom field.',
+								description: 'The value to set on custom field',
 							},
 						],
 					},
@@ -504,9 +515,6 @@ export const accountFields = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text description of the account. Limited to 32,000 KB.',
 			},
@@ -515,7 +523,7 @@ export const accountFields = [
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'Fax number for the account.',
+				description: 'Fax number for the account',
 			},
 			{
 				displayName: 'Industry',
@@ -532,42 +540,6 @@ export const accountFields = [
 				description: 'References the ID of a company in Data.com',
 			},
 			{
-				displayName: 'Owner',
-				name: 'ownerId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				description: 'The owner of the account.',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'Phone number for the account.',
-			},
-			{
-				displayName: 'Record Type ID',
-				name: 'recordTypeId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getRecordTypes',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getAccountTypes',
-				},
-				description: 'Type of account',
-			},
-			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
@@ -577,60 +549,103 @@ export const accountFields = [
 			{
 				displayName: 'Number Of Employees',
 				name: 'numberOfEmployees',
-				type: 'integer',
+				type: 'number',
 				default: '',
-				description: 'Number of employees',
+			},
+			{
+				displayName: 'Owner Name or ID',
+				name: 'ownerId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description:
+					'The owner of the account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'ID of the parent object, if any.',
+				description: 'ID of the parent object, if any',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+				description: 'Phone number for the account',
+			},
+			{
+				displayName: 'Record Type Name or ID',
+				name: 'recordTypeId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getRecordTypes',
+				},
+				default: '',
 			},
 			{
 				displayName: 'SicDesc',
 				name: 'sicDesc',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				description: 'A brief description of an organization’s line of business, based on its SIC code.',
+				default: '',
+				description:
+					'A brief description of an organization’s line of business, based on its SIC code',
 			},
 			{
 				displayName: 'Shipping City',
 				name: 'shippingCity',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. City maximum size is 40 characters',
+				description:
+					'Details of the shipping address for this account. City maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Shipping Country',
 				name: 'shippingCountry',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. Country maximum size is 80 characters.',
+				description:
+					'Details of the shipping address for this account. Country maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Shipping Postal Code',
 				name: 'shippingPostalCode',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. Postal code maximum size is 20 characters.',
+				description:
+					'Details of the shipping address for this account. Postal code maximum size is 20 characters.',
 			},
 			{
 				displayName: 'Shipping State',
 				name: 'shippingState',
 				type: 'string',
 				default: '',
-				description: 'Details of the shipping address for this account. State maximum size is 80 characters.',
+				description:
+					'Details of the shipping address for this account. State maximum size is 80 characters.',
 			},
 			{
 				displayName: 'Shipping Street',
 				name: 'shippingStreet',
 				type: 'string',
 				default: '',
-				description: 'The street address of the shipping address for this account. Maximum of 255 characters.',
+				description:
+					'The street address of the shipping address for this account. Maximum of 255 characters.',
+			},
+			{
+				displayName: 'Type Name or ID',
+				name: 'type',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountTypes',
+				},
+				description:
+					'Type of account. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Website',
@@ -653,15 +668,11 @@ export const accountFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['account'],
+				operation: ['get'],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -675,15 +686,11 @@ export const accountFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['account'],
+				operation: ['delete'],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -695,16 +702,12 @@ export const accountFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['account'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -712,15 +715,9 @@ export const accountFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['account'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -728,7 +725,7 @@ export const accountFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -738,12 +735,8 @@ export const accountFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['account'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -762,7 +755,7 @@ export const accountFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'The condition to set.',
+				description: 'The condition to set',
 				default: {},
 				options: [
 					{
@@ -770,20 +763,30 @@ export const accountFields = [
 						displayName: 'Condition',
 						values: [
 							{
-								displayName: 'Field',
+								displayName: 'Field Name or ID',
 								name: 'field',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getAccountFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description:
+									'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: [
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
 									{
 										name: '=',
 										value: 'equal',
@@ -793,16 +796,8 @@ export const accountFields = [
 										value: '>',
 									},
 									{
-										name: '<',
-										value: '<',
-									},
-									{
 										name: '>=',
 										value: '>=',
-									},
-									{
-										name: '<=',
-										value: '<=',
 									},
 								],
 								default: 'equal',
@@ -831,15 +826,11 @@ export const accountFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'addNote',
-				],
+				resource: ['account'],
+				operation: ['addNote'],
 			},
 		},
-		description: 'ID of account that needs to be fetched.',
+		description: 'ID of account that needs to be fetched',
 	},
 	{
 		displayName: 'Title',
@@ -849,15 +840,11 @@ export const accountFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'addNote',
-				],
+				resource: ['account'],
+				operation: ['addNote'],
 			},
 		},
-		description: 'Title of the note.',
+		description: 'Title of the note',
 	},
 	{
 		displayName: 'Options',
@@ -867,12 +854,8 @@ export const accountFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'addNote',
-				],
+				resource: ['account'],
+				operation: ['addNote'],
 			},
 		},
 		options: [
@@ -881,9 +864,6 @@ export const accountFields = [
 				name: 'body',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{
@@ -891,18 +871,20 @@ export const accountFields = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description:
+					'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'ownerId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note.',
+				description:
+					'ID of the user who owns the note. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
-] as INodeProperties[];
+];

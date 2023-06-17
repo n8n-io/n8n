@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const userListOperations = [
+export const userListOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
+				resource: ['userList'],
 			},
 		},
 		options: [
@@ -19,25 +16,25 @@ export const userListOperations = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add user to list',
+				action: 'Add a user to a list',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a user from a list',
+				action: 'Remove a user from a list',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userListFields = [
-
+export const userListFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                userList:add                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -46,16 +43,13 @@ export const userListFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userList'],
+				operation: ['add'],
 			},
 		},
 		default: '',
-		description: 'Identifier to be used',
+		description:
+			'Identifier to be used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Identifier',
@@ -74,12 +68,8 @@ export const userListFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userList'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -92,12 +82,8 @@ export const userListFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userList'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -107,7 +93,7 @@ export const userListFields = [
 	/*                                userList:remove                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
+		displayName: 'List Name or ID',
 		name: 'listId',
 		type: 'options',
 		typeOptions: {
@@ -116,16 +102,13 @@ export const userListFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userList'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
-		description: 'Identifier to be used',
+		description:
+			'Identifier to be used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Identifier',
@@ -144,12 +127,8 @@ export const userListFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userList'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -162,12 +141,8 @@ export const userListFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userList'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -180,12 +155,8 @@ export const userListFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userList',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userList'],
+				operation: ['remove'],
 			},
 		},
 		options: [
@@ -201,8 +172,9 @@ export const userListFields = [
 				name: 'channelUnsubscribe',
 				type: 'boolean',
 				default: false,
-				description: `Unsubscribe email from list's associated channel - essentially a global unsubscribe`,
+				description:
+					"Whether to unsubscribe email from list's associated channel - essentially a global unsubscribe",
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -1,34 +1,42 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	capitalCase,
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
-export async function facebookApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function facebookApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
 
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	_option: IDataObject = {},
+): Promise<any> {
 	let credentials;
 
 	if (this.getNode().name.includes('Trigger')) {
-		credentials = await this.getCredentials('facebookGraphAppApi') as IDataObject;
+		credentials = await this.getCredentials('facebookGraphAppApi');
 	} else {
-		credentials = await this.getCredentials('facebookGraphApi') as IDataObject;
+		credentials = await this.getCredentials('facebookGraphApi');
 	}
 
-	qs.access_token = credentials!.accessToken;
+	qs.access_token = credentials.accessToken;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -43,15 +51,15 @@ export async function facebookApiRequest(this: IHookFunctions | IExecuteFunction
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export function getFields(object: string) {
 	const data = {
-		'adAccount': [
+		adAccount: [
 			{
 				value: 'in_process_ad_objects',
 			},
@@ -59,172 +67,175 @@ export function getFields(object: string) {
 				value: 'with_issues_ad_objects',
 			},
 		],
-		'page': [
+		page: [
 			{
 				value: 'affiliation',
-				description: `Describes changes to a page's Affliation profile field`,
+				description: "Describes changes to a page's Affliation profile field",
 			},
 			{
 				value: 'attire',
-				description: `Describes changes to a page's Attire profile field`,
+				description: "Describes changes to a page's Attire profile field",
 			},
 			{
 				value: 'awards',
-				description: `Describes changes to a page's Awards profile field`,
+				description: "Describes changes to a page's Awards profile field",
 			},
 			{
 				value: 'bio',
-				description: `Describes changes to a page's Biography profile field`,
+				description: "Describes changes to a page's Biography profile field",
 			},
 			{
 				value: 'birthday',
-				description: `Describes changes to a page's Birthday profile field`,
+				description: "Describes changes to a page's Birthday profile field",
 			},
 			{
 				value: 'category',
-				description: `Describes changes to a page's Birthday profile field`,
+				description: "Describes changes to a page's Birthday profile field",
 			},
 			{
 				value: 'company_overview',
-				description: `Describes changes to a page's Company Overview profile field`,
+				description: "Describes changes to a page's Company Overview profile field",
 			},
 			{
 				value: 'culinary_team',
-				description: `Describes changes to a page's Culinary Team profile field`,
+				description: "Describes changes to a page's Culinary Team profile field",
 			},
 			{
 				value: 'current_location',
-				description: `Describes changes to a page's Current Location profile field`,
+				description: "Describes changes to a page's Current Location profile field",
 			},
 			{
 				value: 'description',
-				description: `Describes changes to a page's Story Description profile field`,
+				description: "Describes changes to a page's Story Description profile field",
 			},
 			{
 				value: 'email',
-				description: `Describes changes to a page's Email profile field`,
+				description: "Describes changes to a page's Email profile field",
 			},
 			{
 				value: 'feed',
-				description: `Describes nearly all changes to a Page's feed, such as Posts, shares, likes, etc`,
+				description:
+					"Describes nearly all changes to a Page's feed, such as Posts, shares, likes, etc",
 			},
 			{
 				value: 'founded',
-				description: `Describes changes to a page's Founded profile field. This is different from the Start Date field`,
+				description:
+					"Describes changes to a page's Founded profile field. This is different from the Start Date field",
 			},
 			{
 				value: 'general_info',
-				description: `Describes changes to a page's General Information profile field`,
+				description: "Describes changes to a page's General Information profile field",
 			},
 			{
 				value: 'general_manager',
-				description: `Describes changes to a page's General Information profile field`,
+				description: "Describes changes to a page's General Information profile field",
 			},
 			{
 				value: 'hometown',
-				description: `Describes changes to a page's Homewtown profile field`,
+				description: "Describes changes to a page's Homewtown profile field",
 			},
 			{
 				value: 'hours',
-				description: `Describes changes to a page's Hours profile field`,
+				description: "Describes changes to a page's Hours profile field",
 			},
 			{
 				value: 'leadgen',
-				description: `Describes changes to a page's leadgen settings`,
+				description: "Describes changes to a page's leadgen settings",
 			},
 			{
 				value: 'live_videos',
-				description: `Describes changes to a page's live video status`,
+				description: "Describes changes to a page's live video status",
 			},
 			{
 				value: 'location',
-				description: `Describes changes to a page's Location profile field`,
+				description: "Describes changes to a page's Location profile field",
 			},
 			{
 				value: 'members',
-				description: `Describes changes to a page's Members profile field`,
+				description: "Describes changes to a page's Members profile field",
 			},
 			{
 				value: 'mention',
-				description: `Describes new mentions of a page, including mentions in comments, posts, etc`,
+				description: 'Describes new mentions of a page, including mentions in comments, posts, etc',
 			},
 			{
 				value: 'merchant_review',
-				description: `Describes changes to a page's merchant review settings`,
+				description: "Describes changes to a page's merchant review settings",
 			},
 			{
 				value: 'mission',
-				description: `Describes changes to a page's Mission profile field`,
+				description: "Describes changes to a page's Mission profile field",
 			},
 			{
 				value: 'name',
-				description: `Describes changes to a page's Name profile field.`,
+				description: "Describes changes to a page's Name profile field.",
 			},
 			{
 				value: 'page_about_story',
 			},
 			{
 				value: 'page_change_proposal',
-				description: `Data for page change proposal.`,
+				description: 'Data for page change proposal.',
 			},
 			{
 				value: 'page_upcoming_change',
-				description: `Webhooks data for page upcoming changes`,
+				description: 'Webhooks data for page upcoming changes',
 			},
 			{
 				value: 'parking',
-				description: `Describes changes to a page's Parking profile field`,
+				description: "Describes changes to a page's Parking profile field",
 			},
 			{
 				value: 'payment_options',
-				description: `Describes change to a page's Payment profile field`,
+				description: "Describes change to a page's Payment profile field",
 			},
 			{
 				value: 'personal_info',
-				description: `Describes changes to a page's Personal Information profile field.`,
+				description: "Describes changes to a page's Personal Information profile field.",
 			},
 			{
 				value: 'personal_interests',
-				description: `Describes changes to a page's Personal Interests profile field.`,
+				description: "Describes changes to a page's Personal Interests profile field.",
 			},
 			{
 				value: 'phone',
-				description: `Describes changes to a page's Phone profile field`,
+				description: "Describes changes to a page's Phone profile field",
 			},
 			{
 				value: 'picture',
-				description: `Describes changes to a page's profile picture`,
+				description: "Describes changes to a page's profile picture",
 			},
 			{
 				value: 'price_range',
-				description: `Describes changes to a page's Price Range profile field`,
+				description: "Describes changes to a page's Price Range profile field",
 			},
 			{
 				value: 'product_review',
-				description: `Describes changes to a page's product review settings`,
+				description: "Describes changes to a page's product review settings",
 			},
 			{
 				value: 'products',
-				description: `Describes changes to a page's Products profile field`,
+				description: "Describes changes to a page's Products profile field",
 			},
 			{
 				value: 'public_transit',
-				description: `Describes changes to a page's Public Transit profile field`,
+				description: "Describes changes to a page's Public Transit profile field",
 			},
 			{
 				value: 'ratings',
-				description: `Describes changes to a page's ratings, including new ratings or a user's comments or reactions on a rating`,
+				description:
+					"Describes changes to a page's ratings, including new ratings or a user's comments or reactions on a rating",
 			},
 			{
 				value: 'videos',
-				description: `Describes changes to the encoding status of a video on a page`,
+				description: 'Describes changes to the encoding status of a video on a page',
 			},
 			{
 				value: 'website',
-				description: `Describes changes to a page's Website profile field`,
+				description: "Describes changes to a page's Website profile field",
 			},
 		],
-		'application': [
+		application: [
 			{
 				value: 'ad_account',
 			},
@@ -253,7 +264,7 @@ export function getFields(object: string) {
 				value: 'plugin_comment_reply',
 			},
 		],
-		'certificateTransparency': [
+		certificateTransparency: [
 			{
 				value: 'certificate',
 			},
@@ -261,7 +272,7 @@ export function getFields(object: string) {
 				value: 'phishing',
 			},
 		],
-		'instagram': [
+		instagram: [
 			{
 				value: 'comments',
 				description: 'Notifies you when an Instagram User comments on a media object that you own',
@@ -271,7 +282,8 @@ export function getFields(object: string) {
 			},
 			{
 				value: 'mentions',
-				description: 'Notifies you when an Instagram User @mentions you in a comment or caption on a media object that you do not own',
+				description:
+					'Notifies you when an Instagram User @mentions you in a comment or caption on a media object that you do not own',
 			},
 			{
 				value: 'messages',
@@ -286,7 +298,7 @@ export function getFields(object: string) {
 				value: 'story_insights',
 			},
 		],
-		'permissions': [
+		permissions: [
 			{
 				value: 'bookmarked',
 				description: 'Whether the user has added or removed the app bookmark',
@@ -446,7 +458,7 @@ export function getFields(object: string) {
 				value: 'social_ads',
 			},
 		],
-		'users': [
+		users: [
 			{
 				value: 'about',
 			},
@@ -523,7 +535,7 @@ export function getFields(object: string) {
 				value: 'videos',
 			},
 		],
-		'whatsappBusinessAccount': [
+		whatsappBusinessAccount: [
 			{
 				value: 'message_template_status_update',
 			},
@@ -540,14 +552,17 @@ export function getFields(object: string) {
 				value: 'account_update',
 			},
 		],
-	// tslint:disable-next-line: no-any
 	} as { [key: string]: any };
 
-	return [{ name: '*', value: '*' }].concat(data[object as string] || [])
-		.map((fieldObject: IDataObject) =>
-			({ ...fieldObject, name: (fieldObject.value !== '*') ? capitalCase(fieldObject.value as string) : fieldObject.value }));
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+	return [{ name: '*', value: '*' }].concat(data[object] || []).map((fieldObject: IDataObject) => ({
+		...fieldObject,
+		name: fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,
+	}));
 }
 
 export function getAllFields(object: string) {
-	return getFields(object).filter((field: IDataObject) => field.value !== '*').map((field: IDataObject) => field.value);
+	return getFields(object)
+		.filter((field: IDataObject) => field.value !== '*')
+		.map((field: IDataObject) => field.value);
 }

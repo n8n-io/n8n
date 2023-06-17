@@ -1,14 +1,25 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import * as Parser from 'rss-parser';
+import Parser from 'rss-parser';
 import { URL } from 'url';
+
+// Utility function
+
+function validateURL(url: string) {
+	try {
+		const _parseUrl = new URL(url);
+		return true;
+	} catch (err) {
+		return false;
+	}
+}
 
 export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,7 +30,7 @@ export class RssFeedRead implements INodeType {
 		version: 1,
 		description: 'Reads data from an RSS Feed',
 		defaults: {
-			name: 'RSS Feed Read',
+			name: 'RSS Read',
 			color: '#b02020',
 		},
 		inputs: ['main'],
@@ -31,23 +42,20 @@ export class RssFeedRead implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'URL of the RSS feed.',
+				description: 'URL of the RSS feed',
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
-		try{
-
+		try {
 			const url = this.getNodeParameter('url', 0) as string;
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 			}
 
-			if (!validateURL(url)){
+			if (!validateURL(url)) {
 				throw new NodeOperationError(this.getNode(), 'The provided "URL" is not valid!');
 			}
 
@@ -58,41 +66,30 @@ export class RssFeedRead implements INodeType {
 				feed = await parser.parseURL(url);
 			} catch (error) {
 				if (error.code === 'ECONNREFUSED') {
-					throw new NodeOperationError(this.getNode(), `It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`);
+					throw new NodeOperationError(
+						this.getNode(),
+						`It was not possible to connect to the URL. Please make sure the URL "${url}" it is valid!`,
+					);
 				}
 
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			}
-
 
 			const returnData: IDataObject[] = [];
 
 			// For now we just take the items and ignore everything else
 			if (feed.items) {
 				feed.items.forEach((item) => {
-					// @ts-ignore
 					returnData.push(item);
 				});
 			}
 
 			return [this.helpers.returnJsonArray(returnData)];
-
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{json:{ error: error.message }}]);
+				return this.prepareOutputData([{ json: { error: error.message } }]);
 			}
 			throw error;
 		}
-	}
-}
-
-// Utility function
-
-function validateURL (url: string) {
-	try {
-		const parseUrl = new URL(url);
-		return true;
-	} catch (err) {
-		return false;
 	}
 }

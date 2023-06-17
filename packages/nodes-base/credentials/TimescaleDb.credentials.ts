@@ -1,12 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TimescaleDb implements ICredentialType {
 	name = 'timescaleDb';
+
 	displayName = 'TimescaleDB';
+
 	documentationUrl = 'timescaleDb';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
@@ -40,7 +40,7 @@ export class TimescaleDb implements ICredentialType {
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
 			default: false,
-			description: 'Connect even if SSL certificate validation is not possible.',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 		{
 			displayName: 'SSL',
@@ -48,30 +48,28 @@ export class TimescaleDb implements ICredentialType {
 			type: 'options',
 			displayOptions: {
 				show: {
-					allowUnauthorizedCerts: [
-						false,
-					],
+					allowUnauthorizedCerts: [false],
 				},
 			},
 			options: [
 				{
-					name: 'disable',
-					value: 'disable',
-				},
-				{
-					name: 'allow',
+					name: 'Allow',
 					value: 'allow',
 				},
 				{
-					name: 'require',
+					name: 'Disable',
+					value: 'disable',
+				},
+				{
+					name: 'Require',
 					value: 'require',
 				},
 				{
-					name: 'verify (not implemented)',
+					name: 'Verify (Not Implemented)',
 					value: 'verify',
 				},
 				{
-					name: 'verify-full (not implemented)',
+					name: 'Verify-Full (Not Implemented)',
 					value: 'verify-full',
 				},
 			],

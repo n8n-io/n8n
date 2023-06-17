@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const affiliateOperations = [
+export const affiliateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
+				resource: ['affiliate'],
 			},
 		},
 		options: [
@@ -19,29 +16,32 @@ export const affiliateOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an affiliate',
+				action: 'Create an affiliate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an affiliate',
+				action: 'Delete an affiliate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an affiliate by ID',
+				action: 'Get an affiliate',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all affiliates',
+				description: 'Get many affiliates',
+				action: 'Get many affiliates',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const affiliateFields = [
+export const affiliateFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 affiliate:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -49,19 +49,16 @@ export const affiliateFields = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'affiliate',
-				],
+				operation: ['create'],
+				resource: ['affiliate'],
 			},
 		},
-		description: `The affiliate’s email.`,
+		description: 'The affiliate’s email',
 	},
 	{
 		displayName: 'First Name',
@@ -70,16 +67,12 @@ export const affiliateFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'affiliate',
-				],
+				operation: ['create'],
+				resource: ['affiliate'],
 			},
 		},
 		default: '',
-		description: `The affiliate’s firstname.`,
+		description: 'The affiliate’s firstname',
 	},
 	{
 		displayName: 'Last Name',
@@ -88,16 +81,12 @@ export const affiliateFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'affiliate',
-				],
+				operation: ['create'],
+				resource: ['affiliate'],
 			},
 		},
 		default: '',
-		description: `The affiliate’s lastname.`,
+		description: 'The affiliate’s lastname',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -107,12 +96,8 @@ export const affiliateFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['affiliate'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -165,7 +150,8 @@ export const affiliateFields = [
 								name: 'country',
 								type: 'string',
 								default: '',
-								description: `The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.`,
+								description:
+									'The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.',
 							},
 						],
 					},
@@ -176,7 +162,7 @@ export const affiliateFields = [
 				name: 'companyName',
 				type: 'string',
 				default: '',
-				description: `The affiliate’s company data.`,
+				description: 'The affiliate’s company data',
 			},
 		],
 	},
@@ -189,17 +175,14 @@ export const affiliateFields = [
 		name: 'affiliateId',
 		required: true,
 		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['affiliate'],
+				operation: ['delete'],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -210,17 +193,14 @@ export const affiliateFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['affiliate'],
+				operation: ['get'],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -232,16 +212,12 @@ export const affiliateFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['affiliate'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -249,15 +225,9 @@ export const affiliateFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['affiliate'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -265,7 +235,7 @@ export const affiliateFields = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -275,12 +245,8 @@ export const affiliateFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['affiliate'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -289,19 +255,19 @@ export const affiliateFields = [
 				name: 'affiliate_group_id',
 				type: 'string',
 				default: '',
-				description: 'Retrieves affiliates for a certain affiliate group.',
+				description: 'Retrieves affiliates for a certain affiliate group',
 			},
 			{
 				displayName: 'Click ID',
 				name: 'click_id',
 				type: 'string',
 				default: '',
-				description: 'Click ID.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'An email address,',
 			},
@@ -310,22 +276,22 @@ export const affiliateFields = [
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Retrieves children for a certain parent affiliate.',
+				description: 'Retrieves children for a certain parent affiliate',
 			},
 			{
 				displayName: 'Referral Code',
 				name: 'referral_code',
 				type: 'string',
 				default: '',
-				description: 'An affiliate’s referral code. This corresponds to the value of ref= in their referral link.',
+				description:
+					'An affiliate’s referral code. This corresponds to the value of ref= in their referral link.',
 			},
 			{
 				displayName: 'Source ID',
 				name: 'source_id',
 				type: 'string',
 				default: '',
-				description: 'The Source ID.',
 			},
 		],
 	},
-] as INodeProperties[];
+];

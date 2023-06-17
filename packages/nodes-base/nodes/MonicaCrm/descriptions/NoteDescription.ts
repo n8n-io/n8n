@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const noteOperations = [
+export const noteOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
+				resource: ['note'],
 			},
 		},
 		options: [
@@ -19,33 +16,38 @@ export const noteOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a note',
+				action: 'Create a note',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a note',
+				action: 'Delete a note',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a note',
+				action: 'Get a note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all notes',
+				description: 'Retrieve many notes',
+				action: 'Get many notes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a note',
+				action: 'Update a note',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const noteFields = [
+export const noteFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               note: create
 	// ----------------------------------------
@@ -58,12 +60,8 @@ export const noteFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -72,19 +70,12 @@ export const noteFields = [
 		name: 'body',
 		description: 'Body of the note - max 100,000 characters',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -96,12 +87,8 @@ export const noteFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -127,12 +114,8 @@ export const noteFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['note'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -149,12 +132,8 @@ export const noteFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['note'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -170,12 +149,8 @@ export const noteFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['note'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -184,21 +159,15 @@ export const noteFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['note'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -215,12 +184,8 @@ export const noteFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -232,12 +197,8 @@ export const noteFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -246,9 +207,6 @@ export const noteFields = [
 				name: 'body',
 				description: 'Body of the note - max 100,000 characters',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -263,7 +221,8 @@ export const noteFields = [
 				name: 'is_favorited',
 				description: 'Whether the note has been favorited',
 				type: 'boolean',
+				default: false,
 			},
 		],
 	},
-] as INodeProperties[];
+];

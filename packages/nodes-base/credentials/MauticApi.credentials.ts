@@ -1,12 +1,17 @@
-import {
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
 export class MauticApi implements ICredentialType {
 	name = 'mauticApi';
+
 	displayName = 'Mautic API';
+
 	documentationUrl = 'mautic';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -31,4 +36,21 @@ export class MauticApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.url.replace(new RegExp("/$"), "")}}',
+			url: '/api/users/self',
+		},
+	};
 }

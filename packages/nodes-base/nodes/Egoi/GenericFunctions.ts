@@ -1,17 +1,14 @@
-import {
-	OptionsWithUrl,
-} from 'request';
+import type { OptionsWithUrl } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 interface IContact {
 	tags: [];
@@ -23,6 +20,39 @@ const fieldCache: {
 	[key: string]: IDataObject[];
 } = {};
 
+export async function egoiApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	_headers?: object,
+): Promise<any> {
+	const credentials = await this.getCredentials('egoiApi');
+
+	const options: OptionsWithUrl = {
+		headers: {
+			accept: 'application/json',
+			Apikey: `${credentials.apiKey}`,
+		},
+		method,
+		qs,
+		body,
+		url: `https://api.egoiapp.com${endpoint}`,
+		json: true,
+	};
+
+	if (Object.keys(body as IDataObject).length === 0) {
+		delete options.body;
+	}
+
+	try {
+		return await this.helpers.request(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
 
 export async function getFields(this: IExecuteFunctions, listId: string) {
 	if (fieldCache[listId]) {
@@ -32,38 +62,15 @@ export async function getFields(this: IExecuteFunctions, listId: string) {
 	return fieldCache[listId];
 }
 
+export async function egoiApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
 
-export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = await this.getCredentials('egoiApi') as IDataObject;
-
-	const options: OptionsWithUrl = {
-		headers: {
-			'accept': 'application/json',
-			'Apikey': `${credentials.apiKey}`,
-		},
-		method,
-		qs,
-		body,
-		url: `https://api.egoiapp.com${endpoint}`,
-		json: true,
-	};
-
-	if (Object.keys(body).length === 0) {
-		delete options.body;
-	}
-
-	try {
-
-		return await this.helpers.request!(options);
-
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
-}
-
-export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -73,15 +80,12 @@ export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOpti
 
 	do {
 		responseData = await egoiApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.offset += query.count;
-	} while (
-		responseData[propertyName] && responseData[propertyName].length !== 0
-	);
+	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 
 	return returnData;
 }
-
 
 export async function simplify(this: IExecuteFunctions, contacts: IContact[], listId: string) {
 	let fields = await getFields.call(this, listId);
@@ -96,9 +100,9 @@ export async function simplify(this: IExecuteFunctions, contacts: IContact[], li
 
 	for (const contact of contacts) {
 		const extras = contact.extra.reduce(
-			(acumulator: IDataObject, currentValue: IDataObject): any => { // tslint:disable-line:no-any
+			(accumulator: IDataObject, currentValue: IDataObject): any => {
 				const key = fieldsKeyValue[currentValue.field_id as string] as string;
-				return { [key]: currentValue.value, ...acumulator };
+				return { [key]: currentValue.value, ...accumulator };
 			},
 			{},
 		);

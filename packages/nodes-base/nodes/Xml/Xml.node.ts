@@ -1,13 +1,11 @@
 import { Builder, Parser } from 'xml2js';
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,7 +31,7 @@ export class Xml implements INodeType {
 					{
 						name: 'JSON to XML',
 						value: 'jsonToxml',
-						description: 'Converts data from JSON to XML.',
+						description: 'Converts data from JSON to XML',
 					},
 					{
 						name: 'XML to JSON',
@@ -42,7 +40,7 @@ export class Xml implements INodeType {
 					},
 				],
 				default: 'xmlToJson',
-				description: 'From and to what format the data should be converted.',
+				description: 'From and to what format the data should be converted',
 			},
 
 			// ----------------------------------
@@ -54,14 +52,12 @@ export class Xml implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'jsonToxml',
-						],
+						mode: ['jsonToxml'],
 					},
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the property to which to contains the converted XML data.',
+				description: 'Name of the property to which to contains the converted XML data',
 			},
 			{
 				displayName: 'Options',
@@ -70,9 +66,7 @@ export class Xml implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						mode: [
-							'jsonToxml',
-						],
+						mode: ['jsonToxml'],
 					},
 				},
 				default: {},
@@ -82,47 +76,46 @@ export class Xml implements INodeType {
 						name: 'allowSurrogateChars',
 						type: 'boolean',
 						default: false,
-						description: 'Allows using characters from the Unicode surrogate blocks.',
+						description: 'Whether to allow using characters from the Unicode surrogate blocks',
 					},
 					{
 						displayName: 'Attribute Key',
 						name: 'attrkey',
 						type: 'string',
 						default: '$',
-						description: 'Prefix that is used to access the attributes.',
+						description: 'Prefix that is used to access the attributes',
 					},
 					{
-						displayName: 'cdata',
+						displayName: 'Cdata',
 						name: 'cdata',
 						type: 'boolean',
 						default: false,
-						description: ' wrap text nodes in <![CDATA[ ... ]]> instead of escaping when necessary. Does not add <![CDATA[ ... ]]> if it is not required.',
+						description:
+							'Whether to wrap text nodes in &lt;![CDATA[ ... ]]&gt; instead of escaping when necessary. Does not add &lt;![CDATA[ ... ]]&gt; if it is not required.',
 					},
 					{
 						displayName: 'Character Key',
 						name: 'charkey',
 						type: 'string',
 						default: '_',
-						description: 'Prefix that is used to access the character content.',
+						description: 'Prefix that is used to access the character content',
 					},
 					{
 						displayName: 'Headless',
 						name: 'headless',
 						type: 'boolean',
 						default: false,
-						description: 'Omit the XML header.',
+						description: 'Whether to omit the XML header',
 					},
 					{
 						displayName: 'Root Name',
 						name: 'rootName',
 						type: 'string',
 						default: 'root',
-						description: 'Root element name to be used.',
+						description: 'Root element name to be used',
 					},
 				],
 			},
-
-
 
 			// ----------------------------------
 			//         option:xmlToJson
@@ -133,14 +126,12 @@ export class Xml implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'xmlToJson',
-						],
+						mode: ['xmlToJson'],
 					},
 				},
 				default: 'data',
 				required: true,
-				description: 'Name of the property which contains the XML data to convert.',
+				description: 'Name of the property which contains the XML data to convert',
 			},
 			{
 				displayName: 'Options',
@@ -149,9 +140,7 @@ export class Xml implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						mode: [
-							'xmlToJson',
-						],
+						mode: ['xmlToJson'],
 					},
 				},
 				default: {},
@@ -161,120 +150,138 @@ export class Xml implements INodeType {
 						name: 'attrkey',
 						type: 'string',
 						default: '$',
-						description: 'Prefix that is used to access the attributes.',
+						description: 'Prefix that is used to access the attributes',
 					},
 					{
 						displayName: 'Character Key',
 						name: 'charkey',
 						type: 'string',
 						default: '_',
-						description: 'Prefix that is used to access the character content.',
+						description: 'Prefix that is used to access the character content',
 					},
 					{
 						displayName: 'Explicit Array',
 						name: 'explicitArray',
 						type: 'boolean',
 						default: false,
-						description: 'Always put child nodes in an array if true; otherwise an array is created only if there is more than one.',
+						description:
+							'Whether to always put child nodes in an array if true; otherwise an array is created only if there is more than one',
 					},
 					{
 						displayName: 'Explicit Root',
 						name: 'explicitRoot',
 						type: 'boolean',
 						default: true,
-						description: 'Set this if you want to get the root node in the resulting object.',
+						description:
+							'Whether to set this if you want to get the root node in the resulting object',
 					},
 					{
 						displayName: 'Ignore Attributes',
 						name: 'ignoreAttrs',
 						type: 'boolean',
 						default: false,
-						description: 'Ignore all XML attributes and only create text nodes.',
+						description: 'Whether to ignore all XML attributes and only create text nodes',
 					},
 					{
 						displayName: 'Merge Attributes',
 						name: 'mergeAttrs',
 						type: 'boolean',
 						default: true,
-						description: 'Merge attributes and child elements as properties of the parent, instead of keying attributes off a child attribute object. This option is ignored if ignoreAttrs is true.',
+						description:
+							'Whether to merge attributes and child elements as properties of the parent, instead of keying attributes off a child attribute object. This option is ignored if ignoreAttrs is true.',
 					},
 					{
 						displayName: 'Normalize',
 						name: 'normalize',
 						type: 'boolean',
 						default: false,
-						description: 'Trim whitespaces inside text nodes.',
+						description: 'Whether to trim whitespaces inside text nodes',
 					},
 					{
 						displayName: 'Normalize Tags',
 						name: 'normalizeTags',
 						type: 'boolean',
 						default: false,
-						description: 'Normalize all tag names to lowercase.',
+						description: 'Whether to normalize all tag names to lowercase',
 					},
 					{
 						displayName: 'Trim',
 						name: 'trim',
 						type: 'boolean',
 						default: false,
-						description: 'Trim the whitespace at the beginning and end of text nodes.',
+						description: 'Whether to trim the whitespace at the beginning and end of text nodes',
 					},
 				],
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const mode = this.getNodeParameter('mode', 0) as string;
-		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-
+		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
+		const options = this.getNodeParameter('options', 0, {});
 
 		let item: INodeExecutionData;
+		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-
 				item = items[itemIndex];
 
 				if (mode === 'xmlToJson') {
-					const parserOptions = Object.assign({
-						mergeAttrs: true,
-						explicitArray: false,
-					}, options);
+					const parserOptions = Object.assign(
+						{
+							mergeAttrs: true,
+							explicitArray: false,
+						},
+						options,
+					);
 
 					const parser = new Parser(parserOptions);
 
 					if (item.json[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No json property "${dataPropertyName}" does not exists on item!`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`Item has no JSON property called "${dataPropertyName}"`,
+							{ itemIndex },
+						);
 					}
 
-					// @ts-ignore
-					const json = await parser.parseStringPromise(item.json[dataPropertyName]);
-					items[itemIndex] = { json };
+					const json = await parser.parseStringPromise(item.json[dataPropertyName] as string);
+					returnData.push({ json });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);
 
-					items[itemIndex] = {
+					returnData.push({
 						json: {
 							[dataPropertyName]: builder.buildObject(items[itemIndex].json),
 						},
-					};
+						pairedItem: {
+							item: itemIndex,
+						},
+					});
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`, {
+						itemIndex,
+					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					items[itemIndex] = ({json:{ error: error.message }});
+					items[itemIndex] = {
+						json: {
+							error: error.message,
+						},
+						pairedItem: {
+							item: itemIndex,
+						},
+					};
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return this.prepareOutputData(items);
-
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,24 +1,19 @@
-import {
-	UserProperties,
-} from '../../Interfaces';
+import type { UserProperties } from '../../Interfaces';
 
 export const userGetByEmailDescription: UserProperties = [
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getByEmail',
-				],
+				resource: ['user'],
+				operation: ['getByEmail'],
 			},
 		},
 		default: '',
-		description: `User's email`,
+		description: "User's email",
 	},
 ];

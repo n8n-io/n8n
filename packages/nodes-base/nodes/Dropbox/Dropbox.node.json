@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.dropbox",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Data & Storage"
-	],
+	"categories": ["Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.dropbox/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dropbox/"
 			}
 		],
 		"generic": [
@@ -21,6 +19,10 @@
 				"label": "Hey founders! Your business doesn't need you to operate",
 				"icon": " 🖥️",
 				"url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	}

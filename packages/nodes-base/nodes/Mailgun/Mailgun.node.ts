@@ -1,16 +1,12 @@
-import {
-	BINARY_ENCODING,
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
-
+import { NodeApiError } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,7 +18,6 @@ export class Mailgun implements INodeType {
 		description: 'Sends an email via Mailgun',
 		defaults: {
 			name: 'Mailgun',
-			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -40,7 +35,7 @@ export class Mailgun implements INodeType {
 				default: '',
 				required: true,
 				placeholder: 'Admin <admin@example.com>',
-				description: 'Email address of the sender optional with name.',
+				description: 'Email address of the sender optional with name',
 			},
 			{
 				displayName: 'To Email',
@@ -73,18 +68,17 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My subject line',
-				description: 'Subject line of the email.',
+				description: 'Subject line of the email',
 			},
 			{
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
 					rows: 5,
 				},
 				default: '',
-				description: 'Plain text message of email.',
+				description: 'Plain text message of email',
 			},
 			{
 				displayName: 'HTML',
@@ -92,26 +86,27 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				typeOptions: {
 					rows: 5,
+					editor: 'htmlEditor',
 				},
 				default: '',
-				description: 'HTML text message of email.',
+				description: 'HTML text message of email',
 			},
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
+				description:
+					'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma-separated.',
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
@@ -129,10 +124,6 @@ export class Mailgun implements INodeType {
 
 				const credentials = await this.getCredentials('mailgunApi');
 
-				if (credentials === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-				}
-
 				const formData: IDataObject = {
 					from: fromEmail,
 					to: toEmail,
@@ -149,21 +140,23 @@ export class Mailgun implements INodeType {
 				}
 
 				if (attachmentPropertyString && item.binary) {
-
 					const attachments = [];
-					const attachmentProperties: string[] = attachmentPropertyString.split(',').map((propertyName) => {
-						return propertyName.trim();
-					});
+					const attachmentProperties: string[] = attachmentPropertyString
+						.split(',')
+						.map((propertyName) => {
+							return propertyName.trim();
+						});
 
 					for (const propertyName of attachmentProperties) {
-						if (!item.binary.hasOwnProperty(propertyName)) {
-							continue;
-						}
+						const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							itemIndex,
+							propertyName,
+						);
 						attachments.push({
-							value: Buffer.from(item.binary[propertyName].data, BINARY_ENCODING),
+							value: binaryDataBuffer,
 							options: {
-								filename: item.binary[propertyName].fileName || 'unknown',
-
+								filename: binaryData.fileName || 'unknown',
 							},
 						});
 					}
@@ -178,27 +171,34 @@ export class Mailgun implements INodeType {
 					method: 'POST',
 					formData,
 					uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
-					auth: {
-						user: 'api',
-						pass: credentials.apiKey as string,
-					},
 					json: true,
 				};
 
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request(options);
+					responseData = await this.helpers.requestWithAuthentication.call(
+						this,
+						'mailgunApi',
+						options,
+					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
-				returnData.push({
-					json: responseData,
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: itemIndex } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: itemIndex } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

@@ -1,55 +1,48 @@
-import {
-	OptionsWithUri,
- } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
+export async function postmarkApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
 
-export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method : string, endpoint : string, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('postmarkApi');
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
+	body: any = {},
+	option: IDataObject = {},
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Accept': 'application/json',
-			'X-Postmark-Server-Token' : credentials.serverToken,
+			Accept: 'application/json',
 		},
 		method,
 		body,
 		uri: 'https://api.postmarkapp.com' + endpoint,
 		json: true,
 	};
-	if (body === {}) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	options = Object.assign({}, options, option);
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'postmarkApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-// tslint:disable-next-line: no-any
-export function convertTriggerObjectToStringArray (webhookObject : any) : string[] {
+export function convertTriggerObjectToStringArray(webhookObject: any): string[] {
 	const triggers = webhookObject.Triggers;
-	const webhookEvents : string[] = [];
+	const webhookEvents: string[] = [];
 
 	// Translate Webhook trigger settings to string array
 	if (triggers.Open.Enabled) {
@@ -85,7 +78,7 @@ export function convertTriggerObjectToStringArray (webhookObject : any) : string
 	return webhookEvents;
 }
 
-export function eventExists (currentEvents : string[], webhookEvents: string[]) {
+export function eventExists(currentEvents: string[], webhookEvents: string[]) {
 	for (const currentEvent of currentEvents) {
 		if (!webhookEvents.includes(currentEvent)) {
 			return false;

@@ -1,15 +1,13 @@
 <template>
 	<div ref="root">
 		<slot></slot>
-	</div>	
+	</div>
 </template>
 
-
 <script lang="ts">
+import { defineComponent } from 'vue';
 
-import Vue from 'vue';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'IntersectionObserver',
 	props: ['threshold', 'enabled'],
 	data() {
@@ -18,18 +16,18 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		if (!this.$props.enabled) {
+		if (!this.enabled) {
 			return;
 		}
 
 		const options = {
 			root: this.$refs.root as Element,
 			rootMargin: '0px',
-			threshold: this.$props.threshold,
+			threshold: this.threshold,
 		};
 
 		const observer = new IntersectionObserver((entries) => {
-			entries.forEach(({target, isIntersecting}) => {
+			entries.forEach(({ target, isIntersecting }) => {
 				this.$emit('observed', {
 					el: target,
 					isIntersecting,
@@ -48,7 +46,7 @@ export default Vue.extend({
 		});
 	},
 	beforeDestroy() {
-		if (this.$props.enabled) {
+		if (this.enabled) {
 			this.$data.observer.disconnect();
 		}
 	},

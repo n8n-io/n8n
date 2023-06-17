@@ -1,35 +1,33 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const meetingTranscriptOperations = [
+export const meetingTranscriptOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
+				resource: ['meetingTranscript'],
 			},
 		},
 		options: [
 			{
 				name: 'Download',
 				value: 'download',
+				action: 'Download a meeting transcript',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many meeting transcripts',
 			},
 		],
 		default: 'download',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const meetingTranscriptFields = [
+export const meetingTranscriptFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             meetingTranscript: download
 	// ----------------------------------------
@@ -41,12 +39,8 @@ export const meetingTranscriptFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['download'],
 			},
 		},
 		description: 'Unique identifier for the meeting transcript',
@@ -59,12 +53,8 @@ export const meetingTranscriptFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['download'],
 			},
 		},
 		description: 'Unique identifier for the meeting instance which the transcripts belong to',
@@ -75,12 +65,8 @@ export const meetingTranscriptFields = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'download',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['download'],
 			},
 		},
 		default: {},
@@ -92,10 +78,12 @@ export const meetingTranscriptFields = [
 				type: 'options',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'txt',
 						value: 'txt',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'vtt',
 						value: 'vtt',
 					},
@@ -117,12 +105,8 @@ export const meetingTranscriptFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Unique identifier for the meeting instance which the transcripts belong to',
@@ -132,15 +116,11 @@ export const meetingTranscriptFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -149,21 +129,15 @@ export const meetingTranscriptFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -175,12 +149,8 @@ export const meetingTranscriptFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'meetingTranscript',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meetingTranscript'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -193,4 +163,4 @@ export const meetingTranscriptFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

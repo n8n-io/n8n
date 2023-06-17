@@ -1,37 +1,35 @@
-import {
-	ContainerOptions,
-	create_container,
-	Dictionary,
-	EventContext,
-} from 'rhea';
+import type { ContainerOptions, Dictionary, EventContext } from 'rhea';
+import { create_container } from 'rhea';
 
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Amqp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Sender',
 		name: 'amqp',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:amqp.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Sends a raw-message via AMQP 1.0, executed once per item',
 		defaults: {
 			name: 'AMQP Sender',
-			color: '#00FF00',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{
-			name: 'amqp',
-			required: true,
-		}],
+		credentials: [
+			{
+				name: 'amqp',
+				required: true,
+			},
+		],
 		properties: [
 			{
 				displayName: 'Queue / Topic',
@@ -39,7 +37,7 @@ export class Amqp implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'topic://sourcename.something',
-				description: 'name of the queue of topic to publish to',
+				description: 'Name of the queue of topic to publish to',
 			},
 			// Header Parameters
 			{
@@ -47,7 +45,8 @@ export class Amqp implements INodeType {
 				name: 'headerParametersJson',
 				type: 'json',
 				default: '',
-				description: 'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
+				description:
+					'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
 			},
 			{
 				displayName: 'Options',
@@ -68,14 +67,14 @@ export class Amqp implements INodeType {
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
-						description: 'Send the data as an object.',
+						description: 'Whether to send the data as an object',
 					},
 					{
 						displayName: 'Reconnect',
 						name: 'reconnect',
 						type: 'boolean',
 						default: true,
-						description: 'Automatically reconnect if disconnected',
+						description: 'Whether to automatically reconnect if disconnected',
 					},
 					{
 						displayName: 'Reconnect Limit',
@@ -85,7 +84,7 @@ export class Amqp implements INodeType {
 						description: 'Maximum number of reconnect attempts',
 					},
 					{
-						displayName: 'Send property',
+						displayName: 'Send Property',
 						name: 'sendOnlyProperty',
 						type: 'string',
 						default: '',
@@ -99,18 +98,17 @@ export class Amqp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const credentials = await this.getCredentials('amqp');
-			if (!credentials) {
-				throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
-			}
 
 			const sink = this.getNodeParameter('sink', 0, '') as string;
-			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as
+				| string
+				| object;
+			const options = this.getNodeParameter('options', 0, {});
 			const containerId = options.containerId as string;
-			const containerReconnect = options.reconnect as boolean || true;
-			const containerReconnectLimit = options.reconnectLimit as number || 50;
+			const containerReconnect = (options.reconnect as boolean) || true;
+			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
-			let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
+			let headerProperties: Dictionary<any>;
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 				headerProperties = JSON.parse(applicationProperties);
 			} else {
@@ -180,7 +178,7 @@ export class Amqp implements INodeType {
 		} catch (error) {
 			if (this.continueOnFail()) {
 				return [this.helpers.returnJsonArray({ error: error.message })];
-			}else{
+			} else {
 				throw error;
 			}
 		}

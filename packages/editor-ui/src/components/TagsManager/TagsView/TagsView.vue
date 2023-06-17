@@ -10,65 +10,71 @@
 			:rows="rows"
 			:isLoading="isLoading"
 			:isSaving="isSaving"
-
 			:newName="newName"
 			@newNameChange="onNewNameChange"
-
 			@updateEnable="onUpdateEnable"
 			@deleteEnable="onDeleteEnable"
-
 			@cancelOperation="cancelOperation"
 			@applyOperation="applyOperation"
-
 			ref="tagsTable"
+			data-test-id="tags-table"
 		/>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from 'vue';
 
-import { ITag, ITagRow } from "@/Interface";
-import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
-import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
+import type { ITag, ITagRow } from '@/Interface';
+import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.vue';
+import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users.store';
 
-const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
-const getUsage = (count: number | undefined) => count && count > 0 ? `${count} workflow${count > 1 ? "s" : ""}` : 'Not being used';
+const matches = (name: string, filter: string) =>
+	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
-export default Vue.extend({
+export default defineComponent({
+	name: 'TagsView',
 	components: { TagsTableHeader, TagsTable },
-	name: "TagsView",
-	props: ["tags", "isLoading"],
+	props: ['tags', 'isLoading'],
 	data() {
 		return {
 			createEnabled: false,
-			deleteId: "",
-			updateId: "",
-			search: "",
-			newName: "",
+			deleteId: '',
+			updateId: '',
+			search: '',
+			newName: '',
 			stickyIds: new Set(),
 			isSaving: false,
 		};
 	},
 	computed: {
+		...mapStores(useUsersStore),
 		isCreateEnabled(): boolean {
-			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
+			return (this.tags || []).length === 0 || this.$data.createEnabled;
 		},
 		rows(): ITagRow[] {
-			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
-			const tagRows = (this.$props.tags || [])
-				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.$data.search))
-				.map((tag: ITag): ITagRow => ({
-					tag,
-					usage: getUsage(tag.usageCount),
-					disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
-					update: disabled && tag.id === this.$data.updateId,
-					delete: disabled && tag.id === this.$data.deleteId,
-				}));
+			const getUsage = (count: number | undefined) =>
+				count && count > 0
+					? this.$locale.baseText('tagsView.inUse', { adjustToNumber: count })
+					: this.$locale.baseText('tagsView.notBeingUsed');
 
-			return this.isCreateEnabled
-				? [{ create: true }, ...tagRows]
-				: tagRows;
+			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
+			const tagRows = (this.tags || [])
+				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.$data.search))
+				.map(
+					(tag: ITag): ITagRow => ({
+						tag,
+						usage: getUsage(tag.usageCount),
+						disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
+						update: disabled && tag.id === this.$data.updateId,
+						delete: disabled && tag.id === this.$data.deleteId,
+						canDelete: this.usersStore.canUserDeleteTags,
+					}),
+				);
+
+			return this.isCreateEnabled ? [{ create: true }, ...tagRows] : tagRows;
 		},
 	},
 	methods: {
@@ -81,8 +87,7 @@ export default Vue.extend({
 		},
 		isHeaderDisabled(): boolean {
 			return (
-				this.$props.isLoading ||
-				!!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
+				this.isLoading || !!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
 			);
 		},
 
@@ -90,8 +95,8 @@ export default Vue.extend({
 			this.updateId = updateId;
 		},
 		disableUpdate(): void {
-			this.updateId = "";
-			this.newName = "";
+			this.updateId = '';
+			this.newName = '';
 		},
 		updateTag(): void {
 			this.$data.isSaving = true;
@@ -102,36 +107,36 @@ export default Vue.extend({
 					this.stickyIds.add(this.updateId);
 					this.disableUpdate();
 				}
-			}; 
+			};
 
-			this.$emit("update", this.updateId, name, onUpdate);
+			this.$emit('update', this.updateId, name, onUpdate);
 		},
 
 		onDeleteEnable(deleteId: string): void {
 			this.deleteId = deleteId;
 		},
 		disableDelete(): void {
-			this.deleteId = "";
+			this.deleteId = '';
 		},
 		deleteTag(): void {
 			this.$data.isSaving = true;
-			const onDelete =  (deleted: boolean) => {
+			const onDelete = (deleted: boolean) => {
 				if (deleted) {
 					this.disableDelete();
 				}
 				this.$data.isSaving = false;
 			};
 
-			this.$emit("delete", this.deleteId, onDelete);
+			this.$emit('delete', this.deleteId, onDelete);
 		},
 
 		onCreateEnable(): void {
 			this.$data.createEnabled = true;
-			this.$data.newName = "";
+			this.$data.newName = '';
 		},
 		disableCreate(): void {
 			this.$data.createEnabled = false;
-			this.$emit("disableCreate");
+			this.$emit('disableCreate');
 		},
 		createTag(): void {
 			this.$data.isSaving = true;
@@ -144,34 +149,28 @@ export default Vue.extend({
 				this.$data.isSaving = false;
 			};
 
-			this.$emit("create", name, onCreate);
+			this.$emit('create', name, onCreate);
 		},
 
 		applyOperation(): void {
 			if (this.$data.isSaving) {
 				return;
-			}
-			else if (this.isCreateEnabled) {
+			} else if (this.isCreateEnabled) {
 				this.createTag();
-			}
-			else if (this.$data.updateId) {
+			} else if (this.$data.updateId) {
 				this.updateTag();
-			}
-			else if (this.$data.deleteId) {
+			} else if (this.$data.deleteId) {
 				this.deleteTag();
 			}
 		},
 		cancelOperation(): void {
 			if (this.$data.isSaving) {
 				return;
-			}
-			else if (this.isCreateEnabled) {
+			} else if (this.isCreateEnabled) {
 				this.disableCreate();
-			}
-			else if (this.$data.updateId) {
+			} else if (this.$data.updateId) {
 				this.disableUpdate();
-			}
-			else if (this.$data.deleteId) {
+			} else if (this.$data.deleteId) {
 				this.disableDelete();
 			}
 		},

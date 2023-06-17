@@ -84,6 +84,7 @@ export const getStatuses = `
 	query {
 		organization {
 			spaces {
+				id
 				statuses {
 					id
 					name

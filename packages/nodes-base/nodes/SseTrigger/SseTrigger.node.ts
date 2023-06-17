@@ -1,11 +1,12 @@
-import * as EventSource from 'eventsource';
-import { ITriggerFunctions } from 'n8n-core';
-import {
+import EventSource from 'eventsource';
+import type {
+	IDataObject,
+	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-
+import { jsonParse } from 'n8n-workflow';
 
 export class SseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,6 +17,7 @@ export class SseTrigger implements INodeType {
 		version: 1,
 		description: 'Triggers the workflow when Server-Sent Events occur',
 		eventTriggerDescription: '',
+		activationMessage: 'You can now make calls to your SSE URL to trigger executions.',
 		defaults: {
 			name: 'SSE Trigger',
 			color: '#225577',
@@ -29,12 +31,11 @@ export class SseTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'http://example.com',
-				description: 'The URL to receive the SSE from.',
+				description: 'The URL to receive the SSE from',
 				required: true,
 			},
 		],
 	};
-
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const url = this.getNodeParameter('url') as string;
@@ -42,7 +43,9 @@ export class SseTrigger implements INodeType {
 		const eventSource = new EventSource(url);
 
 		eventSource.onmessage = (event) => {
-			const eventData = JSON.parse(event.data);
+			const eventData = jsonParse<IDataObject>(event.data as string, {
+				errorMessage: 'Invalid JSON for event data',
+			});
 			this.emit([this.helpers.returnJsonArray([eventData])]);
 		};
 
@@ -53,6 +56,5 @@ export class SseTrigger implements INodeType {
 		return {
 			closeFunction,
 		};
-
 	}
 }

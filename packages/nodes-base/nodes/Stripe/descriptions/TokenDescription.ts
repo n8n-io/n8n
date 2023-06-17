@@ -1,32 +1,29 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const tokenOperations = [
+export const tokenOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a token',
+				action: 'Create a token',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'token',
-				],
+				resource: ['token'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const tokenFields = [
+export const tokenFields: INodeProperties[] = [
 	// ----------------------------------
 	//          token: create
 	// ----------------------------------
@@ -45,12 +42,8 @@ export const tokenFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'token',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['token'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -60,15 +53,9 @@ export const tokenFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'token',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'cardToken',
-				],
+				resource: ['token'],
+				operation: ['create'],
+				type: ['cardToken'],
 			},
 		},
 		placeholder: '4242424242424242',
@@ -80,15 +67,9 @@ export const tokenFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'token',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'cardToken',
-				],
+				resource: ['token'],
+				operation: ['create'],
+				type: ['cardToken'],
 			},
 		},
 		default: '',
@@ -102,15 +83,9 @@ export const tokenFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'token',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'cardToken',
-				],
+				resource: ['token'],
+				operation: ['create'],
+				type: ['cardToken'],
 			},
 		},
 		default: '',
@@ -123,18 +98,12 @@ export const tokenFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'token',
-				],
-				operation: [
-					'create',
-				],
-				type: [
-					'cardToken',
-				],
+				resource: ['token'],
+				operation: ['create'],
+				type: ['cardToken'],
 			},
 		},
 		default: '',
 		placeholder: '2022',
 	},
-] as INodeProperties[];
+];

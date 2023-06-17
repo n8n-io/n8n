@@ -1,24 +1,28 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ServiceNowOAuth2Api implements ICredentialType {
 	name = 'serviceNowOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	displayName = 'ServiceNow OAuth2 API';
+
 	documentationUrl = 'serviceNow';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',
 			default: '',
-			placeholder: 'n8n',
-			description: 'The subdomain of your ServiceNow environment',
+			hint: 'The subdomain can be extracted from the URL. If the URL is: https://dev99890.service-now.com the subdomain is dev99890',
 			required: true,
+		},
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
 		},
 		{
 			displayName: 'Authorization URL',

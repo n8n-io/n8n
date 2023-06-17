@@ -1,53 +1,59 @@
-<template functional>
-	<component
-		:is="$options.components.ElInput"
-		v-bind="props"
-		:size="$options.methods.getSize(props.size)"
-		:class="$style[$options.methods.getClass(props)]"
-		:ref="data.ref"
-		v-on="listeners"
+<template>
+	<el-input
+		v-bind="$props"
+		:size="computedSize"
+		:class="['n8n-input', ...classes]"
+		:autoComplete="autocomplete"
+		ref="innerInput"
+		v-on="$listeners"
+		:name="name"
 	>
-		<template v-slot:prepend>
+		<template #prepend>
 			<slot name="prepend" />
 		</template>
-		<template v-slot:append>
+		<template #append>
 			<slot name="append" />
 		</template>
-		<template v-slot:prefix>
+		<template #prefix>
 			<slot name="prefix" />
 		</template>
-		<template v-slot:suffix>
+		<template #suffix>
 			<slot name="suffix" />
 		</template>
-	</component>
+	</el-input>
 </template>
 
 <script lang="ts">
-import ElInput from 'element-ui/lib/input';
+import { Input as ElInput } from 'element-ui';
+import { defineComponent } from 'vue';
 
-export default {
+type InputRef = InstanceType<typeof ElInput>;
+
+export default defineComponent({
 	name: 'n8n-input',
 	components: {
 		ElInput,
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
-				['text', 'textarea', 'number', 'password'].indexOf(value) !== -1,
+				['text', 'textarea', 'number', 'password', 'email'].includes(value),
 		},
 		size: {
 			type: String,
 			default: 'large',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].indexOf(value) !== -1,
+				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		placeholder: {
 			type: String,
 		},
 		disabled: {
+			type: Boolean,
+		},
+		readonly: {
 			type: Boolean,
 		},
 		clearable: {
@@ -62,24 +68,72 @@ export default {
 		title: {
 			type: String,
 		},
+		name: {
+			type: String,
+		},
+		autocomplete: {
+			type: String,
+			default: 'off',
+		},
 	},
-	methods: {
-		getSize(size: string): string | undefined {
-			if (size === 'xlarge') {
+	computed: {
+		computedSize(): string | undefined {
+			if (this.size === 'xlarge') {
 				return undefined;
 			}
 
-			return size;
+			return this.size;
 		},
-		getClass(props: { size: string }): string {
-			if (props.size === 'xlarge') {
-				return 'xlarge';
+		classes(): string[] {
+			if (this.size === 'xlarge') {
+				return ['xlarge'];
 			}
 
-			return '';
+			return [];
 		},
 	},
-};
+	methods: {
+		focus() {
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.focus();
+		},
+		blur() {
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.blur();
+		},
+		select() {
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.select();
+		},
+	},
+});
 </script>
 
 <style lang="scss" module>

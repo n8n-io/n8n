@@ -1,20 +1,33 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
-	'contacts',
+	'crm.objects.contacts.read',
+	'crm.schemas.contacts.read',
+	'crm.objects.companies.read',
+	'crm.schemas.companies.read',
+	'crm.objects.deals.read',
+	'crm.schemas.deals.read',
 ];
 
+// eslint-disable-next-line n8n-nodes-base/cred-class-name-missing-oauth2-suffix
 export class HubspotDeveloperApi implements ICredentialType {
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-missing-oauth2
 	name = 'hubspotDeveloperApi';
-	displayName = 'Hubspot Developer API';
+
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-display-name-missing-oauth2
+	displayName = 'HubSpot Developer API';
+
 	documentationUrl = 'hubspot';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
@@ -40,12 +53,13 @@ export class HubspotDeveloperApi implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-			description: 'Resource to consume.',
 		},
 		{
 			displayName: 'Developer API Key',
 			name: 'apiKey',
 			type: 'string',
+			required: true,
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -54,7 +68,6 @@ export class HubspotDeveloperApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '',
-			description: 'The APP ID',
 		},
 		{
 			displayName: 'Scope',

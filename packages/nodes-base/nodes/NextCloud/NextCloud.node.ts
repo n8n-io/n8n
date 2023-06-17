@@ -1,38 +1,31 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
+import type {
+	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URLSearchParams } from 'url';
 
-import {
-	parseString,
-} from 'xml2js';
+import { parseString } from 'xml2js';
 
-import {
-	nextCloudApiRequest,
-} from './GenericFunctions';
+import { nextCloudApiRequest } from './GenericFunctions';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Nextcloud',
 		name: 'nextCloud',
-		icon: 'file:nextcloud.png',
+		icon: 'file:nextcloud.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Nextcloud',
 		defaults: {
 			name: 'Nextcloud',
-			color: '#1cafff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -42,9 +35,7 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -53,9 +44,7 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -76,12 +65,12 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'File',
@@ -97,10 +86,7 @@ export class NextCloud implements INodeType {
 					},
 				],
 				default: 'file',
-				description: 'The resource to operate on.',
 			},
-
-
 
 			// ----------------------------------
 			//         operations
@@ -109,11 +95,10 @@ export class NextCloud implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
+						resource: ['file'],
 					},
 				},
 				options: [
@@ -121,46 +106,50 @@ export class NextCloud implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a file',
+						action: 'Copy a file',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a file',
+						action: 'Delete a file',
 					},
 					{
 						name: 'Download',
 						value: 'download',
 						description: 'Download a file',
+						action: 'Download a file',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Move a file',
+						action: 'Move a file',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a file',
+						action: 'Share a file',
 					},
 					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
+						action: 'Upload a file',
 					},
 				],
 				default: 'upload',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'folder',
-						],
+						resource: ['folder'],
 					},
 				},
 				options: [
@@ -168,46 +157,50 @@ export class NextCloud implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a folder',
+						action: 'Copy a folder',
 					},
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a folder',
+						action: 'Create a folder',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a folder',
+						action: 'Delete a folder',
 					},
 					{
 						name: 'List',
 						value: 'list',
 						description: 'Return the contents of a given folder',
+						action: 'List a folder',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Move a folder',
+						action: 'Move a folder',
 					},
 					{
 						name: 'Share',
 						value: 'share',
 						description: 'Share a folder',
+						action: 'Share a folder',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
+						resource: ['user'],
 					},
 				},
 				options: [
@@ -215,30 +208,34 @@ export class NextCloud implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Invite a user to a NextCloud organization',
+						action: 'Create a user',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a user.',
+						description: 'Delete a user',
+						action: 'Delete a user',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Retrieve information about a single user.',
+						description: 'Retrieve information about a single user',
+						action: 'Get a user',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Retrieve a list of users.',
+						description: 'Retrieve a list of users',
+						action: 'Get many users',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Edit attributes related to a user.',
+						description: 'Edit attributes related to a user',
+						action: 'Update a user',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -256,17 +253,12 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'copy',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['copy'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/original.txt',
-				description: 'The path of file or folder to copy. The path should start with "/"',
+				description: 'The path of file or folder to copy. The path should start with "/".',
 			},
 			{
 				displayName: 'To Path',
@@ -276,17 +268,12 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'copy',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['copy'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/copy.txt',
-				description: 'The destination path of file or folder. The path should start with "/"',
+				description: 'The destination path of file or folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -300,17 +287,13 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['delete'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The path to delete. Can be a single file or a whole folder. The path should start with "/"',
+				description:
+					'The path to delete. Can be a single file or a whole folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -324,17 +307,12 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'move',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['move'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
-				description: 'The path of file or folder to move. The path should start with "/"',
+				description: 'The path of file or folder to move. The path should start with "/".',
 			},
 			{
 				displayName: 'To Path',
@@ -344,17 +322,12 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'move',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['move'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
-				description: 'The new path of file or folder. The path should start with "/"',
+				description: 'The new path of file or folder. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -368,16 +341,13 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['download'],
+						resource: ['file'],
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to download. Has to contain the full path. The path should start with "/"',
+				description:
+					'The file path of the file to download. Has to contain the full path. The path should start with "/".',
 			},
 			{
 				displayName: 'Binary Property',
@@ -387,15 +357,11 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['download'],
+						resource: ['file'],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file.',
+				description: 'Name of the binary property to which to write the data of the read file',
 			},
 
 			// ----------------------------------
@@ -409,16 +375,13 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['upload'],
+						resource: ['file'],
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
+				description:
+					'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -428,15 +391,10 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['upload'],
+						resource: ['file'],
 					},
 				},
-				description: '',
 			},
 			{
 				displayName: 'File Content',
@@ -445,20 +403,13 @@ export class NextCloud implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						binaryDataUpload: [
-							false,
-						],
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
+						binaryDataUpload: [false],
+						operation: ['upload'],
+						resource: ['file'],
 					},
-
 				},
 				placeholder: '',
-				description: 'The text content of the file to upload.',
+				description: 'The text content of the file to upload',
 			},
 			{
 				displayName: 'Binary Property',
@@ -468,20 +419,14 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						binaryDataUpload: [
-							true,
-						],
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
+						binaryDataUpload: [true],
+						operation: ['upload'],
+						resource: ['file'],
 					},
-
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded.',
+				description:
+					'Name of the binary property which contains the data for the file to be uploaded',
 			},
 
 			// ----------------------------------
@@ -495,17 +440,13 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'share',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['share'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to share. Has to contain the full path. The path should start with "/"',
+				description:
+					'The file path of the file to share. Has to contain the full path. The path should start with "/".',
 			},
 			{
 				displayName: 'Share Type',
@@ -513,13 +454,8 @@ export class NextCloud implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						operation: [
-							'share',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['share'],
+						resource: ['file', 'folder'],
 					},
 				},
 				options: [
@@ -553,16 +489,9 @@ export class NextCloud implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-							'folder',
-						],
-						operation: [
-							'share',
-						],
-						shareType: [
-							7,
-						],
+						resource: ['file', 'folder'],
+						operation: ['share'],
+						shareType: [7],
 					},
 				},
 				default: '',
@@ -572,18 +501,12 @@ export class NextCloud implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-							'folder',
-						],
-						operation: [
-							'share',
-						],
-						shareType: [
-							4,
-						],
+						resource: ['file', 'folder'],
+						operation: ['share'],
+						shareType: [4],
 					},
 				},
 				default: '',
@@ -595,16 +518,9 @@ export class NextCloud implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-							'folder',
-						],
-						operation: [
-							'share',
-						],
-						shareType: [
-							1,
-						],
+						resource: ['file', 'folder'],
+						operation: ['share'],
+						shareType: [1],
 					},
 				},
 				default: '',
@@ -616,16 +532,9 @@ export class NextCloud implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-							'folder',
-						],
-						operation: [
-							'share',
-						],
-						shareType: [
-							0,
-						],
+						resource: ['file', 'folder'],
+						operation: ['share'],
+						shareType: [0],
 					},
 				},
 				default: '',
@@ -639,13 +548,8 @@ export class NextCloud implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-							'folder',
-						],
-						operation: [
-							'share',
-						],
+						resource: ['file', 'folder'],
+						operation: ['share'],
 					},
 				},
 				options: [
@@ -653,22 +557,16 @@ export class NextCloud implements INodeType {
 						displayName: 'Password',
 						name: 'password',
 						type: 'string',
+						typeOptions: { password: true },
 						displayOptions: {
 							show: {
-								'/resource': [
-									'file',
-									'folder',
-								],
-								'/operation': [
-									'share',
-								],
-								'/shareType': [
-									3,
-								],
+								'/resource': ['file', 'folder'],
+								'/operation': ['share'],
+								'/shareType': [3],
 							},
 						},
 						default: '',
-						description: 'Optional search string.',
+						description: 'Optional search string',
 					},
 					{
 						displayName: 'Permissions',
@@ -717,16 +615,13 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'folder',
-						],
+						operation: ['create'],
+						resource: ['folder'],
 					},
 				},
 				placeholder: '/invoices/2019',
-				description: 'The folder to create. The parent folder has to exist. The path should start with "/"',
+				description:
+					'The folder to create. The parent folder has to exist. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -739,16 +634,12 @@ export class NextCloud implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'folder',
-						],
+						operation: ['list'],
+						resource: ['folder'],
 					},
 				},
 				placeholder: '/invoices/2019/',
-				description: 'The path of which to list the content. The path should start with "/"',
+				description: 'The path of which to list the content. The path should start with "/".',
 			},
 
 			// ----------------------------------
@@ -766,16 +657,12 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['user'],
+						operation: ['create'],
 					},
 				},
 				placeholder: 'john',
-				description: 'Username the user will have.',
+				description: 'Username the user will have',
 			},
 			{
 				displayName: 'Email',
@@ -785,16 +672,12 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['user'],
+						operation: ['create'],
 					},
 				},
 				placeholder: 'john@email.com',
-				description: 'The email of the user to invite.',
+				description: 'The email of the user to invite',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -804,21 +687,17 @@ export class NextCloud implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['user'],
+						operation: ['create'],
 					},
 				},
 				options: [
 					{
-						displayName: 'Display name',
+						displayName: 'Display Name',
 						name: 'displayName',
 						type: 'string',
 						default: '',
-						description: 'The display name of the user to invite.',
+						description: 'The display name of the user to invite',
 					},
 				],
 			},
@@ -833,18 +712,12 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'delete',
-							'get',
-							'update',
-						],
+						resource: ['user'],
+						operation: ['delete', 'get', 'update'],
 					},
 				},
 				placeholder: 'john',
-				description: 'Username the user will have.',
+				description: 'Username the user will have',
 			},
 			// ----------------------------------
 			//         user:getAll
@@ -855,16 +728,12 @@ export class NextCloud implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['user'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -872,15 +741,9 @@ export class NextCloud implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['user'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -888,7 +751,7 @@ export class NextCloud implements INodeType {
 					maxValue: 100,
 				},
 				default: 50,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Options',
@@ -898,12 +761,8 @@ export class NextCloud implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['user'],
+						operation: ['getAll'],
 					},
 				},
 				options: [
@@ -912,14 +771,14 @@ export class NextCloud implements INodeType {
 						name: 'search',
 						type: 'string',
 						default: '',
-						description: 'Optional search string.',
+						description: 'Optional search string',
 					},
 					{
 						displayName: 'Offset',
 						name: 'offset',
 						type: 'number',
 						default: '',
-						description: 'Optional offset value.',
+						description: 'Optional offset value',
 					},
 				],
 			},
@@ -937,12 +796,8 @@ export class NextCloud implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['user'],
+						operation: ['update'],
 					},
 				},
 				options: [
@@ -955,47 +810,46 @@ export class NextCloud implements INodeType {
 								name: 'key',
 								type: 'options',
 								default: 'email',
-								options:
-									[
-										{
-											name: 'Address',
-											value: 'address',
-											description: 'The new address for the user.',
-										},
-										{
-											name: 'Display Name',
-											value: 'displayname',
-											description: 'The new display name for the user.',
-										},
-										{
-											name: 'Email',
-											value: 'email',
-											description: 'The new email for the user.',
-										},
-										{
-											name: 'Password',
-											value: 'password',
-											description: 'The new password for the user.',
-										},
-										{
-											name: 'Twitter',
-											value: 'twitter',
-											description: 'The new twitter handle for the user.',
-										},
-										{
-											name: 'Website',
-											value: 'website',
-											description: 'The new website for the user.',
-										},
-									],
-								description: 'Key of the updated attribute.',
+								options: [
+									{
+										name: 'Address',
+										value: 'address',
+										description: 'The new address for the user',
+									},
+									{
+										name: 'Display Name',
+										value: 'displayname',
+										description: 'The new display name for the user',
+									},
+									{
+										name: 'Email',
+										value: 'email',
+										description: 'The new email for the user',
+									},
+									{
+										name: 'Password',
+										value: 'password',
+										description: 'The new password for the user',
+									},
+									{
+										name: 'Twitter',
+										value: 'twitter',
+										description: 'The new twitter handle for the user',
+									},
+									{
+										name: 'Website',
+										value: 'website',
+										description: 'The new website for the user',
+									},
+								],
+								description: 'Key of the updated attribute',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the updated attribute.',
+								description: 'Value of the updated attribute',
 							},
 						],
 					},
@@ -1003,7 +857,6 @@ export class NextCloud implements INodeType {
 			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData().slice();
@@ -1018,16 +871,12 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
-
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
-		let responseData: any; // tslint:disable-line:no-any
+		let responseData: any;
 
 		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
@@ -1043,7 +892,6 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'GET';
 						endpoint = this.getNodeParameter('path', i) as string;
-
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
@@ -1053,21 +901,9 @@ export class NextCloud implements INodeType {
 						endpoint = this.getNodeParameter('path', i) as string;
 
 						if (this.getNodeParameter('binaryDataUpload', i) === true) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`);
-							}
-
-							body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						} else {
 							// Is text file
 							body = this.getNodeParameter('fileContent', i) as string;
@@ -1081,7 +917,6 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'MKCOL';
 						endpoint = this.getNodeParameter('path', i) as string;
-
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
@@ -1089,7 +924,6 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'PROPFIND';
 						endpoint = this.getNodeParameter('path', i) as string;
-
 					}
 				}
 
@@ -1103,7 +937,6 @@ export class NextCloud implements INodeType {
 						endpoint = this.getNodeParameter('path', i) as string;
 						const toPath = this.getNodeParameter('toPath', i) as string;
 						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -1111,7 +944,6 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'DELETE';
 						endpoint = this.getNodeParameter('path', i) as string;
-
 					} else if (operation === 'move') {
 						// ----------------------------------
 						//         move
@@ -1121,7 +953,6 @@ export class NextCloud implements INodeType {
 						endpoint = this.getNodeParameter('path', i) as string;
 						const toPath = this.getNodeParameter('toPath', i) as string;
 						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
-
 					} else if (operation === 'share') {
 						// ----------------------------------
 						//         share
@@ -1134,7 +965,7 @@ export class NextCloud implements INodeType {
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
-						const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
+						const bodyParameters = this.getNodeParameter('options', i);
 
 						bodyParameters.path = this.getNodeParameter('path', i) as string;
 						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
@@ -1152,7 +983,6 @@ export class NextCloud implements INodeType {
 						// @ts-ignore
 						body = new URLSearchParams(bodyParameters).toString();
 					}
-
 				} else if (resource === 'user') {
 					if (operation === 'create') {
 						// ----------------------------------
@@ -1171,7 +1001,7 @@ export class NextCloud implements INodeType {
 
 						body = `userid=${userid}&email=${email}`;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.displayName) {
 							body += `&displayName=${additionalFields.displayName}`;
@@ -1209,12 +1039,12 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						qs = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						qs = this.getNodeParameter('options', i);
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
-						endpoint = `ocs/v1.php/cloud/users`;
+						endpoint = 'ocs/v1.php/cloud/users';
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1229,16 +1059,20 @@ export class NextCloud implements INodeType {
 						const userid = this.getNodeParameter('userId', i) as string;
 						endpoint = `ocs/v1.php/cloud/users/${userid}`;
 
-						body = Object.entries((this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject).map(entry => {
-							const [key, value] = entry;
-							return `${key}=${value}`;
-						}).join('&');
+						body = Object.entries(this.getNodeParameter('updateFields', i).field as IDataObject)
+							.map((entry) => {
+								const [key, value] = entry;
+								return `${key}=${value}`;
+							})
+							.join('&');
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				// Make sure that the webdav URL does never have a trailing slash because
@@ -1255,7 +1089,15 @@ export class NextCloud implements INodeType {
 				}
 
 				try {
-					responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding, qs);
+					responseData = await nextCloudApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						headers,
+						encoding,
+						qs,
+					);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						if (resource === 'file' && operation === 'download') {
@@ -1270,7 +1112,6 @@ export class NextCloud implements INodeType {
 				}
 
 				if (resource === 'file' && operation === 'download') {
-
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
 						binary: {},
@@ -1280,44 +1121,55 @@ export class NextCloud implements INodeType {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary as IBinaryKeyData, items[i].binary);
 					}
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
-
+					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+						responseData as Buffer,
+						endpoint,
+					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
-						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-							parseString(responseData, { explicitArray: false }, (err, data) => {
-								if (err) {
-									return reject(err);
-								}
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
+					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+						parseString(responseData as string, { explicitArray: false }, (err, data) => {
+							if (err) {
+								return reject(err);
+							}
 
-								if (data.ocs.meta.status !== 'ok') {
-									return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
-								}
+							if (data.ocs.meta.status !== 'ok') {
+								return reject(
+									new NodeApiError(
+										this.getNode(),
+										(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
+									),
+								);
+							}
 
-								resolve(data.ocs.data as IDataObject);
-							});
+							resolve(data.ocs.data as IDataObject);
 						});
+					});
 
-						returnData.push(jsonResponseData as IDataObject);
-
+					returnData.push(jsonResponseData);
 				} else if (resource === 'user') {
-
 					if (operation !== 'getAll') {
-
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-							parseString(responseData, { explicitArray: false }, (err, data) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
 									return reject(err);
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
-									return reject(new Error(data.ocs.meta.message || data.ocs.meta.status));
+									return reject(
+										new NodeApiError(
+											this.getNode(),
+											(data.ocs.meta.message || data.ocs.meta.status) as JsonObject,
+										),
+									);
 								}
 
 								if (operation === 'delete' || operation === 'update') {
@@ -1328,20 +1180,22 @@ export class NextCloud implements INodeType {
 							});
 						});
 
-						returnData.push(jsonResponseData as IDataObject);
+						returnData.push(jsonResponseData);
 					} else {
-
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
-							parseString(responseData, { explicitArray: false }, (err, data) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
 									return reject(err);
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
-									return reject(new Error(data.ocs.meta.message));
+									return reject(
+										new NodeApiError(this.getNode(), data.ocs.meta.message as JsonObject),
+									);
 								}
 
-								if (typeof (data.ocs.data.users.element) === 'string') {
+								if (typeof data.ocs.data.users.element === 'string') {
 									resolve([data.ocs.data.users.element] as IDataObject[]);
 								} else {
 									resolve(data.ocs.data.users.element as IDataObject[]);
@@ -1349,15 +1203,14 @@ export class NextCloud implements INodeType {
 							});
 						});
 
-						jsonResponseData.forEach(value => {
+						jsonResponseData.forEach((value) => {
 							returnData.push({ id: value } as IDataObject);
 						});
 					}
-
 				} else if (resource === 'folder' && operation === 'list') {
-
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData, { explicitArray: false }, (err, data) => {
+						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
 								return reject(err);
 							}
@@ -1371,17 +1224,18 @@ export class NextCloud implements INodeType {
 						'd:getcontenttype': 'contentType',
 					};
 
-					if (jsonResponseData['d:multistatus'] !== undefined &&
+					if (
+						jsonResponseData['d:multistatus'] !== undefined &&
 						jsonResponseData['d:multistatus'] !== null &&
 						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== undefined &&
-						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null) {
+						(jsonResponseData['d:multistatus'] as IDataObject)['d:response'] !== null
+					) {
 						let skippedFirst = false;
-
 						// @ts-ignore
 						if (Array.isArray(jsonResponseData['d:multistatus']['d:response'])) {
 							// @ts-ignore
 							for (const item of jsonResponseData['d:multistatus']['d:response']) {
-								if (skippedFirst === false) {
+								if (!skippedFirst) {
 									skippedFirst = true;
 									continue;
 								}
@@ -1389,7 +1243,12 @@ export class NextCloud implements INodeType {
 
 								newItem.path = item['d:href'].slice(19);
 
-								const props = item['d:propstat'][0]['d:prop'];
+								let props: IDataObject = {};
+								if (Array.isArray(item['d:propstat'])) {
+									props = item['d:propstat'][0]['d:prop'] as IDataObject;
+								} else {
+									props = item['d:propstat']['d:prop'] as IDataObject;
+								}
 
 								// Get the props and save them under a proper name
 								for (const propName of Object.keys(propNames)) {
@@ -1403,13 +1262,13 @@ export class NextCloud implements INodeType {
 								} else {
 									newItem.type = 'folder';
 								}
+								// @ts-ignore
 								newItem.eTag = props['d:getetag'].slice(1, -1);
 
-								returnData.push(newItem as IDataObject);
+								returnData.push(newItem);
 							}
 						}
 					}
-
 				} else {
 					returnData.push(responseData as IDataObject);
 				}
@@ -1424,7 +1283,6 @@ export class NextCloud implements INodeType {
 				}
 				throw error;
 			}
-
 		}
 
 		if (resource === 'file' && operation === 'download') {

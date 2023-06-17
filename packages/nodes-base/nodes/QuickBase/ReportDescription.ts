@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const reportOperations = [
+export const reportOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
+				resource: ['report'],
 			},
 		},
 		options: [
@@ -19,19 +16,20 @@ export const reportOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a report',
+				action: 'Get a report',
 			},
 			{
 				name: 'Run',
 				value: 'run',
 				description: 'Run a report',
+				action: 'Run a report',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const reportFields = [
+export const reportFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                report:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -43,15 +41,11 @@ export const reportFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
-		description: 'The table identifier.',
+		description: 'The table identifier',
 	},
 	{
 		displayName: 'Report ID',
@@ -61,15 +55,11 @@ export const reportFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
-		description: 'The identifier of the report, unique to the table.',
+		description: 'The identifier of the report, unique to the table',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                report:run                                  */
@@ -82,15 +72,11 @@ export const reportFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 		},
-		description: 'The table identifier.',
+		description: 'The table identifier',
 	},
 	{
 		displayName: 'Report ID',
@@ -100,15 +86,11 @@ export const reportFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 		},
-		description: 'The identifier of the report, unique to the table.',
+		description: 'The identifier of the report, unique to the table',
 	},
 	{
 		displayName: 'Return All',
@@ -116,16 +98,12 @@ export const reportFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -133,17 +111,11 @@ export const reportFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 			hide: {
-				returnAll: [
-					true,
-				],
+				returnAll: [true],
 			},
 		},
 		typeOptions: {
@@ -151,6 +123,6 @@ export const reportFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Number of results to return.',
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

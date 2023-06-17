@@ -1,19 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const userGroupOperations = [
+export const userGroupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
+				resource: ['userGroup'],
 			},
 		},
 		options: [
@@ -21,16 +18,18 @@ export const userGroupOperations = [
 				name: 'Add',
 				value: 'add',
 				description: 'Create a user to group',
+				action: 'Add a user to a group',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove user from group',
+				action: 'Remove a user from a group',
 			},
 		],
 		default: 'add',
 	},
-] as INodeProperties[];
+];
 
 export const userGroupFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
@@ -43,16 +42,12 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userGroup'],
+				operation: ['add'],
 			},
 		},
 		default: '',
-		description: 'Usernames to add to group. Multiples can be defined separated by comma',
+		description: 'Usernames to add to group. Multiples can be defined separated by comma.',
 	},
 	{
 		displayName: 'Group ID',
@@ -61,16 +56,12 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userGroup'],
+				operation: ['add'],
 			},
 		},
 		default: '',
-		description: 'ID of the group.',
+		description: 'ID of the group',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -83,12 +74,8 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userGroup'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -101,16 +88,11 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userGroup'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
-		description: 'ID of the group to remove.',
+		description: 'ID of the group to remove',
 	},
-
 ];

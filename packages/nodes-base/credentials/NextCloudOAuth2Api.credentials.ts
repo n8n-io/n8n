@@ -1,17 +1,21 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class NextCloudOAuth2Api implements ICredentialType {
 	name = 'nextCloudOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	displayName = 'NextCloud OAuth2 API';
+
 	documentationUrl = 'nextCloud';
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Web DAV URL',
 			name: 'webDavUrl',

@@ -1,38 +1,35 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const planOperations = [
+export const planOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'plan',
-				],
+				resource: ['plan'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a plan.',
+				description: 'Get a plan',
+				action: 'Get a plan',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all plans.',
+				description: 'Get many plans',
+				action: 'Get many plans',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const planFields = [
-
+export const planFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 plan:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -44,15 +41,11 @@ export const planFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'plan',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['plan'],
+				operation: ['get'],
 			},
 		},
-		description: 'Filter: The subscription plan ID.',
+		description: 'Filter: The subscription plan ID',
 	},
 	{
 		displayName: 'Return All',
@@ -60,16 +53,12 @@ export const planFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'plan',
-				],
+				operation: ['getAll'],
+				resource: ['plan'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -77,15 +66,9 @@ export const planFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'plan',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['plan'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -93,6 +76,6 @@ export const planFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const urlOperations = [
+export const urlOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'url',
-				],
+				resource: ['url'],
 			},
 		},
 		options: [
@@ -19,25 +16,26 @@ export const urlOperations = [
 				name: 'Expand',
 				value: 'expand',
 				description: 'Expand a URL',
+				action: 'Expand a URL',
 			},
 			{
 				name: 'Shorten',
 				value: 'shorten',
 				description: 'Shorten a URL',
+				action: 'Shorten a URL',
 			},
 			{
 				name: 'Stats',
 				value: 'stats',
 				description: 'Get stats about one short URL',
+				action: 'Get stats for a URL',
 			},
 		],
 		default: 'shorten',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const urlFields = [
-
+export const urlFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                url:shorten                                 */
 	/* -------------------------------------------------------------------------- */
@@ -48,16 +46,12 @@ export const urlFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'url',
-				],
-				operation: [
-					'shorten',
-				],
+				resource: ['url'],
+				operation: ['shorten'],
 			},
 		},
 		default: '',
-		description: 'The URL to shorten.',
+		description: 'The URL to shorten',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -67,12 +61,8 @@ export const urlFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'url',
-				],
-				operation: [
-					'shorten',
-				],
+				resource: ['url'],
+				operation: ['shorten'],
 			},
 		},
 		options: [
@@ -101,16 +91,12 @@ export const urlFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'url',
-				],
-				operation: [
-					'expand',
-				],
+				resource: ['url'],
+				operation: ['expand'],
 			},
 		},
 		default: '',
-		description: 'The short URL to expand.',
+		description: 'The short URL to expand',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -123,15 +109,11 @@ export const urlFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'url',
-				],
-				operation: [
-					'stats',
-				],
+				resource: ['url'],
+				operation: ['stats'],
 			},
 		},
 		default: '',
-		description: 'The short URL for which to get stats.',
+		description: 'The short URL for which to get stats',
 	},
-] as INodeProperties[];
+];

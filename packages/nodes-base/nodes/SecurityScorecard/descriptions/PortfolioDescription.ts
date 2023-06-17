@@ -1,18 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const portfolioOperations = [
+export const portfolioOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
+				resource: ['portfolio'],
 			},
 		},
 		options: [
@@ -20,44 +17,44 @@ export const portfolioOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a portfolio',
+				action: 'Create a portfolio',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a portfolio',
+				action: 'Delete a portfolio',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all portfolios',
+				description: 'Get many portfolios',
+				action: 'Get many portfolios',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a portfolio',
+				action: 'Update a portfolio',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const portfolioFields = [
+export const portfolioFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['portfolio'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -65,15 +62,9 @@ export const portfolioFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['portfolio'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -81,7 +72,7 @@ export const portfolioFields = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'Number of results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Portfolio ID',
@@ -91,13 +82,8 @@ export const portfolioFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'update',
-					'delete',
-				],
+				resource: ['portfolio'],
+				operation: ['update', 'delete'],
 			},
 		},
 	},
@@ -109,13 +95,8 @@ export const portfolioFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['portfolio'],
+				operation: ['create', 'update'],
 			},
 		},
 		description: 'Name of the portfolio',
@@ -124,35 +105,22 @@ export const portfolioFields = [
 		displayName: 'Description',
 		name: 'description',
 		type: 'string',
-		required: false,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['portfolio'],
+				operation: ['create', 'update'],
 			},
 		},
-		description: 'Description',
 	},
 	{
 		displayName: 'Privacy',
 		name: 'privacy',
 		type: 'options',
-		required: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'portfolio',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['portfolio'],
+				operation: ['create', 'update'],
 			},
 		},
 		options: [
@@ -174,5 +142,4 @@ export const portfolioFields = [
 		],
 		default: 'shared',
 	},
-] as INodeProperties[];
-
+];

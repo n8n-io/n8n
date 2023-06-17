@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const expenseOperations = [
+export const expenseOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
+				resource: ['expense'],
 			},
 		},
 		options: [
@@ -17,32 +16,35 @@ export const expenseOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new expense',
+				action: 'Create an expense',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an expense',
+				action: 'Delete an expense',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an expense',
+				action: 'Get an expense',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all expenses',
+				description: 'Get data of many expenses',
+				action: 'Get many expenses',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const expenseFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 expense:create                             */
-/* -------------------------------------------------------------------------- */
+export const expenseFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 expense:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -51,12 +53,8 @@ export const expenseFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'expense',
-				],
+				operation: ['create'],
+				resource: ['expense'],
 			},
 		},
 		options: [
@@ -73,9 +71,11 @@ export const expenseFields = [
 				default: false,
 			},
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -94,9 +94,11 @@ export const expenseFields = [
 				default: '',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getExpenseCategories',
 				},
@@ -120,6 +122,18 @@ export const expenseFields = [
 				type: 'options',
 				options: [
 					{
+						name: 'ACH',
+						value: 5,
+					},
+					{
+						name: 'Alipay',
+						value: 28,
+					},
+					{
+						name: 'American Express',
+						value: 8,
+					},
+					{
 						name: 'Apply Credit',
 						value: 1,
 					},
@@ -128,68 +142,52 @@ export const expenseFields = [
 						value: 2,
 					},
 					{
-						name: 'Cash',
-						value: 3,
-					},
-					{
-						name: 'Debit',
-						value: 4,
-					},
-					{
-						name: 'ACH',
-						value: 5,
-					},
-					{
-						name: 'Visa Card',
-						value: 6,
-					},
-					{
-						name: 'MasterCard',
-						value: 7,
-					},
-					{
-						name: 'American Express',
-						value: 8,
-					},
-					{
-						name: 'Discover Card',
-						value: 9,
-					},
-					{
-						name: 'Diners Card',
-						value: 10,
-					},
-					{
-						name: 'EuroCard',
-						value: 11,
-					},
-					{
-						name: 'Nova',
-						value: 12,
-					},
-					{
-						name: 'Credit Card Other',
-						value: 13,
-					},
-					{
-						name: 'Paypal',
-						value: 14,
-					},
-					{
-						name: 'Google Wallet',
-						value: 15,
-					},
-					{
-						name: 'Check',
-						value: 16,
+						name: 'Bitcoin',
+						value: 32,
 					},
 					{
 						name: 'Carte Blanche',
 						value: 17,
 					},
 					{
-						name: 'UnionPay',
-						value: 18,
+						name: 'Cash',
+						value: 3,
+					},
+					{
+						name: 'Check',
+						value: 16,
+					},
+					{
+						name: 'Credit Card Other',
+						value: 13,
+					},
+					{
+						name: 'Debit',
+						value: 4,
+					},
+					{
+						name: 'Diners Card',
+						value: 10,
+					},
+					{
+						name: 'Discover Card',
+						value: 9,
+					},
+					{
+						name: 'EuroCard',
+						value: 11,
+					},
+					{
+						name: 'GoCardless',
+						value: 31,
+					},
+					{
+						name: 'Google Wallet',
+						value: 15,
+					},
+					{
+						name: 'iZettle',
+						value: 24,
 					},
 					{
 						name: 'JCB',
@@ -204,56 +202,52 @@ export const expenseFields = [
 						value: 21,
 					},
 					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Solo',
-						value: 22,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'Swich',
-						value: 23,
-					},
-					{
-						name: 'iZettle',
-						value: 24,
-					},
-					{
-						name: 'Swish',
-						value: 25,
-					},
-					{
-						name: 'Venmo',
-						value: 26,
+						name: 'MasterCard',
+						value: 7,
 					},
 					{
 						name: 'Money Order',
 						value: 27,
 					},
 					{
-						name: 'Alipay',
-						value: 28,
+						name: 'Nova',
+						value: 12,
 					},
 					{
-						name: 'Sofort',
-						value: 29,
+						name: 'Paypal',
+						value: 14,
 					},
 					{
 						name: 'SEPA',
 						value: 30,
 					},
 					{
-						name: 'GoCardless',
-						value: 31,
+						name: 'Sofort',
+						value: 29,
 					},
 					{
-						name: 'Bitcoin',
-						value: 32,
+						name: 'Solo',
+						value: 22,
+					},
+					{
+						name: 'Swich',
+						value: 23,
+					},
+					{
+						name: 'Swish',
+						value: 25,
+					},
+					{
+						name: 'UnionPay',
+						value: 18,
+					},
+					{
+						name: 'Venmo',
+						value: 26,
+					},
+					{
+						name: 'Visa Card',
+						value: 6,
 					},
 				],
 				default: 1,
@@ -262,18 +256,12 @@ export const expenseFields = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Public Notes',
 				name: 'publicNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -307,9 +295,11 @@ export const expenseFields = [
 				default: '',
 			},
 			{
-				displayName: 'Vendor',
+				displayName: 'Vendor Name or ID',
 				name: 'vendor',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},
@@ -317,63 +307,53 @@ export const expenseFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 expense:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 expense:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Expense ID',
 		name: 'expenseId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['expense'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  expense:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  expense:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Expense ID',
 		name: 'expenseId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['expense'],
+				operation: ['get'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  expense:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  expense:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['expense'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -381,15 +361,9 @@ export const expenseFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['expense'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -397,6 +371,6 @@ export const expenseFields = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

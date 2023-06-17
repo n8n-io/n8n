@@ -1,17 +1,21 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BitlyOAuth2Api implements ICredentialType {
 	name = 'bitlyOAuth2Api';
+
 	displayName = 'Bitly OAuth2 API';
+
 	documentationUrl = 'bitly';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
@@ -54,7 +58,8 @@ export class BitlyOAuth2Api implements ICredentialType {
 			name: 'authQueryParameters',
 			type: 'hidden',
 			default: '',
-			description: 'For some services additional query parameters have to be set which can be defined here.',
+			description:
+				'For some services additional query parameters have to be set which can be defined here',
 			placeholder: '',
 		},
 		{
@@ -62,7 +67,6 @@ export class BitlyOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden',
 			default: 'body',
-			description: 'Resource to consume.',
 		},
 	];
 }

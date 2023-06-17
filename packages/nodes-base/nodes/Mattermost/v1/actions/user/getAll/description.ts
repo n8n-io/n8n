@@ -1,6 +1,4 @@
-import {
-	UserProperties,
-} from '../../Interfaces';
+import type { UserProperties } from '../../Interfaces';
 
 export const userGetAllDescription: UserProperties = [
 	{
@@ -9,16 +7,12 @@ export const userGetAllDescription: UserProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -26,15 +20,9 @@ export const userGetAllDescription: UserProperties = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -42,7 +30,7 @@ export const userGetAllDescription: UserProperties = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -51,12 +39,8 @@ export const userGetAllDescription: UserProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -66,28 +50,28 @@ export const userGetAllDescription: UserProperties = [
 				name: 'inChannel',
 				type: 'string',
 				default: '',
-				description: 'The ID of the channel to get users for.',
+				description: 'The ID of the channel to get users for',
 			},
 			{
 				displayName: 'In Team',
 				name: 'inTeam',
 				type: 'string',
 				default: '',
-				description: 'The ID of the team to get users for.',
+				description: 'The ID of the team to get users for',
 			},
 			{
 				displayName: 'Not In Team',
 				name: 'notInTeam',
 				type: 'string',
 				default: '',
-				description: 'The ID of the team to exclude users for.',
+				description: 'The ID of the team to exclude users for',
 			},
 			{
 				displayName: 'Not In Channel',
 				name: 'notInChannel',
 				type: 'string',
 				default: '',
-				description: 'The ID of the channel to exclude users for.',
+				description: 'The ID of the channel to exclude users for',
 			},
 			{
 				displayName: 'Sort',
@@ -107,12 +91,12 @@ export const userGetAllDescription: UserProperties = [
 						value: 'status',
 					},
 					{
-						name: 'username',
+						name: 'Username',
 						value: 'username',
 					},
 				],
 				default: 'username',
-				description: 'The ID of the channel to exclude users for.',
+				description: 'The ID of the channel to exclude users for',
 			},
 		],
 	},

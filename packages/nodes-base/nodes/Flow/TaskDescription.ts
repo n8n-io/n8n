@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const taskOpeations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		options: [
@@ -17,66 +16,62 @@ export const taskOpeations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new task',
+				action: 'Create a task',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
+				action: 'Update a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a task',
+				action: 'Get a task',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the tasks',
+				description: 'Get many tasks',
+				action: 'Get many tasks',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const taskFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                task:create                                */
-/* -------------------------------------------------------------------------- */
+export const taskFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                task:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
-		description: 'Create resources under the given workspace.',
+		description: 'Create resources under the given workspace',
 	},
 	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
-		description: 'The title of the task.',
+		description: 'The title of the task',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -86,12 +81,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -99,60 +90,53 @@ export const taskFields = [
 				displayName: 'Owner ID',
 				name: 'ownerid',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'The ID of the account to whom this task will be assigned.',
+				description: 'The ID of the account to whom this task will be assigned',
 			},
 			{
 				displayName: 'List ID',
 				name: 'listID',
 				type: 'string',
 				default: '',
-				required : false,
-				description: 'Put the new task in a list ("project"). Omit this param to have the task be private.',
+				description:
+					'Put the new task in a list ("project"). Omit this param to have the task be private.',
 			},
 			{
 				displayName: 'Starts On',
 				name: 'startsOn',
 				type: 'dateTime',
 				default: '',
-				required : false,
-				description: 'The date on which the task should start.',
+				description: 'The date on which the task should start',
 			},
 			{
 				displayName: 'Due On',
 				name: 'dueOn',
 				type: 'dateTime',
 				default: '',
-				required : false,
-				description: 'The date on which the task should be due.',
+				description: 'The date on which the task should be due',
 			},
 			{
 				displayName: 'Mirror Parent Subscribers',
 				name: 'mirrorParentSubscribers',
 				type: 'boolean',
 				default: false,
-				required : false,
-				description: `If this task will be a subtask, and this is true, the parent tasks's subscribers will be mirrored to this one.`,
+				description:
+					"Whether this task will be a subtask, and this is true, the parent tasks's subscribers will be mirrored to this one",
 			},
 			{
 				displayName: 'Mirror Parent Tags',
 				name: 'mirrorParentTags',
 				type: 'boolean',
 				default: false,
-				required : false,
-				description: `If this task will be a subtask, and this is true, the parent tasks's tags will be mirrored to this one.`,
+				description:
+					"Whether this task will be a subtask, and this is true, the parent tasks's tags will be mirrored to this one",
 			},
 			{
 				displayName: 'Note Content',
 				name: 'noteContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				required : false,
-				description: `Provide the content for the task's note.`,
+				description: "Provide the content for the task's note",
 			},
 			{
 				displayName: 'Note Mime Type',
@@ -161,6 +145,7 @@ export const taskFields = [
 				default: 'text/plain',
 				options: [
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/plain',
 						value: 'text/plain',
 					},
@@ -169,99 +154,87 @@ export const taskFields = [
 						value: 'text/x-markdown',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'text/html',
 						value: 'text/html',
 					},
 				],
-				description: `Identify which markup language is used to format the given note`,
+				description: 'Identify which markup language is used to format the given note',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				required : false,
-				description: `If provided, this task will become a subtask of the given task.`,
+				description: 'If provided, this task will become a subtask of the given task',
 			},
 			{
 				displayName: 'Position List',
 				name: 'positionList',
 				type: 'number',
 				default: 0,
-				required : false,
-				description: `Determines the sort order when showing tasks in, or grouped by, a list.`,
+				description: 'Determines the sort order when showing tasks in, or grouped by, a list',
 			},
 			{
 				displayName: 'Position Upcoming',
 				name: 'positionUpcoming',
 				type: 'number',
 				default: 0,
-				required : false,
-				description: `Determines the sort order when showing tasks grouped by their due_date.`,
+				description: 'Determines the sort order when showing tasks grouped by their due_date',
 			},
 			{
 				displayName: 'Position',
 				name: 'position',
 				type: 'number',
 				default: 0,
-				required : false,
-				description: `Determines the sort order of tasks.`,
+				description: 'Determines the sort order of tasks',
 			},
 			{
 				displayName: 'Section ID',
 				name: 'sectionId',
 				type: 'string',
 				default: '',
-				required : false,
-				description: `Specify which section under which to create this task.`,
+				description: 'Specify which section under which to create this task',
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				required : false,
-				description: `A list of tag names to apply to the new task separated by a comma (,)`,
+				description: 'A list of tag names to apply to the new task separated by a comma (,)',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 task:update                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
-		description: 'Create resources under the given workspace.',
+		description: 'Create resources under the given workspace',
 	},
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
-		description: '',
 	},
 	{
 		displayName: 'Update Fields',
@@ -271,12 +244,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -285,67 +254,66 @@ export const taskFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The title of the task.',
+				description: 'The title of the task',
 			},
 			{
 				displayName: 'Completed',
 				name: 'completed',
 				type: 'boolean',
 				default: false,
-				description: `If set to true, will complete the task.`,
+				description: 'Whether to complete the task',
 			},
 			{
 				displayName: 'Owner ID',
 				name: 'ownerid',
 				type: 'string',
 				default: '',
-				description: 'The ID of the account to whom this task will be assigned.',
+				description: 'The ID of the account to whom this task will be assigned',
 			},
 			{
 				displayName: 'List ID',
 				name: 'listID',
 				type: 'string',
 				default: '',
-				description: 'Put the new task in a list ("project"). Omit this param to have the task be private.',
+				description:
+					'Put the new task in a list ("project"). Omit this param to have the task be private.',
 			},
 			{
 				displayName: 'Starts On',
 				name: 'startsOn',
 				type: 'dateTime',
 				default: '',
-				description: 'The date on which the task should start.',
+				description: 'The date on which the task should start',
 			},
 			{
 				displayName: 'Due On',
 				name: 'dueOn',
 				type: 'dateTime',
 				default: '',
-				description: 'The date on which the task should be due.',
+				description: 'The date on which the task should be due',
 			},
 			{
 				displayName: 'Mirror Parent Subscribers',
 				name: 'mirrorParentSubscribers',
 				type: 'boolean',
 				default: false,
-				required : false,
-				description: `If this task will be a subtask, and this is true, the parent tasks's subscribers will be mirrored to this one.`,
+				description:
+					"Whether this task will be a subtask, and this is true, the parent tasks's subscribers will be mirrored to this one",
 			},
 			{
 				displayName: 'Mirror Parent Tags',
 				name: 'mirrorParentTags',
 				type: 'boolean',
 				default: false,
-				description: `If this task will be a subtask, and this is true, the parent tasks's tags will be mirrored to this one.`,
+				description:
+					"Whether this task will be a subtask, and this is true, the parent tasks's tags will be mirrored to this one",
 			},
 			{
 				displayName: 'Note Content',
 				name: 'noteContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: `Provide the content for the task's note.`,
+				description: "Provide the content for the task's note",
 			},
 			{
 				displayName: 'Note Mime Type',
@@ -354,7 +322,7 @@ export const taskFields = [
 				default: 'text/plain',
 				options: [
 					{
-						name: 'text/plain',
+						name: 'Text/plain',
 						value: 'text/plain',
 					},
 					{
@@ -362,75 +330,71 @@ export const taskFields = [
 						value: 'text/x-markdown',
 					},
 					{
-						name: 'text/html',
+						name: 'Text/html',
 						value: 'text/html',
 					},
 				],
-				description: `Identify which markup language is used to format the given note`,
+				description: 'Identify which markup language is used to format the given note',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: `If provided, this task will become a subtask of the given task.`,
+				description: 'If provided, this task will become a subtask of the given task',
 			},
 			{
 				displayName: 'Position List',
 				name: 'positionList',
 				type: 'number',
 				default: 0,
-				description: `Determines the sort order when showing tasks in, or grouped by, a list.`,
+				description: 'Determines the sort order when showing tasks in, or grouped by, a list',
 			},
 			{
 				displayName: 'Position Upcoming',
 				name: 'positionUpcoming',
 				type: 'number',
 				default: 0,
-				description: `Determines the sort order when showing tasks grouped by their due_date.`,
+				description: 'Determines the sort order when showing tasks grouped by their due_date',
 			},
 			{
 				displayName: 'Position',
 				name: 'position',
 				type: 'number',
 				default: 0,
-				description: `Determines the sort order of tasks.`,
+				description: 'Determines the sort order of tasks',
 			},
 			{
 				displayName: 'Section ID',
 				name: 'sectionId',
 				type: 'string',
 				default: '',
-				description: `Specify which section under which to create this task.`,
+				description: 'Specify which section under which to create this task',
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: `A list of tag names to apply to the new task separated by a comma (,)`,
+				description: 'A list of tag names to apply to the new task separated by a comma (,)',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  task:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  task:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['task'],
+				operation: ['get'],
 			},
 		},
-		description: '',
 	},
 	{
 		displayName: 'Filters',
@@ -440,12 +404,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['task'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -456,15 +416,15 @@ export const taskFields = [
 				default: [],
 				options: [
 					{
-						name: 'schedule',
+						name: 'Schedule',
 						value: 'schedule',
 					},
 					{
-						name: 'files',
+						name: 'Files',
 						value: 'files',
 					},
 					{
-						name: 'file Associations',
+						name: 'File Associations',
 						value: 'file_associations',
 					},
 					{
@@ -475,25 +435,21 @@ export const taskFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 task:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -501,15 +457,9 @@ export const taskFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['task'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -517,7 +467,7 @@ export const taskFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -527,12 +477,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -543,15 +489,15 @@ export const taskFields = [
 				default: [],
 				options: [
 					{
-						name: 'schedule',
+						name: 'Schedule',
 						value: 'schedule',
 					},
 					{
-						name: 'files',
+						name: 'Files',
 						value: 'files',
 					},
 					{
-						name: 'file Associations',
+						name: 'File Associations',
 						value: 'file_associations',
 					},
 					{
@@ -567,44 +513,44 @@ export const taskFields = [
 				default: 'created_at',
 				options: [
 					{
-						name: 'Due On',
-						value: 'due_on',
+						name: 'Account ID',
+						value: 'account_id',
 					},
 					{
-						name: 'Starts On',
-						value: 'starts_on',
+						name: 'Completed At',
+						value: 'completed_at',
 					},
 					{
 						name: 'Created At',
 						value: 'created_at',
 					},
 					{
-						name: 'Position',
-						value: 'position',
-					},
-					{
-						name: 'Account ID',
-						value: 'account_id',
+						name: 'Due On',
+						value: 'due_on',
 					},
 					{
 						name: 'List ID',
 						value: 'list_id',
 					},
 					{
-						name: 'Section ID',
-						value: 'section_id',
+						name: 'Name',
+						value: 'name',
 					},
 					{
 						name: 'Owner ID',
 						value: 'owner_id',
 					},
 					{
-						name: 'Name',
-						value: 'name',
+						name: 'Position',
+						value: 'position',
 					},
 					{
-						name: 'Completed At',
-						value: 'completed_at',
+						name: 'Section ID',
+						value: 'section_id',
+					},
+					{
+						name: 'Starts On',
+						value: 'starts_on',
 					},
 					{
 						name: 'Updated At',
@@ -617,50 +563,50 @@ export const taskFields = [
 				name: 'workspaceId',
 				type: 'string',
 				default: '',
-				description: 'Create resources under the given workspace.',
+				description: 'Create resources under the given workspace',
 			},
 			{
 				displayName: 'Created Before',
 				name: 'createdBefore',
 				type: 'dateTime',
 				default: '',
-				description: 'Select resources created before a certain time.',
+				description: 'Select resources created before a certain time',
 			},
 			{
 				displayName: 'Created After',
 				name: 'createdAfter',
 				type: 'dateTime',
 				default: '',
-				description: 'Select resources created after a certain time.',
+				description: 'Select resources created after a certain time',
 			},
 			{
 				displayName: 'Update Before',
 				name: 'updateBefore',
 				type: 'dateTime',
 				default: '',
-				description: 'Select resources updated before a certain time.',
+				description: 'Select resources updated before a certain time',
 			},
 			{
 				displayName: 'Update After',
 				name: 'updateAfter',
 				type: 'dateTime',
 				default: '',
-				description: 'Select resources updated after a certain time.',
+				description: 'Select resources updated after a certain time',
 			},
 			{
 				displayName: 'Deleted',
 				name: 'deleted',
 				type: 'boolean',
 				default: false,
-				description: 'Select deleted resources.',
+				description: 'Whether to select deleted resources',
 			},
 			{
 				displayName: 'Cleared',
 				name: 'cleared',
 				type: 'boolean',
 				default: false,
-				description: 'Select cleared resources.',
+				description: 'Whether to select cleared resources',
 			},
 		],
 	},
-] as INodeProperties[];
+];

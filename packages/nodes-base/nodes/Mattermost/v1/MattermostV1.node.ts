@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
@@ -13,7 +10,6 @@ import { loadOptions } from './methods';
 import { router } from './actions/router';
 
 export class MattermostV1 implements INodeType {
-
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
@@ -26,9 +22,6 @@ export class MattermostV1 implements INodeType {
 	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions) {
-		// Router returns INodeExecutionData[]
-		// We need to output INodeExecutionData[][]
-		// So we wrap in []
-		return [await router.call(this)];
+		return router.call(this);
 	}
 }

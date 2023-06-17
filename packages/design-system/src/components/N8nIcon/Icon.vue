@@ -1,23 +1,16 @@
-<template functional>
-	<component
-		:is="$options.components.N8nText"
-		:size="props.size"
-		:compact="true"
-	>
-		<component
-			:is="$options.components.FontAwesomeIcon"
-			:icon="props.icon"
-			:spin="props.spin"
-			:class="$style[props.size]"
-		/>
-	</component>
+<template>
+	<n8n-text :size="size" :color="color" :compact="true" class="n8n-icon" v-on="$listeners">
+		<font-awesome-icon :icon="icon" :spin="spin" :class="$style[size]" />
+	</n8n-text>
 </template>
 
 <script lang="ts">
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nText from '../N8nText';
 
-export default {
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	name: 'n8n-icon',
 	components: {
 		FontAwesomeIcon,
@@ -25,7 +18,6 @@ export default {
 	},
 	props: {
 		icon: {
-			type: String,
 			required: true,
 		},
 		size: {
@@ -36,10 +28,12 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		color: {
+			type: String,
+		},
 	},
-};
+});
 </script>
-
 
 <style lang="scss" module>
 .xlarge {
@@ -56,5 +50,9 @@ export default {
 
 .small {
 	width: var(--font-size-2xs) !important;
+}
+
+.xsmall {
+	width: var(--font-size-3xs) !important;
 }
 </style>

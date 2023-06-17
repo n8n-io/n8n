@@ -1,24 +1,30 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function intercomApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function intercomApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: string,
+
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+): Promise<any> {
 	const credentials = await this.getCredentials('intercomApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Bearer ${credentials.apiKey}`, Accept: 'application/json' });
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Bearer ${credentials.apiKey}`, Accept: 'application/json' },
+	);
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
@@ -30,20 +36,25 @@ export async function intercomApiRequest(this: IHookFunctions | IExecuteFunction
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
-
-
 
 /**
  * Make an API request to paginated intercom endpoint
  * and return all results
  */
-export async function intercomApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function intercomApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -55,18 +66,13 @@ export async function intercomApiRequestAllItems(this: IHookFunctions | IExecute
 	do {
 		responseData = await intercomApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = responseData.pages.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.pages !== undefined &&
-		responseData.pages.next !== undefined &&
-		responseData.pages.next !== null
-	);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.pages?.next !== null);
 
 	return returnData;
 }
 
-
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

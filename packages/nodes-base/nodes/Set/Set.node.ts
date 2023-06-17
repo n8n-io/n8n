@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash/set';
 
 export class Set implements INodeType {
 	description: INodeTypeDescription = {
@@ -15,7 +15,7 @@ export class Set implements INodeType {
 		name: 'set',
 		icon: 'fa:pen',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		description: 'Sets values on items and optionally remove other values',
 		defaults: {
 			name: 'Set',
@@ -29,7 +29,8 @@ export class Set implements INodeType {
 				name: 'keepOnlySet',
 				type: 'boolean',
 				default: false,
-				description: 'If only the values set on this node should be kept and all others removed.',
+				description:
+					'Whether only the values set on this node should be kept and all others removed',
 			},
 			{
 				displayName: 'Values to Set',
@@ -40,7 +41,7 @@ export class Set implements INodeType {
 					multipleValues: true,
 					sortable: true,
 				},
-				description: 'The value to set.',
+				description: 'The value to set',
 				default: {},
 				options: [
 					{
@@ -51,15 +52,18 @@ export class Set implements INodeType {
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
+								requiresDataPath: 'single',
 								default: 'propertyName',
-								description: 'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
+								description:
+									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'boolean',
 								default: false,
-								description: 'The boolean value to write in the property.',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+								description: 'The boolean value to write in the property',
 							},
 						],
 					},
@@ -72,14 +76,16 @@ export class Set implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: 'propertyName',
-								description: 'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
+								requiresDataPath: 'single',
+								description:
+									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'number',
 								default: 0,
-								description: 'The number value to write in the property.',
+								description: 'The number value to write in the property',
 							},
 						],
 					},
@@ -92,14 +98,16 @@ export class Set implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: 'propertyName',
-								description: 'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
+								requiresDataPath: 'single',
+								description:
+									'Name of the property to write data to. Supports dot-notation. Example: "data.person[0].name"',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'The string value to write in the property.',
+								description: 'The string value to write in the property',
 							},
 						],
 					},
@@ -118,21 +126,21 @@ export class Set implements INodeType {
 						name: 'dotNotation',
 						type: 'boolean',
 						default: true,
-						description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>
-						`,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description:
+							'<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<p></p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>.',
 					},
 				],
 			},
 		],
 	};
 
-
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const nodeVersion = this.getNode().typeVersion;
 
 		if (items.length === 0) {
-			items.push({json: {}});
+			items.push({ json: {} });
 		}
 
 		const returnData: INodeExecutionData[] = [];
@@ -142,13 +150,14 @@ export class Set implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 			item = items[itemIndex];
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 
 			const newItem: INodeExecutionData = {
 				json: {},
+				pairedItem: item.pairedItem,
 			};
 
-			if (keepOnlySet !== true) {
+			if (!keepOnlySet) {
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
@@ -157,35 +166,48 @@ export class Set implements INodeType {
 					Object.assign(newItem.binary, item.binary);
 				}
 
-				newItem.json = JSON.parse(JSON.stringify(item.json));
+				newItem.json = deepCopy(item.json);
 			}
 
 			// Add boolean values
-			(this.getNodeParameter('values.boolean', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				if (options.dotNotation === false) {
-					newItem.json[setItem.name as string] = !!setItem.value;
-				} else {
-					set(newItem.json, setItem.name as string, !!setItem.value);
-				}
-			});
+			(this.getNodeParameter('values.boolean', itemIndex, []) as INodeParameters[]).forEach(
+				(setItem) => {
+					if (options.dotNotation === false) {
+						newItem.json[setItem.name as string] = !!setItem.value;
+					} else {
+						set(newItem.json, setItem.name as string, !!setItem.value);
+					}
+				},
+			);
 
 			// Add number values
-			(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				if (options.dotNotation === false) {
-					newItem.json[setItem.name as string] = setItem.value;
-				} else {
-					set(newItem.json, setItem.name as string, setItem.value);
-				}
-			});
+			(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach(
+				(setItem) => {
+					if (
+						nodeVersion >= 2 &&
+						typeof setItem.value === 'string' &&
+						!Number.isNaN(Number(setItem.value))
+					) {
+						setItem.value = Number(setItem.value);
+					}
+					if (options.dotNotation === false) {
+						newItem.json[setItem.name as string] = setItem.value;
+					} else {
+						set(newItem.json, setItem.name as string, setItem.value);
+					}
+				},
+			);
 
 			// Add string values
-			(this.getNodeParameter('values.string', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				if (options.dotNotation === false) {
-					newItem.json[setItem.name as string] = setItem.value;
-				} else {
-					set(newItem.json, setItem.name as string, setItem.value);
-				}
-			});
+			(this.getNodeParameter('values.string', itemIndex, []) as INodeParameters[]).forEach(
+				(setItem) => {
+					if (options.dotNotation === false) {
+						newItem.json[setItem.name as string] = setItem.value;
+					} else {
+						set(newItem.json, setItem.name as string, setItem.value);
+					}
+				},
+			);
 
 			returnData.push(newItem);
 		}

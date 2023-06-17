@@ -1,25 +1,30 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject
 } from 'n8n-workflow';
 
-export async function mailCheckApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('mailcheckApi') as IDataObject;
+export async function mailCheckApiRequest(
+	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	option: IDataObject = {},
+): Promise<any> {
+	const credentials = await this.getCredentials('mailcheckApi');
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${credentials.apiKey}`,
+			Authorization: `Bearer ${credentials.apiKey}`,
 		},
 		method,
 		body,
@@ -32,15 +37,16 @@ export async function mailCheckApiRequest(this: IWebhookFunctions | IHookFunctio
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error.response?.body?.message) {
 			// Try to return the error prettier
-			throw new Error(`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`);
+			throw new Error(
+				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,
+			);
 		}
 		throw error;
 	}

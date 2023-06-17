@@ -1,24 +1,27 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function lingvaNexApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function lingvaNexApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('lingvaNexApi');
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 		let options: OptionsWithUri = {
 			headers: {
 				Authorization: `Bearer ${credentials.apiKey}`,
@@ -32,15 +35,14 @@ export async function lingvaNexApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		options = Object.assign({}, options, option);
 
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (response.err !== null) {
-			throw new NodeApiError(this.getNode(), response);
+			throw new NodeApiError(this.getNode(), response as JsonObject);
 		}
 
 		return response;
-
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

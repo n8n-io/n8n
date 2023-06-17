@@ -1,0 +1,356 @@
+@use 'mixins/mixins';
+@use './common/var';
+
+@include mixins.b(textarea) {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+	vertical-align: bottom;
+	font-size: var.$font-size-base;
+
+	@include mixins.e(inner) {
+		display: block;
+		resize: vertical;
+		padding: 8px 12px 5px 12px;
+		line-height: 1.5;
+		box-sizing: border-box;
+		width: 100%;
+		font-size: inherit;
+		color: var.$input-font-color;
+		background-color: var.$input-background-color;
+		background-image: none;
+		border-radius: var.$input-border-radius;
+		transition: var.$border-transition-base;
+
+		&,
+		&:hover {
+			border: var.$input-border;
+		}
+
+		&::placeholder {
+			color: var.$input-placeholder-color;
+		}
+
+		&:focus {
+			outline: none;
+			border-color: var.$input-focus-border;
+		}
+	}
+
+	& .el-input__count {
+		color: var(--color-info);
+		background: var.$color-white;
+		position: absolute;
+		font-size: 12px;
+		bottom: 5px;
+		right: 10px;
+	}
+
+	@include mixins.when(disabled) {
+		.el-textarea__inner {
+			background-color: var.$input-disabled-fill;
+			border-color: var.$input-disabled-border;
+			color: var.$input-disabled-color;
+			cursor: not-allowed;
+
+			&::placeholder {
+				color: var.$input-disabled-placeholder-color;
+			}
+		}
+	}
+
+	@include mixins.when(exceed) {
+		.el-textarea__inner {
+			border-color: var(--color-danger);
+		}
+
+		.el-input__count {
+			color: var(--color-danger);
+		}
+	}
+}
+
+@include mixins.b(input) {
+	position: relative;
+	font-size: var.$input-font-size;
+	display: inline-block;
+	width: 100%;
+	@include mixins.scroll-bar;
+
+	& .el-input__clear {
+		color: var.$input-clear-color;
+		font-size: var.$input-font-size;
+		cursor: pointer;
+		transition: var.$color-transition-base;
+
+		&:hover {
+			color: var.$input-clear-hover-color;
+		}
+	}
+
+	& .el-input__count {
+		height: 100%;
+		display: inline-flex;
+		align-items: center;
+		color: var(--color-info);
+		font-size: 12px;
+
+		.el-input__count-inner {
+			background: var.$color-white;
+			line-height: initial;
+			display: inline-block;
+			padding: 0 5px;
+		}
+	}
+
+	@include mixins.e(inner) {
+		-webkit-appearance: none;
+		background-color: var.$input-background-color;
+		background-image: none;
+		border-radius: var.$input-border-radius;
+		border: var.$input-border;
+		box-sizing: border-box;
+		color: var.$input-font-color;
+		display: inline-block;
+		font-size: inherit;
+		height: var.$input-height;
+		line-height: var.$input-height;
+		outline: none;
+		padding: 0 0 0 var(--spacing-2xs);
+		transition: var.$border-transition-base;
+		width: 100%;
+
+		&::placeholder {
+			color: var.$input-placeholder-color;
+		}
+
+		&:focus {
+			outline: none;
+			border-color: var.$input-focus-border;
+		}
+	}
+
+	@include mixins.e(suffix) {
+		position: absolute;
+		height: 100%;
+		right: var(--spacing-2xs);
+		top: 0;
+		text-align: center;
+		color: var(--color-text-light);
+		transition: all 0.3s;
+		pointer-events: none;
+		display: flex;
+		align-items: center;
+	}
+
+	@include mixins.e(suffix-inner) {
+		pointer-events: all;
+	}
+
+	@include mixins.e(prefix) {
+		position: absolute;
+		height: 100%;
+		left: 14px;
+		top: 0;
+		text-align: center;
+		color: var.$input-icon-color;
+		transition: all 0.3s;
+		display: flex;
+		align-items: center;
+	}
+
+	@include mixins.e(icon) {
+		height: 100%;
+		text-align: center;
+		transition: all 0.3s;
+		line-height: var.$input-height;
+
+		&:after {
+			content: '';
+			height: 100%;
+			width: 0;
+			display: inline-block;
+			vertical-align: middle;
+		}
+	}
+
+	@include mixins.e(validateIcon) {
+		pointer-events: none;
+	}
+
+	@include mixins.when(active) {
+		.el-input__inner {
+			outline: none;
+			border-color: var.$input-focus-border;
+		}
+	}
+
+	@include mixins.when(disabled) {
+		.el-input__inner {
+			background-color: var.$input-disabled-fill;
+			border-color: var.$input-disabled-border;
+			color: var.$input-disabled-color;
+			cursor: not-allowed;
+
+			&::placeholder {
+				color: var.$input-disabled-placeholder-color;
+			}
+		}
+
+		.el-input__icon {
+			cursor: not-allowed;
+		}
+	}
+
+	@include mixins.when(exceed) {
+		.el-input__inner {
+			border-color: var(--color-danger);
+		}
+
+		.el-input__suffix {
+			.el-input__count {
+				color: var(--color-danger);
+			}
+		}
+	}
+
+	@include mixins.m(suffix) {
+		.el-input__inner {
+			padding-right: 30px;
+		}
+	}
+
+	@include mixins.m(prefix) {
+		.el-input__inner {
+			padding-left: 37px;
+		}
+	}
+
+	@include mixins.m(medium) {
+		font-size: var.$input-medium-font-size;
+
+		@include mixins.e(inner) {
+			height: var.$input-medium-height;
+			line-height: var.$input-medium-height;
+		}
+
+		.el-input__icon {
+			line-height: var.$input-medium-height;
+		}
+	}
+	@include mixins.m(small) {
+		font-size: var.$input-small-font-size;
+
+		@include mixins.e(inner) {
+			height: var.$input-small-height;
+			line-height: var.$input-small-height;
+		}
+
+		.el-input__icon {
+			line-height: var.$input-small-height;
+		}
+	}
+	@include mixins.m(mini) {
+		font-size: var.$input-mini-font-size;
+
+		@include mixins.e(inner) {
+			height: var.$input-mini-height;
+			line-height: var.$input-mini-height;
+		}
+
+		.el-input__icon {
+			line-height: var.$input-mini-height;
+		}
+	}
+}
+
+@include mixins.b(input-group) {
+	line-height: normal;
+	display: inline-table;
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+
+	> .el-input__inner {
+		vertical-align: middle;
+		display: table-cell;
+	}
+
+	@include mixins.e((append, prepend)) {
+		background-color: var.$background-color-base;
+		color: var(--color-info);
+		vertical-align: middle;
+		display: table-cell;
+		position: relative;
+		border: var(--border-base);
+		border-radius: var.$input-border-radius;
+		padding: 0 10px;
+		width: 1px;
+		white-space: nowrap;
+		font-weight: var(--font-weight-regular);
+
+		&:focus {
+			outline: none;
+		}
+
+		.el-select,
+		.el-button {
+			display: inline-block;
+			margin: -10px -20px;
+		}
+
+		button.el-button,
+		div.el-select .el-input__inner,
+		div.el-select:hover .el-input__inner {
+			border-color: transparent;
+			background-color: transparent;
+			color: inherit;
+			border-top: 0;
+			border-bottom: 0;
+		}
+
+		.el-button,
+		.el-input {
+			font-size: inherit;
+		}
+	}
+
+	@include mixins.e(prepend) {
+		border-right: 0;
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+	}
+
+	@include mixins.e(append) {
+		border-left: 0;
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+	}
+
+	@include mixins.m(prepend) {
+		.el-input__inner {
+			border-top-left-radius: 0;
+			border-bottom-left-radius: 0;
+		}
+		.el-select .el-input.is-focus .el-input__inner {
+			border-color: transparent;
+		}
+	}
+
+	@include mixins.m(append) {
+		.el-input__inner {
+			border-top-right-radius: 0;
+			border-bottom-right-radius: 0;
+		}
+		.el-select .el-input.is-focus .el-input__inner {
+			border-color: transparent;
+		}
+	}
+}
+
+/** disalbe default clear on IE */
+.el-input__inner::-ms-clear {
+	display: none;
+	width: 0;
+	height: 0;
+}

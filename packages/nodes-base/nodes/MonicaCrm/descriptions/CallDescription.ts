@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const callOperations = [
+export const callOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
+				resource: ['call'],
 			},
 		},
 		options: [
@@ -19,33 +16,38 @@ export const callOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a call',
+				action: 'Create a call',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a call',
+				action: 'Delete a call',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a call',
+				action: 'Get a call',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all calls',
+				description: 'Retrieve many calls',
+				action: 'Get many calls',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a call',
+				action: 'Update a call',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const callFields = [
+export const callFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               call: create
 	// ----------------------------------------
@@ -58,12 +60,8 @@ export const callFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +74,8 @@ export const callFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -89,20 +83,13 @@ export const callFields = [
 		displayName: 'Description',
 		name: 'content',
 		description: 'Description of the call - max 100,000 characters',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -119,12 +106,8 @@ export const callFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['call'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -141,12 +124,8 @@ export const callFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['call'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -162,12 +141,8 @@ export const callFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['call'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -176,21 +151,15 @@ export const callFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['call'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -207,12 +176,8 @@ export const callFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['call'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -224,12 +189,8 @@ export const callFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['call'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -256,4 +217,4 @@ export const callFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

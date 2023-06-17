@@ -1,32 +1,18 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	smsFields,
-	smsOperations,
-} from './SmsDescription';
+import { smsFields, smsOperations } from './SmsDescription';
 
-import {
-	mmsFields,
-	mmsOperations,
-} from './MmsDescription';
+import { mmsFields, mmsOperations } from './MmsDescription';
 
-import {
-	callFields,
-	callOperations,
-} from './CallDescription';
+import { callFields, callOperations } from './CallDescription';
 
-import {
-	plivoApiRequest,
-} from './GenericFunctions';
+import { plivoApiRequest } from './GenericFunctions';
 
 export class Plivo implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,7 +25,6 @@ export class Plivo implements INodeType {
 		description: 'Send SMS/MMS messages or make phone calls',
 		defaults: {
 			name: 'Plivo',
-			color: '#43A046',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -54,12 +39,14 @@ export class Plivo implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Call',
 						value: 'call',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 						name: 'MMS',
 						value: 'mms',
 					},
@@ -70,7 +57,6 @@ export class Plivo implements INodeType {
 				],
 				default: 'sms',
 				required: true,
-				description: 'The resource to operate on.',
 			},
 			...smsOperations,
 			...smsFields,
@@ -85,21 +71,18 @@ export class Plivo implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
-
 			let responseData;
 
 			if (resource === 'sms') {
-
 				// *********************************************************************
 				//                                sms
 				// *********************************************************************
 
 				if (operation === 'send') {
-
 					// ----------------------------------
 					//          sms: send
 					// ----------------------------------
@@ -111,17 +94,13 @@ export class Plivo implements INodeType {
 					} as IDataObject;
 
 					responseData = await plivoApiRequest.call(this, 'POST', '/Message', body);
-
 				}
-
 			} else if (resource === 'call') {
-
 				// *********************************************************************
 				//                                call
 				// *********************************************************************
 
 				if (operation === 'make') {
-
 					// ----------------------------------
 					//            call: make
 					// ----------------------------------
@@ -136,17 +115,13 @@ export class Plivo implements INodeType {
 					} as IDataObject;
 
 					responseData = await plivoApiRequest.call(this, 'POST', '/Call', body);
-
 				}
-
 			} else if (resource === 'mms') {
-
 				// *********************************************************************
 				//                                mms
 				// *********************************************************************
 
 				if (operation === 'send') {
-
 					// ----------------------------------
 					//            mss: send
 					// ----------------------------------
@@ -162,15 +137,12 @@ export class Plivo implements INodeType {
 					} as IDataObject;
 
 					responseData = await plivoApiRequest.call(this, 'POST', '/Message', body);
-
 				}
-
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
-
+				? returnData.push(...(responseData as IDataObject[]))
+				: returnData.push(responseData as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

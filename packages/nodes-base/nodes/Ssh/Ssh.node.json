@@ -2,21 +2,14 @@
 	"node": "n8n-nodes-base.ssh",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes",
-		"Development"
-	],
+	"categories": ["Core Nodes", "Development"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.ssh/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssh/"
 			}
 		]
 	},
-	"alias": [
-		"remote"
-	],
-	"subcategories": [
-		"Helpers"
-	]
+	"alias": ["remote"],
+	"subcategories": ["Helpers"]
 }

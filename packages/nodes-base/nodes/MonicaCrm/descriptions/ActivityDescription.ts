@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const activityOperations = [
+export const activityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
+				resource: ['activity'],
 			},
 		},
 		options: [
@@ -19,40 +16,47 @@ export const activityOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an activity',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an activity',
+				action: 'Delete an activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an activity',
+				action: 'Get an activity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all activities',
+				description: 'Retrieve many activities',
+				action: 'Get many activities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an activity',
+				action: 'Update an activity',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const activityFields = [
+export const activityFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             activity: create
 	// ----------------------------------------
 	{
-		displayName: 'Activity Type',
+		displayName: 'Activity Type Name or ID',
 		name: 'activityTypeId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -60,12 +64,8 @@ export const activityFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -78,12 +78,8 @@ export const activityFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -96,12 +92,8 @@ export const activityFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -114,12 +106,8 @@ export const activityFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -131,12 +119,8 @@ export const activityFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -146,9 +130,6 @@ export const activityFields = [
 				type: 'string',
 				default: '',
 				description: 'Description of the activity - max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -165,12 +146,8 @@ export const activityFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['activity'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -187,12 +164,8 @@ export const activityFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['activity'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -208,12 +181,8 @@ export const activityFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -222,21 +191,15 @@ export const activityFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -253,12 +216,8 @@ export const activityFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -270,19 +229,17 @@ export const activityFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Activity Type',
+				displayName: 'Activity Type Name or ID',
 				name: 'activity_type_id',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getActivityTypes',
@@ -301,9 +258,6 @@ export const activityFields = [
 				type: 'string',
 				default: '',
 				description: 'Description to add more details on the activity - max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Happened At',
@@ -321,4 +275,4 @@ export const activityFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

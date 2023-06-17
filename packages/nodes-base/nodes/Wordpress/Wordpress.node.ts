@@ -1,7 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,37 +7,23 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	wordpressApiRequest,
-	wordpressApiRequestAllItems,
-} from './GenericFunctions';
-import {
-	postFields,
-	postOperations,
-} from './PostDescription';
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
-import {
-	IPost,
-} from './PostInterface';
-import {
-	IUser,
-} from './UserInterface';
+import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
+import { postFields, postOperations } from './PostDescription';
+import { userFields, userOperations } from './UserDescription';
+import type { IPost } from './PostInterface';
+import type { IUser } from './UserInterface';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
 		name: 'wordpress',
-		icon: 'file:wordpress.png',
+		icon: 'file:wordpress.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Wordpress API',
 		defaults: {
 			name: 'Wordpress',
-			color: '#016087',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -54,20 +38,18 @@ export class Wordpress implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
 						value: 'post',
-						description: '',
 					},
 					{
 						name: 'User',
 						value: 'user',
-						description: '',
 					},
 				],
 				default: 'post',
-				description: 'Resource to consume.',
 			},
 			...postOperations,
 			...postFields,
@@ -78,7 +60,7 @@ export class Wordpress implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available categories to display them to user so that he can
+			// Get all the available categories to display them to user so that they can
 			// select them easily
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -94,7 +76,7 @@ export class Wordpress implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -110,11 +92,17 @@ export class Wordpress implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available authors to display them to user so that he can
+			// Get all the available authors to display them to user so that they can
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const authors = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, { who: 'authors' });
+				const authors = await wordpressApiRequestAllItems.call(
+					this,
+					'GET',
+					'/users',
+					{},
+					{ who: 'authors' },
+				);
 				for (const author of authors) {
 					const authorName = author.name;
 					const authorId = author.id;
@@ -131,12 +119,12 @@ export class Wordpress implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -144,7 +132,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/posts/#create-a-post
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IPost = {
 							title,
 						};
@@ -172,6 +160,13 @@ export class Wordpress implements INodeType {
 						if (additionalFields.sticky) {
 							body.sticky = additionalFields.sticky as boolean;
 						}
+						if (additionalFields.postTemplate) {
+							body.template = this.getNodeParameter(
+								'additionalFields.postTemplate.values.template',
+								i,
+								'',
+							) as string;
+						}
 						if (additionalFields.categories) {
 							body.categories = additionalFields.categories as number[];
 						}
@@ -186,7 +181,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 					if (operation === 'update') {
 						const postId = this.getNodeParameter('postId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IPost = {
 							id: parseInt(postId, 10),
 						};
@@ -217,6 +212,13 @@ export class Wordpress implements INodeType {
 						if (updateFields.sticky) {
 							body.sticky = updateFields.sticky as boolean;
 						}
+						if (updateFields.postTemplate) {
+							body.template = this.getNodeParameter(
+								'updateFields.postTemplate.values.template',
+								i,
+								'',
+							) as string;
+						}
 						if (updateFields.categories) {
 							body.categories = updateFields.categories as number[];
 						}
@@ -231,7 +233,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
 					if (operation === 'get') {
 						const postId = this.getNodeParameter('postId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.password) {
 							qs.password = options.password as string;
 						}
@@ -242,8 +244,8 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						if (options.context) {
 							qs.context = options.context as string;
 						}
@@ -277,21 +279,30 @@ export class Wordpress implements INodeType {
 						if (options.sticky) {
 							qs.sticky = options.sticky as boolean;
 						}
-						if (returnAll === true) {
+						if (options.status) {
+							qs.status = options.status as string;
+						}
+						if (returnAll) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 						}
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
 					if (operation === 'delete') {
 						const postId = this.getNodeParameter('postId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.force) {
 							qs.force = options.force as boolean;
 						}
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/posts/${postId}`, {}, qs);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'DELETE',
+							`/posts/${postId}`,
+							{},
+							qs,
+						);
 					}
 				}
 				if (resource === 'user') {
@@ -303,7 +314,7 @@ export class Wordpress implements INodeType {
 						const lastName = this.getNodeParameter('lastName', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const password = this.getNodeParameter('password', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IUser = {
 							name,
 							username,
@@ -329,7 +340,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
 					if (operation === 'update') {
 						const userId = this.getNodeParameter('userId', i) as number;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IUser = {
 							id: userId,
 						};
@@ -368,7 +379,7 @@ export class Wordpress implements INodeType {
 					//https://developer.wordpress.org/rest-api/reference/users/#retrieve-a-user
 					if (operation === 'get') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.context) {
 							qs.context = options.context as string;
 						}
@@ -376,8 +387,8 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#list-users
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						if (options.context) {
 							qs.context = options.context as string;
 						}
@@ -393,10 +404,10 @@ export class Wordpress implements INodeType {
 						if (options.who) {
 							qs.who = options.who as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 						}
 					}
@@ -405,22 +416,22 @@ export class Wordpress implements INodeType {
 						const reassign = this.getNodeParameter('reassign', i) as string;
 						qs.reassign = reassign;
 						qs.force = true;
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
+						responseData = await wordpressApiRequest.call(this, 'DELETE', '/users/me', {}, qs);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

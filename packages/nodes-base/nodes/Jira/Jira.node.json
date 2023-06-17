@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.jira",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Productivity"
-	],
+	"categories": ["Development", "Productivity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.jira/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jira/"
 			}
 		],
 		"generic": [
@@ -24,8 +21,7 @@
 				"url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
 			},
 			{
-				"label": "Creating Custom Incident Response Workflows with n8n",
-				"icon": "🚨",
+				"label": "How to automate every step of an incident response workflow",
 				"url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/"
 			}
 		]

@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const groupOperations = [
+export const groupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
+				resource: ['group'],
 			},
 		},
 		options: [
@@ -19,18 +16,17 @@ export const groupOperations = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a user to a group',
+				action: 'Add a user to a group',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const groupFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                group:add                                   */
-/* -------------------------------------------------------------------------- */
+export const groupFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                group:add                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -38,15 +34,10 @@ export const groupFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['group'],
+				operation: ['add'],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Group ID',
@@ -55,15 +46,12 @@ export const groupFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['group'],
+				operation: ['add'],
 			},
 		},
-		description: 'A Group ID is the unique identifier which you recognize a group by in your own database',
+		description:
+			'A Group ID is the unique identifier which you recognize a group by in your own database',
 		required: true,
 	},
 	{
@@ -76,12 +64,8 @@ export const groupFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['group'],
+				operation: ['add'],
 			},
 		},
 		default: {},
@@ -95,14 +79,12 @@ export const groupFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -118,12 +100,8 @@ export const groupFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['group'],
+				operation: ['add'],
 			},
 		},
 		default: {},
@@ -136,7 +114,7 @@ export const groupFields = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -144,28 +122,30 @@ export const groupFields = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -319,12 +299,8 @@ export const groupFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['group'],
+				operation: ['add'],
 			},
 		},
 		default: {},
@@ -349,4 +325,4 @@ export const groupFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

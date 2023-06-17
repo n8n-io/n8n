@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const goalKeyResultOperations = [
+export const goalKeyResultOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
+				resource: ['goalKeyResult'],
 			},
 		},
 		options: [
@@ -19,25 +16,26 @@ export const goalKeyResultOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a key result',
+				action: 'Create a goal key result',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a key result',
+				action: 'Delete a goal key result',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a key result',
+				action: 'Update a goal key result',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const goalKeyResultFields = [
-
+export const goalKeyResultFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                goalKeyResult:create                        */
 	/* -------------------------------------------------------------------------- */
@@ -48,12 +46,8 @@ export const goalKeyResultFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goalKeyResult'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -65,12 +59,8 @@ export const goalKeyResultFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goalKeyResult'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -104,12 +94,8 @@ export const goalKeyResultFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goalKeyResult'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -122,12 +108,8 @@ export const goalKeyResultFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goalKeyResult'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -174,7 +156,8 @@ export const goalKeyResultFields = [
 				name: 'unit',
 				type: 'string',
 				default: '',
-				description: `Only matters for type Number and Currency. For Currency the unit must be a valid currency code.`,
+				description:
+					'Only matters for type Number and Currency. For Currency the unit must be a valid currency code.',
 			},
 		],
 	},
@@ -189,12 +172,8 @@ export const goalKeyResultFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['goalKeyResult'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -210,12 +189,8 @@ export const goalKeyResultFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['goalKeyResult'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -228,12 +203,8 @@ export const goalKeyResultFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'goalKeyResult',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['goalKeyResult'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -247,9 +218,6 @@ export const goalKeyResultFields = [
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -284,8 +252,9 @@ export const goalKeyResultFields = [
 				name: 'unit',
 				type: 'string',
 				default: '',
-				description: `Only matters for type Number and Currency. For Currency the unit must be a valid currency code.`,
+				description:
+					'Only matters for type Number and Currency. For Currency the unit must be a valid currency code.',
 			},
 		],
 	},
-] as INodeProperties[];
+];

@@ -1,17 +1,13 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	twilioApiRequest,
-} from './GenericFunctions';
+import { escapeXml, twilioApiRequest } from './GenericFunctions';
 
 export class Twilio implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +20,6 @@ export class Twilio implements INodeType {
 		description: 'Send SMS and WhatsApp messages or make phone calls',
 		defaults: {
 			name: 'Twilio',
-			color: '#cf272d',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -39,25 +34,28 @@ export class Twilio implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
+					{
+						name: 'Call',
+						value: 'call',
+					},
 					{
 						name: 'SMS',
 						value: 'sms',
 					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.',
 			},
 
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
+						resource: ['sms'],
 					},
 				},
 				options: [
@@ -65,19 +63,38 @@ export class Twilio implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS/MMS/WhatsApp message',
+						action: 'Send an SMS/MMS/WhatsApp message',
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['call'],
+					},
+				},
+				options: [
+					{
+						name: 'Make',
+						value: 'make',
+						action: 'Make a call',
+					},
+				],
+				default: 'make',
+			},
 
 			// ----------------------------------
-			//         sms
+			//         sms / call
 			// ----------------------------------
 
 			// ----------------------------------
-			//         sms:send
+			//         sms:send / call:make
 			// ----------------------------------
 			{
 				displayName: 'From',
@@ -88,12 +105,8 @@ export class Twilio implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send', 'make'],
+						resource: ['sms', 'call'],
 					},
 				},
 				description: 'The number from which to send the message',
@@ -107,12 +120,8 @@ export class Twilio implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send', 'make'],
+						resource: ['sms', 'call'],
 					},
 				},
 				description: 'The number to which to send the message',
@@ -124,15 +133,11 @@ export class Twilio implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
-				description: 'If the message should be send to WhatsApp',
+				description: 'Whether the message should be sent to WhatsApp',
 			},
 			{
 				displayName: 'Message',
@@ -142,19 +147,58 @@ export class Twilio implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				description: 'The message to send',
 			},
+			{
+				displayName: 'Use TwiML',
+				name: 'twiml',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: ['make'],
+						resource: ['call'],
+					},
+				},
+				description:
+					'Whether to use the <a href="https://www.twilio.com/docs/voice/twiml">Twilio Markup Language</a> in the message',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['make'],
+						resource: ['call'],
+					},
+				},
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Status Callback',
+						name: 'statusCallback',
+						type: 'string',
+						default: '',
+						description:
+							'Status Callbacks allow you to receive events related to the REST resources managed by Twilio: Rooms, Recordings and Compositions',
+					},
+				],
+			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -178,8 +222,8 @@ export class Twilio implements INodeType {
 				body = {};
 				qs = {};
 
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'sms') {
 					if (operation === 'send') {
@@ -193,18 +237,53 @@ export class Twilio implements INodeType {
 						body.From = this.getNodeParameter('from', i) as string;
 						body.To = this.getNodeParameter('to', i) as string;
 						body.Body = this.getNodeParameter('message', i) as string;
+						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 
 						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
 
-						if (toWhatsapp === true) {
+						if (toWhatsapp) {
 							body.From = `whatsapp:${body.From}`;
 							body.To = `whatsapp:${body.To}`;
 						}
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
+					}
+				} else if (resource === 'call') {
+					if (operation === 'make') {
+						// ----------------------------------
+						//         call:make
+						// ----------------------------------
+
+						requestMethod = 'POST';
+						endpoint = '/Calls.json';
+
+						const message = this.getNodeParameter('message', i) as string;
+						const useTwiml = this.getNodeParameter('twiml', i) as boolean;
+						body.From = this.getNodeParameter('from', i) as string;
+						body.To = this.getNodeParameter('to', i) as string;
+
+						if (useTwiml) {
+							body.Twiml = message;
+						} else {
+							body.Twiml = `<Response><Say>${escapeXml(message)}</Say></Response>`;
+						}
+
+						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
+					} else {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				const responseData = await twilioApiRequest.call(this, requestMethod, endpoint, body, qs);

@@ -1,43 +1,43 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const workItemOperations = [
+export const workItemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform.',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a work item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a work item',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many work items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a work item',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
+				resource: ['workItem'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const workItemFields = [
+export const workItemFields: INodeProperties[] = [
 	// ----------------------------------
 	//         workItem: create
 	// ----------------------------------
@@ -47,36 +47,48 @@ export const workItemFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'Title of the work item to create.',
+		description: 'Title of the work item to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['workItem'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
-		displayName: 'Status ID',
+		displayName: 'Space Name or ID',
+		name: 'spaceId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getSpaces',
+		},
+		default: [],
+		required: true,
+		description:
+			'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				resource: ['workItem'],
+				operation: ['create'],
+			},
+		},
+	},
+	{
+		displayName: 'Status Name or ID',
 		name: 'statusId',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: ['spaceId'],
 			loadOptionsMethod: 'getStatuses',
 		},
 		default: [],
 		required: true,
-		description: 'ID of the status to set on the item to create.',
+		description:
+			'ID of the status to set on the item to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['workItem'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -88,12 +100,8 @@ export const workItemFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['workItem'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -102,9 +110,6 @@ export const workItemFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Description of the item to create. Markdown supported.',
 			},
 			{
@@ -112,7 +117,7 @@ export const workItemFields = [
 				name: 'effort',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Effort to set for the item to create.',
+				description: 'Effort to set for the item to create',
 				options: [
 					{
 						name: 'Small',
@@ -133,7 +138,7 @@ export const workItemFields = [
 				name: 'impact',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Impact to set for the item to create.',
+				description: 'Impact to set for the item to create',
 				options: [
 					{
 						name: 'Small',
@@ -150,24 +155,26 @@ export const workItemFields = [
 				],
 			},
 			{
-				displayName: 'Label IDs',
+				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'ID of the label to set on the item to create.',
+				description:
+					'ID of the label to set on the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Member IDs',
+				displayName: 'Member Names or IDs',
 				name: 'memberIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: 'ID of the user to assign to the item to create.',
+				description:
+					'ID of the user to assign to the item to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -181,15 +188,11 @@ export const workItemFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'ID of the work item to retrieve.',
+		description: 'ID of the work item to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['workItem'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -198,7 +201,7 @@ export const workItemFields = [
 	//         workItem: getAll
 	// ----------------------------------
 	{
-		displayName: 'Space ID',
+		displayName: 'Space Name or ID',
 		name: 'spaceId',
 		type: 'options',
 		typeOptions: {
@@ -206,15 +209,12 @@ export const workItemFields = [
 		},
 		default: [],
 		required: true,
-		description: 'ID of the space to retrieve the work items from.',
+		description:
+			'ID of the space to retrieve the work items from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['workItem'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -223,15 +223,11 @@ export const workItemFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['workItem'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -240,22 +236,16 @@ export const workItemFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['workItem'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -269,15 +259,11 @@ export const workItemFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'ID of the work item to update.',
+		description: 'ID of the work item to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['workItem'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -289,12 +275,8 @@ export const workItemFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'workItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['workItem'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -303,9 +285,6 @@ export const workItemFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Description of the item to update. Markdown supported.',
 			},
 			{
@@ -313,7 +292,7 @@ export const workItemFields = [
 				name: 'effort',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Effort to set for the item to update.',
+				description: 'Effort to set for the item to update',
 				options: [
 					{
 						name: 'Small',
@@ -334,7 +313,7 @@ export const workItemFields = [
 				name: 'impact',
 				type: 'options',
 				default: 'SMALL',
-				description: 'Impact to set for the item to update.',
+				description: 'Impact to set for the item to update',
 				options: [
 					{
 						name: 'Small',
@@ -351,22 +330,23 @@ export const workItemFields = [
 				],
 			},
 			{
-				displayName: 'Status ID',
+				displayName: 'Status Name or ID',
 				name: 'statusId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getStatuses',
 				},
 				default: [],
-				description: 'ID of the status to set on the item to update.',
+				description:
+					'ID of the status to set on the item to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title to set for the work item to update.',
+				description: 'Title to set for the work item to update',
 			},
 		],
 	},
-] as INodeProperties[];
+];

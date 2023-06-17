@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const tagOperations = [
+export const tagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
+				resource: ['tag'],
 			},
 		},
 		options: [
@@ -19,19 +16,20 @@ export const tagOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a tag',
+				action: 'Create a tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all tags',
+				description: 'Get many tags',
+				action: 'Get many tags',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const tagFields = [
+export const tagFields: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -39,12 +37,8 @@ export const tagFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['tag'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -56,16 +50,12 @@ export const tagFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tag',
-				],
+				operation: ['getAll'],
+				resource: ['tag'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -73,15 +63,9 @@ export const tagFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tag',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['tag'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -89,6 +73,6 @@ export const tagFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

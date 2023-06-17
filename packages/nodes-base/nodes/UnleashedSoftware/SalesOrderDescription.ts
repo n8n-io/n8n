@@ -1,33 +1,29 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const salesOrderOperations = [
+export const salesOrderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'salesOrder',
-				],
+				resource: ['salesOrder'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all sales orders',
+				description: 'Get many sales orders',
+				action: 'Get many sales orders',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const salesOrderFields = [
-
+export const salesOrderFields: INodeProperties[] = [
 	/* ------------------------------------------------------------------------- */
 	/*                                salesOrder:getAll                          */
 	/* ------------------------------------------------------------------------- */
@@ -37,16 +33,12 @@ export const salesOrderFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'salesOrder',
-				],
+				operation: ['getAll'],
+				resource: ['salesOrder'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -54,15 +46,9 @@ export const salesOrderFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'salesOrder',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['salesOrder'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -70,7 +56,7 @@ export const salesOrderFields = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -80,12 +66,8 @@ export const salesOrderFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'salesOrder',
-				],
+				operation: ['getAll'],
+				resource: ['salesOrder'],
 			},
 		},
 		options: [
@@ -95,14 +77,15 @@ export const salesOrderFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX',
-				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs',
+				description:
+					'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs.',
 			},
 			{
 				displayName: 'Customer Code',
 				name: 'customerCode',
 				type: 'string',
 				default: '',
-				description: 'Returns orders that start with the specific customer code.',
+				description: 'Returns orders that start with the specific customer code',
 			},
 			{
 				displayName: 'End Date',
@@ -116,14 +99,15 @@ export const salesOrderFields = [
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns orders created or edited after a specified date, must be UTC format.',
+				description: 'Returns orders created or edited after a specified date, must be UTC format',
 			},
 			{
 				displayName: 'Order Number',
 				name: 'orderNumber',
 				type: 'string',
 				default: '',
-				description: 'Returns a single order with the specified order number. If set, it overrides all other filters.',
+				description:
+					'Returns a single order with the specified order number. If set, it overrides all other filters.',
 			},
 			{
 				displayName: 'Order Status',
@@ -152,8 +136,8 @@ export const salesOrderFields = [
 					},
 				],
 				default: [],
-				required: false,
-				description: 'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
+				description:
+					'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
 			},
 			{
 				displayName: 'Start Date',
@@ -164,4 +148,4 @@ export const salesOrderFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

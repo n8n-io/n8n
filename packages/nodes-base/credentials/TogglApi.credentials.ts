@@ -1,13 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TogglApi implements ICredentialType {
 	name = 'togglApi';
+
 	displayName = 'Toggl API';
+
 	documentationUrl = 'toggl';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
@@ -19,6 +18,7 @@ export class TogglApi implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

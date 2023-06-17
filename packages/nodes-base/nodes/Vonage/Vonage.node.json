@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.vonage",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.vonage/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.vonage/"
 			}
 		],
 		"generic": [
@@ -23,5 +21,6 @@
 				"url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/"
 			}
 		]
-	}
+	},
+	"alias": ["SMS"]
 }

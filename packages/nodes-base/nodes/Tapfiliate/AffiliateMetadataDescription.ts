@@ -1,42 +1,41 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const affiliateMetadataOperations = [
+export const affiliateMetadataOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
+				resource: ['affiliateMetadata'],
 			},
 		},
 		options: [
 			{
 				name: 'Add',
 				value: 'add',
-				description: `Add metadata to affiliate`,
+				description: 'Add metadata to affiliate',
+				action: 'Add metadata to an affiliate',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: `Remove metadata from affiliate`,
+				description: 'Remove metadata from affiliate',
+				action: 'Remove metadata from an affiliate',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update affiliate's metadata`,
+				description: "Update affiliate's metadata",
+				action: 'Update metadata for an affiliate',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const affiliateMetadataFields = [
+export const affiliateMetadataFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                         affiliateMetadata:add                              */
 	/* -------------------------------------------------------------------------- */
@@ -45,17 +44,14 @@ export const affiliateMetadataFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['affiliateMetadata'],
+				operation: ['add'],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Metadata',
@@ -64,15 +60,11 @@ export const affiliateMetadataFields = [
 		type: 'fixedCollection',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['affiliateMetadata'],
+				operation: ['add'],
 			},
 		},
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
@@ -87,14 +79,14 @@ export const affiliateMetadataFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the metadata key to add.',
+						description: 'Name of the metadata key to add',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the metadata key.',
+						description: 'Value to set for the metadata key',
 					},
 				],
 			},
@@ -109,17 +101,14 @@ export const affiliateMetadataFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['affiliateMetadata'],
+				operation: ['remove'],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Key',
@@ -127,16 +116,12 @@ export const affiliateMetadataFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['affiliateMetadata'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
-		description: 'Name of the metadata key to remove.',
+		description: 'Name of the metadata key to remove',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -147,17 +132,14 @@ export const affiliateMetadataFields = [
 		name: 'affiliateId',
 		type: 'string',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['affiliateMetadata'],
+				operation: ['update'],
 			},
 		},
-		description: 'The ID of the affiliate.',
+		description: 'The ID of the affiliate',
 	},
 	{
 		displayName: 'Key',
@@ -165,16 +147,12 @@ export const affiliateMetadataFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['affiliateMetadata'],
+				operation: ['update'],
 			},
 		},
 		default: '',
-		description: 'Name of the metadata key to update.',
+		description: 'Name of the metadata key to update',
 	},
 	{
 		displayName: 'Value',
@@ -182,15 +160,11 @@ export const affiliateMetadataFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliateMetadata',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['affiliateMetadata'],
+				operation: ['update'],
 			},
 		},
 		default: '',
-		description: 'Value to set for the metadata key.',
+		description: 'Value to set for the metadata key',
 	},
-] as INodeProperties[];
+];

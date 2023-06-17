@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const feedOperations: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const feedOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
+				resource: ['feed'],
 			},
 		},
 		noDataExpression: true,
@@ -19,26 +15,32 @@ export const feedOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a feed',
 			},
 			{
 				name: 'Disable',
 				value: 'disable',
+				action: 'Disable a feed',
 			},
 			{
 				name: 'Enable',
 				value: 'enable',
+				action: 'Enable a feed',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a feed',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many feeds',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a feed',
 			},
 		],
 		default: 'create',
@@ -57,12 +59,8 @@ export const feedFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['feed'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -74,12 +72,8 @@ export const feedFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['feed'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -92,12 +86,8 @@ export const feedFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['feed'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -109,12 +99,8 @@ export const feedFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['feed'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -126,28 +112,28 @@ export const feedFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'Your Organization Only',
-						value: 0,
-					},
-					{
-						name: 'This Community Only',
-						value: 1,
+						name: 'All Communities',
+						value: 3,
 					},
 					{
 						name: 'Connected Communities',
 						value: 2,
 					},
 					{
-						name: 'All Communities',
-						value: 3,
+						name: 'Inherit Event',
+						value: 5,
 					},
 					{
 						name: 'Sharing Group',
 						value: 4,
 					},
 					{
-						name: 'Inherit Event',
-						value: 5,
+						name: 'This Community Only',
+						value: 1,
+					},
+					{
+						name: 'Your Organization Only',
+						value: 0,
 					},
 				],
 			},
@@ -173,12 +159,8 @@ export const feedFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'disable',
-				],
+				resource: ['feed'],
+				operation: ['disable'],
 			},
 		},
 	},
@@ -195,12 +177,8 @@ export const feedFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'enable',
-				],
+				resource: ['feed'],
+				operation: ['enable'],
 			},
 		},
 	},
@@ -217,12 +195,8 @@ export const feedFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['feed'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -234,12 +208,8 @@ export const feedFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['feed'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -254,15 +224,9 @@ export const feedFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['feed'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -279,12 +243,8 @@ export const feedFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['feed'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -296,12 +256,8 @@ export const feedFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'feed',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['feed'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -313,28 +269,28 @@ export const feedFields: INodeProperties[] = [
 				description: 'Who will be able to see this event once published',
 				options: [
 					{
-						name: 'Your Organization Only',
-						value: 0,
-					},
-					{
-						name: 'This Community Only',
-						value: 1,
+						name: 'All Communities',
+						value: 3,
 					},
 					{
 						name: 'Connected Communities',
 						value: 2,
 					},
 					{
-						name: 'All Communities',
-						value: 3,
+						name: 'Inherit Event',
+						value: 5,
 					},
 					{
 						name: 'Sharing Group',
 						value: 4,
 					},
 					{
-						name: 'Inherit Event',
-						value: 5,
+						name: 'This Community Only',
+						value: 1,
+					},
+					{
+						name: 'Your Organization Only',
+						value: 0,
 					},
 				],
 			},

@@ -1,9 +1,6 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -12,18 +9,15 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	keapApiRequest,
-} from './GenericFunctions';
+import { keapApiRequest } from './GenericFunctions';
 
-import {
-	capitalCase,
- } from 'change-case';
+import { capitalCase } from 'change-case';
 
 export class KeapTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap Trigger',
 		name: 'keapTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:keap.png',
 		group: ['trigger'],
 		version: 1,
@@ -31,7 +25,6 @@ export class KeapTrigger implements INodeType {
 		description: 'Starts the workflow when Infusionsoft events occur',
 		defaults: {
 			name: 'Keap Trigger',
-			color: '#79af53',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -51,9 +44,11 @@ export class KeapTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Event',
+				displayName: 'Event Name or ID',
 				name: 'eventId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',
 				},
@@ -65,14 +60,14 @@ export class KeapTrigger implements INodeType {
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
+				description: 'Whether to return the data exactly in the way it got received from the API',
 			},
 		],
 	};
 
 	methods = {
 		loadOptions: {
-			// Get all the event types to display them to user so that he can
+			// Get all the event types to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -90,7 +85,6 @@ export class KeapTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -101,9 +95,11 @@ export class KeapTrigger implements INodeType {
 				const responseData = await keapApiRequest.call(this, 'GET', '/hooks', {});
 
 				for (const existingData of responseData) {
-					if (existingData.hookUrl === webhookUrl
-					&&	existingData.eventKey === eventId
-					&&	existingData.status === 'Verified') {
+					if (
+						existingData.hookUrl === webhookUrl &&
+						existingData.eventKey === eventId &&
+						existingData.status === 'Verified'
+					) {
 						// The webhook exists already
 						webhookData.webhookId = existingData.key;
 						return true;
@@ -137,7 +133,6 @@ export class KeapTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-
 					try {
 						await keapApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
 					} catch (error) {
@@ -145,7 +140,7 @@ export class KeapTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -157,7 +152,7 @@ export class KeapTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const rawData = this.getNodeParameter('rawData') as boolean;
 		const headers = this.getHeaderData() as IDataObject;
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 
 		if (headers['x-hook-secret']) {
 			// Is a create webhook confirmation request
@@ -171,9 +166,7 @@ export class KeapTrigger implements INodeType {
 
 		if (rawData) {
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray(bodyData),
-				],
+				workflowData: [this.helpers.returnJsonArray(bodyData)],
 			};
 		}
 
@@ -188,9 +181,7 @@ export class KeapTrigger implements INodeType {
 			});
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(responseData),
-			],
+			workflowData: [this.helpers.returnJsonArray(responseData)],
 		};
 	}
 }

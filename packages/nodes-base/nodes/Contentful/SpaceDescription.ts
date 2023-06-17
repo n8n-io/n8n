@@ -1,22 +1,19 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const resource = {
 	name: 'Space',
 	value: 'space',
 };
 
-export const operations = [
+export const operations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
+				resource: [resource.value],
 			},
 		},
 		options: [
@@ -26,8 +23,7 @@ export const operations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fields = [] as INodeProperties[];
+export const fields: INodeProperties[] = [];

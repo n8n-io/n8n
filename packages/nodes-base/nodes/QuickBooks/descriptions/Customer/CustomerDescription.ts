@@ -1,47 +1,45 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	customerAdditionalFieldsOptions,
-} from './CustomerAdditionalFieldsOptions';
+import { customerAdditionalFieldsOptions } from './CustomerAdditionalFieldsOptions';
 
-export const customerOperations = [
+export const customerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a customer',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
+				resource: ['customer'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const customerFields = [
+export const customerFields: INodeProperties[] = [
 	// ----------------------------------
 	//         customer: create
 	// ----------------------------------
@@ -51,15 +49,11 @@ export const customerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The display name of the customer to create.',
+		description: 'The display name of the customer to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -71,12 +65,8 @@ export const customerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		options: customerAdditionalFieldsOptions,
@@ -91,15 +81,11 @@ export const customerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the customer to retrieve.',
+		description: 'The ID of the customer to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customer'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -112,15 +98,11 @@ export const customerFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -128,23 +110,17 @@ export const customerFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -160,21 +136,15 @@ export const customerFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -188,15 +158,11 @@ export const customerFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the customer to update.',
+		description: 'The ID of the customer to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -209,14 +175,10 @@ export const customerFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 		options: customerAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

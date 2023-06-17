@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'surveys_read',
@@ -14,12 +11,20 @@ const scopes = [
 
 export class SurveyMonkeyOAuth2Api implements ICredentialType {
 	name = 'surveyMonkeyOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	displayName = 'SurveyMonkey OAuth2 API';
+
 	documentationUrl = 'surveyMonkey';
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',

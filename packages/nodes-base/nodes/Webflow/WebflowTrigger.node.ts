@@ -1,9 +1,6 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -12,9 +9,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	webflowApiRequest,
-} from './GenericFunctions';
+import { webflowApiRequest } from './GenericFunctions';
 
 export class WebflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +21,6 @@ export class WebflowTrigger implements INodeType {
 		description: 'Handle Webflow events via webhooks',
 		defaults: {
 			name: 'Webflow Trigger',
-			color: '#245bf8',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -36,9 +30,7 @@ export class WebflowTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -47,9 +39,7 @@ export class WebflowTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -78,10 +68,9 @@ export class WebflowTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
-				displayName: 'Site',
+				displayName: 'Site Name or ID',
 				name: 'site',
 				type: 'options',
 				required: true,
@@ -89,7 +78,8 @@ export class WebflowTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getSites',
 				},
-				description: 'Site that will trigger the events',
+				description:
+					'Site that will trigger the events. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event',
@@ -175,7 +165,7 @@ export class WebflowTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the sites to display them to user so that he can
+			// Get all the sites to display them to user so that they can
 			// select them easily
 			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -205,23 +195,30 @@ export class WebflowTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const siteId = this.getNodeParameter('site') as string;
-				if (webhookData.webhookId === undefined) {
-					return false;
+
+				const event = this.getNodeParameter('event') as string;
+				const registeredWebhooks = (await webflowApiRequest.call(
+					this,
+					'GET',
+					`/sites/${siteId}/webhooks`,
+				)) as IDataObject[];
+
+				for (const webhook of registeredWebhooks) {
+					if (webhook.url === webhookUrl && webhook.triggerType === event) {
+						webhookData.webhookId = webhook._id;
+						return true;
+					}
 				}
-				const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
-				try {
-					await webflowApiRequest.call(this, 'GET', endpoint);
-				} catch (error) {
-					return false;
-				}
-				return true;
+
+				return false;
 			},
+
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
@@ -232,7 +229,6 @@ export class WebflowTrigger implements INodeType {
 					site_id: siteId,
 					triggerType: event,
 					url: webhookUrl,
-
 				};
 
 				// if (event.startsWith('collection')) {
@@ -271,9 +267,7 @@ export class WebflowTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

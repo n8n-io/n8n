@@ -1,5 +1,4 @@
 export interface IAccount {
-	// tslint:disable-next-line: no-any
 	[key: string]: any;
 	Name?: string;
 	Fax?: string;
@@ -16,6 +15,7 @@ export interface IAccount {
 	BillingState?: string;
 	ShippingStreet?: string;
 	ShippingCity?: string;
+	AccountNumber?: string;
 	AccountSource?: string;
 	AnnualRevenue?: number;
 	BillingStreet?: string;

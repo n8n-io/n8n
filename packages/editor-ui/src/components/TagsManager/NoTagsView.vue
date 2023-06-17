@@ -3,10 +3,11 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">Ready to organize your workflows?</div>
+				<div class="headline">
+					{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}
+				</div>
 				<div class="description">
-					With workflow tags, you're free to create the perfect tagging system for
-					your flows
+					{{ $locale.baseText('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>
 			</div>
 			<n8n-button label="Create a tag" size="large" @click="$emit('enableCreate')" />
@@ -15,10 +16,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 
-import Vue from 'vue';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'NoTagsView',
 });
 </script>
@@ -43,18 +43,18 @@ $--footer-spacing: 45px;
 }
 
 .icon {
-  font-size: 36px;
-  line-height: 14px;
+	font-size: 36px;
+	line-height: 14px;
 }
 
 .headline {
-  font-size: 17.6px;
-  color: black;
-  margin-bottom: 12px;
+	font-size: 17.6px;
+	color: black;
+	margin-bottom: 12px;
 }
 
 .description {
-  font-size: 14px;
-  line-height: 21px;
+	font-size: 14px;
+	line-height: 21px;
 }
 </style>

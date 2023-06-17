@@ -1,13 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Amqp implements ICredentialType {
 	name = 'amqp';
+
 	displayName = 'AMQP';
+
 	documentationUrl = 'amqp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Hostname',
@@ -41,7 +40,7 @@ export class Amqp implements ICredentialType {
 			name: 'transportType',
 			type: 'string',
 			default: '',
-			description: 'Optional Transport Type to use.',
+			description: 'Optional Transport Type to use',
 		},
 	];
 }

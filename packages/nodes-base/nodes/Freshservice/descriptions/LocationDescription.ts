@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const locationOperations = [
+export const locationOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
+				resource: ['location'],
 			},
 		},
 		options: [
@@ -19,33 +16,38 @@ export const locationOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a location',
+				action: 'Create a location',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a location',
+				action: 'Delete a location',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a location',
+				action: 'Get a location',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all locations',
+				description: 'Retrieve many locations',
+				action: 'Get many locations',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a location',
+				action: 'Update a location',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const locationFields = [
+export const locationFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             location: create
 	// ----------------------------------------
@@ -58,12 +60,8 @@ export const locationFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['location'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -75,12 +73,8 @@ export const locationFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['location'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -150,12 +144,8 @@ export const locationFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['location'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -172,12 +162,8 @@ export const locationFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['location'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -193,12 +179,8 @@ export const locationFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['location'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -207,21 +189,15 @@ export const locationFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['location'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -238,12 +214,8 @@ export const locationFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['location'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -255,12 +227,8 @@ export const locationFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'location',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['location'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -323,4 +291,4 @@ export const locationFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

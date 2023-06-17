@@ -15,7 +15,7 @@ export type RequestedAttributes = {
 	[key: string]: {
 		scoreType?: string;
 		scoreThreshold?: {
-			value: number
+			value: number;
 		};
 	};
 };

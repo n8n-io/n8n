@@ -1,23 +1,19 @@
-import {
-	INodeProperties,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 export const resource = {
 	name: 'Content Type',
 	value: 'contentType',
 } as INodePropertyOptions;
 
-export const operations = [
+export const operations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
+				resource: [resource.value],
 			},
 		},
 		options: [
@@ -27,27 +23,23 @@ export const operations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fields = [
+export const fields: INodeProperties[] = [
 	{
 		displayName: 'Environment ID',
 		name: 'environmentId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-				],
+				resource: [resource.value],
+				operation: ['get'],
 			},
 		},
 		default: 'master',
-		description: 'The id for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
+		description:
+			'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
 		displayName: 'Content Type ID',
@@ -57,12 +49,8 @@ export const fields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-				],
+				resource: [resource.value],
+				operation: ['get'],
 			},
 		},
 	},
@@ -74,12 +62,8 @@ export const fields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-				],
+				resource: [resource.value],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -88,8 +72,8 @@ export const fields = [
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'If the data should be returned RAW instead of parsed.',
+				description: 'Whether the data should be returned RAW instead of parsed',
 			},
 		],
 	},
-] as INodeProperties[];
+];

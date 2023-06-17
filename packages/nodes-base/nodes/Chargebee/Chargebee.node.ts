@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 	NodeParameterValue,
 } from 'n8n-workflow';
-
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 interface CustomProperty {
 	name: string;
@@ -23,11 +22,11 @@ interface FilterValues {
 	[key: string]: FilterValue[];
 }
 
-
 export class Chargebee implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chargebee',
 		name: 'chargebee',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:chargebee.png',
 		group: ['input'],
 		version: 1,
@@ -35,7 +34,6 @@ export class Chargebee implements INodeType {
 		description: 'Retrieve data from Chargebee API',
 		defaults: {
 			name: 'Chargebee',
-			color: '#22BB11',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -50,6 +48,7 @@ export class Chargebee implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Customer',
@@ -65,10 +64,7 @@ export class Chargebee implements INodeType {
 					},
 				],
 				default: 'invoice',
-				description: 'The resource to operate on.',
 			},
-
-
 
 			// ----------------------------------
 			//         customer
@@ -77,11 +73,10 @@ export class Chargebee implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'customer',
-						],
+						resource: ['customer'],
 					},
 				},
 				options: [
@@ -89,10 +84,10 @@ export class Chargebee implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a customer',
+						action: 'Create a customer',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -104,12 +99,8 @@ export class Chargebee implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'customer',
-						],
+						operation: ['create'],
+						resource: ['customer'],
 					},
 				},
 				default: {},
@@ -117,52 +108,53 @@ export class Chargebee implements INodeType {
 				placeholder: 'Add Property',
 				options: [
 					{
-						displayName: 'User Id',
+						displayName: 'User ID',
 						name: 'id',
 						type: 'string',
 						default: '',
-						description: 'Id for the new customer. If not given, this will be auto-generated.',
+						description: 'ID for the new customer. If not given, this will be auto-generated.',
 					},
 					{
 						displayName: 'First Name',
 						name: 'first_name',
 						type: 'string',
 						default: '',
-						description: 'The first name of the customer.',
+						description: 'The first name of the customer',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
-						description: 'The last name of the customer.',
+						description: 'The last name of the customer',
 					},
 					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
-						description: 'The email address of the customer.',
+						description: 'The email address of the customer',
 					},
 					{
 						displayName: 'Phone',
 						name: 'phone',
 						type: 'string',
 						default: '',
-						description: 'The phone number of the customer.',
+						description: 'The phone number of the customer',
 					},
 					{
 						displayName: 'Company',
 						name: 'company',
 						type: 'string',
 						default: '',
-						description: 'The company of the customer.',
+						description: 'The company of the customer',
 					},
 					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
 						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
+						description: 'Adds a custom property to set also values which have not been predefined',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -178,24 +170,21 @@ export class Chargebee implements INodeType {
 										name: 'name',
 										type: 'string',
 										default: '',
-										description: 'Name of the property to set.',
+										description: 'Name of the property to set',
 									},
 									{
 										displayName: 'Property Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'Value of the property to set.',
+										description: 'Value of the property to set',
 									},
 								],
 							},
 						],
 					},
-
 				],
 			},
-
-
 
 			// ----------------------------------
 			//         invoice
@@ -204,13 +193,11 @@ export class Chargebee implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				default: 'list',
-				description: 'The operation to perform.',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'invoice',
-						],
+						resource: ['invoice'],
 					},
 				},
 				options: [
@@ -218,11 +205,13 @@ export class Chargebee implements INodeType {
 						name: 'List',
 						value: 'list',
 						description: 'Return the invoices',
+						action: 'List an invoice',
 					},
 					{
 						name: 'PDF Invoice URL',
 						value: 'pdfUrl',
 						description: 'Get URL for the invoice PDF',
+						action: 'Get URL for the invoice PDF',
 					},
 				],
 			},
@@ -231,7 +220,7 @@ export class Chargebee implements INodeType {
 			//         invoice:list
 			// ----------------------------------
 			{
-				displayName: 'Max results',
+				displayName: 'Max Results',
 				name: 'maxResults',
 				type: 'number',
 				typeOptions: {
@@ -241,12 +230,8 @@ export class Chargebee implements INodeType {
 				default: 10,
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'invoice',
-						],
+						operation: ['list'],
+						resource: ['invoice'],
 					},
 				},
 				description: 'Max. amount of results to return(< 100).',
@@ -255,7 +240,7 @@ export class Chargebee implements INodeType {
 				displayName: 'Filters',
 				name: 'filters',
 				placeholder: 'Add Filter',
-				description: 'Filter for invoices.',
+				description: 'Filter for invoices',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -263,12 +248,8 @@ export class Chargebee implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'invoice',
-						],
+						operation: ['list'],
+						resource: ['invoice'],
 					},
 				},
 				options: [
@@ -280,6 +261,7 @@ export class Chargebee implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: [
 									{
 										name: 'Is',
@@ -297,17 +279,16 @@ export class Chargebee implements INodeType {
 										name: 'Before',
 										value: 'before',
 									},
-
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Date',
 								name: 'value',
 								type: 'dateTime',
 								default: '',
-								description: 'Query date.',
+								description: 'Query date',
 							},
 						],
 					},
@@ -319,7 +300,16 @@ export class Chargebee implements INodeType {
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								noDataExpression: true,
 								options: [
+									{
+										name: 'Greater Equal Than',
+										value: 'gte',
+									},
+									{
+										name: 'Greater Than',
+										value: 'gt',
+									},
 									{
 										name: 'Is',
 										value: 'is',
@@ -329,24 +319,16 @@ export class Chargebee implements INodeType {
 										value: 'is_not',
 									},
 									{
-										name: 'Greater than',
-										value: 'gt',
-									},
-									{
-										name: 'Greater equal than',
-										value: 'gte',
-									},
-									{
-										name: 'Less than',
-										value: 'lt',
-									},
-									{
-										name: 'Less equal than',
+										name: 'Less Equal Than',
 										value: 'lte',
+									},
+									{
+										name: 'Less Than',
+										value: 'lt',
 									},
 								],
 								default: 'gt',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Amount',
@@ -356,7 +338,7 @@ export class Chargebee implements INodeType {
 									numberPrecision: 2,
 								},
 								default: 0,
-								description: 'Query amount.',
+								description: 'Query amount',
 							},
 						],
 					},
@@ -367,25 +349,19 @@ export class Chargebee implements INodeType {
 			//         invoice:pdfUrl
 			// ----------------------------------
 			{
-				displayName: 'Invoice Id',
+				displayName: 'Invoice ID',
 				name: 'invoiceId',
-				description: 'The id of the invoice to get.',
+				description: 'The ID of the invoice to get',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'pdfUrl',
-						],
-						resource: [
-							'invoice',
-						],
+						operation: ['pdfUrl'],
+						resource: ['invoice'],
 					},
 				},
 			},
-
-
 
 			// ----------------------------------
 			//         subscription
@@ -394,11 +370,10 @@ export class Chargebee implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'subscription',
-						],
+						resource: ['subscription'],
 					},
 				},
 				options: [
@@ -406,93 +381,76 @@ export class Chargebee implements INodeType {
 						name: 'Cancel',
 						value: 'cancel',
 						description: 'Cancel a subscription',
+						action: 'Cancel a subscription',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a subscription',
+						action: 'Delete a subscription',
 					},
 				],
 				default: 'delete',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
 			//         subscription:cancel
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
+				displayName: 'Subscription ID',
 				name: 'subscriptionId',
-				description: 'The id of the subscription to cancel.',
+				description: 'The ID of the subscription to cancel',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'cancel',
-						],
-						resource: [
-							'subscription',
-						],
+						operation: ['cancel'],
+						resource: ['subscription'],
 					},
 				},
 			},
 			{
-				displayName: 'Schedule end of Term',
+				displayName: 'Schedule End of Term',
 				name: 'endOfTerm',
 				type: 'boolean',
 				default: false,
 				displayOptions: {
 					show: {
-						operation: [
-							'cancel',
-						],
-						resource: [
-							'subscription',
-						],
+						operation: ['cancel'],
+						resource: ['subscription'],
 					},
 				},
-				description: 'If set it will not cancel it directly in will instead schedule the cancelation for the end of the term..',
+				description:
+					'Whether it will not cancel it directly in will instead schedule the cancelation for the end of the term',
 			},
 
 			// ----------------------------------
 			//         subscription:delete
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
+				displayName: 'Subscription ID',
 				name: 'subscriptionId',
-				description: 'The id of the subscription to delete.',
+				description: 'The ID of the subscription to delete',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'subscription',
-						],
+						operation: ['delete'],
+						resource: ['subscription'],
 					},
 				},
 			},
-
 		],
 	};
 
-
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		let item: INodeExecutionData;
+		const returnData: INodeExecutionData[] = [];
+		let _item: INodeExecutionData;
 
 		const credentials = await this.getCredentials('chargebeeApi');
-
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 
 		const baseUrl = `https://${credentials.accountName}.chargebee.com/api/v2`;
 
@@ -503,9 +461,9 @@ export class Chargebee implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				item = items[i];
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				_item = items[i];
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 
 				let requestMethod = 'GET';
 				let endpoint = '';
@@ -522,8 +480,12 @@ export class Chargebee implements INodeType {
 						const properties = this.getNodeParameter('properties', i, {}) as IDataObject;
 
 						for (const key of Object.keys(properties)) {
-							if (key === 'customProperties' && (properties.customProperties as IDataObject).property !== undefined) {
-								for (const customProperty of (properties.customProperties as IDataObject)!.property! as CustomProperty[]) {
+							if (
+								key === 'customProperties' &&
+								(properties.customProperties as IDataObject).property !== undefined
+							) {
+								for (const customProperty of (properties.customProperties as IDataObject)!
+									.property! as CustomProperty[]) {
 									qs[customProperty.name] = customProperty.value;
 								}
 							} else {
@@ -531,11 +493,14 @@ export class Chargebee implements INodeType {
 							}
 						}
 
-						endpoint = `customers`;
+						endpoint = 'customers';
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'invoice') {
 					if (operation === 'list') {
 						// ----------------------------------
@@ -548,7 +513,11 @@ export class Chargebee implements INodeType {
 
 						qs.limit = this.getNodeParameter('maxResults', i, {});
 
-						const setFilters: FilterValues = this.getNodeParameter('filters', i, {}) as unknown as FilterValues;
+						const setFilters: FilterValues = this.getNodeParameter(
+							'filters',
+							i,
+							{},
+						) as unknown as FilterValues;
 
 						let filter: FilterValue;
 						let value: NodeParameterValue;
@@ -571,9 +540,12 @@ export class Chargebee implements INodeType {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
 						endpoint = `invoices/${invoiceId.trim()}/pdf`;
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
-
 				} else if (resource === 'subscription') {
 					if (operation === 'cancel') {
 						// ----------------------------------
@@ -597,10 +569,16 @@ export class Chargebee implements INodeType {
 
 						endpoint = `subscriptions/${subscriptionId.trim()}/delete`;
 					} else {
-						throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not known!`,
+							{ itemIndex: i },
+						);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`);
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				const options = {
@@ -618,33 +596,45 @@ export class Chargebee implements INodeType {
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request!(options);
+					responseData = await this.helpers.request(options);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				if (resource === 'invoice' && operation === 'list') {
 					responseData.list.forEach((data: IDataObject) => {
-						returnData.push(data.invoice as IDataObject);
+						responseData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ ...(data.invoice as IDataObject) }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...responseData);
 					});
 				} else if (resource === 'invoice' && operation === 'pdfUrl') {
 					const data: IDataObject = {};
 					Object.assign(data, items[i].json);
 
 					data.pdfUrl = responseData.download.download_url;
-					returnData.push(data);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ ...data }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...responseData);
 				} else {
-					returnData.push(responseData);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...responseData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

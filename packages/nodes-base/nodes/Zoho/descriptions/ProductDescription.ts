@@ -1,22 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeCustomFieldsFixedCollection,
-	makeGetAllFields,
-} from './SharedFields';
+import { makeCustomFieldsFixedCollection, makeGetAllFields } from './SharedFields';
 
-export const productOperations = [
+export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -24,39 +18,44 @@ export const productOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a product',
+				action: 'Create a product',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a product',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a product',
+				action: 'Delete a product',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a product',
+				action: 'Get a product',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all products',
+				description: 'Get many products',
+				action: 'Get many products',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a product',
+				action: 'Update a product',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const productFields = [
+export const productFields: INodeProperties[] = [
 	// ----------------------------------------
 	//           product: create
 	// ----------------------------------------
@@ -68,12 +67,8 @@ export const productFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -84,18 +79,15 @@ export const productFields = [
 	{
 		displayName: 'Product Name',
 		name: 'productName',
-		description: 'Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the product. If a record with this product name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['product'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -111,13 +103,8 @@ export const productFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['product'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -198,18 +185,14 @@ export const productFields = [
 	{
 		displayName: 'Product ID',
 		name: 'productId',
-		description: 'ID of the product to delete.',
+		description: 'ID of the product to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['product'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -220,18 +203,14 @@ export const productFields = [
 	{
 		displayName: 'Product ID',
 		name: 'productId',
-		description: 'ID of the product to retrieve.',
+		description: 'ID of the product to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['product'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -247,18 +226,14 @@ export const productFields = [
 	{
 		displayName: 'Product ID',
 		name: 'productId',
-		description: 'ID of the product to update.',
+		description: 'ID of the product to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -270,12 +245,8 @@ export const productFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -349,4 +320,4 @@ export const productFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

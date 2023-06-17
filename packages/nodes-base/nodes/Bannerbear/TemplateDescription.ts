@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const templateOperations = [
+export const templateOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'template',
-				],
+				resource: ['template'],
 			},
 		},
 		options: [
@@ -19,23 +16,23 @@ export const templateOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a template',
+				action: 'Get a template',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all templates',
+				description: 'Get many templates',
+				action: 'Get many templates',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const templateFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 template:get                               */
-/* -------------------------------------------------------------------------- */
+export const templateFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 template:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Template ID',
 		name: 'templateId',
@@ -44,14 +41,10 @@ export const templateFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'template',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['template'],
+				operation: ['get'],
 			},
 		},
-		description: 'Unique identifier for the template.',
+		description: 'Unique identifier for the template',
 	},
-] as INodeProperties[];
+];

@@ -1,18 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const inviteOperations = [
+export const inviteOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
+				resource: ['invite'],
 			},
 		},
 		options: [
@@ -20,27 +17,25 @@ export const inviteOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an invite for a company/user',
+				action: 'Create an invite',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const inviteFields = [
+export const inviteFields: INodeProperties[] = [
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -52,12 +47,8 @@ export const inviteFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -69,12 +60,8 @@ export const inviteFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -87,12 +74,8 @@ export const inviteFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -103,12 +86,8 @@ export const inviteFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -129,14 +108,15 @@ export const inviteFields = [
 			},
 			{
 				displayName: 'Grade to Maintain',
-				description: 'Request the invitee\'s organisation to maintain a minimum grade',
+				description: "Request the invitee's organisation to maintain a minimum grade",
 				name: 'grade_to_maintain',
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Is Organisation Point of Contact',
-				description: 'Is the invitee organisation\'s point of contact',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: "Is the invitee organisation's point of contact",
 				name: 'is_organization_point_of_contact',
 				type: 'boolean',
 				default: false,
@@ -162,7 +142,7 @@ export const inviteFields = [
 			{
 				displayName: 'Send Me a Copy',
 				name: 'sendme_copy',
-				description: 'Send a copy of the invite to the requesting user',
+				description: 'Whether to send a copy of the invite to the requesting user',
 				type: 'boolean',
 				default: false,
 			},
@@ -175,4 +155,4 @@ export const inviteFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

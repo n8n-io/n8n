@@ -1,47 +1,48 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const taskOperations = [
+export const taskOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource: ['task'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a task',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a task',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many tasks',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a task',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const taskFields = [
+export const taskFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               task: create
 	// ----------------------------------------
@@ -53,12 +54,8 @@ export const taskFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -70,12 +67,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['task'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -84,14 +77,14 @@ export const taskFields = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the task to create.',
+				description: 'ID of the user who will own the task to create',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description of the task to create.',
+				description: 'Description of the task to create',
 			},
 			{
 				displayName: 'Priority',
@@ -134,18 +127,14 @@ export const taskFields = [
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
-		description: 'ID of the task to delete.',
+		description: 'ID of the task to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['task'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -156,18 +145,14 @@ export const taskFields = [
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
-		description: 'ID of the task to retrieve.',
+		description: 'ID of the task to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['task'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -180,15 +165,11 @@ export const taskFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -197,22 +178,16 @@ export const taskFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['task'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -224,12 +199,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['task'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -238,14 +209,14 @@ export const taskFields = [
 				name: 'assignee_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of assignee IDs to filter by.',
+				description: 'Comma-separated IDs of assignee IDs to filter by',
 			},
 			{
 				displayName: 'Project IDs',
 				name: 'project_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of project IDs to filter by.',
+				description: 'Comma-separated IDs of project IDs to filter by',
 			},
 		],
 	},
@@ -256,18 +227,14 @@ export const taskFields = [
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
-		description: 'ID of the task to update.',
+		description: 'ID of the task to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -279,12 +246,8 @@ export const taskFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -293,21 +256,21 @@ export const taskFields = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the task.',
+				description: 'ID of the user who will own the task',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the task.',
+				description: 'Description to set for the task',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the task.',
+				description: 'Name to set for the task',
 			},
 			{
 				displayName: 'Priority',
@@ -343,4 +306,4 @@ export const taskFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

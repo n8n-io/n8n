@@ -1,5 +1,7 @@
+import type { INodeProperties } from 'n8n-workflow';
+
 // for companies, leads, persons
-export const addressFixedCollection = {
+export const addressFixedCollection: INodeProperties = {
 	displayName: 'Address',
 	name: 'address',
 	placeholder: 'Add Address Fields',
@@ -39,7 +41,7 @@ export const addressFixedCollection = {
 					name: 'country',
 					type: 'string',
 					default: '',
-					description: 'ISO 3166 alpha-2 country code.',
+					description: 'ISO 3166 alpha-2 country code',
 				},
 			],
 		},
@@ -47,7 +49,7 @@ export const addressFixedCollection = {
 };
 
 // for companies, leads, persons
-export const phoneNumbersFixedCollection = {
+export const phoneNumbersFixedCollection: INodeProperties = {
 	displayName: 'Phone Numbers',
 	name: 'phone_numbers',
 	placeholder: 'Add Phone Number',
@@ -79,7 +81,7 @@ export const phoneNumbersFixedCollection = {
 };
 
 // for persons, multiple emails
-export const emailsFixedCollection = {
+export const emailsFixedCollection: INodeProperties = {
 	displayName: 'Emails',
 	name: 'emails',
 	placeholder: 'Add Email',
@@ -97,6 +99,7 @@ export const emailsFixedCollection = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{
@@ -111,7 +114,7 @@ export const emailsFixedCollection = {
 };
 
 // for leads, single email
-export const emailFixedCollection = {
+export const emailFixedCollection: INodeProperties = {
 	displayName: 'Email',
 	name: 'email',
 	placeholder: 'Add Email',
@@ -126,6 +129,7 @@ export const emailFixedCollection = {
 					displayName: 'Email',
 					name: 'email',
 					type: 'string',
+					placeholder: 'name@email.com',
 					default: '',
 				},
 				{

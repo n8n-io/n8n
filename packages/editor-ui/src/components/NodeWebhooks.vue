@@ -1,139 +1,137 @@
 <template>
-	<div v-if="webhooksNode.length" class="webhoooks">
-		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
+	<div v-if="webhooksNode.length" class="webhooks">
+		<div
+			class="clickable headline"
+			:class="{ expanded: !isMinimized }"
+			@click="isMinimized = !isMinimized"
+			:title="
+				isMinimized
+					? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls')
+					: $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')
+			"
+		>
 			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
-			Webhook URLs
+			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
 				<div class="url-selection">
 					<el-row>
 						<el-col :span="24">
-							<el-radio-group v-model="showUrlFor" size="mini">
-								<el-radio-button label="test">Test URL</el-radio-button>
-								<el-radio-button label="production">Production URL</el-radio-button>
-							</el-radio-group>
+							<n8n-radio-buttons
+								v-model="showUrlFor"
+								:options="[
+									{ label: this.$locale.baseText('nodeWebhooks.testUrl'), value: 'test' },
+									{
+										label: this.$locale.baseText('nodeWebhooks.productionUrl'),
+										value: 'production',
+									},
+								]"
+							/>
 						</el-col>
 					</el-row>
 				</div>
 
-				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  content="Click to copy Webhook URL" placement="left">
+				<n8n-tooltip
+					v-for="(webhook, index) in webhooksNode"
+					:key="index"
+					class="item"
+					:content="$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls')"
+					placement="left"
+				>
 					<div class="webhook-wrapper">
-							<div class="http-field">
-								<div class="http-method">
-									{{getValue(webhook, 'httpMethod')}}<br />
-								</div>
+						<div class="http-field">
+							<div class="http-method">
+								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
 							</div>
-							<div class="url-field">
-								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-									{{getWebhookUrlDisplay(webhook)}}<br />
-								</div>
+						</div>
+						<div class="url-field">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
 							</div>
+						</div>
 					</div>
 				</n8n-tooltip>
-
 			</div>
 		</el-collapse-transition>
 	</div>
 </template>
 
 <script lang="ts">
-import {
-	INodeTypeDescription,
-	IWebhookDescription,
-	NodeHelpers,
-} from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 
 import { WEBHOOK_NODE_TYPE } from '@/constants';
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { copyPaste } from '@/mixins/copyPaste';
+import { useToast } from '@/composables';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
+export default defineComponent({
+	name: 'NodeWebhooks',
+	mixins: [copyPaste, workflowHelpers],
+	props: [
+		'node', // NodeUi
+		'nodeType', // INodeTypeDescription
+	],
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
+	data() {
+		return {
+			isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
+			showUrlFor: 'test',
+		};
+	},
+	computed: {
+		webhooksNode(): IWebhookDescription[] {
+			if (this.nodeType === null || this.nodeType.webhooks === undefined) {
+				return [];
+			}
 
-export default mixins(
-	copyPaste,
-	showMessage,
-	workflowHelpers,
-)
-	.extend({
-		name: 'NodeWebhooks',
-		props: [
-			'node', // NodeUi
-			'nodeType', // INodeTypeDescription
-		],
-		data () {
-			return {
-				isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
-				showUrlFor: 'test',
-			};
+			return (this.nodeType as INodeTypeDescription).webhooks!.filter(
+				(webhookData) => webhookData.restartWebhook !== true,
+			);
 		},
-		computed: {
-			webhooksNode (): IWebhookDescription[] {
-				if (this.nodeType === null || this.nodeType.webhooks === undefined) {
-					return [];
-				}
+	},
+	methods: {
+		copyWebhookUrl(webhookData: IWebhookDescription): void {
+			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
+			this.copyToClipboard(webhookUrl);
 
-				return (this.nodeType as INodeTypeDescription).webhooks!.filter(webhookData => webhookData.restartWebhook !== true);
-			},
+			this.showMessage({
+				title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+				type: 'success',
+			});
+			this.$telemetry.track('User copied webhook URL', {
+				pane: 'parameters',
+				type: `${this.showUrlFor} url`,
+			});
 		},
-		methods: {
-			copyWebhookUrl (webhookData: IWebhookDescription): void {
-				const webhookUrl = this.getWebhookUrl(webhookData);
-				this.copyToClipboard(webhookUrl);
-
-				this.$showMessage({
-					title: 'Copied',
-					message: `The webhook URL was successfully copied!`,
-					type: 'success',
-				});
-			},
-			getValue (webhookData: IWebhookDescription, key: string): string {
-				if (webhookData[key] === undefined) {
-					return 'empty';
-				}
-				try {
-					return this.resolveExpression(webhookData[key] as string) as string;
-				} catch (e) {
-					return '[INVALID EXPRESSION]';
-				}
-			},
-			getWebhookUrl (webhookData: IWebhookDescription): string {
-				if (webhookData.restartWebhook === true) {
-					return '$resumeWebhookUrl';
-				}
-				let baseUrl = this.$store.getters.getWebhookUrl;
-				if (this.showUrlFor === 'test') {
-					baseUrl = this.$store.getters.getWebhookTestUrl;
-				}
-
-				const workflowId = this.$store.getters.workflowId;
-				const path = this.getValue(webhookData, 'path');
-				const isFullPath = this.getValue(webhookData, 'isFullPath') as unknown as boolean || false;
-
-				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
-			},
-			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
-				return this.getWebhookUrl(webhookData);
-			},
+		getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
+			if (this.node) {
+				return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+			}
+			return '';
 		},
-		watch: {
-			node () {
-				this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_TYPE;
-			},
+	},
+	watch: {
+		node() {
+			this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_TYPE;
 		},
-	});
+	},
+});
 </script>
 
 <style scoped lang="scss">
-
-.webhoooks {
+.webhooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid var(--color-text-lighter);
 
 	.headline {
-		color: $--color-primary;
+		color: $color-primary;
 		font-weight: 600;
 		font-size: var(--font-size-2xs);
 	}
@@ -143,11 +141,11 @@ export default mixins(
 	position: absolute;
 	width: 50px;
 	display: inline-block;
-	top: calc(50% - 8px)
+	top: calc(50% - 8px);
 }
 
 .http-method {
-	background-color: green;
+	background-color: var(--color-foreground-xdark);
 	width: 40px;
 	height: 16px;
 	line-height: 16px;
@@ -156,7 +154,7 @@ export default mixins(
 	border-radius: 2px;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: #fff;
+	color: var(--color-foreground-xlight);
 }
 
 .minimize-icon {
@@ -209,7 +207,7 @@ export default mixins(
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
-	color: #404040;
+	color: var(--color-text-dark);
 	text-align: left;
 	direction: ltr;
 	word-break: break-all;
@@ -219,7 +217,7 @@ export default mixins(
 	line-height: 1.5;
 	position: relative;
 	margin-top: var(--spacing-xs);
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border-radius: 3px;
 }
 </style>

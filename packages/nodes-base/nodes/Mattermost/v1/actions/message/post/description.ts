@@ -1,10 +1,8 @@
-import {
-	MessageProperties,
-} from '../../Interfaces';
+import type { MessageProperties } from '../../Interfaces';
 
 export const messagePostDescription: MessageProperties = [
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
 		typeOptions: {
@@ -15,35 +13,25 @@ export const messagePostDescription: MessageProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
-		description: 'The ID of the channel to post to.',
+		description:
+			'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
-		description: 'The text to send.',
+		description: 'The text to send',
 	},
 	{
 		displayName: 'Attachments',
@@ -55,12 +43,8 @@ export const messagePostDescription: MessageProperties = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
 		default: {},
@@ -71,7 +55,8 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Actions',
 				name: 'actions',
 				placeholder: 'Add Actions',
-				description: 'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>',
+				description:
+					'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>.',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -97,7 +82,7 @@ export const messagePostDescription: MessageProperties = [
 									},
 								],
 								default: 'button',
-								description: 'The type of the action.',
+								description: 'The type of the action',
 							},
 							{
 								displayName: 'Data Source',
@@ -105,9 +90,7 @@ export const messagePostDescription: MessageProperties = [
 								type: 'options',
 								displayOptions: {
 									show: {
-										type: [
-											'select',
-										],
+										type: ['select'],
 									},
 								},
 								options: [
@@ -123,28 +106,23 @@ export const messagePostDescription: MessageProperties = [
 										name: 'Users',
 										value: 'users',
 									},
-
 								],
 								default: 'custom',
-								description: 'The type of the action.',
+								description: 'The type of the action',
 							},
 							{
 								displayName: 'Options',
 								name: 'options',
 								placeholder: 'Add Option',
-								description: 'Adds a new option to select field.',
+								description: 'Adds a new option to select field',
 								type: 'fixedCollection',
 								typeOptions: {
 									multipleValues: true,
 								},
 								displayOptions: {
 									show: {
-										data_source: [
-											'custom',
-										],
-										type: [
-											'select',
-										],
+										data_source: ['custom'],
+										type: ['select'],
 									},
 								},
 								default: {},
@@ -159,14 +137,14 @@ export const messagePostDescription: MessageProperties = [
 												name: 'text',
 												type: 'string',
 												default: '',
-												description: 'Text of the option.',
+												description: 'Text of the option',
 											},
 											{
 												displayName: 'Option Value',
 												name: 'value',
 												type: 'string',
 												default: '',
-												description: 'Value of the option.',
+												description: 'Value of the option',
 											},
 										],
 									},
@@ -177,13 +155,13 @@ export const messagePostDescription: MessageProperties = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'Name of the Action.',
+								description: 'Name of the Action',
 							},
 							{
 								displayName: 'Integration',
 								name: 'integration',
 								placeholder: 'Add Integration',
-								description: 'Integration to add to message.',
+								description: 'Integration to add to message',
 								type: 'fixedCollection',
 								typeOptions: {
 									multipleValues: false,
@@ -200,13 +178,13 @@ export const messagePostDescription: MessageProperties = [
 												name: 'url',
 												type: 'string',
 												default: '',
-												description: 'URL of the Integration.',
+												description: 'URL of the Integration',
 											},
 											{
 												displayName: 'Context',
 												name: 'context',
 												placeholder: 'Add Context to Integration',
-												description: 'Adds a Context values set.',
+												description: 'Adds a Context values set',
 												type: 'fixedCollection',
 												typeOptions: {
 													multipleValues: true,
@@ -223,14 +201,14 @@ export const messagePostDescription: MessageProperties = [
 																name: 'name',
 																type: 'string',
 																default: '',
-																description: 'Name of the property to set.',
+																description: 'Name of the property to set',
 															},
 															{
 																displayName: 'Property Value',
 																name: 'value',
 																type: 'string',
 																default: '',
-																description: 'Value of the property to set.',
+																description: 'Value of the property to set',
 															},
 														],
 													},
@@ -248,51 +226,42 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Author Icon',
 				name: 'author_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Icon which should appear for the user.',
+				description: 'Icon which should appear for the user',
 			},
 			{
 				displayName: 'Author Link',
 				name: 'author_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Link for the author.',
+				description: 'Link for the author',
 			},
 			{
 				displayName: 'Author Name',
 				name: 'author_name',
 				type: 'string',
 				default: '',
-				description: 'Name that should appear.',
+				description: 'Name that should appear',
 			},
 			{
 				displayName: 'Color',
 				name: 'color',
 				type: 'color',
 				default: '#ff0000',
-				description: 'Color of the line left of text.',
+				description: 'Color of the line left of text',
 			},
 			{
 				displayName: 'Fallback Text',
 				name: 'fallback',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Required plain-text summary of the attachment.',
+				description: 'Required plain-text summary of the attachment',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				placeholder: 'Add Fields',
-				description: 'Fields to add to message.',
+				description: 'Fields to add to message',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -308,21 +277,21 @@ export const messagePostDescription: MessageProperties = [
 								name: 'title',
 								type: 'string',
 								default: '',
-								description: 'Title of the item.',
+								description: 'Title of the item',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'Value of the item.',
+								description: 'Value of the item',
 							},
 							{
 								displayName: 'Short',
 								name: 'short',
 								type: 'boolean',
 								default: true,
-								description: 'If items can be displayed next to each other.',
+								description: 'Whether items can be displayed next to each other',
 							},
 						],
 					},
@@ -332,81 +301,57 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Footer',
 				name: 'footer',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Text of footer to add.',
+				description: 'Text of footer to add',
 			},
 			{
 				displayName: 'Footer Icon',
 				name: 'footer_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Icon which should appear next to footer.',
+				description: 'Icon which should appear next to footer',
 			},
 			{
 				displayName: 'Image URL',
 				name: 'image_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'URL of image.',
+				description: 'URL of image',
 			},
 			{
 				displayName: 'Pretext',
 				name: 'pretext',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Text which appears before the message block.',
+				description: 'Text which appears before the message block',
 			},
 			{
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Text to send.',
+				description: 'Text to send',
 			},
 			{
 				displayName: 'Thumbnail URL',
 				name: 'thumb_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'URL of thumbnail.',
+				description: 'URL of thumbnail',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Title of the message.',
+				description: 'Title of the message',
 			},
 			{
 				displayName: 'Title Link',
 				name: 'title_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Link of the title.',
+				description: 'Link of the title',
 			},
 		],
 	},
@@ -416,12 +361,8 @@ export const messagePostDescription: MessageProperties = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
 		default: {},

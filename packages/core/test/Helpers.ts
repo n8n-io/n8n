@@ -1,11 +1,12 @@
-import { set } from 'lodash';
+import set from 'lodash/set';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
-	ICredentialsHelper,
-	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
+	IHttpRequestHelper,
+	IHttpRequestOptions,
+	INode,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
@@ -14,27 +15,51 @@ import {
 	INodeTypes,
 	IRun,
 	ITaskData,
+	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
-	NodeHelpers,
 	NodeParameterValue,
-	WorkflowHooks,
 } from 'n8n-workflow';
-
-import { Credentials, IExecuteFunctions } from '../src';
+import { deepCopy } from 'n8n-workflow';
+import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { Credentials } from '@/Credentials';
+import type { IExecuteFunctions } from '@/Interfaces';
 
 export class CredentialsHelper extends ICredentialsHelper {
-	getDecrypted(
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		requestParams: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		return requestParams;
+	}
+
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined> {
+		return undefined;
+	}
+
+	getParentTypes(name: string): string[] {
+		return [];
+	}
+
+	async getDecrypted(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		return new Promise((res) => res({}));
+		return {};
 	}
 
-	getCredentials(nodeCredentials: INodeCredentialsDetails, type: string): Promise<Credentials> {
-		return new Promise((res) => {
-			res(new Credentials({ id: null, name: '' }, '', [], ''));
-		});
+	async getCredentials(
+		nodeCredentials: INodeCredentialsDetails,
+		type: string,
+	): Promise<Credentials> {
+		return new Credentials({ id: null, name: '' }, '', [], '');
 	}
 
 	async updateCredentials(
@@ -260,12 +285,12 @@ class NodeTypesClass implements INodeTypes {
 							options: [
 								{
 									name: 'ALL',
-									description: 'Only if all conditions are meet it goes into "true" branch.',
+									description: 'Only if all conditions are met it goes into "true" branch.',
 									value: 'all',
 								},
 								{
 									name: 'ANY',
-									description: 'If any of the conditions is meet it goes into "true" branch.',
+									description: 'If any of the conditions is met it goes into "true" branch.',
 									value: 'any',
 								},
 							],
@@ -329,7 +354,7 @@ class NodeTypesClass implements INodeTypes {
 					// The different dataTypes to check the values in
 					const dataTypes = ['boolean', 'number', 'string'];
 
-					// Itterate over all items to check which ones should be output as via output "true" and
+					// Iterate over all items to check which ones should be output as via output "true" and
 					// which ones via output "false"
 					let dataType: string;
 					let compareOperationResult: boolean;
@@ -354,12 +379,12 @@ class NodeTypesClass implements INodeTypes {
 									compareData.value2 as NodeParameterValue,
 								);
 
-								if (compareOperationResult === true && combineOperation === 'any') {
+								if (compareOperationResult && combineOperation === 'any') {
 									// If it passes and the operation is "any" we do not have to check any
 									// other ones as it should pass anyway. So go on with the next item.
 									returnDataTrue.push(item);
 									continue itemLoop;
-								} else if (compareOperationResult === false && combineOperation === 'all') {
+								} else if (!compareOperationResult && combineOperation === 'all') {
 									// If it fails and the operation is "all" we do not have to check any
 									// other ones as it should be not pass anyway. So go on with the next item.
 									returnDataFalse.push(item);
@@ -414,7 +439,7 @@ class NodeTypesClass implements INodeTypes {
 									name: 'Pass-through',
 									value: 'passThrough',
 									description:
-										'Passes through data of one input. The output will conain only items of the defined input.',
+										'Passes through data of one input. The output will contain only items of the defined input.',
 								},
 								{
 									name: 'Wait',
@@ -497,9 +522,68 @@ class NodeTypesClass implements INodeTypes {
 					outputs: ['main'],
 					properties: [],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 					return this.prepareOutputData(items);
+				},
+			},
+		},
+		'n8n-nodes-base.versionTest': {
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Version Test',
+					name: 'versionTest',
+					group: ['input'],
+					version: 1,
+					description: 'Tests if versioning works',
+					defaults: {
+						name: 'Version Test',
+						color: '#0000FF',
+					},
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Display V1',
+							name: 'versionTest',
+							type: 'number',
+							displayOptions: {
+								show: {
+									'@version': [1],
+								},
+							},
+							default: 1,
+						},
+						{
+							displayName: 'Display V2',
+							name: 'versionTest',
+							type: 'number',
+							displayOptions: {
+								show: {
+									'@version': [2],
+								},
+							},
+							default: 2,
+						},
+					],
+				},
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					const items = this.getInputData();
+					const returnData: INodeExecutionData[] = [];
+
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						const newItem: INodeExecutionData = {
+							json: {
+								versionFromParameter: this.getNodeParameter('versionTest', itemIndex),
+								versionFromNode: this.getNode().typeVersion,
+							},
+						};
+
+						returnData.push(newItem);
+					}
+
+					return this.prepareOutputData(returnData);
 				},
 			},
 		},
@@ -616,13 +700,14 @@ class NodeTypesClass implements INodeTypes {
 									name: 'dotNotation',
 									type: 'boolean',
 									default: true,
-									description: `<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.</p><p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>`,
+									description:
+										'<p>By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.</p><p>If that is not intended this can be deactivated, it will then set { "a.b": value } instead.</p>',
 								},
 							],
 						},
 					],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -636,13 +721,13 @@ class NodeTypesClass implements INodeTypes {
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
-						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+						const options = this.getNodeParameter('options', itemIndex, {});
 
 						const newItem: INodeExecutionData = {
 							json: {},
 						};
 
-						if (keepOnlySet !== true) {
+						if (!keepOnlySet) {
 							if (item.binary !== undefined) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
@@ -651,7 +736,7 @@ class NodeTypesClass implements INodeTypes {
 								Object.assign(newItem.binary, item.binary);
 							}
 
-							newItem.json = JSON.parse(JSON.stringify(item.json));
+							newItem.json = deepCopy(item.json);
 						}
 
 						// Add boolean values
@@ -711,7 +796,7 @@ class NodeTypesClass implements INodeTypes {
 					outputs: ['main'],
 					properties: [],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					return this.prepareOutputData(items);
@@ -720,18 +805,12 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
-
-	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedTypeNode(data.type));
-	}
-
-	getByName(nodeType: string): INodeType {
-		return this.getByNameAndVersion(nodeType);
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.nodeTypes[nodeType].type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	}
 }
 
@@ -740,7 +819,6 @@ let nodeTypesInstance: NodeTypesClass | undefined;
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();
-		nodeTypesInstance.init({});
 	}
 
 	return nodeTypesInstance;
@@ -772,6 +850,8 @@ export function WorkflowExecuteAdditionalData(
 		connections: {},
 	};
 
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	// @ts-ignore
 	return {
 		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
@@ -783,5 +863,6 @@ export function WorkflowExecuteAdditionalData(
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
+		userId: '123',
 	};
 }

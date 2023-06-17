@@ -1,0 +1,42 @@
+@use 'mixins/mixins';
+@use './common/var';
+@use './popper';
+
+@include mixins.b(popover) {
+	position: absolute;
+	background: var.$popover-background-color;
+	min-width: 150px;
+	border-radius: 4px;
+	border: 1px solid var.$popover-border-color;
+	padding: var.$popover-padding;
+	z-index: var.$index-popper;
+	color: var(--color-text-dark);
+	line-height: 1.4;
+	text-align: justify;
+	font-size: var.$popover-font-size;
+	box-shadow: var.$box-shadow-light;
+	word-break: break-all;
+
+	@include mixins.m(plain) {
+		padding: var.$popover-padding-large;
+	}
+
+	@include mixins.e(title) {
+		color: var.$popover-title-font-color;
+		font-size: var.$popover-title-font-size;
+		line-height: 1;
+		margin-bottom: 12px;
+	}
+
+	@include mixins.e(reference) {
+		&:focus:not(.focusing),
+		&:focus:hover {
+			outline-width: 0;
+		}
+	}
+
+	&:focus:active,
+	&:focus {
+		outline-width: 0;
+	}
+}

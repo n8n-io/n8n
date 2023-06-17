@@ -1,14 +1,28 @@
 const path = require('path');
 
+/**
+ * @type {import('@storybook/types').StorybookConfig}
+ */
 module.exports = {
-	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|jsx|ts|tsx)'],
+	framework: {
+		name: '@storybook/vue-webpack5',
+		options: {},
+	},
+	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.{ts,js}'],
 	addons: [
 		'@storybook/addon-links',
 		'@storybook/addon-essentials',
-		'storybook-addon-designs',
+		{
+			name: '@storybook/addon-postcss',
+			options: {
+				postcssLoaderOptions: {
+					implementation: require('postcss'),
+				},
+			},
+		},
 		'storybook-addon-themes',
 	],
-	webpackFinal: async (config, { configType }) => {
+	webpackFinal: async (config) => {
 		config.module.rules.push({
 			test: /\.scss$/,
 			oneOf: [
@@ -19,7 +33,9 @@ module.exports = {
 						{
 							loader: 'css-loader',
 							options: {
-								modules: true,
+								modules: {
+									localIdentName: '[path][name]__[local]--[hash:base64:5]',
+								},
 							},
 						},
 						'sass-loader',
@@ -32,6 +48,11 @@ module.exports = {
 				},
 			],
 		});
+
+		config.resolve.alias = {
+			...config.resolve.alias,
+			'@/': path.resolve(__dirname, '../src/'),
+		};
 
 		return config;
 	},

@@ -1,41 +1,22 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	segmentApiRequest,
-} from './GenericFunctions';
+import { segmentApiRequest } from './GenericFunctions';
 
-import {
-	groupFields,
-	groupOperations,
-} from './GroupDescription';
+import { groupFields, groupOperations } from './GroupDescription';
 
-import {
-	identifyFields,
-	identifyOperations,
-} from './IdentifyDescription';
+import { identifyFields, identifyOperations } from './IdentifyDescription';
 
-import {
-	IIdentify,
-} from './IdentifyInterface';
+import type { IIdentify } from './IdentifyInterface';
 
-import {
-	trackFields,
-	trackOperations,
-} from './TrackDescription';
+import { trackFields, trackOperations } from './TrackDescription';
 
-import {
-	IGroup,
-	ITrack,
-} from './TrackInterface';
+import type { IGroup, ITrack } from './TrackInterface';
 
 import { v4 as uuid } from 'uuid';
 
@@ -50,7 +31,6 @@ export class Segment implements INodeType {
 		description: 'Consume Segment API',
 		defaults: {
 			name: 'Segment',
-			color: '#6ebb99',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,6 +45,7 @@ export class Segment implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Group',
@@ -83,7 +64,6 @@ export class Segment implements INodeType {
 					},
 				],
 				default: 'identify',
-				description: 'Resource to consume.',
 			},
 			...groupOperations,
 			...groupFields,
@@ -97,11 +77,10 @@ export class Segment implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
-		const qs: IDataObject = {};
+		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -110,9 +89,12 @@ export class Segment implements INodeType {
 					if (operation === 'add') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const groupId = this.getNodeParameter('groupId', i) as string;
-						const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject[];
-						const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
-						const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
+						const traits = (this.getNodeParameter('traits', i) as IDataObject)
+							.traitsUi as IDataObject[];
+						const context = (this.getNodeParameter('context', i) as IDataObject)
+							.contextUi as IDataObject;
+						const integrations = (this.getNodeParameter('integrations', i) as IDataObject)
+							.integrationsUi as IDataObject;
 						const body: IGroup = {
 							groupId,
 							traits: {
@@ -127,7 +109,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -241,9 +223,12 @@ export class Segment implements INodeType {
 					//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#identify
 					if (operation === 'create') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
-						const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject[];
-						const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
+						const context = (this.getNodeParameter('context', i) as IDataObject)
+							.contextUi as IDataObject;
+						const traits = (this.getNodeParameter('traits', i) as IDataObject)
+							.traitsUi as IDataObject[];
+						const integrations = (this.getNodeParameter('integrations', i) as IDataObject)
+							.integrationsUi as IDataObject;
 						const body: IIdentify = {
 							context: {
 								app: {},
@@ -254,7 +239,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -371,13 +356,15 @@ export class Segment implements INodeType {
 					if (operation === 'event') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const event = this.getNodeParameter('event', i) as string;
-						const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
-						const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
-						const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];
+						const context = (this.getNodeParameter('context', i) as IDataObject)
+							.contextUi as IDataObject;
+						const integrations = (this.getNodeParameter('integrations', i) as IDataObject)
+							.integrationsUi as IDataObject;
+						const properties = (this.getNodeParameter('properties', i) as IDataObject)
+							.propertiesUi as IDataObject[];
 						const body: ITrack = {
 							event,
-							traits: {
-							},
+							traits: {},
 							context: {
 								app: {},
 								campaign: {},
@@ -387,7 +374,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -501,9 +488,12 @@ export class Segment implements INodeType {
 					if (operation === 'page') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
-						const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
-						const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
-						const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];
+						const context = (this.getNodeParameter('context', i) as IDataObject)
+							.contextUi as IDataObject;
+						const integrations = (this.getNodeParameter('integrations', i) as IDataObject)
+							.integrationsUi as IDataObject;
+						const properties = (this.getNodeParameter('properties', i) as IDataObject)
+							.propertiesUi as IDataObject[];
 						const body: ITrack = {
 							name,
 							traits: {},
@@ -516,7 +506,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}

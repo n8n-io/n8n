@@ -1,18 +1,15 @@
-import {
-	createDeferredPromise,
-	IConnections,
-	ILogger,
-	INode,
-	IRun,
-	LoggerProxy,
-	Workflow,
-} from 'n8n-workflow';
-
-import { WorkflowExecute } from '../src';
+import type { IConnections, INode, IRun } from 'n8n-workflow';
+import { createDeferredPromise, Workflow } from 'n8n-workflow';
+import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './Helpers';
+import { initLogger } from './utils';
 
 describe('WorkflowExecute', () => {
+	beforeAll(() => {
+		initLogger();
+	});
+
 	describe('run', () => {
 		const tests: Array<{
 			description: string;
@@ -37,6 +34,7 @@ describe('WorkflowExecute', () => {
 					workflowData: {
 						nodes: [
 							{
+								id: 'uuid-1',
 								parameters: {},
 								name: 'Start',
 								type: 'n8n-nodes-base.start',
@@ -44,6 +42,7 @@ describe('WorkflowExecute', () => {
 								position: [100, 300],
 							},
 							{
+								id: 'uuid-2',
 								parameters: {
 									values: {
 										number: [
@@ -96,6 +95,7 @@ describe('WorkflowExecute', () => {
 					workflowData: {
 						nodes: [
 							{
+								id: 'uuid-1',
 								parameters: {},
 								name: 'Start',
 								type: 'n8n-nodes-base.start',
@@ -103,6 +103,7 @@ describe('WorkflowExecute', () => {
 								position: [100, 300],
 							},
 							{
+								id: 'uuid-2',
 								parameters: {
 									values: {
 										number: [
@@ -119,6 +120,7 @@ describe('WorkflowExecute', () => {
 								position: [300, 250],
 							},
 							{
+								id: 'uuid-3',
 								parameters: {
 									values: {
 										number: [
@@ -200,6 +202,7 @@ describe('WorkflowExecute', () => {
 					workflowData: {
 						nodes: [
 							{
+								id: 'uuid-1',
 								parameters: {
 									mode: 'passThrough',
 								},
@@ -209,6 +212,7 @@ describe('WorkflowExecute', () => {
 								position: [1150, 500],
 							},
 							{
+								id: 'uuid-2',
 								parameters: {
 									values: {
 										number: [
@@ -225,6 +229,7 @@ describe('WorkflowExecute', () => {
 								position: [290, 400],
 							},
 							{
+								id: 'uuid-3',
 								parameters: {
 									values: {
 										number: [
@@ -241,6 +246,7 @@ describe('WorkflowExecute', () => {
 								position: [850, 200],
 							},
 							{
+								id: 'uuid-4',
 								parameters: {
 									values: {
 										number: [
@@ -257,6 +263,7 @@ describe('WorkflowExecute', () => {
 								position: [650, 200],
 							},
 							{
+								id: 'uuid-5',
 								parameters: {
 									mode: 'passThrough',
 								},
@@ -266,6 +273,7 @@ describe('WorkflowExecute', () => {
 								position: [1150, 500],
 							},
 							{
+								id: 'uuid-6',
 								parameters: {},
 								name: 'Merge3',
 								type: 'n8n-nodes-base.merge',
@@ -273,6 +281,7 @@ describe('WorkflowExecute', () => {
 								position: [1000, 400],
 							},
 							{
+								id: 'uuid-7',
 								parameters: {
 									mode: 'passThrough',
 									output: 'input2',
@@ -283,6 +292,7 @@ describe('WorkflowExecute', () => {
 								position: [700, 400],
 							},
 							{
+								id: 'uuid-8',
 								parameters: {},
 								name: 'Merge1',
 								type: 'n8n-nodes-base.merge',
@@ -290,6 +300,7 @@ describe('WorkflowExecute', () => {
 								position: [500, 300],
 							},
 							{
+								id: 'uuid-9',
 								parameters: {
 									values: {
 										number: [
@@ -306,6 +317,7 @@ describe('WorkflowExecute', () => {
 								position: [300, 200],
 							},
 							{
+								id: 'uuid-10',
 								parameters: {},
 								name: 'Start',
 								type: 'n8n-nodes-base.start',
@@ -526,6 +538,7 @@ describe('WorkflowExecute', () => {
 								name: 'Start',
 								type: 'n8n-nodes-base.start',
 								typeVersion: 1,
+								id: 'uuid-1',
 								position: [250, 450],
 							},
 							{
@@ -543,6 +556,7 @@ describe('WorkflowExecute', () => {
 								name: 'IF',
 								type: 'n8n-nodes-base.if',
 								typeVersion: 1,
+								id: 'uuid-2',
 								position: [650, 350],
 							},
 							{
@@ -550,6 +564,7 @@ describe('WorkflowExecute', () => {
 								name: 'Merge1',
 								type: 'n8n-nodes-base.merge',
 								typeVersion: 1,
+								id: 'uuid-3',
 								position: [1150, 450],
 							},
 							{
@@ -567,6 +582,7 @@ describe('WorkflowExecute', () => {
 								name: 'Set1',
 								type: 'n8n-nodes-base.set',
 								typeVersion: 1,
+								id: 'uuid-4',
 								position: [450, 450],
 							},
 							{
@@ -584,6 +600,7 @@ describe('WorkflowExecute', () => {
 								name: 'Set2',
 								type: 'n8n-nodes-base.set',
 								typeVersion: 1,
+								id: 'uuid-1',
 								position: [800, 250],
 							},
 						],
@@ -672,6 +689,7 @@ describe('WorkflowExecute', () => {
 					workflowData: {
 						nodes: [
 							{
+								id: 'uuid-1',
 								parameters: {},
 								name: 'Start',
 								type: 'n8n-nodes-base.start',
@@ -679,6 +697,7 @@ describe('WorkflowExecute', () => {
 								position: [250, 300],
 							},
 							{
+								id: 'uuid-2',
 								parameters: {},
 								name: 'Merge',
 								type: 'n8n-nodes-base.merge',
@@ -686,6 +705,7 @@ describe('WorkflowExecute', () => {
 								position: [800, 450],
 							},
 							{
+								id: 'uuid-3',
 								parameters: {},
 								name: 'Merge1',
 								type: 'n8n-nodes-base.merge',
@@ -693,6 +713,7 @@ describe('WorkflowExecute', () => {
 								position: [1000, 300],
 							},
 							{
+								id: 'uuid-4',
 								parameters: {
 									conditions: {
 										boolean: [
@@ -716,6 +737,7 @@ describe('WorkflowExecute', () => {
 								alwaysOutputData: false,
 							},
 							{
+								id: 'uuid-5',
 								parameters: {
 									values: {
 										number: [
@@ -738,6 +760,7 @@ describe('WorkflowExecute', () => {
 								position: [450, 300],
 							},
 							{
+								id: 'uuid-6',
 								parameters: {
 									values: {
 										number: [
@@ -761,6 +784,7 @@ describe('WorkflowExecute', () => {
 								position: [450, 450],
 							},
 							{
+								id: 'uuid-7',
 								parameters: {
 									values: {
 										number: [
@@ -889,6 +913,7 @@ describe('WorkflowExecute', () => {
 					workflowData: {
 						nodes: [
 							{
+								id: 'uuid-1',
 								parameters: {},
 								name: 'Start',
 								type: 'n8n-nodes-base.start',
@@ -896,6 +921,7 @@ describe('WorkflowExecute', () => {
 								position: [250, 300],
 							},
 							{
+								id: 'uuid-2',
 								parameters: {
 									conditions: {
 										number: [
@@ -913,6 +939,7 @@ describe('WorkflowExecute', () => {
 								position: [650, 300],
 							},
 							{
+								id: 'uuid-3',
 								parameters: {
 									values: {
 										string: [],
@@ -931,6 +958,7 @@ describe('WorkflowExecute', () => {
 								position: [850, 450],
 							},
 							{
+								id: 'uuid-4',
 								parameters: {
 									values: {
 										number: [
@@ -948,6 +976,7 @@ describe('WorkflowExecute', () => {
 								position: [450, 300],
 							},
 							{
+								id: 'uuid-5',
 								parameters: {},
 								name: 'Merge',
 								type: 'n8n-nodes-base.merge',
@@ -1034,6 +1063,7 @@ describe('WorkflowExecute', () => {
 					workflowData: {
 						nodes: [
 							{
+								id: 'uuid-1',
 								parameters: {},
 								name: 'Start',
 								type: 'n8n-nodes-base.start',
@@ -1041,6 +1071,7 @@ describe('WorkflowExecute', () => {
 								position: [250, 300],
 							},
 							{
+								id: 'uuid-2',
 								parameters: {
 									values: {
 										number: [
@@ -1057,6 +1088,7 @@ describe('WorkflowExecute', () => {
 								position: [450, 300],
 							},
 							{
+								id: 'uuid-3',
 								parameters: {},
 								name: 'Merge',
 								type: 'n8n-nodes-base.merge',
@@ -1064,6 +1096,7 @@ describe('WorkflowExecute', () => {
 								position: [1050, 250],
 							},
 							{
+								id: 'uuid-4',
 								parameters: {
 									conditions: {
 										number: [
@@ -1081,6 +1114,7 @@ describe('WorkflowExecute', () => {
 								position: [650, 300],
 							},
 							{
+								id: 'uuid-5',
 								parameters: {},
 								name: 'NoOpTrue',
 								type: 'n8n-nodes-base.noOp',
@@ -1088,6 +1122,7 @@ describe('WorkflowExecute', () => {
 								position: [850, 150],
 							},
 							{
+								id: 'uuid-6',
 								parameters: {},
 								name: 'NoOpFalse',
 								type: 'n8n-nodes-base.noOp',
@@ -1169,20 +1204,154 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			},
-		];
 
-		const fakeLogger = {
-			log: () => {},
-			debug: () => {},
-			verbose: () => {},
-			info: () => {},
-			warn: () => {},
-			error: () => {},
-		} as ILogger;
+			{
+				description:
+					'should display the correct parameters and so correct data when simplified node-versioning is used',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								id: 'uuid-1',
+								parameters: {},
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [240, 300],
+							},
+							{
+								id: 'uuid-2',
+								parameters: {},
+								name: 'VersionTest1a',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 1,
+								position: [460, 300],
+							},
+							{
+								id: 'uuid-3',
+								parameters: {
+									versionTest: 11,
+								},
+								name: 'VersionTest1b',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 1,
+								position: [680, 300],
+							},
+							{
+								id: 'uuid-4',
+								parameters: {},
+								name: 'VersionTest2a',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 2,
+								position: [880, 300],
+							},
+							{
+								id: 'uuid-5',
+								parameters: {
+									versionTest: 22,
+								},
+								name: 'VersionTest2b',
+								type: 'n8n-nodes-base.versionTest',
+								typeVersion: 2,
+								position: [1080, 300],
+							},
+						],
+						connections: {
+							Start: {
+								main: [
+									[
+										{
+											node: 'VersionTest1a',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							VersionTest1a: {
+								main: [
+									[
+										{
+											node: 'VersionTest1b',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							VersionTest1b: {
+								main: [
+									[
+										{
+											node: 'VersionTest2a',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							VersionTest2a: {
+								main: [
+									[
+										{
+											node: 'VersionTest2b',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: [
+						'Start',
+						'VersionTest1a',
+						'VersionTest1b',
+						'VersionTest2a',
+						'VersionTest2b',
+					],
+					nodeData: {
+						VersionTest1a: [
+							[
+								{
+									versionFromNode: 1,
+									versionFromParameter: 1,
+								},
+							],
+						],
+						VersionTest1b: [
+							[
+								{
+									versionFromNode: 1,
+									versionFromParameter: 11,
+								},
+							],
+						],
+						VersionTest2a: [
+							[
+								{
+									versionFromNode: 2,
+									versionFromParameter: 2,
+								},
+							],
+						],
+						VersionTest2b: [
+							[
+								{
+									versionFromNode: 2,
+									versionFromParameter: 22,
+								},
+							],
+						],
+					},
+				},
+			},
+		];
 
 		const executionMode = 'manual';
 		const nodeTypes = Helpers.NodeTypes();
-		LoggerProxy.init(fakeLogger);
 
 		for (const testData of tests) {
 			test(testData.description, async () => {

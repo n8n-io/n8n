@@ -1,14 +1,12 @@
-import {
+import type {
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	IHookFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { eventsDescription } from './descriptions/EventsDescription';
 
 export class TheHiveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,11 +14,10 @@ export class TheHiveTrigger implements INodeType {
 		name: 'theHiveTrigger',
 		icon: 'file:thehive.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 2],
 		description: 'Starts the workflow when TheHive events occur',
 		defaults: {
 			name: 'TheHive Trigger',
-			color: '#f3d02f',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -28,104 +25,13 @@ export class TheHiveTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
-		properties: [
-			{
-				displayName: 'Events',
-				name: 'events',
-				type: 'multiOptions',
-				default: [],
-				required: true,
-				description: 'Events types',
-				options: [
-					{
-						name: '*',
-						value: '*',
-						description: 'Any time any event is triggered (Wildcard Event).',
-					},
-					{
-						name: 'Alert Created',
-						value: 'alert_create',
-						description: 'Triggered when an alert is created',
-					},
-					{
-						name: 'Alert Updated',
-						value: 'alert_update',
-						description: 'Triggered when an alert is updated',
-					},
-					{
-						name: 'Alert Deleted',
-						value: 'alert_delete',
-						description: 'Triggered when an alert is deleted',
-					},
-					{
-						name: 'Observable Created',
-						value: 'case_artifact_create',
-						description: 'Triggered when an observable is created',
-					},
-					{
-						name: 'Observable Updated',
-						value: 'case_artifact_update',
-						description: 'Triggered when an observable is updated',
-					},
-					{
-						name: 'Observable Deleted',
-						value: 'case_artifact_delete',
-						description: 'Triggered when an observable is deleted',
-					},
-					{
-						name: 'Case Created',
-						value: 'case_create',
-						description: 'Triggered when a case is created',
-					},
-					{
-						name: 'Case Updated',
-						value: 'case_update',
-						description: 'Triggered when a case is updated',
-					},
-					{
-						name: 'Case Deleted',
-						value: 'case_delete',
-						description: 'Triggered when a case is deleted',
-					},
-					{
-						name: 'Task Created',
-						value: 'case_task_create',
-						description: 'Triggered when a task is created',
-					},
-					{
-						name: 'Task Updated',
-						value: 'case_task_update',
-						description: 'Triggered when a task is updated',
-					},
-					{
-						name: 'Task Deleted',
-						value: 'case_task_delete',
-						description: 'Triggered when a task is deleted',
-					},
-					{
-						name: 'Log Created',
-						value: 'case_task_log_create',
-						description: 'Triggered when a task log is created',
-					},
-					{
-						name: 'Log Updated',
-						value: 'case_task_log_update',
-						description: 'Triggered when a task log is updated',
-					},
-					{
-						name: 'Log Deleted',
-						value: 'case_task_log_delete',
-						description: 'Triggered when a task log is deleted',
-					},
-				],
-			},
-		],
+		properties: [...eventsDescription],
 	};
-	// @ts-ignore (because of request)
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -153,25 +59,22 @@ export class TheHiveTrigger implements INodeType {
 		// Replace Creation with Create for TheHive 3 support
 		const operation = (bodyData.operation as string).replace('Creation', 'Create');
 		const event = `${(bodyData.objectType as string).toLowerCase()}_${operation.toLowerCase()}`;
+
 		if (events.indexOf('*') === -1 && events.indexOf(event) === -1) {
 			return {};
 		}
 
 		// The data to return and so start the workflow with
 		const returnData: IDataObject[] = [];
-		returnData.push(
-			{
-				event,
-				body: this.getBodyData(),
-				headers: this.getHeaderData(),
-				query: this.getQueryData(),
-			},
-		);
+		returnData.push({
+			event,
+			body: this.getBodyData(),
+			headers: this.getHeaderData(),
+			query: this.getQueryData(),
+		});
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(returnData),
-			],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }

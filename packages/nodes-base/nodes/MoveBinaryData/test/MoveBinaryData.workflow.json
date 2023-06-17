@@ -1,0 +1,171 @@
+{
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "f1789069-98a9-44ad-8e72-6b5c4a000f51",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 1120]
+		},
+		{
+			"parameters": {
+				"filePath": "C:\\Test\\sample.json"
+			},
+			"id": "ef780d51-664d-4d8a-b0c1-43fe63921e82",
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [220, 1120]
+		},
+		{
+			"parameters": {
+				"setAllData": false,
+				"options": {}
+			},
+			"id": "1dfba9d4-dc39-4693-9411-405e423b8da8",
+			"name": "Binary to JSON - No Set All Data",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [440, 1120]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "b745f52d-3a5f-4f42-b3d0-e303d3aded4c",
+			"name": "Binary to JSON",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [440, 920]
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"options": {}
+			},
+			"id": "fb1bbc87-8b6c-4889-a376-760dbb8a090e",
+			"name": "JSON to Binary",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [740, 780]
+		},
+		{
+			"parameters": {
+				"mode": "jsonToBinary",
+				"convertAllData": false,
+				"sourceKey": "title",
+				"options": {
+					"fileName": "example.json"
+				}
+			},
+			"id": "34ff0af3-fd2d-4b26-9e92-176f1aaff11a",
+			"name": "JSON to Binary - No Convert All Data",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [740, 1020]
+		},
+		{
+			"parameters": {
+				"setAllData": false,
+				"options": {
+					"jsonParse": true
+				}
+			},
+			"id": "b2c37763-801b-497f-b7d8-4c30b7e108e7",
+			"name": "Binary to JSON - No Set All Data + Json Parse",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [440, 1340]
+		},
+		{
+			"parameters": {
+				"setAllData": false,
+				"options": {
+					"encoding": "base64"
+				}
+			},
+			"id": "b2125e40-9cd6-4730-b243-30aa565a42ee",
+			"name": "Binary to JSON - No Set All Data + Encoding base64",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [440, 1560]
+		},
+		{
+			"parameters": {
+				"setAllData": false,
+				"options": {
+					"keepAsBase64": true
+				}
+			},
+			"id": "30b27ae6-29e1-43c6-be10-1f17cb3ade8a",
+			"name": "Binary to JSON - Keep as Base64",
+			"type": "n8n-nodes-base.moveBinaryData",
+			"typeVersion": 1,
+			"position": [440, 1780]
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Binary File": {
+			"main": [
+				[
+					{
+						"node": "Binary to JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Binary to JSON - No Set All Data",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Binary to JSON - No Set All Data + Json Parse",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Binary to JSON - No Set All Data + Encoding base64",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Binary to JSON - Keep as Base64",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Binary to JSON": {
+			"main": [
+				[
+					{
+						"node": "JSON to Binary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "JSON to Binary - No Convert All Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

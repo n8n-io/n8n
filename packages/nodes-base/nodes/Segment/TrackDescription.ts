@@ -1,41 +1,40 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const trackOperations = [
+export const trackOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
+				resource: ['track'],
 			},
 		},
 		options: [
 			{
 				name: 'Event',
 				value: 'event',
-				description: 'Record the actions your users perform. Every action triggers an event, which can also have associated properties.',
+				description:
+					'Record the actions your users perform. Every action triggers an event, which can also have associated properties.',
+				action: 'Track an event',
 			},
 			{
 				name: 'Page',
 				value: 'page',
-				description: 'Record page views on your website, along with optional extra information about the page being viewed.',
+				description:
+					'Record page views on your website, along with optional extra information about the page being viewed',
+				action: 'Track a page',
 			},
 		],
 		default: 'event',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const trackFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                track:event                                 */
-/* -------------------------------------------------------------------------- */
+export const trackFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                track:event                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -43,15 +42,10 @@ export const trackFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Event',
@@ -60,15 +54,11 @@ export const trackFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
-		description: 'Name of the action that a user has performed.',
+		description: 'Name of the action that a user has performed',
 		required: true,
 	},
 	{
@@ -81,12 +71,8 @@ export const trackFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 		default: {},
@@ -99,7 +85,7 @@ export const trackFields = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -107,28 +93,30 @@ export const trackFields = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -282,12 +270,8 @@ export const trackFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 		default: {},
@@ -322,12 +306,8 @@ export const trackFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 		default: {},
@@ -341,22 +321,20 @@ export const trackFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                track:page                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                track:page                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -364,12 +342,8 @@ export const trackFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 	},
@@ -380,15 +354,12 @@ export const trackFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
-		description: 'Name of the page For example, most sites have a “Signup” page that can be useful to tag, so you can see users as they move through your funnel',
+		description:
+			'Name of the page For example, most sites have a “Signup” page that can be useful to tag, so you can see users as they move through your funnel',
 	},
 	{
 		displayName: 'Context',
@@ -400,12 +371,8 @@ export const trackFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 		default: {},
@@ -418,7 +385,7 @@ export const trackFields = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -426,28 +393,30 @@ export const trackFields = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -601,12 +570,8 @@ export const trackFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 		default: {},
@@ -641,12 +606,8 @@ export const trackFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 		default: {},
@@ -660,17 +621,15 @@ export const trackFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];

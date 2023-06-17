@@ -20,4 +20,4 @@ export type LoadedSharingGroups = {
 	response: Array<{
 		SharingGroup: { id: string; name: string };
 	}>;
-}
+};

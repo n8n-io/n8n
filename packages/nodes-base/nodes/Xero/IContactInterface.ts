@@ -1,6 +1,5 @@
-
 export interface IAddress {
-	Type?: string;
+	AddressType?: string;
 	AddressLine1?: string;
 	AddressLine2?: string;
 	City?: string;
@@ -11,7 +10,7 @@ export interface IAddress {
 }
 
 export interface IPhone {
-	Type?: string;
+	PhoneType?: string;
 	PhoneNumber?: string;
 	PhoneAreaCode?: string;
 	PhoneCountryCode?: string;

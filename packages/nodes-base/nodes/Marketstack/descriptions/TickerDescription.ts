@@ -1,24 +1,22 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const tickerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a ticker',
 			},
 		],
 		default: 'get',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticker',
-				],
+				resource: ['ticker'],
 			},
 		},
 	},
@@ -32,12 +30,8 @@ export const tickerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticker',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['ticker'],
+				operation: ['get'],
 			},
 		},
 		default: '',

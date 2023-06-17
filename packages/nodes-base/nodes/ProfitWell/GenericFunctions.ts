@@ -1,27 +1,30 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function profitWellApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function profitWellApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('profitWellApi');
-		if (credentials === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-		}
 		let options: OptionsWithUri = {
 			headers: {
-				'Authorization': credentials.accessToken,
+				Authorization: credentials.accessToken,
 			},
 			method,
 			qs,
@@ -32,16 +35,18 @@ export async function profitWellApiRequest(this: IHookFunctions | IExecuteFuncti
 
 		options = Object.assign({}, options, option);
 
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
-
-export function simplifyDailyMetrics(responseData: { [key: string]: [{ date: string, value: number | null }] }) {
+export type Metrics = {
+	[key: string]: [{ date: string; value: number | null }];
+};
+export function simplifyDailyMetrics(responseData: Metrics) {
 	const data: IDataObject[] = [];
 	const keys = Object.keys(responseData);
-	const dates = responseData[keys[0]].map(e => e.date);
+	const dates = responseData[keys[0]].map((e) => e.date);
 	for (const [index, date] of dates.entries()) {
 		const element: IDataObject = {
 			date,
@@ -54,12 +59,12 @@ export function simplifyDailyMetrics(responseData: { [key: string]: [{ date: str
 	return data;
 }
 
-export function simplifyMontlyMetrics(responseData: { [key: string]: [{ date: string, value: number | null }] }) {
+export function simplifyMontlyMetrics(responseData: Metrics) {
 	const data: IDataObject = {};
 	for (const key of Object.keys(responseData)) {
 		for (const [index] of responseData[key].entries()) {
 			data[key] = responseData[key][index].value;
-			data['date'] = responseData[key][index].date;
+			data.date = responseData[key][index].date;
 		}
 	}
 	return data;

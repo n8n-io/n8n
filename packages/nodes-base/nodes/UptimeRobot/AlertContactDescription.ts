@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const alertContactOperations = [
+export const alertContactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
+				resource: ['alertContact'],
 			},
 		},
 		options: [
@@ -19,34 +16,38 @@ export const alertContactOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an alert contact',
+				action: 'Create an alert contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an alert contact',
+				action: 'Delete an alert contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an alert contact',
+				action: 'Get an alert contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all alert contacts',
+				description: 'Get many alert contacts',
+				action: 'Get many alert contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an alert contact',
+				action: 'Update an alert contact',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const alertContactFields = [
+export const alertContactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                alertContact:create                         */
 	/* -------------------------------------------------------------------------- */
@@ -58,15 +59,11 @@ export const alertContactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alertContact'],
+				operation: ['create'],
 			},
 		},
-		description: 'The friendly name of the alert contact.',
+		description: 'The friendly name of the alert contact',
 	},
 	{
 		displayName: 'Type',
@@ -80,16 +77,8 @@ export const alertContactFields = [
 				value: 4,
 			},
 			{
-				name: 'E-mail',
+				name: 'E-Mail',
 				value: 2,
-			},
-			{
-				name: 'SMS',
-				value: 1,
-			},
-			{
-				name: 'Twitter DM',
-				value: 3,
 			},
 			{
 				name: 'Pushbullet',
@@ -98,6 +87,14 @@ export const alertContactFields = [
 			{
 				name: 'Pushover',
 				value: 9,
+			},
+			{
+				name: 'SMS',
+				value: 1,
+			},
+			{
+				name: 'Twitter DM',
+				value: 3,
 			},
 			{
 				name: 'Webhook',
@@ -116,19 +113,14 @@ export const alertContactFields = [
 			// 	name:'Zapier',
 			// 	value:7,
 			// },
-
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alertContact'],
+				operation: ['create'],
 			},
 		},
-		description: 'The type of the alert contact.',
+		description: 'The type of the alert contact',
 	},
 	{
 		displayName: 'Value',
@@ -138,15 +130,11 @@ export const alertContactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['alertContact'],
+				operation: ['create'],
 			},
 		},
-		description: 'The correspondent value for the alert contact type.',
+		description: 'The correspondent value for the alert contact type',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -160,16 +148,11 @@ export const alertContactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['alertContact'],
+				operation: ['delete', 'get'],
 			},
 		},
-		description: 'The ID of the alert contact.',
+		description: 'The ID of the alert contact',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -181,16 +164,12 @@ export const alertContactFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['alertContact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -198,15 +177,9 @@ export const alertContactFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['alertContact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -214,7 +187,7 @@ export const alertContactFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -224,12 +197,8 @@ export const alertContactFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['alertContact'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -238,7 +207,7 @@ export const alertContactFields = [
 				name: 'alert_contacts',
 				type: 'string',
 				default: '',
-				description: 'Alert contact ids separated with dash, e.g. 236-1782-4790.',
+				description: 'Alert contact IDs separated with dash, e.g. 236-1782-4790',
 			},
 		],
 	},
@@ -254,15 +223,11 @@ export const alertContactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['alertContact'],
+				operation: ['update'],
 			},
 		},
-		description: 'The ID of the alert contact.',
+		description: 'The ID of the alert contact',
 	},
 	{
 		displayName: 'Update Fields',
@@ -272,12 +237,8 @@ export const alertContactFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'alertContact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['alertContact'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -286,15 +247,16 @@ export const alertContactFields = [
 				name: 'friendly_name',
 				type: 'string',
 				default: '',
-				description: 'The friendly name of the alert contact.',
+				description: 'The friendly name of the alert contact',
 			},
 			{
 				displayName: 'Value',
 				name: 'value',
 				type: 'string',
 				default: '',
-				description: 'The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact).',
+				description:
+					'The correspondent value for the alert contact type (can only be used if it is a Webhook alert contact)',
 			},
 		],
 	},
-] as INodeProperties[];
+];

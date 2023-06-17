@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const identifyOperations = [
+export const identifyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
+				resource: ['identify'],
 			},
 		},
 		options: [
@@ -19,18 +16,17 @@ export const identifyOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an identity',
+				action: 'Create an identity',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const identifyFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                identify:create                             */
-/* -------------------------------------------------------------------------- */
+export const identifyFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                identify:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -38,15 +34,10 @@ export const identifyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Traits',
@@ -58,12 +49,8 @@ export const identifyFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -77,14 +64,12 @@ export const identifyFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: '',
 					},
 				],
 			},
@@ -100,12 +85,8 @@ export const identifyFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -118,7 +99,7 @@ export const identifyFields = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -126,28 +107,30 @@ export const identifyFields = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -301,12 +284,8 @@ export const identifyFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -331,4 +310,4 @@ export const identifyFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

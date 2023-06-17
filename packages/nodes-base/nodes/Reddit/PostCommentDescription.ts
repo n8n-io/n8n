@@ -1,47 +1,47 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const postCommentOperations = [
+export const postCommentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a top-level comment in a post',
+				action: 'Create a comment in a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all comments in a post',
+				description: 'Retrieve many comments in a post',
+				action: 'Get many comments in a post',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Remove a comment from a post',
+				action: 'Delete a comment from a post',
 			},
 			{
 				name: 'Reply',
 				value: 'reply',
 				description: 'Write a reply to a comment in a post',
+				action: 'Reply to a comment in a post',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
+				resource: ['postComment'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const postCommentFields = [
+export const postCommentFields: INodeProperties[] = [
 	// ----------------------------------
 	//        postComment: create
 	// ----------------------------------
@@ -51,16 +51,13 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to write the comment to. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description:
+			'ID of the post to write the comment to. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'l0me7x',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['postComment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -73,12 +70,8 @@ export const postCommentFields = [
 		description: 'Text of the comment. Markdown supported.',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['postComment'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -92,15 +85,11 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit where the post is.',
+		description: 'The name of subreddit where the post is',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['postComment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -110,16 +99,13 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to get all comments from. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description:
+			'ID of the post to get all comments from. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'l0me7x',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['postComment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -128,15 +114,11 @@ export const postCommentFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['postComment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -145,22 +127,16 @@ export const postCommentFields = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['postComment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -174,16 +150,13 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the comment to remove. Found in the comment URL:<code>/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
+		description:
+			'ID of the comment to remove. Found in the comment URL:<code>/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
 		placeholder: 'gla7fmt',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['postComment'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -197,16 +170,13 @@ export const postCommentFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the comment to reply to. To be found in the comment URL: <code>www.reddit.com/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
+		description:
+			'ID of the comment to reply to. To be found in the comment URL: <code>www.reddit.com/r/[subreddit_name]/comments/[post_id]/[post_title]/[comment_id]</code>',
 		placeholder: 'gl9iroa',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['postComment'],
+				operation: ['reply'],
 			},
 		},
 	},
@@ -219,13 +189,9 @@ export const postCommentFields = [
 		description: 'Text of the reply. Markdown supported.',
 		displayOptions: {
 			show: {
-				resource: [
-					'postComment',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['postComment'],
+				operation: ['reply'],
 			},
 		},
 	},
-] as INodeProperties[];
+];

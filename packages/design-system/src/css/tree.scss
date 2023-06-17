@@ -1,0 +1,124 @@
+@use 'mixins/mixins';
+@use './common/var';
+@use 'common/transition';
+@use 'checkbox';
+
+@include mixins.b(tree) {
+	position: relative;
+	cursor: default;
+	background: var.$color-white;
+	color: var.$tree-font-color;
+
+	@include mixins.e(empty-block) {
+		position: relative;
+		min-height: 60px;
+		text-align: center;
+		width: 100%;
+		height: 100%;
+	}
+
+	@include mixins.e(empty-text) {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		color: var(--color-text-light);
+		font-size: var.$font-size-base;
+	}
+
+	@include mixins.e(drop-indicator) {
+		position: absolute;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background-color: var(--color-primary);
+	}
+}
+
+@include mixins.b(tree-node) {
+	white-space: nowrap;
+	outline: none;
+	&:focus {
+		/* focus */
+		> .el-tree-node__content {
+			background-color: var.$tree-node-hover-background-color;
+		}
+	}
+
+	@include mixins.when(drop-inner) {
+		> .el-tree-node__content .el-tree-node__label {
+			background-color: var(--color-primary);
+			color: var(--color-foreground-xlight);
+		}
+	}
+
+	@include mixins.e(content) {
+		display: flex;
+		align-items: center;
+		height: 26px;
+		cursor: pointer;
+
+		& > .el-tree-node__expand-icon {
+			padding: 6px;
+		}
+		& > label.el-checkbox {
+			margin-right: 8px;
+		}
+		&:hover {
+			background-color: var.$tree-node-hover-background-color;
+		}
+
+		.el-tree.is-dragging & {
+			cursor: move;
+
+			& * {
+				pointer-events: none;
+			}
+		}
+
+		.el-tree.is-dragging.is-drop-not-allow & {
+			cursor: not-allowed;
+		}
+	}
+
+	@include mixins.e(expand-icon) {
+		cursor: pointer;
+		color: var.$tree-expand-icon-color;
+		font-size: 12px;
+
+		transform: rotate(0deg);
+		transition: transform 0.3s ease-in-out;
+
+		&.expanded {
+			transform: rotate(90deg);
+		}
+
+		&.is-leaf {
+			color: transparent;
+			cursor: default;
+		}
+	}
+
+	@include mixins.e(label) {
+		font-size: var.$font-size-base;
+	}
+
+	@include mixins.e(loading-icon) {
+		margin-right: 8px;
+		font-size: var.$font-size-base;
+		color: var.$tree-expand-icon-color;
+	}
+
+	& > .el-tree-node__children {
+		overflow: hidden;
+		background-color: transparent;
+	}
+
+	&.is-expanded > .el-tree-node__children {
+		display: block;
+	}
+}
+
+.el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content {
+	background-color: var.$color-primary-lighter;
+}

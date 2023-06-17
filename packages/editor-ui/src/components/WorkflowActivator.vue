@@ -1,19 +1,48 @@
 <template>
 	<div class="workflow-activator">
-		<el-switch
-			v-loading="loading"
-			element-loading-spinner="el-icon-loading"
-			:value="workflowActive"
-			@change="activeChanged"
-			:title="workflowActive?'Deactivate Workflow':'Activate Workflow'"
-			:disabled="disabled || loading"
-			:active-color="getActiveColor"
-			inactive-color="#8899AA">
-		</el-switch>
+		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
+			<n8n-text
+				v-if="workflowActive"
+				:color="couldNotBeStarted ? 'danger' : 'success'"
+				size="small"
+				bold
+			>
+				{{ $locale.baseText('workflowActivator.active') }}
+			</n8n-text>
+			<n8n-text v-else color="text-base" size="small" bold>
+				{{ $locale.baseText('workflowActivator.inactive') }}
+			</n8n-text>
+		</div>
+		<n8n-tooltip :disabled="!disabled" placement="bottom">
+			<template #content>
+				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+			</template>
+			<el-switch
+				v-loading="updatingWorkflowActivation"
+				:value="workflowActive"
+				@change="activeChanged"
+				:title="
+					workflowActive
+						? $locale.baseText('workflowActivator.deactivateWorkflow')
+						: $locale.baseText('workflowActivator.activateWorkflow')
+				"
+				:disabled="disabled || updatingWorkflowActivation"
+				:active-color="getActiveColor"
+				inactive-color="#8899AA"
+				element-loading-spinner="el-icon-loading"
+				data-test-id="workflow-activate-switch"
+			>
+			</el-switch>
+		</n8n-tooltip>
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<n8n-tooltip placement="top">
-				<div @click="displayActivationError" slot="content">The workflow is set to be active but could not be started.<br />Click to display error message.</div>
+				<template #content>
+					<div
+						@click="displayActivationError"
+						v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
+					></div>
+				</template>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>
@@ -21,163 +50,110 @@
 </template>
 
 <script lang="ts">
+import { useToast } from '@/composables';
+import { workflowActivate } from '@/mixins/workflowActivate';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
+import { getActivatableTriggerNodes } from '@/utils';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import {
-	IWorkflowDataUpdate,
-} from '../Interface';
-
-import mixins from 'vue-typed-mixins';
-import { mapGetters } from "vuex";
-
-export default mixins(
-	externalHooks,
-	genericHelpers,
-	restApi,
-	showMessage,
-	workflowHelpers,
-)
-	.extend(
-		{
-			name: 'WorkflowActivator',
-			props: [
-				'disabled',
-				'workflowActive',
-				'workflowId',
-			],
-			data () {
-				return {
-					loading: false,
-				};
-			},
-			computed: {
-				...mapGetters({
-					dirtyState: "getStateIsDirty",
-				}),
-				nodesIssuesExist (): boolean {
-					return this.$store.getters.nodesIssuesExist;
-				},
-				isWorkflowActive (): boolean {
-					const activeWorkflows = this.$store.getters.getActiveWorkflows;
-					return activeWorkflows.includes(this.workflowId);
-				},
-				couldNotBeStarted (): boolean {
-					return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
-				},
-				getActiveColor (): string {
-					if (this.couldNotBeStarted === true) {
-						return '#ff4949';
-					}
-					return '#13ce66';
-				},
-			},
-			methods: {
-				async activeChanged (newActiveState: boolean) {
-					if (this.workflowId === undefined) {
-						this.$showMessage({
-							title: 'Problem activating workflow',
-							message: 'The workflow did not get saved yet so can not be set active!',
-							type: 'error',
-						});
-						return;
-					}
-
-					if (this.nodesIssuesExist === true) {
-						this.$showMessage({
-							title: 'Problem activating workflow',
-							message: 'It is only possible to activate a workflow when all issues on all nodes got resolved!',
-							type: 'error',
-						});
-						return;
-					}
-
-					// Set that the active state should be changed
-					let data: IWorkflowDataUpdate = {};
-
-					const activeWorkflowId = this.$store.getters.workflowId;
-					if (newActiveState === true && this.workflowId === activeWorkflowId) {
-						// If the currently active workflow gets activated save the whole
-						// workflow. If that would not happen then it could be quite confusing
-						// for people because it would activate a different version of the workflow
-						// than the one they can currently see.
-						if (this.dirtyState) {
-							const importConfirm = await this.confirmMessage(`When you activate the workflow all currently unsaved changes of the workflow will be saved.`, 'Activate and save?', 'warning', 'Yes, activate and save!');
-							if (importConfirm === false) {
-								return;
-							}
-						}
-
-						// Get the current workflow data that it gets saved together with the activation
-						data = await this.getWorkflowDataToSave();
-					}
-
-					data.active = newActiveState;
-
-					this.loading = true;
-
-					try {
-						await this.restApi().updateWorkflow(this.workflowId, data);
-					} catch (error) {
-						const newStateName = newActiveState === true ? 'activated' : 'deactivated';
-						this.$showError(error, 'Problem', `There was a problem and the workflow could not be ${newStateName}:`);
-						this.loading = false;
-						return;
-					}
-
-					const currentWorkflowId = this.$store.getters.workflowId;
-					let activationEventName = 'workflow.activeChange';
-					if (currentWorkflowId === this.workflowId) {
-						// If the status of the current workflow got changed
-						// commit it specifically
-						this.$store.commit('setActive', newActiveState);
-						activationEventName = 'workflow.activeChangeCurrent';
-					}
-
-					if (newActiveState === true) {
-						this.$store.commit('setWorkflowActive', this.workflowId);
-					} else {
-						this.$store.commit('setWorkflowInactive', this.workflowId);
-					}
-
-					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
-					this.$telemetry.track('User set workflow active status', { workflow_id: this.workflowId, is_active: newActiveState });
-
-					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
-					this.loading = false;
-				},
-				async displayActivationError () {
-					let errorMessage: string;
-					try {
-						const errorData = await this.restApi().getActivationError(this.workflowId);
-
-						if (errorData === undefined) {
-							errorMessage = 'Sorry there was a problem. No error got found to display.';
-						} else {
-							errorMessage = `The following error occurred on workflow activation:<br /><i>${errorData.error.message}</i>`;
-						}
-					} catch (error) {
-						errorMessage = 'Sorry there was a problem requesting the error';
-					}
-
-					this.$showMessage({
-						title: 'Problem activating workflow',
-						message: errorMessage,
-						type: 'warning',
-						duration: 0,
-					});
-				},
-			},
+export default defineComponent({
+	name: 'WorkflowActivator',
+	props: ['workflowActive', 'workflowId'],
+	mixins: [workflowActivate],
+	setup(props) {
+		return {
+			...useToast(),
+			...workflowActivate.setup?.(props),
+		};
+	},
+	computed: {
+		...mapStores(useUIStore, useWorkflowsStore),
+		nodesIssuesExist(): boolean {
+			return this.workflowsStore.nodesIssuesExist;
 		},
-	);
+		isWorkflowActive(): boolean {
+			const activeWorkflows = this.workflowsStore.activeWorkflows;
+			return activeWorkflows.includes(this.workflowId);
+		},
+		couldNotBeStarted(): boolean {
+			return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
+		},
+		getActiveColor(): string {
+			if (this.couldNotBeStarted === true) {
+				return '#ff4949';
+			}
+			return '#13ce66';
+		},
+		isCurrentWorkflow(): boolean {
+			return this.workflowsStore.workflowId === this.workflowId;
+		},
+		disabled(): boolean {
+			const isNewWorkflow = !this.workflowId;
+			if (isNewWorkflow || this.isCurrentWorkflow) {
+				return !this.workflowActive && !this.containsTrigger;
+			}
+
+			return false;
+		},
+		containsTrigger(): boolean {
+			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
+			return foundTriggers.length > 0;
+		},
+	},
+	methods: {
+		async activeChanged(newActiveState: boolean) {
+			return this.updateWorkflowActivation(this.workflowId, newActiveState);
+		},
+		async displayActivationError() {
+			let errorMessage: string;
+			try {
+				const errorData = await this.workflowsStore.getActivationError(this.workflowId);
+
+				if (errorData === undefined) {
+					errorMessage = this.$locale.baseText(
+						'workflowActivator.showMessage.displayActivationError.message.errorDataUndefined',
+					);
+				} else {
+					errorMessage = this.$locale.baseText(
+						'workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined',
+						{ interpolate: { message: errorData.error.message } },
+					);
+				}
+			} catch (error) {
+				errorMessage = this.$locale.baseText(
+					'workflowActivator.showMessage.displayActivationError.message.catchBlock',
+				);
+			}
+
+			this.showMessage({
+				title: this.$locale.baseText('workflowActivator.showMessage.displayActivationError.title'),
+				message: errorMessage,
+				type: 'warning',
+				duration: 0,
+				dangerouslyUseHTMLString: true,
+			});
+		},
+	},
+});
 </script>
 
-<style scoped>
-.workflow-activator {
+<style lang="scss" module>
+.activeStatusText {
+	width: 64px; // Required to avoid jumping when changing active state
+	padding-right: var(--spacing-2xs);
+	box-sizing: border-box;
 	display: inline-block;
+	text-align: right;
+}
+</style>
+
+<style lang="scss" scoped>
+.workflow-activator {
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: center;
 }
 
 .could-not-be-started {

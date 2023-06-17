@@ -1,49 +1,49 @@
-import {
+import { createSign } from 'crypto';
+
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	INodeExecutionData,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
-
-import {
-	OptionsWithUri,
-} from 'request';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Wise.
  */
 export async function wiseApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD' | 'PATCH',
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const { apiToken, environment } = await this.getCredentials('wiseApi') as {
-		apiToken: string,
-		environment: 'live' | 'test',
+	const { apiToken, environment, privateKey } = (await this.getCredentials('wiseApi')) as {
+		apiToken: string;
+		environment: 'live' | 'test';
+		privateKey?: string;
 	};
 
-	const rootUrl = environment === 'live'
-		? 'https://api.transferwise.com/'
-		: 'https://api.sandbox.transferwise.tech/';
+	const rootUrl =
+		environment === 'live'
+			? 'https://api.transferwise.com/'
+			: 'https://api.sandbox.transferwise.tech/';
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
-			'Authorization': `Bearer ${apiToken}`,
+			Authorization: `Bearer ${apiToken}`,
 		},
 		method,
-		uri: `${rootUrl}${endpoint}`,
+		url: `${rootUrl}${endpoint}`,
 		qs,
 		body,
 		json: true,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
 	};
 
 	if (!Object.keys(body).length) {
@@ -54,84 +54,121 @@ export async function wiseApiRequest(
 		delete options.qs;
 	}
 
+	if (option.encoding) {
+		delete options.json;
+	}
+
 	if (Object.keys(option)) {
 		Object.assign(options, option);
 	}
 
+	let response;
 	try {
-		return await this.helpers.request!(options);
+		response = await this.helpers.httpRequest(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		delete error.config;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-}
 
-/**
- * Populate the binary property of node items with binary data for a PDF file.
- */
-export async function handleBinaryData(
-	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-	i: number,
-	endpoint: string,
-) {
-	const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
-	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+	if (response.statusCode >= 200 && response.statusCode < 300) {
+		return response.body;
+	}
 
-	items[i].binary = items[i].binary ?? {};
-	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
-	items[i].binary![binaryProperty].fileName = this.getNodeParameter('fileName', i) as string;
-	items[i].binary![binaryProperty].fileExtension = 'pdf';
-
-	return items;
+	// Request requires SCA approval
+	if (response.statusCode === 403 && response.headers['x-2fa-approval']) {
+		if (!privateKey) {
+			throw new NodeApiError(this.getNode(), {
+				message:
+					'This request requires Strong Customer Authentication (SCA). Please add a key pair to your account and n8n credentials. See https://api-docs.transferwise.com/#strong-customer-authentication-personal-token',
+				headers: response.headers,
+				body: response.body,
+			});
+		}
+		// Sign the x-2fa-approval
+		const oneTimeToken = response.headers['x-2fa-approval'] as string;
+		const signerObject = createSign('RSA-SHA256').update(oneTimeToken);
+		try {
+			const signature = signerObject.sign(privateKey, 'base64');
+			delete option.ignoreHttpStatusErrors;
+			options.headers = {
+				...options.headers,
+				'X-Signature': signature,
+				'x-2fa-approval': oneTimeToken,
+			};
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), {
+				message: 'Error signing SCA request, check your private key',
+				...(error as JsonObject),
+			});
+		}
+		// Retry the request with signed token
+		try {
+			response = await this.helpers.httpRequest(options);
+			return response.body;
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), {
+				message: 'SCA request failed, check your private key is valid',
+			});
+		}
+	} else {
+		throw new NodeApiError(this.getNode(), {
+			...(response as JsonObject),
+			message: response.statusMessage,
+		});
+	}
 }
 
 export function getTriggerName(eventName: string) {
 	const events: IDataObject = {
-		'tranferStateChange': 'transfers#state-change',
-		'transferActiveCases': 'transfers#active-cases',
-		'balanceCredit': 'balances#credit',
+		tranferStateChange: 'transfers#state-change',
+		transferActiveCases: 'transfers#active-cases',
+		balanceCredit: 'balances#credit',
 	};
 	return events[eventName];
 }
 
 export type BorderlessAccount = {
-	id: number,
-	balances: Array<{ currency: string }>
+	id: number;
+	balances: Array<{ currency: string }>;
 };
 
 export type ExchangeRateAdditionalFields = {
-	interval: 'day' | 'hour' | 'minute',
+	interval: 'day' | 'hour' | 'minute';
 	range: {
-		rangeProperties: { from: string, to: string }
-	},
-	time: string,
+		rangeProperties: { from: string; to: string };
+	};
+	time: string;
 };
 
 export type Profile = {
-	id: number,
-	type: 'business' | 'personal',
+	id: number;
+	type: 'business' | 'personal';
 };
 
 export type Recipient = {
-	id: number,
-	accountHolderName: string
+	active: boolean;
+	id: number;
+	accountHolderName: string;
+	country: string | null;
+	currency: string;
+	type: string;
 };
 
 export type StatementAdditionalFields = {
-	lineStyle: 'COMPACT' | 'FLAT',
+	lineStyle: 'COMPACT' | 'FLAT';
 	range: {
-		rangeProperties: { intervalStart: string, intervalEnd: string }
-	},
+		rangeProperties: { intervalStart: string; intervalEnd: string };
+	};
 };
 
 export type TransferFilters = {
 	[key: string]: string | IDataObject;
 	range: {
-		rangeProperties: { createdDateStart: string, createdDateEnd: string }
-	},
-	sourceCurrency: string,
-	status: string,
-	targetCurrency: string,
+		rangeProperties: { createdDateStart: string; createdDateEnd: string };
+	};
+	sourceCurrency: string;
+	status: string;
+	targetCurrency: string;
 };
 
 export const livePublicKey = `

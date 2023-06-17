@@ -1,24 +1,59 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" :class="$style.container">
-		<div v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed" :key="credentialTypeDescription.name">
+	<div
+		v-if="credentialTypesNodeDescriptionDisplayed.length"
+		:class="['node-credentials', $style.container]"
+	>
+		<div
+			v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed"
+			:key="credentialTypeDescription.name"
+		>
 			<n8n-input-label
-				:label="`Credential for ${credentialTypeNames[credentialTypeDescription.name]}`"
+				:label="getCredentialsFieldLabel(credentialTypeDescription)"
 				:bold="false"
+				:set="(issues = getIssues(credentialTypeDescription.name))"
 				size="small"
-
-				:set="issues = getIssues(credentialTypeDescription.name)"
+				color="text-dark"
+				data-test-id="credentials-label"
 			>
-				<div v-if="isReadOnly">
-					<n8n-input disabled :value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name" size="small" />
+				<div v-if="readonly || isReadOnly">
+					<n8n-input
+						:value="getSelectedName(credentialTypeDescription.name)"
+						disabled
+						size="small"
+						data-test-id="node-credentials-select"
+					/>
 				</div>
-
-				<div :class="issues.length ? $style.hasIssues : $style.input" v-else >
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" placeholder="Select Credential" size="small">
+				<div
+					v-else
+					:class="issues.length && !hideIssues ? $style.hasIssues : $style.input"
+					data-test-id="node-credentials-select"
+				>
+					<n8n-select
+						:value="getSelectedId(credentialTypeDescription.name)"
+						@change="
+							(value) =>
+								onCredentialSelected(
+									credentialTypeDescription.name,
+									value,
+									showMixedCredentials(credentialTypeDescription),
+								)
+						"
+						@blur="$emit('blur', 'credentials')"
+						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
+						size="small"
+					>
 						<n8n-option
-							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
+							v-for="item in getCredentialOptions(
+								getAllRelatedCredentialTypes(credentialTypeDescription),
+							)"
 							:key="item.id"
 							:label="item.name"
-							:value="item.id">
+							:value="item.id"
+						>
+							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+								<n8n-text bold>{{ item.name }}</n8n-text>
+								<n8n-text size="small">{{ item.typeDisplayName }}</n8n-text>
+							</div>
 						</n8n-option>
 						<n8n-option
 							:key="NEW_CREDENTIALS_TEXT"
@@ -28,15 +63,32 @@
 						</n8n-option>
 					</n8n-select>
 
-					<div :class="$style.warning" v-if="issues.length">
-						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="'Issues:<br />&nbsp;&nbsp;- ' + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+					<div :class="$style.warning" v-if="issues.length && !hideIssues">
+						<n8n-tooltip placement="top">
+							<template #content>
+								<titled-list
+									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
+									:items="issues"
+								/>
+							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 
-					<div :class="$style.edit" v-if="selected[credentialTypeDescription.name] && isCredentialExisting(credentialTypeDescription.name)">
-						<font-awesome-icon icon="pen" @click="editCredential(credentialTypeDescription.name)" class="clickable" title="Update Credentials" />
+					<div
+						:class="$style.edit"
+						v-if="
+							selected[credentialTypeDescription.name] &&
+							isCredentialExisting(credentialTypeDescription.name)
+						"
+						data-test-id="credential-edit-button"
+					>
+						<font-awesome-icon
+							icon="pen"
+							@click="editCredential(credentialTypeDescription.name)"
+							class="clickable"
+							:title="$locale.baseText('nodeCredentials.updateCredential')"
+						/>
 					</div>
 				</div>
 			</n8n-input-label>
@@ -45,92 +97,277 @@
 </template>
 
 <script lang="ts">
-import { restApi } from '@/components/mixins/restApi';
-import {
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	IUser,
 } from '@/Interface';
-import {
+import type {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
+	INodeParameters,
+	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { useToast } from '@/composables';
 
-import { mapGetters } from "vuex";
+import TitledList from '@/components/TitledList.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import {
+	getAuthTypeForNodeCredential,
+	getMainAuthField,
+	getNodeCredentialForSelectedAuthType,
+	getAllNodeCredentialForAuthType,
+	updateNodeAuthType,
+	isRequiredCredential,
+} from '@/utils';
 
-import mixins from 'vue-typed-mixins';
+interface CredentialDropdownOption extends ICredentialsResponse {
+	typeDisplayName: string;
+}
 
-const NEW_CREDENTIALS_TEXT = '- Create New -';
-
-export default mixins(
-	genericHelpers,
-	nodeHelpers,
-	restApi,
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'NodeCredentials',
-	props: [
-		'node', // INodeUi
-	],
-	data () {
+	mixins: [genericHelpers, nodeHelpers],
+	props: {
+		readonly: {
+			type: Boolean,
+			default: false,
+		},
+		node: {
+			type: Object as PropType<INodeUi>,
+			required: true,
+		},
+		overrideCredType: {
+			type: String,
+		},
+		showAll: {
+			type: Boolean,
+			default: false,
+		},
+		hideIssues: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	components: {
+		TitledList,
+	},
+	setup() {
 		return {
-			NEW_CREDENTIALS_TEXT,
-			newCredentialUnsubscribe: null as null | (() => void),
+			...useToast(),
 		};
 	},
+	data() {
+		return {
+			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
+			subscribedToCredentialType: '',
+			listeningForAuthChange: false,
+		};
+	},
+	mounted() {
+		// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
+		this.credentialsStore.$onAction(({ name, after, store, args }) => {
+			const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
+			const credentialType = this.subscribedToCredentialType;
+			if (!credentialType) {
+				return;
+			}
+
+			after(async (result) => {
+				if (!listeningForActions.includes(name)) {
+					return;
+				}
+				const current = this.selected[credentialType];
+				let credentialsOfType: ICredentialsResponse[] = [];
+				if (this.showAll) {
+					if (this.node) {
+						credentialsOfType = [
+							...(this.credentialsStore.allUsableCredentialsForNode(this.node) || []),
+						];
+					}
+				} else {
+					credentialsOfType = [
+						...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
+					];
+				}
+				switch (name) {
+					// new credential was added
+					case 'createNewCredential':
+						if (result) {
+							this.onCredentialSelected(credentialType, (result as ICredentialsResponse).id);
+						}
+						break;
+					case 'updateCredential':
+						const updatedCredential = result as ICredentialsResponse;
+						// credential name was changed, update it
+						if (updatedCredential.name !== current.name) {
+							this.onCredentialSelected(credentialType, current.id);
+						}
+						break;
+					case 'deleteCredential':
+						// all credentials were deleted
+						if (credentialsOfType.length === 0) {
+							this.clearSelectedCredential(credentialType);
+						} else {
+							const id = args[0].id;
+							// credential was deleted, select last one added to replace with
+							if (current.id === id) {
+								this.onCredentialSelected(
+									credentialType,
+									credentialsOfType[credentialsOfType.length - 1].id,
+								);
+							}
+						}
+						break;
+				}
+			});
+		});
+	},
+	watch: {
+		'node.parameters': {
+			immediate: true,
+			deep: true,
+			handler(newValue: INodeParameters, oldValue: INodeParameters) {
+				// When active node parameters change, check if authentication type has been changed
+				// and set `subscribedToCredentialType` to corresponding credential type
+				const isActive = this.node.name === this.ndvStore.activeNode?.name;
+				const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+				// Only do this for active node and if it's listening for auth change
+				if (isActive && nodeType && this.listeningForAuthChange) {
+					if (this.mainNodeAuthField && oldValue && newValue) {
+						const newAuth = newValue[this.mainNodeAuthField.name];
+
+						if (newAuth) {
+							const credentialType = getNodeCredentialForSelectedAuthType(
+								nodeType,
+								newAuth.toString(),
+							);
+							if (credentialType) {
+								this.subscribedToCredentialType = credentialType.name;
+							}
+						}
+					}
+				}
+			},
+		},
+	},
 	computed: {
-		...mapGetters('credentials', {
-			credentialOptions: 'allCredentialsByType',
-		}),
-		credentialTypesNode (): string[] {
-			return this.credentialTypesNodeDescription
-				.map((credentialTypeDescription) => credentialTypeDescription.name);
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useNDVStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+		),
+		currentUser(): IUser {
+			return this.usersStore.currentUser || ({} as IUser);
 		},
-		credentialTypesNodeDescriptionDisplayed (): INodeCredentialDescription[] {
-			return this.credentialTypesNodeDescription
-				.filter((credentialTypeDescription) => {
-					return this.displayCredentials(credentialTypeDescription);
-				});
+		credentialTypesNode(): string[] {
+			return this.credentialTypesNodeDescription.map(
+				(credentialTypeDescription) => credentialTypeDescription.name,
+			);
 		},
-		credentialTypesNodeDescription (): INodeCredentialDescription[] {
+		credentialTypesNodeDescriptionDisplayed(): INodeCredentialDescription[] {
+			return this.credentialTypesNodeDescription.filter((credentialTypeDescription) => {
+				return this.displayCredentials(credentialTypeDescription);
+			});
+		},
+		credentialTypesNodeDescription(): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			const activeNodeType = this.$store.getters.nodeType(node.type) as INodeTypeDescription | null;
+			const credType = this.credentialsStore.getCredentialTypeByName(this.overrideCredType);
+
+			if (credType) return [credType];
+
+			const activeNodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}
 
 			return [];
 		},
-		credentialTypeNames () {
+		credentialTypeNames() {
 			const returnData: {
 				[key: string]: string;
 			} = {};
 			let credentialType: ICredentialType | null;
 			for (const credentialTypeName of this.credentialTypesNode) {
-				credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeName);
-				returnData[credentialTypeName] = credentialType !== null ? credentialType.displayName : credentialTypeName;
+				credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeName);
+				returnData[credentialTypeName] =
+					credentialType !== null ? credentialType.displayName : credentialTypeName;
 			}
 			return returnData;
 		},
-		selected(): {[type: string]: INodeCredentialsDetails} {
+		selected(): { [type: string]: INodeCredentialsDetails } {
 			return this.node.credentials || {};
 		},
+		nodeType(): INodeTypeDescription | null {
+			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+		},
+		mainNodeAuthField(): INodeProperties | null {
+			return getMainAuthField(this.nodeType);
+		},
 	},
+
 	methods: {
+		getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
+			const isRequiredCredential = this.showMixedCredentials(credentialType);
+			if (isRequiredCredential) {
+				if (this.mainNodeAuthField) {
+					const credentials = getAllNodeCredentialForAuthType(
+						this.nodeType,
+						this.mainNodeAuthField.name,
+					);
+					return credentials.map((cred) => cred.name);
+				}
+			}
+			return [credentialType.name];
+		},
+		getCredentialOptions(types: string[]): CredentialDropdownOption[] {
+			let options: CredentialDropdownOption[] = [];
+			types.forEach((type) => {
+				options = options.concat(
+					this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
+						...option,
+						typeDisplayName: this.credentialsStore.getCredentialTypeByName(type).displayName,
+					})),
+				);
+			});
+			return options;
+		},
 		getSelectedId(type: string) {
 			if (this.isCredentialExisting(type)) {
 				return this.selected[type].id;
 			}
 			return undefined;
 		},
-		credentialInputWrapperStyle (credentialType: string) {
+		getSelectedName(type: string) {
+			return this.selected?.[type]?.name;
+		},
+		getSelectPlaceholder(type: string, issues: string[]) {
+			return issues.length && this.getSelectedName(type)
+				? this.$locale.baseText('nodeCredentials.selectedCredentialUnavailable', {
+						interpolate: { name: this.getSelectedName(type) },
+				  })
+				: this.$locale.baseText('nodeCredentials.selectCredential');
+		},
+		credentialInputWrapperStyle(credentialType: string) {
 			let deductWidth = 0;
 			const styles = {
 				width: '100%',
@@ -144,26 +381,6 @@ export default mixins(
 			}
 
 			return styles;
-		},
-
-		listenForNewCredentials(credentialType: string) {
-			this.stopListeningForNewCredentials();
-
-			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
-				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
-					this.onCredentialSelected(credentialType, mutation.payload.id);
-				}
-				if (mutation.type === 'credentials/deleteCredential') {
-					this.clearSelectedCredential(credentialType);
-					this.stopListeningForNewCredentials();
-				}
-			});
-		},
-
-		stopListeningForNewCredentials() {
-			if (this.newCredentialUnsubscribe) {
-				this.newCredentialUnsubscribe();
-			}
 		},
 
 		clearSelectedCredential(credentialType: string) {
@@ -185,42 +402,94 @@ export default mixins(
 			this.$emit('credentialSelected', updateInformation);
 		},
 
-		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
-			if (credentialId === NEW_CREDENTIALS_TEXT) {
-				this.listenForNewCredentials(credentialType);
-				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
-				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
+		onCredentialSelected(
+			credentialType: string,
+			credentialId: string | null | undefined,
+			requiredCredentials = false,
+		) {
+			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
+				// If new credential dialog is open, start listening for auth type change which should happen in the modal
+				// this will be handled in this component's watcher which will set subscribed credential accordingly
+				this.listeningForAuthChange = true;
+				this.subscribedToCredentialType = credentialType;
+			}
+			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
+				this.uiStore.openNewCredential(credentialType, requiredCredentials);
+				this.$telemetry.track('User opened Credential modal', {
+					credential_type: credentialType,
+					source: 'node',
+					new_credential: true,
+					workflow_id: this.workflowsStore.workflowId,
+				});
 				return;
 			}
 
-			this.$telemetry.track('User selected credential from node modal', { credential_type: credentialType, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User selected credential from node modal', {
+				credential_type: credentialType,
+				node_type: this.node.type,
+				...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
+				workflow_id: this.workflowsStore.workflowId,
+				credential_id: credentialId,
+			});
 
-			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
-			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
+			const selectedCredentials = this.credentialsStore.getCredentialById(credentialId);
+			const selectedCredentialsType = this.showAll ? selectedCredentials.type : credentialType;
+			const oldCredentials =
+				this.node.credentials && this.node.credentials[selectedCredentialsType]
+					? this.node.credentials[selectedCredentialsType]
+					: {};
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 
 			// if credentials has been string or neither id matched nor name matched uniquely
-			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
+			if (
+				oldCredentials.id === null ||
+				(oldCredentials.id &&
+					!this.credentialsStore.getCredentialByIdAndType(
+						oldCredentials.id,
+						selectedCredentialsType,
+					))
+			) {
 				// update all nodes in the workflow with the same old/invalid credentials
-				this.$store.commit('replaceInvalidWorkflowCredentials', {
+				this.workflowsStore.replaceInvalidWorkflowCredentials({
 					credentials: selected,
 					invalid: oldCredentials,
-					type: credentialType,
+					type: selectedCredentialsType,
 				});
 				this.updateNodesCredentialsIssues();
-				this.$showMessage({
-					title: 'Node credentials updated',
-					message: `Nodes that used credentials "${oldCredentials.name}" have been updated to use "${selected.name}"`,
+				this.showMessage({
+					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
+					message: this.$locale.baseText('nodeCredentials.showMessage.message', {
+						interpolate: {
+							oldCredentialName: oldCredentials.name,
+							newCredentialName: selected.name,
+						},
+					}),
 					type: 'success',
 				});
+			}
+
+			// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
+			if (this.showAll && this.mainNodeAuthField) {
+				const nodeCredentialDescription = this.nodeType?.credentials?.find(
+					(cred) => cred.name === selectedCredentialsType,
+				);
+				const authOption = getAuthTypeForNodeCredential(this.nodeType, nodeCredentialDescription);
+				if (authOption) {
+					updateNodeAuthType(this.node, authOption.value);
+					const parameterData = {
+						name: `parameters.${this.mainNodeAuthField.name}`,
+						value: authOption.value,
+					};
+					this.$emit('valueChanged', parameterData);
+				}
 			}
 
 			const node: INodeUi = this.node;
 
 			const credentials = {
 				...(node.credentials || {}),
-				[credentialType]: selected,
+				[selectedCredentialsType]: selected,
 			};
 
 			const updateInformation: INodeUpdatePropertiesInformation = {
@@ -233,15 +502,15 @@ export default mixins(
 			this.$emit('credentialSelected', updateInformation);
 		},
 
-		displayCredentials (credentialTypeDescription: INodeCredentialDescription): boolean {
+		displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
 			if (credentialTypeDescription.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
 				return true;
 			}
-			return this.displayParameter(this.node.parameters, credentialTypeDescription, '');
+			return this.displayParameter(this.node.parameters, credentialTypeDescription, '', this.node);
 		},
 
-		getIssues (credentialTypeName: string): string[] {
+		getIssues(credentialTypeName: string): string[] {
 			const node = this.node as INodeUi;
 
 			if (node.issues === undefined || node.issues.credentials === undefined) {
@@ -251,41 +520,63 @@ export default mixins(
 			if (!node.issues.credentials.hasOwnProperty(credentialTypeName)) {
 				return [];
 			}
-
 			return node.issues.credentials[credentialTypeName];
 		},
 
 		isCredentialExisting(credentialType: string): boolean {
-			if (!this.node.credentials || !this.node.credentials[credentialType] || !this.node.credentials[credentialType].id) {
+			if (
+				!this.node.credentials ||
+				!this.node.credentials[credentialType] ||
+				!this.node.credentials[credentialType].id
+			) {
 				return false;
 			}
 			const { id } = this.node.credentials[credentialType];
-			const options = this.credentialOptions[credentialType];
+			const options = this.getCredentialOptions([credentialType]);
 
 			return !!options.find((option: ICredentialsResponse) => option.id === id);
 		},
 
 		editCredential(credentialType: string): void {
 			const { id } = this.node.credentials[credentialType];
-			this.$store.dispatch('ui/openExisitngCredential', { id });
+			this.uiStore.openExistingCredential(id);
 
-			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
-
-			this.listenForNewCredentials(credentialType);
+			this.$telemetry.track('User opened Credential modal', {
+				credential_type: credentialType,
+				source: 'node',
+				new_credential: false,
+				workflow_id: this.workflowsStore.workflowId,
+			});
+			this.subscribedToCredentialType = credentialType;
 		},
-	},
-	beforeDestroy () {
-		this.stopListeningForNewCredentials();
+		showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+			const isRequired = isRequiredCredential(nodeType, credentialType);
+
+			return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') && isRequired;
+		},
+		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+			const credentialTypeName = this.credentialTypeNames[credentialType.name];
+
+			if (!this.showMixedCredentials(credentialType)) {
+				return this.$locale.baseText('nodeCredentials.credentialFor', {
+					interpolate: {
+						credentialType: credentialTypeName,
+					},
+				});
+			}
+			return this.$locale.baseText('nodeCredentials.credentialsLabel');
+		},
 	},
 });
 </script>
 
 <style lang="scss" module>
 .container {
-	margin: var(--spacing-xs) 0;
+	margin-top: var(--spacing-xs);
 
-	> * {
-		margin-bottom: var(--spacing-xs);
+	& > div:not(:first-child) {
+		margin-top: var(--spacing-xs);
 	}
 }
 
@@ -314,5 +605,10 @@ export default mixins(
 .hasIssues {
 	composes: input;
 	--input-border-color: var(--color-danger);
+}
+
+.credentialOption {
+	display: flex;
+	flex-direction: column;
 }
 </style>

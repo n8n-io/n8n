@@ -2,24 +2,23 @@
 	"node": "n8n-nodes-base.writeBinaryFile",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.writeBinaryFile/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.writebinaryfile/"
+			}
+		],
+		"generic": [
+			{
+				"label": "How uProc scraped a multi-page website with a low-code workflow",
+				"icon": " 🕸️",
+				"url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/"
 			}
 		]
 	},
-	"alias": [
-		"Text",
-		"Save",
-		"Export"
-	],
+	"alias": ["Text", "Save", "Export"],
 	"subcategories": {
-		"Core Nodes": [
-			"Files"
-		]
+		"Core Nodes": ["Files"]
 	}
 }

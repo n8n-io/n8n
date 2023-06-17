@@ -1,13 +1,11 @@
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import * as snowflake from 'snowflake-sdk';
+import type snowflake from 'snowflake-sdk';
 
-export function connect(conn: snowflake.Connection) {
+export async function connect(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
-		conn.connect((err, conn) => {
+		conn.connect((err, _conn) => {
 			if (!err) {
 				// @ts-ignore
 				resolve();
@@ -18,9 +16,9 @@ export function connect(conn: snowflake.Connection) {
 	});
 }
 
-export function destroy(conn: snowflake.Connection) {
+export async function destroy(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
-		conn.destroy((err, conn) => {
+		conn.destroy((err, _conn) => {
 			if (!err) {
 				// @ts-ignore
 				resolve();
@@ -31,7 +29,11 @@ export function destroy(conn: snowflake.Connection) {
 	});
 }
 
-export function execute(conn: snowflake.Connection, sqlText: string, binds: snowflake.InsertBinds) {
+export async function execute(
+	conn: snowflake.Connection,
+	sqlText: string,
+	binds: snowflake.InsertBinds,
+) {
 	return new Promise((resolve, reject) => {
 		conn.execute({
 			sqlText,
@@ -56,7 +58,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 			if (item.json[property] === undefined) {
 				newItem[property] = null;
 			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				newItem[property] = deepCopy(item.json[property]);
 			}
 		}
 		return newItem;

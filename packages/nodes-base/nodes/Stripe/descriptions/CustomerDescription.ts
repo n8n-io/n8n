@@ -1,52 +1,53 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const customerOperations = [
+export const customerOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a customer',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a customer',
+				action: 'Delete a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a customer',
+				action: 'Get a customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all customers',
+				description: 'Get many customers',
+				action: 'Get many customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a customer',
+				action: 'Update a customer',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
+				resource: ['customer'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const customerFields = [
+export const customerFields: INodeProperties[] = [
 	// ----------------------------------
 	//       customer: create
 	// ----------------------------------
@@ -59,12 +60,8 @@ export const customerFields = [
 		description: 'Full name or business name of the customer to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +73,8 @@ export const customerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -128,7 +121,8 @@ export const customerFields = [
 							{
 								displayName: 'Country',
 								name: 'country',
-								description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+								description:
+									'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 								type: 'string',
 								default: '',
 							},
@@ -154,6 +148,7 @@ export const customerFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email of the customer to create',
 			},
@@ -199,6 +194,7 @@ export const customerFields = [
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Shipping information for the customer',
 				typeOptions: {
 					multipleValues: true,
@@ -257,7 +253,8 @@ export const customerFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description:
+													'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -297,12 +294,8 @@ export const customerFields = [
 		description: 'ID of the customer to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['customer'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -319,12 +312,8 @@ export const customerFields = [
 		description: 'ID of the customer to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['customer'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -340,12 +329,8 @@ export const customerFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -354,22 +339,16 @@ export const customerFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -381,12 +360,8 @@ export const customerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -394,8 +369,9 @@ export const customerFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'Customer\'s email to filter by',
+				description: "Customer's email to filter by",
 			},
 		],
 	},
@@ -412,12 +388,8 @@ export const customerFields = [
 		description: 'ID of the customer to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -429,12 +401,8 @@ export const customerFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -481,7 +449,8 @@ export const customerFields = [
 							{
 								displayName: 'Country',
 								name: 'country',
-								description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+								description:
+									'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 								type: 'string',
 								default: '',
 							},
@@ -507,6 +476,7 @@ export const customerFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'Email of the customer to create',
 			},
@@ -514,6 +484,7 @@ export const customerFields = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the customer to create',
 				typeOptions: {
@@ -618,7 +589,8 @@ export const customerFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description:
+													'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -646,4 +618,4 @@ export const customerFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

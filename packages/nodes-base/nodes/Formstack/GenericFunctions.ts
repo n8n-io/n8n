@@ -1,19 +1,15 @@
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	INodePropertyOptions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
 export interface IFormstackFieldDefinitionType {
 	id: string;
@@ -43,7 +39,7 @@ export interface IFormstackSubmissionFieldContainer {
 	value: string;
 }
 
-export enum FormstackFieldFormat {
+export const enum FormstackFieldFormat {
 	ID = 'id',
 	Label = 'label',
 	Name = 'name',
@@ -52,13 +48,14 @@ export enum FormstackFieldFormat {
 /**
  * Make an API request to Formstack
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
@@ -76,37 +73,32 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	try {
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('formstackApi') as IDataObject;
+			const credentials = (await this.getCredentials('formstackApi')) as IDataObject;
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-			return await this.helpers.request!(options);
+			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'formstackOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
-
 
 /**
  * Make an API request to paginated Formstack endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: IDataObject, dataKey: string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	dataKey: string,
+	query?: IDataObject,
+): Promise<any> {
 	if (query === undefined) {
 		query = {};
 	}
@@ -124,7 +116,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 		query.page += 1;
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.items.push.apply(returnData.items, responseData[dataKey]);
+		returnData.items.push.apply(returnData.items, responseData[dataKey] as IDataObject[]);
 	} while (
 		responseData.total !== undefined &&
 		Math.ceil(responseData.total / query.per_page) > query.page
@@ -133,17 +125,15 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	return returnData;
 }
 
-
 /**
  * Returns all the available forms
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @returns {Promise<INodePropertyOptions[]>}
  */
 export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'form.json';
-	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'forms', { folders: false });
+	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'forms', {
+		folders: false,
+	});
 
 	if (responseData.items === undefined) {
 		throw new Error('No data got returned');
@@ -158,16 +148,14 @@ export async function getForms(this: ILoadOptionsFunctions): Promise<INodeProper
 	return returnData;
 }
 
-
 /**
  * Returns all the fields of a form
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @param {string} formID
- * @returns {Promise<IFormstackFieldDefinitionType[]>}
  */
-export async function getFields(this: IWebhookFunctions, formID: string): Promise<Record<string, IFormstackFieldDefinitionType>> {
+export async function getFields(
+	this: IWebhookFunctions,
+	formID: string,
+): Promise<Record<string, IFormstackFieldDefinitionType>> {
 	const endpoint = `form/${formID}.json`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'fields');
 
@@ -178,23 +166,21 @@ export async function getFields(this: IWebhookFunctions, formID: string): Promis
 	const fields = responseData.items as IFormstackFieldDefinitionType[];
 	const fieldMap: Record<string, IFormstackFieldDefinitionType> = {};
 
-	fields.forEach(field => {
+	fields.forEach((field) => {
 		fieldMap[field.id] = field;
 	});
 
 	return fieldMap;
 }
 
-
 /**
  * Returns all the fields of a form
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @param {string} uniqueId
- * @returns {Promise<IFormstackFieldDefinitionType[]>}
  */
-export async function getSubmission(this: ILoadOptionsFunctions | IWebhookFunctions, uniqueId: string): Promise<IFormstackSubmissionFieldContainer[]> {
+export async function getSubmission(
+	this: ILoadOptionsFunctions | IWebhookFunctions,
+	uniqueId: string,
+): Promise<IFormstackSubmissionFieldContainer[]> {
 	const endpoint = `submission/${uniqueId}.json`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'data');
 

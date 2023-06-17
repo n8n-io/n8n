@@ -1,30 +1,25 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	acuitySchedulingApiRequest,
-} from './GenericFunctions';
+import { acuitySchedulingApiRequest } from './GenericFunctions';
 
 export class AcuitySchedulingTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Acuity Scheduling Trigger',
 		name: 'acuitySchedulingTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:acuityScheduling.png',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Acuity Scheduling events via webhooks',
 		defaults: {
 			name: 'Acuity Scheduling Trigger',
-			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -34,9 +29,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiKey',
-						],
+						authentication: ['apiKey'],
 					},
 				},
 			},
@@ -45,9 +38,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -76,7 +67,6 @@ export class AcuitySchedulingTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Event',
@@ -86,29 +76,29 @@ export class AcuitySchedulingTrigger implements INodeType {
 				default: '',
 				options: [
 					{
-						name: 'appointment.scheduled',
-						value: 'appointment.scheduled',
-						description: 'is called once when an appointment is initially booked',
-					},
-					{
-						name: 'appointment.rescheduled',
-						value: 'appointment.rescheduled',
-						description: 'is called when the appointment is rescheduled to a new time',
-					},
-					{
 						name: 'appointment.canceled',
 						value: 'appointment.canceled',
-						description: 'is called whenever an appointment is canceled',
+						description: 'Is called whenever an appointment is canceled',
 					},
 					{
 						name: 'appointment.changed',
 						value: 'appointment.changed',
-						description: 'is called when the appointment is changed in any way',
+						description: 'Is called when the appointment is changed in any way',
+					},
+					{
+						name: 'appointment.rescheduled',
+						value: 'appointment.rescheduled',
+						description: 'Is called when the appointment is rescheduled to a new time',
+					},
+					{
+						name: 'appointment.scheduled',
+						value: 'appointment.scheduled',
+						description: 'Is called once when an appointment is initially booked',
 					},
 					{
 						name: 'order.completed',
 						value: 'order.completed',
-						description: 'is called when an order is completed',
+						description: 'Is called when an order is completed',
 					},
 				],
 			},
@@ -117,11 +107,13 @@ export class AcuitySchedulingTrigger implements INodeType {
 				name: 'resolveData',
 				type: 'boolean',
 				default: true,
-				description: 'By default does the webhook-data only contain the ID of the object. If this option gets activated, it will resolve the data automatically.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'By default does the webhook-data only contain the ID of the object. If this option gets activated, it will resolve the data automatically.',
 			},
 		],
 	};
-	// @ts-ignore
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -158,7 +150,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
 					await acuitySchedulingApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -172,12 +164,10 @@ export class AcuitySchedulingTrigger implements INodeType {
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 
-		if (resolveData === false) {
+		if (!resolveData) {
 			// Return the data as it got received
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray(req.body),
-				],
+				workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 			};
 		}
 
@@ -188,11 +178,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 		const responseData = await acuitySchedulingApiRequest.call(this, 'GET', endpoint, {});
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(responseData),
-			],
+			workflowData: [this.helpers.returnJsonArray(responseData as IDataObject)],
 		};
-
-
 	}
 }

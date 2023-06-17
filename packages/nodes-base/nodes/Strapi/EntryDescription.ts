@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const entryOperations = [
+export const entryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
+		noDataExpression: true,
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
+				resource: ['entry'],
 			},
 		},
 		options: [
@@ -19,34 +16,38 @@ export const entryOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an entry',
+				action: 'Create an entry',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an entry',
+				action: 'Delete an entry',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an entry',
+				action: 'Get an entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all entries',
+				description: 'Get many entries',
+				action: 'Get many entries',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an entry',
+				action: 'Update an entry',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const entryFields = [
+export const entryFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -58,15 +59,11 @@ export const entryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['entry'],
+				operation: ['create'],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Columns',
@@ -74,17 +71,14 @@ export const entryFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['entry'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		placeholder: 'id,name,description',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		description:
+			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -98,15 +92,11 @@ export const entryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['entry'],
+				operation: ['delete'],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Entry ID',
@@ -116,15 +106,11 @@ export const entryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['entry'],
+				operation: ['delete'],
 			},
 		},
-		description: 'The ID of the entry to delete.',
+		description: 'The ID of the entry to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -138,15 +124,11 @@ export const entryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['entry'],
+				operation: ['get'],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Entry ID',
@@ -156,15 +138,11 @@ export const entryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['entry'],
+				operation: ['get'],
 			},
 		},
-		description: 'The ID of the entry to get.',
+		description: 'The ID of the entry to get',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -178,12 +156,8 @@ export const entryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Name of the content type',
@@ -194,16 +168,12 @@ export const entryFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -211,15 +181,9 @@ export const entryFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -227,7 +191,7 @@ export const entryFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -237,12 +201,8 @@ export const entryFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['entry'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -261,7 +221,7 @@ export const entryFields = [
 					},
 				],
 				default: '',
-				description: 'Only select entries matching the publication state provided.',
+				description: 'Only select entries matching the publication state provided',
 			},
 			{
 				displayName: 'Sort Fields',
@@ -273,17 +233,16 @@ export const entryFields = [
 				},
 				default: '',
 				placeholder: 'name:asc',
-				description: `Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>`,
+				description:
+					'Name of the fields to sort the data by. By default will be sorted ascendingly. To modify that behavior, you have to add the sort direction after the name of sort field preceded by a colon. For example: <code>name:asc</code>.',
 			},
 			{
 				displayName: 'Where (JSON)',
 				name: 'where',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'JSON query to filter the data. <a href="https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters">More info</a>.',
+				description:
+					'JSON query to filter the data. <a href="https://strapi.io/documentation/developer-docs/latest/developer-resources/content-api/content-api.html#filters">More info</a>.',
 			},
 		],
 	},
@@ -299,15 +258,11 @@ export const entryFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['entry'],
+				operation: ['update'],
 			},
 		},
-		description: 'Name of the content type.',
+		description: 'Name of the content type',
 	},
 	{
 		displayName: 'Update Key',
@@ -315,17 +270,15 @@ export const entryFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['entry'],
+				operation: ['update'],
 			},
 		},
 		default: 'id',
 		required: true,
-		description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+		description:
+			'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 	},
 	{
 		displayName: 'Columns',
@@ -333,16 +286,13 @@ export const entryFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'entry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['entry'],
+				operation: ['update'],
 			},
 		},
 		default: '',
 		placeholder: 'id,name,description',
-		description: 'Comma separated list of the properties which should used as columns for the new rows.',
+		description:
+			'Comma-separated list of the properties which should used as columns for the new rows',
 	},
-] as INodeProperties[];
+];

@@ -1,33 +1,31 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
 			{
 				name: 'Enrich',
 				value: 'enrich',
+				action: 'Enrich a company',
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 company:enrich                             */
-/* -------------------------------------------------------------------------- */
+export const companyFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:enrich                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company',
 		name: 'company',
@@ -35,15 +33,11 @@ export const companyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
-		description: 'the name of the company (e.g – amazon)',
+		description: 'The name of the company (e.g – amazon)',
 	},
 	{
 		displayName: 'Domain',
@@ -52,14 +46,10 @@ export const companyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
-		description: 'the domain name (e.g – amazon.com)',
+		description: 'The domain name (e.g – amazon.com)',
 	},
-] as INodeProperties[];
+];

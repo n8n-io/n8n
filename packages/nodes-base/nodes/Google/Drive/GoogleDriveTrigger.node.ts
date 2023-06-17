@@ -1,24 +1,18 @@
-import {
+import type {
 	IPollFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	extractId,
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { extractId, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import * as moment from 'moment';
+import moment from 'moment';
+import { fileSearch, folderSearch } from './SearchFunctions';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,7 +25,6 @@ export class GoogleDriveTrigger implements INodeType {
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
 			name: 'Google Drive Trigger',
-			color: '#4285F4',
 		},
 		credentials: [
 			{
@@ -39,9 +32,7 @@ export class GoogleDriveTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'serviceAccount',
-						],
+						authentication: ['serviceAccount'],
 					},
 				},
 			},
@@ -50,9 +41,7 @@ export class GoogleDriveTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -67,12 +56,13 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Service Account',
-						value: 'serviceAccount',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'oAuth2',
 					},
 					{
-						name: 'OAuth2',
-						value: 'oAuth2',
+						name: 'Service Account',
+						value: 'serviceAccount',
 					},
 				],
 				default: 'oAuth2',
@@ -97,22 +87,67 @@ export class GoogleDriveTrigger implements INodeType {
 					// 	value: 'anyFileFolder',
 					// },
 				],
-				description: '',
 			},
 			{
-				displayName: 'File URL or ID',
+				displayName: 'File',
 				name: 'fileToWatch',
-				type: 'string',
-				displayOptions: {
-					show: {
-						triggerOn: [
-							'specificFile',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'File',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a file...',
+						typeOptions: {
+							searchListMethod: 'fileSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://drive.google.com/file/d/1wroCSfK-hupQIYf_xzeoUEzOhvfTFH2P/edit',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive File URL',
+								},
+							},
 						],
 					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive File ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/file/d/{{$value}}/view',
+					},
+				],
+				displayOptions: {
+					show: {
+						triggerOn: ['specificFile'],
+					},
 				},
-				default: '',
-				description: 'The address of this file when you view it in your browser (or just the ID contained within the URL)',
-				required: true,
 			},
 			{
 				displayName: 'Watch For',
@@ -120,9 +155,7 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'specificFile',
-						],
+						triggerOn: ['specificFile'],
 					},
 				},
 				required: true,
@@ -136,19 +169,65 @@ export class GoogleDriveTrigger implements INodeType {
 				description: 'When to trigger this node',
 			},
 			{
-				displayName: 'Folder URL or ID',
+				displayName: 'Folder',
 				name: 'folderToWatch',
-				type: 'string',
-				displayOptions: {
-					show: {
-						triggerOn: [
-							'specificFolder',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'Folder',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a folder...',
+						typeOptions: {
+							searchListMethod: 'folderSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive Folder URL',
+								},
+							},
 						],
 					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive Folder ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/drive/folders/{{$value}}',
+					},
+				],
+				displayOptions: {
+					show: {
+						triggerOn: ['specificFolder'],
+					},
 				},
-				default: '',
-				description: 'The address of this folder when you view it in your browser (or just the ID contained within the URL)',
-				required: true,
 			},
 			{
 				displayName: 'Watch For',
@@ -156,9 +235,7 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'specificFolder',
-						],
+						triggerOn: ['specificFolder'],
 					},
 				},
 				required: true,
@@ -192,32 +269,27 @@ export class GoogleDriveTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Changes within subfolders won\'t trigger this node',
+				displayName: "Changes within subfolders won't trigger this node",
 				name: 'asas',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'specificFolder',
-						],
+						triggerOn: ['specificFolder'],
 					},
 					hide: {
-						event: [
-							'watchFolderUpdated',
-						],
+						event: ['watchFolderUpdated'],
 					},
 				},
 				default: '',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Drive To Watch',
 				name: 'driveToWatch',
 				type: 'options',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'anyFileFolder',
-						],
+						triggerOn: ['anyFileFolder'],
 					},
 				},
 				typeOptions: {
@@ -225,7 +297,8 @@ export class GoogleDriveTrigger implements INodeType {
 				},
 				default: 'root',
 				required: true,
-				description: 'The drive to monitor',
+				description:
+					'The drive to monitor. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Watch For',
@@ -233,9 +306,7 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'anyFileFolder',
-						],
+						triggerOn: ['anyFileFolder'],
 					},
 				},
 				required: true,
@@ -270,15 +341,10 @@ export class GoogleDriveTrigger implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						event: [
-							'fileCreated',
-							'fileUpdated',
-						],
+						event: ['fileCreated', 'fileUpdated'],
 					},
 					hide: {
-						triggerOn: [
-							'specificFile',
-						],
+						triggerOn: ['specificFile'],
 					},
 				},
 				placeholder: 'Add Option',
@@ -331,14 +397,21 @@ export class GoogleDriveTrigger implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			fileSearch,
+			folderSearch,
+		},
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
-			async getDrives(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', `/drive/v3/drives`);
+				const drives = await googleApiRequestAllItems.call(
+					this,
+					'drives',
+					'GET',
+					'/drive/v3/drives',
+				);
 				returnData.push({
 					name: 'Root',
 					value: 'root',
@@ -363,16 +436,16 @@ export class GoogleDriveTrigger implements INodeType {
 
 		const now = moment().utc().format();
 
-		const startDate = webhookData.lastTimeChecked as string || now;
+		const startDate = (webhookData.lastTimeChecked as string) || now;
 
 		const endDate = now;
 
-		const query = [
-			'trashed = false',
-		];
+		const query = ['trashed = false'];
 
 		if (triggerOn === 'specificFolder' && event !== 'watchFolderUpdated') {
-			const folderToWatch = extractId(this.getNodeParameter('folderToWatch') as string);
+			const folderToWatch = extractId(
+				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
+			);
 			query.push(`'${folderToWatch}' in parents`);
 		}
 
@@ -382,9 +455,9 @@ export class GoogleDriveTrigger implements INodeType {
 		// }
 
 		if (event.startsWith('file')) {
-			query.push(`mimeType != 'application/vnd.google-apps.folder'`);
+			query.push("mimeType != 'application/vnd.google-apps.folder'");
 		} else {
-			query.push(`mimeType = 'application/vnd.google-apps.folder'`);
+			query.push("mimeType = 'application/vnd.google-apps.folder'");
 		}
 
 		if (options.fileType && options.fileType !== 'all') {
@@ -407,19 +480,27 @@ export class GoogleDriveTrigger implements INodeType {
 
 		if (this.getMode() === 'manual') {
 			qs.pageSize = 1;
-			files = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
+			files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
 			files = files.files;
 		} else {
-			files = await googleApiRequestAllItems.call(this, 'files', 'GET', `/drive/v3/files`, {}, qs);
+			files = await googleApiRequestAllItems.call(this, 'files', 'GET', '/drive/v3/files', {}, qs);
 		}
 
 		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
-			const fileToWatch = extractId(this.getNodeParameter('fileToWatch') as string);
+			const fileToWatch = extractId(
+				this.getNodeParameter('fileToWatch', '', { extractValue: true }) as string,
+			);
 			files = files.filter((file: { id: string }) => file.id === fileToWatch);
 		}
 
-		if (triggerOn === 'specificFolder' && event === 'watchFolderUpdated' && this.getMode() !== 'manual') {
-			const folderToWatch = extractId(this.getNodeParameter('folderToWatch') as string);
+		if (
+			triggerOn === 'specificFolder' &&
+			event === 'watchFolderUpdated' &&
+			this.getMode() !== 'manual'
+		) {
+			const folderToWatch = extractId(
+				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
+			);
 			files = files.filter((file: { id: string }) => file.id === folderToWatch);
 		}
 
@@ -430,7 +511,9 @@ export class GoogleDriveTrigger implements INodeType {
 		}
 
 		if (this.getMode() === 'manual') {
-			throw new NodeApiError(this.getNode(), { message: 'No data with the current filter could be found' });
+			throw new NodeApiError(this.getNode(), {
+				message: 'No data with the current filter could be found',
+			});
 		}
 
 		return null;

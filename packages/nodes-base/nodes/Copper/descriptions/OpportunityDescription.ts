@@ -1,65 +1,62 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const opportunityOperations = [
+export const opportunityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an opportunity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an opportunity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many opportunities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an opportunity',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const opportunityFields = [
+export const opportunityFields: INodeProperties[] = [
 	// ----------------------------------------
 	//           opportunity: create
 	// ----------------------------------------
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the opportunity to create.',
+		description: 'Name of the opportunity to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -68,15 +65,11 @@ export const opportunityFields = [
 		name: 'customerSourceId',
 		type: 'string',
 		default: '',
-		description: 'ID of the customer source that generated this opportunity.',
+		description: 'ID of the customer source that generated this opportunity',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,15 +78,11 @@ export const opportunityFields = [
 		name: 'primaryContactId',
 		type: 'string',
 		default: '',
-		description: 'ID of the primary company associated with this opportunity.',
+		description: 'ID of the primary company associated with this opportunity',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -104,18 +93,14 @@ export const opportunityFields = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
-		description: 'ID of the opportunity to delete.',
+		description: 'ID of the opportunity to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['opportunity'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -126,18 +111,14 @@ export const opportunityFields = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
-		description: 'ID of the opportunity to retrieve.',
+		description: 'ID of the opportunity to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['opportunity'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -150,15 +131,11 @@ export const opportunityFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -167,22 +144,16 @@ export const opportunityFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -194,12 +165,8 @@ export const opportunityFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -208,14 +175,14 @@ export const opportunityFields = [
 				name: 'company_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of the primary companies to filter by.',
+				description: 'Comma-separated IDs of the primary companies to filter by',
 			},
 			{
 				displayName: 'Customer Source IDs',
 				name: 'customer_source_ids',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated IDs of the customer sources to filter by.',
+				description: 'Comma-separated IDs of the customer sources to filter by',
 			},
 		],
 	},
@@ -226,18 +193,14 @@ export const opportunityFields = [
 	{
 		displayName: 'Opportunity ID',
 		name: 'opportunityId',
-		description: 'ID of the opportunity to update.',
+		description: 'ID of the opportunity to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -249,12 +212,8 @@ export const opportunityFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -263,22 +222,22 @@ export const opportunityFields = [
 				name: 'customer_source_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the primary company associated with this opportunity.',
+				description: 'ID of the primary company associated with this opportunity',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the opportunity.',
+				description: 'Name to set for the opportunity',
 			},
 			{
 				displayName: 'Primary Contact ID',
 				name: 'primary_contact_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the customer source that generated this opportunity.',
+				description: 'ID of the customer source that generated this opportunity',
 			},
 		],
 	},
-] as INodeProperties[];
+];

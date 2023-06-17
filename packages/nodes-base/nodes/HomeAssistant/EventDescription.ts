@@ -1,17 +1,14 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const eventOperations = [
+export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -19,20 +16,20 @@ export const eventOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an event',
+				action: 'Create an event',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all events',
+				description: 'Get many events',
+				action: 'Get many events',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const eventFields = [
-
+export const eventFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                event:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -42,16 +39,12 @@ export const eventFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['getAll'],
+				resource: ['event'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -59,15 +52,9 @@ export const eventFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['event'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -75,7 +62,7 @@ export const eventFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -87,17 +74,13 @@ export const eventFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
+				operation: ['create'],
+				resource: ['event'],
 			},
 		},
 		required: true,
 		default: '',
-		description: 'The Entity ID for which an event will be created.',
+		description: 'The Entity ID for which an event will be created',
 	},
 	{
 		displayName: 'Event Attributes',
@@ -110,12 +93,8 @@ export const eventFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -128,17 +107,17 @@ export const eventFields = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the attribute.',
+						description: 'Name of the attribute',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the attribute.',
+						description: 'Value of the attribute',
 					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];

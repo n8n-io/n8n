@@ -1,20 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const storyContentOperations = [
+export const storyContentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
 			},
 		},
 		options: [
@@ -22,20 +17,20 @@ export const storyContentOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a story',
+				action: 'Get a story',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all stories',
+				description: 'Get many stories',
+				action: 'Get many stories',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const storyContentFields = [
-
+export const storyContentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                story:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -47,18 +42,12 @@ export const storyContentFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'get',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['get'],
 			},
 		},
-		description: 'The ID or slug of the story to get.',
+		description: 'The ID or slug of the story to get',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -70,19 +59,13 @@ export const storyContentFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,18 +73,10 @@ export const storyContentFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -109,7 +84,7 @@ export const storyContentFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -119,15 +94,9 @@ export const storyContentFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -136,8 +105,8 @@ export const storyContentFields = [
 				name: 'starts_with',
 				type: 'string',
 				default: '',
-				description: 'Filter by slug.',
+				description: 'Filter by slug',
 			},
 		],
 	},
-] as INodeProperties[];
+];

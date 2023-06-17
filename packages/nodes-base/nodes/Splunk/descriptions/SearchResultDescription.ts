@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const searchResultOperations: INodeProperties[] = [
 	{
@@ -10,16 +8,15 @@ export const searchResultOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'searchResult',
-				],
+				resource: ['searchResult'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all search results for a search job',
+				description: 'Retrieve many search results for a search job',
+				action: 'Get many search results',
 			},
 		],
 		default: 'getAll',
@@ -39,12 +36,8 @@ export const searchResultFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchResult',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchResult'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -56,12 +49,8 @@ export const searchResultFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'searchResult',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchResult'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -76,15 +65,9 @@ export const searchResultFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchResult',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['searchResult'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -96,19 +79,16 @@ export const searchResultFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchResult',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchResult'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Key-Value Match',
 				name: 'keyValueMatch',
-				description: 'Key-value pair to match against. Example: if "Key" is set to <code>user</code> and "Field" is set to <code>john</code>, only the results where <code>user</code> is <code>john</code> will be returned. ',
+				description:
+					'Key-value pair to match against. Example: if "Key" is set to <code>user</code> and "Field" is set to <code>john</code>, only the results where <code>user</code> is <code>john</code> will be returned.',
 				type: 'fixedCollection',
 				default: {},
 				placeholder: 'Add Key-Value Pair',
@@ -127,7 +107,7 @@ export const searchResultFields: INodeProperties[] = [
 							{
 								displayName: 'Value',
 								name: 'value',
-								description: 'value to match against',
+								description: 'Value to match against',
 								type: 'string',
 								default: '',
 							},
@@ -145,12 +125,8 @@ export const searchResultFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'searchResult',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['searchResult'],
+				operation: ['getAll'],
 			},
 		},
 		options: [

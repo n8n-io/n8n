@@ -1,34 +1,21 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"es2017"
-		],
-		"types": [
-			"node",
-			"jest"
-		],
-		"module": "commonjs",
-		"noImplicitAny": true,
-		"removeComments": true,
-		"strictNullChecks": true,
-		"forceConsistentCasingInFileNames": true,
-		"noImplicitReturns": true,
-		"strict": true,
-		"noUnusedLocals": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2017",
-		"sourceMap": true
+		"rootDir": ".",
+		"types": ["node", "jest"],
+		"composite": true,
+		"noEmit": true,
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
 	},
-	"include": [
-		"**/*.d.ts",
-		"src/**/*",
-		"test/**/*"
-	],
-	"exclude": [
-		"dist/**/*",
-		"node_modules/**/*",
-		"**/*.spec.ts"
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"references": [
+		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" }
 	]
 }

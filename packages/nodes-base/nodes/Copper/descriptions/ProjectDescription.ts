@@ -1,65 +1,62 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const projectOperations = [
+export const projectOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
+				resource: ['project'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a project',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a project',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many projects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a project',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const projectFields = [
+export const projectFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             project: create
 	// ----------------------------------------
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the project to create.',
+		description: 'Name of the project to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['project'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -71,12 +68,8 @@ export const projectFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['project'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -85,14 +78,14 @@ export const projectFields = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the project to create.',
+				description: 'ID of the user who will own the project to create',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description of the project to create.',
+				description: 'Description of the project to create',
 			},
 			{
 				displayName: 'Status',
@@ -119,18 +112,14 @@ export const projectFields = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to delete.',
+		description: 'ID of the project to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['project'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -141,18 +130,14 @@ export const projectFields = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to retrieve.',
+		description: 'ID of the project to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['project'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -165,15 +150,11 @@ export const projectFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['project'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -182,22 +163,16 @@ export const projectFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['project'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -209,12 +184,8 @@ export const projectFields = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['project'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -223,7 +194,7 @@ export const projectFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the project to filter by.',
+				description: 'Name of the project to filter by',
 			},
 		],
 	},
@@ -234,18 +205,14 @@ export const projectFields = [
 	{
 		displayName: 'Project ID',
 		name: 'projectId',
-		description: 'ID of the project to update.',
+		description: 'ID of the project to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['project'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -257,12 +224,8 @@ export const projectFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['project'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -271,21 +234,21 @@ export const projectFields = [
 				name: 'assignee_id',
 				type: 'string',
 				default: '',
-				description: 'ID of the user who will own the project.',
+				description: 'ID of the user who will own the project',
 			},
 			{
 				displayName: 'Details',
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the project.',
+				description: 'Description to set for the project',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the project.',
+				description: 'Name to set for the project',
 			},
 			{
 				displayName: 'Status',
@@ -305,4 +268,4 @@ export const projectFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

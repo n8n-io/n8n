@@ -19,15 +19,8 @@
 							<h4>Color</h4>
 							<div class="color">
 								<el-row :gutter="12">
-									<el-col
-										:span="4"
-										v-for="(color, key) in colorLine"
-										:key="key"
-									>
-										<div
-											class="demo-color-box"
-											:style="{ background: dataProxy(color) }"
-										>
+									<el-col :span="4" v-for="(color, key) in colorLine" :key="key">
+										<div class="demo-color-box" :style="{ background: dataProxy(color) }">
 											{{color}}
 											<div class="value">{{dataProxy(color)}}</div>
 											<div class="bg-color-sub">
@@ -83,9 +76,7 @@
 								<el-row :gutter="12">
 									<el-col :span="4">
 										<div
-											class="
-												demo-color-box demo-color-box-other demo-color-box-lite
-											"
+											class="demo-color-box demo-color-box-other demo-color-box-lite"
 											:style="{ background: border_color_base }"
 										>
 											Border Base
@@ -94,9 +85,7 @@
 									</el-col>
 									<el-col :span="4">
 										<div
-											class="
-												demo-color-box demo-color-box-other demo-color-box-lite
-											"
+											class="demo-color-box demo-color-box-other demo-color-box-lite"
 											:style="{ background: border_color_light }"
 										>
 											Border Light
@@ -105,9 +94,7 @@
 									</el-col>
 									<el-col :span="4">
 										<div
-											class="
-												demo-color-box demo-color-box-other demo-color-box-lite
-											"
+											class="demo-color-box demo-color-box-other demo-color-box-lite"
 											:style="{ background: border_color_lighter }"
 										>
 											Border Lighter
@@ -116,9 +103,7 @@
 									</el-col>
 									<el-col :span="4">
 										<div
-											class="
-												demo-color-box demo-color-box-other demo-color-box-lite
-											"
+											class="demo-color-box demo-color-box-other demo-color-box-lite"
 											:style="{ background: border_color_extra_light }"
 										>
 											Border Extralight
@@ -147,9 +132,7 @@
 										</div>
 									</el-col>
 									<el-col :span="4">
-										<div
-											class="demo-color-box demo-color-box-other bg-transparent"
-										>
+										<div class="demo-color-box demo-color-box-other bg-transparent">
 											Background
 											<div class="value">Transparent</div>
 										</div>
@@ -160,16 +143,12 @@
 							<h4>Typography</h4>
 							<el-row :gutter="12">
 								<el-col :span="6" class="heading">
-									<div :style="{ fontSize: font_size_extra_large }">
-										Heading1
-									</div>
+									<div :style="{ fontSize: font_size_extra_large }">Heading1</div>
 									<div :style="{ fontSize: font_size_large }">Heading2</div>
 									<div :style="{ fontSize: font_size_medium }">Heading3</div>
 									<div :style="{ fontSize: font_size_base }">Heading4</div>
 									<div :style="{ fontSize: font_size_small }">Heading5</div>
-									<div :style="{ fontSize: font_size_extra_small }">
-										Heading6
-									</div>
+									<div :style="{ fontSize: font_size_extra_small }">Heading6</div>
 								</el-col>
 								<el-col :span="9">
 									<div class="title">Example body text</div>
@@ -181,10 +160,9 @@
               lineHeight: font_line_height_primary
             }"
 									>
-										With MySpace becoming more popular every day, there is the
-										constant need to be different. There are millions of users.
-										If MySpace layouts are chosen well, then you can enhance
-										your profile a great deal.
+										With MySpace becoming more popular every day, there is the constant need to be
+										different. There are millions of users. If MySpace layouts are chosen well, then
+										you can enhance your profile a great deal.
 									</p>
 								</el-col>
 								<el-col :span="9">
@@ -197,12 +175,11 @@
               lineHeight: font_line_height_secondary
             }"
 									>
-										Computers have become ubiquitous in almost every facet of
-										our lives. At work, desk jockeys spend hours in front of
-										their desktops, while delivery people scan bar codes with
-										handhelds and workers in the field stay in touch with the
-										central office via their notebooks. Computer hardware weaves
-										itself through the fabric of our lives.
+										Computers have become ubiquitous in almost every facet of our lives. At work,
+										desk jockeys spend hours in front of their desktops, while delivery people scan
+										bar codes with handhelds and workers in the field stay in touch with the central
+										office via their notebooks. Computer hardware weaves itself through the fabric
+										of our lives.
 									</p>
 								</el-col>
 							</el-row>
@@ -250,31 +227,11 @@
 							</el-row>
 							<el-row class="demo-line">
 								<el-button icon="el-icon-search" circle></el-button>
-								<el-button
-									type="primary"
-									icon="el-icon-edit"
-									circle
-								></el-button>
-								<el-button
-									type="success"
-									icon="el-icon-check"
-									circle
-								></el-button>
-								<el-button
-									type="info"
-									icon="el-icon-message"
-									circle
-								></el-button>
-								<el-button
-									type="warning"
-									icon="el-icon-star-off"
-									circle
-								></el-button>
-								<el-button
-									type="danger"
-									icon="el-icon-delete"
-									circle
-								></el-button>
+								<el-button type="primary" icon="el-icon-edit" circle></el-button>
+								<el-button type="success" icon="el-icon-check" circle></el-button>
+								<el-button type="info" icon="el-icon-message" circle></el-button>
+								<el-button type="warning" icon="el-icon-star-off" circle></el-button>
+								<el-button type="danger" icon="el-icon-delete" circle></el-button>
 							</el-row>
 							<el-row class="demo-line">
 								<el-button>Default</el-button>
@@ -318,11 +275,7 @@
 								</el-checkbox-group>
 							</el-row>
 							<el-row class="demo-line">
-								<el-checkbox
-									v-model="checked2"
-									label="Option1"
-									border
-								></el-checkbox>
+								<el-checkbox v-model="checked2" label="Option1" border></el-checkbox>
 							</el-row>
 							<h4>Input</h4>
 							<el-row style="width: 180px">
@@ -330,11 +283,7 @@
 							</el-row>
 							<h4>InputNumber</h4>
 							<el-row>
-								<el-input-number
-									v-model="inputNumber"
-									:min="1"
-									:max="10"
-								></el-input-number>
+								<el-input-number v-model="inputNumber" :min="1" :max="10"></el-input-number>
 							</el-row>
 							<h4>Select</h4>
 							<el-row>
@@ -350,10 +299,7 @@
 							</el-row>
 							<h4>Cascader</h4>
 							<el-row>
-								<el-cascader
-									:options="cascadeOptions"
-									v-model="cascaderValue"
-								></el-cascader>
+								<el-cascader :options="cascadeOptions" v-model="cascaderValue"></el-cascader>
 							</el-row>
 							<h4>Switch</h4>
 							<el-row>
@@ -372,10 +318,7 @@
 							</el-row>
 							<h4>DatePicker</h4>
 							<el-row>
-								<el-date-picker
-									v-model="datePicker"
-									type="date"
-								></el-date-picker>
+								<el-date-picker v-model="datePicker" type="date"></el-date-picker>
 							</el-row>
 							<h4>Rate</h4>
 							<el-row>
@@ -392,16 +335,10 @@
 							<h4>Transfer</h4>
 							<el-row>
 								<el-transfer v-model="transfer" filterable :data="transferData">
-									<el-button
-										class="transfer-footer"
-										slot="left-footer"
-										size="small"
+									<el-button class="transfer-footer" slot="left-footer" size="small"
 										>Operation</el-button
 									>
-									<el-button
-										class="transfer-footer"
-										slot="right-footer"
-										size="small"
+									<el-button class="transfer-footer" slot="right-footer" size="small"
 										>Operation</el-button
 									>
 								</el-transfer>
@@ -409,37 +346,18 @@
 							<h4>Table</h4>
 							<el-row>
 								<el-table :data="tableData" style="width: 70%">
-									<el-table-column
-										prop="date"
-										label="Date"
-										width="180"
-									></el-table-column>
-									<el-table-column
-										prop="name"
-										label="Name"
-										width="180"
-									></el-table-column>
-									<el-table-column
-										prop="address"
-										label="Address"
-									></el-table-column>
+									<el-table-column prop="date" label="Date" width="180"></el-table-column>
+									<el-table-column prop="name" label="Name" width="180"></el-table-column>
+									<el-table-column prop="address" label="Address"></el-table-column>
 								</el-table>
 							</el-row>
 							<h4>Tag</h4>
 							<el-row>
 								<el-tag class="demo-item" closable>Tag One</el-tag>
-								<el-tag class="demo-item" closable type="success"
-									>Tag Two</el-tag
-								>
-								<el-tag class="demo-item" closable type="info"
-									>Tag Three</el-tag
-								>
-								<el-tag class="demo-item" closable type="warning"
-									>Tag Four</el-tag
-								>
-								<el-tag class="demo-item" closable type="danger"
-									>Tag Five</el-tag
-								>
+								<el-tag class="demo-item" closable type="success">Tag Two</el-tag>
+								<el-tag class="demo-item" closable type="info">Tag Three</el-tag>
+								<el-tag class="demo-item" closable type="warning">Tag Four</el-tag>
+								<el-tag class="demo-item" closable type="danger">Tag Five</el-tag>
 							</el-row>
 							<h4>Progress</h4>
 							<el-row style="width: 380px">
@@ -453,10 +371,7 @@
 							</el-row>
 							<h4>Pagination</h4>
 							<el-row>
-								<el-pagination
-									layout="prev, pager, next"
-									:total="1000"
-								></el-pagination>
+								<el-pagination layout="prev, pager, next" :total="1000"></el-pagination>
 							</el-row>
 							<h4>Badge</h4>
 							<el-row>
@@ -506,31 +421,16 @@
 							<h4>Loading</h4>
 							<el-row>
 								<el-table :data="tableData" style="width: 90%" v-loading="true">
-									<el-table-column
-										prop="date"
-										label="Date"
-										width="180"
-									></el-table-column>
-									<el-table-column
-										prop="name"
-										label="Name"
-										width="180"
-									></el-table-column>
-									<el-table-column
-										prop="address"
-										label="Address"
-									></el-table-column>
+									<el-table-column prop="date" label="Date" width="180"></el-table-column>
+									<el-table-column prop="name" label="Name" width="180"></el-table-column>
+									<el-table-column prop="address" label="Address"></el-table-column>
 								</el-table>
 							</el-row>
 							<h4>Message</h4>
 							<el-row>
 								<div
 									role="alert"
-									class="
-										demo-item
-										el-message el-message--success
-										el-message-fade-leave-active el-message-fade-leave-to
-									"
+									class="demo-item el-message el-message--success el-message-fade-leave-active el-message-fade-leave-to"
 									style="
 										top: 0;
 										left: 0;
@@ -541,18 +441,12 @@
 									"
 								>
 									<i class="el-message__icon el-icon-success"></i>
-									<p class="el-message__content">
-										Congrats, this is a success message.
-									</p>
+									<p class="el-message__content">Congrats, this is a success message.</p>
 									<!---->
 								</div>
 								<div
 									role="alert"
-									class="
-										demo-item
-										el-message el-message--warning
-										el-message-fade-leave-active el-message-fade-leave-to
-									"
+									class="demo-item el-message el-message--warning el-message-fade-leave-active el-message-fade-leave-to"
 									style="
 										top: 0;
 										left: 0;
@@ -563,18 +457,12 @@
 									"
 								>
 									<i class="el-message__icon el-icon-warning"></i>
-									<p class="el-message__content">
-										Warning, this is a warning message.
-									</p>
+									<p class="el-message__content">Warning, this is a warning message.</p>
 									<!---->
 								</div>
 								<div
 									role="alert"
-									class="
-										demo-item
-										el-message el-message--info
-										el-message-fade-leave-active el-message-fade-leave-to
-									"
+									class="demo-item el-message el-message--info el-message-fade-leave-active el-message-fade-leave-to"
 									style="
 										top: 0;
 										left: 0;
@@ -590,12 +478,7 @@
 								</div>
 								<div
 									role="alert"
-									class="
-										demo-item
-										el-message el-message--error
-										is-closable
-										el-message-fade-leave-active el-message-fade-leave-to
-									"
+									class="demo-item el-message el-message--error is-closable el-message-fade-leave-active el-message-fade-leave-to"
 									style="
 										top: 0;
 										left: 0;
@@ -606,9 +489,7 @@
 									"
 								>
 									<i class="el-message__icon el-icon-error"></i>
-									<p class="el-message__content">
-										Oops, this is a error message.
-									</p>
+									<p class="el-message__content">Oops, this is a error message.</p>
 									<i class="el-message__closeBtn el-icon-close"></i>
 								</div>
 							</el-row>
@@ -616,14 +497,8 @@
 							<el-row>
 								<div class="el-message-box">
 									<div class="el-message-box__header">
-										<div class="el-message-box__title">
-											<!----><span>Warning</span>
-										</div>
-										<button
-											type="button"
-											aria-label="Close"
-											class="el-message-box__headerbtn"
-										>
+										<div class="el-message-box__title"><!----><span>Warning</span></div>
+										<button type="button" aria-label="Close" class="el-message-box__headerbtn">
 											<i class="el-message-box__close el-icon-close"></i>
 										</button>
 									</div>
@@ -644,27 +519,16 @@
 												<!---->
 												<!---->
 											</div>
-											<div
-												class="el-message-box__errormsg"
-												style="visibility: hidden"
-											></div>
+											<div class="el-message-box__errormsg" style="visibility: hidden"></div>
 										</div>
 									</div>
 									<div class="el-message-box__btns">
-										<button
-											type="button"
-											class="el-button el-button--default el-button--small"
-										>
+										<button type="button" class="el-button el-button--default el-button--small">
 											<!---->
 											<!----><span> Cancel </span></button
 										><button
 											type="button"
-											class="
-												el-button
-												el-button--default
-												el-button--small
-												el-button--primary
-											"
+											class="el-button el-button--default el-button--small el-button--primary"
 										>
 											<!---->
 											<!----><span> OK </span>
@@ -674,11 +538,7 @@
 							</el-row>
 							<h4>Notification</h4>
 							<el-row>
-								<div
-									role="alert"
-									class="el-notification right"
-									style="position: relative; left: 0"
-								>
+								<div role="alert" class="el-notification right" style="position: relative; left: 0">
 									<!---->
 									<div class="el-notification__group">
 										<span class="el-notification__title">Notification</span>
@@ -691,11 +551,7 @@
 							</el-row>
 							<h4>Menu</h4>
 							<el-row>
-								<el-menu
-									:default-active="menu"
-									class="el-menu-demo"
-									mode="horizontal"
-								>
+								<el-menu :default-active="menu" class="el-menu-demo" mode="horizontal">
 									<el-menu-item index="1">Processing Center</el-menu-item>
 									<el-submenu index="2">
 										<template slot="title">Workspace</template>
@@ -772,11 +628,7 @@
 								>
 									<div class="el-dialog__header">
 										<span class="el-dialog__title">Tips</span
-										><button
-											type="button"
-											aria-label="Close"
-											class="el-dialog__headerbtn"
-										>
+										><button type="button" aria-label="Close" class="el-dialog__headerbtn">
 											<i class="el-dialog__close el-icon el-icon-close"></i>
 										</button>
 									</div>
@@ -785,17 +637,11 @@
 									</div>
 									<div class="el-dialog__footer">
 										<span class="dialog-footer"
-											><button
-												type="button"
-												class="el-button el-button--default"
-											>
+											><button type="button" class="el-button el-button--default">
 												<!---->
 												<!----><span>Cancel</span>
 											</button>
-											<button
-												type="button"
-												class="el-button el-button--primary"
-											>
+											<button type="button" class="el-button el-button--primary">
 												<!---->
 												<!----><span>Confirm</span>
 											</button></span
@@ -818,12 +664,7 @@
 									role="tooltip"
 									x-placement="top"
 									class="el-tooltip__popper is-light"
-									style="
-										margin-top: 10px;
-										position: relative;
-										width: 40px;
-										text-align: center;
-									"
+									style="margin-top: 10px; position: relative; width: 40px; text-align: center"
 								>
 									Light
 									<div x-arrow="" class="popper__arrow"></div>
@@ -866,15 +707,14 @@
 								<el-collapse v-model="collapse">
 									<el-collapse-item title="Consistent" name="1">
 										<div>
-											Consistent with real life: in line with the process and
-											logic of real life, and comply with languages and habits
-											that the users are used to;
+											Consistent with real life: in line with the process and logic of real life,
+											and comply with languages and habits that the users are used to;
 										</div>
 									</el-collapse-item>
 									<el-collapse-item title="Feedback" name="2">
 										<div>
-											Operation feedback: enable the users to clearly perceive
-											their operations by style updates and interactive effects;
+											Operation feedback: enable the users to clearly perceive their operations by
+											style updates and interactive effects;
 										</div>
 									</el-collapse-item>
 								</el-collapse>
@@ -883,11 +723,7 @@
 							<el-row class="demo-line avatar-demo">
 								<el-avatar icon="el-icon-user-solid" />
 								<el-avatar> avatar </el-avatar>
-								<el-avatar
-									shape="square"
-									fit="contain"
-									:src="avatarData.url"
-								></el-avatar>
+								<el-avatar shape="square" fit="contain" :src="avatarData.url"></el-avatar>
 								<el-avatar size="large"> large </el-avatar>
 								<el-avatar size="medium"> medium </el-avatar>
 								<el-avatar size="small"> small </el-avatar>
@@ -904,11 +740,7 @@
 						<el-card class="box-card">
 							<div slot="header" class="box-card-header">
 								<span>Color</span>
-								<el-button
-									size="small"
-									round
-									type="primary"
-									@click.native="copyCssVariables"
+								<el-button size="small" round type="primary" @click.native="copyCssVariables"
 									>复制变量</el-button
 								>
 							</div>
@@ -965,9 +797,7 @@
 							<el-row>
 								<p>color-text-primary 主要文字颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="color_text_primary"
-									></el-color-picker>
+									<el-color-picker v-model="color_text_primary"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="color_text_primary"></el-input>
@@ -977,9 +807,7 @@
 							<el-row>
 								<p>color-text-regular 常规文字颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="color_text_regular"
-									></el-color-picker>
+									<el-color-picker v-model="color_text_regular"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="color_text_regular"></el-input>
@@ -989,9 +817,7 @@
 							<el-row>
 								<p>color-text-secondary 次要文字颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="color_text_secondary"
-									></el-color-picker>
+									<el-color-picker v-model="color_text_secondary"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="color_text_secondary"></el-input>
@@ -1001,9 +827,7 @@
 							<el-row>
 								<p>color-text-placeholder 占位文字颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="color_text_placeholder"
-									></el-color-picker>
+									<el-color-picker v-model="color_text_placeholder"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="color_text_placeholder"></el-input>
@@ -1013,9 +837,7 @@
 							<el-row>
 								<p>border-color-base 一级边框颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="border_color_base"
-									></el-color-picker>
+									<el-color-picker v-model="border_color_base"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="border_color_base"></el-input>
@@ -1025,9 +847,7 @@
 							<el-row>
 								<p>border-color-light 二级边框颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="border_color_light"
-									></el-color-picker>
+									<el-color-picker v-model="border_color_light"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="border_color_light"></el-input>
@@ -1037,9 +857,7 @@
 							<el-row>
 								<p>border-color-lighter 三级边框颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="border_color_lighter"
-									></el-color-picker>
+									<el-color-picker v-model="border_color_lighter"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="border_color_lighter"></el-input>
@@ -1049,9 +867,7 @@
 							<el-row>
 								<p>border-color-xlight 四级边框颜色</p>
 								<el-col :span="6">
-									<el-color-picker
-										v-model="border_color_extra_light"
-									></el-color-picker>
+									<el-color-picker v-model="border_color_extra_light"></el-color-picker>
 								</el-col>
 								<el-col :span="18">
 									<el-input v-model="border_color_extra_light"></el-input>
@@ -1062,9 +878,7 @@
 
 					<el-dialog :visible.sync="visible" title="复制CSS变量">
 						<pre>{{ cssVariables}}</pre>
-						<small
-							>使用方式：将上面的代码通过style属性添加到项目的html标签上</small
-						>
+						<small>使用方式：将上面的代码通过style属性添加到项目的html标签上</small>
 					</el-dialog>
 				</el-aside>
 			</el-container>
@@ -1511,12 +1325,8 @@
 					document.documentElement.style.setProperty(`--${key}-l`, hslColor.l);
 				},
 				copyCssVariables() {
-					const cssVariables = document
-						.querySelector('html')
-						.getAttribute('style');
-					this.cssVariables = cssVariables
-						? cssVariables
-						: '没有进行颜色修改，请先修改颜色！';
+					const cssVariables = document.querySelector('html').getAttribute('style');
+					this.cssVariables = cssVariables ? cssVariables : '没有进行颜色修改，请先修改颜色！';
 					this.visible = true;
 				},
 			},

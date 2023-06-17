@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.twilio",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Development"
-	],
+	"categories": ["Communication", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.twilio/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twilio/"
 			}
 		],
 		"generic": [
@@ -59,5 +56,6 @@
 				"url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/"
 			}
 		]
-	}
+	},
+	"alias": ["SMS", "Phone", "Voice"]
 }

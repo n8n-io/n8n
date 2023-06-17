@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const companyContactOperations = [
+export const companyContactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
+				resource: ['companyContact'],
 			},
 		},
 		options: [
@@ -19,20 +16,20 @@ export const companyContactOperations = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to a company',
+				action: 'Add a company contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a contact from a company',
+				action: 'Remove a company contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyContactFields = [
-
+export const companyContactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                companyContact:add                          */
 	/* -------------------------------------------------------------------------- */
@@ -42,17 +39,12 @@ export const companyContactFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['companyContact'],
+				operation: ['add', 'remove'],
 			},
 		},
 		default: '',
-		description: 'The ID of the contact.',
+		description: 'The ID of the contact',
 	},
 	{
 		displayName: 'Company ID',
@@ -60,16 +52,11 @@ export const companyContactFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['companyContact'],
+				operation: ['add', 'remove'],
 			},
 		},
 		default: '',
-		description: 'The ID of the company.',
+		description: 'The ID of the company',
 	},
-] as INodeProperties[];
+];

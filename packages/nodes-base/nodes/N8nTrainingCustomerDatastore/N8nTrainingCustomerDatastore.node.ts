@@ -1,9 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -62,8 +58,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Datastore',
-			color: '#ff6d5a',
+			name: 'Customer Datastore (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -72,20 +67,18 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get One Person',
 						value: 'getOnePerson',
-						description: 'Get one person',
 					},
 					{
 						name: 'Get All People',
 						value: 'getAllPeople',
-						description: 'Get all people',
 					},
 				],
 				default: 'getOnePerson',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Return All',
@@ -93,13 +86,11 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAllPeople',
-						],
+						operation: ['getAllPeople'],
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -107,12 +98,8 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAllPeople',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getAllPeople'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -120,43 +107,44 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 					maxValue: 10,
 				},
 				default: 5,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-
 			if (operation === 'getOnePerson') {
-
 				responseData = data[0];
 			}
 
 			if (operation === 'getAllPeople') {
+				const returnAll = this.getNodeParameter('returnAll', i);
 
-				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = data;
 				} else {
-					const limit = this.getNodeParameter('limit', i) as number;
+					const limit = this.getNodeParameter('limit', i);
 					responseData = data.slice(0, limit);
 				}
 			}
 
 			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
 			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+				returnData.push({ json: responseData });
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

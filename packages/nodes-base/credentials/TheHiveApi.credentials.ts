@@ -1,12 +1,17 @@
-import {
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
 export class TheHiveApi implements ICredentialType {
 	name = 'theHiveApi';
+
 	displayName = 'The Hive API';
+
 	documentationUrl = 'theHive';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -45,7 +50,24 @@ export class TheHiveApi implements ICredentialType {
 			displayName: 'Ignore SSL Issues',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 			default: false,
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials?.ApiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.url}}',
+			url: '/api/case',
+		},
+	};
 }

@@ -1,4 +1,6 @@
-const customerAddressOptions = [
+import type { INodeProperties } from 'n8n-workflow';
+
+const customerAddressOptions: INodeProperties[] = [
 	{
 		displayName: 'First Name',
 		name: 'first_name',
@@ -57,6 +59,7 @@ const customerAddressOptions = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 	},
 	{
@@ -67,7 +70,7 @@ const customerAddressOptions = [
 	},
 ];
 
-const customerUpdateOptions = [
+const customerUpdateOptions: INodeProperties[] = [
 	{
 		displayName: 'Billing Address',
 		name: 'billing',
@@ -122,14 +125,11 @@ const customerUpdateOptions = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		displayOptions: {
 			show: {
-				'/resource': [
-					'customer',
-				],
-				'/operation': [
-					'create',
-				],
+				'/resource': ['customer'],
+				'/operation': ['create'],
 			},
 		},
 		default: '',
@@ -144,7 +144,7 @@ const customerUpdateOptions = [
 	},
 ];
 
-const customerCreateOptions = [
+const customerCreateOptions: INodeProperties[] = [
 	...customerUpdateOptions,
 	{
 		displayName: 'Username',
@@ -154,7 +154,7 @@ const customerCreateOptions = [
 	},
 ];
 
-export const customerCreateFields = {
+export const customerCreateFields: INodeProperties = {
 	displayName: 'Additional Fields',
 	name: 'additionalFields',
 	type: 'collection',
@@ -162,18 +162,14 @@ export const customerCreateFields = {
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'customer',
-			],
-			operation: [
-				'create',
-			],
+			resource: ['customer'],
+			operation: ['create'],
 		},
 	},
 	options: customerCreateOptions,
 };
 
-export const customerUpdateFields = {
+export const customerUpdateFields: INodeProperties = {
 	displayName: 'Update Fields',
 	name: 'updateFields',
 	type: 'collection',
@@ -181,12 +177,8 @@ export const customerUpdateFields = {
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'customer',
-			],
-			operation: [
-				'update',
-			],
+			resource: ['customer'],
+			operation: ['update'],
 		},
 	},
 	options: customerUpdateOptions,

@@ -1,0 +1,41 @@
+@use './var.scss';
+@use '../mixins/mixins';
+
+.v-modal-enter {
+	animation: v-modal-in 0.2s ease;
+}
+
+.v-modal-leave {
+	animation: v-modal-out 0.2s ease forwards;
+}
+
+@keyframes v-modal-in {
+	0% {
+		opacity: 0;
+	}
+	100% {
+	}
+}
+
+@keyframes v-modal-out {
+	0% {
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.v-modal {
+	position: fixed;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background-color: var.$popup-modal-background-color;
+}
+
+@include mixins.b(popup-parent) {
+	@include mixins.m(hidden) {
+		overflow: hidden;
+	}
+}

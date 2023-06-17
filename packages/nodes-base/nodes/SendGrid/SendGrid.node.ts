@@ -1,40 +1,23 @@
-import {
-	BINARY_ENCODING,
-	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError
 } from 'n8n-workflow';
 
-import {
-	listFields,
-	listOperations,
-} from './ListDescription';
+import { listFields, listOperations } from './ListDescription';
 
-import {
-	contactFields,
-	contactOperations
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
 
-import {
-	mailFields,
-	mailOperations,
-	SendMailBody,
-} from './MailDescription';
+import type { SendMailBody } from './MailDescription';
+import { mailFields, mailOperations } from './MailDescription';
 
-import {
-	sendGridApiRequest,
-	sendGridApiRequestAllItems,
-} from './GenericFunctions';
+import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
 
-import * as moment from 'moment-timezone';
+import moment from 'moment-timezone';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,7 +30,6 @@ export class SendGrid implements INodeType {
 		description: 'Consume SendGrid API',
 		defaults: {
 			name: 'SendGrid',
-			color: '#1A82E2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -64,6 +46,7 @@ export class SendGrid implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Contact',
@@ -80,7 +63,6 @@ export class SendGrid implements INodeType {
 				],
 				default: 'list',
 				required: true,
-				description: 'Resource to consume',
 			},
 			...listOperations,
 			...listFields,
@@ -94,9 +76,15 @@ export class SendGrid implements INodeType {
 	methods = {
 		loadOptions: {
 			// Get custom fields to display to user so that they can select them easily
-			async getCustomFields(this: ILoadOptionsFunctions,): Promise<INodePropertyOptions[]> {
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { custom_fields } = await sendGridApiRequest.call(this, '/marketing/field_definitions', 'GET', {}, {});
+				const { custom_fields } = await sendGridApiRequest.call(
+					this,
+					'/marketing/field_definitions',
+					'GET',
+					{},
+					{},
+				);
 				if (custom_fields !== undefined) {
 					for (const customField of custom_fields) {
 						returnData.push({
@@ -110,7 +98,14 @@ export class SendGrid implements INodeType {
 			// Get lists to display to user so that they can select them easily
 			async getListIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await sendGridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, {});
+				const lists = await sendGridApiRequestAllItems.call(
+					this,
+					'/marketing/lists',
+					'GET',
+					'result',
+					{},
+					{},
+				);
 				for (const list of lists) {
 					returnData.push({
 						name: list.name,
@@ -120,28 +115,37 @@ export class SendGrid implements INodeType {
 				return returnData;
 			},
 			async getTemplateIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await sendGridApiRequest.call(this, '/templates', 'GET', {}, { generations: 'dynamic' });
-				return responseData.templates.map(({ id, name }: { id: string, name: string }) => ({ name, value: id }));
+				const responseData = await sendGridApiRequest.call(
+					this,
+					'/templates',
+					'GET',
+					{},
+					{ generations: 'dynamic' },
+				);
+				return responseData.templates.map(({ id, name }: { id: string; name: string }) => ({
+					name,
+					value: id,
+				}));
 			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const length = (items.length as unknown) as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const returnData: INodeExecutionData[] = [];
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		// https://sendgrid.com/docs/api-reference/
 		if (resource === 'contact') {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = '/marketing/contacts';
 						let method = 'GET';
 						const body: IDataObject = {};
@@ -150,15 +154,30 @@ export class SendGrid implements INodeType {
 							method = 'POST';
 							Object.assign(body, { query: filters.query });
 						}
-						responseData = await sendGridApiRequestAllItems.call(this, endpoint, method, 'result', body, qs);
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						responseData = await sendGridApiRequestAllItems.call(
+							this,
+							endpoint,
+							method,
+							'result',
+							body,
+							qs,
+						);
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
-						returnData.push.apply(returnData, responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -187,10 +206,19 @@ export class SendGrid implements INodeType {
 						if (Array.isArray(responseData)) {
 							responseData = responseData[0];
 						}
-						returnData.push(responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -203,15 +231,13 @@ export class SendGrid implements INodeType {
 					let lists;
 					for (let i = 0; i < length; i++) {
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const contact: IDataObject = {
 							email,
 						};
 						if (additionalFields.addressUi) {
-							const addressValues = (additionalFields.addressUi as IDataObject).addressValues as IDataObject;
+							const addressValues = (additionalFields.addressUi as IDataObject)
+								.addressValues as IDataObject;
 							const addressLine1 = addressValues.address1 as string;
 							const addressLine2 = addressValues.address2 as string;
 							if (addressLine2) {
@@ -244,31 +270,44 @@ export class SendGrid implements INodeType {
 							Object.assign(contact, { state_province_region: stateProvinceRegion });
 						}
 						if (additionalFields.alternateEmails) {
-							const alternateEmails = ((additionalFields.alternateEmails as string).split(',') as string[]).filter(email => !!email);
+							const alternateEmails = (additionalFields.alternateEmails as string)
+								.split(',')
+								.filter((mail) => !!mail);
 							if (alternateEmails.length !== 0) {
 								Object.assign(contact, { alternate_emails: alternateEmails });
 							}
 						}
 						if (additionalFields.listIdsUi) {
-							const listIdValues = (additionalFields.listIdsUi as IDataObject).listIdValues as IDataObject;
+							const listIdValues = (additionalFields.listIdsUi as IDataObject)
+								.listIdValues as IDataObject;
 							const listIds = listIdValues.listIds as IDataObject[];
 							lists = listIds;
 						}
 						if (additionalFields.customFieldsUi) {
-							const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
+							const customFields = (additionalFields.customFieldsUi as IDataObject)
+								.customFieldValues as IDataObject[];
 							if (customFields) {
-								const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+								const data = customFields.reduce(
+									(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
+									{},
+								);
 								Object.assign(contact, { custom_fields: data });
 							}
 						}
 						contacts.push(contact);
 					}
-					responseData = await sendGridApiRequest.call(this, '/marketing/contacts', 'PUT', { list_ids: lists, contacts }, qs);
-					returnData.push(responseData);
+					responseData = await sendGridApiRequest.call(
+						this,
+						'/marketing/contacts',
+						'PUT',
+						{ list_ids: lists, contacts },
+						qs,
+					);
+					returnData.push(responseData as INodeExecutionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-					} else {	
+						returnData.push({ json: { error: error.message } });
+					} else {
 						throw error;
 					}
 				}
@@ -277,15 +316,30 @@ export class SendGrid implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const deleteAll = this.getNodeParameter('deleteAll', i) as boolean;
-						if (deleteAll === true) {
+						if (deleteAll) {
 							qs.delete_all_contacts = 'true';
 						}
 						qs.ids = (this.getNodeParameter('ids', i) as string).replace(/\s/g, '');
-						responseData = await sendGridApiRequest.call(this, `/marketing/contacts`, 'DELETE', {}, qs);
-						returnData.push(responseData);
+						responseData = await sendGridApiRequest.call(
+							this,
+							'/marketing/contacts',
+							'DELETE',
+							{},
+							qs,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -297,16 +351,32 @@ export class SendGrid implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						responseData = await sendGridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, qs);
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						responseData = await sendGridApiRequestAllItems.call(
+							this,
+							'/marketing/lists',
+							'GET',
+							'result',
+							{},
+							qs,
+						);
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
-						returnData.push.apply(returnData, responseData);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -318,11 +388,26 @@ export class SendGrid implements INodeType {
 					try {
 						const listId = this.getNodeParameter('listId', i) as string;
 						qs.contact_sample = this.getNodeParameter('contactSample', i) as boolean;
-						responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'GET', {}, qs);
-						returnData.push(responseData);
+						responseData = await sendGridApiRequest.call(
+							this,
+							`/marketing/lists/${listId}`,
+							'GET',
+							{},
+							qs,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -333,11 +418,26 @@ export class SendGrid implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const name = this.getNodeParameter('name', i) as string;
-						responseData = await sendGridApiRequest.call(this, '/marketing/lists', 'POST', { name }, qs);
-						returnData.push(responseData);
+						responseData = await sendGridApiRequest.call(
+							this,
+							'/marketing/lists',
+							'POST',
+							{ name },
+							qs,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -349,12 +449,26 @@ export class SendGrid implements INodeType {
 					try {
 						const listId = this.getNodeParameter('listId', i) as string;
 						qs.delete_contacts = this.getNodeParameter('deleteContacts', i) as boolean;
-						responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'DELETE', {}, qs);
+						responseData = await sendGridApiRequest.call(
+							this,
+							`/marketing/lists/${listId}`,
+							'DELETE',
+							{},
+							qs,
+						);
 						responseData = { success: true };
-						returnData.push(responseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -366,11 +480,25 @@ export class SendGrid implements INodeType {
 					try {
 						const name = this.getNodeParameter('name', i) as string;
 						const listId = this.getNodeParameter('listId', i) as string;
-						responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'PATCH', { name }, qs);
-						returnData.push(responseData);
+						responseData = await sendGridApiRequest.call(
+							this,
+							`/marketing/lists/${listId}`,
+							'PATCH',
+							{ name },
+							qs,
+						);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -385,7 +513,7 @@ export class SendGrid implements INodeType {
 						const toEmail = this.getNodeParameter('toEmail', i) as string;
 
 						const parsedToEmail = toEmail.includes(',')
-							? toEmail.split(',').map((i) => ({ email: i.trim() }))
+							? toEmail.split(',').map((entry) => ({ email: entry.trim() }))
 							: [{ email: toEmail.trim() }];
 
 						const {
@@ -400,7 +528,7 @@ export class SendGrid implements INodeType {
 						} = this.getNodeParameter('additionalFields', i) as {
 							bccEmail: string;
 							ccEmail: string;
-							enableSandbox: boolean,
+							enableSandbox: boolean;
 							sendAt: string;
 							headers: { details: Array<{ key: string; value: string }> };
 							attachments: string;
@@ -409,9 +537,11 @@ export class SendGrid implements INodeType {
 						};
 
 						const body: SendMailBody = {
-							personalizations: [{
-								to: parsedToEmail,
-							}],
+							personalizations: [
+								{
+									to: parsedToEmail,
+								},
+							],
 							from: {
 								email: (this.getNodeParameter('fromEmail', i) as string).trim(),
 								name: this.getNodeParameter('fromName', i) as string,
@@ -430,12 +560,12 @@ export class SendGrid implements INodeType {
 							body.template_id = this.getNodeParameter('templateId', i) as string;
 
 							const { fields } = this.getNodeParameter('dynamicTemplateFields', i) as {
-								fields: Array<{ [key: string]: string }>
+								fields: Array<{ [key: string]: string }>;
 							};
 
 							if (fields) {
 								body.personalizations[0].dynamic_template_data = {};
-								fields.forEach(field => {
+								fields.forEach((field) => {
 									body.personalizations[0].dynamic_template_data![field.key] = field.value;
 								});
 							}
@@ -443,10 +573,12 @@ export class SendGrid implements INodeType {
 							// message body
 						} else {
 							body.personalizations[0].subject = this.getNodeParameter('subject', i) as string;
-							body.content = [{
-								type: this.getNodeParameter('contentType', i) as string,
-								value: this.getNodeParameter('contentValue', i) as string,
-							}];
+							body.content = [
+								{
+									type: this.getNodeParameter('contentType', i) as string,
+									value: this.getNodeParameter('contentValue', i) as string,
+								},
+							];
 						}
 
 						if (attachments) {
@@ -454,16 +586,13 @@ export class SendGrid implements INodeType {
 							const binaryProperties = attachments.split(',').map((p) => p.trim());
 
 							for (const property of binaryProperties) {
-								if (!items[i].binary?.hasOwnProperty(property)) {
-									throw new NodeOperationError(this.getNode(), `The binary property ${property} does not exist`);
-								}
-
-								const binaryProperty = items[i].binary![property];
+								const binaryData = this.helpers.assertBinaryData(i, property);
+								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
 
 								attachmentsToSend.push({
-									content: binaryProperty.data,
-									filename: binaryProperty.fileName || 'unknown',
-									type: binaryProperty.mimeType,
+									content: dataBuffer.toString('base64'),
+									filename: binaryData.fileName || 'unknown',
+									type: binaryData.mimeType,
 								});
 							}
 
@@ -473,37 +602,51 @@ export class SendGrid implements INodeType {
 						}
 
 						if (bccEmail) {
-							body.personalizations[0].bcc = bccEmail.split(',').map(i => ({ email: i.trim() }));
+							body.personalizations[0].bcc = bccEmail
+								.split(',')
+								.map((entry) => ({ email: entry.trim() }));
 						}
 
 						if (ccEmail) {
-							body.personalizations[0].cc = ccEmail.split(',').map(i => ({ email: i.trim() }));
+							body.personalizations[0].cc = ccEmail
+								.split(',')
+								.map((entry) => ({ email: entry.trim() }));
 						}
 
 						if (headers?.details.length) {
 							const parsedHeaders: { [key: string]: string } = {};
-							headers.details.forEach(obj => parsedHeaders[obj['key']] = obj['value']);
+							headers.details.forEach((obj) => (parsedHeaders[obj.key] = obj.value));
 							body.headers = parsedHeaders;
 						}
 
 						if (categories) {
-							body.categories = categories.split(',') as string[];
+							body.categories = categories.split(',');
 						}
 
 						if (ipPoolName) {
-							body.ip_pool_name = ipPoolName as string;
+							body.ip_pool_name = ipPoolName;
 						}
 
 						if (sendAt) {
 							body.personalizations[0].send_at = moment.tz(sendAt, timezone).unix();
 						}
 
-						const data = await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs, { resolveWithFullResponse: true });
+						const data = await sendGridApiRequest.call(this, '/mail/send', 'POST', body, qs, {
+							resolveWithFullResponse: true,
+						});
 
-						returnData.push({ messageId: data!.headers['x-message-id'] });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ messageId: data.headers['x-message-id'] }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -511,6 +654,6 @@ export class SendGrid implements INodeType {
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.slack",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,14 +11,24 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.slack/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
 			}
 		],
 		"generic": [
 			{
+				"label": "6 e-commerce workflows to power up your Shopify s",
+				"icon": "store",
+				"url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+			},
+			{
 				"label": "Automate your data processing pipeline in 9 steps",
 				"icon": "⚙️",
 				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
+				"label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+				"icon": "👥",
+				"url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
 			},
 			{
 				"label": "5 tasks you can automate with the new Notion API ",

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const caseCommentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const caseCommentOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
+				resource: ['caseComment'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const caseCommentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a comment to a case',
+				action: 'Add a comment to a case',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a case comment',
+				action: 'Get a case comment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all case comments',
+				description: 'Retrieve many case comments',
+				action: 'Get many case comments',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a comment from a case',
+				action: 'Remove a comment from a case',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a comment in a case',
+				action: 'Update a comment from a case',
 			},
 		],
 		default: 'add',
@@ -59,12 +60,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['caseComment'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -76,27 +73,19 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['caseComment'],
+				operation: ['add'],
 			},
 		},
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['caseComment'],
+				operation: ['add'],
 			},
 		},
 		default: true,
@@ -110,12 +99,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['caseComment'],
+				operation: ['add'],
 			},
 		},
 		options: [
@@ -123,7 +108,8 @@ export const caseCommentFields: INodeProperties[] = [
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
-				description: 'Valid application owner registered within the Cases Role Based Access Control system',
+				description:
+					'Valid application owner registered within the Cases Role Based Access Control system',
 				default: '',
 			},
 		],
@@ -141,12 +127,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['caseComment'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -159,12 +141,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['caseComment'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -180,12 +158,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['caseComment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -197,12 +171,8 @@ export const caseCommentFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['caseComment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -217,15 +187,9 @@ export const caseCommentFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['caseComment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -242,12 +206,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['caseComment'],
+				operation: ['remove'],
 			},
 		},
 	},
@@ -259,12 +219,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['caseComment'],
+				operation: ['remove'],
 			},
 		},
 	},
@@ -281,12 +237,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['caseComment'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -298,12 +250,8 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['caseComment'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -316,27 +264,19 @@ export const caseCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['caseComment'],
+				operation: ['update'],
 			},
 		},
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['caseComment'],
+				operation: ['update'],
 			},
 		},
 		default: true,

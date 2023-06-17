@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	addressFixedCollection,
@@ -8,64 +6,63 @@ import {
 	phoneNumbersFixedCollection,
 } from '../utils/sharedFields';
 
-export const leadOperations = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
+				resource: ['lead'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a lead',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many leads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a lead',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const leadFields = [
+export const leadFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               lead: create
 	// ----------------------------------------
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the lead to create.',
+		description: 'Name of the lead to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -77,19 +74,11 @@ export const leadFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			addressFixedCollection,
-			emailFixedCollection,
-			phoneNumbersFixedCollection,
-		],
+		options: [addressFixedCollection, emailFixedCollection, phoneNumbersFixedCollection],
 	},
 
 	// ----------------------------------------
@@ -98,18 +87,14 @@ export const leadFields = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to delete.',
+		description: 'ID of the lead to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['lead'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -120,18 +105,14 @@ export const leadFields = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to retrieve.',
+		description: 'ID of the lead to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['lead'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -144,15 +125,11 @@ export const leadFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['lead'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -161,22 +138,16 @@ export const leadFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['lead'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -188,12 +159,8 @@ export const leadFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['lead'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -202,14 +169,14 @@ export const leadFields = [
 				name: 'country',
 				type: 'string',
 				default: '',
-				description: 'Name of the country to filter by.',
+				description: 'Name of the country to filter by',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the lead to filter by.',
+				description: 'Name of the lead to filter by',
 			},
 		],
 	},
@@ -220,18 +187,14 @@ export const leadFields = [
 	{
 		displayName: 'Lead ID',
 		name: 'leadId',
-		description: 'ID of the lead to update.',
+		description: 'ID of the lead to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -243,12 +206,8 @@ export const leadFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -258,7 +217,7 @@ export const leadFields = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the lead.',
+				description: 'Description to set for the lead',
 			},
 			emailFixedCollection,
 			{
@@ -266,9 +225,9 @@ export const leadFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the lead.',
+				description: 'Name to set for the lead',
 			},
 			phoneNumbersFixedCollection,
 		],
 	},
-] as INodeProperties[];
+];

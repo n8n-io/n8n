@@ -1,32 +1,29 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const fieldOperations = [
+export const fieldOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
+				resource: ['field'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all fields',
+				description: 'Get many fields',
+				action: 'Get many fields',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const fieldFields = [
+export const fieldFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                field:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -38,12 +35,8 @@ export const fieldFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['field'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'The table identifier',
@@ -54,16 +47,12 @@ export const fieldFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['field'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'Returns a list of your user contacts.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -71,15 +60,9 @@ export const fieldFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['field'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -87,7 +70,7 @@ export const fieldFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -97,12 +80,8 @@ export const fieldFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'field',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['field'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -111,8 +90,8 @@ export const fieldFields = [
 				name: 'includeFieldPerms',
 				type: 'boolean',
 				default: false,
-				description: `Set to 'true' if you'd like to get back the custom permissions for the field(s)`,
+				description: 'Whether to get back the custom permissions for the field(s)',
 			},
 		],
 	},
-] as INodeProperties[];
+];

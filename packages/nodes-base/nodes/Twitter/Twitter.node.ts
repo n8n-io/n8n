@@ -1,26 +1,17 @@
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 
-import {
-	directMessageFields,
-	directMessageOperations,
-} from './DirectMessageDescription';
+import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
 
-import {
-	tweetFields,
-	tweetOperations,
-} from './TweetDescription';
+import { tweetFields, tweetOperations } from './TweetDescription';
 
 import {
 	twitterApiRequest,
@@ -28,15 +19,13 @@ import {
 	uploadAttachments,
 } from './GenericFunctions';
 
-import {
-	ITweet,
-} from './TweetInterface';
+import type { ITweet, ITweetCreate } from './TweetInterface';
 
-const ISO6391 = require('iso-639-1');
+import ISO6391 from 'iso-639-1';
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Twitter ',
+		displayName: 'Twitter',
 		name: 'twitter',
 		icon: 'file:twitter.svg',
 		group: ['input', 'output'],
@@ -45,7 +34,6 @@ export class Twitter implements INodeType {
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Twitter',
-			color: '#1DA1F2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -60,6 +48,7 @@ export class Twitter implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Direct Message',
@@ -71,7 +60,6 @@ export class Twitter implements INodeType {
 					},
 				],
 				default: 'tweet',
-				description: 'The resource to operate on.',
 			},
 			// DIRECT MESSAGE
 			...directMessageOperations,
@@ -84,7 +72,7 @@ export class Twitter implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available languages to display them to user so that he can
+			// Get all the available languages to display them to user so that they can
 			// select them easily
 			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -104,11 +92,11 @@ export class Twitter implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'directMessage') {
@@ -116,8 +104,8 @@ export class Twitter implements INodeType {
 					if (operation === 'create') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const body: IDataObject = {
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const body: ITweetCreate = {
 							type: 'message_create',
 							message_create: {
 								target: {
@@ -137,15 +125,22 @@ export class Twitter implements INodeType {
 								return propertyName.trim();
 							});
 
-							const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
-							//@ts-ignore
-							body.message_create.message_data.attachment = { type: 'media', media: { id: medias[0].media_id_string } };
+							const medias = await uploadAttachments.call(this, attachmentProperties, i);
+							body.message_create.message_data.attachment = {
+								type: 'media',
+								//@ts-ignore
+								media: { id: medias[0].media_id_string },
+							};
 						} else {
-							//@ts-ignore
 							delete body.message_create.message_data.attachment;
 						}
 
-						responseData = await twitterApiRequest.call(this, 'POST', '/direct_messages/events/new.json', { event: body });
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							'/direct_messages/events/new.json',
+							{ event: body },
+						);
 
 						responseData = responseData.event;
 					}
@@ -154,7 +149,7 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 					if (operation === 'create') {
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ITweet = {
 							status: text,
 						};
@@ -165,16 +160,17 @@ export class Twitter implements INodeType {
 						}
 
 						if (additionalFields.attachments) {
-
 							const attachments = additionalFields.attachments as string;
 
 							const attachmentProperties: string[] = attachments.split(',').map((propertyName) => {
 								return propertyName.trim();
 							});
 
-							const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
+							const medias = await uploadAttachments.call(this, attachmentProperties, i);
 
-							body.media_ids = (medias as IDataObject[]).map((media: IDataObject) => media.media_id_string).join(',');
+							body.media_ids = (medias as IDataObject[])
+								.map((media: IDataObject) => media.media_id_string)
+								.join(',');
 						}
 
 						if (additionalFields.possiblySensitive) {
@@ -194,19 +190,31 @@ export class Twitter implements INodeType {
 							}
 						}
 
-						responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', {}, body as unknown as IDataObject);
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							'/statuses/update.json',
+							{},
+							body as unknown as IDataObject,
+						);
 					}
 					// https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-destroy-id
 					if (operation === 'delete') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
 
-						responseData = await twitterApiRequest.call(this, 'POST', `/statuses/destroy/${tweetId}.json`, {}, {});
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							`/statuses/destroy/${tweetId}.json`,
+							{},
+							{},
+						);
 					}
 					// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
 					if (operation === 'search') {
 						const q = this.getNodeParameter('searchText', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs: IDataObject = {
 							q,
 						};
@@ -231,24 +239,39 @@ export class Twitter implements INodeType {
 							const locationUi = additionalFields.locationFieldsUi as IDataObject;
 							if (locationUi.locationFieldsValues) {
 								const values = locationUi.locationFieldsValues as IDataObject;
-								qs.geocode = `${values.latitude as string},${values.longitude as string},${values.distance}${values.radius}`;
+								qs.geocode = `${values.latitude as string},${values.longitude as string},${
+									values.distance
+								}${values.radius}`;
 							}
 						}
 
 						qs.tweet_mode = additionalFields.tweetMode || 'compat';
 
 						if (returnAll) {
-							responseData = await twitterApiRequestAllItems.call(this, 'statuses', 'GET', '/search/tweets.json', {}, qs);
+							responseData = await twitterApiRequestAllItems.call(
+								this,
+								'statuses',
+								'GET',
+								'/search/tweets.json',
+								{},
+								qs,
+							);
 						} else {
-							qs.count = this.getNodeParameter('limit', 0) as number;
-							responseData = await twitterApiRequest.call(this, 'GET', '/search/tweets.json', {}, qs);
+							qs.count = this.getNodeParameter('limit', 0);
+							responseData = await twitterApiRequest.call(
+								this,
+								'GET',
+								'/search/tweets.json',
+								{},
+								qs,
+							);
 							responseData = responseData.statuses;
 						}
 					}
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
 					if (operation === 'like') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const qs: IDataObject = {
 							id: tweetId,
@@ -258,12 +281,18 @@ export class Twitter implements INodeType {
 							qs.include_entities = additionalFields.includeEntities as boolean;
 						}
 
-						responseData = await twitterApiRequest.call(this, 'POST', '/favorites/create.json', {}, qs);
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							'/favorites/create.json',
+							{},
+							qs,
+						);
 					}
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-retweet-id
 					if (operation === 'retweet') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const qs: IDataObject = {
 							id: tweetId,
@@ -273,22 +302,34 @@ export class Twitter implements INodeType {
 							qs.trim_user = additionalFields.trimUser as boolean;
 						}
 
-						responseData = await twitterApiRequest.call(this, 'POST', `/statuses/retweet/${tweetId}.json`, {}, qs);
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							`/statuses/retweet/${tweetId}.json`,
+							{},
+							qs,
+						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = {
+						json: {
+							error: (error as JsonObject).message,
+						},
+					};
+					returnData.push(executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

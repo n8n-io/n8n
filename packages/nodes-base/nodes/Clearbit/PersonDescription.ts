@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const personOperations = [
+export const personOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
+				resource: ['person'],
 			},
 		},
 		options: [
@@ -17,15 +16,14 @@ export const personOperations = [
 				name: 'Enrich',
 				value: 'enrich',
 				description: 'Look up a person and company data based on an email or domain',
+				action: 'Enrich a person',
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const personFields = [
-
+export const personFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 person:enrich                                 */
 	/* -------------------------------------------------------------------------- */
@@ -33,19 +31,16 @@ export const personFields = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
-		description: 'The email address to look up.',
+		description: 'The email address to look up',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -55,12 +50,8 @@ export const personFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['person'],
+				operation: ['enrich'],
 			},
 		},
 		options: [
@@ -69,64 +60,66 @@ export const personFields = [
 				name: 'company',
 				type: 'string',
 				default: '',
-				description: 'The name of the person’s employer.',
+				description: 'The name of the person’s employer',
 			},
 			{
 				displayName: 'Company Domain',
 				name: 'companyDomain',
 				type: 'string',
 				default: '',
-				description: 'The domain for the person’s employer.',
+				description: 'The domain for the person’s employer',
 			},
 			{
 				displayName: 'Facebook',
 				name: 'facebook',
 				type: 'string',
 				default: '',
-				description: 'The Facebook URL for the person.',
+				description: 'The Facebook URL for the person',
 			},
 			{
 				displayName: 'Family Name',
 				name: 'familyName',
 				type: 'string',
 				default: '',
-				description: 'Last name of person. If you have this, passing this is strongly recommended to improve match rates.',
+				description:
+					'Last name of person. If you have this, passing this is strongly recommended to improve match rates.',
 			},
 			{
 				displayName: 'Given Name',
 				name: 'givenName',
 				type: 'string',
 				default: '',
-				description: 'First name of person.',
+				description: 'First name of person',
 			},
 			{
 				displayName: 'IP Address',
 				name: 'ipAddress',
 				type: 'string',
 				default: '',
-				description: 'IP address of the person. If you have this, passing this is strongly recommended to improve match rates.',
+				description:
+					'IP address of the person. If you have this, passing this is strongly recommended to improve match rates.',
 			},
 			{
 				displayName: 'Location',
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'The city or country where the person resides.',
+				description: 'The city or country where the person resides',
 			},
 			{
 				displayName: 'LinkedIn',
 				name: 'linkedIn',
 				type: 'string',
 				default: '',
-				description: 'The LinkedIn URL for the person.',
+				description: 'The LinkedIn URL for the person',
 			},
 			{
 				displayName: 'Twitter',
 				name: 'twitter',
 				type: 'string',
 				default: '',
-				description: 'The Twitter handle for the person.',
+				description: 'The Twitter handle for the person',
 			},
 		],
 	},
-] as INodeProperties[];
+];

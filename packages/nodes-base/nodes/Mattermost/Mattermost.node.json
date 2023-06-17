@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.mattermost",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication"
-	],
+	"categories": ["Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mattermost/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mattermost/"
 			}
 		],
 		"generic": [
@@ -58,14 +56,17 @@
 				"url": "https://n8n.io/blog/creating-error-workflows-in-n8n/"
 			},
 			{
-				"label": "Creating Custom Incident Response Workflows with n8n",
-				"icon": "🚨",
+				"label": "How to automate every step of an incident response workflow",
 				"url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/"
 			},
 			{
 				"label": "Learn how to use webhooks with Mattermost slash commands",
 				"icon": "🦄",
 				"url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
 			}
 		]
 	}

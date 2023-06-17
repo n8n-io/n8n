@@ -1,27 +1,33 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	JsonObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function paddleApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	endpoint: string,
+	method: string,
+
+	body: any = {},
+	_query?: IDataObject,
+	_uri?: string,
+): Promise<any> {
 	const credentials = await this.getCredentials('paddleApi');
 	const productionUrl = 'https://vendors.paddle.com/api';
 	const sandboxUrl = 'https://sandbox-vendors.paddle.com/api';
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'Could not retrieve credentials!');
-	}
 
 	const isSandbox = credentials.sandbox;
 
@@ -35,23 +41,30 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 		json: true,
 	};
 
-	body['vendor_id'] = credentials.vendorId;
-	body['vendor_auth_code'] = credentials.vendorAuthCode;
+	body.vendor_id = credentials.vendorId;
+	body.vendor_auth_code = credentials.vendorAuthCode;
 	try {
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (!response.success) {
-			throw new NodeApiError(this.getNode(), response);
+			throw new NodeApiError(this.getNode(), response as JsonObject);
 		}
 
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function paddleApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -61,16 +74,17 @@ export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFu
 
 	do {
 		responseData = await paddleApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		body.page++;
 	} while (
-		responseData[propertyName].length !== 0 && responseData[propertyName].length === body.results_per_page
+		responseData[propertyName].length !== 0 &&
+		responseData[propertyName].length === body.results_per_page
 	);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

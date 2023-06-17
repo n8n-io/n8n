@@ -1,25 +1,16 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { apiRequest, apiRequestAllItems } from '../../../transport';
 
-import {
-	apiRequest,
-	apiRequestAllItems,
-} from '../../../transport';
+import { snakeCase } from 'change-case';
 
-import {
-	snakeCase,
-} from 'change-case';
-
-export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+export async function getAll(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
@@ -53,27 +44,51 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 
 	if (additionalFields.sort) {
 		if (additionalFields.inTeam !== undefined || additionalFields.inChannel !== undefined) {
+			if (
+				additionalFields.inTeam !== undefined &&
+				!validRules.inTeam.includes(snakeCase(additionalFields.sort as string))
+			) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`When In Team is set the only valid values for sorting are ${validRules.inTeam.join(
+						',',
+					)}`,
+					{ itemIndex: index },
+				);
+			}
+			if (
+				additionalFields.inChannel !== undefined &&
+				!validRules.inChannel.includes(snakeCase(additionalFields.sort as string))
+			) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(
+						',',
+					)}`,
+					{ itemIndex: index },
+				);
+			}
+			if (additionalFields.inChannel === '' && additionalFields.sort !== 'username') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'When sort is different than username In Channel must be set',
+					{ itemIndex: index },
+				);
+			}
 
-			if (additionalFields.inTeam !== undefined
-				&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
-				throw new NodeOperationError(this.getNode(), `When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
+			if (additionalFields.inTeam === '' && additionalFields.sort !== 'username') {
+				throw new NodeOperationError(
+					this.getNode(),
+					'When sort is different than username In Team must be set',
+					{ itemIndex: index },
+				);
 			}
-			if (additionalFields.inChannel !== undefined
-				&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
-				throw new NodeOperationError(this.getNode(), `When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
-			}
-			if (additionalFields.inChannel === ''
-				&& additionalFields.sort !== 'username') {
-				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Channel must be set');
-			}
-
-			if (additionalFields.inTeam === ''
-				&& additionalFields.sort !== 'username') {
-				throw new NodeOperationError(this.getNode(), 'When sort is different than username In Team must be set');
-			}
-
 		} else {
-			throw new NodeOperationError(this.getNode(), `When sort is defined either 'in team' or 'in channel' must be defined`);
+			throw new NodeOperationError(
+				this.getNode(),
+				"When sort is defined either 'in team' or 'in channel' must be defined",
+				{ itemIndex: index },
+			);
 		}
 	}
 
@@ -81,10 +96,9 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		qs.sort = '';
 	}
 
-	if (returnAll === false) {
-		qs.per_page = this.getNodeParameter('limit', index) as number;
+	if (!returnAll) {
+		qs.per_page = this.getNodeParameter('limit', index);
 	}
-
 
 	let responseData;
 
@@ -94,5 +108,5 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

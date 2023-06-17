@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const clientOperations = [
+export const clientOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -17,32 +16,35 @@ export const clientOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
+				action: 'Get a client',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all clients',
+				description: 'Get data of many clients',
+				action: 'Get many clients',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const clientFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 client:create                              */
-/* -------------------------------------------------------------------------- */
+export const clientFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -51,12 +53,8 @@ export const clientFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['create'],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -76,9 +74,6 @@ export const clientFields = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -111,12 +106,8 @@ export const clientFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -156,9 +147,11 @@ export const clientFields = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -178,12 +171,8 @@ export const clientFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -208,6 +197,7 @@ export const clientFields = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -230,12 +220,8 @@ export const clientFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -275,9 +261,11 @@ export const clientFields = [
 						default: '',
 					},
 					{
-						displayName: 'Country Code',
+						displayName: 'Country Code Name or ID',
 						name: 'countryCode',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountryCodes',
 						},
@@ -287,41 +275,35 @@ export const clientFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 client:delete                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:delete                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['client'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  client:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client ID',
 		name: 'clientId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['client'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -333,12 +315,8 @@ export const clientFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['get'],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -356,25 +334,21 @@ export const clientFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  client:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['client'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -382,15 +356,9 @@ export const clientFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['client'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -398,7 +366,7 @@ export const clientFields = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -408,12 +376,8 @@ export const clientFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['getAll'],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -431,4 +395,4 @@ export const clientFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

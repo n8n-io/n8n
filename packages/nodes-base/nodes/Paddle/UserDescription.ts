@@ -1,32 +1,29 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
+export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -36,16 +33,12 @@ export const userFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -59,33 +52,22 @@ export const userFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
-		description: 'Number of subscription records to return per page.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -99,18 +81,12 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				jsonParameters: [true],
 			},
 		},
-		description: `Attributes in JSON form.`,
+		description: 'Attributes in JSON form',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -119,15 +95,9 @@ export const userFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -137,21 +107,22 @@ export const userFields = [
 				name: 'planId',
 				type: 'string',
 				default: '',
-				description: 'Filter: The subscription plan ID.',
+				description: 'Filter: The subscription plan ID',
 			},
 			{
 				displayName: 'Subscription ID',
 				name: 'subscriptionId',
 				type: 'string',
 				default: '',
-				description: 'A specific user subscription ID.',
+				description: 'A specific user subscription ID',
 			},
 			{
 				displayName: 'State',
 				name: 'state',
 				type: 'options',
 				default: 'active',
-				description: 'Filter: The user subscription status. Returns all active, past_due, trialing and paused subscription plans if not specified.',
+				description:
+					'Filter: The user subscription status. Returns all active, past_due, trialing and paused subscription plans if not specified.',
 				options: [
 					{
 						name: 'Active',
@@ -173,4 +144,4 @@ export const userFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

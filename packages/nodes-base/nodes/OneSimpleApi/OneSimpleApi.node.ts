@@ -1,17 +1,12 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	oneSimpleApiRequest,
-} from './GenericFunctions';
+import { oneSimpleApiRequest } from './GenericFunctions';
 
 export class OneSimpleApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +18,6 @@ export class OneSimpleApi implements INodeType {
 		description: 'A toolbox of no-code utilities',
 		defaults: {
 			name: 'One Simple API',
-			color: '#1A82e2',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -38,10 +32,15 @@ export class OneSimpleApi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Information',
 						value: 'information',
+					},
+					{
+						name: 'Social Profile',
+						value: 'socialProfile',
 					},
 					{
 						name: 'Utility',
@@ -55,16 +54,15 @@ export class OneSimpleApi implements INodeType {
 				default: 'website',
 				required: true,
 			},
-			// Generation
+			// website
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'website',
-						],
+						resource: ['website'],
 					},
 				},
 				options: [
@@ -72,30 +70,59 @@ export class OneSimpleApi implements INodeType {
 						name: 'Generate PDF',
 						value: 'pdf',
 						description: 'Generate a PDF from a webpage',
+						action: 'Generate PDF',
 					},
 					{
 						name: 'Get SEO Data',
 						value: 'seo',
 						description: 'Get SEO information from website',
+						action: 'Get SEO Data',
 					},
 					{
 						name: 'Take Screenshot',
 						value: 'screenshot',
 						description: 'Create a screenshot from a webpage',
+						action: 'Screenshot',
 					},
 				],
 				default: 'pdf',
+			},
+			// socialProfile
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['socialProfile'],
+					},
+				},
+				options: [
+					{
+						name: 'Instagram',
+						value: 'instagramProfile',
+						description: 'Get details about an Instagram profile',
+						action: 'Get details about an Instagram profile',
+					},
+					{
+						name: 'Spotify',
+						value: 'spotifyArtistProfile',
+						description: 'Get details about a Spotify Artist',
+						action: 'Get details about a Spotify artist',
+					},
+				],
+				default: 'instagramProfile',
 			},
 			// Information
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'information',
-						],
+						resource: ['information'],
 					},
 				},
 				options: [
@@ -103,47 +130,49 @@ export class OneSimpleApi implements INodeType {
 						name: 'Exchange Rate',
 						value: 'exchangeRate',
 						description: 'Convert a value between currencies',
+						action: 'Convert a value between currencies',
 					},
 					{
 						name: 'Image Metadata',
 						value: 'imageMetadata',
 						description: 'Retrieve image metadata from a URL',
+						action: 'Get image metadata from a URL',
 					},
 				],
 				default: 'exchangeRate',
-				description: 'The operation to perform.',
 			},
-			// Utiliy
+			// Utility
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'utility',
-						],
+						resource: ['utility'],
 					},
 				},
 				options: [
 					{
 						name: 'Expand URL',
 						value: 'expandURL',
-						description: 'Expand a shortened url',
+						description: 'Expand a shortened URL',
+						action: 'Expand a shortened URL',
 					},
 					{
 						name: 'Generate QR Code',
 						value: 'qrCode',
 						description: 'Generate a QR Code',
+						action: 'Generate a QR code utility',
 					},
 					{
 						name: 'Validate Email',
 						value: 'validateEmail',
 						description: 'Validate an email address',
+						action: 'Validate an email address',
 					},
 				],
 				default: 'validateEmail',
-				description: 'The operation to perform.',
 			},
 			// website: pdf
 			{
@@ -153,12 +182,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'pdf',
-						],
-						resource: [
-							'website',
-						],
+						operation: ['pdf'],
+						resource: ['website'],
 					},
 				},
 				default: '',
@@ -171,12 +196,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'pdf',
-						],
-						resource: [
-							'website',
-						],
+						operation: ['pdf'],
+						resource: ['website'],
 					},
 				},
 				default: false,
@@ -189,15 +210,9 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'pdf',
-						],
-						resource: [
-							'website',
-						],
-						download: [
-							true,
-						],
+						operation: ['pdf'],
+						resource: ['website'],
+						download: [true],
 					},
 				},
 				default: 'data',
@@ -211,12 +226,8 @@ export class OneSimpleApi implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'website',
-						],
-						operation: [
-							'pdf',
-						],
+						resource: ['website'],
+						operation: ['pdf'],
 					},
 				},
 				options: [
@@ -254,12 +265,12 @@ export class OneSimpleApi implements INodeType {
 								value: 'A6',
 							},
 							{
-								name: 'Legal',
-								value: 'Legal',
-							},
-							{
 								name: 'Ledger',
 								value: 'Ledger',
+							},
+							{
+								name: 'Legal',
+								value: 'Legal',
 							},
 							{
 								name: 'Letter',
@@ -271,15 +282,15 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The page size',
 					},
 					{
 						displayName: 'Force Refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-						This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description:
+							"Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it's necessary.",
 					},
 				],
 			},
@@ -291,12 +302,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'qrCode',
-						],
-						resource: [
-							'utility',
-						],
+						operation: ['qrCode'],
+						resource: ['utility'],
 					},
 				},
 				default: '',
@@ -309,12 +316,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'qrCode',
-						],
-						resource: [
-							'utility',
-						],
+						operation: ['qrCode'],
+						resource: ['utility'],
 					},
 				},
 				default: false,
@@ -327,15 +330,9 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'qrCode',
-						],
-						resource: [
-							'utility',
-						],
-						download: [
-							true,
-						],
+						operation: ['qrCode'],
+						resource: ['utility'],
+						download: [true],
 					},
 				},
 				default: 'data',
@@ -349,12 +346,8 @@ export class OneSimpleApi implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'utility',
-						],
-						operation: [
-							'qrCode',
-						],
+						resource: ['utility'],
+						operation: ['qrCode'],
 					},
 				},
 				options: [
@@ -406,12 +399,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'screenshot',
-						],
-						resource: [
-							'website',
-						],
+						operation: ['screenshot'],
+						resource: ['website'],
 					},
 				},
 				default: '',
@@ -424,12 +413,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'screenshot',
-						],
-						resource: [
-							'website',
-						],
+						operation: ['screenshot'],
+						resource: ['website'],
 					},
 				},
 				default: false,
@@ -442,15 +427,9 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'screenshot',
-						],
-						resource: [
-							'website',
-						],
-						download: [
-							true,
-						],
+						operation: ['screenshot'],
+						resource: ['website'],
+						download: [true],
 					},
 				},
 				default: 'data',
@@ -464,12 +443,8 @@ export class OneSimpleApi implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'website',
-						],
-						operation: [
-							'screenshot',
-						],
+						resource: ['website'],
+						operation: ['screenshot'],
 					},
 				},
 				options: [
@@ -500,24 +475,56 @@ export class OneSimpleApi implements INodeType {
 							},
 						],
 						default: '',
-						description: 'The screen size',
 					},
 					{
 						displayName: 'Force Refresh',
 						name: 'force',
 						type: 'boolean',
 						default: false,
-						description: `Normally the API will reuse a previously taken screenshot of the URL to give a faster response.
-						This option allows you to retake the screenshot at that exact time, for those times when it's necessary`,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description:
+							"Normally the API will reuse a previously taken screenshot of the URL to give a faster response. This option allows you to retake the screenshot at that exact time, for those times when it's necessary.",
 					},
 					{
 						displayName: 'Full Page',
 						name: 'fullpage',
 						type: 'boolean',
 						default: false,
-						description: 'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description:
+							'The API takes a screenshot of the viewable area for the desired screen size. If you need a screenshot of the whole length of the page, use this option.',
 					},
 				],
+			},
+			// socialProfile: instagramProfile
+			{
+				displayName: 'Profile Name',
+				name: 'profileName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['instagramProfile'],
+						resource: ['socialProfile'],
+					},
+				},
+				default: '',
+				description: 'Profile name to get details of',
+			},
+			// socialProfile: spotifyArtistProfile
+			{
+				displayName: 'Artist Name',
+				name: 'artistName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['spotifyArtistProfile'],
+						resource: ['socialProfile'],
+					},
+				},
+				default: '',
+				description: 'Artist name to get details for',
 			},
 			// information: exchangeRate
 			{
@@ -527,12 +534,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'exchangeRate',
-						],
-						resource: [
-							'information',
-						],
+						operation: ['exchangeRate'],
+						resource: ['information'],
 					},
 				},
 				default: '',
@@ -546,16 +549,11 @@ export class OneSimpleApi implements INodeType {
 				placeholder: 'USD',
 				displayOptions: {
 					show: {
-						operation: [
-							'exchangeRate',
-						],
-						resource: [
-							'information',
-						],
+						operation: ['exchangeRate'],
+						resource: ['information'],
 					},
 				},
 				default: '',
-				description: 'From Currency',
 			},
 			{
 				displayName: 'To Currency',
@@ -565,16 +563,11 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'exchangeRate',
-						],
-						resource: [
-							'information',
-						],
+						operation: ['exchangeRate'],
+						resource: ['information'],
 					},
 				},
 				default: '',
-				description: 'To Currency',
 			},
 			// information: imageMetadata
 			{
@@ -584,12 +577,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'imageMetadata',
-						],
-						resource: [
-							'information',
-						],
+						operation: ['imageMetadata'],
+						resource: ['information'],
 					},
 				},
 				default: '',
@@ -603,12 +592,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'seo',
-						],
-						resource: [
-							'website',
-						],
+						operation: ['seo'],
+						resource: ['website'],
 					},
 				},
 				default: '',
@@ -622,12 +607,8 @@ export class OneSimpleApi implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'website',
-						],
-						operation: [
-							'seo',
-						],
+						resource: ['website'],
+						operation: ['seo'],
 					},
 				},
 				options: [
@@ -636,7 +617,6 @@ export class OneSimpleApi implements INodeType {
 						name: 'headers',
 						type: 'boolean',
 						default: false,
-						description: '',
 					},
 				],
 			},
@@ -648,16 +628,11 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'validateEmail',
-						],
-						resource: [
-							'utility',
-						],
+						operation: ['validateEmail'],
+						resource: ['utility'],
 					},
 				},
 				default: '',
-				description: 'Email Address',
 			},
 			// utility: expandURL
 			{
@@ -667,12 +642,8 @@ export class OneSimpleApi implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'expandURL',
-						],
-						resource: [
-							'utility',
-						],
+						operation: ['expandURL'],
+						resource: ['utility'],
 					},
 				},
 				default: '',
@@ -684,20 +655,20 @@ export class OneSimpleApi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		let download;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 
 				if (resource === 'website') {
 					if (operation === 'pdf') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 						qs.url = link;
 
 						if (options.page) {
@@ -714,7 +685,15 @@ export class OneSimpleApi implements INodeType {
 
 						if (download) {
 							const output = this.getNodeParameter('output', i) as string;
-							const buffer = await oneSimpleApiRequest.call(this, 'GET', '', {}, {}, response.url, { json: false, encoding: null }) as Buffer;
+							const buffer = (await oneSimpleApiRequest.call(
+								this,
+								'GET',
+								'',
+								{},
+								{},
+								response.url as string,
+								{ json: false, encoding: null },
+							)) as Buffer;
 							responseData = {
 								json: response,
 								binary: {
@@ -728,8 +707,8 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'screenshot') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 
 						qs.url = link;
 
@@ -753,7 +732,15 @@ export class OneSimpleApi implements INodeType {
 
 						if (download) {
 							const output = this.getNodeParameter('output', i) as string;
-							const buffer = await oneSimpleApiRequest.call(this, 'GET', '', {}, {}, response.url, { json: false, encoding: null }) as Buffer;
+							const buffer = (await oneSimpleApiRequest.call(
+								this,
+								'GET',
+								'',
+								{},
+								{},
+								response.url as string,
+								{ json: false, encoding: null },
+							)) as Buffer;
 							responseData = {
 								json: response,
 								binary: {
@@ -767,7 +754,7 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'seo') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						qs.url = link;
 
 						if (options.headers) {
@@ -775,6 +762,26 @@ export class OneSimpleApi implements INodeType {
 						}
 
 						responseData = await oneSimpleApiRequest.call(this, 'GET', '/page_info', {}, qs);
+					}
+				}
+
+				if (resource === 'socialProfile') {
+					if (operation === 'instagramProfile') {
+						const profileName = this.getNodeParameter('profileName', i) as string;
+						qs.profile = profileName;
+						responseData = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							'/instagram_profile',
+							{},
+							qs,
+						);
+					}
+
+					if (operation === 'spotifyArtistProfile') {
+						const artistName = this.getNodeParameter('artistName', i) as string;
+						qs.profile = artistName;
+						responseData = await oneSimpleApiRequest.call(this, 'GET', '/spotify_profile', {}, qs);
 					}
 				}
 
@@ -813,8 +820,8 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'qrCode') {
 						const message = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 
 						qs.message = message;
 
@@ -830,7 +837,15 @@ export class OneSimpleApi implements INodeType {
 
 						if (download) {
 							const output = this.getNodeParameter('output', i) as string;
-							const buffer = await oneSimpleApiRequest.call(this, 'GET', '', {}, {}, response.url, { json: false, encoding: null }) as Buffer;
+							const buffer = (await oneSimpleApiRequest.call(
+								this,
+								'GET',
+								'',
+								{},
+								{},
+								response.url as string,
+								{ json: false, encoding: null },
+							)) as Buffer;
 							responseData = {
 								json: response,
 								binary: {
@@ -848,7 +863,6 @@ export class OneSimpleApi implements INodeType {
 				} else {
 					returnData.push(responseData as IDataObject);
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

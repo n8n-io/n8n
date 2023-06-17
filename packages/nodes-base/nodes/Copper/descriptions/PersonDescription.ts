@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	addressFixedCollection,
@@ -8,64 +6,63 @@ import {
 	phoneNumbersFixedCollection,
 } from '../utils/sharedFields';
 
-export const personOperations = [
+export const personOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
+				resource: ['person'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a person',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a person',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a person',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many people',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a person',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const personFields = [
+export const personFields: INodeProperties[] = [
 	// ----------------------------------------
 	//              person: create
 	// ----------------------------------------
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the person to create.',
+		description: 'Name of the person to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -77,12 +74,8 @@ export const personFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['person'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -92,7 +85,7 @@ export const personFields = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the person.',
+				description: 'Description to set for the person',
 			},
 			{
 				displayName: 'Email Domain',
@@ -111,18 +104,14 @@ export const personFields = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to delete.',
+		description: 'ID of the person to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['person'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -133,18 +122,14 @@ export const personFields = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to retrieve.',
+		description: 'ID of the person to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['person'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -157,15 +142,11 @@ export const personFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['person'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -174,22 +155,16 @@ export const personFields = [
 		name: 'limit',
 		type: 'number',
 		default: 5,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['person'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -201,12 +176,8 @@ export const personFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['person'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -215,7 +186,7 @@ export const personFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the person to filter by.',
+				description: 'Name of the person to filter by',
 			},
 		],
 	},
@@ -226,18 +197,14 @@ export const personFields = [
 	{
 		displayName: 'Person ID',
 		name: 'personId',
-		description: 'ID of the person to update.',
+		description: 'ID of the person to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -249,12 +216,8 @@ export const personFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'person',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['person'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -264,7 +227,7 @@ export const personFields = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Description to set for the person.',
+				description: 'Description to set for the person',
 			},
 			{
 				displayName: 'Email Domain',
@@ -278,9 +241,9 @@ export const personFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name to set for the person.',
+				description: 'Name to set for the person',
 			},
 			phoneNumbersFixedCollection,
 		],
 	},
-] as INodeProperties[];
+];

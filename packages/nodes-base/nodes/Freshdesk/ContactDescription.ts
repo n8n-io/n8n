@@ -1,18 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -20,35 +17,38 @@ export const contactOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts',
+				description: 'Get many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
-
+export const contactFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:create/update                       */
 	/* -------------------------------------------------------------------------- */
@@ -59,34 +59,28 @@ export const contactFields = [
 		placeholder: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
-		description: 'Name of the contact.',
+		description: 'Name of the contact',
 		required: true,
 	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
-		description: `Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.`,
+		description:
+			'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -95,12 +89,8 @@ export const contactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -112,13 +102,8 @@ export const contactFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create', 'update'],
+				resource: ['contact'],
 			},
 		},
 		default: {},
@@ -128,7 +113,7 @@ export const contactFields = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'Address of the contact.',
+				description: 'Address of the contact',
 			},
 			// {
 			// 	displayName: 'Avatar',
@@ -143,7 +128,7 @@ export const contactFields = [
 				name: 'company_id',
 				type: 'number',
 				default: '',
-				description: 'ID of the primary company to which this contact belongs.',
+				description: 'ID of the primary company to which this contact belongs',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -153,7 +138,8 @@ export const contactFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: `Key value pairs containing the name and value of the custom field. Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.`,
+				description:
+					'Key value pairs containing the name and value of the custom field. Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.',
 				default: [],
 				options: [
 					{
@@ -165,14 +151,14 @@ export const contactFields = [
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: `Custom Field\'s name.`,
+								description: "Custom Field's name",
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: `Custom Field\'s values.`,
+								description: "Custom Field's values",
 							},
 						],
 					},
@@ -183,42 +169,43 @@ export const contactFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A small description of the contact.',
+				description: 'A small description of the contact',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
+						'/operation': ['update'],
 					},
 				},
-				description: `Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.`,
+				description:
+					'Primary email address of the contact. If you want to associate additional email(s) with this contact, use the other_emails attribute.',
 			},
 			{
 				displayName: 'Job Title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Job title of the contact.',
+				description: 'Job title of the contact',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: `Language of the contact. Default language is "en". This attribute can only be set if the Multiple Language feature is enabled (Garden plan and above).`,
+				description:
+					'Language of the contact. Default language is "en". This attribute can only be set if the Multiple Language feature is enabled (Garden plan and above).',
 			},
 			{
 				displayName: 'Mobile',
 				name: 'mobile',
 				type: 'string',
 				default: '',
-				description: 'Mobile number of the contact.',
+				description: 'Mobile number of the contact',
 			},
 			{
 				displayName: 'Name',
@@ -227,12 +214,10 @@ export const contactFields = [
 				default: '',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
+						'/operation': ['update'],
 					},
 				},
-				description: 'Name of the contact.',
+				description: 'Name of the contact',
 			},
 			{
 				displayName: 'Other Companies',
@@ -243,7 +228,8 @@ export const contactFields = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Company',
-				description: `Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).`,
+				description:
+					'Additional companies associated with the contact. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above).',
 			},
 			{
 				displayName: 'Other Emails',
@@ -254,14 +240,14 @@ export const contactFields = [
 					multipleValues: true,
 				},
 				placeholder: 'Add Email',
-				description: 'Additional emails associated with the contact.',
+				description: 'Additional emails associated with the contact',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Telephone number of the contact.',
+				description: 'Telephone number of the contact',
 			},
 			{
 				displayName: 'Tags',
@@ -271,35 +257,37 @@ export const contactFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				description: 'Tags associated with this contact.',
+				description: 'Tags associated with this contact',
 			},
 			{
 				displayName: 'Time Zone',
 				name: 'time_zone',
 				type: 'string',
 				default: '',
-				description: `Time zone of the contact. Default value is the time zone of the domain. This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above).`,
+				description:
+					'Time zone of the contact. Default value is the time zone of the domain. This attribute can only be set if the Multiple Time Zone feature is enabled (Garden plan and above).',
 			},
 			{
 				displayName: 'Twitter ID',
 				name: 'twitter_id',
 				type: 'string',
 				default: '',
-				description: 'Twitter handle of the contact.',
+				description: 'Twitter handle of the contact',
 			},
 			{
 				displayName: 'Unique External ID',
 				name: 'unique_external_id',
 				type: 'string',
 				default: '',
-				description: 'External ID of the contact.',
+				description: 'External ID of the contact',
 			},
 			{
 				displayName: 'View All Tickets',
 				name: 'view_all_tickets',
 				type: 'boolean',
 				default: false,
-				description: `Set to true if the contact can see all the tickets that are associated with the company to which they belong.`,
+				description:
+					'Whether the contact can see all the tickets that are associated with the company to which they belong',
 			},
 		],
 	},
@@ -313,12 +301,8 @@ export const contactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -333,12 +317,8 @@ export const contactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -354,12 +334,8 @@ export const contactFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -373,6 +349,7 @@ export const contactFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -419,4 +396,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

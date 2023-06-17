@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const buildOperations = [
+export const buildOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
+				resource: ['build'],
 			},
 		},
 		options: [
@@ -19,35 +16,38 @@ export const buildOperations = [
 				name: 'Cancel',
 				value: 'cancel',
 				description: 'Cancel a build',
+				action: 'Cancel a build',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a build',
+				action: 'Get a build',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all builds',
+				description: 'Get many builds',
+				action: 'Get many builds',
 			},
 			{
 				name: 'Restart',
 				value: 'restart',
 				description: 'Restart a build',
+				action: 'Restart a build',
 			},
 			{
 				name: 'Trigger',
 				value: 'trigger',
 				description: 'Trigger a build',
+				action: 'Trigger a build',
 			},
 		],
 		default: 'cancel',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const buildFields = [
-
+export const buildFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                               build:cancel                                 */
 	/* -------------------------------------------------------------------------- */
@@ -57,16 +57,12 @@ export const buildFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'cancel',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['cancel'],
+				resource: ['build'],
 			},
 		},
 		default: '',
-		description: 'Value uniquely identifying the build.',
+		description: 'Value uniquely identifying the build',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -78,16 +74,12 @@ export const buildFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['get'],
+				resource: ['build'],
 			},
 		},
 		default: '',
-		description: 'Value uniquely identifying the build.',
+		description: 'Value uniquely identifying the build',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -97,12 +89,8 @@ export const buildFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['build'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -112,7 +100,7 @@ export const buildFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'build.commit',
-				description: 'List of attributes to eager load.',
+				description: 'List of attributes to eager load',
 			},
 		],
 	},
@@ -126,16 +114,12 @@ export const buildFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['getAll'],
+				resource: ['build'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -143,15 +127,9 @@ export const buildFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'build',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['build'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -159,7 +137,7 @@ export const buildFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -169,12 +147,8 @@ export const buildFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['build'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -184,7 +158,7 @@ export const buildFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'build.commit',
-				description: 'List of attributes to eager load.',
+				description: 'List of attributes to eager load',
 			},
 			{
 				displayName: 'Order',
@@ -201,7 +175,7 @@ export const buildFields = [
 					},
 				],
 				default: 'asc',
-				description: 'You may specify order to sort your response.',
+				description: 'You may specify order to sort your response',
 			},
 			{
 				displayName: 'Sort By',
@@ -209,28 +183,24 @@ export const buildFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'ID',
-						value: 'id',
-					},
-					{
 						name: 'Created At',
 						value: 'created_at',
 					},
 					{
-						name: 'Started At',
-						value: 'started_at',
-					},
-					{
 						name: 'Finished At',
 						value: 'finished_at',
 					},
 					{
-						name: 'Finished At',
-						value: 'finished_at',
+						name: 'ID',
+						value: 'id',
 					},
 					{
 						name: 'Number',
 						value: 'number',
+					},
+					{
+						name: 'Started At',
+						value: 'started_at',
 					},
 				],
 				default: 'number',
@@ -247,16 +217,12 @@ export const buildFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'restart',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['restart'],
+				resource: ['build'],
 			},
 		},
 		default: '',
-		description: 'Value uniquely identifying the build.',
+		description: 'Value uniquely identifying the build',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -268,12 +234,8 @@ export const buildFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'trigger',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['trigger'],
+				resource: ['build'],
 			},
 		},
 		placeholder: 'n8n-io/n8n',
@@ -286,17 +248,13 @@ export const buildFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'trigger',
-				],
-				resource: [
-					'build',
-				],
+				operation: ['trigger'],
+				resource: ['build'],
 			},
 		},
 		default: '',
 		placeholder: 'master',
-		description: 'Branch requested to be built.',
+		description: 'Branch requested to be built',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -306,12 +264,8 @@ export const buildFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'build',
-				],
-				operation: [
-					'trigger',
-				],
+				resource: ['build'],
+				operation: ['trigger'],
 			},
 		},
 		options: [
@@ -320,7 +274,7 @@ export const buildFields = [
 				name: 'message',
 				type: 'string',
 				default: '',
-				description: 'Travis-ci status message attached to the request.',
+				description: 'Travis-ci status message attached to the request',
 			},
 			{
 				displayName: 'Merge Mode',
@@ -328,16 +282,16 @@ export const buildFields = [
 				type: 'options',
 				options: [
 					{
+						name: 'Deep Merge',
+						value: 'deep_merge',
+					},
+					{
 						name: 'Deep Merge Append',
 						value: 'deep_merge_append',
 					},
 					{
 						name: 'Deep Merge Prepend',
 						value: 'deep_merge_prepend',
-					},
-					{
-						name: 'Deep Merge',
-						value: 'deep_merge',
 					},
 					{
 						name: 'Merge',
@@ -349,8 +303,7 @@ export const buildFields = [
 					},
 				],
 				default: '',
-				description: '',
 			},
 		],
 	},
-] as INodeProperties[];
+];

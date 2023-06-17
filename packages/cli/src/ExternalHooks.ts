@@ -1,12 +1,18 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
-// eslint-disable-next-line import/no-cycle
-import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
+import { Service } from 'typedi';
+import * as Db from '@/Db';
+import type {
+	IExternalHooksClass,
+	IExternalHooksFileData,
+	IExternalHooksFunctions,
+} from '@/Interfaces';
 
-import * as config from '../config';
+import config from '@/config';
 
-class ExternalHooksClass implements IExternalHooksClass {
+@Service()
+export class ExternalHooks implements IExternalHooksClass {
 	externalHooks: {
 		[key: string]: Array<() => {}>;
 	} = {};
@@ -34,7 +40,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 	}
 
 	async loadHooksFiles(reload = false) {
-		const externalHookFiles = config.get('externalHookFiles').split(':');
+		const externalHookFiles = config.getEnv('externalHookFiles').split(':');
 
 		// Load all the provided hook-files
 		for (let hookFilePath of externalHookFiles) {
@@ -50,8 +56,11 @@ class ExternalHooksClass implements IExternalHooksClass {
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-					throw new Error(`Problem loading external hook file "${hookFilePath}": ${error.message}`);
+					throw new Error(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+						`Problem loading external hook file "${hookFilePath}": ${error.message}`,
+						{ cause: error as Error },
+					);
 				}
 			}
 		}
@@ -87,7 +96,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 
 		for (const externalHookFunction of this.externalHooks[hookName]) {
-			// eslint-disable-next-line no-await-in-loop
+			// eslint-disable-next-line no-await-in-loop, @typescript-eslint/await-thenable
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
@@ -95,15 +104,4 @@ class ExternalHooksClass implements IExternalHooksClass {
 	exists(hookName: string): boolean {
 		return !!this.externalHooks[hookName];
 	}
-}
-
-let externalHooksInstance: ExternalHooksClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function ExternalHooks(): ExternalHooksClass {
-	if (externalHooksInstance === undefined) {
-		externalHooksInstance = new ExternalHooksClass();
-	}
-
-	return externalHooksInstance;
 }

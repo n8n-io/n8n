@@ -1,22 +1,18 @@
-import {
-	OptionsWithUri
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
-
-export async function uptimeRobotApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
+export async function uptimeRobotApiRequest(
+	this: IExecuteFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 	const credentials = await this.getCredentials('uptimeRobotApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	let options: OptionsWithUri = {
 		method,
@@ -32,10 +28,10 @@ export async function uptimeRobotApiRequest(this: IExecuteFunctions, method: str
 	try {
 		const responseData = await this.helpers.request(options);
 		if (responseData.stat !== 'ok') {
-			throw new NodeOperationError(this.getNode(), responseData);
+			throw new NodeOperationError(this.getNode(), responseData as Error);
 		}
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

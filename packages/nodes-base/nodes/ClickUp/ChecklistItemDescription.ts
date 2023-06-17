@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const checklistItemOperations = [
+export const checklistItemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
+				resource: ['checklistItem'],
 			},
 		},
 		options: [
@@ -19,25 +16,26 @@ export const checklistItemOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a checklist item',
+				action: 'Create a checklist item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a checklist item',
+				action: 'Delete a checklist item',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a checklist item',
+				action: 'Update a checklist item',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const checklistItemFields = [
-
+export const checklistItemFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                checklistItem:create                        */
 	/* -------------------------------------------------------------------------- */
@@ -48,12 +46,8 @@ export const checklistItemFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklistItem'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -65,12 +59,8 @@ export const checklistItemFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklistItem'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -83,12 +73,8 @@ export const checklistItemFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['checklistItem'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -111,12 +97,8 @@ export const checklistItemFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['checklistItem'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -128,12 +110,8 @@ export const checklistItemFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['checklistItem'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -149,12 +127,8 @@ export const checklistItemFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklistItem'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -166,12 +140,8 @@ export const checklistItemFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklistItem'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -184,12 +154,8 @@ export const checklistItemFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'checklistItem',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['checklistItem'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -210,7 +176,7 @@ export const checklistItemFields = [
 				name: 'parent',
 				type: 'string',
 				default: '',
-				description: 'Checklist item that you want to nest the target checklist item underneath.',
+				description: 'Checklist item that you want to nest the target checklist item underneath',
 			},
 			{
 				displayName: 'Resolved',
@@ -220,4 +186,4 @@ export const checklistItemFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

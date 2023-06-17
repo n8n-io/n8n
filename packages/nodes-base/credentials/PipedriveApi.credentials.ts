@@ -1,13 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class PipedriveApi implements ICredentialType {
 	name = 'pipedriveApi';
+
 	displayName = 'Pipedrive API';
+
 	documentationUrl = 'pipedrive';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
@@ -16,4 +15,13 @@ export class PipedriveApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			qs: {
+				api_token: '={{$credentials.apiToken}}',
+			},
+		},
+	};
 }

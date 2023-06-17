@@ -9,27 +9,44 @@ type TSeaTableServerEdition = 'enterprise edition';
 //         dtable
 // ----------------------------------
 
-import {IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn} from './Interfaces';
-import {ICredentialDataDecryptedObject} from 'n8n-workflow';
+import type { IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn } from './Interfaces';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 type TInheritColumnTypeTime = 'ctime' | 'mtime';
 type TInheritColumnTypeUser = 'creator' | 'last-modifier';
-type TColumnType = 'text' | 'long-text' | 'number'
+type TColumnType =
+	| 'text'
+	| 'long-text'
+	| 'number'
 	| 'collaborator'
-	| 'date' | 'duration' | 'single-select' | 'multiple-select' | 'email' | 'url' | 'rate'
-	| 'checkbox' | 'formula'
-	| TInheritColumnTypeTime | TInheritColumnTypeUser | 'auto-number';
-
+	| 'date'
+	| 'duration'
+	| 'single-select'
+	| 'multiple-select'
+	| 'email'
+	| 'url'
+	| 'rate'
+	| 'checkbox'
+	| 'formula'
+	| TInheritColumnTypeTime
+	| TInheritColumnTypeUser
+	| 'auto-number';
 
 type TImplementInheritColumnKey = '_seq';
-type TInheritColumnKey = '_id' | '_creator' | '_ctime' | '_last_modifier' | '_mtime' | TImplementInheritColumnKey;
+type TInheritColumnKey =
+	| '_id'
+	| '_creator'
+	| '_ctime'
+	| '_last_modifier'
+	| '_mtime'
+	| TImplementInheritColumnKey;
 
 type TColumnValue = undefined | boolean | number | string | string[] | null;
 type TColumnKey = TInheritColumnKey | string;
 
-export type TDtableMetadataTables = ReadonlyArray<IDtableMetadataTable>;
-export type TDtableMetadataColumns = ReadonlyArray<IDtableMetadataColumn>;
-export type TDtableViewColumns = ReadonlyArray<TDtableViewColumn>;
+export type TDtableMetadataTables = readonly IDtableMetadataTable[];
+export type TDtableMetadataColumns = readonly IDtableMetadataColumn[];
+export type TDtableViewColumns = readonly TDtableViewColumn[];
 
 // ----------------------------------
 //         api
@@ -42,11 +59,13 @@ type TMethod = 'GET' | 'POST';
 type TDeferredEndpoint = string;
 type TDeferredEndpointExpr = string;
 type TEndpoint =
-	'/api/v2.1/dtable/app-access-token/'
+	| '/api/v2.1/dtable/app-access-token/'
 	| '/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/'
 	| TDeferredEndpoint;
 type TEndpointExpr = TEndpoint | TDeferredEndpointExpr;
-type TEndpointResolvedExpr = TEndpoint | string; /* deferred: but already in use for header values, e.g. authentication */
+type TEndpointResolvedExpr =
+	| TEndpoint
+	| string; /* deferred: but already in use for header values, e.g. authentication */
 
 type TDateTimeFormat = 'YYYY-MM-DDTHH:mm:ss.SSSZ' /* moment.js */;
 
@@ -61,9 +80,9 @@ type TTriggerOperation = 'create' | 'update';
 type TOperation = 'append' | 'list' | 'metadata';
 
 type TLoadedResource = {
-		name: string;
+	name: string;
 };
 export type TColumnsUiValues = Array<{
-		columnName: string;
-		columnValue: string;
+	columnName: string;
+	columnValue: string;
 }>;

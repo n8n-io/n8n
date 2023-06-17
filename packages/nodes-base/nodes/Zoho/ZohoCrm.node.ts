@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -25,7 +22,6 @@ import {
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
 	getFields,
-	getModuleName,
 	getPicklistOptions,
 	handleListing,
 	throwOnEmptyUpdate,
@@ -35,7 +31,7 @@ import {
 	zohoApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
+import type {
 	CamelCaseResource,
 	GetAllFilterOptions,
 	LoadedAccounts,
@@ -79,8 +75,7 @@ export class ZohoCrm implements INodeType {
 		version: 1,
 		description: 'Consume Zoho CRM API',
 		defaults: {
-			name: 'Zoho',
-			color: '#CE2232',
+			name: 'Zoho CRM',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -95,6 +90,7 @@ export class ZohoCrm implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Account',
@@ -138,7 +134,6 @@ export class ZohoCrm implements INodeType {
 					},
 				],
 				default: 'account',
-				description: 'Resource to consume',
 			},
 			...accountOperations,
 			...accountFields,
@@ -170,27 +165,43 @@ export class ZohoCrm implements INodeType {
 			// ----------------------------------------
 
 			async getAccounts(this: ILoadOptionsFunctions) {
-				const accounts = await zohoApiRequestAllItems.call(this, 'GET', '/accounts') as LoadedAccounts;
+				const accounts = (await zohoApiRequestAllItems.call(
+					this,
+					'GET',
+					'/accounts',
+				)) as LoadedAccounts;
 				return toLoadOptions(accounts, 'Account_Name');
 			},
 
 			async getContacts(this: ILoadOptionsFunctions) {
-				const contacts = await zohoApiRequestAllItems.call(this, 'GET', '/contacts') as LoadedContacts;
+				const contacts = (await zohoApiRequestAllItems.call(
+					this,
+					'GET',
+					'/contacts',
+				)) as LoadedContacts;
 				return toLoadOptions(contacts, 'Full_Name');
 			},
 
 			async getDeals(this: ILoadOptionsFunctions) {
-				const deals = await zohoApiRequestAllItems.call(this, 'GET', '/deals') as LoadedDeals;
+				const deals = (await zohoApiRequestAllItems.call(this, 'GET', '/deals')) as LoadedDeals;
 				return toLoadOptions(deals, 'Deal_Name');
 			},
 
 			async getProducts(this: ILoadOptionsFunctions) {
-				const products = await zohoApiRequestAllItems.call(this, 'GET', '/products') as LoadedProducts;
+				const products = (await zohoApiRequestAllItems.call(
+					this,
+					'GET',
+					'/products',
+				)) as LoadedProducts;
 				return toLoadOptions(products, 'Product_Name');
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
-				const vendors = await zohoApiRequestAllItems.call(this, 'GET', '/vendors') as LoadedVendors;
+				const vendors = (await zohoApiRequestAllItems.call(
+					this,
+					'GET',
+					'/vendors',
+				)) as LoadedVendors;
 				return toLoadOptions(vendors, 'Vendor_Name');
 			},
 
@@ -318,16 +329,14 @@ export class ZohoCrm implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resolveData = this.getNodeParameter('resolveData', 0, false) as boolean;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			// https://www.zoho.com/crm/developer/docs/api/insert-records.html
 			// https://www.zoho.com/crm/developer/docs/api/get-records.html
 			// https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
@@ -335,9 +344,7 @@ export class ZohoCrm implements INodeType {
 			// https://www.zoho.com/crm/developer/docs/api/v2/upsert-records.html
 
 			try {
-
 				if (resource === 'account') {
-
 					// **********************************************************************
 					//                                account
 					// **********************************************************************
@@ -346,7 +353,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Accounts
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//             account: create
 						// ----------------------------------------
@@ -355,7 +361,7 @@ export class ZohoCrm implements INodeType {
 							Account_Name: this.getNodeParameter('accountName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccountPayload(additionalFields));
@@ -363,9 +369,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/accounts', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//             account: delete
 						// ----------------------------------------
@@ -375,9 +379,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/accounts/${accountId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//               account: get
 						// ----------------------------------------
@@ -387,9 +389,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/accounts/${accountId}`;
 						responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//             account: getAll
 						// ----------------------------------------
@@ -400,15 +400,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/accounts', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//             account: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustAccountPayload(updateFields));
@@ -421,9 +419,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/accounts/${accountId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//             account: upsert
 						// ----------------------------------------
@@ -432,7 +428,7 @@ export class ZohoCrm implements INodeType {
 							Account_Name: this.getNodeParameter('accountName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccountPayload(additionalFields));
@@ -440,11 +436,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/accounts/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'contact') {
-
 					// **********************************************************************
 					//                                contact
 					// **********************************************************************
@@ -453,7 +446,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Contacts
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//             contact: create
 						// ----------------------------------------
@@ -462,7 +454,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustContactPayload(additionalFields));
@@ -470,9 +462,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/contacts', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//             contact: delete
 						// ----------------------------------------
@@ -482,9 +472,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/contacts/${contactId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//               contact: get
 						// ----------------------------------------
@@ -494,9 +482,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/contacts/${contactId}`;
 						responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//             contact: getAll
 						// ----------------------------------------
@@ -507,15 +493,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/contacts', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//             contact: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustContactPayload(updateFields));
@@ -528,9 +512,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/contacts/${contactId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//             contact: upsert
 						// ----------------------------------------
@@ -539,7 +521,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustContactPayload(additionalFields));
@@ -547,11 +529,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/contacts/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'deal') {
-
 					// **********************************************************************
 					//                                deal
 					// **********************************************************************
@@ -560,7 +539,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Deals
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//               deal: create
 						// ----------------------------------------
@@ -570,7 +548,7 @@ export class ZohoCrm implements INodeType {
 							Stage: this.getNodeParameter('stage', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustDealPayload(additionalFields));
@@ -578,9 +556,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/deals', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//               deal: delete
 						// ----------------------------------------
@@ -589,9 +565,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'DELETE', `/deals/${dealId}`);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                deal: get
 						// ----------------------------------------
@@ -600,9 +574,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'GET', `/deals/${dealId}`);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//               deal: getAll
 						// ----------------------------------------
@@ -613,15 +585,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/deals', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//               deal: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustDealPayload(updateFields));
@@ -633,9 +603,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/deals/${dealId}`, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//              deal: upsert
 						// ----------------------------------------
@@ -645,7 +613,7 @@ export class ZohoCrm implements INodeType {
 							Stage: this.getNodeParameter('stage', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustDealPayload(additionalFields));
@@ -653,11 +621,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/deals/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'invoice') {
-
 					// **********************************************************************
 					//                                invoice
 					// **********************************************************************
@@ -666,7 +631,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Invoices
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//             invoice: create
 						// ----------------------------------------
@@ -680,7 +644,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustInvoicePayload(additionalFields));
@@ -688,9 +652,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/invoices', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//             invoice: delete
 						// ----------------------------------------
@@ -700,9 +662,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/invoices/${invoiceId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//               invoice: get
 						// ----------------------------------------
@@ -712,9 +672,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/invoices/${invoiceId}`;
 						responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//             invoice: getAll
 						// ----------------------------------------
@@ -725,15 +683,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/invoices', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//             invoice: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustInvoicePayloadOnUpdate(updateFields));
@@ -747,9 +703,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//             invoice: upsert
 						// ----------------------------------------
@@ -761,7 +715,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustInvoicePayload(additionalFields));
@@ -769,11 +723,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/invoices/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'lead') {
-
 					// **********************************************************************
 					//                                  lead
 					// **********************************************************************
@@ -782,7 +733,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Leads
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//               lead: create
 						// ----------------------------------------
@@ -792,7 +742,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustLeadPayload(additionalFields));
@@ -800,9 +750,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/leads', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//               lead: delete
 						// ----------------------------------------
@@ -811,9 +759,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'DELETE', `/leads/${leadId}`);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                lead: get
 						// ----------------------------------------
@@ -821,9 +767,7 @@ export class ZohoCrm implements INodeType {
 						const leadId = this.getNodeParameter('leadId', i);
 
 						responseData = await zohoApiRequest.call(this, 'GET', `/leads/${leadId}`);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//               lead: getAll
 						// ----------------------------------------
@@ -834,24 +778,26 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/leads', {}, qs);
-
 					} else if (operation === 'getFields') {
-
 						// ----------------------------------------
 						//            lead: getFields
 						// ----------------------------------------
 
-						responseData = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, { module: 'leads' });
+						responseData = await zohoApiRequest.call(
+							this,
+							'GET',
+							'/settings/fields',
+							{},
+							{ module: 'leads' },
+						);
 						responseData = responseData.fields;
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//               lead: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustLeadPayload(updateFields));
@@ -863,9 +809,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//              lead: upsert
 						// ----------------------------------------
@@ -875,7 +819,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustLeadPayload(additionalFields));
@@ -883,11 +827,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/leads/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'product') {
-
 					// **********************************************************************
 					//                              product
 					// **********************************************************************
@@ -896,7 +837,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Products
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//             product: create
 						// ----------------------------------------
@@ -905,7 +845,7 @@ export class ZohoCrm implements INodeType {
 							Product_Name: this.getNodeParameter('productName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustProductPayload(additionalFields));
@@ -913,9 +853,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/products', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//            product: delete
 						// ----------------------------------------
@@ -925,9 +863,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/products/${productId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//              product: get
 						// ----------------------------------------
@@ -937,9 +873,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/products/${productId}`;
 						responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//            product: getAll
 						// ----------------------------------------
@@ -950,15 +884,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/products', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//            product: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustProductPayload(updateFields));
@@ -971,9 +903,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/products/${productId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//             product: upsert
 						// ----------------------------------------
@@ -982,7 +912,7 @@ export class ZohoCrm implements INodeType {
 							Product_Name: this.getNodeParameter('productName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustProductPayload(additionalFields));
@@ -990,11 +920,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/products/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'purchaseOrder') {
-
 					// **********************************************************************
 					//                             purchaseOrder
 					// **********************************************************************
@@ -1003,7 +930,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Purchase_Order
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//          purchaseOrder: create
 						// ----------------------------------------
@@ -1018,7 +944,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(additionalFields));
@@ -1026,9 +952,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/purchase_orders', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//          purchaseOrder: delete
 						// ----------------------------------------
@@ -1038,9 +962,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/purchase_orders/${purchaseOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//            purchaseOrder: get
 						// ----------------------------------------
@@ -1050,9 +972,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/purchase_orders/${purchaseOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//          purchaseOrder: getAll
 						// ----------------------------------------
@@ -1063,15 +983,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/purchase_orders', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//          purchaseOrder: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(updateFields));
@@ -1084,9 +1002,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/purchase_orders/${purchaseOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//          purchaseOrder: upsert
 						// ----------------------------------------
@@ -1099,7 +1015,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(additionalFields));
@@ -1107,11 +1023,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/purchase_orders/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'quote') {
-
 					// **********************************************************************
 					//                                 quote
 					// **********************************************************************
@@ -1120,7 +1033,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Quotes
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//              quote: create
 						// ----------------------------------------
@@ -1134,7 +1046,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustQuotePayload(additionalFields));
@@ -1142,9 +1054,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/quotes', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//              quote: delete
 						// ----------------------------------------
@@ -1153,9 +1063,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'DELETE', `/quotes/${quoteId}`);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                quote: get
 						// ----------------------------------------
@@ -1164,9 +1072,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'GET', `/quotes/${quoteId}`);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//              quote: getAll
 						// ----------------------------------------
@@ -1177,15 +1083,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/quotes', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//              quote: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustQuotePayload(updateFields));
@@ -1197,9 +1101,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'PUT', `/quotes/${quoteId}`, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//              quote: upsert
 						// ----------------------------------------
@@ -1211,7 +1113,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustQuotePayload(additionalFields));
@@ -1219,11 +1121,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/quotes/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'salesOrder') {
-
 					// **********************************************************************
 					//                               salesOrder
 					// **********************************************************************
@@ -1232,7 +1131,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Sales_Orders
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//            salesOrder: create
 						// ----------------------------------------
@@ -1245,7 +1143,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(additionalFields));
@@ -1253,9 +1151,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/sales_orders', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//            salesOrder: delete
 						// ----------------------------------------
@@ -1265,9 +1161,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/sales_orders/${salesOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//             salesOrder: get
 						// ----------------------------------------
@@ -1277,9 +1171,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/sales_orders/${salesOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//            salesOrder: getAll
 						// ----------------------------------------
@@ -1290,15 +1182,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/sales_orders', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//            salesOrder: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(updateFields));
@@ -1311,9 +1201,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/sales_orders/${salesOrderId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//           salesOrder: upsert
 						// ----------------------------------------
@@ -1326,7 +1214,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(additionalFields));
@@ -1334,11 +1222,8 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/sales_orders/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				} else if (resource === 'vendor') {
-
 					// **********************************************************************
 					//                               vendor
 					// **********************************************************************
@@ -1347,7 +1232,6 @@ export class ZohoCrm implements INodeType {
 					// https://help.zoho.com/portal/en/kb/crm/customize-crm-account/customizing-fields/articles/standard-modules-fields#Vendors
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//            vendor: create
 						// ----------------------------------------
@@ -1356,7 +1240,7 @@ export class ZohoCrm implements INodeType {
 							Vendor_Name: this.getNodeParameter('vendorName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustVendorPayload(additionalFields));
@@ -1364,9 +1248,7 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/vendors', body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//            vendor: delete
 						// ----------------------------------------
@@ -1376,9 +1258,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/vendors/${vendorId}`;
 						responseData = await zohoApiRequest.call(this, 'DELETE', endpoint);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//             vendor: get
 						// ----------------------------------------
@@ -1388,9 +1268,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/vendors/${vendorId}`;
 						responseData = await zohoApiRequest.call(this, 'GET', endpoint);
 						responseData = responseData.data;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//            vendor: getAll
 						// ----------------------------------------
@@ -1401,15 +1279,13 @@ export class ZohoCrm implements INodeType {
 						addGetAllFilterOptions(qs, options);
 
 						responseData = await handleListing.call(this, 'GET', '/vendors', {}, qs);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//            vendor: update
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustVendorPayload(updateFields));
@@ -1422,9 +1298,7 @@ export class ZohoCrm implements INodeType {
 						const endpoint = `/vendors/${vendorId}`;
 						responseData = await zohoApiRequest.call(this, 'PUT', endpoint, body);
 						responseData = responseData.data[0].details;
-
 					} else if (operation === 'upsert') {
-
 						// ----------------------------------------
 						//             vendor: upsert
 						// ----------------------------------------
@@ -1433,7 +1307,7 @@ export class ZohoCrm implements INodeType {
 							Vendor_Name: this.getNodeParameter('vendorName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustVendorPayload(additionalFields));
@@ -1441,25 +1315,22 @@ export class ZohoCrm implements INodeType {
 
 						responseData = await zohoApiRequest.call(this, 'POST', '/vendors/upsert', body);
 						responseData = responseData.data[0].details;
-
 					}
-
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {} });
 					continue;
 				}
-
 				throw error;
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

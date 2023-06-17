@@ -1,47 +1,45 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	employeeAdditionalFieldsOptions,
-} from './EmployeeAdditionalFieldsOptions';
+import { employeeAdditionalFieldsOptions } from './EmployeeAdditionalFieldsOptions';
 
-export const employeeOperations = [
+export const employeeOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an employee',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an employee',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many employees',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an employee',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
+				resource: ['employee'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const employeeFields = [
+export const employeeFields: INodeProperties[] = [
 	// ----------------------------------
 	//         employee: create
 	// ----------------------------------
@@ -52,12 +50,8 @@ export const employeeFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['employee'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -68,12 +62,8 @@ export const employeeFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['employee'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,12 +75,8 @@ export const employeeFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['employee'],
+				operation: ['create'],
 			},
 		},
 		options: employeeAdditionalFieldsOptions,
@@ -105,15 +91,11 @@ export const employeeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the employee to retrieve.',
+		description: 'The ID of the employee to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['employee'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -126,15 +108,11 @@ export const employeeFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -142,23 +120,17 @@ export const employeeFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
-		description: 'The number of results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -174,21 +146,15 @@ export const employeeFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting employees. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting employees. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['employee'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -202,15 +168,11 @@ export const employeeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The ID of the employee to update.',
+		description: 'The ID of the employee to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['employee'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -223,14 +185,10 @@ export const employeeFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['employee'],
+				operation: ['update'],
 			},
 		},
 		options: employeeAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

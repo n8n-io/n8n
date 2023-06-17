@@ -1,52 +1,41 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	ICouponLine,
-	IFeeLine,
-	ILineItem,
-	IShoppingLine,
-} from './OrderInterface';
+import type { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
-import {
-	createHash,
-} from 'crypto';
+import { createHash } from 'crypto';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
-import {
-	omit
-} from 'lodash';
+import omit from 'lodash/omit';
 
-export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function woocommerceApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
 	const credentials = await this.getCredentials('wooCommerceApi');
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
 
 	let options: OptionsWithUri = {
-		auth: {
-			user: credentials.consumerKey as string,
-			password: credentials.consumerSecret as string,
-		},
 		method,
 		qs,
 		body,
@@ -54,37 +43,37 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		json: true,
 	};
 
-	if (credentials.includeCredentialsInQuery === true) {
-		delete options.auth;
-		Object.assign(qs, { consumer_key: credentials.consumerKey, consumer_secret: credentials.consumerSecret });
-	}
-
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
 }
 
-export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function woocommerceApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: string,
+	endpoint: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
 	query.per_page = 100;
 	do {
-		responseData = await woocommerceApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true });
-		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
-		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
-	);
+		responseData = await woocommerceApiRequest.call(this, method, endpoint, body, query, uri, {
+			resolveWithFullResponse: true,
+		});
+		const links = responseData.headers.link.split(',');
+		const nextLink = links.find((link: string) => link.indexOf('rel="next"') !== -1);
+		if (nextLink) {
+			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
+		}
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+	} while (responseData.headers.link?.includes('rel="next"'));
 
 	return returnData;
 }
@@ -92,24 +81,18 @@ export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | IL
 /**
  * Creates a secret from the credentials
  *
- * @export
- * @param {ICredentialDataDecryptedObject} credentials
- * @returns
  */
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.consumerKey},${credentials.consumerSecret}`;
 	return createHash('md5').update(data).digest('hex');
 }
 
-export function setMetadata(data:
-	IShoppingLine[] |
-	IShoppingLine[] |
-	IFeeLine[] |
-	ILineItem[] |
-	ICouponLine[]) {
+export function setMetadata(
+	data: IShoppingLine[] | IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[],
+) {
 	for (let i = 0; i < data.length; i++) {
 		//@ts-ignore\
-		if (data[i].metadataUi && data[i].metadataUi.metadataValues) {
+		if (data[i].metadataUi?.metadataValues) {
 			//@ts-ignore
 			data[i].meta_data = data[i].metadataUi.metadataValues;
 			//@ts-ignore
@@ -121,13 +104,9 @@ export function setMetadata(data:
 	}
 }
 
-export function toSnakeCase(data:
-	IShoppingLine[] |
-	IShoppingLine[] |
-	IFeeLine[] |
-	ILineItem[] |
-	ICouponLine[] |
-	IDataObject) {
+export function toSnakeCase(
+	data: IShoppingLine[] | IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[] | IDataObject,
+) {
 	if (!Array.isArray(data)) {
 		data = [data];
 	}
@@ -150,13 +129,12 @@ export function toSnakeCase(data:
 }
 
 export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
-	for(const fields in fieldsToSet) {
+	for (const fields in fieldsToSet) {
 		if (fields === 'tags') {
-			body['tags'] = (fieldsToSet[fields] as string[]).map(tag => ({id: parseInt(tag, 10)}));
+			body.tags = (fieldsToSet[fields] as string[]).map((tag) => ({ id: parseInt(tag, 10) }));
 		} else {
 			body[snakeCase(fields.toString())] = fieldsToSet[fields];
 		}
-		
 	}
 }
 
@@ -172,5 +150,5 @@ export function adjustMetadata(fields: IDataObject & Metadata) {
 type Metadata = {
 	meta_data?: {
 		meta_data_fields: Array<{ key: string; value: string }>;
-	}
+	};
 };

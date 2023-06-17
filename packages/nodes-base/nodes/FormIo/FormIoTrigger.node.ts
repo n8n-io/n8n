@@ -1,9 +1,7 @@
-import {
+import type {
+	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -11,9 +9,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	formIoApiRequest,
-} from './GenericFunctions';
+import { formIoApiRequest } from './GenericFunctions';
 
 export class FormIoTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +22,6 @@ export class FormIoTrigger implements INodeType {
 		description: 'Handle form.io events via webhooks',
 		defaults: {
 			name: 'Form.io Trigger',
-			color: '#6ad7b9',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -46,7 +41,7 @@ export class FormIoTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Project Name/ID',
+				displayName: 'Project Name or ID',
 				name: 'projectId',
 				type: 'options',
 				typeOptions: {
@@ -54,21 +49,21 @@ export class FormIoTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: `Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions"  target="_blank" >expression</a>`,
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
-				displayName: 'Form Name/ID',
+				displayName: 'Form Name or ID',
 				name: 'formId',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getForms',
 				},
 				required: true,
 				default: '',
-				description: `Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions"  target="_blank" >expression</a>`,
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Trigger Events',
@@ -85,14 +80,15 @@ export class FormIoTrigger implements INodeType {
 					},
 				],
 				required: true,
-				default: '',
+				default: [],
 			},
 			{
-				displayName: 'Simplify Response',
+				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -125,7 +121,6 @@ export class FormIoTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -134,12 +129,18 @@ export class FormIoTrigger implements INodeType {
 				const formId = this.getNodeParameter('formId') as string;
 				const projectId = this.getNodeParameter('projectId') as string;
 				const method = this.getNodeParameter('events') as string[];
-				const actions = await formIoApiRequest.call(this, 'GET', `/project/${projectId}/form/${formId}/action`);
+				const actions = await formIoApiRequest.call(
+					this,
+					'GET',
+					`/project/${projectId}/form/${formId}/action`,
+				);
 				for (const action of actions) {
 					if (action.name === 'webhook') {
-						if (action.settings.url === webhookUrl &&
-							// tslint:disable-next-line: no-any
-							(action.method.length === method.length && action.method.every((value: any) => method.includes(value)))) {
+						if (
+							action.settings.url === webhookUrl &&
+							action.method.length === method.length &&
+							action.method.every((value: any) => method.includes(value as string))
+						) {
 							webhookData.webhookId = action._id;
 							return true;
 						}
@@ -156,12 +157,10 @@ export class FormIoTrigger implements INodeType {
 				const method = this.getNodeParameter('events') as string[];
 				const payload = {
 					data: {
-						name: `webhook`,
+						name: 'webhook',
 						title: `webhook-n8n:${webhookUrl}`,
 						method,
-						handler: [
-							'after',
-						],
+						handler: ['after'],
 						priority: 0,
 						settings: {
 							method: 'post',
@@ -173,7 +172,12 @@ export class FormIoTrigger implements INodeType {
 						},
 					},
 				};
-				const webhook = await formIoApiRequest.call(this, 'POST', `/project/${projectId}/form/${formId}/action`, payload);
+				const webhook = await formIoApiRequest.call(
+					this,
+					'POST',
+					`/project/${projectId}/form/${formId}/action`,
+					payload,
+				);
 				webhookData.webhookId = webhook._id;
 				return true;
 			},
@@ -182,7 +186,11 @@ export class FormIoTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('formId') as string;
 				const projectId = this.getNodeParameter('projectId') as string;
-				await formIoApiRequest.call(this, 'DELETE', `/project/${projectId}/form/${formId}/action/${webhookData.webhookId}`);
+				await formIoApiRequest.call(
+					this,
+					'DELETE',
+					`/project/${projectId}/form/${formId}/action/${webhookData.webhookId}`,
+				);
 				delete webhookData.webhookId;
 				return true;
 			},
@@ -193,13 +201,11 @@ export class FormIoTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const simple = this.getNodeParameter('simple') as boolean;
 		let response = req.body.request;
-		if (simple === true) {
+		if (simple) {
 			response = response.data;
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(response),
-			],
+			workflowData: [this.helpers.returnJsonArray(response as IDataObject[])],
 		};
 	}
 }

@@ -1,7 +1,8 @@
+import type { INodeProperties } from 'n8n-workflow';
 import { capitalizeInitial } from '../GenericFunctions';
-import { CamelCaseResource } from '../types';
+import type { CamelCaseResource } from '../types';
 
-export const billingAddress = {
+export const billingAddress: INodeProperties = {
 	displayName: 'Billing Address',
 	name: 'Billing_Address',
 	type: 'fixedCollection',
@@ -47,7 +48,7 @@ export const billingAddress = {
 	],
 };
 
-export const shippingAddress = {
+export const shippingAddress: INodeProperties = {
 	displayName: 'Shipping Address',
 	name: 'Shipping_Address',
 	type: 'fixedCollection',
@@ -93,7 +94,7 @@ export const shippingAddress = {
 	],
 };
 
-export const mailingAddress = {
+export const mailingAddress: INodeProperties = {
 	displayName: 'Mailing Address',
 	name: 'Mailing_Address',
 	type: 'fixedCollection',
@@ -139,7 +140,7 @@ export const mailingAddress = {
 	],
 };
 
-export const otherAddress = {
+export const otherAddress: INodeProperties = {
 	displayName: 'Other Address',
 	name: 'Other_Address',
 	type: 'fixedCollection',
@@ -179,7 +180,7 @@ export const otherAddress = {
 	],
 };
 
-export const address = {
+export const address: INodeProperties = {
 	displayName: 'Address',
 	name: 'Address',
 	type: 'fixedCollection',
@@ -245,7 +246,7 @@ export const address = {
 // 	},
 // },
 
-export const productDetailsOptions = [
+export const productDetailsOptions: INodeProperties[] = [
 	{
 		displayName: 'List Price',
 		name: 'list_price',
@@ -253,9 +254,11 @@ export const productDetailsOptions = [
 		default: '',
 	},
 	{
-		displayName: 'Product ID',
+		displayName: 'Product Name or ID',
 		name: 'id',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProducts',
@@ -311,7 +314,7 @@ export const productDetailsOptions = [
 	},
 ];
 
-export const makeGetAllFields = (resource: CamelCaseResource) => {
+export const makeGetAllFields = (resource: CamelCaseResource): INodeProperties[] => {
 	const loadOptionsMethod = `get${capitalizeInitial(resource)}Fields`;
 
 	return [
@@ -320,15 +323,11 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 			name: 'returnAll',
 			type: 'boolean',
 			default: false,
-			description: 'Return all results.',
+			description: 'Whether to return all results or only up to a given limit',
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 		},
@@ -337,22 +336,16 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 			name: 'limit',
 			type: 'number',
 			default: 5,
-			description: 'The number of results to return.',
+			description: 'Max number of results to return',
 			typeOptions: {
 				minValue: 1,
 				maxValue: 1000,
 			},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
-					returnAll: [
-						false,
-					],
+					resource: [resource],
+					operation: ['getAll'],
+					returnAll: [false],
 				},
 			},
 		},
@@ -364,12 +357,8 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 			default: {},
 			displayOptions: {
 				show: {
-					resource: [
-						resource,
-					],
-					operation: [
-						'getAll',
-					],
+					resource: [resource],
+					operation: ['getAll'],
 				},
 			},
 			options: [
@@ -378,14 +367,14 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 					name: 'approved',
 					type: 'boolean',
 					default: true,
-					description: 'Retrieve only approved records. Defaults to true.',
+					description: 'Whether to retrieve only approved records. Defaults to true.',
 				},
 				{
 					displayName: 'Converted',
 					name: 'converted',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only converted records. Defaults to false.',
+					description: 'Whether to retrieve only converted records. Defaults to false.',
 				},
 				{
 					displayName: 'Fields',
@@ -395,14 +384,14 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 						loadOptionsMethod,
 					},
 					default: [],
-					description: 'Return only these fields.',
+					description: 'Return only these fields',
 				},
 				{
 					displayName: 'Include Child',
 					name: 'include_child',
 					type: 'boolean',
 					default: false,
-					description: 'Retrieve only records from child territories.',
+					description: 'Whether to retrieve only records from child territories',
 				},
 				{
 					displayName: 'Sort By',
@@ -412,7 +401,7 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 						loadOptionsMethod,
 					},
 					default: [],
-					description: 'Field to sort records by.',
+					description: 'Field to sort records by',
 				},
 				{
 					displayName: 'Sort Order',
@@ -429,21 +418,21 @@ export const makeGetAllFields = (resource: CamelCaseResource) => {
 						},
 					],
 					default: 'desc',
-					description: 'Ascending or descending order sort order.',
+					description: 'Ascending or descending order sort order',
 				},
 				{
 					displayName: 'Territory ID',
 					name: 'territory_id',
 					type: 'string',
 					default: '',
-					description: 'Retrieve only records from this territory.',
+					description: 'Retrieve only records from this territory',
 				},
 			],
 		},
 	];
 };
 
-export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => {
+export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource): INodeProperties => {
 	const loadOptionsMethod = `getCustom${capitalizeInitial(resource)}Fields`;
 
 	return {
@@ -454,7 +443,7 @@ export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => 
 		typeOptions: {
 			multipleValues: true,
 		},
-		description: 'Filter by custom fields.',
+		description: 'Filter by custom fields',
 		default: {},
 		options: [
 			{
@@ -469,14 +458,14 @@ export const makeCustomFieldsFixedCollection = (resource: CamelCaseResource) => 
 							loadOptionsMethod,
 						},
 						default: '',
-						description: 'Custom field to set a value to.',
+						description: 'Custom field to set a value to',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set on custom field.',
+						description: 'Value to set on custom field',
 					},
 				],
 			},
@@ -556,7 +545,7 @@ export const currencies = [
 	{ name: 'Romanian Leu', value: 'RON' },
 	{ name: 'Russian Ruble', value: 'RUB' },
 	{ name: 'Saudi Riyal', value: 'SAR' },
-	{ name: 'Solomon Islands Dollar	', value: 'SBD' },
+	{ name: 'Solomon Islands Dollar', value: 'SBD' },
 	{ name: 'Seychelles Rupee', value: 'SCR' },
 	{ name: 'Swedish Krona', value: 'SEK' },
 	{ name: 'Singapore Dollar', value: 'SGD' },

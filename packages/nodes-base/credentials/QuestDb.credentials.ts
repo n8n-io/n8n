@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class QuestDb implements ICredentialType {
 	name = 'questDb';
+
 	displayName = 'QuestDB';
+
 	documentationUrl = 'questDb';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
@@ -38,23 +41,23 @@ export class QuestDb implements ICredentialType {
 			type: 'options',
 			options: [
 				{
-					name: 'disable',
-					value: 'disable',
-				},
-				{
-					name: 'allow',
+					name: 'Allow',
 					value: 'allow',
 				},
 				{
-					name: 'require',
+					name: 'Disable',
+					value: 'disable',
+				},
+				{
+					name: 'Require',
 					value: 'require',
 				},
 				{
-					name: 'verify (not implemented)',
+					name: 'Verify (Not Implemented)',
 					value: 'verify',
 				},
 				{
-					name: 'verify-full (not implemented)',
+					name: 'Verify-Full (Not Implemented)',
 					value: 'verify-full',
 				},
 			],

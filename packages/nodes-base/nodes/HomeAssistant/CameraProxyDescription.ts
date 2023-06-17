@@ -1,17 +1,14 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const cameraProxyOperations = [
+export const cameraProxyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'cameraProxy',
-				],
+				resource: ['cameraProxy'],
 			},
 		},
 		options: [
@@ -19,34 +16,34 @@ export const cameraProxyOperations = [
 				name: 'Get Screenshot',
 				value: 'getScreenshot',
 				description: 'Get the camera screenshot',
+				action: 'Get a screenshot',
 			},
 		],
 		default: 'getScreenshot',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const cameraProxyFields = [
+export const cameraProxyFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                       cameraProxy:getScreenshot                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Camera Entity ID',
+		displayName: 'Camera Entity Name or ID',
 		name: 'cameraEntityId',
-		type: 'string',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getCameraEntities',
+		},
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getScreenshot',
-				],
-				resource: [
-					'cameraProxy',
-				],
+				operation: ['getScreenshot'],
+				resource: ['cameraProxy'],
 			},
 		},
-		description: 'The camera entity ID.',
 	},
 	{
 		displayName: 'Binary Property',
@@ -56,14 +53,10 @@ export const cameraProxyFields = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				operation: [
-					'getScreenshot',
-				],
-				resource: [
-					'cameraProxy',
-				],
+				operation: ['getScreenshot'],
+				resource: ['cameraProxy'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file.',
+		description: 'Name of the binary property to which to write the data of the read file',
 	},
-] as INodeProperties[];
+];

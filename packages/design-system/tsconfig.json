@@ -1,29 +1,25 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
+		"rootDir": ".",
+		"outDir": "dist",
 		"target": "esnext",
 		"module": "esnext",
-		"strict": true,
-		"jsx": "preserve",
 		"importHelpers": true,
-		"moduleResolution": "node",
-		"experimentalDecorators": true,
 		"skipLibCheck": true,
-		"esModuleInterop": true,
+		"allowJs": true,
+		"incremental": false,
 		"allowSyntheticDefaultImports": true,
-		"sourceMap": true,
 		"baseUrl": ".",
-		"types": ["webpack-env", "jest"],
+		"types": ["webpack-env", "vitest/globals"],
+		"typeRoots": ["@testing-library", "@types"],
 		"paths": {
 			"@/*": ["src/*"]
 		},
-		"lib": ["esnext", "dom", "dom.iterable", "scripthost"]
+		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
+		// TODO: remove all options below this line
+		"noUnusedLocals": false,
+		"noImplicitReturns": false
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.tsx",
-		"src/**/*.vue",
-		"tests/**/*.ts",
-		"tests/**/*.tsx"
-	],
-	"exclude": ["node_modules"]
+	"include": ["src/**/*.ts", "src/**/*.vue"]
 }

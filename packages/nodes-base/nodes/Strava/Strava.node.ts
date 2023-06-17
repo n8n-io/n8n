@@ -1,25 +1,16 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	stravaApiRequest,
-	stravaApiRequestAllItems,
-} from './GenericFunctions';
+import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
 
-import {
-	activityFields,
-	activityOperations,
-} from './ActivityDescription';
+import { activityFields, activityOperations } from './ActivityDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
 
 export class Strava implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,7 +23,6 @@ export class Strava implements INodeType {
 		description: 'Consume Strava API',
 		defaults: {
 			name: 'Strava',
-			color: '#ea5929',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -47,6 +37,7 @@ export class Strava implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -54,7 +45,6 @@ export class Strava implements INodeType {
 					},
 				],
 				default: 'activity',
-				description: 'The resource to operate on.',
 			},
 			...activityOperations,
 			...activityFields,
@@ -63,14 +53,13 @@ export class Strava implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
-
 			try {
 				if (resource === 'activity') {
 					//https://developers.strava.com/docs/reference/#api-Activities-createActivity
@@ -83,7 +72,7 @@ export class Strava implements INodeType {
 
 						const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.trainer === true) {
 							additionalFields.trainer = 1;
@@ -111,43 +100,66 @@ export class Strava implements INodeType {
 						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
 					}
 					if (['getLaps', 'getZones', 'getKudos', 'getComments'].includes(operation)) {
-
 						const path: IDataObject = {
-							'getComments': 'comments',
-							'getZones': 'zones',
-							'getKudos': 'kudos',
-							'getLaps': 'laps',
+							getComments: 'comments',
+							getZones: 'zones',
+							getKudos: 'kudos',
+							getLaps: 'laps',
 						};
 
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/${path[operation]}`);
+						responseData = await stravaApiRequest.call(
+							this,
+							'GET',
+							`/activities/${activityId}/${path[operation]}`,
+						);
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
+					//https://developers.strava.com/docs/reference/#api-Streams-getActivityStreams
+					if (operation === 'getStreams') {
+						const activityId = this.getNodeParameter('activityId', i) as string;
+						const keys = this.getNodeParameter('keys', i) as string[];
+						qs.keys = keys.toString();
+						qs.key_by_type = true;
+
+						responseData = await stravaApiRequest.call(
+							this,
+							'GET',
+							`/activities/${activityId}/streams`,
+							{},
+							qs,
+						);
+					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
-
-							responseData = await stravaApiRequestAllItems.call(this, 'GET', `/activities`, {}, qs);
+							responseData = await stravaApiRequestAllItems.call(
+								this,
+								'GET',
+								'/activities',
+								{},
+								qs,
+							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 
-							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
+							responseData = await stravaApiRequest.call(this, 'GET', '/activities', {}, qs);
 						}
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
 					if (operation === 'update') {
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.trainer === true) {
 							updateFields.trainer = 1;
@@ -161,23 +173,34 @@ export class Strava implements INodeType {
 
 						Object.assign(body, updateFields);
 
-						responseData = await stravaApiRequest.call(this, 'PUT', `/activities/${activityId}`, body);
+						responseData = await stravaApiRequest.call(
+							this,
+							'PUT',
+							`/activities/${activityId}`,
+							body,
+						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

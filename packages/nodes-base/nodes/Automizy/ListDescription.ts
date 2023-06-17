@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const listOperations = [
+export const listOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -19,35 +16,38 @@ export const listOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a list',
+				action: 'Create a list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a list',
+				action: 'Delete a list',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a list',
+				action: 'Get a list',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all lists',
+				description: 'Get many lists',
+				action: 'Get many lists',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
+				action: 'Update a list',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const listFields = [
-
+export const listFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -58,12 +58,8 @@ export const listFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -78,17 +74,13 @@ export const listFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['delete'],
+				resource: ['list'],
 			},
 		},
 		default: '',
 	},
-		/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
 	/*                                 list:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
@@ -98,12 +90,8 @@ export const listFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['get'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -117,16 +105,12 @@ export const listFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -134,15 +118,9 @@ export const listFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['list'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -150,7 +128,7 @@ export const listFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -159,12 +137,8 @@ export const listFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: {},
@@ -184,20 +158,22 @@ export const listFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Defines the direction in which search results are ordered. Default value is DESC. Note: It has to be using with the Sort By parameter',
+				description:
+					'Defines the direction in which search results are ordered. Default value is DESC. Note: It has to be using with the Sort By parameter',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A comma-separated list of attributes to include in the response.',
+				description: 'A comma-separated list of attributes to include in the response',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
-				default: 'Defines the field in which search results are sort by. Note: It has to be using with the Direcction parameter',
+				default:
+					'Defines the field in which search results are sort by. Note: It has to be using with the Direcction parameter',
 			},
 		],
 	},
@@ -211,12 +187,8 @@ export const listFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -228,14 +200,10 @@ export const listFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['update'],
+				resource: ['list'],
 			},
 		},
 		default: '',
 	},
-] as INodeProperties[];
+];

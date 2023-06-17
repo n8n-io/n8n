@@ -1,23 +1,23 @@
 export type EmailFixedCollection = {
 	email?: {
-		emailFields: Array<{ email: string, category: string }>
-	}
+		emailFields: Array<{ email: string; category: string }>;
+	};
 };
 
 export type EmailsFixedCollection = {
 	emails?: {
-		emailFields: Array<{ email: string, category: string }>
-	}
+		emailFields: Array<{ email: string; category: string }>;
+	};
 };
 
 export type PhoneNumbersFixedCollection = {
 	phone_numbers?: {
-		phoneFields: object,
-	}
+		phoneFields: object;
+	};
 };
 
 export type AddressFixedCollection = {
 	address?: {
-		addressFields: object
-	}
-}
+		addressFields: object;
+	};
+};

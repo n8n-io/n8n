@@ -1,48 +1,60 @@
-<template functional>
-	<component
-		:is="$options.components.ElSelect"
-		v-bind="props"
-		:value="props.value"
-		:size="$options.methods.getSize(props.size)"
-		:class="$style[$options.methods.getClass(props)]"
-		:popper-class="$options.methods.getPopperClass(props, $style)"
-		v-on="listeners"
-		:ref="data.ref"
+<template>
+	<div
+		:class="{
+			'n8n-select': true,
+			[$style.container]: true,
+			[$style.withPrepend]: !!$slots.prepend,
+		}"
 	>
-		<template v-slot:prefix>
-			<slot name="prefix" />
-		</template>
-		<template v-slot:suffix>
-			<slot name="suffix" />
-		</template>
-		<template v-slot:default>
-			<slot></slot>
-		</template>
-	</component>
+		<div v-if="$slots.prepend" :class="$style.prepend">
+			<slot name="prepend" />
+		</div>
+		<el-select
+			v-bind="$props"
+			:value="value"
+			:size="computedSize"
+			:class="$style[classes]"
+			:popper-class="popperClass"
+			v-on="$listeners"
+			ref="innerSelect"
+		>
+			<template #prefix>
+				<slot name="prefix" />
+			</template>
+			<template #suffix>
+				<slot name="suffix" />
+			</template>
+			<template #default>
+				<slot></slot>
+			</template>
+		</el-select>
+	</div>
 </template>
 
 <script lang="ts">
-import ElSelect from 'element-ui/lib/select';
+import { Select as ElSelect } from 'element-ui';
+import { defineComponent } from 'vue';
 
-interface IProps {
+type InnerSelectRef = InstanceType<typeof ElSelect>;
+
+export interface IProps {
 	size?: string;
 	limitPopperWidth?: string;
 	popperClass?: string;
 }
 
-export default {
+export default defineComponent({
 	name: 'n8n-select',
 	components: {
 		ElSelect,
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		size: {
 			type: String,
 			default: 'large',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].indexOf(value) !== -1,
+				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		placeholder: {
 			type: String,
@@ -77,32 +89,58 @@ export default {
 		limitPopperWidth: {
 			type: Boolean,
 		},
+		noDataText: {
+			type: String,
+		},
 	},
-	methods: {
-		getSize(size: string): string | undefined {
-			if (size === 'xlarge') {
+	computed: {
+		computedSize(): string | undefined {
+			if (this.size === 'xlarge') {
 				return undefined;
 			}
 
-			return size;
+			return this.size;
 		},
-		getClass(props: IProps): string {
-			if (props.size === 'xlarge') {
+		classes(): string {
+			if (this.size === 'xlarge') {
 				return 'xlarge';
 			}
 
 			return '';
 		},
-		getPopperClass(props: IProps, $style: any): string {
-			let classes = props.popperClass || '';
-			if (props.limitPopperWidth) {
-				classes = `${classes} ${$style.limitPopperWidth}`;
+		popperClasses(): string {
+			let classes = this.popperClass || '';
+			if (this.limitPopperWidth) {
+				classes = `${classes} ${this.$style.limitPopperWidth}`;
 			}
 
 			return classes;
 		},
 	},
-};
+	methods: {
+		focus() {
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.focus();
+			}
+		},
+		blur() {
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.blur();
+			}
+		},
+		focusOnInput() {
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				const inputRef = selectRef.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
+				}
+			}
+		},
+	},
+});
 </script>
 
 <style lang="scss" module>
@@ -120,5 +158,34 @@ export default {
 		text-overflow: ellipsis;
 		overflow-x: hidden;
 	}
+}
+
+.container {
+	display: inline-flex;
+	width: 100%;
+}
+
+.withPrepend {
+	input {
+		border-top-left-radius: 0;
+		border-bottom-left-radius: 0;
+		@-moz-document url-prefix() {
+			padding: 0 var(--spacing-3xs);
+		}
+	}
+}
+
+.prepend {
+	font-size: var(--font-size-2xs);
+	border: var(--border-base);
+	border-right: none;
+	display: flex;
+	align-items: center;
+	padding: 0 var(--spacing-3xs);
+	background-color: var(--color-background-light);
+	border-bottom-left-radius: var(--input-border-radius, var(--border-radius-base));
+	border-top-left-radius: var(--input-border-radius, var(--border-radius-base));
+	color: var(--color-text-base);
+	white-space: nowrap;
 }
 </style>

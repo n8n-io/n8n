@@ -1,59 +1,81 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
+import { loadClassInIsolation } from 'n8n-core';
+import type {
 	INodeType,
-	INodeTypeData,
+	INodeTypeDescription,
 	INodeTypes,
-	INodeVersionedType,
-	NodeHelpers,
+	IVersionedNodeType,
+	LoadedClass,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import { Service } from 'typedi';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
 
-class NodeTypesClass implements INodeTypes {
-	nodeTypes: INodeTypeData = {};
+@Service()
+export class NodeTypes implements INodeTypes {
+	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {}
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {
+	init() {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
-		// eslint-disable-next-line no-restricted-syntax
-		for (const nodeTypeData of Object.values(nodeTypes)) {
-			const nodeType = NodeHelpers.getVersionedTypeNode(nodeTypeData.type);
-			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
-
-			if (applyParameters.length) {
-				nodeType.description.properties.unshift(...applyParameters);
-			}
-		}
-		this.nodeTypes = nodeTypes;
+		this.applySpecialNodeParameters();
 	}
 
-	getAll(): Array<INodeType | INodeVersionedType> {
-		return Object.values(this.nodeTypes).map((data) => data.type);
+	/**
+	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
+	 */
+	getWithSourcePath(
+		nodeTypeName: string,
+		version: number,
+	): { description: INodeTypeDescription } & { sourcePath: string } {
+		const nodeType = this.getNode(nodeTypeName);
+
+		if (!nodeType) {
+			throw new Error(`Unknown node type: ${nodeTypeName}`);
+		}
+
+		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
+
+		return { description: { ...description }, sourcePath: nodeType.sourcePath };
 	}
 
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
-			throw new Error(`The node-type "${nodeType}" is not known!`);
-		}
-		return this.nodeTypes[nodeType].type;
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.getNode(nodeType).type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (this.nodeTypes[nodeType] === undefined) {
-			throw new Error(`The node-type "${nodeType}" is not known!`);
+		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
+	}
+
+	applySpecialNodeParameters() {
+		for (const nodeTypeData of Object.values(this.loadedNodes)) {
+			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
+			NodeHelpers.applySpecialNodeParameters(nodeType);
 		}
-		return NodeHelpers.getVersionedTypeNode(this.nodeTypes[nodeType].type, version);
-	}
-}
-
-let nodeTypesInstance: NodeTypesClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function NodeTypes(): NodeTypesClass {
-	if (nodeTypesInstance === undefined) {
-		nodeTypesInstance = new NodeTypesClass();
 	}
 
-	return nodeTypesInstance;
+	private getNode(type: string): LoadedClass<INodeType | IVersionedNodeType> {
+		const loadedNodes = this.loadedNodes;
+		if (type in loadedNodes) {
+			return loadedNodes[type];
+		}
+
+		const knownNodes = this.knownNodes;
+		if (type in knownNodes) {
+			const { className, sourcePath } = knownNodes[type];
+			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
+			NodeHelpers.applySpecialNodeParameters(loaded);
+			loadedNodes[type] = { sourcePath, type: loaded };
+			return loadedNodes[type];
+		}
+		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
+	}
+
+	private get loadedNodes() {
+		return this.nodesAndCredentials.loaded.nodes;
+	}
+
+	private get knownNodes() {
+		return this.nodesAndCredentials.known.nodes;
+	}
 }

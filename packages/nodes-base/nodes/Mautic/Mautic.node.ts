@@ -1,52 +1,30 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	mauticApiRequest,
-	mauticApiRequestAllItems,
-	validateJSON,
-} from './GenericFunctions';
+import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
 
-import {
-	companyFields,
-	companyOperations,
-} from './CompanyDescription';
+import { segmentEmailFields, segmentEmailOperations } from './SegmentEmailDescription';
 
-import {
-	companyContactFields,
-	companyContactOperations,
-} from './CompanyContactDescription';
+import { companyFields, companyOperations } from './CompanyDescription';
 
-import {
-	contactSegmentFields,
-	contactSegmentOperations,
-} from './ContactSegmentDescription';
+import { companyContactFields, companyContactOperations } from './CompanyContactDescription';
 
-import {
-	campaignContactFields,
-	campaignContactOperations,
-} from './CampaignContactDescription';
+import { contactSegmentFields, contactSegmentOperations } from './ContactSegmentDescription';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { campaignContactFields, campaignContactOperations } from './CampaignContactDescription';
+
+import { snakeCase } from 'change-case';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,7 +37,6 @@ export class Mautic implements INodeType {
 		description: 'Consume Mautic API',
 		defaults: {
 			name: 'Mautic',
-			color: '#52619b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -69,9 +46,7 @@ export class Mautic implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'credentials',
-						],
+						authentication: ['credentials'],
 					},
 				},
 			},
@@ -80,9 +55,7 @@ export class Mautic implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -108,6 +81,7 @@ export class Mautic implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign Contact',
@@ -134,9 +108,13 @@ export class Mautic implements INodeType {
 						value: 'contactSegment',
 						description: 'Add/remove contacts to/from a segment',
 					},
+					{
+						name: 'Segment Email',
+						value: 'segmentEmail',
+						description: 'Send an email',
+					},
 				],
 				default: 'contact',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,
@@ -148,16 +126,23 @@ export class Mautic implements INodeType {
 			...campaignContactFields,
 			...companyContactOperations,
 			...companyContactFields,
+			...segmentEmailOperations,
+			...segmentEmailFields,
 		],
 	};
 
 	methods = {
 		loadOptions: {
-			// Get all the available companies to display them to user so that he can
+			// Get all the available companies to display them to user so that they can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const companies = await mauticApiRequestAllItems.call(this, 'companies', 'GET', '/companies');
+				const companies = await mauticApiRequestAllItems.call(
+					this,
+					'companies',
+					'GET',
+					'/companies',
+				);
 				for (const company of companies) {
 					returnData.push({
 						name: company.fields.all.companyname,
@@ -166,7 +151,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -179,7 +164,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available stages to display them to user so that he can
+			// Get all the available stages to display them to user so that they can
 			// select them easily
 			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -192,11 +177,16 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available company fields to display them to user so that he can
+			// Get all the available company fields to display them to user so that they can
 			// select them easily
 			async getCompanyFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const fields = await mauticApiRequestAllItems.call(this, 'fields', 'GET', '/fields/company');
+				const fields = await mauticApiRequestAllItems.call(
+					this,
+					'fields',
+					'GET',
+					'/fields/company',
+				);
 				for (const field of fields) {
 					returnData.push({
 						name: field.label,
@@ -207,7 +197,12 @@ export class Mautic implements INodeType {
 			},
 			async getIndustries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const fields = await mauticApiRequestAllItems.call(this, 'fields', 'GET', '/fields/company');
+				const fields = await mauticApiRequestAllItems.call(
+					this,
+					'fields',
+					'GET',
+					'/fields/company',
+				);
 				for (const field of fields) {
 					if (field.alias === 'companyindustry') {
 						for (const { label, value } of field.properties.list) {
@@ -220,11 +215,16 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available contact fields to display them to user so that he can
+			// Get all the available contact fields to display them to user so that they can
 			// select them easily
 			async getContactFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const fields = await mauticApiRequestAllItems.call(this, 'fields', 'GET', '/fields/contact');
+				const fields = await mauticApiRequestAllItems.call(
+					this,
+					'fields',
+					'GET',
+					'/fields/contact',
+				);
 				for (const field of fields) {
 					returnData.push({
 						name: field.label,
@@ -233,7 +233,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available segments to display them to user so that he can
+			// Get all the available segments to display them to user so that they can
 			// select them easily
 			async getSegments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -246,11 +246,16 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available campaings to display them to user so that he can
+			// Get all the available campaings to display them to user so that they can
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const campaings = await mauticApiRequestAllItems.call(this, 'campaigns', 'GET', '/campaigns');
+				const campaings = await mauticApiRequestAllItems.call(
+					this,
+					'campaigns',
+					'GET',
+					'/campaigns',
+				);
 				for (const campaign of campaings) {
 					returnData.push({
 						name: campaign.name,
@@ -259,23 +264,65 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available emails to display them to user so that they can
+			// select them easily
+			async getEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
+				for (const email of emails) {
+					returnData.push({
+						name: email.name,
+						value: email.id,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available list / segment emails to display them to user so that they can
+			// select them easily
+			async getSegmentEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
+				for (const email of emails) {
+					if (email.emailType === 'list') {
+						returnData.push({
+							name: email.name,
+							value: email.id,
+						});
+					}
+				}
+				return returnData;
+			},
+			// Get all the available campaign / template emails to display them to user so that they can
+			// select them easily
+			async getCampaignEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const emails = await mauticApiRequestAllItems.call(this, 'emails', 'GET', '/emails');
+				for (const email of emails) {
+					if (email.emailType === 'template') {
+						returnData.push({
+							name: email.name,
+							value: email.id,
+						});
+					}
+				}
+				return returnData;
+			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		let qs: IDataObject;
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			qs = {};
 			try {
-
 				if (resource === 'company') {
 					//https://developer.mautic.org/#create-company
 					if (operation === 'create') {
@@ -298,24 +345,24 @@ export class Mautic implements INodeType {
 							...rest
 						} = this.getNodeParameter('additionalFields', i) as {
 							addressUi: {
-								addressValues: IDataObject,
-							},
+								addressValues: IDataObject;
+							};
 							customFieldsUi: {
 								customFieldValues: [
 									{
-										fieldId: string,
-										fieldValue: string,
+										fieldId: string;
+										fieldValue: string;
 									},
-								],
-							}
-							companyEmail: string,
-							fax: string,
-							industry: string,
-							numberOfEmpoyees: number,
-							phone: string,
-							website: string,
-							annualRevenue: number,
-							description: string,
+								];
+							};
+							companyEmail: string;
+							fax: string;
+							industry: string;
+							numberOfEmpoyees: number;
+							phone: string;
+							website: string;
+							annualRevenue: number;
+							description: string;
 						};
 						if (addressUi?.addressValues) {
 							const { addressValues } = addressUi;
@@ -365,14 +412,17 @@ export class Mautic implements INodeType {
 
 						if (customFieldsUi?.customFieldValues) {
 							const { customFieldValues } = customFieldsUi;
-							const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							const data = customFieldValues.reduce(
+								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
+								{},
+							);
 							Object.assign(body, data);
 						}
 
 						Object.assign(body, rest);
 						responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
@@ -396,25 +446,25 @@ export class Mautic implements INodeType {
 							...rest
 						} = this.getNodeParameter('updateFields', i) as {
 							addressUi: {
-								addressValues: IDataObject,
-							},
+								addressValues: IDataObject;
+							};
 							customFieldsUi: {
 								customFieldValues: [
 									{
-										fieldId: string,
-										fieldValue: string,
+										fieldId: string;
+										fieldValue: string;
 									},
-								],
-							}
-							companyEmail: string,
-							name: string,
-							fax: string,
-							industry: string,
-							numberOfEmpoyees: number,
-							phone: string,
-							website: string,
-							annualRevenue: number,
-							description: string,
+								];
+							};
+							companyEmail: string;
+							name: string;
+							fax: string;
+							industry: string;
+							numberOfEmpoyees: number;
+							phone: string;
+							website: string;
+							annualRevenue: number;
+							description: string;
 						};
 						if (addressUi?.addressValues) {
 							const { addressValues } = addressUi;
@@ -468,15 +518,23 @@ export class Mautic implements INodeType {
 
 						if (customFieldsUi?.customFieldValues) {
 							const { customFieldValues } = customFieldsUi;
-							const data = customFieldValues.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							const data = customFieldValues.reduce(
+								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
+								{},
+							);
 							Object.assign(body, data);
 						}
 
 						Object.assign(body, rest);
 
-						responseData = await mauticApiRequest.call(this, 'PATCH', `/companies/${companyId}/edit`, body);
+						responseData = await mauticApiRequest.call(
+							this,
+							'PATCH',
+							`/companies/${companyId}/edit`,
+							body,
+						);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
@@ -486,40 +544,51 @@ export class Mautic implements INodeType {
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						responseData = await mauticApiRequest.call(this, 'GET', `/companies/${companyId}`);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
 					//https://developer.mautic.org/#list-contact-companies
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						qs = Object.assign(qs, additionalFields);
-						if (returnAll === true) {
-							responseData = await mauticApiRequestAllItems.call(this, 'companies', 'GET', '/companies', {}, qs);
+						if (returnAll) {
+							responseData = await mauticApiRequestAllItems.call(
+								this,
+								'companies',
+								'GET',
+								'/companies',
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 							if (responseData.errors) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 							responseData = responseData.companies;
-							responseData = Object.values(responseData);
+							responseData = Object.values(responseData as IDataObject[]);
 						}
-						if (simple === true) {
+						if (simple) {
 							//@ts-ignore
-							responseData = responseData.map(item => item.fields.all);
+							responseData = responseData.map((item) => item.fields.all);
 						}
 					}
 					//https://developer.mautic.org/#delete-company
 					if (operation === 'delete') {
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						const companyId = this.getNodeParameter('companyId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'DELETE', `/companies/${companyId}/delete`);
+						responseData = await mauticApiRequest.call(
+							this,
+							'DELETE',
+							`/companies/${companyId}/delete`,
+						);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
@@ -528,9 +597,9 @@ export class Mautic implements INodeType {
 				if (resource === 'contact') {
 					//https://developer.mautic.org/?php#create-contact
 					if (operation === 'create') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						let body: IDataObject = {};
 						if (!jsonActive) {
 							body.email = this.getNodeParameter('email', i) as string;
@@ -544,7 +613,7 @@ export class Mautic implements INodeType {
 							if (json !== undefined) {
 								body = { ...json };
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+								throw new NodeOperationError(this.getNode(), 'Invalid JSON', { itemIndex: i });
 							}
 						}
 						if (additionalFields.ipAddress) {
@@ -557,7 +626,8 @@ export class Mautic implements INodeType {
 							body.ownerId = additionalFields.ownerId as string;
 						}
 						if (additionalFields.addressUi) {
-							const addressValues = (additionalFields.addressUi as IDataObject).addressValues as IDataObject;
+							const addressValues = (additionalFields.addressUi as IDataObject)
+								.addressValues as IDataObject;
 							if (addressValues) {
 								body.address1 = addressValues.address1 as string;
 								body.address2 = addressValues.address2 as string;
@@ -568,7 +638,8 @@ export class Mautic implements INodeType {
 							}
 						}
 						if (additionalFields.socialMediaUi) {
-							const socialMediaValues = (additionalFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
+							const socialMediaValues = (additionalFields.socialMediaUi as IDataObject)
+								.socialMediaValues as IDataObject;
 							if (socialMediaValues) {
 								body.facebook = socialMediaValues.facebook as string;
 								body.foursquare = socialMediaValues.foursquare as string;
@@ -579,9 +650,13 @@ export class Mautic implements INodeType {
 							}
 						}
 						if (additionalFields.customFieldsUi) {
-							const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
+							const customFields = (additionalFields.customFieldsUi as IDataObject)
+								.customFieldValues as IDataObject[];
 							if (customFields) {
-								const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+								const data = customFields.reduce(
+									(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
+									{},
+								);
 								Object.assign(body, data);
 							}
 						}
@@ -621,13 +696,13 @@ export class Mautic implements INodeType {
 						responseData = await mauticApiRequest.call(this, 'POST', '/contacts/new', body);
 						responseData = [responseData.contact];
 						if (options.rawData === false) {
-							responseData = responseData.map(item => item.fields.all);
+							responseData = responseData.map((item) => item.fields.all);
 						}
 					}
 					//https://developer.mautic.org/?php#edit-contact
 					if (operation === 'update') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						let body: IDataObject = {};
 						if (updateFields.email) {
@@ -653,7 +728,7 @@ export class Mautic implements INodeType {
 							if (json !== undefined) {
 								body = { ...json };
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Invalid JSON');
+								throw new NodeOperationError(this.getNode(), 'Invalid JSON', { itemIndex: i });
 							}
 						}
 						if (updateFields.ipAddress) {
@@ -666,7 +741,8 @@ export class Mautic implements INodeType {
 							body.ownerId = updateFields.ownerId as string;
 						}
 						if (updateFields.addressUi) {
-							const addressValues = (updateFields.addressUi as IDataObject).addressValues as IDataObject;
+							const addressValues = (updateFields.addressUi as IDataObject)
+								.addressValues as IDataObject;
 							if (addressValues) {
 								body.address1 = addressValues.address1 as string;
 								body.address2 = addressValues.address2 as string;
@@ -677,7 +753,8 @@ export class Mautic implements INodeType {
 							}
 						}
 						if (updateFields.socialMediaUi) {
-							const socialMediaValues = (updateFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
+							const socialMediaValues = (updateFields.socialMediaUi as IDataObject)
+								.socialMediaValues as IDataObject;
 							if (socialMediaValues) {
 								body.facebook = socialMediaValues.facebook as string;
 								body.foursquare = socialMediaValues.foursquare as string;
@@ -688,9 +765,13 @@ export class Mautic implements INodeType {
 							}
 						}
 						if (updateFields.customFieldsUi) {
-							const customFields = (updateFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
+							const customFields = (updateFields.customFieldsUi as IDataObject)
+								.customFieldValues as IDataObject[];
 							if (customFields) {
-								const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+								const data = customFields.reduce(
+									(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
+									{},
+								);
 								Object.assign(body, data);
 							}
 						}
@@ -727,26 +808,31 @@ export class Mautic implements INodeType {
 						if (updateFields.website) {
 							body.website = updateFields.website as string;
 						}
-						responseData = await mauticApiRequest.call(this, 'PATCH', `/contacts/${contactId}/edit`, body);
+						responseData = await mauticApiRequest.call(
+							this,
+							'PATCH',
+							`/contacts/${contactId}/edit`,
+							body,
+						);
 						responseData = [responseData.contact];
 						if (options.rawData === false) {
-							responseData = responseData.map(item => item.fields.all);
+							responseData = responseData.map((item) => item.fields.all);
 						}
 					}
 					//https://developer.mautic.org/?php#get-contact
 					if (operation === 'get') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						responseData = await mauticApiRequest.call(this, 'GET', `/contacts/${contactId}`);
 						responseData = [responseData.contact];
 						if (options.rawData === false) {
-							responseData = responseData.map(item => item.fields.all);
+							responseData = responseData.map((item) => item.fields.all);
 						}
 					}
 					//https://developer.mautic.org/?php#list-contacts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						qs = Object.assign(qs, options);
 						if (qs.orderBy) {
 							// For some reason does camelCase get used in the returned data
@@ -755,32 +841,86 @@ export class Mautic implements INodeType {
 							qs.orderBy = snakeCase(qs.orderBy as string);
 						}
 
-						if (returnAll === true) {
-							responseData = await mauticApiRequestAllItems.call(this, 'contacts', 'GET', '/contacts', {}, qs);
+						if (returnAll) {
+							responseData = await mauticApiRequestAllItems.call(
+								this,
+								'contacts',
+								'GET',
+								'/contacts',
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 							if (responseData.errors) {
-								throw new NodeApiError(this.getNode(), responseData);
+								throw new NodeApiError(this.getNode(), responseData as JsonObject);
 							}
 							responseData = responseData.contacts;
-							responseData = Object.values(responseData);
+							responseData = Object.values(responseData as IDataObject[]);
 						}
 						if (options.rawData === false) {
 							//@ts-ignore
-							responseData = responseData.map(item => item.fields.all);
+							responseData = responseData.map((item) => item.fields.all);
 						}
 					}
 					//https://developer.mautic.org/?php#delete-contact
 					if (operation === 'delete') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'DELETE', `/contacts/${contactId}/delete`);
+						responseData = await mauticApiRequest.call(
+							this,
+							'DELETE',
+							`/contacts/${contactId}/delete`,
+						);
 						responseData = [responseData.contact];
 						if (options.rawData === false) {
-							responseData = responseData.map(item => item.fields.all);
+							responseData = responseData.map((item) => item.fields.all);
 						}
+					}
+					//https://developer.mautic.org/#send-email-to-contact
+					if (operation === 'sendEmail') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const campaignEmailId = this.getNodeParameter('campaignEmailId', i) as string;
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/emails/${campaignEmailId}/contact/${contactId}/send`,
+						);
+					}
+					//https://developer.mautic.org/#add-do-not-contact
+					//https://developer.mautic.org/#remove-from-do-not-contact
+					if (operation === 'editDoNotContactList') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const action = this.getNodeParameter('action', i) as string;
+						const channel = this.getNodeParameter('channel', i) as string;
+						const body: IDataObject = {};
+						if (action === 'add') {
+							const additionalFields = this.getNodeParameter('additionalFields', i);
+							Object.assign(body, additionalFields);
+						}
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/contacts/${contactId}/dnc/${channel}/${action}`,
+							body,
+						);
+						responseData = responseData.contact;
+					}
+
+					//https://developer.mautic.org/#add-points
+					//https://developer.mautic.org/#subtract-points
+					if (operation === 'editContactPoint') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const action = this.getNodeParameter('action', i) as string;
+						const points = this.getNodeParameter('points', i) as string;
+						const path = action === 'add' ? 'plus' : 'minus';
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/contacts/${contactId}/points/${path}/${points}`,
+						);
 					}
 				}
 
@@ -789,13 +929,21 @@ export class Mautic implements INodeType {
 					if (operation === 'add') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const segmentId = this.getNodeParameter('segmentId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/add`);
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/segments/${segmentId}/contact/${contactId}/add`,
+						);
 					}
 					//https://developer.mautic.org/#remove-contact-from-a-segment
 					if (operation === 'remove') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const segmentId = this.getNodeParameter('segmentId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/segments/${segmentId}/contact/${contactId}/remove`);
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/segments/${segmentId}/contact/${contactId}/remove`,
+						);
 					}
 				}
 
@@ -804,13 +952,33 @@ export class Mautic implements INodeType {
 					if (operation === 'add') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/campaigns/${campaignId}/contact/${contactId}/add`);
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/campaigns/${campaignId}/contact/${contactId}/add`,
+						);
 					}
 					//https://developer.mautic.org/#remove-contact-from-a-campaign
 					if (operation === 'remove') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/campaigns/${campaignId}/contact/${contactId}/remove`);
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/campaigns/${campaignId}/contact/${contactId}/remove`,
+						);
+					}
+				}
+
+				if (resource === 'segmentEmail') {
+					//https://developer.mautic.org/#send-email-to-segment
+					if (operation === 'send') {
+						const segmentEmailId = this.getNodeParameter('segmentEmailId', i) as string;
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/emails/${segmentEmailId}/send`,
+						);
 					}
 				}
 
@@ -819,7 +987,12 @@ export class Mautic implements INodeType {
 					if (operation === 'add') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const companyId = this.getNodeParameter('companyId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/companies/${companyId}/contact/${contactId}/add`, {});
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/companies/${companyId}/contact/${contactId}/add`,
+							{},
+						);
 						// responseData = responseData.company;
 						// if (simple === true) {
 						// 	responseData = responseData.fields.all;
@@ -829,7 +1002,12 @@ export class Mautic implements INodeType {
 					if (operation === 'remove') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const companyId = this.getNodeParameter('companyId', i) as string;
-						responseData = await mauticApiRequest.call(this, 'POST', `/companies/${companyId}/contact/${contactId}/remove`, {});
+						responseData = await mauticApiRequest.call(
+							this,
+							'POST',
+							`/companies/${companyId}/contact/${contactId}/remove`,
+							{},
+						);
 						// responseData = responseData.company;
 						// if (simple === true) {
 						// 	responseData = responseData.fields.all;
@@ -837,20 +1015,20 @@ export class Mautic implements INodeType {
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

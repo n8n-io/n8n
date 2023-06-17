@@ -1,31 +1,28 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const businessServiceOperations = [
+export const businessServiceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'businessService',
-				],
+				resource: ['businessService'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many business services',
 			},
 		],
 		default: 'getAll',
 	},
-] as INodeProperties[];
+];
 
-export const businessServiceFields = [
-
+export const businessServiceFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                businessService:getAll                      */
 	/* -------------------------------------------------------------------------- */
@@ -35,16 +32,12 @@ export const businessServiceFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'businessService',
-				],
+				operation: ['getAll'],
+				resource: ['businessService'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -52,15 +45,9 @@ export const businessServiceFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'businessService',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['businessService'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -68,7 +55,7 @@ export const businessServiceFields = [
 			maxValue: 500,
 		},
 		default: 50,
-		description: 'The max number of results to return',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -77,12 +64,8 @@ export const businessServiceFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'businessService',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['businessService'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -95,21 +78,25 @@ export const businessServiceFields = [
 				description: 'Whether to exclude Table API links for reference fields',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'sysparm_fields',
 				type: 'multiOptions',
 				typeOptions: {
+					// nodelinter-ignore-next-line
 					loadOptionsMethod: 'getColumns',
 				},
-				default: '',
-				description: 'A list of fields to return',
+				default: [],
+				description:
+					'A list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				hint: 'String of comma separated values or an array of strings can be set in an expression',
 			},
 			{
 				displayName: 'Filter',
 				name: 'sysparm_query',
 				type: 'string',
 				default: '',
-				description: 'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>',
+				description:
+					'An encoded query string used to filter the results. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More info</a>.',
 			},
 			{
 				displayName: 'Return Values',
@@ -134,4 +121,4 @@ export const businessServiceFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

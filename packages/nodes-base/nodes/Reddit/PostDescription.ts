@@ -1,52 +1,53 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const postOperations = [
+export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'create',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Submit a post to a subreddit',
+				action: 'Create a post',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a post from a subreddit',
+				action: 'Delete a post',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a post from a subreddit',
+				action: 'Get a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all posts from a subreddit',
+				description: 'Get many posts from a subreddit',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search posts in a subreddit or in all of Reddit.',
+				description: 'Search posts in a subreddit or in all of Reddit',
+				action: 'Search for a post',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
+				resource: ['post'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const postFields = [
+export const postFields: INodeProperties[] = [
 	// ----------------------------------
 	//         post: create
 	// ----------------------------------
@@ -56,15 +57,11 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Subreddit to create the post in.',
+		description: 'Subreddit to create the post in',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -87,15 +84,11 @@ export const postFields = [
 			},
 		],
 		default: 'self',
-		description: 'The kind of the post to create.',
+		description: 'The kind of the post to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -105,15 +98,11 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'Title of the post, up to 300 characters long.',
+		description: 'Title of the post, up to 300 characters long',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -123,19 +112,12 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'URL of the post.',
+		description: 'URL of the post',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
-				kind: [
-					'link',
-					'image',
-				],
+				resource: ['post'],
+				operation: ['create'],
+				kind: ['link', 'image'],
 			},
 		},
 	},
@@ -148,15 +130,9 @@ export const postFields = [
 		description: 'Text of the post. Markdown supported.',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
-				kind: [
-					'self',
-				],
+				resource: ['post'],
+				operation: ['create'],
+				kind: ['self'],
 			},
 		},
 	},
@@ -165,19 +141,13 @@ export const postFields = [
 		name: 'resubmit',
 		type: 'boolean',
 		default: false,
-		description: 'If toggled on, the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
+		description:
+			'Whether the URL will be posted even if it was already posted to the subreddit before. Otherwise, the re-posting will trigger an error.',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
-				kind: [
-					'link',
-					'image',
-				],
+				resource: ['post'],
+				operation: ['create'],
+				kind: ['link', 'image'],
 			},
 		},
 	},
@@ -191,16 +161,13 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to delete. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description:
+			'ID of the post to delete. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'gla7fmt',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['post'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -214,15 +181,11 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to retrieve the post from.',
+		description: 'The name of subreddit to retrieve the post from',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['post'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -232,16 +195,13 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the post to retrieve. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
+		description:
+			'ID of the post to retrieve. Found in the post URL: <code>/r/[subreddit_name]/comments/[post_id]/[post_title]</code>',
 		placeholder: 'l0me7x',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['post'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -255,15 +215,11 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to retrieve the posts from.',
+		description: 'The name of subreddit to retrieve the posts from',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['post'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -272,15 +228,11 @@ export const postFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['post'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -289,22 +241,16 @@ export const postFields = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['post'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -314,12 +260,8 @@ export const postFields = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['post'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -329,9 +271,8 @@ export const postFields = [
 				displayName: 'Category',
 				name: 'category',
 				type: 'options',
-				required: true,
 				default: 'top',
-				description: 'Category of the posts to retrieve.',
+				description: 'Category of the posts to retrieve',
 				options: [
 					{
 						name: 'Top Posts',
@@ -362,27 +303,23 @@ export const postFields = [
 		name: 'location',
 		type: 'options',
 		default: 'subreddit',
-		description: 'Location where to search for posts.',
+		description: 'Location where to search for posts',
 		options: [
 			{
 				name: 'All Reddit',
 				value: 'allReddit',
-				description: 'Search for posts in all of Reddit.',
+				description: 'Search for posts in all of Reddit',
 			},
 			{
 				name: 'Subreddit',
 				value: 'subreddit',
-				description: 'Search for posts in a specific subreddit.',
+				description: 'Search for posts in a specific subreddit',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['post'],
+				operation: ['search'],
 			},
 		},
 	},
@@ -392,18 +329,12 @@ export const postFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'The name of subreddit to search in.',
+		description: 'The name of subreddit to search in',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'search',
-				],
-				location: [
-					'subreddit',
-				],
+				resource: ['post'],
+				operation: ['search'],
+				location: ['subreddit'],
 			},
 		},
 	},
@@ -413,15 +344,11 @@ export const postFields = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The keyword for the search.',
+		description: 'The keyword for the search',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['post'],
+				operation: ['search'],
 			},
 		},
 	},
@@ -430,15 +357,11 @@ export const postFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['post'],
+				operation: ['search'],
 			},
 		},
 	},
@@ -447,22 +370,16 @@ export const postFields = [
 		name: 'limit',
 		type: 'number',
 		default: 100,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 100,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['post'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -474,12 +391,8 @@ export const postFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['post'],
+				operation: ['search'],
 			},
 		},
 		options: [
@@ -489,7 +402,7 @@ export const postFields = [
 				placeholder: '',
 				type: 'options',
 				default: 'relevance',
-				description: 'The category to sort results by.',
+				description: 'The category to sort results by',
 				options: [
 					{
 						name: 'Comments',
@@ -504,15 +417,15 @@ export const postFields = [
 						value: 'new',
 					},
 					{
-						name: 'Top',
-						value: 'top',
-					},
-					{
 						name: 'Relevance',
 						value: 'relevance',
+					},
+					{
+						name: 'Top',
+						value: 'top',
 					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];

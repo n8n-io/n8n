@@ -1,6 +1,4 @@
-import {
-	ReactionProperties,
-} from '../../Interfaces';
+import type { ReactionProperties } from '../../Interfaces';
 
 export const reactionGetAllDescription: ReactionProperties = [
 	{
@@ -11,15 +9,11 @@ export const reactionGetAllDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['reaction'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'One or more (comma-separated) posts to retrieve reactions from.',
+		description: 'One or more (comma-separated) posts to retrieve reactions from',
 	},
 	{
 		displayName: 'Return All',
@@ -27,16 +21,12 @@ export const reactionGetAllDescription: ReactionProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'reaction',
-				],
+				operation: ['getAll'],
+				resource: ['reaction'],
 			},
 		},
 		default: true,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -44,15 +34,9 @@ export const reactionGetAllDescription: ReactionProperties = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'reaction',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['reaction'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -60,6 +44,6 @@ export const reactionGetAllDescription: ReactionProperties = [
 			maxValue: 100,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 ];

@@ -1,16 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import * as glob from 'fast-glob';
-import * as path from 'path';
-
-import {
-	readFile as fsReadFile,
-} from 'fs/promises';
-
+import glob from 'fast-glob';
 
 export class ReadBinaryFiles implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,7 +28,7 @@ export class ReadBinaryFiles implements INodeType {
 				default: '',
 				required: true,
 				placeholder: '*.jpg',
-				description: 'Pattern for files to read.',
+				description: 'Pattern for files to read',
 			},
 			{
 				displayName: 'Property Name',
@@ -42,32 +36,29 @@ export class ReadBinaryFiles implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property to which to write the data of the read files.',
+				description: 'Name of the binary property to which to write the data of the read files',
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const fileSelector = this.getNodeParameter('fileSelector', 0) as string;
-		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 		const files = await glob(fileSelector);
 
 		const items: INodeExecutionData[] = [];
-		let item: INodeExecutionData;
-		let data: Buffer;
 		for (const filePath of files) {
-			data = await fsReadFile(filePath) as Buffer;
-
-			item = {
+			const stream = await this.helpers.createReadStream(filePath);
+			items.push({
 				binary: {
-					[dataPropertyName]: await this.helpers.prepareBinaryData(data, filePath),
+					[dataPropertyName]: await this.helpers.prepareBinaryData(stream, filePath),
 				},
 				json: {},
-			};
-
-			items.push(item);
+				pairedItem: {
+					item: 0,
+				},
+			});
 		}
 
 		return this.prepareOutputData(items);

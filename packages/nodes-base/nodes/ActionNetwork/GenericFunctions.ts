@@ -1,24 +1,11 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import flow from 'lodash/flow';
+import omit from 'lodash/omit';
 
-import {
-	flow,
-	omit,
-} from 'lodash';
-
-import {
+import type {
 	AllFieldsUi,
 	FieldWithPrimaryField,
 	LinksFieldContainer,
@@ -35,16 +22,7 @@ export async function actionNetworkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('actionNetworkApi') as { apiKey: string } | undefined;
-
-	if (credentials === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-	}
-
 	const options: OptionsWithUri = {
-		headers: {
-			'OSDI-API-Token': credentials.apiKey,
-		},
 		method,
 		body,
 		qs,
@@ -60,12 +38,24 @@ export async function actionNetworkApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
 }
+
+/**
+ * Convert an endpoint to the key needed to access data in the response.
+ */
+const toItemsKey = (endpoint: string) => {
+	// handle two-resource endpoint
+	if (
+		endpoint.includes('/signatures') ||
+		endpoint.includes('/attendances') ||
+		endpoint.includes('/taggings')
+	) {
+		endpoint = endpoint.split('/').pop()!;
+	}
+
+	return `osdi:${endpoint.replace(/\//g, '')}`;
+};
 
 export async function handleListing(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -81,7 +71,7 @@ export async function handleListing(
 	qs.perPage = 25; // max
 	qs.page = 1;
 
-	const returnAll = options?.returnAll ?? this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll = options?.returnAll ?? (this.getNodeParameter('returnAll', 0, false) as boolean);
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	const itemsKey = toItemsKey(endpoint);
@@ -89,39 +79,26 @@ export async function handleListing(
 	do {
 		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
 		const items = responseData._embedded[itemsKey];
-		returnData.push(...items);
+		returnData.push(...(items as IDataObject[]));
 
 		if (!returnAll && returnData.length >= limit) {
 			return returnData.slice(0, limit);
 		}
 
-		qs.page = responseData.page as number;
-	} while (responseData.total_pages && qs.page < responseData.total_pages);
+		if (responseData._links?.next?.href) {
+			const queryString = new URLSearchParams(
+				responseData._links.next.href.split('?')[1] as string,
+			);
+			qs.page = queryString.get('page') as string;
+		}
+	} while (responseData._links?.next);
 
 	return returnData;
 }
 
-
 // ----------------------------------------
 //              helpers
 // ----------------------------------------
-
-/**
- * Convert an endpoint to the key needed to access data in the response.
- */
-const toItemsKey = (endpoint: string) => {
-
-	// handle two-resource endpoint
-	if (
-		endpoint.includes('/signatures') ||
-		endpoint.includes('/attendances') ||
-		endpoint.includes('/taggings')
-	) {
-		endpoint = endpoint.split('/').pop()!;
-	}
-
-	return `osdi:${endpoint.replace(/\//g, '')}`;
-};
 
 export const extractId = (response: LinksFieldContainer) => {
 	return response._links.self.href.split('/').pop() ?? 'No ID';
@@ -138,7 +115,6 @@ export const makeOsdiLink = (personId: string) => {
 };
 
 export const isPrimary = (field: FieldWithPrimaryField) => field.primary;
-
 
 // ----------------------------------------
 //           field adjusters
@@ -158,9 +134,7 @@ function adjustPhoneNumbers(allFields: AllFieldsUi) {
 
 	return {
 		...omit(allFields, ['phone_numbers']),
-		phone_numbers: [
-			allFields.phone_numbers.phone_numbers_fields,
-		],
+		phone_numbers: [allFields.phone_numbers.phone_numbers_fields],
 	};
 }
 
@@ -217,14 +191,13 @@ function adjustLocation(allFields: AllFieldsUi) {
 function adjustTargets(allFields: AllFieldsUi) {
 	if (!allFields.target) return allFields;
 
-	const adjusted = allFields.target.split(',').map(value => ({ name: value }));
+	const adjusted = allFields.target.split(',').map((value) => ({ name: value }));
 
 	return {
 		...omit(allFields, ['target']),
 		target: adjusted,
 	};
 }
-
 
 // ----------------------------------------
 //           payload adjusters
@@ -240,19 +213,19 @@ export const adjustPetitionPayload = adjustTargets;
 
 export const adjustEventPayload = adjustLocation;
 
-
 // ----------------------------------------
 //           resource loaders
 // ----------------------------------------
 
 async function loadResource(this: ILoadOptionsFunctions, resource: string) {
-	return await handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
+	return handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
 }
 
 export const resourceLoaders = {
-
 	async getTags(this: ILoadOptionsFunctions) {
-		const tags = await loadResource.call(this, 'tags') as Array<{ name: string } & LinksFieldContainer>;
+		const tags = (await loadResource.call(this, 'tags')) as Array<
+			{ name: string } & LinksFieldContainer
+		>;
 
 		return tags.map((tag) => ({ name: tag.name, value: extractId(tag) }));
 	},
@@ -262,9 +235,14 @@ export const resourceLoaders = {
 		const endpoint = `/tags/${tagId}/taggings`;
 
 		// two-resource endpoint, so direct call
-		const taggings = await handleListing.call(
-			this, 'GET', endpoint, {}, {}, { returnAll: true },
-		) as LinksFieldContainer[];
+		const taggings = (await handleListing.call(
+			this,
+			'GET',
+			endpoint,
+			{},
+			{},
+			{ returnAll: true },
+		)) as LinksFieldContainer[];
 
 		return taggings.map((tagging) => {
 			const taggingId = extractId(tagging);
@@ -277,47 +255,9 @@ export const resourceLoaders = {
 	},
 };
 
-
 // ----------------------------------------
 //          response simplifiers
 // ----------------------------------------
-
-export const simplifyResponse = (response: Response, resource: Resource) => {
-	if (resource === 'person') {
-		return simplifyPersonResponse(response as PersonResponse);
-	} else if (resource === 'petition') {
-		return simplifyPetitionResponse(response as PetitionResponse);
-	}
-
-	const fieldsToSimplify = [
-		'identifiers',
-		'_links',
-		'action_network:sponsor',
-		'reminders',
-	];
-
-	return {
-		id: extractId(response),
-		...omit(response, fieldsToSimplify),
-	};
-};
-
-
-const simplifyPetitionResponse = (response: PetitionResponse) => {
-	const fieldsToSimplify = [
-		'identifiers',
-		'_links',
-		'action_network:hidden',
-		'_embedded',
-	];
-
-	return {
-		id: extractId(response),
-		...omit(response, fieldsToSimplify),
-		creator: simplifyPersonResponse(response._embedded['osdi:creator']),
-	};
-};
-
 const simplifyPersonResponse = (response: PersonResponse) => {
 	const emailAddress = response.email_addresses.filter(isPrimary);
 	const phoneNumber = response.phone_numbers.filter(isPrimary);
@@ -339,10 +279,35 @@ const simplifyPersonResponse = (response: PersonResponse) => {
 		...{ phone_number: phoneNumber[0].number || '' },
 		...{
 			postal_address: {
-				...postalAddress && omit(postalAddress[0], 'address_lines'),
+				...(postalAddress && omit(postalAddress[0], 'address_lines')),
 				address_lines: postalAddress[0].address_lines ?? '',
 			},
 		},
 		language_spoken: response.languages_spoken[0],
+	};
+};
+
+const simplifyPetitionResponse = (response: PetitionResponse) => {
+	const fieldsToSimplify = ['identifiers', '_links', 'action_network:hidden', '_embedded'];
+
+	return {
+		id: extractId(response),
+		...omit(response, fieldsToSimplify),
+		creator: simplifyPersonResponse(response._embedded['osdi:creator']),
+	};
+};
+
+export const simplifyResponse = (response: Response, resource: Resource) => {
+	if (resource === 'person') {
+		return simplifyPersonResponse(response as PersonResponse);
+	} else if (resource === 'petition') {
+		return simplifyPetitionResponse(response as PetitionResponse);
+	}
+
+	const fieldsToSimplify = ['identifiers', '_links', 'action_network:sponsor', 'reminders'];
+
+	return {
+		id: extractId(response),
+		...omit(response, fieldsToSimplify),
 	};
 };

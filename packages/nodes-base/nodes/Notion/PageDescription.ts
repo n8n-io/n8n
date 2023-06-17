@@ -1,21 +1,17 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	blocks,
-} from './Blocks';
+import { blocks } from './Blocks';
 
-export const pageOperations = [
+export const pageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
+				version: [1],
+				resource: ['page'],
 			},
 		},
 		options: [
@@ -23,45 +19,195 @@ export const pageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a page',
+				action: 'Get a page',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Text search of pages',
+				action: 'Search a page',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				version: [2],
+				resource: ['page'],
+			},
+		},
+		options: [
+			{
+				name: 'Archive',
+				value: 'archive',
+				description: 'Archive a page',
+				action: 'Archive a page',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a page',
+				action: 'Create a page',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Text search of pages',
+				action: 'Search a page',
+			},
+		],
+		default: 'create',
+	},
+];
 
-export const pageFields = [
-
+export const pageFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                page:archive                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Page',
+		name: 'pageId',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Page URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Page ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
+		displayOptions: {
+			show: {
+				version: [2],
+				resource: ['page'],
+				operation: ['archive'],
+			},
+		},
+		description: 'The Notion Page to archive',
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				version: [2],
+				resource: ['page'],
+				operation: ['archive'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                page:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Parent Page ID',
+		displayName: 'Parent Page',
 		name: 'pageId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Page URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Page ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['page'],
+				operation: ['create'],
 			},
 		},
-		description: 'The ID of the parent page that this child page belongs to.',
+		description: 'The Notion Database Page to create a child page for',
 	},
 	{
 		displayName: 'Title',
@@ -71,70 +217,99 @@ export const pageFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['page'],
+				operation: ['create'],
 			},
 		},
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['page'],
+				operation: ['create'],
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	...blocks('page', 'create'),
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['page'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Icon Type',
+				name: 'iconType',
+				type: 'options',
+				options: [
+					{
+						name: 'Emoji',
+						value: 'emoji',
+						description: 'Use an Emoji for the icon',
+					},
+					{
+						name: 'File',
+						value: 'file',
+						description: 'Use a file for the icon',
+					},
+				],
+				default: 'emoji',
+				description: 'The icon type for the page, Either a URL or an Emoji',
+			},
+			{
+				displayName: 'Icon',
+				name: 'icon',
+				type: 'string',
+				default: '',
+				description: 'Emoji or File URL to use as the icon',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                page:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Page ID',
+		displayName: 'Page Link or ID',
 		name: 'pageId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'get',
-				],
+				version: [1],
+				resource: ['page'],
+				operation: ['get'],
 			},
 		},
+		description:
+			"The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'get',
-				],
+				version: [1],
+				resource: ['page'],
+				operation: ['get'],
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                page:search                                  */
@@ -146,15 +321,11 @@ export const pageFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
-		description: 'The text to search for.',
+		description: 'The text to search for',
 	},
 	{
 		displayName: 'Return All',
@@ -162,16 +333,12 @@ export const pageFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -179,15 +346,9 @@ export const pageFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['page'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -195,24 +356,20 @@ export const pageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -220,12 +377,8 @@ export const pageFields = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'page',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['page'],
+				operation: ['search'],
 			},
 		},
 		default: {},
@@ -256,7 +409,7 @@ export const pageFields = [
 									},
 								],
 								default: 'object',
-								description: 'The name of the property to filter by.',
+								description: 'The name of the property to filter by',
 							},
 							{
 								displayName: 'Value',
@@ -273,7 +426,7 @@ export const pageFields = [
 									},
 								],
 								default: '',
-								description: 'The value of the property to filter by.',
+								description: 'The value of the property to filter by',
 							},
 						],
 					},
@@ -307,8 +460,8 @@ export const pageFields = [
 										value: 'descending',
 									},
 								],
-								default: '',
-								description: 'The direction to sort.',
+								default: 'descending',
+								description: 'The direction to sort',
 							},
 							{
 								displayName: 'Timestamp',
@@ -321,7 +474,7 @@ export const pageFields = [
 									},
 								],
 								default: 'last_edited_time',
-								description: `The name of the timestamp to sort against.`,
+								description: 'The name of the timestamp to sort against',
 							},
 						],
 					},
@@ -329,4 +482,4 @@ export const pageFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

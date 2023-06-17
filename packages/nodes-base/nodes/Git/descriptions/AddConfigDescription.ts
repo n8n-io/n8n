@@ -1,22 +1,18 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const addConfigFields = [
+export const addConfigFields: INodeProperties[] = [
 	{
 		displayName: 'Key',
 		name: 'key',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'addConfig',
-				],
+				operation: ['addConfig'],
 			},
 		},
 		default: '',
 		placeholder: 'user.email',
-		description: 'Name of the key to set.',
+		description: 'Name of the key to set',
 		required: true,
 	},
 	{
@@ -25,14 +21,12 @@ export const addConfigFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'addConfig',
-				],
+				operation: ['addConfig'],
 			},
 		},
 		default: '',
 		placeholder: 'name@example.com',
-		description: 'Value of the key to set.',
+		description: 'Value of the key to set',
 		required: true,
 	},
 	{
@@ -41,9 +35,7 @@ export const addConfigFields = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'addConfig',
-				],
+				operation: ['addConfig'],
 			},
 		},
 		placeholder: 'Add Option',
@@ -64,8 +56,8 @@ export const addConfigFields = [
 					},
 				],
 				default: 'set',
-				description: 'Append setting rather than set it in the local config.',
+				description: 'Append setting rather than set it in the local config',
 			},
 		],
 	},
-] as INodeProperties[];
+];

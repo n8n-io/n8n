@@ -1,17 +1,14 @@
-import { 
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const deployOperations = [
+export const deployOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
+				resource: ['deploy'],
 			},
 		},
 		options: [
@@ -19,48 +16,47 @@ export const deployOperations = [
 				name: 'Cancel',
 				value: 'cancel',
 				description: 'Cancel a deployment',
+				action: 'Cancel a deployment',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new deployment',
+				action: 'Create a deployment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a deployment',
+				action: 'Get a deployment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all deployments',
+				description: 'Get many deployments',
+				action: 'Get many deployments',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const deployFields = [
+export const deployFields: INodeProperties[] = [
 	{
-		displayName: 'Site ID',
+		displayName: 'Site Name or ID',
 		name: 'siteId',
 		required: true,
 		type: 'options',
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getSites',
 		},
-		description: 'Enter the Site ID',
-		displayOptions:{
+		description:
+			'Enter the Site ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
-				operation: [
-					'get',
-					'create',
-					'getAll',
-				],
+				resource: ['deploy'],
+				operation: ['get', 'create', 'getAll'],
 			},
 		},
 	},
@@ -69,31 +65,23 @@ export const deployFields = [
 		name: 'deployId',
 		required: true,
 		type: 'string',
-		displayOptions:{
+		default: '',
+		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
-				operation: [
-					'get',
-					'cancel',
-				],
+				resource: ['deploy'],
+				operation: ['get', 'cancel'],
 			},
 		},
 	},
-		// ----- Get All Deploys ------ //
+	// ----- Get All Deploys ------ //
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deploy',
-				],
+				operation: ['getAll'],
+				resource: ['deploy'],
 			},
 		},
 		default: false,
@@ -105,15 +93,9 @@ export const deployFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'deploy',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['deploy'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -121,7 +103,7 @@ export const deployFields = [
 			maxValue: 200,
 		},
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 	},
 	// ---- Create Site Deploy ---- //
 	{
@@ -132,12 +114,8 @@ export const deployFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deploy',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deploy'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -155,4 +133,4 @@ export const deployFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

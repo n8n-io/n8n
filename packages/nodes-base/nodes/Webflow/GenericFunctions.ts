@@ -1,18 +1,11 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 export async function webflowApiRequest(
@@ -24,7 +17,16 @@ export async function webflowApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken');
+	let credentialsType = '';
+
+	if (authenticationMethod === 'accessToken') {
+		credentialsType = 'webflowApi';
+	}
+
+	if (authenticationMethod === 'oAuth2') {
+		credentialsType = 'webflowOAuth2Api';
+	}
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -38,29 +40,14 @@ export async function webflowApiRequest(
 	};
 	options = Object.assign({}, options, option);
 
-	if (Object.keys(options.qs).length === 0) {
+	if (Object.keys(options.qs as IDataObject).length === 0) {
 		delete options.qs;
 	}
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	try {
-		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('webflowApi');
-			if (credentials === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
-			}
-
-			options.headers!['authorization'] = `Bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request!(options);
-		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'webflowOAuth2Api', options);
-		}
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 }
 
 export async function webflowApiRequestAllItems(
@@ -70,7 +57,6 @@ export async function webflowApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
-
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -83,11 +69,8 @@ export async function webflowApiRequestAllItems(
 		if (responseData.offset !== undefined) {
 			query.offset += query.limit;
 		}
-		returnData.push.apply(returnData, responseData.items);
-	} while (
-		returnData.length < responseData.total
-	);
+		returnData.push.apply(returnData, responseData.items as IDataObject[]);
+	} while (returnData.length < responseData.total);
 
 	return returnData;
 }
-

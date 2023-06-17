@@ -1,21 +1,21 @@
-# n8n - Workflow Automation Tool
+![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
+# n8n - Workflow Automation Tool
 
 n8n is a free and open [fair-code](http://faircode.io) distributed node-based Workflow Automation Tool. You can self-host n8n, easily extend it, and even use it with internal tools.
 
-<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
-
+<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" alt="n8n.io - Screenshot"></a>
 
 ## Contents
 
 <!-- TOC -->
+
 - [Demo](#demo)
 - [Getting Started](#getting-started)
-	- [Use npx](#use-npx)
-	- [Run with Docker](#run-with-docker)
-	- [Install with npm](#install-with-npm)
-	- [Sign-up on n8n.cloud](#sign-up-on-n8n.cloud)
+  - [Use npx](#use-npx)
+  - [Run with Docker](#run-with-docker)
+  - [Install with npm](#install-with-npm)
+  - [Sign-up on n8n.cloud](#sign-up-on-n8n.cloud)
 - [Available integrations](#available-integrations)
 - [Documentation](#documentation)
 - [Create Custom Nodes](#create-custom-nodes)
@@ -29,7 +29,7 @@ n8n is a free and open [fair-code](http://faircode.io) distributed node-based Wo
 
 ## Demo
 
-📺  Here's a [short demo (<3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg) that shows how to create a simple workflow to automatically sends a notification on Slack every time a GitHub repository gets starred or un-starred.
+📺 Here's a [:tv: short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok) that goes over key concepts of creating workflows in n8n.
 
 ## Getting Started
 
@@ -58,7 +58,7 @@ To play around with n8n, you can also start it using Docker:
 docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
-  n8nio/n8n
+  docker.n8n.io/n8nio/n8n
 ```
 
 Be aware that all the data will be lost once the Docker container gets removed. To persist the data mount the `~/.n8n` folder:
@@ -68,10 +68,8 @@ docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
   -v ~/.n8n:/home/node/.n8n \
-  n8nio/n8n
+  docker.n8n.io/n8nio/n8n
 ```
-
-n8n also offers a Docker image for Raspberry Pi: `n8nio/n8n:latest-rpi`.
 
 Refer to the [documentation](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/README.md) for more information on the Docker setup.
 
@@ -96,6 +94,7 @@ n8n start
 Sign-up for an [n8n.cloud](https://www.n8n.cloud/) account.
 
 While n8n.cloud and n8n are the same in terms of features, n8n.cloud provides certain conveniences such as:
+
 - Not having to set up and maintain your n8n instance
 - Managed OAuth for authentication
 - Easily upgrading to the newer n8n versions
@@ -110,16 +109,15 @@ To learn more about n8n, refer to the official documentation here: [https://docs
 
 You can find additional information and example workflows on the [n8n.io](https://n8n.io) website.
 
-
 ## Create Custom Nodes
 
-You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/nodes/creating-nodes/create-node.html)
+You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/integrations/creating-nodes/build/)
 
 ## Contributing
 
-🐛  Did you find a bug?
+🐛 Did you find a bug?
 
-✨  Do you want to contribute a feature?
+✨ Do you want to contribute a feature?
 
 The [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you set up your development environment.
 
@@ -141,7 +139,6 @@ If you run into issues or have any questions reach out to us via our community f
 
 If you are interested in working at n8n and building the project, check out the [job openings](https://apply.workable.com/n8n/).
 
-
 ## Upgrading
 
 Before you upgrade to the latest version, make sure to check the changelogs: [Changelog](https://docs.n8n.io/reference/changelog.html)
@@ -150,6 +147,8 @@ You can also find breaking changes here: [Breaking Changes](./BREAKING-CHANGES.m
 
 ## License
 
-n8n is [fair-code](http://faircode.io) distributed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) license.
+n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Additional information on the license can be found in the [FAQ](https://docs.n8n.io/reference/faq.html#license)
+Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
+
+Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).

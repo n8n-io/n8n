@@ -1,61 +1,54 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-} from './SharedFields';
+import { makeSimpleField } from './SharedFields';
 
-export const tagOperations = [
+export const tagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
+				resource: ['tag'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a tag',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a tag',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many tags',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const tagFields = [
+export const tagFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               tag: create
 	// ----------------------------------------
 	{
 		displayName: 'Name',
 		name: 'name',
-		description: 'Name of the tag to create.',
+		description: 'Name of the tag to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['tag'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -67,18 +60,14 @@ export const tagFields = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		description: 'ID of the tag to retrieve.',
+		description: 'ID of the tag to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['tag'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -92,15 +81,11 @@ export const tagFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['tag'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -109,23 +94,17 @@ export const tagFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'tag',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['tag'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
 	makeSimpleField('tag', 'getAll'),
-] as INodeProperties[];
+];

@@ -1,13 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
-
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Switch implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,6 +21,7 @@ export class Switch implements INodeType {
 			color: '#506000',
 		},
 		inputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
 		outputNames: ['0', '1', '2', '3'],
 		properties: [
@@ -33,18 +33,17 @@ export class Switch implements INodeType {
 					{
 						name: 'Expression',
 						value: 'expression',
-						description: 'Expression decides how to route data.',
+						description: 'Expression decides how to route data',
 					},
 					{
 						name: 'Rules',
 						value: 'rules',
-						description: 'Rules decide how to route data.',
+						description: 'Rules decide how to route data',
 					},
 				],
 				default: 'rules',
-				description: 'How data should be routed.',
+				description: 'How data should be routed',
 			},
-
 
 			// ----------------------------------
 			//         mode:expression
@@ -59,15 +58,12 @@ export class Switch implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						mode: [
-							'expression',
-						],
+						mode: ['expression'],
 					},
 				},
 				default: 0,
-				description: 'The index of output to which to send data to.',
+				description: 'The index of output to which to send data to',
 			},
-
 
 			// ----------------------------------
 			//         mode:rules
@@ -78,9 +74,7 @@ export class Switch implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'rules',
-						],
+						mode: ['rules'],
 					},
 				},
 				options: [
@@ -102,7 +96,7 @@ export class Switch implements INodeType {
 					},
 				],
 				default: 'number',
-				description: 'The type of data to route on.',
+				description: 'The type of data to route on',
 			},
 
 			// ----------------------------------
@@ -114,16 +108,13 @@ export class Switch implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						dataType: [
-							'boolean',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['boolean'],
+						mode: ['rules'],
 					},
 				},
 				default: false,
-				description: 'The value to compare with the second one.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'The value to compare with the first one',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -135,21 +126,17 @@ export class Switch implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						dataType: [
-							'boolean',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['boolean'],
+						mode: ['rules'],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
 						name: 'rules',
 						displayName: 'Boolean',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
@@ -165,14 +152,15 @@ export class Switch implements INodeType {
 									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'boolean',
 								default: false,
-								description: 'The value to compare with the first one.',
+								// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+								description: 'The value to compare with the first one',
 							},
 							{
 								displayName: 'Output',
@@ -183,7 +171,7 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches.',
+								description: 'The index of output to which to send data to if rule matches',
 							},
 						],
 					},
@@ -199,16 +187,12 @@ export class Switch implements INodeType {
 				type: 'dateTime',
 				displayOptions: {
 					show: {
-						dataType: [
-							'dateTime',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['dateTime'],
+						mode: ['rules'],
 					},
 				},
 				default: '',
-				description: 'The value to compare with the second one.',
+				description: 'The value to compare with the second one',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -220,44 +204,40 @@ export class Switch implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						dataType: [
-							'dateTime',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['dateTime'],
+						mode: ['rules'],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
 						name: 'rules',
 						displayName: 'Dates',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
 								options: [
 									{
-										name: 'Occurred after',
+										name: 'Occurred After',
 										value: 'after',
 									},
 									{
-										name: 'Occurred before',
+										name: 'Occurred Before',
 										value: 'before',
 									},
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'dateTime',
 								default: 0,
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 							{
 								displayName: 'Output',
@@ -268,7 +248,7 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches.',
+								description: 'The index of output to which to send data to if rule matches',
 							},
 						],
 					},
@@ -284,16 +264,12 @@ export class Switch implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						dataType: [
-							'number',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['number'],
+						mode: ['rules'],
 					},
 				},
 				default: 0,
-				description: 'The value to compare with the second one.',
+				description: 'The value to compare with the second one',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -305,25 +281,22 @@ export class Switch implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						dataType: [
-							'number',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['number'],
+						mode: ['rules'],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
 						name: 'rules',
 						displayName: 'Numbers',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Smaller',
@@ -351,14 +324,14 @@ export class Switch implements INodeType {
 									},
 								],
 								default: 'smaller',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'number',
 								default: 0,
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 							{
 								displayName: 'Output',
@@ -369,7 +342,7 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches.',
+								description: 'The index of output to which to send data to if rule matches',
 							},
 						],
 					},
@@ -385,16 +358,12 @@ export class Switch implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						dataType: [
-							'string',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['string'],
+						mode: ['rules'],
 					},
 				},
 				default: '',
-				description: 'The value to compare with the second one.',
+				description: 'The value to compare with the second one',
 			},
 			{
 				displayName: 'Routing Rules',
@@ -406,57 +375,66 @@ export class Switch implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						dataType: [
-							'string',
-						],
-						mode: [
-							'rules',
-						],
+						dataType: ['string'],
+						mode: ['rules'],
 					},
 				},
-				description: 'The routing rules.',
 				default: {},
 				options: [
 					{
 						name: 'rules',
 						displayName: 'Strings',
 						values: [
+							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
 								displayName: 'Operation',
 								name: 'operation',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Contains',
 										value: 'contains',
 									},
 									{
+										name: 'Not Contains',
+										value: 'notContains',
+									},
+									{
 										name: 'Ends With',
 										value: 'endsWith',
+									},
+									{
+										name: 'Not Ends With',
+										value: 'notEndsWith',
 									},
 									{
 										name: 'Equal',
 										value: 'equal',
 									},
 									{
-										name: 'Not Contains',
-										value: 'notContains',
-									},
-									{
 										name: 'Not Equal',
 										value: 'notEqual',
 									},
 									{
-										name: 'Regex',
+										name: 'Regex Match',
 										value: 'regex',
+									},
+									{
+										name: 'Regex Not Match',
+										value: 'notRegex',
 									},
 									{
 										name: 'Starts With',
 										value: 'startsWith',
 									},
+									{
+										name: 'Not Starts With',
+										value: 'notStartsWith',
+									},
 								],
 								default: 'equal',
-								description: 'Operation to decide where the the data should be mapped to.',
+								description: 'Operation to decide where the the data should be mapped to',
 							},
 							{
 								displayName: 'Value 2',
@@ -464,13 +442,11 @@ export class Switch implements INodeType {
 								type: 'string',
 								displayOptions: {
 									hide: {
-										operation: [
-											'regex',
-										],
+										operation: ['regex', 'notRegex'],
 									},
 								},
 								default: '',
-								description: 'The value to compare with the first one.',
+								description: 'The value to compare with the first one',
 							},
 							{
 								displayName: 'Regex',
@@ -478,14 +454,12 @@ export class Switch implements INodeType {
 								type: 'string',
 								displayOptions: {
 									show: {
-										operation: [
-											'regex',
-										],
+										operation: ['regex', 'notRegex'],
 									},
 								},
 								default: '',
 								placeholder: '/text/i',
-								description: 'The regex which has to match.',
+								description: 'The regex which has to match',
 							},
 							{
 								displayName: 'Output',
@@ -496,25 +470,24 @@ export class Switch implements INodeType {
 									maxValue: 3,
 								},
 								default: 0,
-								description: 'The index of output to which to send data to if rule matches.',
+								description: 'The index of output to which to send data to if rule matches',
 							},
 						],
 					},
 				],
 			},
 
-
+			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Fallback Output',
 				name: 'fallbackOutput',
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'rules',
-						],
+						mode: ['rules'],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'None',
@@ -538,20 +511,13 @@ export class Switch implements INodeType {
 					},
 				],
 				default: -1,
-				description: 'The output to which to route all items which do not match any of the rules.',
+				description: 'The output to which to route all items which do not match any of the rules',
 			},
-
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: INodeExecutionData[][] = [
-			[],
-			[],
-			[],
-			[],
-		];
+		const returnData: INodeExecutionData[][] = [[], [], [], []];
 
 		const items = this.getInputData();
 
@@ -560,24 +526,37 @@ export class Switch implements INodeType {
 		let mode: string;
 		let outputIndex: number;
 		let ruleData: INodeParameters;
-		let value1: NodeParameterValue, value2: NodeParameterValue;
 
 		// The compare operations
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
-			after: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
-			before: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
-			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
-			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
-			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
+			after: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) > (value2 || 0),
+			before: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) < (value2 || 0),
+			contains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || '').toString().includes((value2 || '').toString()),
+			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				!(value1 || '').toString().includes((value2 || '').toString()),
+			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 as string).endsWith(value2 as string),
+			notEndsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				!(value1 as string).endsWith(value2 as string),
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
-			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
-			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) >= (value2 || 0),
-			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
-			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
-			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
+			larger: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) > (value2 || 0),
+			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) >= (value2 || 0),
+			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) < (value2 || 0),
+			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 || 0) <= (value2 || 0),
+			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				(value1 as string).startsWith(value2 as string),
+			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
+				!(value1 as string).startsWith(value2 as string),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
@@ -592,6 +571,20 @@ export class Switch implements INodeType {
 
 				return !!(value1 || '').toString().match(regex);
 			},
+			notRegex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
+				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+
+				let regex: RegExp;
+				if (!regexMatch) {
+					regex = new RegExp((value2 || '').toString());
+				} else if (regexMatch.length === 1) {
+					regex = new RegExp(regexMatch[1]);
+				} else {
+					regex = new RegExp(regexMatch[1], regexMatch[2]);
+				}
+
+				return !(value1 || '').toString().match(regex);
+			},
 		};
 
 		// Converts the input data of a dateTime into a number for easy compare
@@ -601,12 +594,16 @@ export class Switch implements INodeType {
 				returnValue = new Date(value).getTime();
 			} else if (typeof value === 'number') {
 				returnValue = value;
-			} if ((value as unknown as object) instanceof Date) {
+			}
+			if ((value as unknown as object) instanceof Date) {
 				returnValue = (value as unknown as Date).getTime();
 			}
 
 			if (returnValue === undefined || isNaN(returnValue)) {
-				throw new NodeOperationError(this.getNode(), `The value "${value}" is not a valid DateTime.`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The value "${value}" is not a valid DateTime.`,
+				);
 			}
 
 			return returnValue;
@@ -614,53 +611,61 @@ export class Switch implements INodeType {
 
 		const checkIndexRange = (index: number) => {
 			if (index < 0 || index >= returnData.length) {
-				throw new NodeOperationError(this.getNode(), `The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The ouput ${index} is not allowed. It has to be between 0 and ${returnData.length - 1}!`,
+				);
 			}
 		};
 
-		// Itterate over all items to check to which output they should be routed to
-		itemLoop:
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		// Iterate over all items to check to which output they should be routed to
+		itemLoop: for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-
 				item = items[itemIndex];
 				mode = this.getNodeParameter('mode', itemIndex) as string;
 
 				if (mode === 'expression') {
 					// One expression decides how to route item
-	
+
 					outputIndex = this.getNodeParameter('output', itemIndex) as number;
 					checkIndexRange(outputIndex);
-	
+
 					returnData[outputIndex].push(item);
 				} else if (mode === 'rules') {
 					// Rules decide how to route item
-	
+
 					const dataType = this.getNodeParameter('dataType', 0) as string;
-	
-					value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
+
+					let value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
 					if (dataType === 'dateTime') {
 						value1 = convertDateTime(value1);
 					}
-	
-					for (ruleData of this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[]) {
+
+					for (ruleData of this.getNodeParameter(
+						'rules.rules',
+						itemIndex,
+						[],
+					) as INodeParameters[]) {
 						// Check if the values passes
-	
-						value2 = ruleData.value2 as NodeParameterValue;
+
+						let value2 = ruleData.value2 as NodeParameterValue;
 						if (dataType === 'dateTime') {
 							value2 = convertDateTime(value2);
 						}
-	
-						compareOperationResult = compareOperationFunctions[ruleData.operation as string](value1, value2);
-	
-						if (compareOperationResult === true) {
+
+						compareOperationResult = compareOperationFunctions[ruleData.operation as string](
+							value1,
+							value2,
+						);
+
+						if (compareOperationResult) {
 							// If rule matches add it to the correct output and continue with next item
 							checkIndexRange(ruleData.output as number);
 							returnData[ruleData.output as number].push(item);
 							continue itemLoop;
 						}
 					}
-	
+
 					// Check if a fallback output got defined and route accordingly
 					outputIndex = this.getNodeParameter('fallbackOutput', itemIndex) as number;
 					if (outputIndex !== -1) {
@@ -668,10 +673,9 @@ export class Switch implements INodeType {
 						returnData[outputIndex].push(item);
 					}
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData[0].push({json:{ error: error.message }});
+					returnData[0].push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

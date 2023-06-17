@@ -1,26 +1,21 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	blocks,
-	text,
-} from './Blocks';
+import { getConditions, getSearchFilters } from './GenericFunctions';
 
-import {
-	filters,
-} from './Filters';
+import { blocks, text } from './Blocks';
 
-export const databasePageOperations = [
+import { filters } from './Filters';
+
+export const databasePageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
+				version: [2],
+				resource: ['databasePage'],
 			},
 		},
 		options: [
@@ -28,65 +23,163 @@ export const databasePageOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a pages in a database',
+				action: 'Create a database page',
 			},
 			{
-				name: 'Get All',
+				name: 'Get',
+				value: 'get',
+				description: 'Get a page in a database',
+				action: 'Get a database page',
+			},
+			{
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all pages in a database',
+				description: 'Get many pages in a database',
+				action: 'Get many database pages',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update pages in a database',
+				action: 'Update a database page',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
-
-export const databasePageFields = [
-
-	/* -------------------------------------------------------------------------- */
-	/*                                databasePage:create                       */
-	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database ID',
-		name: 'databaseId',
+		displayName: 'Operation',
+		name: 'operation',
 		type: 'options',
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
-		required: true,
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'create',
-				],
+				version: [1],
+				resource: ['databasePage'],
 			},
 		},
-		description: 'The ID of the database that this databasePage belongs to.',
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a pages in a database',
+				action: 'Create a database page',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many pages in a database',
+				action: 'Get many database pages',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update pages in a database',
+				action: 'Update a database page',
+			},
+		],
+		default: 'create',
+	},
+];
+
+export const databasePageFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                databasePage:create                         */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Database',
+		name: 'databaseId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['databasePage'],
+				operation: ['create'],
+			},
+		},
+		description: 'The Notion Database to operate on',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				version: [2],
+				resource: ['databasePage'],
+				operation: ['create'],
+			},
+		},
+		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
+	},
+	{
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['databasePage'],
+				operation: ['create'],
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Properties',
@@ -97,15 +190,11 @@ export const databasePageFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['databasePage'],
+				operation: ['create'],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Property',
 		options: [
 			{
@@ -113,14 +202,14 @@ export const databasePageFields = [
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key',
+						displayName: 'Key Name or ID',
 						name: 'key',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseProperties',
-							loadOptionsDependsOn: [
-								'databaseId',
-							],
+							loadOptionsDependsOn: ['databaseId'],
 						},
 						default: '',
 					},
@@ -136,9 +225,7 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'title',
-								],
+								type: ['title'],
 							},
 						},
 						default: '',
@@ -149,9 +236,7 @@ export const databasePageFields = [
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								type: [
-									'rich_text',
-								],
+								type: ['rich_text'],
 							},
 						},
 						default: false,
@@ -162,24 +247,16 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'rich_text',
-								],
-								richText: [
-									false,
-								],
+								type: ['rich_text'],
+								richText: [false],
 							},
 						},
 						default: '',
 					},
 					...text({
 						show: {
-							type: [
-								'rich_text',
-							],
-							richText: [
-								true,
-							],
+							type: ['rich_text'],
+							richText: [true],
 						},
 					}),
 					{
@@ -188,16 +265,14 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'phone_number',
-								],
+								type: ['phone_number'],
 							},
 						},
 						default: '',
-						description: `Phone number. No structure is enforced.`,
+						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Options',
+						displayName: 'Option Names or IDs',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -205,17 +280,15 @@ export const databasePageFields = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'multi_select',
-								],
+								type: ['multi_select'],
 							},
 						},
 						default: [],
-						description: `Name of the options you want to set.
-						Multiples can be defined separated by comma.`,
+						description:
+							'Name of the options you want to set. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Option',
+						displayName: 'Option Name or ID',
 						name: 'selectValue',
 						type: 'options',
 						typeOptions: {
@@ -223,13 +296,28 @@ export const databasePageFields = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'select',
-								],
+								type: ['select'],
 							},
 						},
 						default: '',
-						description: `Name of the option you want to set.`,
+						description:
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'Status Name or ID',
+						name: 'statusValue',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPropertySelectValues',
+						},
+						displayOptions: {
+							show: {
+								type: ['status'],
+							},
+						},
+						default: '',
+						description:
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Email',
@@ -237,13 +325,22 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'email',
-								],
+								type: ['email'],
 							},
 						},
 						default: '',
-						description: 'Email address.',
+						description: 'Email address',
+					},
+					{
+						displayName: 'Ignore If Empty',
+						name: 'ignoreIfEmpty',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								type: ['url'],
+							},
+						},
+						default: false,
 					},
 					{
 						displayName: 'URL',
@@ -251,16 +348,14 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'url',
-								],
+								type: ['url'],
 							},
 						},
 						default: '',
-						description: 'Web address.',
+						description: 'Web address',
 					},
 					{
-						displayName: 'User IDs',
+						displayName: 'User Names or IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -268,13 +363,12 @@ export const databasePageFields = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'people',
-								],
+								type: ['people'],
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma.',
+						description:
+							'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -285,181 +379,275 @@ export const databasePageFields = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'relation',
-								],
+								type: ['relation'],
 							},
 						},
 						default: [],
-						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
+						description:
+							'List of databases that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Checked',
 						name: 'checkboxValue',
 						displayOptions: {
 							show: {
-								type: [
-									'checkbox',
-								],
+								type: ['checkbox'],
 							},
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
+						description:
+							'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
 					},
 					{
 						displayName: 'Number',
 						name: 'numberValue',
 						displayOptions: {
 							show: {
-								type: [
-									'number',
-								],
+								type: ['number'],
 							},
 						},
 						type: 'number',
 						default: 0,
-						description: 'Number value.',
+						description: 'Number value',
 					},
 					{
 						displayName: 'Range',
 						name: 'range',
 						displayOptions: {
 							show: {
-								type: [
-									'date',
-								],
+								type: ['date'],
 							},
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Weather or not you want to define a date range.',
+						description: 'Whether or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
 						name: 'includeTime',
 						displayOptions: {
 							show: {
-								type: [
-									'date',
-								],
+								type: ['date'],
 							},
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Weather or not to include the time in the date.',
+						description: 'Whether or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
 							show: {
-								range: [
-									false,
-								],
-								type: [
-									'date',
-								],
+								range: [false],
+								type: ['date'],
 							},
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date Start',
 						name: 'dateStart',
 						displayOptions: {
 							show: {
-								range: [
-									true,
-								],
-								type: [
-									'date',
-								],
+								range: [true],
+								type: ['date'],
 							},
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date End',
 						name: 'dateEnd',
 						displayOptions: {
 							show: {
-								range: [
-									true,
-								],
-								type: [
-									'date',
-								],
+								range: [true],
+								type: ['date'],
 							},
 						},
 						type: 'dateTime',
 						default: '',
-						description: `
-						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+						description:
+							'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
-						displayName: 'Timezone',
+						displayName: 'Timezone Name or ID',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
 							show: {
-								type: [
-									'date',
-								],
+								type: ['date'],
 							},
 						},
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used.',
+						description:
+							'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'File URLs',
+						name: 'fileUrls',
+						placeholder: 'Add File',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								'/version': [2],
+								type: ['files'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'fileUrl',
+								displayName: 'File',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'File URL',
+										name: 'url',
+										type: 'string',
+										default: '',
+										description: 'Link to externally hosted file',
+									},
+								],
+							},
+						],
 					},
 				],
 			},
 		],
 	},
 	...blocks('databasePage', 'create'),
-	/* -------------------------------------------------------------------------- */
-	/*                      databasePage:update                                 */
-	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Page ID',
-		name: 'pageId',
-		type: 'string',
-		default: '',
-		required: true,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['databasePage'],
+				operation: ['create'],
 			},
 		},
-		description: 'The ID of the databasePage to update.',
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Icon Type',
+				name: 'iconType',
+				type: 'options',
+				options: [
+					{
+						name: 'Emoji',
+						value: 'emoji',
+						description: 'Use an Emoji for the icon',
+					},
+					{
+						name: 'File',
+						value: 'file',
+						description: 'Use a file for the icon',
+					},
+				],
+				default: 'emoji',
+				description: 'The icon type for the database page, Either a URL or an Emoji',
+			},
+			{
+				displayName: 'Icon',
+				name: 'icon',
+				type: 'string',
+				default: '',
+				description: 'Emoji or File URL to use as the icon',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                      databasePage:update                                   */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Database Page',
+		name: 'pageId',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database Page URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database Page ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['databasePage'],
+				operation: ['update'],
+			},
+		},
+		description: 'The Notion Database Page to update',
 	},
 	{
-		displayName: 'Simplify Response',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['databasePage'],
+				operation: ['update'],
 			},
 		},
 		default: true,
-		description: 'Return a simplified version of the response instead of the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Properties',
@@ -470,15 +658,11 @@ export const databasePageFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['databasePage'],
+				operation: ['update'],
 			},
 		},
-		default: '',
+		default: {},
 		placeholder: 'Add Property',
 		options: [
 			{
@@ -486,14 +670,14 @@ export const databasePageFields = [
 				displayName: 'Property',
 				values: [
 					{
-						displayName: 'Key',
+						displayName: 'Key Name or ID',
 						name: 'key',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseIdFromPage',
-							loadOptionsDependsOn: [
-								'pageId',
-							],
+							loadOptionsDependsOn: ['pageId'],
 						},
 						default: '',
 					},
@@ -509,9 +693,7 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'title',
-								],
+								type: ['title'],
 							},
 						},
 						default: '',
@@ -522,9 +704,7 @@ export const databasePageFields = [
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								type: [
-									'rich_text',
-								],
+								type: ['rich_text'],
 							},
 						},
 						default: false,
@@ -535,24 +715,16 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'rich_text',
-								],
-								richText: [
-									false,
-								],
+								type: ['rich_text'],
+								richText: [false],
 							},
 						},
 						default: '',
 					},
 					...text({
 						show: {
-							type: [
-								'rich_text',
-							],
-							richText: [
-								true,
-							],
+							type: ['rich_text'],
+							richText: [true],
 						},
 					}),
 					{
@@ -561,48 +733,59 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'phone_number',
-								],
+								type: ['phone_number'],
 							},
 						},
 						default: '',
-						description: `Phone number. No structure is enforced.`,
+						description: 'Phone number. No structure is enforced.',
 					},
 					{
-						displayName: 'Options',
+						displayName: 'Option Names or IDs',
 						name: 'multiSelectValue',
 						type: 'multiOptions',
+						description:
+							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'multi_select',
-								],
+								type: ['multi_select'],
 							},
 						},
 						default: [],
-						description: `Name of the options you want to set.
-						Multiples can be defined separated by comma.`,
 					},
 					{
-						displayName: 'Option',
+						displayName: 'Option Name or ID',
 						name: 'selectValue',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getDatabaseOptionsFromPage',
+						},
+						displayOptions: {
+							show: {
+								type: ['select'],
+							},
+						},
+						default: '',
+					},
+					{
+						displayName: 'Status Name or ID',
+						name: 'statusValue',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'select',
-								],
+								type: ['status'],
 							},
 						},
 						default: '',
-						description: `Name of the option you want to set.`,
+						description:
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Email',
@@ -610,13 +793,21 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'email',
-								],
+								type: ['email'],
 							},
 						},
 						default: '',
-						description: 'Email address.',
+					},
+					{
+						displayName: 'Ignore If Empty',
+						name: 'ignoreIfEmpty',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								type: ['url'],
+							},
+						},
+						default: false,
 					},
 					{
 						displayName: 'URL',
@@ -624,16 +815,14 @@ export const databasePageFields = [
 						type: 'string',
 						displayOptions: {
 							show: {
-								type: [
-									'url',
-								],
+								type: ['url'],
 							},
 						},
 						default: '',
-						description: 'Web address.',
+						description: 'Web address',
 					},
 					{
-						displayName: 'User IDs',
+						displayName: 'User Names or IDs',
 						name: 'peopleValue',
 						type: 'multiOptions',
 						typeOptions: {
@@ -641,13 +830,12 @@ export const databasePageFields = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'people',
-								],
+								type: ['people'],
 							},
 						},
 						default: [],
-						description: 'List of users. Multiples can be defined separated by comma.',
+						description:
+							'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -658,165 +846,307 @@ export const databasePageFields = [
 						},
 						displayOptions: {
 							show: {
-								type: [
-									'relation',
-								],
+								type: ['relation'],
 							},
 						},
 						default: [],
-						description: 'List of databases that belong to another database. Multiples can be defined separated by comma.',
+						description:
+							'List of databases that belong to another database. Multiples can be defined separated by comma.',
 					},
 					{
 						displayName: 'Checked',
 						name: 'checkboxValue',
 						displayOptions: {
 							show: {
-								type: [
-									'checkbox',
-								],
+								type: ['checkbox'],
 							},
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
+						description:
+							'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
 					},
 					{
 						displayName: 'Number',
 						name: 'numberValue',
 						displayOptions: {
 							show: {
-								type: [
-									'number',
-								],
+								type: ['number'],
 							},
 						},
 						type: 'number',
 						default: 0,
-						description: 'Number value.',
+						description: 'Number value',
 					},
 					{
 						displayName: 'Range',
 						name: 'range',
 						displayOptions: {
 							show: {
-								type: [
-									'date',
-								],
+								type: ['date'],
 							},
 						},
 						type: 'boolean',
 						default: false,
-						description: 'Weather or not you want to define a date range.',
+						description: 'Whether or not you want to define a date range',
 					},
 					{
 						displayName: 'Include Time',
 						name: 'includeTime',
 						displayOptions: {
 							show: {
-								type: [
-									'date',
-								],
+								type: ['date'],
 							},
 						},
 						type: 'boolean',
 						default: true,
-						description: 'Weather or not to include the time in the date.',
+						description: 'Whether or not to include the time in the date',
 					},
 					{
 						displayName: 'Date',
 						name: 'date',
 						displayOptions: {
 							show: {
-								range: [
-									false,
-								],
-								type: [
-									'date',
-								],
+								range: [false],
+								type: ['date'],
 							},
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date Start',
 						name: 'dateStart',
 						displayOptions: {
 							show: {
-								range: [
-									true,
-								],
-								type: [
-									'date',
-								],
+								range: [true],
+								type: ['date'],
 							},
 						},
 						type: 'dateTime',
 						default: '',
-						description: 'An ISO 8601 format date, with optional time.',
+						description: 'An ISO 8601 format date, with optional time',
 					},
 					{
 						displayName: 'Date End',
 						name: 'dateEnd',
 						displayOptions: {
 							show: {
-								range: [
-									true,
-								],
-								type: [
-									'date',
-								],
+								range: [true],
+								type: ['date'],
 							},
 						},
 						type: 'dateTime',
 						default: '',
-						description: `
-						An ISO 8601 formatted date, with optional time. Represents the end of a date range.`,
+						description:
+							'An ISO 8601 formatted date, with optional time. Represents the end of a date range.',
 					},
 					{
-						displayName: 'Timezone',
+						displayName: 'Timezone Name or ID',
 						name: 'timezone',
 						type: 'options',
 						displayOptions: {
 							show: {
-								type: [
-									'date',
-								],
+								type: ['date'],
 							},
 						},
 						typeOptions: {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'default',
-						description: 'Time zone to use. By default n8n timezone is used.',
+						description:
+							'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'File URLs',
+						name: 'fileUrls',
+						placeholder: 'Add File',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+							sortable: true,
+						},
+						displayOptions: {
+							show: {
+								'/version': [2],
+								type: ['files'],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'fileUrl',
+								displayName: 'File',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'File URL',
+										name: 'url',
+										type: 'string',
+										default: '',
+										description: 'Link to externally hosted file',
+									},
+								],
+							},
+						],
 					},
 				],
 			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
+	/*                                databasePage:get                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Database Page',
+		name: 'pageId',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database Page URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database Page ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
+		displayOptions: {
+			show: {
+				version: [2],
+				resource: ['databasePage'],
+				operation: ['get'],
+			},
+		},
+		description: 'The Notion Database Page to get',
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				version: [2],
+				resource: ['databasePage'],
+				operation: ['get'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['databasePage'],
+				operation: ['getAll'],
 			},
 		},
+		description: 'The Notion Database to operate on',
 	},
 	{
 		displayName: 'Return All',
@@ -824,16 +1154,12 @@ export const databasePageFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['databasePage'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -841,15 +1167,9 @@ export const databasePageFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['databasePage'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -857,42 +1177,49 @@ export const databasePageFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Simple',
+		displayName: 'Simplify',
 		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'databasePage',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['databasePage'],
+				operation: ['getAll'],
 			},
 		},
 		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
+	...getSearchFilters('databasePage'),
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'databasePage',
-				],
+				operation: ['getAll'],
+				resource: ['databasePage'],
 			},
 		},
 		default: {},
 		placeholder: 'Add Field',
 		options: [
+			{
+				displayName: 'Download Files',
+				name: 'downloadFiles',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/version': [2],
+						'/resource': ['databasePage'],
+						'/operation': ['getAll'],
+					},
+				},
+				default: false,
+				description: "Whether to download a file if a database's field contains it",
+			},
 			{
 				displayName: 'Filters',
 				name: 'filter',
@@ -901,14 +1228,17 @@ export const databasePageFields = [
 				typeOptions: {
 					multipleValues: false,
 				},
+				displayOptions: {
+					show: {
+						'/version': [1],
+					},
+				},
 				default: {},
 				options: [
 					{
 						displayName: 'Single Condition',
 						name: 'singleCondition',
-						values: [
-							...filters,
-						],
+						values: [...filters(getConditions())],
 					},
 					{
 						displayName: 'Multiple Condition',
@@ -927,16 +1257,12 @@ export const databasePageFields = [
 									{
 										displayName: 'OR',
 										name: 'or',
-										values: [
-											...filters,
-										],
+										values: [...filters(getConditions())],
 									},
 									{
 										displayName: 'AND',
 										name: 'and',
-										values: [
-											...filters,
-										],
+										values: [...filters(getConditions())],
 									},
 								],
 							},
@@ -963,27 +1289,24 @@ export const databasePageFields = [
 								name: 'timestamp',
 								type: 'boolean',
 								default: false,
-								description: `Whether or not to use the record's timestamp to sort the response.`,
+								description: "Whether or not to use the record's timestamp to sort the response",
 							},
 							{
-								displayName: 'Property Name',
+								displayName: 'Property Name or ID',
 								name: 'key',
 								type: 'options',
 								displayOptions: {
 									show: {
-										timestamp: [
-											false,
-										],
+										timestamp: [false],
 									},
 								},
 								typeOptions: {
 									loadOptionsMethod: 'getFilterProperties',
-									loadOptionsDependsOn: [
-										'datatabaseId',
-									],
+									loadOptionsDependsOn: ['datatabaseId'],
 								},
 								default: '',
-								description: 'The name of the property to filter by.',
+								description:
+									'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Property Name',
@@ -1001,13 +1324,11 @@ export const databasePageFields = [
 								],
 								displayOptions: {
 									show: {
-										timestamp: [
-											true,
-										],
+										timestamp: [true],
 									},
 								},
 								default: '',
-								description: 'The name of the property to filter by.',
+								description: 'The name of the property to filter by',
 							},
 							{
 								displayName: 'Type',
@@ -1015,9 +1336,7 @@ export const databasePageFields = [
 								type: 'hidden',
 								displayOptions: {
 									show: {
-										timestamp: [
-											true,
-										],
+										timestamp: [true],
 									},
 								},
 								default: '={{$parameter["&key"].split("|")[1]}}',
@@ -1037,7 +1356,7 @@ export const databasePageFields = [
 									},
 								],
 								default: '',
-								description: 'The direction to sort.',
+								description: 'The direction to sort',
 							},
 						],
 					},

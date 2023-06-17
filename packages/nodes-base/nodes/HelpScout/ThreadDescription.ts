@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const threadOperations = [
+export const threadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -17,22 +16,23 @@ export const threadOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new chat thread',
+				action: 'Create a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all chat threads',
+				description: 'Get many chat threads',
+				action: 'Get many threads',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const threadFields = [
-/* -------------------------------------------------------------------------- */
-/*                                thread:create                               */
-/* -------------------------------------------------------------------------- */
+export const threadFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                thread:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Conversation ID',
 		name: 'conversationId',
@@ -41,15 +41,10 @@ export const threadFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['thread'],
+				operation: ['create'],
 			},
 		},
-		description: 'conversation ID',
 	},
 	{
 		displayName: 'Type',
@@ -58,12 +53,8 @@ export const threadFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['thread'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -95,18 +86,11 @@ export const threadFields = [
 		name: 'text',
 		type: 'string',
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['thread'],
+				operation: ['create'],
 			},
 		},
 		description: 'The chat text',
@@ -119,12 +103,8 @@ export const threadFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['create'],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -153,19 +133,17 @@ export const threadFields = [
 				default: false,
 				displayOptions: {
 					show: {
-						'/type': [
-							'note',
-						],
+						'/type': ['note'],
 					},
 				},
-				description: 'If set to true, a draft reply is created',
+				description: 'Whether a draft reply is created',
 			},
 			{
 				displayName: 'Imported',
 				name: 'imported',
 				type: 'boolean',
 				default: false,
-				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
+				description: 'Whether no outgoing emails or notifications will be generated',
 			},
 		],
 	},
@@ -179,12 +157,8 @@ export const threadFields = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['create'],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -212,7 +186,7 @@ export const threadFields = [
 						type: 'string',
 						default: '',
 						placeholder: 'ZXhhbXBsZSBmaWxl',
-						description: 'Base64-encoded stream of data.',
+						description: 'Base64-encoded stream of data',
 					},
 				],
 			},
@@ -225,17 +199,18 @@ export const threadFields = [
 						name: 'property',
 						type: 'string',
 						default: 'data',
-						description: 'Name of the binary properties which contain data which should be added to email as attachment',
+						description:
+							'Name of the binary properties which contain data which should be added to email as attachment',
 					},
 				],
 			},
 		],
-		default: '',
-		description: 'Array of supported attachments to add to the message.',
+		default: {},
+		description: 'Array of supported attachments to add to the message',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                thread:getAll                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                thread:getAll                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Conversation ID',
 		name: 'conversationId',
@@ -244,15 +219,10 @@ export const threadFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['thread'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'conversation ID',
 	},
 	{
 		displayName: 'Return All',
@@ -260,16 +230,12 @@ export const threadFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -277,21 +243,15 @@ export const threadFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

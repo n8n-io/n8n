@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const dashboardOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const dashboardOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
+				resource: ['dashboard'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const dashboardOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a dashboard',
+				action: 'Create a dashboard',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a dashboard',
+				action: 'Delete a dashboard',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a dashboard',
+				action: 'Get a dashboard',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all dashboards',
+				description: 'Get many dashboards',
+				action: 'Get many dashboards',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a dashboard',
+				action: 'Update a dashboard',
 			},
 		],
 		default: 'create',
@@ -56,12 +57,8 @@ export const dashboardFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['dashboard'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -73,12 +70,8 @@ export const dashboardFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['dashboard'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -87,7 +80,8 @@ export const dashboardFields: INodeProperties[] = [
 				name: 'folderId',
 				type: 'options',
 				default: '',
-				description: 'Folder to create the dashboard in - if the folder is unspecified, the dashboard will be saved to the General folder. Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Folder to create the dashboard in - if the folder is unspecified, the dashboard will be saved to the General folder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getFolders',
 				},
@@ -107,12 +101,8 @@ export const dashboardFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['dashboard'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -130,12 +120,8 @@ export const dashboardFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['dashboard'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -151,12 +137,8 @@ export const dashboardFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['dashboard'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -172,15 +154,9 @@ export const dashboardFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['dashboard'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -192,12 +168,8 @@ export const dashboardFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['dashboard'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -223,12 +195,8 @@ export const dashboardFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['dashboard'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -240,12 +208,8 @@ export const dashboardFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'dashboard',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['dashboard'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -254,7 +218,8 @@ export const dashboardFields: INodeProperties[] = [
 				name: 'folderId',
 				type: 'options',
 				default: '',
-				description: 'Folder to move the dashboard into - if the folder is unspecified, the dashboard will be saved to the General folder. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Folder to move the dashboard into - if the folder is unspecified, the dashboard will be saved to the General folder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getFolders',
 				},

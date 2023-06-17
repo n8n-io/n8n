@@ -1,23 +1,27 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class LinkedInOAuth2Api implements ICredentialType {
 	name = 'linkedInOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	displayName = 'LinkedIn OAuth2 API';
+
 	documentationUrl = 'linkedIn';
+
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Grant Type',
+			name: 'grantType',
+			type: 'hidden',
+			default: 'authorizationCode',
+		},
 		{
 			displayName: 'Organization Support',
 			name: 'organizationSupport',
 			type: 'boolean',
 			default: true,
-			description: 'Request permissions to post as an orgaization.',
+			description: 'Whether to request permissions to post as an organization',
 		},
 		{
 			displayName: 'Authorization URL',
@@ -37,8 +41,10 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '=r_liteprofile,r_emailaddress,w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social":""}}',
-			description: 'Standard scopes for posting on behalf of a user or organization. See <a href="https://docs.microsoft.com/en-us/linkedin/marketing/getting-started#available-permissions"> this resource </a>.',
+			default:
+				'=w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social":",r_liteprofile,r_emailaddress"}}',
+			description:
+				'Standard scopes for posting on behalf of a user or organization. See <a href="https://docs.microsoft.com/en-us/linkedin/marketing/getting-started#available-permissions"> this resource </a>.',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

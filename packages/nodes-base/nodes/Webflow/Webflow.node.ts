@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,15 +8,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	webflowApiRequest,
-	webflowApiRequestAllItems,
-} from './GenericFunctions';
+import { webflowApiRequest, webflowApiRequestAllItems } from './GenericFunctions';
 
-import {
-	itemFields,
-	itemOperations,
-} from './ItemDescription';
+import { itemFields, itemOperations } from './ItemDescription';
 
 export class Webflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,7 +23,6 @@ export class Webflow implements INodeType {
 		description: 'Consume the Webflow API',
 		defaults: {
 			name: 'Webflow',
-			color: '#245bf8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -42,9 +32,7 @@ export class Webflow implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -53,9 +41,7 @@ export class Webflow implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -76,12 +62,12 @@ export class Webflow implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Item',
@@ -89,7 +75,6 @@ export class Webflow implements INodeType {
 					},
 				],
 				default: 'item',
-				description: 'Resource to consume',
 			},
 			...itemOperations,
 			...itemFields,
@@ -112,7 +97,11 @@ export class Webflow implements INodeType {
 			async getCollections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const siteId = this.getCurrentNodeParameter('siteId');
-				const collections = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/collections`);
+				const collections = await webflowApiRequest.call(
+					this,
+					'GET',
+					`/sites/${siteId}/collections`,
+				);
 				for (const collection of collections) {
 					returnData.push({
 						name: collection.name,
@@ -124,10 +113,14 @@ export class Webflow implements INodeType {
 			async getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const collectionId = this.getCurrentNodeParameter('collectionId');
-				const { fields } = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}`);
+				const { fields } = await webflowApiRequest.call(
+					this,
+					'GET',
+					`/collections/${collectionId}`,
+				);
 				for (const field of fields) {
 					returnData.push({
-						name: `${field.name} (${field.type}) ${(field.required) ? ' (required)' : ''}`,
+						name: `${field.name} (${field.type}) ${field.required ? ' (required)' : ''}`,
 						value: field.slug,
 					});
 				}
@@ -139,17 +132,14 @@ export class Webflow implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const qs: IDataObject = {};
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
 				if (resource === 'item') {
-
 					// *********************************************************************
 					//                             item
 					// *********************************************************************
@@ -157,7 +147,6 @@ export class Webflow implements INodeType {
 					// https://developers.webflow.com/#item-model
 
 					if (operation === 'create') {
-
 						// ----------------------------------
 						//         item: create
 						// ----------------------------------
@@ -166,22 +155,30 @@ export class Webflow implements INodeType {
 
 						const collectionId = this.getNodeParameter('collectionId', i) as string;
 
-						const properties = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+						const properties = this.getNodeParameter(
+							'fieldsUi.fieldValues',
+							i,
+							[],
+						) as IDataObject[];
 
 						const live = this.getNodeParameter('live', i) as boolean;
 
 						const fields = {} as IDataObject;
 
-						properties.forEach(data => (fields[data.fieldId as string] = data.fieldValue));
+						properties.forEach((data) => (fields[data.fieldId as string] = data.fieldValue));
 
 						const body: IDataObject = {
 							fields,
 						};
 
-						responseData = await webflowApiRequest.call(this, 'POST', `/collections/${collectionId}/items`, body, { live });
-
+						responseData = await webflowApiRequest.call(
+							this,
+							'POST',
+							`/collections/${collectionId}/items`,
+							body,
+							{ live },
+						);
 					} else if (operation === 'delete') {
-
 						// ----------------------------------
 						//         item: delete
 						// ----------------------------------
@@ -190,10 +187,12 @@ export class Webflow implements INodeType {
 
 						const collectionId = this.getNodeParameter('collectionId', i) as string;
 						const itemId = this.getNodeParameter('itemId', i) as string;
-						responseData = await webflowApiRequest.call(this, 'DELETE', `/collections/${collectionId}/items/${itemId}`);
-
+						responseData = await webflowApiRequest.call(
+							this,
+							'DELETE',
+							`/collections/${collectionId}/items/${itemId}`,
+						);
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//         item: get
 						// ----------------------------------
@@ -202,31 +201,43 @@ export class Webflow implements INodeType {
 
 						const collectionId = this.getNodeParameter('collectionId', i) as string;
 						const itemId = this.getNodeParameter('itemId', i) as string;
-						responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items/${itemId}`);
+						responseData = await webflowApiRequest.call(
+							this,
+							'GET',
+							`/collections/${collectionId}/items/${itemId}`,
+						);
 						responseData = responseData.items;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//         item: getAll
 						// ----------------------------------
 
 						// https://developers.webflow.com/#get-all-items-for-a-collection
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const collectionId = this.getNodeParameter('collectionId', i) as string;
 						const qs: IDataObject = {};
 
-						if (returnAll === true) {
-							responseData = await webflowApiRequestAllItems.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
+						if (returnAll) {
+							responseData = await webflowApiRequestAllItems.call(
+								this,
+								'GET',
+								`/collections/${collectionId}/items`,
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
-							responseData = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}/items`, {}, qs);
+							qs.limit = this.getNodeParameter('limit', 0);
+							responseData = await webflowApiRequest.call(
+								this,
+								'GET',
+								`/collections/${collectionId}/items`,
+								{},
+								qs,
+							);
 							responseData = responseData.items;
 						}
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------
 						//         item: update
 						// ----------------------------------
@@ -237,34 +248,45 @@ export class Webflow implements INodeType {
 
 						const itemId = this.getNodeParameter('itemId', i) as string;
 
-						const properties = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+						const properties = this.getNodeParameter(
+							'fieldsUi.fieldValues',
+							i,
+							[],
+						) as IDataObject[];
 
 						const live = this.getNodeParameter('live', i) as boolean;
 
 						const fields = {} as IDataObject;
 
-						properties.forEach(data => (fields[data.fieldId as string] = data.fieldValue));
+						properties.forEach((data) => (fields[data.fieldId as string] = data.fieldValue));
 
 						const body: IDataObject = {
 							fields,
 						};
 
-						responseData = await webflowApiRequest.call(this, 'PUT', `/collections/${collectionId}/items/${itemId}`, body, { live });
+						responseData = await webflowApiRequest.call(
+							this,
+							'PUT',
+							`/collections/${collectionId}/items/${itemId}`,
+							body,
+							{ live },
+						);
 					}
 				}
-
-				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

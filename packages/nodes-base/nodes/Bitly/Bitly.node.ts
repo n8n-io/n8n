@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,15 +8,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	linkFields,
-	linkOperations
-} from './LinkDescription';
+import { linkFields, linkOperations } from './LinkDescription';
 
-import {
-	bitlyApiRequest,
-	bitlyApiRequestAllItems,
-} from './GenericFunctions';
+import { bitlyApiRequest, bitlyApiRequestAllItems } from './GenericFunctions';
 
 export class Bitly implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,7 +23,6 @@ export class Bitly implements INodeType {
 		description: 'Consume Bitly API',
 		defaults: {
 			name: 'Bitly',
-			color: '#d3643b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -42,9 +32,7 @@ export class Bitly implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -53,9 +41,7 @@ export class Bitly implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -76,20 +62,19 @@ export class Bitly implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Link',
+						name: 'Link',
 						value: 'link',
 					},
 				],
 				default: 'link',
-				description: 'Resource to consume.',
 			},
 			...linkOperations,
 			...linkFields,
@@ -98,7 +83,7 @@ export class Bitly implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -113,12 +98,17 @@ export class Bitly implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const groupId = this.getCurrentNodeParameter('group') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await bitlyApiRequestAllItems.call(this, 'tags', 'GET', `groups/${groupId}/tags`);
+				const tags = await bitlyApiRequestAllItems.call(
+					this,
+					'tags',
+					'GET',
+					`groups/${groupId}/tags`,
+				);
 				for (const tag of tags) {
 					const tagName = tag;
 					const tagId = tag;
@@ -134,18 +124,17 @@ export class Bitly implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
-		const qs: IDataObject = {};
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'link') {
 					if (operation === 'create') {
 						const longUrl = this.getNodeParameter('longUrl', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							long_url: longUrl,
 						};
@@ -161,7 +150,8 @@ export class Bitly implements INodeType {
 						if (additionalFields.tags) {
 							body.tags = additionalFields.tags as string[];
 						}
-						const deeplinks = (this.getNodeParameter('deeplink', i) as IDataObject).deeplinkUi as IDataObject[];
+						const deeplinks = (this.getNodeParameter('deeplink', i) as IDataObject)
+							.deeplinkUi as IDataObject[];
 						if (deeplinks) {
 							for (const deeplink of deeplinks) {
 								//@ts-ignore
@@ -177,7 +167,7 @@ export class Bitly implements INodeType {
 					}
 					if (operation === 'update') {
 						const linkId = this.getNodeParameter('id', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						if (updateFields.longUrl) {
 							body.long_url = updateFields.longUrl as string;
@@ -194,7 +184,8 @@ export class Bitly implements INodeType {
 						if (updateFields.tags) {
 							body.tags = updateFields.tags as string[];
 						}
-						const deeplinks = (this.getNodeParameter('deeplink', i) as IDataObject).deeplinkUi as IDataObject[];
+						const deeplinks = (this.getNodeParameter('deeplink', i) as IDataObject)
+							.deeplinkUi as IDataObject[];
 						if (deeplinks) {
 							for (const deeplink of deeplinks) {
 								//@ts-ignore
@@ -213,19 +204,20 @@ export class Bitly implements INodeType {
 						responseData = await bitlyApiRequest.call(this, 'GET', `/bitlinks/${linkId}`);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

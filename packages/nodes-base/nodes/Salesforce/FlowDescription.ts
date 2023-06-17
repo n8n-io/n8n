@@ -1,38 +1,35 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const flowOperations = [
+export const flowOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
+				resource: ['flow'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all flows',
+				description: 'Get many flows',
+				action: 'Get many flows',
 			},
 			{
 				name: 'Invoke',
 				value: 'invoke',
 				description: 'Invoke a flow',
+				action: 'Invoke a flow',
 			},
 		],
 		default: 'invoke',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const flowFields = [
-
+export const flowFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                flow:getAll                                 */
 	/* -------------------------------------------------------------------------- */
@@ -42,16 +39,12 @@ export const flowFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'flow',
-				],
+				operation: ['getAll'],
+				resource: ['flow'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -59,23 +52,17 @@ export const flowFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'flow',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['flow'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: 50,
+		description: 'Max number of results to return',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -89,12 +76,8 @@ export const flowFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
 			},
 		},
 		description: 'Required. API name of the flow.',
@@ -106,15 +89,11 @@ export const flowFields = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
 			},
 		},
-		description: 'If the input variables should be set via the value-key pair UI or JSON/RAW.',
+		description: 'Whether the input variables should be set via the value-key pair UI or JSON/RAW',
 	},
 	{
 		displayName: 'Variables',
@@ -122,19 +101,13 @@ export const flowFields = [
 		type: 'json',
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
-		description: 'Input variables as JSON object.',
+		description: 'Input variables as JSON object',
 	},
 	{
 		displayName: 'Variables',
@@ -146,18 +119,12 @@ export const flowFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'flow',
-				],
-				operation: [
-					'invoke',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['flow'],
+				operation: ['invoke'],
+				jsonParameters: [false],
 			},
 		},
-		description: 'The input variable to send.',
+		description: 'The input variable to send',
 		default: {},
 		options: [
 			{
@@ -169,17 +136,17 @@ export const flowFields = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the input variable.',
+						description: 'Name of the input variable',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the input variable.',
+						description: 'Value of the input variable',
 					},
 				],
 			},
 		],
 	},
-] as INodeProperties[];
+];

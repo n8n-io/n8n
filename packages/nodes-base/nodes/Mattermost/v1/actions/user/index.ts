@@ -5,28 +5,19 @@ import * as getByEmail from './getByEmail';
 import * as getById from './getById';
 import * as invite from './invite';
 
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export {
-	create,
-	deactive,
-	getAll,
-	getByEmail,
-	getById,
-	invite,
-};
+export { create, deactive, getAll, getByEmail, getById, invite };
 
-
-export const descriptions = [
+export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -34,35 +25,41 @@ export const descriptions = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Deactive',
 				value: 'deactive',
-				description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Retrieve all users',
+				description:
+					'Deactivates the user and revokes all its sessions by archiving its user object',
+				action: 'Deactivate a user',
 			},
 			{
 				name: 'Get By Email',
 				value: 'getByEmail',
 				description: 'Get a user by email',
+				action: 'Get a user by email',
 			},
 			{
 				name: 'Get By ID',
 				value: 'getById',
-				description: 'Get a user by id',
+				description: 'Get a user by ID',
+				action: 'Get a user by ID',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Retrieve many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Invite',
 				value: 'invite',
 				description: 'Invite user to team',
+				action: 'Invite a user',
 			},
 		],
 		default: '',
-		description: 'The operation to perform.',
 	},
 	...create.description,
 	...deactive.description,
@@ -70,5 +67,4 @@ export const descriptions = [
 	...getByEmail.description,
 	...getById.description,
 	...invite.description,
-] as INodeProperties[];
-
+];

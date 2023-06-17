@@ -1,14 +1,13 @@
 <template>
 	<span>
-		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
-			<n8n-tooltip placement="bottom-end" >
-				<div slot="content">
-					Cannot connect to server.<br />
-					It is either down or you have a connection issue. <br />
-					It should reconnect automatically once the issue is resolved.
-				</div>
+		<div class="push-connection-lost primary-color" v-if="!rootStore.pushConnectionActive">
+			<n8n-tooltip placement="bottom-end">
+				<template #content>
+					<div v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
+				</template>
 				<span>
-					<font-awesome-icon icon="exclamation-triangle" />&nbsp; Connection lost
+					<font-awesome-icon icon="exclamation-triangle" />&nbsp;
+					{{ $locale.baseText('pushConnectionTracker.connectionLost') }}
 				</span>
 			</n8n-tooltip>
 		</div>
@@ -17,13 +16,14 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import { mapGetters } from "vuex";
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default Vue.extend({
-	name: "PushConnectionTracker",
+export default defineComponent({
+	name: 'PushConnectionTracker',
 	computed: {
-		...mapGetters(["pushConnectionActive"]),
+		...mapStores(useRootStore),
 	},
 });
 </script>

@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,33 +8,18 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	orbitApiRequest,
-	orbitApiRequestAllItems,
-	resolveIdentities,
-} from './GenericFunctions';
+import { orbitApiRequest, orbitApiRequestAllItems, resolveIdentities } from './GenericFunctions';
 
-import {
-	activityFields,
-	activityOperations,
-} from './ActivityDescription';
+import { activityFields, activityOperations } from './ActivityDescription';
 
-import {
-	memberFields,
-	memberOperations,
-} from './MemberDescription';
+import { memberFields, memberOperations } from './MemberDescription';
 
-import {
-	noteFields,
-	noteOperations,
-} from './NoteDescription';
+import { noteFields, noteOperations } from './NoteDescription';
 
-import {
-	postFields,
-	postOperations,
-} from './PostDescription';
+import { postFields, postOperations } from './PostDescription';
 
-import * as moment from 'moment';
+import moment from 'moment';
+import type { IRelation } from './Interfaces';
 
 export class Orbit implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,7 +32,6 @@ export class Orbit implements INodeType {
 		description: 'Consume Orbit API',
 		defaults: {
 			name: 'Orbit',
-			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -65,6 +46,7 @@ export class Orbit implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -84,7 +66,6 @@ export class Orbit implements INodeType {
 					},
 				],
 				default: 'member',
-				description: 'Resource to consume.',
 			},
 			// ACTIVITY
 			...activityOperations,
@@ -103,32 +84,20 @@ export class Orbit implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getWorkspaces(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const workspaces = await orbitApiRequest.call(
-					this,
-					'GET',
-					'/workspaces',
-				);
+				const workspaces = await orbitApiRequest.call(this, 'GET', '/workspaces');
 				for (const workspace of workspaces.data) {
 					returnData.push({
 						name: workspace.attributes.name,
-						value: workspace.id,
+						value: workspace.attributes.slug,
 					});
 				}
 				return returnData;
 			},
-			async getActivityTypes(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await orbitApiRequest.call(
-					this,
-					'GET',
-					'/activity_types',
-				);
+				const { data } = await orbitApiRequest.call(this, 'GET', '/activity_types');
 				for (const activityType of data) {
 					returnData.push({
 						name: activityType.attributes.short_name,
@@ -142,12 +111,12 @@ export class Orbit implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'activity') {
@@ -155,7 +124,7 @@ export class Orbit implements INodeType {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							title,
 						};
@@ -178,22 +147,41 @@ export class Orbit implements INodeType {
 							body.occurred_at = additionalFields.occurredAt as string;
 						}
 
-						responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/activities`, body);
+						responseData = await orbitApiRequest.call(
+							this,
+							'POST',
+							`/${workspaceId}/members/${memberId}/activities`,
+							body,
+						);
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = `/${workspaceId}/activities`;
 						if (filters.memberId) {
 							endpoint = `/${workspaceId}/members/${filters.memberId}/activities`;
 						}
-						if (returnAll === true) {
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
+						if (returnAll) {
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
+							qs.limit = this.getNodeParameter('limit', 0);
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -201,7 +189,7 @@ export class Orbit implements INodeType {
 				if (resource === 'member') {
 					if (operation === 'upsert') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const member: IDataObject = {};
 						const identity: IDataObject = {};
 						if (additionalFields.bio) {
@@ -247,7 +235,8 @@ export class Orbit implements INodeType {
 							member.url = additionalFields.url as string;
 						}
 
-						const data = (this.getNodeParameter('identityUi', i) as IDataObject).identityValue as IDataObject;
+						const data = (this.getNodeParameter('identityUi', i) as IDataObject)
+							.identityValue as IDataObject;
 						if (data) {
 							if (['github', 'twitter', 'discourse'].includes(data.source as string)) {
 								identity.source = data.source as string;
@@ -266,36 +255,61 @@ export class Orbit implements INodeType {
 							}
 						}
 
-						responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members`, { member, identity });
+						responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members`, {
+							member,
+							identity,
+						});
 						responseData = responseData.data;
 					}
 					if (operation === 'delete') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
-						responseData = await orbitApiRequest.call(this, 'DELETE', `/${workspaceId}/members/${memberId}`);
+						responseData = await orbitApiRequest.call(
+							this,
+							'DELETE',
+							`/${workspaceId}/members/${memberId}`,
+						);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const resolve = this.getNodeParameter('resolveIdentities', 0) as boolean;
-						responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/${memberId}`);
-						if (resolve === true) {
-							resolveIdentities(responseData);
+						responseData = await orbitApiRequest.call(
+							this,
+							'GET',
+							`/${workspaceId}/members/${memberId}`,
+						);
+						if (resolve) {
+							resolveIdentities(responseData as IRelation);
 						}
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						qs.resolveIdentities = this.getNodeParameter('resolveIdentities', 0) as boolean;
-						if (returnAll === true) {
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members`, {}, qs);
+						if (returnAll) {
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								`/${workspaceId}/members`,
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members`, {}, qs);
+							qs.limit = this.getNodeParameter('limit', 0);
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								`/${workspaceId}/members`,
+								{},
+								qs,
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -319,15 +333,20 @@ export class Orbit implements INodeType {
 							qs.email = this.getNodeParameter('email', i) as string;
 						}
 
-						responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/find`, {}, qs);
+						responseData = await orbitApiRequest.call(
+							this,
+							'GET',
+							`/${workspaceId}/members/find`,
+							{},
+							qs,
+						);
 						responseData = responseData.data;
 					}
 					if (operation === 'update') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-						const body: IDataObject = {
-						};
+						const updateFields = this.getNodeParameter('updateFields', i);
+						const body: IDataObject = {};
 						if (updateFields.bio) {
 							body.bio = updateFields.bio as string;
 						}
@@ -371,7 +390,12 @@ export class Orbit implements INodeType {
 							body.url = updateFields.url as string;
 						}
 
-						responseData = await orbitApiRequest.call(this, 'PUT', `/${workspaceId}/members/${memberId}`, body);
+						responseData = await orbitApiRequest.call(
+							this,
+							'PUT',
+							`/${workspaceId}/members/${memberId}`,
+							body,
+						);
 						responseData = { success: true };
 					}
 				}
@@ -381,19 +405,38 @@ export class Orbit implements INodeType {
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const note = this.getNodeParameter('note', i) as string;
 
-						responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/notes`, { body: note });
+						responseData = await orbitApiRequest.call(
+							this,
+							'POST',
+							`/${workspaceId}/members/${memberId}/notes`,
+							{ body: note },
+						);
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs.resolveMember = this.getNodeParameter('resolveMember', 0) as boolean;
-						if (returnAll === true) {
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members/${memberId}/notes`, {}, qs);
+						if (returnAll) {
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								`/${workspaceId}/members/${memberId}/notes`,
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', `/${workspaceId}/members/${memberId}/notes`, {}, qs);
+							qs.limit = this.getNodeParameter('limit', 0);
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								`/${workspaceId}/members/${memberId}/notes`,
+								{},
+								qs,
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -403,7 +446,12 @@ export class Orbit implements INodeType {
 						const noteId = this.getNodeParameter('noteId', i) as string;
 						const note = this.getNodeParameter('note', i) as string;
 
-						responseData = await orbitApiRequest.call(this, 'PUT', `/${workspaceId}/members/${memberId}/notes/${noteId}`, { body: note });
+						responseData = await orbitApiRequest.call(
+							this,
+							'PUT',
+							`/${workspaceId}/members/${memberId}/notes/${noteId}`,
+							{ body: note },
+						);
 						responseData = { success: true };
 					}
 				}
@@ -412,7 +460,7 @@ export class Orbit implements INodeType {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const url = this.getNodeParameter('url', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							type: 'post',
 							activity_type: 'post',
@@ -423,23 +471,42 @@ export class Orbit implements INodeType {
 							delete body.publishedAt;
 						}
 
-						responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/activities/`, body);
+						responseData = await orbitApiRequest.call(
+							this,
+							'POST',
+							`/${workspaceId}/members/${memberId}/activities/`,
+							body,
+						);
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = `/${workspaceId}/activities`;
 						qs.type = 'content';
 						if (filters.memberId) {
 							endpoint = `/${workspaceId}/members/${filters.memberId}/activities`;
 						}
-						if (returnAll === true) {
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
+						if (returnAll) {
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
-							responseData = await orbitApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
+							qs.limit = this.getNodeParameter('limit', 0);
+							responseData = await orbitApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -448,34 +515,33 @@ export class Orbit implements INodeType {
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const postId = this.getNodeParameter('postId', i) as string;
 
-						responseData = await orbitApiRequest.call(this, 'DELETE', `/${workspaceId}/members/${memberId}/activities/${postId}`);
+						responseData = await orbitApiRequest.call(
+							this,
+							'DELETE',
+							`/${workspaceId}/members/${memberId}/activities/${postId}`,
+						);
 						responseData = { success: true };
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
-
-
-
-
-
-
-
-
-
-
-

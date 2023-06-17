@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	currencies,
@@ -10,16 +8,15 @@ import {
 	otherAddress,
 } from './SharedFields';
 
-export const contactOperations = [
+export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -27,39 +24,44 @@ export const contactOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or Update a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts',
+				description: 'Get many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const contactFields = [
+export const contactFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             contact: create
 	// ----------------------------------------
@@ -71,12 +73,8 @@ export const contactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -88,12 +86,8 @@ export const contactFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -102,7 +96,7 @@ export const contactFields = [
 				name: 'Assistant',
 				type: 'string',
 				default: '',
-				description: 'Name of the contact’s assistant.',
+				description: 'Name of the contact’s assistant',
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
@@ -116,7 +110,7 @@ export const contactFields = [
 				name: 'Department',
 				type: 'string',
 				default: '',
-				description: 'Company department to which the contact belongs.',
+				description: 'Company department to which the contact belongs',
 			},
 			{
 				displayName: 'Description',
@@ -173,7 +167,7 @@ export const contactFields = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Phone (Home)',
@@ -204,7 +198,7 @@ export const contactFields = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',
@@ -226,12 +220,8 @@ export const contactFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['contact'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -243,12 +233,8 @@ export const contactFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['contact'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -257,7 +243,7 @@ export const contactFields = [
 				name: 'Assistant',
 				type: 'string',
 				default: '',
-				description: 'Name of the contact’s assistant.',
+				description: 'Name of the contact’s assistant',
 			},
 			makeCustomFieldsFixedCollection('contact'),
 			{
@@ -271,7 +257,7 @@ export const contactFields = [
 				name: 'Department',
 				type: 'string',
 				default: '',
-				description: 'Company department to which the contact belongs.',
+				description: 'Company department to which the contact belongs',
 			},
 			{
 				displayName: 'Description',
@@ -284,7 +270,8 @@ export const contactFields = [
 				name: 'Email',
 				type: 'string',
 				default: '',
-				description: 'Email of the contact. If a record with this email exists it will be updated, otherwise a new one will be created.',
+				description:
+					'Email of the contact. If a record with this email exists it will be updated, otherwise a new one will be created.',
 			},
 			{
 				displayName: 'Email (Secondary)',
@@ -329,7 +316,7 @@ export const contactFields = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Phone (Home)',
@@ -360,7 +347,7 @@ export const contactFields = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',
@@ -377,18 +364,14 @@ export const contactFields = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to delete.',
+		description: 'ID of the contact to delete',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -399,18 +382,14 @@ export const contactFields = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to retrieve.',
+		description: 'ID of the contact to retrieve',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -426,18 +405,14 @@ export const contactFields = [
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
-		description: 'ID of the contact to update.',
+		description: 'ID of the contact to update',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -449,12 +424,8 @@ export const contactFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -469,14 +440,14 @@ export const contactFields = [
 				name: 'Asst_Phone',
 				type: 'string',
 				default: '',
-				description: 'Phone number of the contact’s assistant.',
+				description: 'Phone number of the contact’s assistant',
 			},
 			{
 				displayName: 'Currency',
 				name: 'Currency',
 				type: 'options',
 				default: 'USD',
-				description: 'Symbol of the currency in which revenue is generated.',
+				description: 'Symbol of the currency in which revenue is generated',
 				options: currencies,
 			},
 			makeCustomFieldsFixedCollection('contact'),
@@ -577,7 +548,7 @@ export const contactFields = [
 				name: 'Title',
 				type: 'string',
 				default: '',
-				description: 'Position of the contact at their company.',
+				description: 'Position of the contact at their company',
 			},
 			{
 				displayName: 'Twitter',
@@ -587,4 +558,4 @@ export const contactFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

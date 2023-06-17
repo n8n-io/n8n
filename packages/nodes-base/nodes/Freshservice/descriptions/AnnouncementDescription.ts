@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const announcementOperations = [
+export const announcementOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
+				resource: ['announcement'],
 			},
 		},
 		options: [
@@ -19,33 +16,38 @@ export const announcementOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an announcement',
+				action: 'Create an announcement',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an announcement',
+				action: 'Delete an announcement',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve an announcement',
+				action: 'Get an announcement',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all announcements',
+				description: 'Retrieve many announcements',
+				action: 'Get many announcements',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an announcement',
+				action: 'Update an announcement',
 			},
 		],
 		default: 'create',
 	},
-] as INodeProperties[];
+];
 
-export const announcementFields = [
+export const announcementFields: INodeProperties[] = [
 	// ----------------------------------------
 	//           announcement: create
 	// ----------------------------------------
@@ -57,12 +59,8 @@ export const announcementFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['announcement'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -75,12 +73,8 @@ export const announcementFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['announcement'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -106,12 +100,8 @@ export const announcementFields = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['announcement'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -124,12 +114,8 @@ export const announcementFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['announcement'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -141,12 +127,8 @@ export const announcementFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['announcement'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -155,18 +137,18 @@ export const announcementFields = [
 				name: 'additional_emails',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
+				description:
+					'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -198,12 +180,8 @@ export const announcementFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['announcement'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -220,12 +198,8 @@ export const announcementFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['announcement'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -241,12 +215,8 @@ export const announcementFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['announcement'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -255,21 +225,15 @@ export const announcementFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['announcement'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -286,12 +250,8 @@ export const announcementFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['announcement'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -303,12 +263,8 @@ export const announcementFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'announcement',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['announcement'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -317,7 +273,8 @@ export const announcementFields = [
 				name: 'additional_emails',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated additional email addresses to which the announcement needs to be sent',
+				description:
+					'Comma-separated additional email addresses to which the announcement needs to be sent',
 			},
 			{
 				displayName: 'Body',
@@ -327,15 +284,14 @@ export const announcementFields = [
 				description: 'HTML supported',
 			},
 			{
-				displayName: 'Department Names/IDs',
+				displayName: 'Department Names or IDs',
 				name: 'departments',
 				type: 'multiOptions',
 				default: [],
-				description: 'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Comma-separated IDs of departments that may view this announcement. Choose from the list or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
-					loadOptionsMethod: [
-						'getDepartments',
-					],
+					loadOptionsMethod: 'getDepartments',
 				},
 			},
 			{
@@ -366,4 +322,4 @@ export const announcementFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

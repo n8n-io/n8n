@@ -1,11 +1,7 @@
-import {
-	AllEntities,
-	Entity,
-	PropertiesOf,
-} from 'n8n-workflow';
+import type { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
 
 type MattermostMap = {
-	channel: 'addUser' | 'create' | 'delete' | 'members' | 'restore' | 'statistics';
+	channel: 'addUser' | 'create' | 'delete' | 'members' | 'restore' | 'statistics' | 'search';
 	message: 'delete' | 'post' | 'postEphemeral';
 	reaction: 'create' | 'delete' | 'getAll';
 	user: 'create' | 'deactive' | 'getAll' | 'getByEmail' | 'getById' | 'invite';

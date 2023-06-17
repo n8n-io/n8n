@@ -1,20 +1,15 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	twakeApiRequest,
-} from './GenericFunctions';
+import { twakeApiRequest } from './GenericFunctions';
 
 export class Twake implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,12 +17,12 @@ export class Twake implements INodeType {
 		name: 'twake',
 		group: ['transform'],
 		version: 1,
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:twake.png',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Twake API',
 		defaults: {
 			name: 'Twake',
-			color: '#7168ee',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -76,6 +71,7 @@ export class Twake implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Message',
@@ -84,17 +80,15 @@ export class Twake implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'message',
-						],
+						resource: ['message'],
 					},
 				},
 				options: [
@@ -102,13 +96,13 @@ export class Twake implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send a message',
+						action: 'Send a message',
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Channel ID',
+				displayName: 'Channel Name or ID',
 				name: 'channelId',
 				type: 'options',
 				typeOptions: {
@@ -116,13 +110,12 @@ export class Twake implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: '',
-				description: `Channel's ID`,
+				description:
+					'Channel\'s ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Content',
@@ -131,9 +124,7 @@ export class Twake implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -146,9 +137,7 @@ export class Twake implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
+						operation: ['send'],
 					},
 				},
 				default: {},
@@ -165,7 +154,6 @@ export class Twake implements INodeType {
 						name: 'senderName',
 						type: 'string',
 						default: '',
-						description: 'Sender name',
 					},
 				],
 			},
@@ -195,16 +183,14 @@ export class Twake implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
-		const qs: IDataObject = {};
+		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'message') {
 				if (operation === 'send') {
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const message: IDataObject = {
 						channel_id: this.getNodeParameter('channelId', i),

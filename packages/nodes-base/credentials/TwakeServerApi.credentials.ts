@@ -1,12 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TwakeServerApi implements ICredentialType {
 	name = 'twakeServerApi';
+
 	displayName = 'Twake Server API';
+
 	documentationUrl = 'twake';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host URL',

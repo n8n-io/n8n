@@ -1,17 +1,14 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const configOperations = [
+export const configOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'config',
-				],
+				resource: ['config'],
 			},
 		},
 		options: [
@@ -19,14 +16,15 @@ export const configOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get the configuration',
+				action: 'Get the config',
 			},
 			{
 				name: 'Check Configuration',
 				value: 'check',
 				description: 'Check the configuration',
+				action: 'Check the config',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];

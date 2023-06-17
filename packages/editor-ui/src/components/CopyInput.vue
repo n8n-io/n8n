@@ -1,45 +1,75 @@
 <template>
 	<div>
 		<n8n-input-label :label="label">
-			<div :class="$style.copyText" @click="copy">
-				<span>{{ copyContent }}</span>
-				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
+			<div
+				:class="{ [$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse }"
+				@click="copy"
+				data-test-id="copy-input"
+			>
+				<span ref="copyInputValue">{{ value }}</span>
+				<div :class="$style.copyButton">
+					<span>{{ copyButtonText }}</span>
+				</div>
 			</div>
 		</n8n-input-label>
-		<div :class="$style.subtitle">{{ subtitle }}</div>
+		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
 	</div>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { copyPaste } from './mixins/copyPaste';
-import { showMessage } from './mixins/showMessage';
+import { defineComponent } from 'vue';
+import { copyPaste } from '@/mixins/copyPaste';
+import { useToast } from '@/composables';
 
-export default mixins(copyPaste, showMessage).extend({
+export default defineComponent({
+	mixins: [copyPaste],
 	props: {
 		label: {
 			type: String,
 		},
-		subtitle: {
+		hint: {
 			type: String,
 		},
-		copyContent: {
+		value: {
 			type: String,
 		},
 		copyButtonText: {
 			type: String,
+			default(): string {
+				return this.$locale.baseText('generic.copy');
+			},
 		},
-		successMessage: {
+		toastTitle: {
+			type: String,
+			default(): string {
+				return this.$locale.baseText('generic.copiedToClipboard');
+			},
+		},
+		toastMessage: {
 			type: String,
 		},
+		collapse: {
+			type: Boolean,
+			default: false,
+		},
+		size: {
+			type: String,
+			default: 'large',
+		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	methods: {
 		copy(): void {
-			this.copyToClipboard(this.$props.copyContent);
+			this.$emit('copy');
+			this.copyToClipboard(this.value);
 
-			this.$showMessage({
-				title: 'Copied',
-				message: this.$props.successMessage,
+			this.showMessage({
+				title: this.toastTitle,
+				message: this.toastMessage,
 				type: 'success',
 			});
 		},
@@ -48,12 +78,11 @@ export default mixins(copyPaste, showMessage).extend({
 </script>
 
 <style lang="scss" module>
-
 .copyText {
 	span {
 		font-family: Monaco, Consolas;
-		line-height: 1.5;
-		font-size: var(--font-size-s);
+		color: var(--color-text-base);
+		overflow-wrap: break-word;
 	}
 
 	padding: var(--spacing-xs);
@@ -68,6 +97,25 @@ export default mixins(copyPaste, showMessage).extend({
 		--display-copy-button: flex;
 		width: 100%;
 	}
+}
+
+.large {
+	span {
+		font-size: var(--font-size-s);
+		line-height: 1.5;
+	}
+}
+
+.medium {
+	span {
+		font-size: var(--font-size-xs);
+		line-height: 1;
+	}
+}
+
+.collapsed {
+	white-space: nowrap;
+	overflow: hidden;
 }
 
 .copyButton {
@@ -86,12 +134,11 @@ export default mixins(copyPaste, showMessage).extend({
 	}
 }
 
-.subtitle {
+.hint {
 	margin-top: var(--spacing-2xs);
 	font-size: var(--font-size-2xs);
 	line-height: var(--font-line-height-loose);
 	font-weight: var(--font-weight-regular);
 	word-break: normal;
 }
-
 </style>

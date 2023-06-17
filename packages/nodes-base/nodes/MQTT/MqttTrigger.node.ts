@@ -1,20 +1,13 @@
-import {
+import type {
 	ITriggerFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import * as mqtt from 'mqtt';
-
-import {
-	IClientOptions, ISubscriptionMap,
-} from 'mqtt';
+import mqtt from 'mqtt';
 
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +19,6 @@ export class MqttTrigger implements INodeType {
 		description: 'Listens to MQTT events',
 		defaults: {
 			name: 'MQTT Trigger',
-			color: '#9b27af',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -42,7 +34,8 @@ export class MqttTrigger implements INodeType {
 				name: 'topics',
 				type: 'string',
 				default: '',
-				description: `Topics to subscribe to, multiple can be defined with comma. Wildcard characters are supported (+ - for single level and # - for multi level). By default all subscription used QoS=0. To set a different QoS, write the QoS desired after the topic preceded by a colom. For Example: topicA:1,topicB:2`,
+				description:
+					'Topics to subscribe to, multiple can be defined with comma. Wildcard characters are supported (+ - for single level and # - for multi level). By default all subscription used QoS=0. To set a different QoS, write the QoS desired after the topic preceded by a colom. For Example: topicA:1,topicB:2',
 			},
 			{
 				displayName: 'Options',
@@ -56,14 +49,14 @@ export class MqttTrigger implements INodeType {
 						name: 'jsonParseBody',
 						type: 'boolean',
 						default: false,
-						description: 'Try to parse the message to an object.',
+						description: 'Whether to try parse the message to an object',
 					},
 					{
 						displayName: 'Only Message',
 						name: 'onlyMessage',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the message property.',
+						description: 'Whether to return only the message property',
 					},
 				],
 			},
@@ -71,12 +64,7 @@ export class MqttTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-
 		const credentials = await this.getCredentials('mqtt');
-
-		if (!credentials) {
-			throw new NodeOperationError(this.getNode(), 'Credentials are mandatory!');
-		}
 
 		const topics = (this.getNodeParameter('topics') as string).split(',');
 
@@ -84,7 +72,7 @@ export class MqttTrigger implements INodeType {
 
 		for (const data of topics) {
 			const [topic, qos] = data.split(':');
-			topicsQoS[topic] = (qos) ? { qos: parseInt(qos, 10) } : { qos: 0 };
+			topicsQoS[topic] = qos ? { qos: parseInt(qos, 10) } : { qos: 0 };
 		}
 
 		const options = this.getNodeParameter('options') as IDataObject;
@@ -93,11 +81,12 @@ export class MqttTrigger implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'Topics are mandatory!');
 		}
 
-		const protocol = credentials.protocol as string || 'mqtt';
+		const protocol = (credentials.protocol as string) || 'mqtt';
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
-		const port = credentials.port as number || 1883;
-		const clientId = credentials.clientId as string || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
+		const port = (credentials.port as number) || 1883;
+		const clientId =
+			(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
 		const ssl = credentials.ssl as boolean;
 		const ca = credentials.ca as string;
@@ -107,22 +96,21 @@ export class MqttTrigger implements INodeType {
 
 		let client: mqtt.MqttClient;
 
-		if (ssl === false) {
-			const clientOptions: IClientOptions = {
+		if (!ssl) {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
 			};
 
 			if (credentials.username && credentials.password) {
-					clientOptions.username = credentials.username as string;
-					clientOptions.password = credentials.password as string;
+				clientOptions.username = credentials.username as string;
+				clientOptions.password = credentials.password as string;
 			}
 
-			 client = mqtt.connect(brokerUrl, clientOptions);
-		}
-		else {
-			const clientOptions: IClientOptions = {
+			client = mqtt.connect(brokerUrl, clientOptions);
+		} else {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -136,27 +124,25 @@ export class MqttTrigger implements INodeType {
 				clientOptions.password = credentials.password as string;
 			}
 
-			 client = mqtt.connect(brokerUrl, clientOptions);
+			client = mqtt.connect(brokerUrl, clientOptions);
 		}
 
-		const self = this;
-
-		async function manualTriggerFunction() {
+		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topicsQoS as ISubscriptionMap, (err, granted) => {
+					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (err, _granted) => {
 						if (err) {
 							reject(err);
 						}
-						client.on('message', (topic: string, message: Buffer | string) => { // tslint:disable-line:no-any
+						client.on('message', (topic: string, message: Buffer | string) => {
 							let result: IDataObject = {};
 
-							message = message.toString() as string;
+							message = message.toString();
 
 							if (options.jsonParseBody) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (err) { }
+								} catch (error) {}
 							}
 
 							result.message = message;
@@ -166,7 +152,7 @@ export class MqttTrigger implements INodeType {
 								//@ts-ignore
 								result = [message as string];
 							}
-							self.emit([self.helpers.returnJsonArray(result)]);
+							this.emit([this.helpers.returnJsonArray(result)]);
 							resolve(true);
 						});
 					});
@@ -176,10 +162,10 @@ export class MqttTrigger implements INodeType {
 					reject(error);
 				});
 			});
-		}
+		};
 
 		if (this.getMode() === 'trigger') {
-			manualTriggerFunction();
+			await manualTriggerFunction();
 		}
 
 		async function closeFunction() {

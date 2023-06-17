@@ -1,6 +1,7 @@
-import { INodeParameters, INodeProperties, NodeHelpers } from '../src';
+import type { INodeParameters, INodeProperties } from '@/Interfaces';
+import { getNodeParameters } from '@/NodeHelpers';
 
-describe('Workflow', () => {
+describe('NodeHelpers', () => {
 	describe('getParameterValue', () => {
 		const tests: Array<{
 			description: string;
@@ -2249,7 +2250,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2360,7 +2361,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2471,7 +2472,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -3008,43 +3009,374 @@ describe('Workflow', () => {
 					},
 				},
 			},
+			{
+				description:
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having it as an empty object) in combination with another value',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'mode',
+							displayName: 'mode',
+							type: 'string',
+							default: 'mode1',
+						},
+						{
+							displayName: 'Options',
+							name: 'options',
+							placeholder: 'Add Option',
+							type: 'collection',
+							default: {},
+							options: [
+								{
+									displayName: 'Sort',
+									name: 'sort',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: false,
+									},
+									default: {},
+									placeholder: 'Add Sort',
+									options: [
+										{
+											displayName: 'Sort',
+											name: 'value',
+											values: [
+												{
+													displayName: 'Descending',
+													name: 'descending',
+													type: 'boolean',
+													default: true,
+													description: 'Sort by descending order',
+												},
+												{
+													displayName: 'Order By',
+													name: 'ordering',
+													type: 'options',
+													default: 'date',
+													options: [
+														{
+															name: 'Date',
+															value: 'date',
+														},
+														{
+															name: 'Name',
+															value: 'name',
+														},
+													],
+												},
+											],
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						mode: 'changed',
+						options: {
+							sort: {
+								value: {},
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							mode: 'changed',
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having it as an empty object)',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Options',
+							name: 'options',
+							placeholder: 'Add Option',
+							type: 'collection',
+							default: {},
+							options: [
+								{
+									displayName: 'Sort',
+									name: 'sort',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: false,
+									},
+									default: {},
+									placeholder: 'Add Sort',
+									options: [
+										{
+											displayName: 'Sort',
+											name: 'value',
+											values: [
+												{
+													displayName: 'Descending',
+													name: 'descending',
+													type: 'boolean',
+													default: true,
+													description: 'Sort by descending order',
+												},
+												{
+													displayName: 'Order By',
+													name: 'ordering',
+													type: 'options',
+													default: 'date',
+													options: [
+														{
+															name: 'Date',
+															value: 'date',
+														},
+														{
+															name: 'Name',
+															value: 'name',
+														},
+													],
+												},
+											],
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						options: {
+							sort: {
+								value: {},
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having each value set)',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Options',
+							name: 'options',
+							placeholder: 'Add Option',
+							type: 'collection',
+							default: {},
+							options: [
+								{
+									displayName: 'Sort',
+									name: 'sort',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: false,
+									},
+									default: {},
+									options: [
+										{
+											displayName: 'Sort',
+											name: 'value',
+											values: [
+												{
+													displayName: 'Descending',
+													name: 'descending',
+													type: 'boolean',
+													default: true,
+												},
+												{
+													displayName: 'Order By',
+													name: 'ordering',
+													type: 'options',
+													default: 'date',
+													options: [
+														{
+															name: 'Date',
+															value: 'date',
+														},
+														{
+															name: 'Name',
+															value: 'name',
+														},
+													],
+												},
+											],
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						options: {
+							sort: {
+								value: {
+									descending: true,
+									ordering: 'date',
+								},
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							options: {
+								sort: {
+									value: {},
+								},
+							},
+						},
+						defaultsTrue: {
+							options: {
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
 			test(testData.description, () => {
 				// returnDefaults: false | returnNoneDisplayed: false
-				let result = NodeHelpers.getNodeParameters(
+				let result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
 					false,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: false
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
 					false,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsTrue);
 
 				// returnDefaults: false | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
 					true,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
 					true,
+					null,
 				);
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});

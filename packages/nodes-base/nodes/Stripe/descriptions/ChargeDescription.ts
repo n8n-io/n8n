@@ -1,47 +1,47 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const chargeOperations = [
+export const chargeOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a charge',
+				action: 'Create a charge',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a charge',
+				action: 'Get a charge',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all charges',
+				description: 'Get many charges',
+				action: 'Get many charges',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a charge',
+				action: 'Update a charge',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
+				resource: ['charge'],
 			},
 		},
 	},
-] as INodeProperties[];
+];
 
-export const chargeFields = [
+export const chargeFields: INodeProperties[] = [
 	// ----------------------------------
 	//       charge: create
 	// ----------------------------------
@@ -54,12 +54,8 @@ export const chargeFields = [
 		description: 'ID of the customer to be associated with this charge',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -69,24 +65,21 @@ export const chargeFields = [
 		type: 'number',
 		required: true,
 		default: 0,
-		description: 'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00',
+		description:
+			'Amount in cents to be collected for this charge, e.g. enter <code>100</code> for $1.00',
 		typeOptions: {
 			minValue: 0,
 			maxValue: 99999999,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
-		displayName: 'Currency',
+		displayName: 'Currency Name or ID',
 		name: 'currency',
 		type: 'options',
 		typeOptions: {
@@ -94,15 +87,12 @@ export const chargeFields = [
 		},
 		required: true,
 		default: '',
-		description: 'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>',
+		description:
+			'Three-letter ISO currency code, e.g. <code>USD</code> or <code>EUR</code>. It must be a <a href="https://stripe.com/docs/currencies">Stripe-supported currency</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -112,15 +102,11 @@ export const chargeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the customer\'s payment source to be charged',
+		description: "ID of the customer's payment source to be charged",
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -132,12 +118,8 @@ export const chargeFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['charge'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -250,7 +232,8 @@ export const chargeFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description:
+													'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -281,15 +264,11 @@ export const chargeFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the charge to retrieve.',
+		description: 'ID of the charge to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['charge'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -305,12 +284,8 @@ export const chargeFields = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['charge'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -319,22 +294,16 @@ export const chargeFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'How many results to return',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 			maxValue: 1000,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['charge'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -351,12 +320,8 @@ export const chargeFields = [
 		description: 'ID of the charge to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['charge'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -368,12 +333,8 @@ export const chargeFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'charge',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['charge'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -388,6 +349,7 @@ export const chargeFields = [
 				displayName: 'Metadata',
 				name: 'metadata',
 				type: 'fixedCollection',
+				default: {},
 				placeholder: 'Add Metadata Item',
 				description: 'Set of key-value pairs to attach to the charge to update',
 				typeOptions: {
@@ -425,6 +387,7 @@ export const chargeFields = [
 				displayName: 'Shipping',
 				name: 'shipping',
 				type: 'fixedCollection',
+				default: {},
 				description: 'Shipping information for the charge',
 				placeholder: 'Add Field',
 				typeOptions: {
@@ -484,7 +447,8 @@ export const chargeFields = [
 											{
 												displayName: 'Country',
 												name: 'country',
-												description: 'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
+												description:
+													'Two-letter country code (<a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a>)',
 												type: 'string',
 												default: '',
 											},
@@ -505,5 +469,4 @@ export const chargeFields = [
 			},
 		],
 	},
-
-] as INodeProperties[];
+];

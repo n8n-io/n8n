@@ -1,84 +1,73 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-	petitionAdditionalFieldsOptions,
-} from './SharedFields';
+import { makeSimpleField, petitionAdditionalFieldsOptions } from './SharedFields';
 
-export const petitionOperations = [
+export const petitionOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
+				resource: ['petition'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a petition',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a petition',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many petitions',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a petition',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
-] as INodeProperties[];
+];
 
-export const petitionFields = [
+export const petitionFields: INodeProperties[] = [
 	// ----------------------------------------
 	//             petition: create
 	// ----------------------------------------
 	{
 		displayName: 'Origin System',
 		name: 'originSystem',
-		description: 'Source where the petition originated.',
+		description: 'Source where the petition originated',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['petition'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
 		displayName: 'Title',
 		name: 'title',
-		description: 'Title of the petition to create.',
+		description: 'Title of the petition to create',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['petition'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -91,12 +80,8 @@ export const petitionFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['petition'],
+				operation: ['create'],
 			},
 		},
 		options: petitionAdditionalFieldsOptions,
@@ -108,18 +93,14 @@ export const petitionFields = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition to retrieve.',
+		description: 'ID of the petition to retrieve',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['petition'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -133,15 +114,11 @@ export const petitionFields = [
 		name: 'returnAll',
 		type: 'boolean',
 		default: false,
-		description: 'Return all results.',
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['petition'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -150,21 +127,15 @@ export const petitionFields = [
 		name: 'limit',
 		type: 'number',
 		default: 50,
-		description: 'The number of results to return.',
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['petition'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -176,18 +147,14 @@ export const petitionFields = [
 	{
 		displayName: 'Petition ID',
 		name: 'petitionId',
-		description: 'ID of the petition to update.',
+		description: 'ID of the petition to update',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['petition'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -200,14 +167,10 @@ export const petitionFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'petition',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['petition'],
+				operation: ['update'],
 			},
 		},
 		options: petitionAdditionalFieldsOptions,
 	},
-] as INodeProperties[];
+];

@@ -1,369 +1,388 @@
-import {
-	getConditions
-} from './GenericFunctions';
-
-export const filters = [{
-	displayName: 'Property Name',
-	name: 'key',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getFilterProperties',
-		loadOptionsDependsOn: [
-			'datatabaseId',
-		],
+export const filters = (conditions: any) => [
+	{
+		displayName: 'Property Name or ID',
+		name: 'key',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getFilterProperties',
+			loadOptionsDependsOn: ['datatabaseId'],
+		},
+		default: '',
+		description:
+			'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-	default: '',
-	description: 'The name of the property to filter by.',
-},
-{
-	displayName: 'Type',
-	name: 'type',
-	type: 'hidden',
-	default: '={{$parameter["&key"].split("|")[1]}}',
-},
-...getConditions(),
-{
-	displayName: 'Title',
-	name: 'titleValue',
-	type: 'string',
-	displayOptions: {
-		show: {
-			type: [
-				'title',
-			],
-		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'hidden',
+		default: '={{$parameter["&key"].split("|")[1]}}',
 	},
-	default: '',
-},
-{
-	displayName: 'Text',
-	name: 'richTextValue',
-	type: 'string',
-	displayOptions: {
-		show: {
-			type: [
-				'rich_text',
-			],
+	...conditions,
+	{
+		displayName: 'Title',
+		name: 'titleValue',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: ['title'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		default: '',
 	},
-	default: '',
-},
-{
-	displayName: 'Phone Number',
-	name: 'phoneNumberValue',
-	type: 'string',
-	displayOptions: {
-		show: {
-			type: [
-				'phone_number',
-			],
+	{
+		displayName: 'Text',
+		name: 'richTextValue',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: ['rich_text'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		default: '',
 	},
-	default: '',
-	description: `Phone number. No structure is enforced.`,
-},
-{
-	displayName: 'Option',
-	name: 'multiSelectValue',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getPropertySelectValues',
+	{
+		displayName: 'Phone Number',
+		name: 'phoneNumberValue',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: ['phone_number'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
+		},
+		default: '',
+		description: 'Phone number. No structure is enforced.',
 	},
-	displayOptions: {
-		show: {
-			type: [
-				'multi_select',
-			],
+	{
+		displayName: 'Option Name or ID',
+		name: 'multiSelectValue',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getPropertySelectValues',
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
+		displayOptions: {
+			show: {
+				type: ['multi_select'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
+		default: [],
 	},
-	default: [],
-	description: `Name of the options you want to set.
-	Multiples can be defined separated by comma.`,
-},
-{
-	displayName: 'Option',
-	name: 'selectValue',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getPropertySelectValues',
+	{
+		displayName: 'Option Name or ID',
+		name: 'selectValue',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getPropertySelectValues',
+		},
+		displayOptions: {
+			show: {
+				type: ['select'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
+		},
+		default: '',
 	},
-	displayOptions: {
-		show: {
-			type: [
-				'select',
-			],
+	{
+		displayName: 'Status Name or ID',
+		name: 'statusValue',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getPropertySelectValues',
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
+		displayOptions: {
+			show: {
+				type: ['status'],
+			},
 		},
+		default: '',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
-	default: '',
-	description: `Name of the option you want to set.`,
-},
-{
-	displayName: 'Email',
-	name: 'emailValue',
-	type: 'string',
-	displayOptions: {
-		show: {
-			type: [
-				'email',
-			],
+	{
+		displayName: 'Email',
+		name: 'emailValue',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: ['email'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		default: '',
 	},
-	default: '',
-	description: 'Email address.',
-},
-{
-	displayName: 'URL',
-	name: 'urlValue',
-	type: 'string',
-	displayOptions: {
-		show: {
-			type: [
-				'url',
-			],
+	{
+		displayName: 'URL',
+		name: 'urlValue',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: ['url'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		default: '',
 	},
-	default: '',
-	description: 'Web address.',
-},
-{
-	displayName: 'User ID',
-	name: 'peopleValue',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getUsers',
+	{
+		displayName: 'User Name or ID',
+		name: 'peopleValue',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getUsers',
+		},
+		displayOptions: {
+			show: {
+				type: ['people'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
+		},
+		default: '',
+		description:
+			'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-	displayOptions: {
-		show: {
-			type: [
-				'people',
-			],
+	{
+		displayName: 'User Name or ID',
+		name: 'createdByValue',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getUsers',
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
+		displayOptions: {
+			show: {
+				type: ['created_by'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
+		default: '',
+		description:
+			'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
-},
-{
-	displayName: 'User ID',
-	name: 'createdByValue',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getUsers',
+	{
+		displayName: 'User Name or ID',
+		name: 'lastEditedByValue',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getUsers',
+		},
+		displayOptions: {
+			show: {
+				type: ['last_edited_by'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
+		},
+		default: '',
+		description:
+			'List of users. Multiples can be defined separated by comma. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
-	displayOptions: {
-		show: {
-			type: [
-				'created_by',
-			],
+	{
+		displayName: 'Relation ID',
+		name: 'relationValue',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: ['relation'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		default: '',
 	},
-	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
-},
-{
-	displayName: 'User ID',
-	name: 'lastEditedByValue',
-	type: 'options',
-	typeOptions: {
-		loadOptionsMethod: 'getUsers',
+	{
+		displayName: 'Checked',
+		name: 'checkboxValue',
+		displayOptions: {
+			show: {
+				type: ['checkbox'],
+			},
+		},
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked',
 	},
-	displayOptions: {
-		show: {
-			type: [
-				'last_edited_by',
-			],
+	{
+		displayName: 'Number',
+		name: 'numberValue',
+		displayOptions: {
+			show: {
+				type: ['number'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		type: 'number',
+		default: 0,
+		description: 'Number value',
 	},
-	default: '',
-	description: 'List of users. Multiples can be defined separated by comma.',
-},
-{
-	displayName: 'Relation ID',
-	name: 'relationValue',
-	type: 'string',
-	displayOptions: {
-		show: {
-			type: [
-				'relation',
-			],
+	{
+		displayName: 'Date',
+		name: 'date',
+		displayOptions: {
+			show: {
+				type: ['date'],
+			},
+			hide: {
+				condition: [
+					'is_empty',
+					'is_not_empty',
+					'past_week',
+					'past_month',
+					'past_year',
+					'next_week',
+					'next_month',
+					'next_year',
+				],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		type: 'dateTime',
+		default: '',
+		description: 'An ISO 8601 format date, with optional time',
 	},
-	default: '',
-},
-{
-	displayName: 'Checked',
-	name: 'checkboxValue',
-	displayOptions: {
-		show: {
-			type: [
-				'checkbox',
-			],
+	{
+		displayName: 'Created Time',
+		name: 'createdTimeValue',
+		displayOptions: {
+			show: {
+				type: ['created_time'],
+			},
+			hide: {
+				condition: [
+					'is_empty',
+					'is_not_empty',
+					'past_week',
+					'past_month',
+					'past_year',
+					'next_week',
+					'next_month',
+					'next_year',
+				],
+			},
 		},
+		type: 'dateTime',
+		default: '',
+		description: 'An ISO 8601 format date, with optional time',
 	},
-	type: 'boolean',
-	default: false,
-	description: 'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked.',
-},
-{
-	displayName: 'Number',
-	name: 'numberValue',
-	displayOptions: {
-		show: {
-			type: [
-				'number',
-			],
+	{
+		displayName: 'Last Edited Time',
+		name: 'lastEditedTime',
+		displayOptions: {
+			show: {
+				type: ['last_edited_time'],
+			},
+			hide: {
+				condition: [
+					'is_empty',
+					'is_not_empty',
+					'past_week',
+					'past_month',
+					'past_year',
+					'next_week',
+					'next_month',
+					'next_year',
+				],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-			],
-		},
+		type: 'dateTime',
+		default: '',
+		description: 'An ISO 8601 format date, with optional time',
 	},
-	type: 'number',
-	default: 0,
-	description: 'Number value.',
-},
-{
-	displayName: 'Date',
-	name: 'date',
-	displayOptions: {
-		show: {
-			type: [
-				'date',
-			],
+	//formula types
+	{
+		displayName: 'Number',
+		name: 'numberValue',
+		displayOptions: {
+			show: {
+				type: ['formula'],
+				returnType: ['number'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-				'past_week',
-				'past_month',
-				'past_year',
-				'next_week',
-				'next_month',
-				'next_year',
-			],
-		},
+		type: 'number',
+		default: 0,
+		description: 'Number value',
 	},
-	type: 'dateTime',
-	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
-},
-{
-	displayName: 'Created Time',
-	name: 'createdTimeValue',
-	displayOptions: {
-		show: {
-			type: [
-				'created_time',
-			],
+	{
+		displayName: 'Text',
+		name: 'textValue',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: ['formula'],
+				returnType: ['text'],
+			},
+			hide: {
+				condition: ['is_empty', 'is_not_empty'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-				'past_week',
-				'past_month',
-				'past_year',
-				'next_week',
-				'next_month',
-				'next_year',
-			],
-		},
+		default: '',
 	},
-	type: 'dateTime',
-	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
-},
-{
-	displayName: 'Last Edited Time',
-	name: 'lastEditedTime',
-	displayOptions: {
-		show: {
-			type: [
-				'last_edited_time',
-			],
+	{
+		displayName: 'Boolean',
+		name: 'checkboxValue',
+		displayOptions: {
+			show: {
+				type: ['formula'],
+				returnType: ['checkbox'],
+			},
 		},
-		hide: {
-			condition: [
-				'is_empty',
-				'is_not_empty',
-				'past_week',
-				'past_month',
-				'past_year',
-				'next_week',
-				'next_month',
-				'next_year',
-			],
-		},
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether or not the checkbox is checked. <code>true</code> represents checked. <code>false</code> represents unchecked',
 	},
-	type: 'dateTime',
-	default: '',
-	description: 'An ISO 8601 format date, with optional time.',
-}];
+	{
+		displayName: 'Date',
+		name: 'dateValue',
+		displayOptions: {
+			show: {
+				type: ['formula'],
+				returnType: ['date'],
+			},
+			hide: {
+				condition: [
+					'is_empty',
+					'is_not_empty',
+					'past_week',
+					'past_month',
+					'past_year',
+					'next_week',
+					'next_month',
+					'next_year',
+				],
+			},
+		},
+		type: 'dateTime',
+		default: '',
+		description: 'An ISO 8601 format date, with optional time',
+	},
+];

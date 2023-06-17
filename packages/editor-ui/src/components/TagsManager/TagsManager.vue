@@ -1,61 +1,62 @@
 <template>
 	<Modal
-		title="Manage tags"
+		:title="$locale.baseText('tagsManager.manageTags')"
 		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
 		@enter="onEnter"
 		minWidth="620px"
 		minHeight="420px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<el-row>
 				<TagsView
 					v-if="hasTags || isCreating"
 					:isLoading="isLoading"
 					:tags="tags"
-
 					@create="onCreate"
 					@update="onUpdate"
 					@delete="onDelete"
 					@disableCreate="onDisableCreate"
 				/>
-				<NoTagsView
-					@enableCreate="onEnableCreate"
-					v-else />
+				<NoTagsView @enableCreate="onEnableCreate" v-else />
 			</el-row>
 		</template>
-		<template v-slot:footer="{ close }">
-			<n8n-button label="Done" @click="close" float="right" />
+		<template #footer="{ close }">
+			<n8n-button :label="$locale.baseText('tagsManager.done')" @click="close" float="right" />
 		</template>
 	</Modal>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import mixins from "vue-typed-mixins";
-import { mapGetters } from "vuex";
+import { defineComponent } from 'vue';
 
-import { ITag } from "@/Interface";
+import type { ITag } from '@/Interface';
 
-import { showMessage } from "@/components/mixins/showMessage";
-import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
-import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
-import Modal from "@/components/Modal.vue";
-import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
+import { useToast } from '@/composables';
+import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
+import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
+import Modal from '@/components/Modal.vue';
+import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
+import { mapStores } from 'pinia';
+import { useTagsStore } from '@/stores/tags.store';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(showMessage).extend({
-	name: "TagsManager",
+export default defineComponent({
+	name: 'TagsManager',
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	created() {
-		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
+		void this.tagsStore.fetchAll({ force: true, withUsageCount: true });
 	},
 	data() {
-		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
-			.map((tag) => tag.id);
-
+		const tagIds = useTagsStore().allTags.map((tag) => tag.id);
 		return {
 			tagIds,
 			isCreating: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			TAGS_MANAGER_MODAL_KEY,
 		};
 	},
@@ -65,9 +66,13 @@ export default mixins(showMessage).extend({
 		Modal,
 	},
 	computed: {
-		...mapGetters("tags", ["isLoading"]),
+		...mapStores(useTagsStore),
+		isLoading(): boolean {
+			return this.tagsStore.isLoading;
+		},
 		tags(): ITag[] {
-			return this.$data.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
+			return this.$data.tagIds
+				.map((tagId: string) => this.tagsStore.getTagById(tagId))
 				.filter(Boolean); // if tag is deleted from store
 		},
 		hasTags(): boolean {
@@ -86,30 +91,32 @@ export default mixins(showMessage).extend({
 		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
 			try {
 				if (!name) {
-					throw new Error("Tag name cannot be empty");
+					throw new Error(this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'));
 				}
 
-				const newTag = await this.$store.dispatch("tags/create", name);
+				const newTag = await this.tagsStore.create(name);
 				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
 				cb(newTag);
 			} catch (error) {
 				const escapedName = escape(name);
-				this.$showError(
+				this.showError(
 					error,
-					"New tag was not created",
-					`A problem occurred when trying to create the "${escapedName}" tag`,
+					this.$locale.baseText('tagsManager.showError.onCreate.title'),
+					this.$locale.baseText('tagsManager.showError.onCreate.message', {
+						interpolate: { escapedName },
+					}) + ':',
 				);
 				cb(null, error);
 			}
 		},
 
 		async onUpdate(id: string, name: string, cb: (tag: boolean, error?: Error) => void) {
-			const tag = this.$store.getters['tags/getTagById'](id);
+			const tag = this.tagsStore.getTagById(id);
 			const oldName = tag.name;
 
 			try {
 				if (!name) {
-					throw new Error("Tag name cannot be empty");
+					throw new Error(this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'));
 				}
 
 				if (name === oldName) {
@@ -117,54 +124,52 @@ export default mixins(showMessage).extend({
 					return;
 				}
 
-				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
+				const updatedTag = await this.tagsStore.rename({ id, name });
 				cb(!!updatedTag);
 
-				const escapedName = escape(name);
-				const escapedOldName = escape(oldName);
-
-				this.$showMessage({
-					title: "Tag was updated",
-					message: `The "${escapedOldName}" tag was successfully updated to "${escapedName}"`,
-					type: "success",
+				this.showMessage({
+					title: this.$locale.baseText('tagsManager.showMessage.onUpdate.title'),
+					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(oldName);
-				this.$showError(
+				this.showError(
 					error,
-					"Tag was not updated",
-					`A problem occurred when trying to update the "${escapedName}" tag`,
+					this.$locale.baseText('tagsManager.showError.onUpdate.title'),
+					this.$locale.baseText('tagsManager.showError.onUpdate.message', {
+						interpolate: { escapedName },
+					}) + ':',
 				);
 				cb(false, error);
 			}
 		},
 
 		async onDelete(id: string, cb: (deleted: boolean, error?: Error) => void) {
-			const tag = this.$store.getters['tags/getTagById'](id);
+			const tag = this.tagsStore.getTagById(id);
 			const name = tag.name;
 
 			try {
-				const deleted = await this.$store.dispatch("tags/delete", id);
+				const deleted = await this.tagsStore.delete(id);
 				if (!deleted) {
-					throw new Error('Could not delete tag');
+					throw new Error(this.$locale.baseText('tagsManager.couldNotDeleteTag'));
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
 
 				cb(deleted);
 
-				const escapedName = escape(name);
-				this.$showMessage({
-					title: "Tag was deleted",
-					message: `The "${escapedName}" tag was successfully deleted from your tag collection`,
-					type: "success",
+				this.showMessage({
+					title: this.$locale.baseText('tagsManager.showMessage.onDelete.title'),
+					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(name);
-				this.$showError(
+				this.showError(
 					error,
-					"Tag was not deleted",
-					`A problem occurred when trying to delete the "${escapedName}" tag`,
+					this.$locale.baseText('tagsManager.showError.onDelete.title'),
+					this.$locale.baseText('tagsManager.showError.onDelete.message', {
+						interpolate: { escapedName },
+					}) + ':',
 				);
 				cb(false, error);
 			}
@@ -173,15 +178,12 @@ export default mixins(showMessage).extend({
 		onEnter() {
 			if (this.isLoading) {
 				return;
-			}
-			else if (!this.hasTags) {
+			} else if (!this.hasTags) {
 				this.onEnableCreate();
-			}
-			else {
-				this.modalBus.$emit('close');
+			} else {
+				this.modalBus.emit('close');
 			}
 		},
 	},
 });
 </script>
-

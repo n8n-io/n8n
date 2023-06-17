@@ -1,10 +1,16 @@
 import './font-awesome-icons';
 import './storybook.scss';
 
+import ElementUI from 'element-ui';
 import lang from 'element-ui/lib/locale/lang/en';
 import locale from 'element-ui/lib/locale';
 
+import { N8nPlugin } from '../src/plugin';
+
 import Vue from 'vue';
+
+Vue.use(ElementUI);
+Vue.use(N8nPlugin);
 
 locale.use(lang);
 
@@ -52,14 +58,14 @@ export const parameters = {
 		list: [
 			{
 				name: 'dark',
-				class: 'theme-dark',
+				class: 'theme-dark-beta',
 				color: '#000',
 			},
 		],
 	},
 	options: {
 		storySort: {
-			order: ['Docs', 'Styleguide', 'Atoms'],
+			order: ['Docs', 'Styleguide', 'Atoms', 'Modules'],
 		},
 	},
 };

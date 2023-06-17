@@ -1,16 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	extractID,
@@ -20,15 +18,9 @@ import {
 	upperFirst,
 } from './GenericFunctions';
 
-import {
-	documentFields,
-	documentOperations,
-} from './DocumentDescription';
+import { documentFields, documentOperations } from './DocumentDescription';
 
-import {
-	IUpdateBody,
-	IUpdateFields,
-} from './interfaces';
+import type { IUpdateBody, IUpdateFields } from './interfaces';
 
 export class GoogleDocs implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,12 +28,11 @@ export class GoogleDocs implements INodeType {
 		name: 'googleDocs',
 		icon: 'file:googleDocs.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Docs API.',
 		defaults: {
 			name: 'Google Docs',
-			color: '#1a73e8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -51,9 +42,7 @@ export class GoogleDocs implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'serviceAccount',
-						],
+						authentication: ['serviceAccount'],
 					},
 				},
 			},
@@ -62,9 +51,7 @@ export class GoogleDocs implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -85,11 +72,39 @@ export class GoogleDocs implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Document',
@@ -97,15 +112,15 @@ export class GoogleDocs implements INodeType {
 					},
 				],
 				default: 'document',
-				description: 'The resource to operate on.',
 			},
 			...documentOperations,
 			...documentFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
-			// Get all the drives to display them to user so that he can
+			// Get all the drives to display them to user so that they can
 			// select them easily
 			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [
@@ -114,15 +129,25 @@ export class GoogleDocs implements INodeType {
 						value: 'myDrive',
 					},
 					{
-						name: 'Shared with me',
+						name: 'Shared with Me',
 						value: 'sharedWithMe',
 					},
 				];
 				let drives;
 				try {
-					drives = await googleApiRequestAllItems.call(this, 'drives', 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/drives');
+					drives = await googleApiRequestAllItems.call(
+						this,
+						'drives',
+						'GET',
+						'',
+						{},
+						{},
+						'https://www.googleapis.com/drive/v3/drives',
+					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Drives' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'Error in loading Drives',
+					});
 				}
 
 				for (const drive of drives) {
@@ -143,15 +168,27 @@ export class GoogleDocs implements INodeType {
 				const driveId = this.getNodeParameter('driveId');
 
 				const qs = {
-					q: `mimeType = \'application/vnd.google-apps.folder\' ${driveId === 'sharedWithMe' ? 'and sharedWithMe = true' : ' and \'root\' in parents'}`,
-					...(driveId && driveId !== 'myDrive' && driveId !== 'sharedWithMe') ? { driveId } : {},
+					q: `mimeType = \'application/vnd.google-apps.folder\' ${
+						driveId === 'sharedWithMe' ? 'and sharedWithMe = true' : " and 'root' in parents"
+					}`,
+					...(driveId && driveId !== 'myDrive' && driveId !== 'sharedWithMe' ? { driveId } : {}),
 				};
 				let folders;
 
 				try {
-					folders = await googleApiRequestAllItems.call(this, 'files', 'GET', '', {}, qs, 'https://www.googleapis.com/drive/v3/files');
+					folders = await googleApiRequestAllItems.call(
+						this,
+						'files',
+						'GET',
+						'',
+						{},
+						qs,
+						'https://www.googleapis.com/drive/v3/files',
+					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Folders' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'Error in loading Folders',
+					});
 				}
 
 				for (const folder of folders) {
@@ -164,24 +201,21 @@ export class GoogleDocs implements INodeType {
 			},
 		},
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
-
 			try {
-
 				if (resource === 'document') {
-
 					if (operation === 'create') {
-
 						// https://developers.google.com/docs/api/reference/rest/v1/documents/create
 
 						const folderId = this.getNodeParameter('folderId', i) as string;
@@ -189,13 +223,18 @@ export class GoogleDocs implements INodeType {
 						const body: IDataObject = {
 							name: this.getNodeParameter('title', i) as string,
 							mimeType: 'application/vnd.google-apps.document',
-							...(folderId && folderId !== 'default') ? { parents: [folderId] } : {},
+							...(folderId && folderId !== 'default' ? { parents: [folderId] } : {}),
 						};
 
-						responseData = await googleApiRequest.call(this, 'POST', '', body, {}, 'https://www.googleapis.com/drive/v3/files');
-
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							'',
+							body,
+							{},
+							'https://www.googleapis.com/drive/v3/files',
+						);
 					} else if (operation === 'get') {
-
 						// https://developers.google.com/docs/api/reference/rest/v1/documents/get
 
 						const documentURL = this.getNodeParameter('documentURL', i) as string;
@@ -207,16 +246,16 @@ export class GoogleDocs implements INodeType {
 						}
 						responseData = await googleApiRequest.call(this, 'GET', `/documents/${documentId}`);
 						if (simple) {
-
 							const content = (responseData.body.content as IDataObject[])
 								.reduce((arr: string[], contentItem) => {
-									if (contentItem && contentItem.paragraph) {
-										const texts = ((contentItem.paragraph as IDataObject).elements as IDataObject[])
-											.map(element => {
-												if (element && element.textRun) {
-													return (element.textRun as IDataObject).content as string;
-												}
-											}) as string[];
+									if (contentItem?.paragraph) {
+										const texts = (
+											(contentItem.paragraph as IDataObject).elements as IDataObject[]
+										).map((element) => {
+											if (element?.textRun) {
+												return (element.textRun as IDataObject).content as string;
+											}
+										}) as string[];
 										arr = [...arr, ...texts];
 									}
 									return arr;
@@ -227,20 +266,20 @@ export class GoogleDocs implements INodeType {
 								documentId,
 								content,
 							};
-
 						}
-
 					} else if (operation === 'update') {
-
 						// https://developers.google.com/docs/api/reference/rest/v1/documents/batchUpdate
 
 						const documentURL = this.getNodeParameter('documentURL', i) as string;
 						let documentId = extractID(documentURL);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						const actionsUi = this.getNodeParameter('actionsUi', i) as {
-							actionFields: IDataObject[]
+							actionFields: IDataObject[];
 						};
-						const { writeControlObject } = this.getNodeParameter('updateFields', i) as IUpdateFields;
+						const { writeControlObject } = this.getNodeParameter(
+							'updateFields',
+							i,
+						) as IUpdateFields;
 
 						if (!documentId) {
 							documentId = documentURL;
@@ -258,9 +297,8 @@ export class GoogleDocs implements INodeType {
 						}
 
 						if (actionsUi) {
-
 							let requestBody: IDataObject;
-							actionsUi.actionFields.forEach(actionField => {
+							actionsUi.actionFields.forEach((actionField) => {
 								const { action, object } = actionField;
 								if (object === 'positionedObject') {
 									if (action === 'delete') {
@@ -268,42 +306,37 @@ export class GoogleDocs implements INodeType {
 											objectId: actionField.objectId,
 										};
 									}
-
 								} else if (object === 'pageBreak') {
-
 									if (action === 'insert') {
 										const { insertSegment, segmentId, locationChoice, index } = actionField;
 										requestBody = {
 											[locationChoice as string]: {
-												segmentId: (insertSegment !== 'body') ? segmentId : '',
-												...(locationChoice === 'location') ? { index } : {},
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												...(locationChoice === 'location' ? { index } : {}),
 											},
 										};
 									}
-
 								} else if (object === 'table') {
-
 									if (action === 'insert') {
-										const { rows, columns, insertSegment, locationChoice, segmentId, index } = actionField;
+										const { rows, columns, insertSegment, locationChoice, segmentId, index } =
+											actionField;
 										requestBody = {
 											rows,
 											columns,
 											[locationChoice as string]: {
-												segmentId: (insertSegment !== 'body') ? segmentId : '',
-												...(locationChoice === 'location') ? { index } : {},
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												...(locationChoice === 'location' ? { index } : {}),
 											},
 										};
 									}
-
 								} else if (object === 'footer') {
-
 									if (action === 'create') {
 										const { insertSegment, locationChoice, segmentId, index } = actionField;
 										requestBody = {
 											type: 'DEFAULT',
 											sectionBreakLocation: {
-												segmentId: (insertSegment !== 'body') ? segmentId : '',
-												...(locationChoice === 'location') ? { index } : {},
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												...(locationChoice === 'location' ? { index } : {}),
 											},
 										};
 									} else if (action === 'delete') {
@@ -311,16 +344,14 @@ export class GoogleDocs implements INodeType {
 											footerId: actionField.footerId,
 										};
 									}
-
 								} else if (object === 'header') {
-
 									if (action === 'create') {
 										const { insertSegment, locationChoice, segmentId, index } = actionField;
 										requestBody = {
 											type: 'DEFAULT',
 											sectionBreakLocation: {
-												segmentId: (insertSegment !== 'body') ? segmentId : '',
-												...(locationChoice === 'location') ? { index } : {},
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												...(locationChoice === 'location' ? { index } : {}),
 											},
 										};
 									} else if (action === 'delete') {
@@ -328,17 +359,25 @@ export class GoogleDocs implements INodeType {
 											headerId: actionField.headerId,
 										};
 									}
-
 								} else if (object === 'tableColumn') {
-
 									if (action === 'insert') {
-										const { insertPosition, rowIndex, columnIndex, insertSegment, segmentId, index } = actionField;
+										const {
+											insertPosition,
+											rowIndex,
+											columnIndex,
+											insertSegment,
+											segmentId,
+											index,
+										} = actionField;
 										requestBody = {
 											insertRight: insertPosition,
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index, },
+												tableStartLocation: {
+													segmentId: insertSegment !== 'body' ? segmentId : '',
+													index,
+												},
 											},
 										};
 									} else if (action === 'delete') {
@@ -347,21 +386,32 @@ export class GoogleDocs implements INodeType {
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index, },
+												tableStartLocation: {
+													segmentId: insertSegment !== 'body' ? segmentId : '',
+													index,
+												},
 											},
 										};
 									}
-
 								} else if (object === 'tableRow') {
-
 									if (action === 'insert') {
-										const { insertPosition, rowIndex, columnIndex, insertSegment, segmentId, index } = actionField;
+										const {
+											insertPosition,
+											rowIndex,
+											columnIndex,
+											insertSegment,
+											segmentId,
+											index,
+										} = actionField;
 										requestBody = {
 											insertBelow: insertPosition,
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index, },
+												tableStartLocation: {
+													segmentId: insertSegment !== 'body' ? segmentId : '',
+													index,
+												},
 											},
 										};
 									} else if (action === 'delete') {
@@ -370,20 +420,21 @@ export class GoogleDocs implements INodeType {
 											tableCellLocation: {
 												rowIndex,
 												columnIndex,
-												tableStartLocation: { segmentId: (insertSegment !== 'body') ? segmentId : '', index, },
+												tableStartLocation: {
+													segmentId: insertSegment !== 'body' ? segmentId : '',
+													index,
+												},
 											},
 										};
 									}
-
 								} else if (object === 'text') {
-
 									if (action === 'insert') {
 										const { text, locationChoice, insertSegment, segmentId, index } = actionField;
 										requestBody = {
 											text,
 											[locationChoice as string]: {
-												segmentId: (insertSegment !== 'body') ? segmentId : '',
-												...(locationChoice === 'location') ? { index } : {},
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												...(locationChoice === 'location' ? { index } : {}),
 											},
 										};
 									} else if (action === 'replaceAll') {
@@ -393,18 +444,26 @@ export class GoogleDocs implements INodeType {
 											containsText: { text, matchCase },
 										};
 									}
-
 								} else if (object === 'paragraphBullets') {
 									if (action === 'create') {
-										const { bulletPreset, startIndex, insertSegment, segmentId, endIndex } = actionField;
+										const { bulletPreset, startIndex, insertSegment, segmentId, endIndex } =
+											actionField;
 										requestBody = {
 											bulletPreset,
-											range: { segmentId: (insertSegment !== 'body') ? segmentId : '', startIndex, endIndex },
+											range: {
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												startIndex,
+												endIndex,
+											},
 										};
 									} else if (action === 'delete') {
 										const { startIndex, insertSegment, segmentId, endIndex } = actionField;
 										requestBody = {
-											range: { segmentId: (insertSegment !== 'body') ? segmentId : '', startIndex, endIndex },
+											range: {
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												startIndex,
+												endIndex,
+											},
 										};
 									}
 								} else if (object === 'namedRange') {
@@ -412,7 +471,11 @@ export class GoogleDocs implements INodeType {
 										const { name, insertSegment, segmentId, startIndex, endIndex } = actionField;
 										requestBody = {
 											name,
-											range: { segmentId: (insertSegment !== 'body') ? segmentId : '', startIndex, endIndex },
+											range: {
+												segmentId: insertSegment !== 'body' ? segmentId : '',
+												startIndex,
+												endIndex,
+											},
 										};
 									} else if (action === 'delete') {
 										const { namedRangeReference, value } = actionField;
@@ -425,15 +488,19 @@ export class GoogleDocs implements INodeType {
 								body.requests.push({
 									[`${action}${upperFirst(object as string)}`]: requestBody,
 								});
-
 							});
 						}
 
-						responseData = await googleApiRequest.call(this, 'POST', `/documents/${documentId}:batchUpdate`, body);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`/documents/${documentId}:batchUpdate`,
+							body,
+						);
 
-						if (simple === true) {
-							if (Object.keys(responseData.replies[0]).length !== 0) {
-								const key = Object.keys(responseData.replies[0])[0];
+						if (simple) {
+							if (Object.keys(responseData.replies[0] as IDataObject).length !== 0) {
+								const key = Object.keys(responseData.replies[0] as IDataObject)[0];
 								responseData = responseData.replies[0][key];
 							} else {
 								responseData = {};
@@ -442,20 +509,25 @@ export class GoogleDocs implements INodeType {
 						responseData.documentId = documentId;
 					}
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

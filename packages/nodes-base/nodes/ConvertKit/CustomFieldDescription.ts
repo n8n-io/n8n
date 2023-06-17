@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const customFieldOperations = [
+export const customFieldOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customField',
-				],
+				resource: ['customField'],
 			},
 		},
 		options: [
@@ -19,29 +16,32 @@ export const customFieldOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a field',
+				action: 'Create a custom field',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a field',
+				action: 'Delete a custom field',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all fields',
+				description: 'Get many fields',
+				action: 'Get many custom fields',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a field',
+				action: 'Update a custom field',
 			},
 		],
 		default: 'update',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const customFieldFields = [
+export const customFieldFields: INodeProperties[] = [
 	{
 		displayName: 'Field ID',
 		name: 'id',
@@ -49,17 +49,12 @@ export const customFieldFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customField',
-				],
-				operation: [
-					'update',
-					'delete',
-				],
+				resource: ['customField'],
+				operation: ['update', 'delete'],
 			},
 		},
 		default: '',
-		description: 'The ID of your custom field.',
+		description: 'The ID of your custom field',
 	},
 	{
 		displayName: 'Label',
@@ -68,17 +63,12 @@ export const customFieldFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customField',
-				],
-				operation: [
-					'update',
-					'create',
-				],
+				resource: ['customField'],
+				operation: ['update', 'create'],
 			},
 		},
 		default: '',
-		description: 'The label of the custom field.',
+		description: 'The label of the custom field',
 	},
 	{
 		displayName: 'Return All',
@@ -86,16 +76,12 @@ export const customFieldFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'customField',
-				],
+				operation: ['getAll'],
+				resource: ['customField'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -103,15 +89,9 @@ export const customFieldFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'customField',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['customField'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -119,6 +99,6 @@ export const customFieldFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];

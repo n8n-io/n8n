@@ -1,28 +1,20 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	buildFields,
-	buildOperations,
-} from './BuildDescription';
+import { buildFields, buildOperations } from './BuildDescription';
 
-import {
-	travisciApiRequest,
-	travisciApiRequestAllItems,
-} from './GenericFunctions';
+import { travisciApiRequest, travisciApiRequestAllItems } from './GenericFunctions';
 
 export class TravisCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TravisCI',
 		name: 'travisCi',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:travisci.png',
 		group: ['output'],
 		version: 1,
@@ -30,7 +22,6 @@ export class TravisCi implements INodeType {
 		description: 'Consume TravisCI API',
 		defaults: {
 			name: 'TravisCI',
-			color: '#666666',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -45,14 +36,14 @@ export class TravisCi implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Build',
+						name: 'Build',
 						value: 'build',
 					},
 				],
 				default: 'build',
-				description: 'Resource to consume.',
 			},
 			...buildOperations,
 			...buildFields,
@@ -61,12 +52,12 @@ export class TravisCi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -74,7 +65,7 @@ export class TravisCi implements INodeType {
 					//https://developer.travis-ci.com/resource/build#find
 					if (operation === 'get') {
 						const buildId = this.getNodeParameter('buildId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.include) {
 							qs.include = additionalFields.include as string;
@@ -84,8 +75,8 @@ export class TravisCi implements INodeType {
 					}
 					//https://developer.travis-ci.com/resource/builds#for_current_user
 					if (operation === 'getAll') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (additionalFields.sortBy) {
 							qs.sort_by = additionalFields.sortBy;
@@ -99,11 +90,17 @@ export class TravisCi implements INodeType {
 							qs.include = additionalFields.include;
 						}
 
-						if (returnAll === true) {
-							responseData = await travisciApiRequestAllItems.call(this, 'builds', 'GET', '/builds', {}, qs);
-
+						if (returnAll) {
+							responseData = await travisciApiRequestAllItems.call(
+								this,
+								'builds',
+								'GET',
+								'/builds',
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await travisciApiRequest.call(this, 'GET', '/builds', {}, qs);
 							responseData = responseData.builds;
 						}
@@ -111,18 +108,30 @@ export class TravisCi implements INodeType {
 					//https://developer.travis-ci.com/resource/build#cancel
 					if (operation === 'cancel') {
 						const buildId = this.getNodeParameter('buildId', i) as string;
-						responseData = await travisciApiRequest.call(this, 'POST', `/build/${buildId}/cancel`, {}, qs);
+						responseData = await travisciApiRequest.call(
+							this,
+							'POST',
+							`/build/${buildId}/cancel`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.travis-ci.com/resource/build#restart
 					if (operation === 'restart') {
 						const buildId = this.getNodeParameter('buildId', i) as string;
-						responseData = await travisciApiRequest.call(this, 'POST', `/build/${buildId}/restart`, {}, qs);
+						responseData = await travisciApiRequest.call(
+							this,
+							'POST',
+							`/build/${buildId}/restart`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.travis-ci.com/resource/requests#create
 					if (operation === 'trigger') {
 						let slug = this.getNodeParameter('slug', i) as string;
 						const branch = this.getNodeParameter('branch', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						slug = slug.replace(new RegExp(/\//g), '%2F');
 
@@ -138,22 +147,33 @@ export class TravisCi implements INodeType {
 							request.merge_mode = additionalFields.mergeMode as string;
 						}
 
-						responseData = await travisciApiRequest.call(this, 'POST', `/repo/${slug}/requests`, JSON.stringify({ request }));
+						responseData = await travisciApiRequest.call(
+							this,
+							'POST',
+							`/repo/${slug}/requests`,
+							JSON.stringify({ request }),
+						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

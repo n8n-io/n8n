@@ -1,46 +1,60 @@
 <template>
 	<el-drawer
 		:direction="direction"
-		:visible="visible"
+		:visible="uiStore.isModalOpen(this.name)"
 		:size="width"
 		:before-close="close"
-		>
-		<template v-slot:title>
+		:modal="modal"
+		:wrapperClosable="wrapperClosable"
+	>
+		<template #title>
 			<slot name="header" />
 		</template>
 		<template>
-			<slot name="content"/>
+			<span @keydown.stop>
+				<slot name="content" />
+			</span>
 		</template>
 	</el-drawer>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { useUIStore } from '@/stores/ui.store';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system';
 
-export default Vue.extend({
-	name: "ModalDrawer",
+export default defineComponent({
+	name: 'ModalDrawer',
 	props: {
 		name: {
 			type: String,
 		},
+		beforeClose: {
+			type: Function,
+		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		direction: {
 			type: String,
 		},
+		modal: {
+			type: Boolean,
+			default: true,
+		},
 		width: {
 			type: String,
+		},
+		wrapperClosable: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
-
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('close', () => {
-				this.close();
-			});
-		}
+		this.eventBus?.on('close', this.close);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
@@ -48,11 +62,15 @@ export default Vue.extend({
 		}
 	},
 	beforeDestroy() {
+		this.eventBus?.off('close', this.close);
 		window.removeEventListener('keydown', this.onWindowKeydown);
+	},
+	computed: {
+		...mapStores(useUIStore),
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.isActive) {
+			if (!this.uiStore.isModalActive(this.name)) {
 				return;
 			}
 
@@ -61,20 +79,19 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.isActive) {
+			if (this.uiStore.isModalActive(this.name)) {
 				this.$emit('enter');
 			}
 		},
-		close() {
-			this.$store.commit('ui/closeTopModal');
-		},
-	},
-	computed: {
-		isActive(): boolean {
-			return this.$store.getters['ui/isModalActive'](this.$props.name);
-		},
-		visible(): boolean {
-			return this.$store.getters['ui/isModalOpen'](this.$props.name);
+		async close() {
+			if (this.beforeClose) {
+				const shouldClose = await this.beforeClose();
+				if (shouldClose === false) {
+					// must be strictly false to stop modal from closing
+					return;
+				}
+			}
+			this.uiStore.closeModal(this.name);
 		},
 	},
 });

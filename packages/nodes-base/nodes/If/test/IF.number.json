@@ -1,0 +1,616 @@
+{
+	"name": "If node unit tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "11d2c2c8-5690-45e5-a863-8750191acaa7",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				-5180,
+				3020
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { value: 1 },\n  { value: 2 },\n];"
+			},
+			"id": "77e63f88-e5fc-4662-af2e-6947a4768cf3",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				-4980,
+				3020
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"value2": 2
+						}
+					]
+				}
+			},
+			"id": "861e29f8-ae3d-4a67-8367-5811b021c129",
+			"name": "IF Smaller",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				2480
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"operation": "smallerEqual",
+							"value2": 2
+						}
+					]
+				}
+			},
+			"id": "b5ac7784-9d70-4df9-8451-8157e8ff23e6",
+			"name": "IF Smaller or Equal",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				2660
+			]
+		},
+		{
+			"parameters": {},
+			"id": "4f5336b3-de6d-4174-b186-f5040af0fa47",
+			"name": "On True Smaller",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4560,
+				2460
+			]
+		},
+		{
+			"parameters": {},
+			"id": "f5128cec-4faa-4408-9b00-68d995bd0723",
+			"name": "On False Smaller",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4320,
+				2500
+			]
+		},
+		{
+			"parameters": {},
+			"id": "ccf77a6c-e168-4ca3-9ade-ac13d04016f6",
+			"name": "On True Smaller or Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4560,
+				2640
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"operation": "equal",
+							"value2": 1
+						}
+					]
+				}
+			},
+			"id": "d276e794-56bc-4c7c-ab96-a2822ad75b3a",
+			"name": "IF Equal",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				2840
+			]
+		},
+		{
+			"parameters": {},
+			"id": "bad938c1-2faf-4aef-8059-9d1a33257fbf",
+			"name": "On True Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4560,
+				2820
+			]
+		},
+		{
+			"parameters": {},
+			"id": "8ff56c84-4a44-440c-a5cf-8659879b1bb3",
+			"name": "On False Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4320,
+				2860
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"operation": "notEqual",
+							"value2": 1
+						}
+					]
+				}
+			},
+			"id": "bda97a18-aca7-437f-9920-96089067c43c",
+			"name": "IF Not Equal",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				3020
+			]
+		},
+		{
+			"parameters": {},
+			"id": "7f3a01bd-24c5-43fd-bc1e-8087301f9745",
+			"name": "On True Not Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4560,
+				3000
+			]
+		},
+		{
+			"parameters": {},
+			"id": "f956db17-cd53-4222-94ed-100d91dc0c5a",
+			"name": "On False Not Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4320,
+				3040
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"operation": "larger",
+							"value2": 1
+						}
+					]
+				}
+			},
+			"id": "eb01c8b7-43fb-4716-8247-69eabb47ff6b",
+			"name": "IF Larger",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				3200
+			]
+		},
+		{
+			"parameters": {},
+			"id": "81b6e68d-2536-424d-908f-5bf6f4ee090d",
+			"name": "On True Larger",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4560,
+				3180
+			]
+		},
+		{
+			"parameters": {},
+			"id": "d7881e80-93bf-45ba-b831-02534daaa65f",
+			"name": "On False Larger",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4320,
+				3220
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"operation": "largerEqual",
+							"value2": 1
+						}
+					]
+				}
+			},
+			"id": "e328bd99-269b-4f33-aed8-1d9c3289b0ec",
+			"name": "IF Larger or Equal",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				3400
+			]
+		},
+		{
+			"parameters": {},
+			"id": "e673c174-15b9-4992-b870-6ba127890e47",
+			"name": "On True Larger or Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4560,
+				3380
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"operation": "isEmpty"
+						}
+					]
+				}
+			},
+			"id": "d42fa33b-2f5e-4c20-a48a-0a9bec2ad847",
+			"name": "IF Is Empty",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				3600
+			]
+		},
+		{
+			"parameters": {},
+			"id": "c59fcd54-5b4f-4c68-9ead-8803ac1c9094",
+			"name": "On False  Is Empty",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4320,
+				3620
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.value }}",
+							"operation": "isNotEmpty"
+						}
+					]
+				}
+			},
+			"id": "c70d2625-996c-46a0-9c34-f2a1da4a29e5",
+			"name": "IF Is Not Empty",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-4760,
+				3780
+			]
+		},
+		{
+			"parameters": {},
+			"id": "2430fb5e-8d25-4b70-a517-753e1e32f579",
+			"name": "On True Is Not Empty",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-4560,
+				3760
+			]
+		}
+	],
+	"pinData": {
+		"On True Smaller": [
+			{
+				"json": {
+					"value": 1
+				}
+			}
+		],
+		"On False Smaller": [
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		],
+		"On True Smaller or Equal": [
+			{
+				"json": {
+					"value": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		],
+		"On True Equal": [
+			{
+				"json": {
+					"value": 1
+				}
+			}
+		],
+		"On False Equal": [
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		],
+		"On True Not Equal": [
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		],
+		"On False Not Equal": [
+			{
+				"json": {
+					"value": 1
+				}
+			}
+		],
+		"On True Larger": [
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		],
+		"On False Larger": [
+			{
+				"json": {
+					"value": 1
+				}
+			}
+		],
+		"On True Larger or Equal": [
+			{
+				"json": {
+					"value": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		],
+		"On False  Is Empty": [
+			{
+				"json": {
+					"value": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		],
+		"On True Is Not Empty": [
+			{
+				"json": {
+					"value": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "IF Smaller",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Smaller or Equal",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Equal",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Not Equal",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Larger",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Larger or Equal",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Is Empty",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Is Not Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Smaller": {
+			"main": [
+				[
+					{
+						"node": "On True Smaller",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Smaller",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Smaller or Equal": {
+			"main": [
+				[
+					{
+						"node": "On True Smaller or Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Equal": {
+			"main": [
+				[
+					{
+						"node": "On True Equal",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Not Equal": {
+			"main": [
+				[
+					{
+						"node": "On True Not Equal",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Not Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Larger": {
+			"main": [
+				[
+					{
+						"node": "On True Larger",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Larger",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Larger or Equal": {
+			"main": [
+				[
+					{
+						"node": "On True Larger or Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Is Empty": {
+			"main": [
+				[],
+				[
+					{
+						"node": "On False  Is Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Is Not Empty": {
+			"main": [
+				[
+					{
+						"node": "On True Is Not Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "ec60bcbc-afef-4aae-91e2-65ffef88234b",
+	"id": "181",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

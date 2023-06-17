@@ -1,10 +1,8 @@
-import {
-	ReactionProperties,
-} from '../../Interfaces';
+import type { ReactionProperties } from '../../Interfaces';
 
 export const reactionDeleteDescription: ReactionProperties = [
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -15,15 +13,12 @@ export const reactionDeleteDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['reaction'],
+				operation: ['delete'],
 			},
 		},
-		description: 'ID of the user whose reaction to delete.',
+		description:
+			'ID of the user whose reaction to delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Post ID',
@@ -34,15 +29,12 @@ export const reactionDeleteDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['reaction'],
+				operation: ['delete'],
 			},
 		},
-		description: 'ID of the post whose reaction to delete. Obtainable from the post link: <code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+		description:
+			'ID of the post whose reaction to delete. Obtainable from the post link: <code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
 	},
 	{
 		displayName: 'Emoji Name',
@@ -52,14 +44,10 @@ export const reactionDeleteDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['reaction'],
+				operation: ['delete'],
 			},
 		},
-		description: 'Name of the emoji to delete.',
+		description: 'Name of the emoji to delete',
 	},
 ];

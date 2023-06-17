@@ -1,22 +1,24 @@
-export const customerAdditionalFieldsOptions = [
+import type { INodeProperties } from 'n8n-workflow';
+
+export const customerAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Active',
 		name: 'Active',
-		description: 'Whether the customer is currently enabled for use by QuickBooks.',
+		description: 'Whether the customer is currently enabled for use by QuickBooks',
 		type: 'boolean',
 		default: true,
 	},
 	{
 		displayName: 'Balance',
 		name: 'Balance',
-		description: 'Open balance amount or amount unpaid by the customer.',
+		description: 'Open balance amount or amount unpaid by the customer',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Balance With Jobs',
 		name: 'BalanceWithJobs',
-		description: 'Cumulative open balance amount for the customer (or job) and all its sub-jobs.',
+		description: 'Cumulative open balance amount for the customer (or job) and all its sub-jobs',
 		type: 'number',
 		default: 0,
 	},
@@ -74,7 +76,7 @@ export const customerAdditionalFieldsOptions = [
 	{
 		displayName: 'Bill With Parent',
 		name: 'BillWithParent',
-		description: 'Bill this customer together with its parent.',
+		description: 'Whether to bill this customer together with its parent',
 		type: 'boolean',
 		default: false,
 	},
@@ -137,14 +139,14 @@ export const customerAdditionalFieldsOptions = [
 	{
 		displayName: 'Print-On-Check Name',
 		name: 'PrintOnCheckName',
-		description: 'Name of the customer as printed on a check.',
+		description: 'Name of the customer as printed on a check',
 		type: 'string',
 		default: '',
 	},
 	{
 		displayName: 'Taxable',
 		name: 'Taxable',
-		description: 'Whether transactions for this customer are taxable.',
+		description: 'Whether transactions for this customer are taxable',
 		type: 'boolean',
 		default: false,
 	},

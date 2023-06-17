@@ -1,25 +1,18 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	flow,
-	sortBy,
-} from 'lodash';
+import flow from 'lodash/flow';
+import sortBy from 'lodash/sortBy';
 
-import {
+import type {
 	AllFields,
 	CamelCaseResource,
 	DateType,
@@ -35,6 +28,15 @@ import {
 	ZohoOAuth2ApiCredentials,
 } from './types';
 
+export function throwOnErrorStatus(
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	responseData: { data?: Array<{ status: string; message: string }> },
+) {
+	if (responseData?.data?.[0].status === 'error') {
+		throw new NodeOperationError(this.getNode(), responseData as Error);
+	}
+}
+
 export async function zohoApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -43,17 +45,17 @@ export async function zohoApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 ) {
-	const { oauthTokenData } = await this.getCredentials('zohoOAuth2Api') as ZohoOAuth2ApiCredentials;
+	const { oauthTokenData } = (await this.getCredentials(
+		'zohoOAuth2Api',
+	)) as ZohoOAuth2ApiCredentials;
 
 	const options: OptionsWithUri = {
 		body: {
-			data: [
-				body,
-			],
+			data: [body],
 		},
 		method,
 		qs,
-		uri: uri ?? `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
+		uri: uri || `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 
@@ -70,11 +72,11 @@ export async function zohoApiRequest(
 
 		if (responseData === undefined) return [];
 
-		throwOnErrorStatus.call(this, responseData);
+		throwOnErrorStatus.call(this, responseData as IDataObject);
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -91,20 +93,15 @@ export async function zohoApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let uri: string | undefined;
 	qs.per_page = 200;
-	qs.page = 0;
+	qs.page = 1;
 
 	do {
-		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs, uri);
+		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs);
 		if (Array.isArray(responseData) && !responseData.length) return returnData;
-		returnData.push(...responseData.data);
-		uri = responseData.info.more_records;
+		returnData.push(...(responseData.data as IDataObject[]));
 		qs.page++;
-	} while (
-		responseData.info.more_records !== undefined &&
-		responseData.info.more_records === true
-	);
+	} while (responseData.info.more_records !== undefined && responseData.info.more_records === true);
 
 	return returnData;
 }
@@ -119,14 +116,14 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }
@@ -142,7 +139,7 @@ export function throwOnMissingProducts(
 	this: IExecuteFunctions,
 	resource: CamelCaseResource,
 	productDetails: ProductDetails,
-	) {
+) {
 	if (!productDetails.length) {
 		throw new NodeOperationError(
 			this.getNode(),
@@ -151,24 +148,21 @@ export function throwOnMissingProducts(
 	}
 }
 
-export function throwOnErrorStatus(
-	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	responseData: { data?: Array<{ status: string, message: string }> },
-) {
-	if (responseData?.data?.[0].status === 'error') {
-		throw new NodeOperationError(this.getNode(), responseData as Error);
-	}
-}
-
 // ----------------------------------------
 //        required field adjusters
 // ----------------------------------------
 
 /**
+ * Create a copy of an object without a specific property.
+ */
+const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject }) =>
+	remainingObject;
+
+/**
  * Place a product ID at a nested position in a product details field.
  */
 export const adjustProductDetails = (productDetails: ProductDetails) => {
-	return productDetails.map(p => {
+	return productDetails.map((p) => {
 		return {
 			...omit('product', p),
 			product: { id: p.id },
@@ -189,7 +183,7 @@ export const adjustProductDetails = (productDetails: ProductDetails) => {
 export const adjustProductDetailsOnUpdate = (allFields: AllFields) => {
 	if (!allFields.Product_Details) return allFields;
 
-	return allFields.Product_Details.map(p => {
+	return allFields.Product_Details.map((p) => {
 		return {
 			...omit('product', p),
 			product: { id: p.id },
@@ -221,7 +215,7 @@ const adjustOtherAddressFields = adjustLocationFields('Other_Address');
 /**
  * Remove from a date field the timestamp set by the datepicker.
  */
- const adjustDateField = (dateType: DateType) => (allFields: AllFields) => {
+const adjustDateField = (dateType: DateType) => (allFields: AllFields) => {
 	const dateField = allFields[dateType];
 
 	if (!dateField) return allFields;
@@ -284,10 +278,7 @@ export const adjustContactPayload = flow(
 	adjustCustomFields,
 );
 
-export const adjustDealPayload = flow(
-	adjustClosingDateField,
-	adjustCustomFields,
-);
+export const adjustDealPayload = flow(adjustClosingDateField, adjustCustomFields);
 
 export const adjustInvoicePayload = flow(
 	adjustBillingAddressFields,
@@ -303,10 +294,7 @@ export const adjustInvoicePayloadOnUpdate = flow(
 	adjustProductDetailsOnUpdate,
 );
 
-export const adjustLeadPayload = flow(
-	adjustAddressFields,
-	adjustCustomFields,
-);
+export const adjustLeadPayload = flow(adjustAddressFields, adjustCustomFields);
 
 export const adjustPurchaseOrderPayload = flow(
 	adjustBillingAddressFields,
@@ -333,10 +321,7 @@ export const adjustSalesOrderPayload = flow(
 	adjustCustomFields,
 );
 
-export const adjustVendorPayload = flow(
-	adjustAddressFields,
-	adjustCustomFields,
-);
+export const adjustVendorPayload = flow(adjustAddressFields, adjustCustomFields);
 
 export const adjustProductPayload = adjustCustomFields;
 
@@ -345,36 +330,10 @@ export const adjustProductPayload = adjustCustomFields;
 // ----------------------------------------
 
 /**
- * Create a copy of an object without a specific property.
- */
-const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject }) => remainingObject;
-
-/**
  * Convert items in a Zoho CRM API response into n8n load options.
  */
 export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
 	items.map((item) => ({ name: item[nameProperty], value: item.id }));
-
-/**
- * Retrieve all fields for a resource, sorted alphabetically.
- */
-export async function getFields(
-	this: ILoadOptionsFunctions,
-	resource: SnakeCaseResource,
-	{ onlyCustom } = { onlyCustom: false },
-) {
-	const qs = { module: getModuleName(resource) };
-
-	let { fields } = await zohoApiRequest.call(this, 'GET', '/settings/fields', {}, qs) as LoadedFields;
-
-	if (onlyCustom) {
-		fields = fields.filter(({ custom_field }) => custom_field);
-	}
-
-	const options = fields.map(({ field_label, api_name }) => ({ name: field_label, value: api_name }));
-
-	return sortBy(options, o => o.name);
-}
 
 export function getModuleName(resource: string) {
 	const map: { [key: string]: string } = {
@@ -393,32 +352,69 @@ export function getModuleName(resource: string) {
 	return map[resource];
 }
 
-export async function getPicklistOptions(
+/**
+ * Retrieve all fields for a resource, sorted alphabetically.
+ */
+export async function getFields(
 	this: ILoadOptionsFunctions,
-	resource: string,
-	targetField: string,
+	resource: SnakeCaseResource,
+	{ onlyCustom } = { onlyCustom: false },
 ) {
 	const qs = { module: getModuleName(resource) };
-	const responseData = await zohoApiRequest.call(this, 'GET', '/settings/layouts', {}, qs) as LoadedLayouts;
 
-	const	pickListOptions = responseData.layouts[0]
-		.sections.find(section => section.api_name === getSectionApiName(resource))
-		?.fields.find(f => f.api_name === targetField)
-		?.pick_list_values;
+	let { fields } = (await zohoApiRequest.call(
+		this,
+		'GET',
+		'/settings/fields',
+		{},
+		qs,
+	)) as LoadedFields;
 
-	if (!pickListOptions) return [];
+	if (onlyCustom) {
+		fields = fields.filter(({ custom_field }) => custom_field);
+	}
 
-	return pickListOptions.map(
-		(option) => ({ name: option.display_value, value: option.actual_value }),
-	);
+	const options = fields.map(({ field_label, api_name }) => ({
+		name: field_label,
+		value: api_name,
+	}));
+
+	return sortBy(options, (o) => o.name);
 }
 
+export const capitalizeInitial = (str: string) => str[0].toUpperCase() + str.slice(1);
 
 function getSectionApiName(resource: string) {
 	if (resource === 'purchaseOrder') return 'Purchase Order Information';
 	if (resource === 'salesOrder') return 'Sales Order Information';
 
 	return `${capitalizeInitial(resource)} Information`;
+}
+
+export async function getPicklistOptions(
+	this: ILoadOptionsFunctions,
+	resource: string,
+	targetField: string,
+) {
+	const qs = { module: getModuleName(resource) };
+	const responseData = (await zohoApiRequest.call(
+		this,
+		'GET',
+		'/settings/layouts',
+		{},
+		qs,
+	)) as LoadedLayouts;
+
+	const pickListOptions = responseData.layouts[0].sections
+		.find((section) => section.api_name === getSectionApiName(resource))
+		?.fields.find((f) => f.api_name === targetField)?.pick_list_values;
+
+	if (!pickListOptions) return [];
+
+	return pickListOptions.map((option) => ({
+		name: option.display_value,
+		value: option.actual_value,
+	}));
 }
 
 /**
@@ -430,5 +426,3 @@ export const addGetAllFilterOptions = (qs: IDataObject, options: GetAllFilterOpt
 		Object.assign(qs, fields && { fields: fields.join(',') }, rest);
 	}
 };
-
-export const capitalizeInitial = (str: string) => str[0].toUpperCase() + str.slice(1);

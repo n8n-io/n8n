@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const stockOnHandOperations = [
+export const stockOnHandOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'stockOnHand',
-				],
+				resource: ['stockOnHand'],
 			},
 		},
 		options: [
@@ -19,20 +16,20 @@ export const stockOnHandOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a stock on hand',
+				action: 'Get a stock on hand',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all stocks on hand',
+				description: 'Get many stocks on hand',
+				action: 'Get many stocks on hand',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const stockOnHandFields = [
-
+export const stockOnHandFields: INodeProperties[] = [
 	/* ------------------------------------------------------------------------- */
 	/*                                stockOnHand:get                            */
 	/* ------------------------------------------------------------------------- */
@@ -42,12 +39,8 @@ export const stockOnHandFields = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'stockOnHand',
-				],
+				operation: ['get'],
+				resource: ['stockOnHand'],
 			},
 		},
 		default: '',
@@ -61,16 +54,12 @@ export const stockOnHandFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'stockOnHand',
-				],
+				operation: ['getAll'],
+				resource: ['stockOnHand'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -78,15 +67,9 @@ export const stockOnHandFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'stockOnHand',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['stockOnHand'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -94,7 +77,7 @@ export const stockOnHandFields = [
 			maxValue: 1000,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Filters',
@@ -104,12 +87,8 @@ export const stockOnHandFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'stockOnHand',
-				],
+				operation: ['getAll'],
+				resource: ['stockOnHand'],
 			},
 		},
 		options: [
@@ -118,50 +97,53 @@ export const stockOnHandFields = [
 				name: 'asAtDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns the stock on hand for a specific date.',
+				description: 'Returns the stock on hand for a specific date',
 			},
 			{
 				displayName: 'Is Assembled',
 				name: 'IsAssembled',
 				type: 'boolean',
-				default: '',
-				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled.',
+				default: false,
+				description:
+					'Whether the AvailableQty will also include the quantity that can be assembled',
 			},
 			{
 				displayName: 'Modified Since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns stock on hand values modified after a specific date.',
+				description: 'Returns stock on hand values modified after a specific date',
 			},
 			{
 				displayName: 'Order By',
 				name: 'orderBy',
 				type: 'string',
 				default: '',
-				description: 'Orders the list by a specific column, by default the list is ordered by productCode.',
+				description:
+					'Orders the list by a specific column, by default the list is ordered by productCode',
 			},
 			{
 				displayName: 'Product ID',
 				name: 'productId',
 				type: 'string',
 				default: '',
-				description: 'Returns products with the specific Product Guid. You can enter multiple product Ids separated by commas.',
+				description:
+					'Returns products with the specific Product Guid. You can enter multiple product IDs separated by commas.',
 			},
 			{
 				displayName: 'Warehouse Code',
 				name: 'warehouseCode',
 				type: 'string',
 				default: '',
-				description: 'Returns stock on hand for a specific warehouse code.',
+				description: 'Returns stock on hand for a specific warehouse code',
 			},
 			{
 				displayName: 'Warehouse Name',
 				name: 'warehouseName',
 				type: 'string',
 				default: '',
-				description: 'Returns stock on hand for a specific warehouse name.',
+				description: 'Returns stock on hand for a specific warehouse name',
 			},
 		],
 	},
-] as INodeProperties[];
+];

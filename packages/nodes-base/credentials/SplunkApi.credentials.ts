@@ -1,12 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SplunkApi implements ICredentialType {
 	name = 'splunkApi';
+
 	displayName = 'Splunk API';
+
 	documentationUrl = 'splunk';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Auth Token',
@@ -26,6 +26,7 @@ export class SplunkApi implements ICredentialType {
 			displayName: 'Allow Self-Signed Certificates',
 			name: 'allowUnauthorizedCerts',
 			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 			default: false,
 		},
 	];

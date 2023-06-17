@@ -2,57 +2,80 @@
 	<div :class="$style.container">
 		<el-row>
 			<el-col :span="8" :class="$style.accessLabel">
-				<n8n-text :compact="true" :bold="true">Allow use by</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.allowUseBy') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16">
-				<div
-					v-for="node in nodesWithAccess"
-					:key="node.name"
-					:class="$style.valueLabel"
-				>
+				<div v-for="node in nodesWithAccess" :key="node.name" :class="$style.valueLabel">
 					<el-checkbox
-						:label="node.displayName"
+						v-if="credentialPermissions.updateNodeAccess"
+						:label="
+							$locale.headerText({
+								key: `headers.${shortNodeType(node)}.displayName`,
+								fallback: node.displayName,
+							})
+						"
 						:value="!!nodeAccess[node.name]"
 						@change="(val) => onNodeAccessChange(node.name, val)"
 					/>
+					<n8n-text v-else>
+						{{
+							$locale.headerText({
+								key: `headers.${shortNodeType(node)}.displayName`,
+								fallback: node.displayName,
+							})
+						}}
+					</n8n-text>
 				</div>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">Created</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.created') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<n8n-text :compact="true"><TimeAgo :date="currentCredential.createdAt" :capitalize="true" /></n8n-text>
+				<n8n-text :compact="true"
+					><TimeAgo :date="currentCredential.createdAt" :capitalize="true"
+				/></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">Last modified</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.lastModified') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<n8n-text :compact="true"><TimeAgo :date="currentCredential.updatedAt" :capitalize="true" /></n8n-text>
+				<n8n-text :compact="true"
+					><TimeAgo :date="currentCredential.updatedAt" :capitalize="true"
+				/></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
-				<n8n-text :compact="true" :bold="true">ID</n8n-text>
+				<n8n-text :compact="true" :bold="true">
+					{{ $locale.baseText('credentialEdit.credentialInfo.id') }}
+				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<n8n-text :compact="true">{{currentCredential.id}}</n8n-text>
+				<n8n-text :compact="true">{{ currentCredential.id }}</n8n-text>
 			</el-col>
 		</el-row>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import TimeAgo from '../TimeAgo.vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'CredentialInfo',
-	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential'],
+	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
 	components: {
 		TimeAgo,
 	},
@@ -62,6 +85,9 @@ export default Vue.extend({
 				name,
 				value,
 			});
+		},
+		shortNodeType(nodeType: INodeTypeDescription) {
+			return this.$locale.shortNodeType(nodeType.name);
 		},
 	},
 });
@@ -87,5 +113,4 @@ export default Vue.extend({
 .valueLabel {
 	font-weight: var(--font-weight-regular);
 }
-
 </style>
