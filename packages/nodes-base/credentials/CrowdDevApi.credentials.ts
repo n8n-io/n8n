@@ -14,8 +14,8 @@ export class CrowdDevApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Domain',
-			name: 'domain',
+			displayName: 'URL',
+			name: 'url',
 			type: 'hidden',
 			default: 'https://app.crowd.dev',
 		},
@@ -53,7 +53,7 @@ export class CrowdDevApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			method: 'POST',
-			baseURL: '={{$credentials?.domain + "/api/tenant/" + $credentials?.tenantId}}',
+			baseURL: '={{$credentials?.url + "/api/tenant/" + $credentials?.tenantId}}',
 			url: '/member/query',
 			body: {
 				limit: 1,

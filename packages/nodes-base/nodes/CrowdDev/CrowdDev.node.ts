@@ -23,7 +23,7 @@ export class CrowdDev implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: '={{$credentials.domain}}/api/tenant/{{$credentials.tenantId}}',
+			baseURL: '={{$credentials.url}}/api/tenant/{{$credentials.tenantId}}',
 			json: true,
 		},
 		properties: allProperties,

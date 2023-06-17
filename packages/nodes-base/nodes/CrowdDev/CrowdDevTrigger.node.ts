@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 interface ICrowdDevCreds {
-	domain: string;
+	url: string;
 	tenantId: string;
 	token: string;
 }
@@ -23,7 +23,7 @@ const createRequest = (
 	opts: Partial<IHttpRequestOptions>,
 ): IHttpRequestOptions => {
 	const defaults: IHttpRequestOptions = {
-		baseURL: `${creds.domain}/api/tenant/${creds.tenantId}`,
+		baseURL: `${creds.url}/api/tenant/${creds.tenantId}`,
 		url: '',
 		json: true,
 	};
