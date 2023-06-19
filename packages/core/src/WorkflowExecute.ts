@@ -450,7 +450,7 @@ export class WorkflowExecute {
 						];
 				}
 
-				this.runExecutionData.executionData!.nodeExecutionStack.push(executionStackItem);
+				this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionStackItem);
 
 				// Remove the data from waiting
 				delete this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex];
@@ -608,7 +608,7 @@ export class WorkflowExecute {
 						if (addEmptyItem) {
 							// Add only node if it does not have any inputs because else it will
 							// be added by its input node later anyway.
-							this.runExecutionData.executionData!.nodeExecutionStack.push({
+							this.runExecutionData.executionData!.nodeExecutionStack.unshift({
 								node: workflow.getNode(nodeToAdd) as INode,
 								data: {
 									main: [
@@ -660,7 +660,7 @@ export class WorkflowExecute {
 			};
 		} else {
 			// All data is there so add it directly to stack
-			this.runExecutionData.executionData!.nodeExecutionStack.push({
+			this.runExecutionData.executionData!.nodeExecutionStack.unshift({
 				node: workflow.nodes[connectionData.node],
 				data: {
 					main: connectionDataArray,
@@ -1160,6 +1160,12 @@ export class WorkflowExecute {
 							let connectionData: IConnection;
 							// Iterate over all the outputs
 
+							const nodesToAdd: Array<{
+								position: [number, number];
+								connection: IConnection;
+								outputIndex: number;
+							}> = [];
+
 							// Add the nodes to be executed
 							// eslint-disable-next-line @typescript-eslint/no-for-in-array
 							for (outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
@@ -1186,16 +1192,41 @@ export class WorkflowExecute {
 										(nodeSuccessData![outputIndex].length !== 0 || connectionData.index > 0)
 									) {
 										// Add the node only if it did execute or if connected to second "optional" input
-										this.addNodeToBeExecuted(
-											workflow,
-											connectionData,
-											parseInt(outputIndex, 10),
-											executionNode.name,
-											nodeSuccessData!,
-											runIndex,
-										);
+										const nodeToAdd = workflow.getNode(connectionData.node);
+										nodesToAdd.push({
+											position: nodeToAdd?.position || [0, 0],
+											connection: connectionData,
+											outputIndex: parseInt(outputIndex, 10),
+										});
 									}
 								}
+							}
+
+							// Always execute the node that is more to the top-left first
+							nodesToAdd.sort((a, b) => {
+								if (a.position[1] < b.position[1]) {
+									return 1;
+								}
+								if (a.position[1] > b.position[1]) {
+									return -1;
+								}
+
+								if (a.position[0] > b.position[0]) {
+									return -1;
+								}
+
+								return 0;
+							});
+
+							for (const nodeData of nodesToAdd) {
+								this.addNodeToBeExecuted(
+									workflow,
+									nodeData.connection,
+									nodeData.outputIndex,
+									executionNode.name,
+									nodeSuccessData!,
+									runIndex,
+								);
 							}
 						}
 					}
