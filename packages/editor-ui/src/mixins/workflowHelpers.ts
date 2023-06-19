@@ -79,7 +79,7 @@ export function resolveParameter(
 
 	const workflow = getCurrentWorkflow();
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
-	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
+	let parentNode = [...workflow.getParentNodes(activeNode!.name, inputName, 1)].reverse();
 	const executionData = useWorkflowsStore().getWorkflowExecution;
 
 	let runIndexParent = opts?.inputRunIndex ?? 0;
@@ -155,7 +155,7 @@ export function resolveParameter(
 	) {
 		runIndexCurrent = workflowRunData[activeNode!.name].length - 1;
 	}
-	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
+	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexParent);
 
 	return workflow.expression.getParameterValue(
 		parameter,
@@ -297,6 +297,7 @@ function executeData(
 			return executeData;
 		}
 
+		const parentWorkflowRunData = workflowRunData[parentNodeName];
 		if (
 			!workflowRunData[parentNodeName] ||
 			workflowRunData[parentNodeName].length <= runIndex ||
