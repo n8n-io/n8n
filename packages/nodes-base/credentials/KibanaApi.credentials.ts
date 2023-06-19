@@ -14,7 +14,7 @@ export class KibanaApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API URL',
+			displayName: 'URL',
 			name: 'apiUrl',
 			type: 'string',
 			default: '',
