@@ -86,8 +86,8 @@ export class CiscoFirepowerApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://={{$credentials?.url}}:={{$credentials?.port}}',
-			url: '/api/fmc_config/v1/domain/={{$credentials?.domainUuid}}',
+			baseURL: '=https://{{$credentials?.url}}:{{$credentials?.port}}',
+			url: '=/api/fmc_config/v1/domain/{{$credentials?.domainUuid}}',
 		},
 	};
 }
