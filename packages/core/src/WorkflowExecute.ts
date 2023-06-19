@@ -1160,6 +1160,12 @@ export class WorkflowExecute {
 							let connectionData: IConnection;
 							// Iterate over all the outputs
 
+							const nodesToAdd: Array<{
+								position: [number, number];
+								connection: IConnection;
+								outputIndex: number;
+							}> = [];
+
 							// Add the nodes to be executed
 							// eslint-disable-next-line @typescript-eslint/no-for-in-array
 							for (outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
@@ -1171,10 +1177,6 @@ export class WorkflowExecute {
 									continue;
 								}
 
-								const nodesToAdd: Array<{
-									position: [number, number];
-									connection: IConnection;
-								}> = [];
 								// Iterate over all the different connections of this output
 								for (connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
 									outputIndex
@@ -1194,36 +1196,37 @@ export class WorkflowExecute {
 										nodesToAdd.push({
 											position: nodeToAdd?.position || [0, 0],
 											connection: connectionData,
+											outputIndex: parseInt(outputIndex, 10),
 										});
 									}
 								}
+							}
 
-								// Always execute the node which more to the top left first
-								nodesToAdd.sort((a, b) => {
-									if (a.position[1] < b.position[1]) {
-										return 1;
-									}
-									if (a.position[1] > b.position[1]) {
-										return -1;
-									}
-
-									if (a.position[0] > b.position[0]) {
-										return -1;
-									}
-
-									return 0;
-								});
-
-								for (const nodeData of nodesToAdd) {
-									this.addNodeToBeExecuted(
-										workflow,
-										nodeData.connection,
-										parseInt(outputIndex, 10),
-										executionNode.name,
-										nodeSuccessData!,
-										runIndex,
-									);
+							// Always execute the node that is more to the top-left first
+							nodesToAdd.sort((a, b) => {
+								if (a.position[1] < b.position[1]) {
+									return 1;
 								}
+								if (a.position[1] > b.position[1]) {
+									return -1;
+								}
+
+								if (a.position[0] > b.position[0]) {
+									return -1;
+								}
+
+								return 0;
+							});
+
+							for (const nodeData of nodesToAdd) {
+								this.addNodeToBeExecuted(
+									workflow,
+									nodeData.connection,
+									nodeData.outputIndex,
+									executionNode.name,
+									nodeSuccessData!,
+									runIndex,
+								);
 							}
 						}
 					}
