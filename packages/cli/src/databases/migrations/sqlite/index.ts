@@ -8,7 +8,7 @@ import { CreateTagEntity1617213344594 } from '../common/1617213344594-CreateTagE
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { AddWaitColumn1621707690587 } from '../common/1621707690587-AddWaitColumn';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
-import { AddExecutionEntityIndexes1644421939510 } from './1644421939510-AddExecutionEntityIndexes';
+import { AddExecutionEntityIndexes1644421939510 } from '../common/1644421939510-AddExecutionEntityIndexes';
 import { CreateUserManagement1646992772331 } from './1646992772331-CreateUserManagement';
 import { LowerCaseUserEmail1648740597343 } from './1648740597343-LowerCaseUserEmail';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
