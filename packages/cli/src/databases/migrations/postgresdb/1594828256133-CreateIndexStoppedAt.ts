@@ -1,13 +1,5 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import { CreateIndexStoppedAt1594825041918 } from '../common/1594825041918-CreateIndexStoppedAt';
 
-export class CreateIndexStoppedAt1594828256133 implements ReversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.query(
-			`CREATE INDEX IF NOT EXISTS IDX_${tablePrefix}33228da131bb1112247cf52a42 ON ${tablePrefix}execution_entity ("stoppedAt") `,
-		);
-	}
-
-	async down({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.query(`DROP INDEX IDX_${tablePrefix}33228da131bb1112247cf52a42`);
-	}
+export class CreateIndexStoppedAt1594828256133 extends CreateIndexStoppedAt1594825041918 {
+	indexName = '33228da131bb1112247cf52a42';
 }
