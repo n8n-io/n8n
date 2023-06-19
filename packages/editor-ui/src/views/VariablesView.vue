@@ -5,7 +5,7 @@ import {
 	useUIStore,
 	useSettingsStore,
 	useUsersStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores';
 import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
 
@@ -28,8 +28,8 @@ const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const { i18n } = useI18n();
 const message = useMessage();
-const versionControlStore = useVersionControlStore();
-let versionControlStoreUnsubscribe = () => {};
+const sourceControlStore = useSourceControlStore();
+let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
 
@@ -212,7 +212,7 @@ function displayName(resource: EnvironmentVariable) {
 }
 
 onBeforeMount(() => {
-	versionControlStoreUnsubscribe = versionControlStore.$onAction(({ name, after }) => {
+	sourceControlStoreUnsubscribe = sourceControlStore.$onAction(({ name, after }) => {
 		if (name === 'pullWorkfolder' && after) {
 			after(() => {
 				void initialize();
@@ -222,7 +222,7 @@ onBeforeMount(() => {
 });
 
 onBeforeUnmount(() => {
-	versionControlStoreUnsubscribe();
+	sourceControlStoreUnsubscribe();
 });
 </script>
 
