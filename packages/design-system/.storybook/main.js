@@ -38,9 +38,13 @@ module.exports = {
 		'../src/components/N8nSelect/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nSpinner/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nSticky/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nTabs/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nTag/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nTags/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nText/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nTooltip/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nTree/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nUserInfo/*.stories.@(js|jsx|ts|tsx)',
 	],
 	addons: [
 		'@storybook/addon-styling',

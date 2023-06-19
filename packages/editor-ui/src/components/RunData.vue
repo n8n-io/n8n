@@ -167,7 +167,11 @@
 			:class="$style.tabs"
 			data-test-id="branches"
 		>
-			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
+			<n8n-tabs
+				:modelValue="currentOutputIndex"
+				:options="branches"
+				@update:modelValue="onBranchChange"
+			/>
 		</div>
 
 		<div

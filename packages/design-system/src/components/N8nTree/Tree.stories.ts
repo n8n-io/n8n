@@ -7,6 +7,7 @@ export default {
 };
 
 export const Default: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nTree,

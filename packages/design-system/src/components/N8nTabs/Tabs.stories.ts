@@ -13,7 +13,7 @@ export default {
 };
 
 const methods = {
-	onInput: action('input'),
+	onUpdateModelValue: action('update:modelValue'),
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
@@ -22,7 +22,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nTabs,
 	},
-	template: `<n8n-tabs v-model="val" v-bind="args" @input="onInput">
+	template: `<n8n-tabs v-model="val" v-bind="args" @update:modelValue="onUpdateModelValue">
 		</n8n-tabs>`,
 	methods,
 	data() {

@@ -39,13 +39,13 @@ import {
 	N8nSelect,
 	N8nSpinner,
 	N8nSticky,
+	N8nTabs,
+	N8nTag,
 	N8nTags,
-	// N8nTabs,
-	// N8nTag,
 	N8nText,
 	N8nTooltip,
-	// N8nTree,
-	// N8nUserInfo,
+	N8nTree,
+	N8nUserInfo,
 	// N8nUserSelect,
 	// N8nUsersList,
 	// N8nResizeWrapper,
@@ -94,13 +94,13 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-select', N8nSelect);
 		app.component('n8n-spinner', N8nSpinner);
 		app.component('n8n-sticky', N8nSticky);
+		app.component('n8n-tabs', N8nTabs);
+		app.component('n8n-tag', N8nTag);
 		app.component('n8n-tags', N8nTags);
-		// app.component('n8n-tabs', N8nTabs);
-		// app.component('n8n-tag', N8nTag);
 		app.component('n8n-text', N8nText);
 		app.component('n8n-tooltip', N8nTooltip);
-		// app.component('n8n-user-info', N8nUserInfo);
-		// app.component('n8n-tree', N8nTree);
+		app.component('n8n-tree', N8nTree);
+		app.component('n8n-user-info', N8nUserInfo);
 		// app.component('n8n-users-list', N8nUsersList);
 		// app.component('n8n-user-select', N8nUserSelect);
 		// app.component('n8n-resize-wrapper', N8nResizeWrapper);
