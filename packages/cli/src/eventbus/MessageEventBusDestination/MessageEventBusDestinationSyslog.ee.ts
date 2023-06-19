@@ -6,7 +6,7 @@ import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSyslogOptions,
 } from 'n8n-workflow';
-import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { LoggerProxy, MessageEventBusDestinationTypeNames, jsonStringify } from 'n8n-workflow';
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
@@ -139,7 +139,7 @@ export class MessageEventBusDestinationSyslog
 	}
 
 	toString() {
-		return JSON.stringify(this.serialize());
+		return jsonStringify(this.serialize(), { replaceCircularRefs: true });
 	}
 
 	async close() {

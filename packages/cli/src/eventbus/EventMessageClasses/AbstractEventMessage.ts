@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { DateTime } from 'luxon';
-import type { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
+import { jsonStringify, type EventMessageTypeNames, type JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { AbstractEventPayload } from './AbstractEventPayload';
 import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
@@ -138,6 +138,6 @@ export abstract class AbstractEventMessage {
 	}
 
 	toString() {
-		return JSON.stringify(this.serialize());
+		return jsonStringify(this.serialize(), { replaceCircularRefs: true });
 	}
 }

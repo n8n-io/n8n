@@ -12,18 +12,17 @@ import { EventMessageNode } from './EventMessageNode';
 
 export const getEventMessageObjectByType = (
 	message: AbstractEventMessageOptions,
-): EventMessageTypes | null => {
+): EventMessageTypes => {
 	switch (message.__type as EventMessageTypeNames) {
-		case EventMessageTypeNames.generic:
-			return new EventMessageGeneric(message as EventMessageGenericOptions);
 		case EventMessageTypeNames.workflow:
 			return new EventMessageWorkflow(message as EventMessageWorkflowOptions);
 		case EventMessageTypeNames.audit:
 			return new EventMessageAudit(message as EventMessageAuditOptions);
 		case EventMessageTypeNames.node:
 			return new EventMessageNode(message as EventMessageNodeOptions);
+		case EventMessageTypeNames.generic:
 		default:
-			return null;
+			return new EventMessageGeneric(message as EventMessageGenericOptions);
 	}
 };
 

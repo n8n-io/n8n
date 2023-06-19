@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
-import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { LoggerProxy, MessageEventBusDestinationTypeNames, jsonStringify } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
@@ -119,7 +119,7 @@ export class MessageEventBusDestinationSentry
 	}
 
 	toString() {
-		return JSON.stringify(this.serialize());
+		return jsonStringify(this.serialize(), { replaceCircularRefs: true });
 	}
 
 	async close() {
