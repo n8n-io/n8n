@@ -25,7 +25,7 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Crowdstrike URL',
+			displayName: 'URL',
 			name: 'url',
 			type: 'string',
 			default: '',
