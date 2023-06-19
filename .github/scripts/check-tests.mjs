@@ -48,7 +48,7 @@ const program = async () => {
 		.then(({stdout}) => stdout.trim().split('\n').filter(Boolean));
 
   // Get all .spec.ts and .test.ts files from the packages
-	const specAndTestTsFiles = await glob('../../packages/*/**/{test,__tests__}/*.{spec,test}.ts');
+	const specAndTestTsFiles = await glob('packages/*/**/{test,__tests__}/*.{spec,test}.ts');
 	const specAndTestTsFilesNames = specAndTestTsFiles.map(file => path.parse(file).name.replace(/\.(test|spec)/, ''));
 
   // Filter out the .ts and .vue files from the changed files, .ts files with any kind of function declaration or class
@@ -56,11 +56,10 @@ const program = async () => {
 	const changedTsFilesWithFunction = await filterAsync(
 		async filePath =>
 			filePath.endsWith('.ts') &&
-			!(await glob('../../packages/*/**/{test,__tests__}/*.ts')).includes(filePath) &&
+			!(await glob('packages/*/**/{test,__tests__}/*.ts')).includes(filePath) &&
 			await hasFunctionOrClass(filePath),
 		changedFiles
 	);
-
 
   // For each .ts or .vue file, check if there's a corresponding .test.ts or .spec.ts file in the repository
 	changedVueFiles.concat(changedTsFilesWithFunction).forEach(async file => {
