@@ -16,11 +16,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin/master
+          run: |
+            git fetch origin master:master
+
+      - name: Get changed files
+        id: getfile
+        run: |
+          echo "::set-output name=files::$(git diff --name-only master..${{ github.ref }})"
 
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
+
       - run: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Check for test files

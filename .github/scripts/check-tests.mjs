@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import util from 'util';
-import { spawn } from 'child_process';
+import { exec } from 'child_process';
 import { glob } from "glob";
 import parser from '@babel/parser';
 import traverse from '@babel/traverse';
 
 const readFileAsync = util.promisify(fs.readFile);
-const spawnAsync = util.promisify(spawn);
+const execAsync = util.promisify(exec);
 
 const filterAsync = async (asyncPredicate, arr) => {
 	const filterResults = await Promise.all(arr.map(async item => ({
@@ -44,10 +44,8 @@ const hasFunctionOrClass = async filePath => {
 const program = async () => {
 
   // Run a git command to get a list of all files in the commit
-	const changedFiles = await spawnAsync(
-		'git',
-		['diff', '--name-only', '--diff-filter=d', 'origin/master...HEAD']
-	).then(stdout => stdout.toString().trim().split('\n').filter(Boolean));
+	const changedFiles = await execAsync('git diff --name-only --diff-filter=d master...HEAD')
+		.then(({stdout}) => stdout.trim().split('\n').filter(Boolean));
 
   // Get all .spec.ts and .test.ts files from the packages
 	const specAndTestTsFiles = await glob('../../packages/*/**/{test,__tests__}/*.{spec,test}.ts');
