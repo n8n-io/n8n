@@ -2146,4 +2146,9 @@ export interface IN8nUISettings {
 	variables: {
 		limit: number;
 	};
+	banners: {
+		v1: {
+			dismissed: boolean;
+		};
+	};
 }

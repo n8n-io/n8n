@@ -148,4 +148,11 @@ export class OwnerController {
 
 		return sanitizeUser(owner);
 	}
+
+	@Post('/dismiss-v1')
+	async dismissBanner() {
+		await this.settingsRepository.saveSetting('ui.banners.v1.dismissed', JSON.stringify(true));
+
+		return { success: true };
+	}
 }
