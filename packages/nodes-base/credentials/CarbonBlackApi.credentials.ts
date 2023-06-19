@@ -12,10 +12,11 @@ export class CarbonBlackApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API URL',
+			displayName: 'URL',
 			name: 'apiUrl',
 			type: 'string',
-			default: 'https://defense.conferdeploy.net/',
+			placeholder: 'https://defense.conferdeploy.net/',
+			default: '',
 		},
 		{
 			displayName: 'Access Token',
