@@ -23,6 +23,7 @@ export const expressionManager = defineComponent({
 	data() {
 		return {
 			editor: {} as EditorView,
+			skipSegments: [] as string[],
 		};
 	},
 	watch: {
@@ -85,8 +86,7 @@ export const expressionManager = defineComponent({
 				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
 			}
 
-			const customSkipSegments = 'skipSegments' in this ? (this.skipSegments as string[]) : [];
-			const skipSegments = ['Program', 'Script', 'Document'].concat(customSkipSegments);
+			const skipSegments = ['Program', 'Script', 'Document', ...this.skipSegments];
 
 			fullTree.cursor().iterate((node) => {
 				const text = this.editor.state.sliceDoc(node.from, node.to);

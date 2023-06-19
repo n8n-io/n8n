@@ -3,7 +3,6 @@ import { PiniaVuePlugin } from 'pinia';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
 
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { expressionManager } from '@/mixins/expressionManager';
@@ -21,7 +20,7 @@ const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {
-				settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
+				settings: SETTINGS_STORE_DEFAULT_STATE.settings,
 			},
 		},
 	}),
@@ -32,7 +31,7 @@ const DEFAULT_SETUP = {
 };
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(SqlEditor, merge(DEFAULT_SETUP, renderOptions), (vue) => {
+	render(SqlEditor, { ...DEFAULT_SETUP, ...renderOptions }, (vue) => {
 		vue.use(PiniaVuePlugin);
 	});
 
@@ -40,7 +39,7 @@ describe('SQL Editor Preview Tests', () => {
 	beforeEach(() => {
 		vi.spyOn(expressionManager.methods, 'resolve').mockImplementation(
 			(resolvable: string, _targetItem?: TargetItem) => {
-				return { resolved: RESOLVABLES[resolvable.toString()] };
+				return { resolved: RESOLVABLES[resolvable] };
 			},
 		);
 	});

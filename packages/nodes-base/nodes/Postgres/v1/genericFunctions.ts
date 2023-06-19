@@ -169,8 +169,10 @@ export async function pgQueryV2(
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
-	overrideMode?: string,
-	resolveExpression?: boolean,
+	options?: {
+		overrideMode?: string,
+		resolveExpression?: boolean;
+	},
 ): Promise<IDataObject[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
 
@@ -187,7 +189,7 @@ export async function pgQueryV2(
 	for (let i = 0; i < items.length; i++) {
 		let query = this.getNodeParameter('query', i) as string;
 
-		if (resolveExpression) {
+		if (options?.resolveExpression) {
 			for (const resolvable of getResolvables(query)) {
 				query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
 			}
@@ -198,7 +200,9 @@ export async function pgQueryV2(
 		allQueries.push(queryFormat);
 	}
 
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
+	const mode = options?.overrideMode
+		? options.overrideMode
+		: ((additionalFields.mode ?? 'multiple') as string);
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {

@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.sqlEditor">
+	<div :class="[$style.sqlEditor, 'sql-editor']">
 		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
@@ -16,10 +16,7 @@ import { defineComponent } from 'vue';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
 import { foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
-import { lintGutter } from '@codemirror/lint';
-import type { Extension } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
-import type { ViewUpdate } from '@codemirror/view';
 import {
 	dropCursor,
 	EditorView,
@@ -28,6 +25,7 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
+// TODO: Replace this once `codemirror-lang-n8n-sql` npm package is updated
 import {
 	MSSQL,
 	MySQL,
@@ -59,6 +57,13 @@ const SQL_DIALECTS = {
 	PLSQL,
 } as const;
 
+type SQLEditorData = {
+	editor: EditorView | null,
+	isFocused: boolean;
+	skipSegments: string[];
+	expressionsDocsUrl: string;
+};
+
 function n8nLanguageSupport(dialect: SQLDialectType) {
 	return new LanguageSupport(dialect.language, [
 		n8nCompletionSources().map((source) => dialect.language.data.of(source)),
@@ -88,12 +93,12 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	data() {
+	data(): SQLEditorData {
 		return {
-			editor: {} as EditorView,
+			editor: null,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
-			skipSegments: ['Statement', 'Parens'],
+			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
 		};
 	},
 	watch: {
@@ -116,7 +121,7 @@ export default defineComponent({
 			return this.ndvStore.ndvInputData;
 		},
 		doc(): string {
-			return this.editor.state.doc.toString();
+			return this.editor ? this.editor.state.doc.toString() : '';
 		},
 		hoveringItemNumber(): number {
 			return this.ndvStore.hoveringItemNumber;
@@ -137,7 +142,6 @@ export default defineComponent({
 			codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
 			lineNumbers(),
 			EditorView.lineWrapping,
-			lintGutter(),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.domEventHandlers({
 				focus: () => {
@@ -165,11 +169,11 @@ export default defineComponent({
 				highlightActiveLineGutter(),
 				foldGutter(),
 				dropCursor(),
-				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-					if (!viewUpdate.docChanged) return;
+				EditorView.updateListener.of((viewUpdate) => {
+					if (!viewUpdate.docChanged || !this.editor) return;
 
-					highlighter.removeColor(this.editor, this.plaintextSegments);
-					highlighter.addColor(this.editor, this.resolvableSegments);
+					highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
+					highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 
 					this.$emit('valueChanged', this.doc);
 				}),
@@ -178,7 +182,7 @@ export default defineComponent({
 		const state = EditorState.create({ doc: this.query, extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
 
-		highlighter.addColor(this.editor, this.resolvableSegments);
+		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 	},
 });
 </script>

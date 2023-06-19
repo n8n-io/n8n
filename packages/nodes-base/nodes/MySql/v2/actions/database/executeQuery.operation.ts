@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
 
-import { getResolvables, updateDisplayOptions } from '../../../../../utils/utilities';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
 

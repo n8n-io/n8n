@@ -280,15 +280,9 @@ export class TimescaleDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQueryV2.call(
-				this,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-				undefined,
-				true,
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {

@@ -108,7 +108,7 @@
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
 					:query="value"
-					:dialect="getArgument('sqlDialect') as string"
+					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
