@@ -41,26 +41,9 @@ export class Twitter implements INodeType {
 			{
 				name: 'twitterOAuth1Api',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['oAuth1'],
-					},
-				},
 			},
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'oAuth1',
-						value: 'oAuth1',
-					},
-				],
-				default: 'oAuth1',
-			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
