@@ -23,7 +23,7 @@ export class CheckPointApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Server Domain',
+			displayName: 'Domain',
 			name: 'url',
 			type: 'string',
 			default: '',
