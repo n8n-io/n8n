@@ -113,9 +113,6 @@ export class LinkedIn implements INodeType {
 						};
 
 						if (shareMediaCategory === 'IMAGE') {
-							if (additionalFields.description) {
-								description = additionalFields.description as string;
-							}
 							if (additionalFields.title) {
 								title = additionalFields.title as string;
 							}
@@ -145,7 +142,6 @@ export class LinkedIn implements INodeType {
 									media: {
 										title,
 										id: image,
-										description,
 									},
 								},
 								commentary: text,
