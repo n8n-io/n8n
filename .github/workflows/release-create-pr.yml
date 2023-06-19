@@ -54,7 +54,7 @@ jobs:
           RELEASE_TYPE: ${{ github.event.inputs.release-type }}
 
       - name: Generate Changelog
-        run: npx conventional-changelog-cli -p angular -i CHANGELOG.md -s -t n8n@
+        run: npx conventional-changelog-cli@2.2.2 -p angular -i CHANGELOG.md -s -t n8n@
 
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@v4
