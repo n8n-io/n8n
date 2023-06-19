@@ -7,7 +7,7 @@ import bodyParser from 'body-parser';
 import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
-import { LoggerProxy, type WebhookHttpMethod } from 'n8n-workflow';
+import { jsonParse, type WebhookHttpMethod } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -26,6 +26,9 @@ import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 import { RedisService } from './services/RedisService';
 import { EVENT_BUS_REDIS_CHANNEL } from './eventbus/MessageEventBus/MessageEventBusHelper';
+import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
+import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
+import { eventBus } from './eventbus';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -179,15 +182,20 @@ export abstract class AbstractServer {
 	// This connection is going to be our heartbeat
 	// IORedis automatically pings redis and tries to reconnect
 	// We will be using a retryStrategy to control how and when to exit.
+	// We are also subscribing to the event log channel to receive events from workers
 	private async setupRedisChecks() {
 		const redisService = Container.get(RedisService);
 		await redisService.init();
 		await redisService.subscribeToEventLog();
 		redisService.addMessageHandler(
 			'AbstractServerEventLogReceiver',
-			(channel: string, message: string) => {
+			async (channel: string, message: string) => {
 				if (channel === EVENT_BUS_REDIS_CHANNEL) {
-					LoggerProxy.debug(`Redis ${channel}: ${message} `);
+					const eventData = jsonParse<AbstractEventMessageOptions>(message);
+					if (eventData) {
+						const eventMessage = getEventMessageObjectByType(eventData);
+						await eventBus.send(eventMessage);
+					}
 				}
 			},
 		);

@@ -4,6 +4,8 @@ import type { EventMessageNode } from './EventMessageNode';
 import type { EventMessageWorkflow } from './EventMessageWorkflow';
 
 export const eventNamesWorkflow = [
+	'n8n.workflow.queued',
+	'n8n.workflow.completed',
 	'n8n.workflow.started',
 	'n8n.workflow.success',
 	'n8n.workflow.failed',

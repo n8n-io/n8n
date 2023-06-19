@@ -32,6 +32,7 @@ import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 import { ExecutionRepository } from './databases/repositories';
+import config from '@/config';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -241,7 +242,10 @@ export class InternalHooks implements IInternalHooksClass {
 				status: 'running',
 			}),
 			eventBus.sendWorkflowEvent({
-				eventName: 'n8n.workflow.started',
+				eventName:
+					config.getEnv('executions.mode') === 'queue'
+						? 'n8n.workflow.queued'
+						: 'n8n.workflow.started',
 				payload: {
 					executionId,
 					userId: data.userId,
@@ -428,37 +432,54 @@ export class InternalHooks implements IInternalHooksClass {
 			}
 		}
 
-		promises.push(
-			properties.success
-				? eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.success',
-						payload: {
-							executionId,
-							success: properties.success,
-							userId: properties.user_id,
-							workflowId: properties.workflow_id,
-							isManual: properties.is_manual,
-							workflowName: workflow.name,
-							metaData: runData?.data?.resultData?.metadata,
-						},
-				  })
-				: eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.failed',
-						payload: {
-							executionId,
-							success: properties.success,
-							userId: properties.user_id,
-							workflowId: properties.workflow_id,
-							lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-							errorNodeType: properties.error_node_type,
-							errorNodeId: properties.error_node_id?.toString(),
-							errorMessage: properties.error_message?.toString(),
-							isManual: properties.is_manual,
-							workflowName: workflow.name,
-							metaData: runData?.data?.resultData?.metadata,
-						},
-				  }),
-		);
+		if (config.getEnv('executions.mode') === 'queue') {
+			promises.push(
+				eventBus.sendWorkflowEvent({
+					eventName: 'n8n.workflow.completed',
+					payload: {
+						executionId,
+						success: properties.success,
+						userId: properties.user_id,
+						workflowId: properties.workflow_id,
+						isManual: properties.is_manual,
+						workflowName: workflow.name,
+						metaData: runData?.data?.resultData?.metadata,
+					},
+				}),
+			);
+		} else {
+			promises.push(
+				properties.success
+					? eventBus.sendWorkflowEvent({
+							eventName: 'n8n.workflow.success',
+							payload: {
+								executionId,
+								success: properties.success,
+								userId: properties.user_id,
+								workflowId: properties.workflow_id,
+								isManual: properties.is_manual,
+								workflowName: workflow.name,
+								metaData: runData?.data?.resultData?.metadata,
+							},
+					  })
+					: eventBus.sendWorkflowEvent({
+							eventName: 'n8n.workflow.failed',
+							payload: {
+								executionId,
+								success: properties.success,
+								userId: properties.user_id,
+								workflowId: properties.workflow_id,
+								lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
+								errorNodeType: properties.error_node_type,
+								errorNodeId: properties.error_node_id?.toString(),
+								errorMessage: properties.error_message?.toString(),
+								isManual: properties.is_manual,
+								workflowName: workflow.name,
+								metaData: runData?.data?.resultData?.metadata,
+							},
+					  }),
+			);
+		}
 
 		await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
 
