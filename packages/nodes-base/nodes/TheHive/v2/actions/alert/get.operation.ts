@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -39,7 +40,18 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const alertId = this.getNodeParameter('id', i) as string;
+	const includeSimilar = this.getNodeParameter('options.includeSimilar', i, false) as boolean;
+
+	const qs: IDataObject = {};
+
+	if (includeSimilar) {
+		qs.similarity = true;
+	}
+
+	responseData = await theHiveApiRequest.call(this, 'GET', `/alert/${alertId}`, {}, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

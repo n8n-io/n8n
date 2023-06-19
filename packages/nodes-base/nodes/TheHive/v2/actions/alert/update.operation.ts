@@ -3,11 +3,12 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import {
 	alertStatusSelector,
-	customFields,
+	customFieldsCollection,
 	observableDataType,
 	severitySelector,
 	tlpSelector,
 } from '../common.description';
+import { prepareCustomFields, theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -91,7 +92,7 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				...customFields,
+				...customFieldsCollection,
 				displayOptions: {
 					hide: {
 						'/jsonParameters': [true],
@@ -162,7 +163,54 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const alertId = this.getNodeParameter('id', i) as string;
+	const jsonParameters = this.getNodeParameter('jsonParameters', i);
+
+	const updateFields = this.getNodeParameter('updateFields', i);
+	const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
+
+	const artifactUi = updateFields.artifactUi as IDataObject;
+
+	delete updateFields.artifactUi;
+
+	const body: IDataObject = {
+		...customFields,
+	};
+
+	Object.assign(body, updateFields);
+
+	if (artifactUi) {
+		const artifactValues = artifactUi.artifactValues as IDataObject[];
+
+		if (artifactValues) {
+			const artifactData = [];
+
+			for (const artifactvalue of artifactValues) {
+				const element: IDataObject = {};
+
+				element.message = artifactvalue.message as string;
+
+				element.tags = (artifactvalue.tags as string).split(',');
+
+				element.dataType = artifactvalue.dataType as string;
+
+				element.data = artifactvalue.data as string;
+
+				if (artifactvalue.dataType === 'file') {
+					const binaryPropertyName = artifactvalue.binaryProperty as string;
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+					element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
+				}
+
+				artifactData.push(element);
+			}
+			body.artifacts = artifactData;
+		}
+	}
+
+	responseData = await theHiveApiRequest.call(this, 'PATCH', `/alert/${alertId}`, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

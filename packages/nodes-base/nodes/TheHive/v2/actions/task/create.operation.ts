@@ -2,6 +2,8 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { taskStatusSelector } from '../common.description';
+import { prepareOptional } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -83,7 +85,18 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const caseId = this.getNodeParameter('caseId', i) as string;
+
+	const body: IDataObject = {
+		title: this.getNodeParameter('title', i) as string,
+		status: this.getNodeParameter('status', i) as string,
+		flag: this.getNodeParameter('flag', i),
+		...prepareOptional(this.getNodeParameter('options', i, {})),
+	};
+
+	responseData = await theHiveApiRequest.call(this, 'POST', `/case/${caseId}/task`, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

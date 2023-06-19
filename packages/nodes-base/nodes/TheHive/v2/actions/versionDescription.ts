@@ -2,7 +2,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import * as alert from './alert';
-import * as caseResource from './case';
+import * as case_ from './case';
 import * as log from './log';
 import * as observable from './observable';
 import * as task from './task';
@@ -60,7 +60,7 @@ export const versionDescription: INodeTypeDescription = {
 
 		...alert.description,
 		...observable.description,
-		...caseResource.description,
+		...case_.description,
 		...task.description,
 		...log.description,
 	],

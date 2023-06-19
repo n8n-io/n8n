@@ -1,13 +1,18 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+
+import set from 'lodash/set';
+
 import {
 	alertStatusSelector,
-	customFields,
+	customFieldsCollection,
 	observableDataType,
 	severitySelector,
 	tlpSelector,
 } from '../common.description';
+import { prepareCustomFields, theHiveApiRequest } from '../../transport';
+import { prepareOptional, splitTags } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -165,7 +170,7 @@ const properties: INodeProperties[] = [
 				description: 'Case template to use when a case is created from this alert',
 			},
 			{
-				...customFields,
+				...customFieldsCollection,
 				displayOptions: {
 					hide: {
 						'/jsonParameters': [true],
@@ -198,7 +203,65 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const additionalFields = this.getNodeParameter('additionalFields', i);
+	const jsonParameters = this.getNodeParameter('jsonParameters', i);
+
+	const customFields = await prepareCustomFields.call(this, additionalFields, jsonParameters);
+	const body: IDataObject = {
+		title: this.getNodeParameter('title', i),
+		description: this.getNodeParameter('description', i),
+		severity: this.getNodeParameter('severity', i),
+		date: Date.parse(this.getNodeParameter('date', i) as string),
+		tags: splitTags(this.getNodeParameter('tags', i) as string),
+		tlp: this.getNodeParameter('tlp', i),
+		status: this.getNodeParameter('status', i),
+		type: this.getNodeParameter('type', i),
+		source: this.getNodeParameter('source', i),
+		sourceRef: this.getNodeParameter('sourceRef', i),
+		follow: this.getNodeParameter('follow', i, true),
+		...prepareOptional(additionalFields),
+	};
+
+	if (customFields) {
+		Object.keys(customFields).forEach((key) => {
+			set(body, key, customFields[key]);
+		});
+	}
+
+	const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
+
+	if (artifactUi) {
+		const artifactValues = artifactUi.artifactValues as IDataObject[];
+
+		if (artifactValues) {
+			const artifactData = [];
+
+			for (const artifactvalue of artifactValues) {
+				const element: IDataObject = {};
+
+				element.message = artifactvalue.message as string;
+
+				element.tags = (artifactvalue.tags as string).split(',');
+
+				element.dataType = artifactvalue.dataType as string;
+
+				element.data = artifactvalue.data as string;
+
+				if (artifactvalue.dataType === 'file') {
+					const binaryPropertyName = artifactvalue.binaryProperty as string;
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+					element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
+				}
+
+				artifactData.push(element);
+			}
+			body.artifacts = artifactData;
+		}
+	}
+
+	responseData = await theHiveApiRequest.call(this, 'POST', '/alert' as string, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

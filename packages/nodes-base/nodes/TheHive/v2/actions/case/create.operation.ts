@@ -1,7 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { customFields, severitySelector, tlpSelector } from '../common.description';
+
+import set from 'lodash/set';
+
+import { customFieldsCollection, severitySelector, tlpSelector } from '../common.description';
+import { prepareCustomFields, theHiveApiRequest } from '../../transport';
+import { prepareOptional, splitTags } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -76,7 +81,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				...customFields,
+				...customFieldsCollection,
 				displayOptions: {
 					hide: {
 						'/jsonParameters': [true],
@@ -135,7 +140,31 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const options = this.getNodeParameter('options', i, {});
+	const jsonParameters = this.getNodeParameter('jsonParameters', i);
+	const customFields = await prepareCustomFields.call(this, options, jsonParameters);
+
+	const body: IDataObject = {
+		title: this.getNodeParameter('title', i),
+		description: this.getNodeParameter('description', i),
+		severity: this.getNodeParameter('severity', i),
+		startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+		owner: this.getNodeParameter('owner', i),
+		flag: this.getNodeParameter('flag', i),
+		tlp: this.getNodeParameter('tlp', i),
+		tags: splitTags(this.getNodeParameter('tags', i) as string),
+		...prepareOptional(options),
+	};
+
+	if (customFields) {
+		Object.keys(customFields).forEach((key) => {
+			set(body, key, customFields[key]);
+		});
+	}
+
+	responseData = await theHiveApiRequest.call(this, 'POST', '/case' as string, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

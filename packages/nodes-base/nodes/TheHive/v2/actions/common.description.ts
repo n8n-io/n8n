@@ -92,7 +92,7 @@ export const severitySelector: INodeProperties = {
 	description: 'Severity of the alert. Default=Medium.',
 };
 
-export const customFields: INodeProperties = {
+export const customFieldsCollection: INodeProperties = {
 	displayName: 'Custom Fields',
 	name: 'customFieldsUi',
 	type: 'fixedCollection',
@@ -239,7 +239,7 @@ export const filtersCollection: INodeProperties = {
 	default: {},
 	placeholder: 'Add a Filter',
 	options: [
-		customFields,
+		customFieldsCollection,
 		{
 			displayName: 'Description',
 			name: 'description',

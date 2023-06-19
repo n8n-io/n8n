@@ -1,7 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { observableDataType, tlpSelector } from '../common.description';
+import { observableDataType, observableStatusSelector, tlpSelector } from '../common.description';
+import { prepareOptional } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -71,24 +73,7 @@ const properties: INodeProperties[] = [
 		default: false,
 		description: 'Whether sighted previously',
 	},
-	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		required: true,
-		default: 'Ok',
-		options: [
-			{
-				name: 'Ok',
-				value: 'Ok',
-			},
-			{
-				name: 'Deleted',
-				value: 'Deleted',
-			},
-		],
-		description: 'Status of the observable. Default=Ok.',
-	},
+	observableStatusSelector,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -117,7 +102,54 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const caseId = this.getNodeParameter('caseId', i);
+
+	let body: IDataObject = {
+		dataType: this.getNodeParameter('dataType', i) as string,
+		message: this.getNodeParameter('message', i) as string,
+		startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+		tlp: this.getNodeParameter('tlp', i) as number,
+		ioc: this.getNodeParameter('ioc', i) as boolean,
+		sighted: this.getNodeParameter('sighted', i) as boolean,
+		status: this.getNodeParameter('status', i) as string,
+		...prepareOptional(this.getNodeParameter('options', i, {})),
+	};
+
+	let options: IDataObject = {};
+
+	if (body.dataType === 'file') {
+		const binaryPropertyName = this.getNodeParameter('binaryProperty', i);
+		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+		const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
+		options = {
+			formData: {
+				attachment: {
+					value: dataBuffer,
+					options: {
+						contentType: binaryData.mimeType,
+						filename: binaryData.fileName,
+					},
+				},
+				_json: JSON.stringify(body),
+			},
+		};
+		body = {};
+	} else {
+		body.data = this.getNodeParameter('data', i) as string;
+	}
+
+	responseData = await theHiveApiRequest.call(
+		this,
+		'POST',
+		`/case/${caseId}/artifact`,
+		body,
+		undefined,
+		undefined,
+		options,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

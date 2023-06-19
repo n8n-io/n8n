@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { observableStatusSelector } from '../common.description';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -83,7 +84,54 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const responseData: IDataObject[] = [];
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const taskId = this.getNodeParameter('taskId', i) as string;
+
+	let body: IDataObject = {
+		message: this.getNodeParameter('message', i),
+		startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+		status: this.getNodeParameter('status', i),
+	};
+	const optionals = this.getNodeParameter('options', i);
+
+	let options: IDataObject = {};
+
+	if (optionals.attachementUi) {
+		const attachmentValues = (optionals.attachementUi as IDataObject)
+			.attachmentValues as IDataObject;
+
+		if (attachmentValues) {
+			const binaryPropertyName = attachmentValues.binaryProperty as string;
+			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+
+			options = {
+				formData: {
+					attachment: {
+						value: dataBuffer,
+						options: {
+							contentType: binaryData.mimeType,
+							filename: binaryData.fileName,
+						},
+					},
+					_json: JSON.stringify(body),
+				},
+			};
+
+			body = {};
+		}
+	}
+
+	responseData = await theHiveApiRequest.call(
+		this,
+		'POST',
+		`/case/task/${taskId}/log`,
+		body,
+		undefined,
+		undefined,
+		options,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },
