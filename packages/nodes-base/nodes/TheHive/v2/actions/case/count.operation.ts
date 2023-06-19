@@ -2,7 +2,9 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [];
+import { filtersCollection } from '../common.description';
+
+const properties: INodeProperties[] = [filtersCollection];
 
 const displayOptions = {
 	show: {

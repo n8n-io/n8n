@@ -2,7 +2,16 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Observable ID',
+		name: 'id',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the observable',
+	},
+];
 
 const displayOptions = {
 	show: {

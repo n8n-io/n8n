@@ -1,8 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+import { filtersCollection } from '../common.description';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [filtersCollection];
 
 const displayOptions = {
 	show: {

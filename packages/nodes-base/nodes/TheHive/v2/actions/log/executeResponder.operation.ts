@@ -1,8 +1,18 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+import { responderSelector } from '../common.description';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Log ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+	},
+	responderSelector,
+];
 
 const displayOptions = {
 	show: {

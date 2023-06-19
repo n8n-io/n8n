@@ -2,7 +2,32 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Alert ID',
+		name: 'id',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Title of the alert',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Include Similar Cases',
+				name: 'includeSimilar',
+				type: 'boolean',
+				description: 'Whether to include similar cases',
+				default: false,
+			},
+		],
+	},
+];
 
 const displayOptions = {
 	show: {

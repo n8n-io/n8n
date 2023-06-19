@@ -2,7 +2,16 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Task ID',
+		name: 'id',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the taks',
+	},
+];
 
 const displayOptions = {
 	show: {
