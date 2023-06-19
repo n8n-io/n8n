@@ -12,6 +12,7 @@ describe('Usage and plan store', () => {
 		[5, 4, 0.9, false],
 		[10, 5, 0.8, false],
 		[10, 8, 0.8, true],
+		[10, 8, 0.9, false],
 		[10, 9, 0.8, true],
 		[-1, 99, 0.8, false],
 		[-1, 99, 0.1, false],
