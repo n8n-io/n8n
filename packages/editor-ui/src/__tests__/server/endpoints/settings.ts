@@ -70,7 +70,6 @@ const defaultSettings: IN8nUISettings = {
 	variables: {
 		limit: -1,
 	},
-	userActivationSurveyEnabled: false,
 	deployment: {
 		type: 'default',
 	},

@@ -47,7 +47,6 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const USER_ACTIVATION_SURVEY_MODAL = 'userActivationSurvey';
 
 export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
 

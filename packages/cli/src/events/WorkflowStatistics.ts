@@ -118,7 +118,6 @@ export async function workflowExecutionCompleted(
 				await UserService.updateUserSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,
-					showUserActivationSurvey: true,
 				});
 			}
 

@@ -189,6 +189,12 @@ function getFieldDescription(field: ResourceMapperField): string {
 function getParameterValue(parameterName: string) {
 	const fieldName = parseResourceMapperFieldName(parameterName);
 	if (fieldName && props.paramValue.value) {
+		if (
+			props.paramValue.value[fieldName] === undefined ||
+			props.paramValue.value[fieldName] === null
+		) {
+			return '';
+		}
 		return props.paramValue.value[fieldName];
 	}
 	return null;
