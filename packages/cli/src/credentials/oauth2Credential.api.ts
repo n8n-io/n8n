@@ -278,6 +278,7 @@ oauth2CredentialController.get(
 					body: {
 						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
 						...(oauthCredentials.grantType === 'authorizationCode' && {
+							client_id: get(oauthCredentials, 'clientId') as string,
 							client_secret: get(oauthCredentials, 'clientSecret', '') as string,
 						}),
 					},
