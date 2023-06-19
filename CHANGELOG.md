@@ -1,3 +1,12 @@
+## [0.233.1](https://github.com/n8n-io/n8n/compare/n8n@0.233.0...n8n@0.233.1) (2023-06-19)
+
+
+### Bug Fixes
+
+* **core:** Fix the url sent in the password-reset emails ([#6466](https://github.com/n8n-io/n8n/issues/6466)) ([85300fc](https://github.com/n8n-io/n8n/commit/85300fcffdfd9aba286baf8765a914ea02ec23a0))
+
+
+
 # [0.233.0](https://github.com/n8n-io/n8n/compare/n8n@0.232.0...n8n@0.233.0) (2023-06-14)
 
 
