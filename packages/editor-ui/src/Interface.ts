@@ -1520,7 +1520,3 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
-
-export type Test = {
-	[key: string]: any;
-};
