@@ -29,7 +29,7 @@
 					data-test-id="node-credentials-select"
 				>
 					<n8n-select
-						:value="getSelectedId(credentialTypeDescription.name)"
+						:modelValue="getSelectedId(credentialTypeDescription.name)"
 						@change="
 							(value) =>
 								onCredentialSelected(

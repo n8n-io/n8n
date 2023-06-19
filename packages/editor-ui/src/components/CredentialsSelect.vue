@@ -4,7 +4,7 @@
 			<n8n-select
 				:size="inputSize"
 				filterable
-				:value="displayValue"
+				:modelValue="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
 				"

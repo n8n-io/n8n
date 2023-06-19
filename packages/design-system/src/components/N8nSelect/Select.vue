@@ -17,15 +17,13 @@
 			:popper-class="popperClass"
 			ref="innerSelect"
 		>
-			<template #prefix>
+			<template #prefix v-if="$slots.prefix">
 				<slot name="prefix" />
 			</template>
-			<template #suffix>
+			<template #suffix v-if="$slots.suffix">
 				<slot name="suffix" />
 			</template>
-			<template #default>
-				<slot></slot>
-			</template>
+			<slot></slot>
 		</el-select>
 	</div>
 </template>

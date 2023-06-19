@@ -18,7 +18,7 @@ export default {
 };
 
 const methods = {
-	onInput: action('input'),
+	onInput: action('update:modelValue'),
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
@@ -27,7 +27,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nRadioButtons,
 	},
-	template: `<n8n-radio-buttons v-model="val" v-bind="args" @input="onInput">
+	template: `<n8n-radio-buttons v-model="val" v-bind="args" @update:modelValue="onInput">
 		</n8n-radio-buttons>`,
 	methods,
 	data() {

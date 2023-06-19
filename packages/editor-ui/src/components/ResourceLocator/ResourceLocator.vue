@@ -45,7 +45,7 @@
 			>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
-						:value="selectedMode"
+						:modelValue="selectedMode"
 						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"

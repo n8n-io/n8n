@@ -7,6 +7,7 @@ export default {
 };
 
 const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nNodeIcon,

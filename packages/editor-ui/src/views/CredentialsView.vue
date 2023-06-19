@@ -23,13 +23,13 @@
 					class="mb-3xs"
 				/>
 				<n8n-select
-					:value="filters.type"
+					:modelValue="filters.type"
 					size="medium"
 					multiple
 					filterable
 					ref="typeInput"
 					:class="$style['type-input']"
-					@input="setKeyValue('type', $event)"
+					@update:modelValue="setKeyValue('type', $event)"
 				>
 					<n8n-option
 						v-for="credentialType in allCredentialTypes"

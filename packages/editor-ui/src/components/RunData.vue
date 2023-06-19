@@ -53,10 +53,10 @@
 						((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) &&
 						!editMode.enabled
 					"
-					:value="displayMode"
+					:modelValue="displayMode"
 					:options="buttons"
-					@input="onDisplayModeChange"
 					data-test-id="ndv-run-data-display-mode"
+					@update:modelValue="onDisplayModeChange"
 				/>
 				<n8n-icon-button
 					v-if="canPinData && !isReadOnly"
@@ -129,8 +129,8 @@
 		>
 			<n8n-select
 				size="small"
-				:value="runIndex"
-				@input="onRunIndexChange"
+				:modelValue="runIndex"
+				@update:modelValue="onRunIndexChange"
 				@click.stop
 				popper-append-to-body
 			>
@@ -451,7 +451,12 @@
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
-				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange" popper-append-to-body>
+				<n8n-select
+					size="mini"
+					:modelValue="pageSize"
+					@update:modelValue="onPageSizeChange"
+					popper-append-to-body
+				>
 					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
 					</n8n-option>

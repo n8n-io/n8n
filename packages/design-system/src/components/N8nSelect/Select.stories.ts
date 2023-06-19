@@ -79,6 +79,7 @@ const selects = ['large', 'medium', 'small', 'mini']
 	.join('');
 
 const ManyTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nSelect,
@@ -109,6 +110,7 @@ const selectsWithIcon = ['xlarge', 'large', 'medium', 'small', 'mini']
 	.join('');
 
 const ManyTemplateWithIcon: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nSelect,
@@ -132,6 +134,7 @@ WithIcon.args = {
 };
 
 const LimitedWidthTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nSelect,

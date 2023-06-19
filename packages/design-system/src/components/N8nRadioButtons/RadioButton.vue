@@ -9,7 +9,13 @@
 		}"
 		aria-checked="true"
 	>
-		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value" />
+		<input
+			type="radio"
+			tabindex="-1"
+			autocomplete="off"
+			:class="$style.input"
+			:modelValue="value"
+		/>
 		<div
 			:class="{
 				[$style.button]: true,

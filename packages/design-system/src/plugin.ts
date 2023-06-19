@@ -26,22 +26,22 @@ import {
 	N8nInputNumber,
 	N8nLink,
 	N8nLoading,
-	// N8nMarkdown,
-	// N8nMenu,
-	// N8nMenuItem,
-	// N8nNodeCreatorNode,
-	// N8nNodeIcon,
-	// N8nNotice,
-	// N8nOption,
+	N8nMarkdown,
+	N8nMenu,
+	N8nMenuItem,
+	N8nNodeCreatorNode,
+	N8nNodeIcon,
+	N8nNotice,
+	N8nOption,
 	N8nPopover,
-	// N8nPulse,
-	// N8nRadioButtons,
-	// N8nSelect,
-	// N8nSpinner,
-	// N8nSticky,
+	N8nPulse,
+	N8nRadioButtons,
+	N8nSelect,
+	N8nSpinner,
+	N8nSticky,
+	N8nTags,
 	// N8nTabs,
 	// N8nTag,
-	// N8nTags,
 	N8nText,
 	N8nTooltip,
 	// N8nTree,
@@ -81,20 +81,20 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-input-number', N8nInputNumber);
 		app.component('n8n-link', N8nLink);
 		app.component('n8n-loading', N8nLoading);
-		// app.component('n8n-markdown', N8nMarkdown);
-		// app.component('n8n-menu', N8nMenu);
-		// app.component('n8n-menu-item', N8nMenuItem);
-		// app.component('n8n-node-creator-node', N8nNodeCreatorNode);
-		// app.component('n8n-node-icon', N8nNodeIcon);
-		// app.component('n8n-notice', N8nNotice);
-		// app.component('n8n-option', N8nOption);
+		app.component('n8n-markdown', N8nMarkdown);
+		app.component('n8n-menu', N8nMenu);
+		app.component('n8n-menu-item', N8nMenuItem);
+		app.component('n8n-node-creator-node', N8nNodeCreatorNode);
+		app.component('n8n-node-icon', N8nNodeIcon);
+		app.component('n8n-notice', N8nNotice);
+		app.component('n8n-option', N8nOption);
 		app.component('n8n-popover', N8nPopover);
-		// app.component('n8n-pulse', N8nPulse);
-		// app.component('n8n-select', N8nSelect);
-		// app.component('n8n-spinner', N8nSpinner);
-		// app.component('n8n-sticky', N8nSticky);
-		// app.component('n8n-radio-buttons', N8nRadioButtons);
-		// app.component('n8n-tags', N8nTags);
+		app.component('n8n-pulse', N8nPulse);
+		app.component('n8n-radio-buttons', N8nRadioButtons);
+		app.component('n8n-select', N8nSelect);
+		app.component('n8n-spinner', N8nSpinner);
+		app.component('n8n-sticky', N8nSticky);
+		app.component('n8n-tags', N8nTags);
 		// app.component('n8n-tabs', N8nTabs);
 		// app.component('n8n-tag', N8nTag);
 		app.component('n8n-text', N8nText);

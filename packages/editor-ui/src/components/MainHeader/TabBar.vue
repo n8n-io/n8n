@@ -7,7 +7,7 @@
 			[$style.menuCollapsed]: mainSidebarCollapsed,
 		}"
 	>
-		<n8n-radio-buttons :value="activeTab" :options="items" @input="onSelect" />
+		<n8n-radio-buttons :modelValue="activeTab" :options="items" @update:modelValue="onSelect" />
 	</div>
 </template>
 

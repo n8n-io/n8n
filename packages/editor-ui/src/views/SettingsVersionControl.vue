@@ -307,11 +307,11 @@ const refreshBranches = async () => {
 					<label>{{ locale.baseText('settings.versionControl.branches') }}</label>
 					<div :class="$style.branchSelection">
 						<n8n-select
-							:value="versionControlStore.preferences.branchName"
+							:modelValue="versionControlStore.preferences.branchName"
 							class="mb-s"
 							size="medium"
 							filterable
-							@input="onSelect"
+							@update:modelValue="onSelect"
 							data-test-id="version-control-branch-select"
 						>
 							<n8n-option

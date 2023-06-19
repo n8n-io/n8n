@@ -27,13 +27,13 @@
 			<n8n-radio-buttons
 				v-if="shouldShowExpressionSelector"
 				size="small"
-				:value="selectedView"
+				:modelValue="selectedView"
 				:disabled="isReadOnly"
-				@input="onViewSelected"
 				:options="[
 					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
 					{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
 				]"
+				@update:modelValue="onViewSelected"
 			/>
 		</div>
 	</div>

@@ -5,7 +5,6 @@
 			[$style.hasAction]: !showActionArrow,
 		}"
 		v-bind="$attrs"
-		v-bind="$attrs"
 	>
 		<div :class="$style.nodeIcon">
 			<slot name="icon" />

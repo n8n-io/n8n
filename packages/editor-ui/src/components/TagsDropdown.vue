@@ -2,7 +2,7 @@
 	<div :class="{ 'tags-container': true, focused }" @keydown.stop v-click-outside="onClickOutside">
 		<n8n-select
 			:popperAppendToBody="false"
-			:value="appliedTags"
+			:modelValue="appliedTags"
 			:loading="tagsStore.isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"

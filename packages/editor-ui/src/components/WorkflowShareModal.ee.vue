@@ -55,7 +55,7 @@
 						<template #actions="{ user }">
 							<n8n-select
 								:class="$style.roleSelect"
-								value="editor"
+								modelValue="editor"
 								size="small"
 								@change="onRoleAction(user, $event)"
 							>

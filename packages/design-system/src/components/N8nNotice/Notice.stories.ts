@@ -13,6 +13,7 @@ export default {
 };
 
 const SlotTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nNotice,
@@ -22,6 +23,7 @@ const SlotTemplate: StoryFn = (args, { argTypes }) => ({
 });
 
 const PropTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nNotice,

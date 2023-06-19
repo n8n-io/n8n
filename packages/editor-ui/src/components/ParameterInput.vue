@@ -252,7 +252,7 @@
 				ref="inputField"
 				:size="inputSize"
 				filterable
-				:value="displayValue"
+				:modelValue="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
 				"
@@ -292,7 +292,7 @@
 				:size="inputSize"
 				filterable
 				multiple
-				:value="displayValue"
+				:modelValue="displayValue"
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"

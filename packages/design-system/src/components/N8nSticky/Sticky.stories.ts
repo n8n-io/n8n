@@ -40,7 +40,7 @@ export default {
 };
 
 const methods = {
-	onInput: action('input'),
+	onInput: action('update:modelValue'),
 	onResize: action('resize'),
 	onResizeEnd: action('resizeend'),
 	onResizeStart: action('resizestart'),

@@ -27,8 +27,8 @@
 					v-if="parentNodes.length"
 					:popper-append-to-body="true"
 					size="small"
-					:value="currentNodeName"
-					@input="onSelect"
+					:modelValue="currentNodeName"
+					@update:modelValue="onSelect"
 					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 					:placeholder="$locale.baseText('ndv.input.parentNodes')"
 					filterable

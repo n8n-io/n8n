@@ -16,46 +16,44 @@
 			@resize="onResize"
 			@resizestart="onResizeStart"
 		>
-			<template>
-				<div
-					v-show="!editMode"
-					class="ph-no-capture"
-					:class="$style.wrapper"
-					@dblclick.stop="onDoubleClick"
-				>
-					<n8n-markdown
-						theme="sticky"
-						:content="content"
-						:withMultiBreaks="true"
-						@markdown-click="onMarkdownClick"
-					/>
-				</div>
-				<div
-					v-show="editMode"
-					@click.stop
-					@mousedown.stop
-					@mouseup.stop
-					@keydown.esc="onInputBlur"
-					@keydown.stop
-					@wheel.stop
-					class="sticky-textarea ph-no-capture"
-					:class="{ 'full-height': !shouldShowFooter }"
-				>
-					<n8n-input
-						:value="content"
-						type="textarea"
-						:rows="5"
-						@blur="onInputBlur"
-						@input="onInput"
-						ref="input"
-					/>
-				</div>
-				<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-					<n8n-text size="xsmall" aligh="right">
-						<span v-html="t('sticky.markdownHint')"></span>
-					</n8n-text>
-				</div>
-			</template>
+			<div
+				v-show="!editMode"
+				class="ph-no-capture"
+				:class="$style.wrapper"
+				@dblclick.stop="onDoubleClick"
+			>
+				<n8n-markdown
+					theme="sticky"
+					:content="content"
+					:withMultiBreaks="true"
+					@markdown-click="onMarkdownClick"
+				/>
+			</div>
+			<div
+				v-show="editMode"
+				@click.stop
+				@mousedown.stop
+				@mouseup.stop
+				@keydown.esc="onInputBlur"
+				@keydown.stop
+				@wheel.stop
+				class="sticky-textarea ph-no-capture"
+				:class="{ 'full-height': !shouldShowFooter }"
+			>
+				<n8n-input
+					:modelValue="content"
+					type="textarea"
+					:rows="5"
+					@blur="onInputBlur"
+					@update:modelValue="onInput"
+					ref="input"
+				/>
+			</div>
+			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
+				<n8n-text size="xsmall" aligh="right">
+					<span v-html="t('sticky.markdownHint')"></span>
+				</n8n-text>
+			</div>
 		</n8n-resize-wrapper>
 	</div>
 </template>

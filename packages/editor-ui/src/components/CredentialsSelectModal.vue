@@ -24,7 +24,7 @@
 					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					ref="select"
-					:value="selected"
+					:modelValue="selected"
 					@change="onSelect"
 					data-test-id="new-credential-type-select"
 				>

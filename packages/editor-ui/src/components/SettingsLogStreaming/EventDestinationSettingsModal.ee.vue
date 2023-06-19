@@ -83,7 +83,7 @@
 						:underline="false"
 					>
 						<n8n-select
-							:value="typeSelectValue"
+							:modelValue="typeSelectValue"
 							:placeholder="typeSelectPlaceholder"
 							@change="onTypeSelectInput"
 							data-test-id="select-destination-type"
