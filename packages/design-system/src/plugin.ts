@@ -21,11 +21,11 @@ import {
 	N8nIconButton,
 	N8nInfoAccordion,
 	N8nInfoTip,
-	// N8nInput,
-	// N8nInputLabel,
-	// N8nInputNumber,
-	// N8nLink,
-	// N8nLoading,
+	N8nInput,
+	N8nInputLabel,
+	N8nInputNumber,
+	N8nLink,
+	N8nLoading,
 	// N8nMarkdown,
 	// N8nMenu,
 	// N8nMenuItem,
@@ -76,11 +76,11 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-icon-button', N8nIconButton);
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-info-tip', N8nInfoTip);
-		// app.component('n8n-input', N8nInput);
-		// app.component('n8n-input-label', N8nInputLabel);
-		// app.component('n8n-input-number', N8nInputNumber);
-		// app.component('n8n-loading', N8nLoading);
-		// app.component('n8n-link', N8nLink);
+		app.component('n8n-input', N8nInput);
+		app.component('n8n-input-label', N8nInputLabel);
+		app.component('n8n-input-number', N8nInputNumber);
+		app.component('n8n-link', N8nLink);
+		app.component('n8n-loading', N8nLoading);
 		// app.component('n8n-markdown', N8nMarkdown);
 		// app.component('n8n-menu', N8nMenu);
 		// app.component('n8n-menu-item', N8nMenuItem);

@@ -36,8 +36,7 @@
 </template>
 
 <script lang="ts">
-import { Skeleton as ElSkeleton, SkeletonItem as ElSkeletonItem } from 'element-ui';
-
+import { ElSkeleton, ElSkeletonItem } from 'element-plus';
 import { defineComponent } from 'vue';
 
 export default defineComponent({

@@ -10,11 +10,11 @@
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
-						:value="curlCommand"
+						:modelValue="curlCommand"
 						type="textarea"
 						:rows="5"
 						:placeholder="$locale.baseText('importCurlModal.input.placeholder')"
-						@input="onInput"
+						@update:modelValue="onInput"
 						@focus="$event.target.select()"
 						ref="input"
 					/>

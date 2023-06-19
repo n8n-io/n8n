@@ -74,6 +74,7 @@ Input.args = {
 };
 
 const ManyTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nInputNumber,

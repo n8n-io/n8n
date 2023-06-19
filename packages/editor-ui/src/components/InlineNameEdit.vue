@@ -16,10 +16,10 @@
 			</div>
 			<div v-else :class="$style.nameInput">
 				<n8n-input
-					:value="name"
+					:modelValue="name"
 					size="xlarge"
 					ref="nameInput"
-					@input="onNameEdit"
+					@update:modelValue="onNameEdit"
 					@change="disableNameEdit"
 					:maxlength="64"
 				/>

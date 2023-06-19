@@ -134,9 +134,9 @@
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
-					:value="displayValue"
+					:modelValue="displayValue"
 					:disabled="isReadOnly"
-					@input="onTextInputChange"
+					@update:modelValue="onTextInputChange"
 					@change="valueChanged"
 					@keydown.stop
 					@focus="setFocus"
@@ -178,9 +178,8 @@
 					v-model="tempValue"
 					:size="inputSize"
 					type="text"
-					:value="tempValue"
 					:disabled="isReadOnly"
-					@change="valueChanged"
+					@update:modelValue="valueChanged"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -213,19 +212,19 @@
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:value="displayValue"
+				:modelValue="displayValue"
 				:controls="false"
 				:max="getArgument('maxValue')"
 				:min="getArgument('minValue')"
 				:precision="getArgument('numberPrecision')"
 				:disabled="isReadOnly"
+				:title="displayTitle"
+				:placeholder="parameter.placeholder"
 				@change="valueChanged"
-				@input="onTextInputChange"
+				@update:modelValue="onTextInputChange"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
-				:title="displayTitle"
-				:placeholder="parameter.placeholder"
 			/>
 
 			<credentials-select
@@ -324,7 +323,7 @@
 			<n8n-input
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
-				:value="JSON.stringify(displayValue)"
+				:modelValue="JSON.stringify(displayValue)"
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>

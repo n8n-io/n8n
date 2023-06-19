@@ -14,7 +14,7 @@
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input
 				size="medium"
-				:value="filter"
+				:modelValue="filter"
 				:clearable="true"
 				@input="onFilterInput"
 				ref="search"

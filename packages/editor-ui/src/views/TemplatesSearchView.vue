@@ -31,9 +31,9 @@
 				</div>
 				<div :class="$style.search">
 					<n8n-input
-						:value="search"
+						:modelValue="search"
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
-						@input="onSearchInput"
+						@update:modelValue="onSearchInput"
 						@blur="trackSearch"
 						clearable
 					>

@@ -1,6 +1,6 @@
 <template>
 	<div :class="['n8n-menu-item', $style.item]">
-		<el-submenu
+		<el-sub-menu
 			v-if="item.children && item.children.length > 0"
 			:id="item.id"
 			:class="{
@@ -40,7 +40,7 @@
 					<n8n-icon :icon="child.secondaryIcon.name" :size="child.secondaryIcon.size || 'small'" />
 				</span>
 			</el-menu-item>
-		</el-submenu>
+		</el-sub-menu>
 		<n8n-tooltip
 			v-else
 			placement="right"
@@ -77,7 +77,7 @@
 </template>
 
 <script lang="ts">
-import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
+import { ElSubMenu, ElMenuItem } from 'element-plus';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import type { PropType } from 'vue';
@@ -87,7 +87,7 @@ import type { IMenuItem, RouteObject } from '../../types';
 export default defineComponent({
 	name: 'n8n-menu-item',
 	components: {
-		ElSubmenu,
+		ElSubMenu,
 		ElMenuItem,
 		N8nIcon,
 		N8nTooltip,

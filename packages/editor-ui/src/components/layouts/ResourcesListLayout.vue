@@ -63,9 +63,9 @@
 					<div class="mb-xs">
 						<div :class="$style['filters-row']">
 							<n8n-input
+								v-model="filters.search"
 								:class="[$style['search'], 'mr-2xs']"
 								:placeholder="$locale.baseText(`${resourceKey}.search.placeholder`)"
-								v-model="filters.search"
 								size="medium"
 								clearable
 								ref="search"

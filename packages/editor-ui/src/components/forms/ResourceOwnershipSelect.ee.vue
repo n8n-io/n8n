@@ -2,8 +2,8 @@
 	<n8n-menu
 		:items="menuItems"
 		mode="tabs"
-		:value="value ? 'owner' : 'all'"
-		@input="onSelectOwner"
+		:modelValue="value ? 'owner' : 'all'"
+		@update:modelValue="onSelectOwner"
 	/>
 </template>
 

@@ -309,8 +309,8 @@ onBeforeMount(() => {
 								size="medium"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								:placeholder="locale.baseText('executionsFilter.savedDataValuePlaceholder')"
-								:value="filter.metadata[0]?.value"
-								@input="onFilterMetaChange(0, 'value', $event)"
+								:modelValue="filter.metadata[0]?.value"
+								@update:modelValue="onFilterMetaChange(0, 'value', $event)"
 								data-test-id="execution-filter-saved-data-value-input"
 							/>
 						</n8n-tooltip>

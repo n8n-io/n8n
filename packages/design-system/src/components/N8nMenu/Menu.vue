@@ -53,7 +53,7 @@
 </template>
 
 <script lang="ts">
-import { Menu as ElMenu } from 'element-ui';
+import { ElMenu } from 'element-plus';
 import N8nMenuItem from '../N8nMenuItem';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -96,7 +96,7 @@ export default defineComponent({
 			type: Array as PropType<IMenuItem[]>,
 			default: (): IMenuItem[] => [],
 		},
-		value: {
+		modelValue: {
 			type: String,
 			default: '',
 		},
@@ -148,7 +148,7 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		value(value: string) {
+		modelValue(value: string) {
 			this.activeTab = value;
 		},
 	},

@@ -16,11 +16,11 @@
 							v-model="tempValue"
 							type="textarea"
 							ref="inputField"
-							:value="value"
+							:modelValue="value"
 							:placeholder="$locale.nodeText().placeholder(parameter, path)"
 							:readOnly="isReadOnly"
-							@change="valueChanged"
 							:rows="15"
+							@update:modelValue="valueChanged"
 						/>
 					</div>
 				</n8n-input-label>

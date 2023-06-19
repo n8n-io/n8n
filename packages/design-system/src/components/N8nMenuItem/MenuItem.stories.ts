@@ -1,5 +1,5 @@
 import N8nMenuItem from '.';
-import { Menu as ElMenu } from 'element-ui';
+import { ElMenu } from 'element-plus';
 import type { StoryFn } from '@storybook/vue3';
 
 export default {

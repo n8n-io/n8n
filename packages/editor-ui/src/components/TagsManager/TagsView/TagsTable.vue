@@ -15,9 +15,9 @@
 					<transition name="fade" mode="out-in">
 						<n8n-input
 							v-if="scope.row.create || scope.row.update"
-							:value="newName"
+							:modelValue="newName"
 							:maxlength="maxLength"
-							@input="onNewNameChange"
+							@update:modelValue="onNewNameChange"
 							ref="nameInput"
 						></n8n-input>
 						<span v-else-if="scope.row.delete">

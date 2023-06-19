@@ -48,9 +48,9 @@
 					>
 						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
 							<n8n-input
-								:value="deleteConfirmText"
+								:modelValue="deleteConfirmText"
 								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-								@input="setConfirmText"
+								@update:modelValue="setConfirmText"
 							/>
 						</n8n-input-label>
 					</div>

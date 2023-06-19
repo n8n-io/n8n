@@ -91,7 +91,7 @@
 								type="text"
 								size="medium"
 								v-model="workflowSettings.callerIds"
-								@input="onCallerIdsInput"
+								@update:modelValue="onCallerIdsInput"
 							/>
 						</el-col>
 					</el-row>
@@ -287,8 +287,8 @@
 							<n8n-input
 								size="medium"
 								:disabled="readOnlyEnv"
-								:value="timeoutHMS.hours"
-								@input="(value) => setTimeout('hours', value)"
+								:modelValue="timeoutHMS.hours"
+								@update:modelValue="(value) => setTimeout('hours', value)"
 								:min="0"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
@@ -298,10 +298,10 @@
 							<n8n-input
 								size="medium"
 								:disabled="readOnlyEnv"
-								:value="timeoutHMS.minutes"
-								@input="(value) => setTimeout('minutes', value)"
+								:modelValue="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
+								@update:modelValue="(value) => setTimeout('minutes', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
@@ -310,10 +310,10 @@
 							<n8n-input
 								size="medium"
 								:disabled="readOnlyEnv"
-								:value="timeoutHMS.seconds"
-								@input="(value) => setTimeout('seconds', value)"
+								:modelValue="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
+								@update:modelValue="(value) => setTimeout('seconds', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>

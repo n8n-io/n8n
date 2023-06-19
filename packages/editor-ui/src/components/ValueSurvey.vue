@@ -38,7 +38,7 @@
 							v-model="form.email"
 							placeholder="Your email address"
 							size="medium"
-							@input="onInputChange"
+							@update:modelValue="onInputChange"
 						/>
 						<div :class="$style.button">
 							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />

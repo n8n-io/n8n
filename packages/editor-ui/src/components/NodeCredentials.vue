@@ -17,7 +17,7 @@
 			>
 				<div v-if="readonly || isReadOnly">
 					<n8n-input
-						:value="getSelectedName(credentialTypeDescription.name)"
+						:modelValue="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
 						data-test-id="node-credentials-select"

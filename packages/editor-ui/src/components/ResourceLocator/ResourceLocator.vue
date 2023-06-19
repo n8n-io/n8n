@@ -99,7 +99,7 @@
 									v-else
 									:class="{ [$style.selectInput]: isListMode }"
 									:size="inputSize"
-									:value="valueToDisplay"
+									:modelValue="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
@@ -107,7 +107,7 @@
 									type="text"
 									ref="input"
 									data-test-id="rlc-input"
-									@input="onInputChange"
+									@update:modelValue="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
