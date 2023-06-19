@@ -81,6 +81,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import TimeAgo from '@/components/TimeAgo.vue';
 
 type ActivatorRef = InstanceType<typeof WorkflowActivator>;
 
@@ -104,6 +105,7 @@ export default defineComponent({
 		};
 	},
 	components: {
+		TimeAgo,
 		WorkflowActivator,
 	},
 	props: {

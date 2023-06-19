@@ -17,6 +17,7 @@ const defaultSettings: IN8nUISettings = {
 		advancedExecutionFilters: true,
 		variables: true,
 		versionControl: true,
+		auditLogs: true,
 	},
 	executionMode: 'regular',
 	executionTimeout: 0,
