@@ -899,12 +899,12 @@ export const predefinedWorkflowExecuteTests: WorkflowTestData[] = [
 				Set2: [
 					[
 						{
+							value1: 1,
 							value2: 2,
 						},
 					],
 					[
 						{
-							value1: 1,
 							value2: 2,
 						},
 					],
@@ -1159,10 +1159,10 @@ export const predefinedWorkflowExecuteTests: WorkflowTestData[] = [
 			nodeExecutionOrder: [
 				'Start',
 				'Set1',
-				'Set2',
 				'Set3',
-				'Merge1',
 				'Set4',
+				'Set2',
+				'Merge1',
 				'Merge2',
 				'Merge3',
 				'Merge4',
@@ -1920,7 +1920,6 @@ export const predefinedWorkflowExecuteTests: WorkflowTestData[] = [
 			},
 		},
 	},
-
 	{
 		description:
 			'should display the correct parameters and so correct data when simplified node-versioning is used',
@@ -2062,6 +2061,532 @@ export const predefinedWorkflowExecuteTests: WorkflowTestData[] = [
 					],
 				],
 			},
+		},
+	},
+	{
+		description: 'should execute nodes in the correct order, the most top-left one first',
+		input: {
+			workflowData: {
+				nodes: [
+					{
+						parameters: {},
+						id: '3e4ab8bb-2e22-45d9-9287-0265f2ee9c4b',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						position: [300, 620],
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '444650ce-464a-4630-9e24-109056105167',
+						name: 'Wait',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [740, 420],
+						webhookId: '1f4118f8-591a-48fe-a68d-6fec3c99b7a8',
+					},
+					{
+						parameters: {
+							values: {
+								number: [
+									{
+										name: 'wait',
+									},
+								],
+							},
+							options: {},
+						},
+						id: '7a74a097-6563-4f1e-a327-97e5a43b8acb',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 2,
+						position: [480, 620],
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '9039eebf-6c11-4ce0-b8ad-0812774019d4',
+						name: 'Wait1',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [740, 800],
+						webhookId: '35ceb27a-3fb1-47a9-8678-2df16dcecbcb',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '7f130b16-8fac-4d93-a0ef-56dfe575f952',
+						name: 'Wait2',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [940, 420],
+						webhookId: 'cc8e2fd2-afc8-4a17-afda-fda943f4bd83',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '063e2097-b27a-4775-923c-5b839c434640',
+						name: 'Wait3',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1300, 420],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'ec908b56-8829-4566-a0b7-ced4bd16c550',
+						name: 'Wait4',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [940, 800],
+						webhookId: 'cc8e2fd2-afc8-4a17-afda-fda943f4bd83',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'a7d279bd-7241-4744-8ef6-41468131dfa7',
+						name: 'Wait5',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1140, 800],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'f620aff1-7d9c-453f-a2c1-6e3b9a1664d3',
+						name: 'Wait6',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [760, 200],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '1d9bac9b-8197-4ad9-9189-f947068f1a46',
+						name: 'Wait7',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1060, 200],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '9ad0cc8c-4922-440e-913c-39c8570ddcbc',
+						name: 'Wait8',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [740, 600],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'af0ca700-b6ed-40c1-8c62-bbadb6fd81f7',
+						name: 'Wait9',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1040, 580],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'f2553f9f-670f-4b54-8b89-84dd5a27a244',
+						name: 'Wait10',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1660, 340],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '0f4475cb-87db-4ed7-a7a0-8a67043c320b',
+						name: 'Wait11',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1660, 540],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '815f7b2a-1789-48a3-be61-931e643e6d89',
+						name: 'Wait12',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1920, 340],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'be1e11af-b8e4-40cb-af36-03613e384b5e',
+						name: 'Wait13',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1240, 580],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {},
+						id: 'cf72f99c-612f-4b76-bc8e-d77612e4faa9',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2.1,
+						position: [1300, 220],
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'bfe1dfca-a060-4c37-94d0-058739e7cfca',
+						name: 'Wait14',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [1520, 220],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							conditions: {
+								number: [
+									{
+										value1: '={{ $itemIndex }}',
+										operation: 'equal',
+										value2: 1,
+									},
+								],
+							},
+						},
+						id: 'bf7d7e54-db5f-4f20-bf3e-b07224096872',
+						name: 'IF',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [1780, -220],
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'd340f2ad-3a6a-4412-bd15-9a7dde1fcb8c',
+						name: 'Wait15',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [2020, -300],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '913a3c9c-1704-433d-9790-21ad0922e5e1',
+						name: 'Wait16',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [2020, -140],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							conditions: {
+								number: [
+									{
+										value1: '={{ $itemIndex }}',
+										operation: 'equal',
+										value2: 1,
+									},
+								],
+							},
+						},
+						id: 'df1fba53-92af-4351-b471-114dda12bef9',
+						name: 'IF1',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [1780, 120],
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: '8b3c7e63-8cd8-469d-b6d4-bf5c1953af11',
+						name: 'Wait17',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [2020, 200],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+					{
+						parameters: {
+							options: {},
+						},
+						id: 'e74c4b7c-fc76-4e48-9a0e-3195b19ce1a0',
+						name: 'Wait18',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [2020, 40],
+						webhookId: '35400ecf-3e53-4b2d-9fd7-2663bbfd830f',
+					},
+				],
+				connections: {
+					Start: {
+						main: [
+							[
+								{
+									node: 'Set',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait: {
+						main: [
+							[
+								{
+									node: 'Wait2',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Set: {
+						main: [
+							[
+								{
+									node: 'Wait',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Wait1',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Wait6',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Wait7',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Wait8',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Wait9',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait1: {
+						main: [
+							[
+								{
+									node: 'Wait4',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait2: {
+						main: [
+							[
+								{
+									node: 'Wait3',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					Wait3: {
+						main: [
+							[
+								{
+									node: 'Wait10',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Wait11',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait4: {
+						main: [
+							[
+								{
+									node: 'Wait5',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait7: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait9: {
+						main: [
+							[
+								{
+									node: 'Wait13',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait10: {
+						main: [
+							[
+								{
+									node: 'Wait12',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Merge: {
+						main: [
+							[
+								{
+									node: 'Wait14',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Wait14: {
+						main: [
+							[
+								{
+									node: 'IF',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'IF1',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					IF: {
+						main: [
+							[
+								{
+									node: 'Wait15',
+									type: 'main',
+									index: 0,
+								},
+							],
+							[
+								{
+									node: 'Wait16',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					IF1: {
+						main: [
+							[
+								{
+									node: 'Wait17',
+									type: 'main',
+									index: 0,
+								},
+							],
+							[
+								{
+									node: 'Wait18',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			},
+		},
+		output: {
+			nodeExecutionOrder: [
+				'Start',
+				'Set',
+				'Wait6',
+				'Wait7',
+				'Wait',
+				'Wait2',
+				'Merge',
+				'Wait14',
+				'IF',
+				'Wait15',
+				'Wait16',
+				'IF1',
+				'Wait18',
+				'Wait17',
+				'Wait3',
+				'Wait10',
+				'Wait12',
+				'Wait11',
+				'Wait9',
+				'Wait13',
+				'Wait8',
+				'Wait1',
+				'Wait4',
+				'Wait5',
+			],
+			nodeData: {},
 		},
 	},
 ];
