@@ -316,6 +316,11 @@ export class Server extends AbstractServer {
 			variables: {
 				limit: 0,
 			},
+			banners: {
+				v1: {
+					dismissed: false,
+				},
+			},
 		};
 	}
 
@@ -410,6 +415,16 @@ export class Server extends AbstractServer {
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
+
+		let v1Dismissed = false;
+
+		try {
+			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+		} catch {
+			// not yet in DB
+		}
+
+		this.frontendSettings.banners.v1.dismissed = v1Dismissed;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {

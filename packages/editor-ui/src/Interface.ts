@@ -1044,6 +1044,12 @@ export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
+	banners: {
+		v1: {
+			dismissed: boolean;
+			mode: 'temporary' | 'permanent';
+		};
+	};
 	modalStack: string[];
 	modals: Modals;
 	isPageLoading: boolean;
