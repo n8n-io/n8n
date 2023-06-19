@@ -14,8 +14,8 @@ export class OktaApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Okta Domain',
-			name: 'oktaDomain',
+			displayName: 'URL',
+			name: 'url',
 			type: 'string',
 			default: '',
 			placeholder: 'https://dev-123456.okta.com',
@@ -40,7 +40,7 @@ export class OktaApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.oktaDomain}}',
+			baseURL: '={{$credentials.url}}',
 			url: '/api/v1/api-tokens',
 		},
 	};
