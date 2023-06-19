@@ -25,7 +25,7 @@ export class PaloAltoApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Firewall url',
+			displayName: 'Firewall URL',
 			name: 'url',
 			type: 'string',
 			default: '',
