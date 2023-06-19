@@ -18,7 +18,7 @@ export class CiscoAMPApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Api Key',
+			displayName: 'API Key',
 			name: 'accessToken',
 			type: 'string',
 			typeOptions: { password: true },
