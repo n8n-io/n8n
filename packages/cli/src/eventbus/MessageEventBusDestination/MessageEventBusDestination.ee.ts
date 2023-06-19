@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { LoggerProxy, MessageEventBusDestinationTypeNames, jsonStringify } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import type { EventMessageTypes } from '../EventMessageClasses';
@@ -117,7 +117,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	abstract receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean>;
 
 	toString() {
-		return JSON.stringify(this.serialize());
+		return jsonStringify(this.serialize(), { replaceCircularRefs: true });
 	}
 
 	close(): void | Promise<void> {

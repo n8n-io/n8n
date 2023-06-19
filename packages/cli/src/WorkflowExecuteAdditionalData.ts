@@ -734,14 +734,15 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
  * Returns hook functions to save workflow execution and call error workflow
  * for running with queues. Manual executions should never run on queues as
  * they are always executed in the main process.
- *
+ * Also adds hooks to publish events to the event log from the worker to the main
+ * instance.
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
+	const redisService = Container.get(RedisService);
 	return {
 		nodeExecuteBefore: [
-			async function (nodeName: string): Promise<void> {
-				// const nodeInWorkflow = this.workflowData.nodes.find((node) => node.name === nodeName);
-				const redisService = Container.get(RedisService);
+			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				const nodeInWorkflow = this.workflowData.nodes.find((node) => node.name === nodeName);
 				await redisService.publishToEventLog(
 					new EventMessageNode({
 						eventName: 'n8n.node.started',
@@ -750,7 +751,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							nodeName,
 							workflowId: this.workflowData.id?.toString(),
 							workflowName: this.workflowData.name,
-							// nodeType: nodeInWorkflow?.type,
+							nodeType: nodeInWorkflow?.type,
 						},
 					}),
 				);
@@ -764,7 +765,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				executionData: IRunExecutionData,
 			): Promise<void> {
 				const nodeInWorkflow = this.workflowData.nodes.find((node) => node.name === nodeName);
-				const redisService = Container.get(RedisService);
 				await redisService.publishToEventLog(
 					new EventMessageNode({
 						eventName: 'n8n.node.finished',
@@ -781,7 +781,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (workflow: Workflow, data: IRunExecutionData): Promise<void> {
-				const redisService = Container.get(RedisService);
 				await redisService.publishToEventLog(
 					new EventMessageWorkflow({
 						eventName: 'n8n.workflow.started',
@@ -871,7 +870,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						status: fullExecutionData.status,
 					});
 
-					const redisService = Container.get(RedisService);
 					if (fullExecutionData.status === 'success') {
 						await redisService.publishToEventLog(
 							new EventMessageWorkflow({

@@ -6,11 +6,13 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { EVENT_BUS_REDIS_CHANNEL } from '../eventbus/MessageEventBus/MessageEventBusHelper';
 import type { AbstractEventMessage } from '../eventbus/EventMessageClasses/AbstractEventMessage';
 
+type MessageHandler = (channel: string, message: string) => void;
+
 @Service()
 export class RedisService {
 	static redisClient: Redis | undefined;
 
-	static messageHandlers: Map<string, (channel: string, message: string) => void> = new Map();
+	static messageHandlers: Map<string, MessageHandler> = new Map();
 
 	static isInitialized = false;
 
@@ -62,11 +64,6 @@ export class RedisService {
 			}
 		});
 
-		// TODO: Debug Redis messages, remove at some point...
-		RedisService.messageHandlers.set('default', (channel: string, message: string) => {
-			Logger.debug(`Redis received ${message} from ${channel}`);
-		});
-
 		RedisService.redisClient.on('message', (channel: string, message: string) => {
 			RedisService.messageHandlers.forEach((handler) => handler(channel, message));
 		});
@@ -108,5 +105,13 @@ export class RedisService {
 
 	async publishToEventLog(message: AbstractEventMessage): Promise<void> {
 		await this.publish(EVENT_BUS_REDIS_CHANNEL, message.toString());
+	}
+
+	addMessageHandler(handlerName: string, handler: MessageHandler): void {
+		RedisService.messageHandlers.set(handlerName, handler);
+	}
+
+	removeMessageHandler(handlerName: string): void {
+		RedisService.messageHandlers.delete(handlerName);
 	}
 }

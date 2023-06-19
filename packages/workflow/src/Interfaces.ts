@@ -1744,6 +1744,7 @@ export interface IWorkflowHooksOptionalParameters {
 	parentProcessMode?: string;
 	retryOf?: string;
 	sessionId?: string;
+	userId?: string;
 }
 
 export namespace WorkflowSettings {

@@ -3,9 +3,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
-import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
-import type { EventMessageWorkflowOptions } from './EventMessageClasses/EventMessageWorkflow';
-import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
 import type { EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
 import { eventBus } from './MessageEventBus/MessageEventBus';
 import {
@@ -19,22 +16,19 @@ import {
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import type { EventMessageTypes, FailedEventSummary } from './EventMessageClasses';
 import { eventNamesAll } from './EventMessageClasses';
-import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
-import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
 import { BadRequestError } from '@/ResponseHelper';
 import type {
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationOptions,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames, EventMessageTypeNames } from 'n8n-workflow';
-import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
-import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 import { RestController, Get, Post, Delete, Authorized } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
 import type { DeleteResult } from 'typeorm';
 import { AuthenticatedRequest } from '@/requests';
+import { getEventMessageObjectByType } from './EventMessageClasses/Helpers';
 
 // ----------------------------------------
 // TypeGuards
@@ -137,20 +131,7 @@ export class EventBusController {
 	async postEvent(req: express.Request): Promise<EventMessageTypes | undefined> {
 		let msg: EventMessageTypes | undefined;
 		if (isEventMessageOptions(req.body)) {
-			switch (req.body.__type) {
-				case EventMessageTypeNames.workflow:
-					msg = new EventMessageWorkflow(req.body as EventMessageWorkflowOptions);
-					break;
-				case EventMessageTypeNames.audit:
-					msg = new EventMessageAudit(req.body as EventMessageAuditOptions);
-					break;
-				case EventMessageTypeNames.node:
-					msg = new EventMessageNode(req.body as EventMessageNodeOptions);
-					break;
-				case EventMessageTypeNames.generic:
-				default:
-					msg = new EventMessageGeneric(req.body);
-			}
+			msg = getEventMessageObjectByType(req.body);
 			await eventBus.send(msg);
 		} else {
 			throw new BadRequestError(

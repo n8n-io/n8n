@@ -7,7 +7,7 @@ import bodyParser from 'body-parser';
 import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
-import type { WebhookHttpMethod } from 'n8n-workflow';
+import { LoggerProxy, type WebhookHttpMethod } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -25,6 +25,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 import { RedisService } from './services/RedisService';
+import { EVENT_BUS_REDIS_CHANNEL } from './eventbus/MessageEventBus/MessageEventBusHelper';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -182,6 +183,14 @@ export abstract class AbstractServer {
 		const redisService = Container.get(RedisService);
 		await redisService.init();
 		await redisService.subscribeToEventLog();
+		redisService.addMessageHandler(
+			'AbstractServerEventLogReceiver',
+			(channel: string, message: string) => {
+				if (channel === EVENT_BUS_REDIS_CHANNEL) {
+					LoggerProxy.debug(`Redis ${channel}: ${message} `);
+				}
+			},
+		);
 	}
 
 	// ----------------------------------------
