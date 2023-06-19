@@ -1,84 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { TLP } from '../../helpers/interfaces';
 
-export const alertOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation Name or ID',
-		name: 'operation',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		noDataExpression: true,
-		required: true,
-		options: [
-			{
-				name: 'Count',
-				value: 'count',
-				action: 'Count alerts',
-			},
-			{
-				name: 'Create',
-				value: 'create',
-				action: 'Create alert',
-			},
-			{
-				name: 'Execute Responder',
-				value: 'executeResponder',
-				action: 'Execute a responder on the specified alert',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				action: 'Get an alert',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				action: 'Get many alerts',
-			},
-			{
-				name: 'Mark as Read',
-				value: 'markAsRead',
-				action: 'Mark the alert as read',
-			},
-			{
-				name: 'Mark as Unread',
-				value: 'markAsUnread',
-				action: 'Mark the alert as unread',
-			},
-			{
-				name: 'Merge',
-				value: 'merge',
-				action: 'Merge alert into an existing case',
-			},
-			{
-				name: 'Promote',
-				value: 'promote',
-				action: 'Promote an alert into a case',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				action: 'Update alert',
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-			},
-		},
-		default: 'create',
-	},
-];
-
-export const alertFields: INodeProperties[] = [
+const alertFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['alert'],
 			},
 		},
@@ -91,7 +21,7 @@ export const alertFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['alert'],
 				returnAll: [false],
 			},
@@ -793,7 +723,7 @@ export const alertFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['alert'],
 			},
 		},
@@ -841,7 +771,7 @@ export const alertFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['alert'],
-				operation: ['getAll', 'count'],
+				operation: ['getMany', 'count'],
 			},
 		},
 		options: [
@@ -956,4 +886,73 @@ export const alertFields: INodeProperties[] = [
 			},
 		],
 	},
+];
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		required: true,
+		options: [
+			{
+				name: 'Count',
+				value: 'count',
+				action: 'Count alerts',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create alert',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				action: 'Execute a responder on the specified alert',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get an alert',
+			},
+			{
+				name: 'Get Many',
+				value: 'getMany',
+				action: 'Get many alerts',
+			},
+			{
+				name: 'Mark as Read',
+				value: 'markAsRead',
+				action: 'Mark the alert as read',
+			},
+			{
+				name: 'Mark as Unread',
+				value: 'markAsUnread',
+				action: 'Mark the alert as unread',
+			},
+			{
+				name: 'Merge',
+				value: 'merge',
+				action: 'Merge alert into an existing case',
+			},
+			{
+				name: 'Promote',
+				value: 'promote',
+				action: 'Promote an alert into a case',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update alert',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['alert'],
+			},
+		},
+		default: 'create',
+	},
+	...alertFields,
 ];

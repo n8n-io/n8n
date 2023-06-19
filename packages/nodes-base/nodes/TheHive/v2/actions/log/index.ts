@@ -1,48 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const logOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		noDataExpression: true,
-		type: 'options',
-		required: true,
-		default: 'getAll',
-		displayOptions: {
-			show: {
-				resource: ['log'],
-			},
-		},
-		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create task log',
-				action: 'Create a log',
-			},
-			{
-				name: 'Execute Responder',
-				value: 'executeResponder',
-				description: 'Execute a responder on a selected log',
-				action: 'Execute a responder',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get many task logs',
-				action: 'Get many logs',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get a single log',
-				action: 'Get a log',
-			},
-		],
-	},
-];
-
-export const logFields: INodeProperties[] = [
+const logFields: INodeProperties[] = [
 	{
 		displayName: 'Task ID',
 		name: 'taskId',
@@ -52,7 +10,7 @@ export const logFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['log'],
-				operation: ['create', 'getAll'],
+				operation: ['create', 'getMany'],
 			},
 		},
 		description: 'ID of the task',
@@ -63,7 +21,7 @@ export const logFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['log'],
 			},
 		},
@@ -76,7 +34,7 @@ export const logFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['log'],
 				returnAll: [false],
 			},
@@ -219,4 +177,47 @@ export const logFields: INodeProperties[] = [
 			},
 		],
 	},
+];
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		noDataExpression: true,
+		type: 'options',
+		required: true,
+		default: 'getMany',
+		displayOptions: {
+			show: {
+				resource: ['log'],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create task log',
+				action: 'Create a log',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				description: 'Execute a responder on a selected log',
+				action: 'Execute a responder',
+			},
+			{
+				name: 'Get Many',
+				value: 'getMany',
+				description: 'Get many task logs',
+				action: 'Get many logs',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a single log',
+				action: 'Get a log',
+			},
+		],
+	},
+	...logFields,
 ];

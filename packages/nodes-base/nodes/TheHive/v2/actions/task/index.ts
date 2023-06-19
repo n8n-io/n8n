@@ -1,61 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const taskOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation Name or ID',
-		name: 'operation',
-		default: 'getAll',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		noDataExpression: true,
-		required: true,
-		options: [
-			{
-				name: 'Count',
-				value: 'count',
-				action: 'Count tasks',
-			},
-			{
-				name: 'Create',
-				value: 'create',
-				action: 'Create a task',
-			},
-			{
-				name: 'Execute Responder',
-				value: 'executeResponder',
-				action: 'Execute a responder on the specified task',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				action: 'Get a single task',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				action: 'Get many asks of a specific case',
-			},
-			{
-				name: 'Search',
-				value: 'search',
-				action: 'Search tasks',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				action: 'Update a task',
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: ['task'],
-			},
-		},
-	},
-];
-
-export const taskFields: INodeProperties[] = [
+const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Task ID',
 		name: 'id',
@@ -79,7 +24,7 @@ export const taskFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['task'],
-				operation: ['create', 'getAll'],
+				operation: ['create', 'getMany'],
 			},
 		},
 	},
@@ -89,7 +34,7 @@ export const taskFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['search', 'getAll'],
+				operation: ['search', 'getMany'],
 				resource: ['task'],
 			},
 		},
@@ -102,7 +47,7 @@ export const taskFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['search', 'getAll'],
+				operation: ['search', 'getMany'],
 				resource: ['task'],
 				returnAll: [false],
 			},
@@ -341,7 +286,7 @@ export const taskFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
+				operation: ['getMany', 'search'],
 				resource: ['task'],
 			},
 		},
@@ -442,4 +387,58 @@ export const taskFields: INodeProperties[] = [
 			},
 		],
 	},
+];
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		default: 'getMany',
+		type: 'options',
+		noDataExpression: true,
+		required: true,
+		options: [
+			{
+				name: 'Count',
+				value: 'count',
+				action: 'Count tasks',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create a task',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				action: 'Execute a responder on the specified task',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get a single task',
+			},
+			{
+				name: 'Get Many',
+				value: 'getMany',
+				action: 'Get many asks of a specific case',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search tasks',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update a task',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['task'],
+			},
+		},
+	},
+	...taskFields,
 ];

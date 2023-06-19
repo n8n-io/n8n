@@ -1,65 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { TLP } from '../../helpers/interfaces';
 
-export const caseOperations: INodeProperties[] = [
-	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Operation',
-		name: 'operation',
-		default: 'getAll',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		noDataExpression: true,
-		required: true,
-		options: [
-			{
-				name: 'Count',
-				value: 'count',
-				action: 'Count a case',
-			},
-			{
-				name: 'Create',
-				value: 'create',
-				action: 'Create a case',
-			},
-			{
-				name: 'Execute Responder',
-				value: 'executeResponder',
-				action: 'Execute a responder on the specified case',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				action: 'Get a single case',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				action: 'Get many cases',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				action: 'Update a case',
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: ['case'],
-			},
-		},
-	},
-];
-
-export const caseFields: INodeProperties[] = [
+const caseFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['case'],
 			},
 		},
@@ -72,7 +21,7 @@ export const caseFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['case'],
 				returnAll: [false],
 			},
@@ -630,7 +579,7 @@ export const caseFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getMany'],
 				resource: ['case'],
 			},
 		},
@@ -658,7 +607,7 @@ export const caseFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['case'],
-				operation: ['getAll', 'count'],
+				operation: ['getMany', 'count'],
 			},
 		},
 		options: [
@@ -869,4 +818,53 @@ export const caseFields: INodeProperties[] = [
 			},
 		],
 	},
+];
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		default: 'getMany',
+		type: 'options',
+		noDataExpression: true,
+		required: true,
+		options: [
+			{
+				name: 'Count',
+				value: 'count',
+				action: 'Count a case',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create a case',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				action: 'Execute a responder on the specified case',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get a single case',
+			},
+			{
+				name: 'Get Many',
+				value: 'getMany',
+				action: 'Get many cases',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update a case',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['case'],
+			},
+		},
+	},
+	...caseFields,
 ];

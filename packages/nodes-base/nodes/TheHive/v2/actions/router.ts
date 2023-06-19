@@ -221,7 +221,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 					responseData = await theHiveApiRequest.call(this, 'GET', `/alert/${alertId}`, {}, qs);
 				}
-				if (operation === 'getAll') {
+				if (operation === 'getMany') {
 					const credentials = await this.getCredentials('theHiveApi');
 
 					const returnAll = this.getNodeParameter('returnAll', i);
@@ -636,7 +636,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 				}
 
-				if (operation === 'getAll') {
+				if (operation === 'getMany') {
 					const credentials = await this.getCredentials('theHiveApi');
 
 					const returnAll = this.getNodeParameter('returnAll', i);
@@ -975,7 +975,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 				}
 
-				if (operation === 'getAll') {
+				if (operation === 'getMany') {
 					const credentials = await this.getCredentials('theHiveApi');
 
 					const returnAll = this.getNodeParameter('returnAll', i);
@@ -1220,7 +1220,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 				}
 
-				if (operation === 'getAll') {
+				if (operation === 'getMany') {
 					// get all require a case id (it retursn all tasks for a specific case)
 					const credentials = await this.getCredentials('theHiveApi');
 
@@ -1512,7 +1512,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 				}
 
-				if (operation === 'getAll') {
+				if (operation === 'getMany') {
 					const credentials = await this.getCredentials('theHiveApi');
 
 					const returnAll = this.getNodeParameter('returnAll', i);

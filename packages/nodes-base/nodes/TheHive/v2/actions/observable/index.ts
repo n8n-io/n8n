@@ -1,67 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { TLP } from '../../helpers/interfaces';
 
-export const observableOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation Name or ID',
-		name: 'operation',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		noDataExpression: true,
-		required: true,
-		default: 'getAll',
-		options: [
-			{
-				name: 'Count',
-				value: 'count',
-				action: 'Count observables',
-			},
-			{
-				name: 'Create',
-				value: 'create',
-				action: 'Create observable',
-			},
-			{
-				name: 'Execute Analyzer',
-				value: 'executeAnalyzer',
-				action: 'Execute an responder on selected observable',
-			},
-			{
-				name: 'Execute Responder',
-				value: 'executeResponder',
-				action: 'Execute a responder on selected observable',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				action: 'Get a single observable',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				action: 'Get many observables of a specific case',
-			},
-			{
-				name: 'Search',
-				value: 'search',
-				action: 'Search observables',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				action: 'Update observable',
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: ['observable'],
-			},
-		},
-	},
-];
-
-export const observableFields: INodeProperties[] = [
+const observableFields: INodeProperties[] = [
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
@@ -71,7 +11,7 @@ export const observableFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['observable'],
-				operation: ['create', 'getAll'],
+				operation: ['create', 'getMany'],
 			},
 		},
 		description: 'ID of the case',
@@ -82,7 +22,7 @@ export const observableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
+				operation: ['getMany', 'search'],
 				resource: ['observable'],
 			},
 		},
@@ -95,7 +35,7 @@ export const observableFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
+				operation: ['getMany', 'search'],
 				resource: ['observable'],
 				returnAll: [false],
 			},
@@ -444,7 +384,7 @@ export const observableFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
+				operation: ['getMany', 'search'],
 				resource: ['observable'],
 			},
 		},
@@ -605,4 +545,63 @@ export const observableFields: INodeProperties[] = [
 			},
 		],
 	},
+];
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		required: true,
+		default: 'getMany',
+		options: [
+			{
+				name: 'Count',
+				value: 'count',
+				action: 'Count observables',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create observable',
+			},
+			{
+				name: 'Execute Analyzer',
+				value: 'executeAnalyzer',
+				action: 'Execute an responder on selected observable',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				action: 'Execute a responder on selected observable',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get a single observable',
+			},
+			{
+				name: 'Get Many',
+				value: 'getMany',
+				action: 'Get many observables of a specific case',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search observables',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update observable',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['observable'],
+			},
+		},
+	},
+	...observableFields,
 ];

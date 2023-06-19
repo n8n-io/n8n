@@ -1,11 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { alertFields, alertOperations } from './descriptions/AlertDescription';
-import { observableFields, observableOperations } from './descriptions/ObservableDescription';
-import { caseFields, caseOperations } from './descriptions/CaseDescription';
-import { taskFields, taskOperations } from './descriptions/TaskDescription';
-import { logFields, logOperations } from './descriptions/LogDescription';
+import * as alert from './alert';
+import * as caseResource from './case';
+import * as log from './log';
+import * as observable from './observable';
+import * as task from './task';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'TheHive',
@@ -57,20 +57,11 @@ export const versionDescription: INodeTypeDescription = {
 			],
 			default: 'alert',
 		},
-		// Alert
-		...alertOperations,
-		...alertFields,
-		// Observable
-		...observableOperations,
-		...observableFields,
-		// Case
-		...caseOperations,
-		...caseFields,
-		// Task
-		...taskOperations,
-		...taskFields,
-		// Log
-		...logOperations,
-		...logFields,
+
+		...alert.description,
+		...observable.description,
+		...caseResource.description,
+		...task.description,
+		...log.description,
 	],
 };

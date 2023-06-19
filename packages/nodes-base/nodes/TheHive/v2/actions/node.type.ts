@@ -6,24 +6,24 @@ type NodeMap = {
 		| 'create'
 		| 'executeResponder'
 		| 'get'
-		| 'getAll'
+		| 'getMany'
 		| 'markAsRead'
 		| 'markAsUnread'
 		| 'merge'
 		| 'promote'
 		| 'update';
-	case: 'count' | 'create' | 'executeResponder' | 'get' | 'getAll' | 'update';
-	log: 'create' | 'executeResponder' | 'get' | 'getAll';
+	case: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'update';
+	log: 'create' | 'executeResponder' | 'get' | 'getMany';
 	observable:
 		| 'count'
 		| 'create'
 		| 'executeAnalyzer'
 		| 'executeResponder'
 		| 'get'
-		| 'getAll'
+		| 'getMany'
 		| 'search'
 		| 'update';
-	task: 'count' | 'create' | 'executeResponder' | 'get' | 'getAll' | 'search' | 'update';
+	task: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'search' | 'update';
 };
 
 export type TheHiveType = AllEntities<NodeMap>;
