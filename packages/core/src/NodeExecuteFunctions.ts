@@ -733,6 +733,8 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		auth,
 		proxy,
 		url,
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
