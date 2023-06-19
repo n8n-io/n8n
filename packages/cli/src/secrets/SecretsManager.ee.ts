@@ -264,7 +264,7 @@ export class ExternalSecretsManager {
 		data: IDataObject,
 	): Promise<{
 		success: boolean;
-		testStatus: 'connected' | 'tested' | 'error';
+		testState: 'connected' | 'tested' | 'error';
 	}> {
 		try {
 			const testProvider = await this.initProvider(provider, {
@@ -275,24 +275,24 @@ export class ExternalSecretsManager {
 			if (!testProvider) {
 				return {
 					success: false,
-					testStatus: 'error',
+					testState: 'error',
 				};
 			}
 			const success = await testProvider.test();
-			let testStatus: 'connected' | 'tested' | 'error' = 'error';
+			let testState: 'connected' | 'tested' | 'error' = 'error';
 			if (success && this.cachedSettings[provider]?.connected) {
-				testStatus = 'connected';
+				testState = 'connected';
 			} else if (success) {
-				testStatus = 'tested';
+				testState = 'tested';
 			}
 			return {
 				success,
-				testStatus,
+				testState,
 			};
 		} catch {
 			return {
 				success: false,
-				testStatus: 'error',
+				testState: 'error',
 			};
 		}
 	}
