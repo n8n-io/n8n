@@ -747,6 +747,8 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		auth,
 		proxy,
 		url,
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
@@ -915,7 +917,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
+	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
 }
 
 /**
