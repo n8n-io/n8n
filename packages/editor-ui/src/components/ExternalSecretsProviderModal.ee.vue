@@ -73,9 +73,9 @@ onMounted(async () => {
 		};
 		connectionState.value = provider.state;
 
-		// if (!provider.connected && Object.keys(provider.data).length) {
-		// 	void testConnection();
-		// }
+		if (!provider.connected && Object.keys(provider.data).length) {
+			await testConnection();
+		}
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
@@ -96,11 +96,11 @@ function onValueChange(updateInformation: IUpdateInformation) {
 
 async function testConnection() {
 	try {
-		const { success } = await externalSecretsStore.testProviderConnection(
+		const { testState } = await externalSecretsStore.testProviderConnection(
 			props.data.name,
 			providerData.value,
 		);
-		connectionState.value = success ? 'connected' : 'error';
+		connectionState.value = testState;
 	} catch (error) {
 		connectionState.value = 'error';
 	}
@@ -158,13 +158,15 @@ async function save() {
 		<template #content>
 			<div :class="$style.container">
 				<hr class="mb-l" />
-
 				<div class="mb-l" v-if="connectionState !== 'initializing'">
-					<n8n-callout v-if="connectionState === 'connected'" theme="success">
+					<n8n-callout
+						v-if="connectionState === 'connected' || connectionState === 'tested'"
+						theme="success"
+					>
 						{{
 							i18n.baseText(
 								`settings.externalSecrets.provider.testConnection.success${
-									externalSecretsStore.secrets[provider.name]?.length > 0 ? '.connected' : ''
+									provider.connected ? '.connected' : ''
 								}`,
 								{
 									interpolate: {
@@ -175,11 +177,16 @@ async function save() {
 							)
 						}}
 					</n8n-callout>
-					<n8n-callout v-else theme="danger">
+					<n8n-callout v-else-if="connectionState === 'error'" theme="danger">
 						{{
-							i18n.baseText('settings.externalSecrets.provider.testConnection.error', {
-								interpolate: { provider: provider.displayName },
-							})
+							i18n.baseText(
+								`settings.externalSecrets.provider.testConnection.error${
+									provider.connected ? '.connected' : ''
+								}`,
+								{
+									interpolate: { provider: provider.displayName },
+								},
+							)
 						}}
 					</n8n-callout>
 				</div>
