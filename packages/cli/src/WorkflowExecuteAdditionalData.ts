@@ -780,7 +780,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteBefore: [
-			async function (workflow: Workflow, data: IRunExecutionData): Promise<void> {
+			async function (this: WorkflowHooks, workflow: Workflow): Promise<void> {
 				await redisService.publishToEventLog(
 					new EventMessageWorkflow({
 						eventName: 'n8n.workflow.started',
@@ -790,7 +790,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							workflowId: workflow.id as string,
 							isManual: false,
 							workflowName: workflow.name,
-							metaData: data.resultData?.metadata,
 						},
 					}),
 				);
