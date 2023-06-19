@@ -44,7 +44,7 @@ const hasFunctionOrClass = async filePath => {
 const program = async () => {
 
   // Run a git command to get a list of all files in the commit
-	const changedFiles = await execAsync('git diff --name-only --diff-filter=d master...HEAD')
+	const changedFiles = await execAsync('git diff --name-only --diff-filter=d origin/master..HEAD')
 		.then(({stdout}) => stdout.trim().split('\n').filter(Boolean));
 
   // Get all .spec.ts and .test.ts files from the packages

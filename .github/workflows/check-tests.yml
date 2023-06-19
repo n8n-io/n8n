@@ -19,15 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch origin/master
-          run: |
-            git fetch origin master:master
-
-      - name: Get changed files
-        id: getfile
-        run: |
-          echo "::set-output name=files::$(git diff --name-only master..${{ github.ref }})"
-
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
