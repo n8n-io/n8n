@@ -29,16 +29,15 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 import {
-	keywordCompletion,
 	MSSQL,
 	MySQL,
 	PostgreSQL,
-	schemaCompletion,
 	StandardSQL,
 	MariaSQL,
 	SQLite,
 	Cassandra,
 	PLSQL,
+	keywordCompletionSource,
 } from './sql-parser-skipping-whitespace';
 import type { SQLDialect as SQLDialectType } from './sql-parser-skipping-whitespace';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
@@ -48,7 +47,6 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import type { TargetItem } from '@/Interface';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -61,10 +59,8 @@ const SQL_DIALECTS = {
 	PLSQL,
 } as const;
 
-function sqlLanguageSupport(dialect: SQLDialectType) {
+function n8nLanguageSupport(dialect: SQLDialectType) {
 	return new LanguageSupport(dialect.language, [
-		schemaCompletion({}),
-		keywordCompletion(dialect, true),
 		n8nCompletionSources().map((source) => dialect.language.data.of(source)),
 	]);
 }
@@ -83,6 +79,9 @@ export default defineComponent({
 		dialect: {
 			type: String,
 			default: 'StandardSQL',
+			validator: (value: string) => {
+				return Object.keys(SQL_DIALECTS).includes(value);
+			},
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -94,7 +93,7 @@ export default defineComponent({
 			editor: {} as EditorView,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
-			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
+			skipSegments: ['Statement', 'Parens'],
 		};
 	},
 	watch: {
@@ -120,22 +119,20 @@ export default defineComponent({
 			return this.editor.state.doc.toString();
 		},
 		hoveringItemNumber(): number {
-			return (this.hoveringItem?.itemIndex ?? 0) + 1;
-		},
-		hoveringItem(): TargetItem | null {
-			if (this.ndvStore.isInputParentOfActiveNode) {
-				return this.ndvStore.hoveringItem;
-			}
-
-			return null;
+			return this.ndvStore.hoveringItemNumber;
 		},
 	},
-
 	mounted() {
-		const dialect: SQLDialectType =
+		const dialect =
 			SQL_DIALECTS[this.dialect as keyof typeof SQL_DIALECTS] ?? SQL_DIALECTS.StandardSQL;
-		const extensions: Extension[] = [
-			sqlLanguageSupport(dialect),
+		const extensions = [
+			n8nLanguageSupport(dialect),
+			[
+				dialect,
+				dialect.language.data.of({
+					autocomplete: keywordCompletionSource(dialect, true),
+				}),
+			],
 			expressionInputHandler(),
 			codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
 			lineNumbers(),
@@ -187,9 +184,7 @@ export default defineComponent({
 </script>
 
 <style module lang="scss">
-
 .sqlEditor {
 	position: relative;
 }
-
 </style>

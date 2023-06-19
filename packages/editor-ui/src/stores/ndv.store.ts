@@ -4,6 +4,7 @@ import type {
 	IRunDataDisplayMode,
 	NDVState,
 	NodePanelType,
+	TargetItem,
 	XYPosition,
 } from '@/Interface';
 import type { INodeIssues, IRunData } from 'n8n-workflow';
@@ -125,6 +126,16 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			const workflow = useWorkflowsStore().getCurrentWorkflow();
 			const parentNodes = workflow.getParentNodes(this.activeNode.name, 'main', 1);
 			return parentNodes.includes(inputNodeName);
+		},
+		hoveringItemNumber(): number {
+			return (this.hoveringItem?.itemIndex ?? 0) + 1;
+		},
+		getHoveringItem(): TargetItem | null {
+			if (this.isInputParentOfActiveNode) {
+				return this.hoveringItem;
+			}
+
+			return null;
 		},
 	},
 	actions: {

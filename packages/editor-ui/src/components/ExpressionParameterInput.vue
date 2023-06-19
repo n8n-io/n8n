@@ -89,14 +89,10 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItemNumber(): number {
-			return (this.hoveringItem?.itemIndex ?? 0) + 1;
+			return this.ndvStore.hoveringItemNumber;
 		},
 		hoveringItem(): TargetItem | null {
-			if (this.ndvStore.isInputParentOfActiveNode) {
-				return this.ndvStore.hoveringItem;
-			}
-
-			return null;
+			return this.ndvStore.getHoveringItem;
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;

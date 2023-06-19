@@ -108,7 +108,7 @@
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
 					:query="value"
-					:dialect="getArgument('sqlDialect')"
+					:dialect="getArgument('sqlDialect') as string"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
@@ -1134,18 +1134,6 @@ export default defineComponent({
 				this.$telemetry.track('User switched parameter mode', telemetryPayload);
 				void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 			}
-		},
-		getEditorContent(editorType: string): string | null {
-			if (!this.nodeType) {
-				return null;
-			}
-			const sqlEditorProp = this.nodeType.properties.find(
-				(p) => p.typeOptions?.editor === editorType,
-			);
-			if (!sqlEditorProp) {
-				return null;
-			}
-			return this.node.parameters[sqlEditorProp.name] as string;
 		},
 	},
 	updated() {

@@ -80,7 +80,7 @@ export const codeNodeEditorTheme = ({ isReadOnly, customMaxHeight }: ThemeSettin
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-			maxHeight: customMaxHeight ? customMaxHeight : '100%',
+			maxHeight: customMaxHeight ?? '100%',
 			...(isReadOnly ? {} : { minHeight: '10em' }),
 		},
 		'.cm-diagnosticAction': {
