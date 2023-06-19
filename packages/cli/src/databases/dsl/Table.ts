@@ -37,9 +37,12 @@ export class CreateTable extends TableOperation {
 		return this;
 	}
 
-	withIndexOn(columnName: string | string[], isUnique = false) {
+	withIndexOn(
+		columnName: string | string[],
+		{ isUnique, name }: Pick<TableIndexOptions, 'isUnique' | 'name'> = {},
+	) {
 		const columnNames = Array.isArray(columnName) ? columnName : [columnName];
-		this.indices.add({ columnNames, isUnique });
+		this.indices.add({ columnNames, isUnique, name });
 		return this;
 	}
 
