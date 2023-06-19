@@ -76,7 +76,7 @@ export default defineComponent({
 				},
 				{
 					id: 'settings-external-secrets',
-					icon: 'external-link-alt',
+					icon: 'vault',
 					label: this.$locale.baseText('settings.externalSecrets.title'),
 					position: 'top',
 					available: this.canAccessExternalSecrets(),

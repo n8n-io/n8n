@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useToast } from '@/composables';
@@ -12,6 +12,7 @@ import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
 import type { ExternalSecretsProvider, IUpdateInformation } from '@/Interface';
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
+import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 
 const props = defineProps({
 	data: {
@@ -19,6 +20,12 @@ const props = defineProps({
 		default: () => ({}),
 	},
 });
+
+const defaultProviderData = {
+	infisical: {
+		siteURL: 'https://app.infisical.com',
+	},
+};
 
 const loadingService = useLoadingService();
 const externalSecretsStore = useExternalSecretsStore();
@@ -60,8 +67,15 @@ onMounted(async () => {
 	try {
 		loadingService.startLoading();
 		const provider = await externalSecretsStore.getProvider(props.data.name);
-		providerData.value = { ...provider.data };
+		providerData.value = {
+			...(defaultProviderData[props.data.name] || {}),
+			...provider.data,
+		};
 		connectionState.value = provider.state;
+
+		// if (!provider.connected && Object.keys(provider.data).length) {
+		// 	void testConnection();
+		// }
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
@@ -80,6 +94,18 @@ function onValueChange(updateInformation: IUpdateInformation) {
 	};
 }
 
+async function testConnection() {
+	try {
+		const { success } = await externalSecretsStore.testProviderConnection(
+			props.data.name,
+			providerData.value,
+		);
+		connectionState.value = success ? 'connected' : 'error';
+	} catch (error) {
+		connectionState.value = 'error';
+	}
+}
+
 async function save() {
 	try {
 		loadingService.startLoading();
@@ -95,17 +121,9 @@ async function save() {
 		toast.showError(error, 'Error');
 	}
 
-	try {
-		const { success } = await externalSecretsStore.testProviderConnection(
-			props.data.name,
-			providerData.value,
-		);
-		connectionState.value = success ? 'connected' : 'error';
-	} catch (error) {
-		connectionState.value = 'error';
-	} finally {
-		loadingService.stopLoading();
-	}
+	await testConnection();
+
+	loadingService.stopLoading();
 }
 </script>
 
@@ -123,9 +141,17 @@ async function save() {
 					<ExternalSecretsProviderImage :provider="provider" class="mr-xs" />
 					<span>{{ provider.displayName }}</span>
 				</div>
-				<n8n-button type="primary" :disabled="!canSave" @click="save">
-					{{ i18n.baseText('settings.externalSecrets.provider.buttons.save') }}
-				</n8n-button>
+				<div :class="$style.providerActions">
+					<ExternalSecretsProviderConnectionSwitch
+						v-if="connectionState !== 'initializing'"
+						:provider="provider"
+						class="mr-s"
+						@change="testConnection"
+					/>
+					<n8n-button type="primary" :disabled="!canSave" @click="save">
+						{{ i18n.baseText('settings.externalSecrets.provider.buttons.save') }}
+					</n8n-button>
+				</div>
 			</div>
 		</template>
 
@@ -136,12 +162,17 @@ async function save() {
 				<div class="mb-l" v-if="connectionState !== 'initializing'">
 					<n8n-callout v-if="connectionState === 'connected'" theme="success">
 						{{
-							i18n.baseText('settings.externalSecrets.provider.testConnection.success', {
-								interpolate: {
-									count: `${externalSecretsStore.secrets[provider.name]?.length}`,
-									provider: provider.displayName,
+							i18n.baseText(
+								`settings.externalSecrets.provider.testConnection.success${
+									externalSecretsStore.secrets[provider.name]?.length > 0 ? '.connected' : ''
+								}`,
+								{
+									interpolate: {
+										count: `${externalSecretsStore.secrets[provider.name]?.length}`,
+										provider: provider.displayName,
+									},
 								},
-							})
+							)
 						}}
 					</n8n-callout>
 					<n8n-callout v-else theme="danger">
@@ -192,6 +223,14 @@ async function save() {
 }
 
 .providerTitle {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	flex: 1;
+}
+
+.providerActions {
+	flex: 0;
 	display: flex;
 	flex-direction: row;
 	align-items: center;

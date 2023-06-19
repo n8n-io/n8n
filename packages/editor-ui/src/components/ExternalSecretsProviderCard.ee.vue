@@ -2,6 +2,7 @@
 import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
+import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { useExternalSecretsStore, useUIStore } from '@/stores';
 import { useI18n, useLoadingService, useToast } from '@/composables';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
@@ -28,10 +29,6 @@ const actionDropdownOptions = [
 	},
 ];
 
-const connectedTextColor = computed(() => {
-	return props.provider.connected ? 'success' : 'text-light';
-});
-
 const canConnect = computed(() => {
 	return props.provider.connected || Object.keys(props.provider.data).length > 0;
 });
@@ -45,24 +42,6 @@ function openExternalSecretProvider() {
 		name: EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 		data: { name: props.provider.name },
 	});
-}
-
-async function onUpdateConnected(value: boolean) {
-	try {
-		loadingService.startLoading();
-		await externalSecretsStore.updateProviderConnected(props.provider.name, value);
-
-		toast.showMessage({
-			title: i18n.baseText(
-				`settings.externalSecrets.provider.${value ? 'connected' : 'disconnected'}.success.title`,
-			),
-			type: 'success',
-		});
-	} catch (error) {
-		toast.showError(error, 'Error');
-	} finally {
-		loadingService.stopLoading();
-	}
 }
 
 function onActionDropdownClick(id: string) {
@@ -103,19 +82,7 @@ function onActionDropdownClick(id: string) {
 				</n8n-text>
 			</div>
 			<div :class="$style.cardActions" v-if="canConnect">
-				<n8n-text :color="connectedTextColor" bold class="mr-2xs">
-					{{ i18n.baseText('settings.externalSecrets.card.connected') }}
-				</n8n-text>
-				<el-switch
-					:value="provider.connected"
-					@change="onUpdateConnected"
-					:title="'TEST'"
-					active-color="#13ce66"
-					inactive-color="#8899AA"
-					element-loading-spinner="el-icon-loading"
-					data-test-id="settings-external-secrets-connected-switch"
-				>
-				</el-switch>
+				<ExternalSecretsProviderConnectionSwitch :provider="provider" />
 				<n8n-action-dropdown
 					class="ml-s"
 					:items="actionDropdownOptions"
