@@ -1,6 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-
-import { TLP } from '../interfaces/AlertInterface';
+import { TLP } from '../../helpers/interfaces';
 
 export const observableOperations: INodeProperties[] = [
 	{
@@ -12,14 +11,52 @@ export const observableOperations: INodeProperties[] = [
 		noDataExpression: true,
 		required: true,
 		default: 'getAll',
+		options: [
+			{
+				name: 'Count',
+				value: 'count',
+				action: 'Count observables',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create observable',
+			},
+			{
+				name: 'Execute Analyzer',
+				value: 'executeAnalyzer',
+				action: 'Execute an responder on selected observable',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				action: 'Execute a responder on selected observable',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get a single observable',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				action: 'Get many observables of a specific case',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search observables',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update observable',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['observable'],
 			},
-		},
-		typeOptions: {
-			loadOptionsDependsOn: ['resource'],
-			loadOptionsMethod: 'loadObservableOptions',
 		},
 	},
 ];

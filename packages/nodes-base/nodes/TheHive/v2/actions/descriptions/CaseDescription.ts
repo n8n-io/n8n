@@ -1,29 +1,58 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { TLP } from '../../helpers/interfaces';
 
-import { TLP } from '../interfaces/AlertInterface';
-
-export const alertOperations: INodeProperties[] = [
+export const caseOperations: INodeProperties[] = [
 	{
-		displayName: 'Operation Name or ID',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Operation',
 		name: 'operation',
+		default: 'getAll',
 		type: 'options',
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'loadAlertOptions',
-		},
+		options: [
+			{
+				name: 'Count',
+				value: 'count',
+				action: 'Count a case',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create a case',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				action: 'Execute a responder on the specified case',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get a single case',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				action: 'Get many cases',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update a case',
+			},
+		],
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 			},
 		},
-		default: 'create',
 	},
 ];
 
-export const alertFields: INodeProperties[] = [
+export const caseFields: INodeProperties[] = [
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -31,7 +60,7 @@ export const alertFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['alert'],
+				resource: ['case'],
 			},
 		},
 		default: false,
@@ -44,7 +73,7 @@ export const alertFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['alert'],
+				resource: ['case'],
 				returnAll: [false],
 			},
 		},
@@ -55,55 +84,34 @@ export const alertFields: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	// required attributs
-	{
-		displayName: 'Alert ID',
-		name: 'id',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: [
-					'promote',
-					'markAsRead',
-					'markAsUnread',
-					'merge',
-					'update',
-					'executeResponder',
-					'get',
-				],
-			},
-		},
-		description: 'Title of the alert',
-	},
+	// Required fields
 	{
 		displayName: 'Case ID',
-		name: 'caseId',
+		name: 'id',
 		type: 'string',
-		required: true,
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
-				resource: ['alert'],
-				operation: ['merge'],
+				resource: ['case'],
+				operation: ['update', 'executeResponder', 'get'],
 			},
 		},
+		description: 'ID of the case',
 	},
 	{
 		displayName: 'Title',
 		name: 'title',
 		type: 'string',
-		required: true,
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
-		description: 'Title of the alert',
+		description: 'Title of the case',
 	},
 	{
 		displayName: 'Description',
@@ -113,11 +121,11 @@ export const alertFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
-		description: 'Description of the alert',
+		description: 'Description of the case',
 	},
 	{
 		displayName: 'Severity',
@@ -141,40 +149,53 @@ export const alertFields: INodeProperties[] = [
 		default: 2,
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
 		description: 'Severity of the alert. Default=Medium.',
 	},
 	{
-		displayName: 'Date',
-		name: 'date',
+		displayName: 'Start Date',
+		name: 'startDate',
 		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
-		description: 'Date and time when the alert was raised default=now',
+		description: 'Date and time of the begin of the case default=now',
 	},
 	{
-		displayName: 'Tags',
-		name: 'tags',
+		displayName: 'Owner',
+		name: 'owner',
 		type: 'string',
-		required: true,
 		default: '',
-		placeholder: 'tag,tag2,tag3...',
+		required: true,
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
-		description: 'Case Tags',
+	},
+	{
+		displayName: 'Flag',
+		name: 'flag',
+		type: 'boolean',
+		required: true,
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['case'],
+				operation: ['create'],
+			},
+		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description: 'Flag of the case default=false',
 	},
 	{
 		displayName: 'TLP',
@@ -202,169 +223,24 @@ export const alertFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
 		description: 'Traffict Light Protocol (TLP). Default=Amber.',
 	},
 	{
-		displayName: 'Status',
-		name: 'status',
-		type: 'options',
-		required: true,
-		options: [
-			{
-				name: 'New',
-				value: 'New',
-			},
-			{
-				name: 'Updated',
-				value: 'Updated',
-			},
-			{
-				name: 'Ignored',
-				value: 'Ignored',
-			},
-			{
-				name: 'Imported',
-				value: 'Imported',
-			},
-		],
-		default: 'New',
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: ['create'],
-			},
-		},
-		description: 'Status of the alert',
-	},
-	{
-		displayName: 'Type',
-		name: 'type',
+		displayName: 'Tags',
+		name: 'tags',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
-		description: 'Type of the alert',
-	},
-	{
-		displayName: 'Source',
-		name: 'source',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: ['create'],
-			},
-		},
-		description: 'Source of the alert',
-	},
-	{
-		displayName: 'SourceRef',
-		name: 'sourceRef',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: ['create'],
-			},
-		},
-		description: 'Source reference of the alert',
-	},
-	{
-		displayName: 'Follow',
-		name: 'follow',
-		type: 'boolean',
-		required: true,
-		default: true,
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: ['create'],
-			},
-		},
-		description: 'Whether the alert becomes active when updated default=true',
-	},
-	{
-		displayName: 'Artifacts',
-		name: 'artifactUi',
-		type: 'fixedCollection',
-		placeholder: 'Add Artifact',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: ['create'],
-			},
-		},
-		typeOptions: {
-			multipleValues: true,
-		},
-		options: [
-			{
-				displayName: 'Artifact',
-				name: 'artifactValues',
-				values: [
-					{
-						displayName: 'Data Type Name or ID',
-						name: 'dataType',
-						type: 'options',
-						default: '',
-						typeOptions: {
-							loadOptionsMethod: 'loadObservableTypes',
-						},
-						description:
-							'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-					},
-					{
-						displayName: 'Data',
-						name: 'data',
-						type: 'string',
-						displayOptions: {
-							hide: {
-								dataType: ['file'],
-							},
-						},
-						default: '',
-					},
-					{
-						displayName: 'Binary Property',
-						name: 'binaryProperty',
-						type: 'string',
-						displayOptions: {
-							show: {
-								dataType: ['file'],
-							},
-						},
-						default: 'data',
-					},
-					{
-						displayName: 'Message',
-						name: 'message',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Case Tags',
-						name: 'tags',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
-		description: 'Artifact attributes',
 	},
 	// required for responder execution
 	{
@@ -373,15 +249,15 @@ export const alertFields: INodeProperties[] = [
 		type: 'options',
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
 		default: '',
+		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['id'],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['executeResponder'],
 			},
 			hide: {
@@ -396,45 +272,37 @@ export const alertFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create', 'update'],
 			},
 		},
 	},
-
-	// optional attributs (Create, Promote operations)
+	// Optional fields (Create operation)
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		placeholder: 'Add Field',
+		displayName: 'Options',
 		type: 'collection',
-		default: {},
+		name: 'options',
+		placeholder: 'Add options',
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['create'],
 			},
 		},
+		default: {},
 		options: [
-			{
-				displayName: 'Case Template',
-				name: 'caseTemplate',
-				type: 'string',
-				default: '',
-				description: 'Case template to use when a case is created from this alert',
-			},
 			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
 				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
 				displayOptions: {
 					show: {
 						'/jsonParameters': [false],
 					},
-				},
-				typeOptions: {
-					multipleValues: true,
 				},
 				placeholder: 'Add Custom Field',
 				options: [
@@ -476,109 +344,48 @@ export const alertFields: INodeProperties[] = [
 				},
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
 			},
-		],
-	},
-	// optional attributs (Promote operation)
-
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		placeholder: 'Add Field',
-		type: 'collection',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: ['promote'],
-			},
-		},
-		options: [
 			{
-				displayName: 'Case Template',
-				name: 'caseTemplate',
+				displayName: 'End Date',
+				name: 'endDate',
+				default: '',
+				type: 'dateTime',
+				description: 'Resolution date',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
 				type: 'string',
 				default: '',
-				description: 'Case template to use when a case is created from this alert',
+				description: 'Summary of the case, to be provided when closing a case',
+			},
+			{
+				displayName: 'Metrics (JSON)',
+				name: 'metrics',
+				default: '[]',
+				type: 'json',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [true],
+					},
+				},
+				description: 'List of metrics',
 			},
 		],
 	},
-	// optional attributs (Update operation)
+	// Optional fields (Update operations)
 	{
 		displayName: 'Update Fields',
-		name: 'updateFields',
 		type: 'collection',
+		name: 'updateFields',
 		placeholder: 'Add Field',
-		default: {},
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['update'],
 			},
 		},
+		default: {},
 		options: [
-			{
-				displayName: 'Artifacts',
-				name: 'artifactUi',
-				type: 'fixedCollection',
-				placeholder: 'Add Artifact',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Artifact',
-						name: 'artifactValues',
-						values: [
-							{
-								displayName: 'Data Type Name or ID',
-								name: 'dataType',
-								type: 'options',
-								default: '',
-								typeOptions: {
-									loadOptionsMethod: 'loadObservableTypes',
-								},
-								description:
-									'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							},
-							{
-								displayName: 'Data',
-								name: 'data',
-								type: 'string',
-								displayOptions: {
-									hide: {
-										dataType: ['file'],
-									},
-								},
-								default: '',
-							},
-							{
-								displayName: 'Binary Property',
-								name: 'binaryProperty',
-								type: 'string',
-								displayOptions: {
-									show: {
-										dataType: ['file'],
-									},
-								},
-								default: 'data',
-							},
-							{
-								displayName: 'Message',
-								name: 'message',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Case Tags',
-								name: 'tags',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
-			},
 			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
@@ -624,34 +431,103 @@ export const alertFields: INodeProperties[] = [
 				displayName: 'Custom Fields (JSON)',
 				name: 'customFieldsJson',
 				type: 'string',
+				default: '',
 				displayOptions: {
 					show: {
 						'/jsonParameters': [true],
 					},
 				},
-				default: '',
 				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
-			},
-			{
-				displayName: 'Case Template',
-				name: 'caseTemplate',
-				type: 'string',
-				default: '',
-				description: 'Case template to use when a case is created from this alert',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the alert',
+				description: 'Description of the case',
 			},
 			{
-				displayName: 'Follow',
-				name: 'follow',
+				displayName: 'End Date',
+				name: 'endDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Resolution date',
+			},
+			{
+				displayName: 'Flag',
+				name: 'flag',
 				type: 'boolean',
-				default: true,
-				description: 'Whether the alert becomes active when updated default=true',
+				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Flag of the case default=false',
+			},
+			{
+				displayName: 'Impact Status',
+				name: 'impactStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'No Impact',
+						value: 'NoImpact',
+					},
+					{
+						name: 'With Impact',
+						value: 'WithImpact',
+					},
+					{
+						name: 'Not Applicable',
+						value: 'NotApplicable',
+					},
+				],
+				description: 'Impact status of the case',
+			},
+			{
+				displayName: 'Metrics (JSON)',
+				name: 'metrics',
+				type: 'json',
+				default: '[]',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [true],
+					},
+				},
+				description: 'List of metrics',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Resolution Status',
+				name: 'resolutionStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						value: 'Duplicated',
+						name: 'Duplicated',
+					},
+					{
+						value: 'FalsePositive',
+						name: 'False Positive',
+					},
+					{
+						value: 'Indeterminate',
+						name: 'Indeterminate',
+					},
+					{
+						value: 'Other',
+						name: 'Other',
+					},
+					{
+						value: 'TruePositive',
+						name: 'True Positive',
+					},
+				],
+				description: 'Resolution status of the case',
 			},
 			{
 				displayName: 'Severity',
@@ -675,42 +551,51 @@ export const alertFields: INodeProperties[] = [
 				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Date and time of the begin of the case default=now',
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
 				options: [
 					{
-						name: 'New',
-						value: 'New',
+						name: 'Open',
+						value: 'Open',
 					},
 					{
-						name: 'Updated',
-						value: 'Updated',
+						name: 'Resolved',
+						value: 'Resolved',
 					},
 					{
-						name: 'Ignored',
-						value: 'Ignored',
-					},
-					{
-						name: 'Imported',
-						value: 'Imported',
+						name: 'Deleted',
+						value: 'Deleted',
 					},
 				],
-				default: 'New',
+				default: 'Open',
 			},
 			{
-				displayName: 'Case Tags',
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				default: '',
+				description: 'Summary of the case, to be provided when closing a case',
+			},
+			{
+				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				placeholder: 'tag,tag2,tag3...',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Title of the alert',
+				description: 'Title of the case',
 			},
 			{
 				displayName: 'TLP',
@@ -739,14 +624,14 @@ export const alertFields: INodeProperties[] = [
 			},
 		],
 	},
-	//Query attributs (Search operation)
+	// query options
 	{
 		displayName: 'Options',
 		name: 'options',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['alert'],
+				resource: ['case'],
 			},
 		},
 		type: 'collection',
@@ -758,41 +643,21 @@ export const alertFields: INodeProperties[] = [
 				name: 'sort',
 				type: 'string',
 				placeholder: '±Attribut, exp +status',
+				description: 'Specify the sorting attribut, + for asc, - for desc',
 				default: '',
 			},
 		],
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['alert'],
-			},
-		},
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		options: [
-			{
-				displayName: 'Include Similar Cases',
-				name: 'includeSimilar',
-				type: 'boolean',
-				description: 'Whether to include similar cases',
-				default: false,
-			},
-		],
-	},
+	// Query filters
 	{
 		displayName: 'Filters',
 		name: 'filters',
-		placeholder: 'Add Filter',
-		default: {},
 		type: 'collection',
+		default: {},
+		placeholder: 'Add a Filter',
 		displayOptions: {
 			show: {
-				resource: ['alert'],
+				resource: ['case'],
 				operation: ['getAll', 'count'],
 			},
 		},
@@ -838,14 +703,76 @@ export const alertFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the alert',
+				description: 'Description of the case',
 			},
 			{
-				displayName: 'Follow',
-				name: 'follow',
+				displayName: 'End Date',
+				name: 'endDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Resolution date',
+			},
+			{
+				displayName: 'Flag',
+				name: 'flag',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the alert becomes active when updated default=true',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description: 'Flag of the case default=false',
+			},
+			{
+				displayName: 'Impact Status',
+				name: 'impactStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'No Impact',
+						value: 'NoImpact',
+					},
+					{
+						name: 'With Impact',
+						value: 'WithImpact',
+					},
+					{
+						name: 'Not Applicable',
+						value: 'NotApplicable',
+					},
+				],
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Resolution Status',
+				name: 'resolutionStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						value: 'Duplicated',
+						name: 'Duplicated',
+					},
+					{
+						value: 'False Positive',
+						name: 'FalsePositive',
+					},
+					{
+						value: 'Indeterminate',
+						name: 'Indeterminate',
+					},
+					{
+						value: 'Other',
+						name: 'Other',
+					},
+					{
+						value: 'True Positive',
+						name: 'TruePositive',
+					},
+				],
 			},
 			{
 				displayName: 'Severity',
@@ -869,17 +796,51 @@ export const alertFields: INodeProperties[] = [
 				description: 'Severity of the alert. Default=Medium.',
 			},
 			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Date and time of the begin of the case default=now',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'Open',
+					},
+					{
+						name: 'Resolved',
+						value: 'Resolved',
+					},
+					{
+						name: 'Deleted',
+						value: 'Deleted',
+					},
+				],
+				default: 'Open',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				default: '',
+				description: 'Summary of the case, to be provided when closing a case',
+			},
+			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				placeholder: 'tag,tag2,tag3...',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
+				description: 'Title of the case',
 			},
 			{
 				displayName: 'TLP',

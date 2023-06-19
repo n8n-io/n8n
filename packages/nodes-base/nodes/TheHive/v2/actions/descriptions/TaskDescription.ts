@@ -10,14 +10,47 @@ export const taskOperations: INodeProperties[] = [
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		noDataExpression: true,
 		required: true,
+		options: [
+			{
+				name: 'Count',
+				value: 'count',
+				action: 'Count tasks',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create a task',
+			},
+			{
+				name: 'Execute Responder',
+				value: 'executeResponder',
+				action: 'Execute a responder on the specified task',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				action: 'Get a single task',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				action: 'Get many asks of a specific case',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search tasks',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update a task',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['task'],
 			},
-		},
-		typeOptions: {
-			loadOptionsDependsOn: ['operation'],
-			loadOptionsMethod: 'loadTaskOptions',
 		},
 	},
 ];
