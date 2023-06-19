@@ -316,7 +316,6 @@
       "dist/credentials/TwilioApi.credentials.js",
       "dist/credentials/TwistOAuth2Api.credentials.js",
       "dist/credentials/TwitterOAuth1Api.credentials.js",
-      "dist/credentials/TwitterOAuth2Api.credentials.js",
       "dist/credentials/TypeformApi.credentials.js",
       "dist/credentials/TypeformOAuth2Api.credentials.js",
       "dist/credentials/UnleashedSoftwareApi.credentials.js",
