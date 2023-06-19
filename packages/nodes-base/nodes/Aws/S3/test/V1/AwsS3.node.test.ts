@@ -3,7 +3,7 @@ import { getWorkflowFilenames, initBinaryDataManager, testWorkflows } from '@tes
 
 const workflows = getWorkflowFilenames(__dirname);
 
-describe('Test S3 Node', () => {
+describe('Test S3 V1 Node', () => {
 	describe('File Upload', () => {
 		let mock: nock.Scope;
 		const now = 1683028800000;

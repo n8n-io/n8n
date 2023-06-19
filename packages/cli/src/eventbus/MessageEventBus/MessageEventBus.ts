@@ -15,7 +15,7 @@ import {
 	messageEventBusDestinationFromDb,
 	incrementPrometheusMetric,
 } from '../MessageEventBusDestination/Helpers.ee';
-import uniqby from 'lodash.uniqby';
+import uniqby from 'lodash/uniqBy';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
 import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
