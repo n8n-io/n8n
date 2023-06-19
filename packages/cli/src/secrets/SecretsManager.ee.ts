@@ -259,7 +259,13 @@ export class ExternalSecretsManager {
 		await settingsRepo.saveEncryptedSecretsProviderSettings(encryptedSettings);
 	}
 
-	async testProviderSettings(provider: string, data: IDataObject): Promise<boolean> {
+	async testProviderSettings(
+		provider: string,
+		data: IDataObject,
+	): Promise<{
+		success: boolean;
+		testStatus: 'connected' | 'tested' | 'error';
+	}> {
 		try {
 			const testProvider = await this.initProvider(provider, {
 				connected: true,
@@ -267,11 +273,27 @@ export class ExternalSecretsManager {
 				settings: data,
 			});
 			if (!testProvider) {
-				return false;
+				return {
+					success: false,
+					testStatus: 'error',
+				};
 			}
-			return await testProvider.test();
+			const success = await testProvider.test();
+			let testStatus: 'connected' | 'tested' | 'error' = 'error';
+			if (success && this.cachedSettings[provider]?.connected) {
+				testStatus = 'connected';
+			} else if (success) {
+				testStatus = 'tested';
+			}
+			return {
+				success,
+				testStatus,
+			};
 		} catch {
-			return false;
+			return {
+				success: false,
+				testStatus: 'error',
+			};
 		}
 	}
 }
