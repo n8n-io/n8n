@@ -10,6 +10,7 @@ import type { ExpressionTestEvaluation, ExpressionTestTransform } from './Expres
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { INodeExecutionData } from '@/Interfaces';
 import { extendSyntax } from '@/Extensions/ExpressionExtension';
+import { ExpressionError } from '@/ExpressionError';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -154,7 +155,9 @@ describe('Expression', () => {
 		it('should not able to do arbitrary code execution', () => {
 			const testFn = jest.fn();
 			Object.assign(global, { testFn });
-			evaluate("={{ Date['constructor']('testFn()')()}}");
+			expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
+				new ExpressionError('Arbitrary code execution detected'),
+			);
 			expect(testFn).not.toHaveBeenCalled();
 		});
 	});
