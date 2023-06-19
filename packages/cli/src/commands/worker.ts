@@ -51,8 +51,7 @@ export class Worker extends BaseCommand {
 		LoggerProxy.info('Stopping n8n...');
 
 		// Stop accepting new jobs
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		Worker.jobQueue.pause(true);
+		await Worker.jobQueue.pause(true);
 
 		try {
 			await this.externalHooks.run('n8n.stop', []);
@@ -224,6 +223,7 @@ export class Worker extends BaseCommand {
 		await super.init();
 		this.logger.debug('Starting n8n worker...');
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 	}
@@ -238,8 +238,9 @@ export class Worker extends BaseCommand {
 		const queue = Container.get(Queue);
 		await queue.init();
 		Worker.jobQueue = queue.getBullObjectInstance();
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, this.nodeTypes));
+		void Worker.jobQueue.process(flags.concurrency, async (job) =>
+			this.runJob(job, this.nodeTypes),
+		);
 
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);

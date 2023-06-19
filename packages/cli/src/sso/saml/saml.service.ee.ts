@@ -211,6 +211,8 @@ export class SamlService {
 				this._samlPreferences.metadata = fetchedMetadata;
 			}
 		} else if (prefs.metadata) {
+			// remove metadataUrl if metadata is set directly
+			this._samlPreferences.metadataUrl = undefined;
 			const validationResult = await validateMetadata(prefs.metadata);
 			if (!validationResult) {
 				throw new Error('Invalid SAML metadata');

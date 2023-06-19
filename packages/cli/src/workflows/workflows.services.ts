@@ -4,7 +4,7 @@ import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -27,6 +27,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
+import type { RoleNames } from '../databases/entities/Role';
 
 export type IGetWorkflowsQueryFilter = Pick<
 	FindOptionsWhere<WorkflowEntity>,
@@ -111,7 +112,7 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
+	static async getWorkflowIdsForUser(user: User, roles?: RoleNames[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 

@@ -19,10 +19,13 @@ import type {
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
 import {
+	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
 import type { UserRepository } from '@db/repositories';
+import { InternalHooks } from '../InternalHooks';
+import Container from 'typedi';
 
 @RestController()
 export class AuthController {
@@ -67,14 +70,20 @@ export class AuthController {
 
 		let user: User | undefined;
 
+		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
+
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
-			if (preliminaryUser?.globalRole?.name === 'owner') {
+			if (
+				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.settings?.allowSSOManualLogin
+			) {
 				user = preliminaryUser;
+				usedAuthenticationMethod = 'email';
 			} else {
-				throw new AuthError('SAML is enabled, please log in with SAML');
+				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			user = await handleLdapLogin(email, password);
@@ -83,9 +92,17 @@ export class AuthController {
 		}
 		if (user) {
 			await issueCookie(res, user);
+			void Container.get(InternalHooks).onUserLoginSuccess({
+				user,
+				authenticationMethod: usedAuthenticationMethod,
+			});
 			return withFeatureFlags(this.postHog, sanitizeUser(user));
 		}
-
+		void Container.get(InternalHooks).onUserLoginFailed({
+			user: email,
+			authenticationMethod: usedAuthenticationMethod,
+			reason: 'wrong credentials',
+		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 

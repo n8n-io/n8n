@@ -37,7 +37,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {
@@ -199,10 +199,11 @@ export class WorkflowExecute {
 						if (node && pinData && pinData[node.name]) {
 							incomingData.push(pinData[node.name]);
 						} else {
-							incomingData.push(
-								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-								runData[connection.node][runIndex].data![connection.type][connection.index]!,
-							);
+							const nodeIncomingData =
+								runData[connection.node][runIndex]?.data?.[connection.type][connection.index];
+							if (nodeIncomingData) {
+								incomingData.push(nodeIncomingData);
+							}
 						}
 
 						incomingSourceData.main.push({
@@ -1286,12 +1287,16 @@ export class WorkflowExecute {
 				message: executionError.message,
 				stack: executionError.stack,
 			} as ExecutionError;
+			if (executionError.message?.includes('canceled')) {
+				fullRunData.status = 'canceled';
+			}
 		} else if (this.runExecutionData.waitTill!) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
+			fullRunData.status = 'waiting';
 		} else {
 			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
@@ -1304,7 +1309,6 @@ export class WorkflowExecute {
 			// Static data of workflow changed
 			newStaticData = workflow.staticData;
 		}
-
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 		if (closeFunction) {

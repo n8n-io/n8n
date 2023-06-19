@@ -9,6 +9,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { isObjectEmpty } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 
 export const regions = [
@@ -286,7 +287,6 @@ export class Aws implements ICredentialType {
 		let body = requestOptions.body;
 		let region = credentials.region;
 		let query = requestOptions.qs?.query as IDataObject;
-
 		// ! Workaround as we still use the OptionsWithUri interface which uses uri instead of url
 		// ! To change when we replace the interface with IHttpRequestOptions
 		const requestWithUri = requestOptions as unknown as OptionsWithUri;
@@ -353,7 +353,7 @@ export class Aws implements ICredentialType {
 			});
 		}
 
-		if (body && Object.keys(body).length === 0) {
+		if (body && typeof body === 'object' && isObjectEmpty(body)) {
 			body = '';
 		}
 

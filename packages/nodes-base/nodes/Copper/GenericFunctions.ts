@@ -14,8 +14,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import flow from 'lodash.flow';
-import omit from 'lodash.omit';
+import flow from 'lodash/flow';
+import omit from 'lodash/omit';
 
 import type {
 	AddressFixedCollection,

@@ -114,11 +114,10 @@ export async function workflowExecutionCompleted(
 				workflow_id: workflowId,
 			};
 
-			if (!owner.settings?.firstSuccessfulWorkflowId) {
+			if (!owner.settings?.userActivated) {
 				await UserService.updateUserSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,
-					showUserActivationSurvey: true,
 				});
 			}
 
@@ -135,21 +134,33 @@ export async function nodeFetchedData(
 	node: INode,
 ): Promise<void> {
 	if (!workflowId) return;
-	// Try to insert the data loaded statistic
-	try {
-		await Db.collections.WorkflowStatistics.insert({
+
+	const hasLoadedDataPreviously = await Db.collections.WorkflowStatistics.findOne({
+		select: ['count'],
+		where: {
 			workflowId,
 			name: StatisticsNames.dataLoaded,
-			count: 1,
-			latestEvent: new Date(),
-		});
-	} catch (error) {
-		// if it's a duplicate key error then that's fine, otherwise throw the error
-		if (!(error instanceof QueryFailedError)) {
-			throw error;
-		}
-		// If it is a query failed error, we return
+		},
+	});
+
+	if (hasLoadedDataPreviously) {
 		return;
+	}
+
+	// Try to insert the data loaded statistic
+	try {
+		await Db.collections.WorkflowStatistics.createQueryBuilder('workflowStatistics')
+			.insert()
+			.values({
+				workflowId,
+				name: StatisticsNames.dataLoaded,
+				count: 1,
+				latestEvent: new Date(),
+			})
+			.orIgnore()
+			.execute();
+	} catch (error) {
+		LoggerProxy.warn('Failed saving loaded data statistics');
 	}
 
 	// Compile the metrics since this was a new data loaded event

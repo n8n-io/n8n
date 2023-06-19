@@ -9,13 +9,12 @@
 	>
 		<div
 			id="collapse-change-button"
-			:class="{
-				['clickable']: true,
-				[$style.sideMenuCollapseButton]: true,
-				[$style.expandedButton]: !isCollapsed,
-			}"
+			:class="['clickable', $style.sideMenuCollapseButton]"
 			@click="toggleCollapse"
-		></div>
+		>
+			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
+			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
+		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
@@ -26,19 +25,28 @@
 					/>
 				</div>
 			</template>
-			<template #menuSuffix v-if="hasVersionUpdates">
-				<div :class="$style.updates" @click="openUpdatesPanel">
-					<div :class="$style.giftContainer">
-						<GiftNotificationIcon />
+
+			<template #beforeLowerMenu>
+				<ExecutionsUsage
+					:cloud-plan-data="currentPlanAndUsageData"
+					v-if="!isCollapsed && userIsTrialing"
+			/></template>
+			<template #menuSuffix>
+				<div>
+					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
+						<div :class="$style.giftContainer">
+							<GiftNotificationIcon />
+						</div>
+						<n8n-text
+							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
+							color="text-base"
+						>
+							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
+								nextVersions.length > 1 ? 's' : ''
+							}}
+						</n8n-text>
 					</div>
-					<n8n-text
-						:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
-						color="text-base"
-					>
-						{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
-							nextVersions.length > 1 ? 's' : ''
-						}}
-					</n8n-text>
+					<MainSidebarVersionControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -91,46 +99,49 @@
 </template>
 
 <script lang="ts">
-import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
-
+import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
-import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useMessage } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
-import mixins from 'vue-typed-mixins';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useVersionsStore } from '@/stores/versions';
+import {
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useWorkflowsStore,
+	useRootStore,
+	useVersionsStore,
+	useCloudPlanStore,
+	useVersionControlStore,
+} from '@/stores/';
 import { isNavigationFailure } from 'vue-router';
+import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
 
-export default mixins(
-	genericHelpers,
-	showMessage,
-	workflowHelpers,
-	workflowRun,
-	userHelpers,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
-		WorkflowSettings,
+		ExecutionsUsage,
+		MainSidebarVersionControl,
+	},
+	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
+	setup(props) {
+		return {
+			...useMessage(),
+			...workflowRun.setup?.(props),
+		};
 	},
 	data() {
 		return {
-			// @ts-ignore
 			basePath: '',
 			fullyExpanded: false,
 		};
@@ -143,6 +154,8 @@ export default mixins(
 			useUsersStore,
 			useVersionsStore,
 			useWorkflowsStore,
+			useCloudPlanStore,
+			useVersionControlStore,
 		),
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
@@ -202,6 +215,9 @@ export default mixins(
 				{
 					id: 'workflows',
 					icon: 'network-wired',
+					secondaryIcon: this.versionControlStore.preferences.branchReadOnly
+						? { name: 'lock' }
+						: undefined,
 					label: this.$locale.baseText('mainSidebar.workflows'),
 					position: 'top',
 					activateOnRouteNames: [VIEWS.WORKFLOWS],
@@ -302,11 +318,23 @@ export default mixins(
 			];
 			return [...items, ...regularItems];
 		},
+		userIsTrialing(): boolean {
+			return this.cloudPlanStore.userIsTrialing;
+		},
+		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
+			const planData = this.cloudPlanStore.currentPlanData;
+			const usage = this.cloudPlanStore.currentUsageData;
+			if (!planData || !usage) return null;
+			return {
+				...planData,
+				usage,
+			};
+		},
 	},
 	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 		}
 		if (window.innerWidth < 900 || this.uiStore.isNodeView) {
 			this.uiStore.sidebarMenuCollapsed = true;
@@ -335,14 +363,14 @@ export default mixins(
 					this.onLogout();
 					break;
 				case 'settings':
-					this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					void this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
 					break;
 				default:
 					break;
 			}
 		},
 		onLogout() {
-			this.$router.push({ name: VIEWS.SIGNOUT });
+			void this.$router.push({ name: VIEWS.SIGNOUT });
 		},
 		toggleCollapse() {
 			this.uiStore.toggleSidebarMenuCollapse();
@@ -444,7 +472,7 @@ export default mixins(
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
+			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
 		},
 		onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;
@@ -498,47 +526,25 @@ export default mixins(
 	z-index: 999;
 	display: flex;
 	justify-content: center;
-	align-items: flex-end;
+	align-items: center;
 	color: var(--color-text-base);
 	background-color: var(--color-foreground-xlight);
 	width: 20px;
 	height: 20px;
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	text-align: center;
 	border-radius: 50%;
 
-	&::before {
-		display: block;
-		position: relative;
-		left: px;
-		top: -2.5px;
-		transform: rotate(270deg);
-		content: '\e6df';
-		font-family: element-icons;
-		font-size: var(--font-size-2xs);
-		font-weight: bold;
-		color: var(--color-text-base);
-	}
-
-	&.expandedButton {
-		&::before {
-			transform: rotate(90deg);
-			left: 0px;
-		}
-	}
-
 	&:hover {
-		&::before {
-			color: var(--color-primary-shade-1);
-		}
+		color: var(--color-primary-shade-1);
 	}
 }
 
 .updates {
 	display: flex;
 	align-items: center;
-	height: 26px;
 	cursor: pointer;
+	padding: var(--spacing-2xs) var(--spacing-l);
+	margin: var(--spacing-2xs) 0 0;
 
 	svg {
 		color: var(--color-text-base) !important;

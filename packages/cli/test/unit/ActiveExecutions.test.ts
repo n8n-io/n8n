@@ -3,13 +3,9 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import {
-	createDeferredPromise,
-	IDeferredPromise,
-	IExecuteResponsePromiseData,
-	IRun,
-} from 'n8n-workflow';
-import { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -90,7 +86,7 @@ describe('ActiveExecutions', () => {
 		const fakeResponse = { data: { resultData: { runData: {} } } };
 		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
 
-		expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
+		await expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
 	});
 
 	test('Should remove an existing execution', async () => {
@@ -112,11 +108,11 @@ describe('ActiveExecutions', () => {
 		const fakeOutput = mockFullRunData();
 		activeExecutions.remove(executionId, fakeOutput);
 
-		expect(postExecutePromise).resolves.toEqual(fakeOutput);
+		await expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});
 
 	test('Should throw error when trying to create a promise with invalid execution', async () => {
-		expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
+		await expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
 	});
 
 	test('Should call function to cancel execution when asked to stop', async () => {
@@ -126,7 +122,7 @@ describe('ActiveExecutions', () => {
 		const cancellablePromise = mockCancelablePromise();
 		cancellablePromise.cancel = cancelExecution;
 		activeExecutions.attachWorkflowExecution(executionId, cancellablePromise);
-		activeExecutions.stopExecution(executionId);
+		void activeExecutions.stopExecution(executionId);
 
 		expect(cancelExecution).toHaveBeenCalledTimes(1);
 	});
@@ -160,12 +156,7 @@ function mockFullRunData(): IRun {
 	};
 }
 
-function mockCancelablePromise(): PCancelable<IRun> {
-	return new PCancelable(async (resolve) => {
-		resolve();
-	});
-}
-
-function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
-	return createDeferredPromise<IExecuteResponsePromiseData>();
-}
+// eslint-disable-next-line @typescript-eslint/promise-function-async
+const mockCancelablePromise = () => new PCancelable<IRun>((resolve) => resolve());
+// eslint-disable-next-line @typescript-eslint/promise-function-async
+const mockDeferredPromise = () => createDeferredPromise<IExecuteResponsePromiseData>();

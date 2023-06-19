@@ -10,6 +10,18 @@ import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { STORES } from '@/constants';
 import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
+import { useTelemetry } from '@/composables';
+
+vi.mock('@/composables', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => ({
+			track,
+		}),
+	};
+});
+
+let telemetry: ReturnType<typeof useTelemetry>;
 
 Vue.use(PiniaVuePlugin);
 
@@ -58,6 +70,10 @@ const renderOptions: RenderOptions<ExecutionFilter> = {
 };
 
 describe('ExecutionFilter', () => {
+	beforeEach(() => {
+		telemetry = useTelemetry();
+	});
+
 	test.each([
 		['development', 'default', false, workflowsData],
 		['development', 'default', true, workflowsData],
@@ -119,5 +135,15 @@ describe('ExecutionFilter', () => {
 		expect(filterChangedEvent[2]).toEqual([defaultFilterState]);
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
+	});
+
+	test('telemetry sent only once after component is mounted', async () => {
+		const { getByTestId } = render(ExecutionFilter, renderOptions);
+		const customDataKeyInput = getByTestId('execution-filter-saved-data-key-input');
+
+		await userEvent.type(customDataKeyInput, 'test');
+		await userEvent.type(customDataKeyInput, 'key');
+
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
 	});
 });

@@ -14,6 +14,7 @@
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
 							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
+							:disabled="readOnly"
 							@toggle="onNameToggle"
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
@@ -25,7 +26,7 @@
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<div v-if="isTagsEditEnabled">
+			<div v-if="isTagsEditEnabled && !readOnly">
 				<TagsDropdown
 					:createEnabled="true"
 					:currentTagIds="appliedTagIds"
@@ -39,7 +40,7 @@
 					data-test-id="workflow-tags-dropdown"
 				/>
 			</div>
-			<div v-else-if="currentWorkflowTagIds.length === 0">
+			<div v-else-if="currentWorkflowTagIds.length === 0 && !readOnly">
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
 				</span>
@@ -99,7 +100,7 @@
 				<SaveButton
 					type="primary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
-					:disabled="isWorkflowSaving"
+					:disabled="isWorkflowSaving || readOnly"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
@@ -123,12 +124,14 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
+	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
@@ -148,19 +151,21 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useTitleChange, useToast, useMessage } from '@/composables';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useTagsStore } from '@/stores/tags';
+import {
+	useUIStore,
+	useSettingsStore,
+	useWorkflowsStore,
+	useRootStore,
+	useTagsStore,
+	useUsersStore,
+	useUsageStore,
+} from '@/stores';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { useUsersStore } from '@/stores/users';
-import { useUsageStore } from '@/stores/usage';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
+import { useCloudPlanStore } from '@/stores';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -171,8 +176,9 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((accu, val) => accu || !set.has(val), false);
 };
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'WorkflowDetails',
+	mixins: [workflowHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
@@ -183,9 +189,17 @@ export default mixins(workflowHelpers).extend({
 		InlineTextEdit,
 		BreakpointsObserver,
 	},
+	props: {
+		readOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	setup() {
 		return {
 			...useTitleChange(),
+			...useToast(),
+			...useMessage(),
 		};
 	},
 	data() {
@@ -208,6 +222,7 @@ export default mixins(workflowHelpers).extend({
 			useUsageStore,
 			useWorkflowsStore,
 			useUsersStore,
+			useCloudPlanStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -260,44 +275,52 @@ export default mixins(workflowHelpers).extend({
 			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
 		},
 		workflowMenuItems(): Array<{}> {
-			return [
-				{
-					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
-					label: this.$locale.baseText('menuActions.duplicate'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
-				},
+			const actions = [
 				{
 					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 					label: this.$locale.baseText('menuActions.download'),
 					disabled: !this.onWorkflowPage,
 				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-					label: this.$locale.baseText('menuActions.importFromUrl'),
-					disabled: !this.onWorkflowPage || this.onExecutionsTab,
-				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-					label: this.$locale.baseText('menuActions.importFromFile'),
-					disabled: !this.onWorkflowPage || this.onExecutionsTab,
-				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
-					label: this.$locale.baseText('generic.settings'),
-					disabled: !this.onWorkflowPage || this.isNewWorkflow,
-				},
-				...(this.workflowPermissions.delete
-					? [
-							{
-								id: WORKFLOW_MENU_ACTIONS.DELETE,
-								label: this.$locale.baseText('menuActions.delete'),
-								disabled: !this.onWorkflowPage || this.isNewWorkflow,
-								customClass: this.$style.deleteItem,
-								divided: true,
-							},
-					  ]
-					: []),
 			];
+
+			if (!this.readOnly) {
+				actions.unshift({
+					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
+					label: this.$locale.baseText('menuActions.duplicate'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
+				});
+
+				actions.push(
+					{
+						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+						label: this.$locale.baseText('menuActions.importFromUrl'),
+						disabled: !this.onWorkflowPage || this.onExecutionsTab,
+					},
+					{
+						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+						label: this.$locale.baseText('menuActions.importFromFile'),
+						disabled: !this.onWorkflowPage || this.onExecutionsTab,
+					},
+				);
+			}
+
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
+				label: this.$locale.baseText('generic.settings'),
+				disabled: !this.onWorkflowPage || this.isNewWorkflow,
+			});
+
+			if (this.workflowPermissions.delete && !this.readOnly) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.DELETE,
+					label: this.$locale.baseText('menuActions.delete'),
+					disabled: !this.onWorkflowPage || this.isNewWorkflow,
+					customClass: this.$style.deleteItem,
+					divided: true,
+				});
+			}
+
+			return actions;
 		},
 	},
 	methods: {
@@ -373,7 +396,7 @@ export default mixins(workflowHelpers).extend({
 			if (this.$data.isNameEditEnabled) {
 				if (this.$data.isTagsEditEnabled) {
 					// @ts-ignore
-					this.onTagsBlur();
+					void this.onTagsBlur();
 				}
 
 				this.$data.isTagsEditEnabled = false;
@@ -382,7 +405,7 @@ export default mixins(workflowHelpers).extend({
 		async onNameSubmit(name: string, cb: (saved: boolean) => void) {
 			const newName = name.trim();
 			if (!newName) {
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflowDetails.showMessage.title'),
 					message: this.$locale.baseText('workflowDetails.showMessage.message'),
 					type: 'error',
@@ -414,7 +437,7 @@ export default mixins(workflowHelpers).extend({
 				try {
 					workflowData = JSON.parse(data as string);
 				} catch (error) {
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
 						message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
 						type: 'error',
@@ -471,7 +494,7 @@ export default mixins(workflowHelpers).extend({
 				}
 				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
 					try {
-						const promptResponse = (await this.$prompt(
+						const promptResponse = (await this.prompt(
 							this.$locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
 							this.$locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
 							{
@@ -495,35 +518,41 @@ export default mixins(workflowHelpers).extend({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DELETE: {
-					const deleteConfirmed = await this.confirmMessage(
+					const deleteConfirmed = await this.confirm(
 						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
 							interpolate: { workflowName: this.workflowName },
 						}),
 						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-						'warning',
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
-						this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
+						{
+							type: 'warning',
+							confirmButtonText: this.$locale.baseText(
+								'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+							),
+						},
 					);
 
-					if (deleteConfirmed === false) {
+					if (deleteConfirmed !== MODAL_CONFIRM) {
 						return;
 					}
 
 					try {
 						await this.workflowsStore.deleteWorkflow(this.currentWorkflowId);
 					} catch (error) {
-						this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
+						this.showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 						return;
 					}
 					this.uiStore.stateIsDirty = false;
 					// Reset tab title since workflow is deleted.
 					this.titleReset();
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 						type: 'success',
 					});
 
-					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					break;
 				}
 				default:

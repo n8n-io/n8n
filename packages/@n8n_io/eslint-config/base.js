@@ -6,9 +6,7 @@ const config = (module.exports = {
 		'node_modules/**',
 		'dist/**',
 		// TODO: remove these
-		'test/**',
-		'.eslintrc.js',
-		'jest.config.js',
+		'*.js',
 	],
 
 	plugins: [
@@ -35,6 +33,9 @@ const config = (module.exports = {
 		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
 		 */
 		'eslint-plugin-n8n-local-rules',
+
+		/** https://github.com/sweepline/eslint-plugin-unused-imports */
+		'unused-imports',
 
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn */
 		'eslint-plugin-unicorn',
@@ -426,6 +427,15 @@ const config = (module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 
+		// ----------------------------------
+		//         no-unused-imports
+		// ----------------------------------
+
+		/**
+		 * https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/no-unused-imports.md
+		 */
+		'unused-imports/no-unused-imports': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-unnecessary-await.md */
 		'unicorn/no-unnecessary-await': 'error',
 
@@ -438,6 +448,45 @@ const config = (module.exports = {
 			files: ['**/*.d.ts'],
 			rules: {
 				'@typescript-eslint/no-unused-vars': 'off',
+			},
+		},
+		{
+			files: ['test/**/*.ts'],
+			rules: {
+				'n8n-local-rules/no-skipped-tests':
+					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+
+				// TODO: Remove these
+				'@typescript-eslint/await-thenable': 'off',
+				'@typescript-eslint/ban-ts-comment': 'off',
+				'@typescript-eslint/naming-convention': 'off',
+				'@typescript-eslint/no-duplicate-imports': 'off',
+				'@typescript-eslint/no-empty-function': 'off',
+				'@typescript-eslint/no-loop-func': 'off',
+				'@typescript-eslint/no-non-null-assertion': 'off',
+				'@typescript-eslint/no-shadow': 'off',
+				'@typescript-eslint/no-throw-literal': 'off',
+				'@typescript-eslint/no-unsafe-argument': 'off',
+				'@typescript-eslint/no-unsafe-assignment': 'off',
+				'@typescript-eslint/no-unsafe-call': 'off',
+				'@typescript-eslint/no-unsafe-member-access': 'off',
+				'@typescript-eslint/no-unsafe-return': 'off',
+				'@typescript-eslint/no-unused-expressions': 'off',
+				'@typescript-eslint/no-unused-vars': 'off',
+				'@typescript-eslint/no-use-before-define': 'off',
+				'@typescript-eslint/no-var-requires': 'off',
+				'@typescript-eslint/prefer-nullish-coalescing': 'off',
+				'@typescript-eslint/prefer-optional-chain': 'off',
+				'@typescript-eslint/restrict-plus-operands': 'off',
+				'@typescript-eslint/restrict-template-expressions': 'off',
+				'@typescript-eslint/unbound-method': 'off',
+				'id-denylist': 'off',
+				'import/no-cycle': 'off',
+				'import/no-default-export': 'off',
+				'import/no-extraneous-dependencies': 'off',
+				'n8n-local-rules/no-uncaught-json-parse': 'off',
+				'prefer-const': 'off',
+				'prefer-spread': 'off',
 			},
 		},
 	],

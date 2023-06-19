@@ -39,13 +39,13 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 
 import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
-import { useTagsStore } from '@/stores/tags';
+import { useTagsStore } from '@/stores/tags.store';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
@@ -57,8 +57,8 @@ interface TagEl extends ITag {
 }
 
 export default defineComponent({
-	components: { IntersectionObserver, IntersectionObserved },
 	name: 'TagsContainer',
+	components: { IntersectionObserver, IntersectionObserved },
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],
 	data() {
 		return {
@@ -109,7 +109,7 @@ export default defineComponent({
 	methods: {
 		onObserved({ el, isIntersecting }: { el: HTMLElement; isIntersecting: boolean }) {
 			if (el.dataset.id) {
-				Vue.set(this.$data.visibility, el.dataset.id, isIntersecting);
+				this.$data.visibility = { ...this.$data.visibility, [el.dataset.id]: isIntersecting };
 			}
 		},
 		onClick(e: MouseEvent, tag: TagEl) {

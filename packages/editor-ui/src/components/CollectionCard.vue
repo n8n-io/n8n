@@ -11,13 +11,14 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import Card from '@/components/CollectionWorkflowCard.vue';
-import mixins from 'vue-typed-mixins';
 import NodeList from '@/components/NodeList.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'CollectionCard',
+	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,

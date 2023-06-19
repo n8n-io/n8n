@@ -1,4 +1,5 @@
-import { createDeferredPromise, IConnections, INode, IRun, Workflow } from 'n8n-workflow';
+import type { IConnections, INode, IRun } from 'n8n-workflow';
+import { createDeferredPromise, Workflow } from 'n8n-workflow';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './Helpers';

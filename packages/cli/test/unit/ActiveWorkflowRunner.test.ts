@@ -1,13 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
 
-import {
-	ICredentialTypes,
-	INodesAndCredentials,
-	LoggerProxy,
-	NodeOperationError,
-	Workflow,
-} from 'n8n-workflow';
+import type { ICredentialTypes, INodesAndCredentials } from 'n8n-workflow';
+import { LoggerProxy, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -22,7 +17,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
-import { ExternalHooks } from '@/ExternalHooks';
+import type { ExternalHooks } from '@/ExternalHooks';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../integration/shared/utils';

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import type {
 	IExecuteFunctions,
@@ -11,6 +11,8 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
+
+import { oldVersionNotice } from '../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -29,6 +31,7 @@ const versionDescription: INodeTypeDescription = {
 	outputs: ['main'],
 	inputNames: ['Input 1', 'Input 2'],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Mode',
 			name: 'mode',

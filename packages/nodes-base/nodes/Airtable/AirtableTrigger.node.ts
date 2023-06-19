@@ -28,12 +28,42 @@ export class AirtableTrigger implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableApi'],
+					},
+				},
+			},
+			{
+				name: 'airtableTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableTokenApi'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'airtableApi',
+					},
+					{
+						name: 'Access Token',
+						value: 'airtableTokenApi',
+					},
+				],
+				default: 'airtableApi',
+			},
 			{
 				displayName: 'Base',
 				name: 'baseId',
@@ -192,18 +222,13 @@ export class AirtableTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
-
 		const webhookData = this.getWorkflowStaticData('node');
+		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
+		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
+		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const qs: IDataObject = {};
-
-		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-
-		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
-
-		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
-
-		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const endpoint = `${base}/${table}`;
 

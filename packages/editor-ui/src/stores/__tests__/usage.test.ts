@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useUsageStore } from '@/stores/usage';
+import { useUsageStore } from '@/stores/usage.store';
 
 describe('Usage and plan store', () => {
 	beforeEach(() => {

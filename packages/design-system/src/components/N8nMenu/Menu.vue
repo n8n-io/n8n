@@ -28,6 +28,7 @@
 				</el-menu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
+				<slot name="beforeLowerMenu"></slot>
 				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
@@ -191,10 +192,5 @@ export default defineComponent({
 	:global(.hideme) {
 		display: none !important;
 	}
-}
-
-.menuPrefix,
-.menuSuffix {
-	padding: var(--spacing-xs) var(--spacing-l);
 }
 </style>

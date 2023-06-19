@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import Vue, { defineComponent } from 'vue';
+import Vue from 'vue';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
@@ -10,11 +10,10 @@ import ExecutionsList from '@/components/ExecutionsList.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { showMessage } from '@/mixins/showMessage';
 import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
-import { waitAllPromises } from '@/__tests__/utils';
+import { retry, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores';
 
 const workflowDataFactory = (): IWorkflowDb => ({
@@ -71,9 +70,12 @@ const renderOptions = {
 			},
 		},
 	}),
+	propsData: {
+		autoRefreshEnabled: false,
+	},
 	i18n: i18nInstance,
 	stubs: ['font-awesome-icon'],
-	mixins: [externalHooks, genericHelpers, executionHelpers, showMessage],
+	mixins: [externalHooks, genericHelpers, executionHelpers],
 };
 
 function TelemetryPlugin(vue: typeof Vue): void {
@@ -135,16 +137,18 @@ describe('ExecutionsList.vue', () => {
 			.mockResolvedValueOnce(executionsData[1]);
 
 		const { getByTestId, getAllByTestId, queryByTestId } = await renderComponent();
-		await userEvent.click(getByTestId('execution-auto-refresh-checkbox'));
+
+		expect(storeSpy).toHaveBeenCalledTimes(1);
 
 		await userEvent.click(getByTestId('select-visible-executions-checkbox'));
 
-		expect(storeSpy).toHaveBeenCalledTimes(1);
-		expect(
-			getAllByTestId('select-execution-checkbox').filter((el) =>
-				el.contains(el.querySelector(':checked')),
-			).length,
-		).toBe(10);
+		await retry(() =>
+			expect(
+				getAllByTestId('select-execution-checkbox').filter((el) =>
+					el.contains(el.querySelector(':checked')),
+				).length,
+			).toBe(10),
+		);
 		expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
 		expect(getByTestId('selected-executions-info').textContent).toContain(10);
 
