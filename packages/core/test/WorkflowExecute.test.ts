@@ -1353,9 +1353,6 @@ describe('WorkflowExecute', () => {
 				description: 'should execute nodes in the correct order, the most top-left one first',
 				input: {
 					workflowData: {
-						meta: {
-							instanceId: 'f28590a0ec85ef127a78ef7dd31151c57fe33a0467aa23d6c2d4dffcf0508255',
-						},
 						nodes: [
 							{
 								parameters: {},
