@@ -117,7 +117,7 @@ const repoUrlValidationRules: Array<Rule | RuleGroup> = [
 	{
 		name: 'MATCH_REGEX',
 		config: {
-			regex: /(?:git|ssh|https?|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$/,
+			regex: /^(?!https?:\/\/)(?:git|ssh|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$/,
 			message: locale.baseText('settings.versionControl.repoUrlInvalid'),
 		},
 	},
