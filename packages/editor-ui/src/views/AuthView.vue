@@ -63,7 +63,6 @@ export default defineComponent({
 
 <style lang="scss" module>
 body {
-	display: block;
 	background-color: var(--color-background-light);
 }
 
