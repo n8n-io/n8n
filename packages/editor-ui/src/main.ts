@@ -23,7 +23,7 @@ import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
-import { useWebhooksStore } from '@/stores';
+import { useWebhooksStore, useUIStore } from '@/stores';
 
 Vue.config.productionTip = false;
 
@@ -41,6 +41,8 @@ new Vue({
 }).$mount('#app');
 
 router.afterEach((to, from) => {
+	useUIStore().restoreBanner('v1');
+
 	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
 });
 

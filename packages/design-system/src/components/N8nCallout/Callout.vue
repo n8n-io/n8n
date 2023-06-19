@@ -50,6 +50,10 @@ export default defineComponent({
 		slim: {
 			type: Boolean,
 		},
+		overrideIcon: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
 		classes(): string[] {
@@ -61,6 +65,8 @@ export default defineComponent({
 			];
 		},
 		getIcon(): string {
+			if (this.overrideIcon) return this.icon;
+
 			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
 				return CALLOUT_DEFAULT_ICONS[this.theme];
 			}
