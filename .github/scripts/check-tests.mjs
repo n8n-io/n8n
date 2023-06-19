@@ -3,8 +3,7 @@ import path from 'path';
 import util from 'util';
 import { exec } from 'child_process';
 import { glob } from "glob";
-import parser from '@babel/parser';
-import traverse from '@babel/traverse';
+import ts from 'typescript';
 
 const readFileAsync = util.promisify(fs.readFile);
 const execAsync = util.promisify(exec);
@@ -20,23 +19,18 @@ const filterAsync = async (asyncPredicate, arr) => {
 
 // Function to check if a file has a function declaration, function expression, object method or class
 const hasFunctionOrClass = async filePath => {
-	const code = await readFileAsync(filePath);
-	const ast = parser.parse(code, {sourceType: 'module', plugins: ['typescript']});
+	const fileContent = await readFileAsync(filePath, 'utf-8');
+	const sourceFile = ts.createSourceFile(filePath, fileContent, ts.ScriptTarget.Latest, true);
 
 	let hasFunctionOrClass = false;
-	traverse(ast, {
-		enter(path) {
-			if (
-				path.isFunctionDeclaration() ||
-				path.isFunctionExpression() ||
-				path.isObjectMethod() ||
-				path.isClassDeclaration()
-			) {
-				hasFunctionOrClass = true;
-				path.stop();  // stop traversing as soon as we found a function or class
-			}
-		},
-	});
+	const visit = node => {
+		if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isMethodDeclaration(node) || ts.isClassDeclaration(node)) {
+			hasFunctionOrClass = true;
+		}
+		node.forEachChild(visit);
+	}
+
+	visit(sourceFile);
 
 	return hasFunctionOrClass;
 }
