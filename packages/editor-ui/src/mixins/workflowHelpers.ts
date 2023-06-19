@@ -297,7 +297,6 @@ function executeData(
 			return executeData;
 		}
 
-		const parentWorkflowRunData = workflowRunData[parentNodeName];
 		if (
 			!workflowRunData[parentNodeName] ||
 			workflowRunData[parentNodeName].length <= runIndex ||
