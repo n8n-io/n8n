@@ -254,6 +254,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .app {
+	display: block;
 	height: 100vh;
 	overflow: hidden;
 }
