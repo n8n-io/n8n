@@ -12,10 +12,11 @@ export class ElasticSIEMApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API URL',
+			displayName: 'URL',
 			name: 'apiUrl',
 			type: 'string',
-			default: 'https://localhost:9200',
+			placeholder: 'http://localhost',
+			default: '',
 		},
 		{
 			displayName: 'Port',
