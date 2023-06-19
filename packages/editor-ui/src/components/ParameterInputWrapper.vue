@@ -63,7 +63,7 @@ import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useExternalSecretsStore } from '@/stores';
+import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
 
 type ParamRef = InstanceType<typeof ParameterInput>;
 
@@ -133,7 +133,7 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useNDVStore, useExternalSecretsStore),
+		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
 			return isValueExpression(this.parameter, this.value);
 		},
@@ -214,6 +214,7 @@ export default defineComponent({
 		},
 		resolvedAdditionalExpressionData() {
 			return {
+				$vars: this.environmentsStore.variablesAsObject,
 				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled
 					? { $secrets: this.externalSecretsStore.secretsAsObject }
 					: {}),
