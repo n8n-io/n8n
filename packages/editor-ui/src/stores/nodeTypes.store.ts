@@ -4,9 +4,14 @@ import {
 	getNodeTranslationHeaders,
 	getNodeTypes,
 	getResourceLocatorResults,
+	getResourceMapperFields,
 } from '@/api/nodeTypes';
 import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
-import type { INodeTypesState, IResourceLocatorReqParams } from '@/Interface';
+import type {
+	INodeTypesState,
+	IResourceLocatorReqParams,
+	ResourceMapperReqParams,
+} from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils';
 import type {
@@ -17,9 +22,9 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	ResourceMapperFields,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
 
@@ -114,7 +119,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				},
 				{ ...this.nodeTypes },
 			);
-			Vue.set(this, 'nodeTypes', nodeTypes);
+			this.nodeTypes = nodeTypes;
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(
@@ -176,6 +181,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		): Promise<INodeListSearchResult> {
 			const rootStore = useRootStore();
 			return getResourceLocatorResults(rootStore.getRestApiContext, sendData);
+		},
+		async getResourceMapperFields(
+			sendData: ResourceMapperReqParams,
+		): Promise<ResourceMapperFields | null> {
+			const rootStore = useRootStore();
+			try {
+				return await getResourceMapperFields(rootStore.getRestApiContext, sendData);
+			} catch (error) {
+				return null;
+			}
 		},
 	},
 });

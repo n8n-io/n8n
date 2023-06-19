@@ -10,19 +10,16 @@ const ndv = new NDV();
 
 describe('Data mapping', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
 	beforeEach(() => {
 		workflowPage.actions.visit();
 
-		cy.window().then(
-			(win) => {
-				// @ts-ignore
-				win.preventNodeViewBeforeUnload = true;
-			},
-		);
+		cy.window().then((win) => {
+			// @ts-ignore
+			win.preventNodeViewBeforeUnload = true;
+		});
 	});
 
 	it('maps expressions from table header', () => {
@@ -304,19 +301,28 @@ describe('Data mapping', () => {
 
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('exist');
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]').should('not.exist');
-		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown().realMouseMove(100, 100);
+		ndv.getters
+			.inputDataContainer()
+			.should('exist')
+			.find('span')
+			.contains('count')
+			.realMouseDown()
+			.realMouseMove(100, 100);
 		cy.wait(50);
 
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('not.exist');
-		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]')
+		ndv.getters
+			.parameterInput('keepOnlySet')
+			.find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
 			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 
-		ndv.getters.parameterInput('value').find('input[type="text"]')
-		.should('exist')
-		.invoke('css', 'border')
-		.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
+		ndv.getters
+			.parameterInput('value')
+			.find('input[type="text"]')
+			.should('exist')
+			.invoke('css', 'border')
+			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 	});
-
 });

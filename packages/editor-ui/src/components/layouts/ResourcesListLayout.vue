@@ -61,20 +61,6 @@
 			<page-view-layout-list :overflow="type !== 'list'" v-else>
 				<template #header>
 					<div class="mb-xs">
-						<n8n-callout
-							v-if="starsBannerShouldRender"
-							theme="secondary"
-							icon="star"
-							:class="$style['github-stars-banner']"
-						>
-							<span v-html="$locale.baseText('githubStars.banner.title')"></span>
-							<template #trailingContent>
-								<n8n-link :to="repoUrl" size="small" theme="secondary" bold underline>
-									{{ $locale.baseText('githubStars.banner.link') }}
-								</n8n-link>
-							</template>
-						</n8n-callout>
-
 						<div :class="$style['filters-row']">
 							<n8n-input
 								:class="[$style['search'], 'mr-2xs']"
@@ -202,11 +188,7 @@ import { mapStores } from 'pinia';
 import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
-import {
-	EnterpriseEditionFeature,
-	GITHUB_STARS_BANNER_SHOW_UNTIL_DATE,
-	MAIN_REPOSITORY_URL,
-} from '@/constants';
+import { EnterpriseEditionFeature } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
@@ -313,14 +295,10 @@ export default defineComponent({
 			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
 			EnterpriseEditionFeature,
-			repoUrl: MAIN_REPOSITORY_URL,
 		};
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUsersStore),
-		starsBannerShouldRender() {
-			return this.resourceKey === 'workflows' && new Date() < GITHUB_STARS_BANNER_SHOW_UNTIL_DATE;
-		},
 		subviewResources(): IResource[] {
 			if (!this.shareable) {
 				return this.resources as IResource[];
@@ -554,9 +532,5 @@ export default defineComponent({
 
 .datatable {
 	padding-bottom: var(--spacing-s);
-}
-
-.github-stars-banner {
-	margin-bottom: var(--spacing-m);
 }
 </style>

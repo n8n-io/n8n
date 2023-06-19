@@ -264,7 +264,7 @@ export default defineComponent({
 			);
 		},
 		credentialTypeName(): string {
-			return (this.credentialType as ICredentialType).name;
+			return (this.credentialType as ICredentialType)?.name;
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);

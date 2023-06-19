@@ -1,16 +1,18 @@
 import convict from 'convict';
 import dotenv from 'dotenv';
 import { tmpdir } from 'os';
-import { mkdtempSync, readFileSync } from 'fs';
+import { mkdirSync, mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
+	const testsDir = join(tmpdir(), 'n8n-e2e/');
+	mkdirSync(testsDir, { recursive: true });
 	// Skip loading config from env variables in end-to-end tests
 	process.env = {
 		E2E_TESTS: 'true',
-		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
+		N8N_USER_FOLDER: mkdtempSync(testsDir),
 		EXECUTIONS_PROCESS: 'main',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_PUBLIC_API_DISABLED: 'true',
@@ -19,8 +21,12 @@ if (inE2ETests) {
 		NODE_FUNCTION_ALLOW_EXTERNAL: 'node-fetch',
 	};
 } else if (inTest) {
+	const testsDir = join(tmpdir(), 'n8n-tests/');
+	mkdirSync(testsDir, { recursive: true });
+	process.env.N8N_LOG_LEVEL = 'silent';
+	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
-	process.env.N8N_PUBLIC_API_SWAGGERUI_DISABLED = 'true';
+	process.env.N8N_USER_FOLDER = mkdtempSync(testsDir);
 } else {
 	dotenv.config();
 }

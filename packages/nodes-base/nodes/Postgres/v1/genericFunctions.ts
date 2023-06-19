@@ -343,7 +343,7 @@ export async function pgInsert(
  *
  * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
- * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {pgPromise.IDatabase<{}, pg.IClient>} db`` The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsertV2(

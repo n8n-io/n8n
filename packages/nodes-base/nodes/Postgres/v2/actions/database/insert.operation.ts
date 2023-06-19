@@ -40,6 +40,11 @@ const properties: INodeProperties[] = [
 		default: 'autoMapInputData',
 		description:
 			'Whether to map node input properties and the table data automatically or manually',
+		displayOptions: {
+			show: {
+				'@version': [2, 2.1],
+			},
+		},
 	},
 	{
 		displayName: `
@@ -51,6 +56,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['autoMapInputData'],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -66,6 +72,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
+				'@version': [2, 2.1],
 			},
 		},
 		default: {},
@@ -96,6 +103,35 @@ const properties: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['table.value', 'operation'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: true,
+			},
+		},
+		displayOptions: {
+			show: {
+				'@version': [2.2],
+			},
+		},
 	},
 	optionsCollection,
 ];
@@ -142,7 +178,11 @@ export async function execute(
 		let query = `INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv)${onConflict}`;
 		let values: QueryValues = [schema, table];
 
-		const dataMode = this.getNodeParameter('dataMode', i) as string;
+		const nodeVersion = this.getNode().typeVersion;
+		const dataMode =
+			nodeVersion < 2.2
+				? (this.getNodeParameter('dataMode', i) as string)
+				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
 		let item: IDataObject = {};
 
@@ -151,10 +191,17 @@ export async function execute(
 		}
 
 		if (dataMode === 'defineBelow') {
-			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-				.values as IDataObject[];
+			const valuesToSend =
+				nodeVersion < 2.2
+					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
+					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
+							.values as IDataObject[]);
 
-			item = prepareItem(valuesToSend);
+			if (nodeVersion < 2.2) {
+				item = prepareItem(valuesToSend);
+			} else {
+				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			}
 		}
 
 		const tableSchema = await getTableSchema(db, schema, table);

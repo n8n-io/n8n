@@ -32,7 +32,6 @@ import type {
 	IUser,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useRootStore } from './n8nRoot.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
@@ -220,10 +219,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		upsertCredential(credential: ICredentialsResponse): void {
 			if (credential.id) {
-				Vue.set(this.credentials, credential.id, {
-					...this.credentials[credential.id],
-					...credential,
-				});
+				this.credentials = {
+					...this.credentials,
+					[credential.id]: {
+						...this.credentials[credential.id],
+						...credential,
+					},
+				};
 			}
 		},
 		enableOAuthCredential(credential: ICredentialsResponse): void {
@@ -314,7 +316,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const rootStore = useRootStore();
 			const deleted = await deleteCredential(rootStore.getRestApiContext, id);
 			if (deleted) {
-				Vue.delete(this.credentials, id);
+				const { [id]: deletedCredential, ...rest } = this.credentials;
+				this.credentials = rest;
 			}
 		},
 		async oAuth2Authorize(data: ICredentialsResponse): Promise<string> {
@@ -351,31 +354,38 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 		// Enterprise edition actions
 		setCredentialOwnedBy(payload: { credentialId: string; ownedBy: Partial<IUser> }) {
-			Vue.set(this.credentials[payload.credentialId], 'ownedBy', payload.ownedBy);
+			this.credentials[payload.credentialId] = {
+				...this.credentials[payload.credentialId],
+				ownedBy: payload.ownedBy,
+			};
 		},
 		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string }) {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
 					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
 				});
-				Vue.set(this.credentials[payload.credentialId], 'sharedWith', payload.sharedWith);
+
+				this.credentials[payload.credentialId] = {
+					...this.credentials[payload.credentialId],
+					sharedWith: payload.sharedWith,
+				};
 			}
 		},
 		addCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
-			Vue.set(
-				this.credentials[payload.credentialId],
-				'sharedWith',
-				(this.credentials[payload.credentialId].sharedWith || []).concat([payload.sharee]),
-			);
+			this.credentials[payload.credentialId] = {
+				...this.credentials[payload.credentialId],
+				sharedWith: (this.credentials[payload.credentialId].sharedWith || []).concat([
+					payload.sharee,
+				]),
+			};
 		},
 		removeCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
-			Vue.set(
-				this.credentials[payload.credentialId],
-				'sharedWith',
-				(this.credentials[payload.credentialId].sharedWith || []).filter(
+			this.credentials[payload.credentialId] = {
+				...this.credentials[payload.credentialId],
+				sharedWith: (this.credentials[payload.credentialId].sharedWith || []).filter(
 					(sharee) => sharee.id !== payload.sharee.id,
 				),
-			);
+			};
 		},
 
 		async getCredentialTranslation(credentialType: string): Promise<object> {

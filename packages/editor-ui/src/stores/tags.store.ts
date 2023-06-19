@@ -2,7 +2,6 @@ import { createTag, deleteTag, getTags, updateTag } from '@/api/tags';
 import { STORES } from '@/constants';
 import type { ITag, ITagsState } from '@/Interface';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useRootStore } from './n8nRoot.store';
 import { useWorkflowsStore } from './workflows.store';
 
@@ -45,14 +44,21 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 						...currentTag,
 						...tag,
 					};
-					Vue.set(this.tags, tagId, newTag);
+					this.tags = {
+						...this.tags,
+						[tagId]: newTag,
+					};
 				} else {
-					Vue.set(this.tags, tagId, tag);
+					this.tags = {
+						...this.tags,
+						[tagId]: tag,
+					};
 				}
 			});
 		},
 		deleteTag(id: string): void {
-			Vue.delete(this.tags, id);
+			const { [id]: deleted, ...rest } = this.tags;
+			this.tags = rest;
 		},
 
 		async fetchAll(params?: { force?: boolean; withUsageCount?: boolean }): Promise<ITag[]> {
