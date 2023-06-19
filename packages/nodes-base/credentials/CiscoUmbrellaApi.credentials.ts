@@ -42,8 +42,6 @@ export class CiscoUmbrellaApi implements ICredentialType {
 		},
 	];
 
-	// method will only be called if "sessionToken" (the expirable property)
-	// is empty or is expired
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const url = 'https://api.umbrella.com';
 		const { access_token } = (await this.helpers.httpRequest({

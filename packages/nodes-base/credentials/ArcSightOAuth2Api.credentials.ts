@@ -61,7 +61,6 @@ export class ArcSightOAuth2Api implements ICredentialType {
 	];
 
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		// make reques to get session token
 		const url = credentials.url as string;
 		const token = await this.helpers.httpRequest({
 			method: 'POST',
