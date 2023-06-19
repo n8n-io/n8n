@@ -41,9 +41,9 @@ const hasFunctionOrClass = async filePath => {
 	return hasFunctionOrClass;
 }
 
-const program = async () => {
+const main = async () => {
 
-  // Run a git command to get a list of all files in the commit
+  // Run a git command to get a list of all changed files in the branch (branch has to be up to date with master)
 	const changedFiles = await execAsync('git diff --name-only --diff-filter=d origin/master..HEAD')
 		.then(({stdout}) => stdout.trim().split('\n').filter(Boolean));
 
@@ -51,8 +51,9 @@ const program = async () => {
 	const specAndTestTsFiles = await glob('packages/*/**/{test,__tests__}/*.{spec,test}.ts');
 	const specAndTestTsFilesNames = specAndTestTsFiles.map(file => path.parse(file).name.replace(/\.(test|spec)/, ''));
 
-  // Filter out the .ts and .vue files from the changed files, .ts files with any kind of function declaration or class
+  // Filter out the .ts and .vue files from the changed files
 	const changedVueFiles = changedFiles.filter(file => file.endsWith('.vue'));
+	// .ts files with any kind of function declaration or class and not in any of the test folders
 	const changedTsFilesWithFunction = await filterAsync(
 		async filePath =>
 			filePath.endsWith('.ts') &&
@@ -72,4 +73,4 @@ const program = async () => {
 	});
 };
 
-program();
+main();
