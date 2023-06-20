@@ -48,7 +48,7 @@ export async function twitterApiRequest(
 		if (error.error.required_enrollment === 'Appropriate Level of API Access') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'The operation requires elevated access. You need to upgrade your developer account to either Basic or Pro.',
+				'The operation requires Twitter Api to be either Basic or Pro.',
 			);
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
