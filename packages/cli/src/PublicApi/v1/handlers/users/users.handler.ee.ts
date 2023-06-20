@@ -1,6 +1,6 @@
 import type express from 'express';
 
-import { clean, getAllUsersAndCount, getUser } from './users.service';
+import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';

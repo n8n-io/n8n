@@ -8,7 +8,7 @@ import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { isInstanceOwner } from '../users/users.service';
+import { isInstanceOwner } from '../users/users.service.ee';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
 import { START_NODES } from '@/constants';
