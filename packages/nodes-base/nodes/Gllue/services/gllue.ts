@@ -35,6 +35,18 @@ export class Gllue {
 			cvsentField: firstCvSent.gllueext_send_terms_cv_sent,
 		};
 	}
+
+	static getClientDataFromCvsent(data: PipelineResponse) {
+		let hasClient=data.result.hasOwnProperty('client');
+		return hasClient?data.result.client[0]:null
+	}
+
+	static getClientContract(data: PipelineResponse) {
+		let hasClientContract=data.result.hasOwnProperty('clientcontract');
+		return hasClientContract?data.result.clientcontract:null;
+	}
+
+
 }
 
 export class GllueCandidateListEndpoint extends Gllue {

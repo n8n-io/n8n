@@ -76,6 +76,8 @@ const SIMPLE_RESPONSE = {
 	result: {
 		cvsent: [{id: 30817, gllueext_send_terms_cv_sent: 'yes'}],
 		candidate: [{id: 1234, email: 'fake@email.com'}],
+		client:[]
+
 	},
 };
 
@@ -84,6 +86,7 @@ const INTERVIEW_RESPONSE = {
 	result: {
 		clientinterview: [{id: 31230}],
 		candidate: [{id: 1234, email: 'fake@email.com'}],
+		client:[]
 	},
 };
 describe('gllue api', () => {
@@ -110,14 +113,14 @@ describe('consent send email logic', () => {
 		const hasConsented = {consents: [{id: 'foobar'}]};
 		const hasSent = {consents: []};
 		const service = new SendEmailOnConsentService(
-			hasConsented, hasSent, 'cvsent', null);
+			hasConsented, hasSent, 'cvsent', null, false);
 		expect(service.canSendEmail()).toBeFalsy();
 	});
 	it('should skip on sent in 30 days', () => {
 		const hasConsented = {consents: []};
 		const hasSent = {consents: [{id: 'has sent in 30 days'}]};
 		const service = new SendEmailOnConsentService(
-			hasConsented, hasSent, 'clientinterview', null);
+			hasConsented, hasSent, 'clientinterview', null, false);
 		expect(service.canSendEmail()).toBeFalsy();
 	});
 	it('should skip without required', () => {
@@ -125,14 +128,14 @@ describe('consent send email logic', () => {
 		const hasSent = {consents: []};
 		const hasRequired = null;
 		const service = new SendEmailOnConsentService(
-			hasConsented, hasSent, 'cvsent', hasRequired);
+			hasConsented, hasSent, 'cvsent', hasRequired, false);
 		expect(service.canSendEmail()).toBeFalsy();
 	});
 	it('should send with required', () => {
 		const hasConsented = {consents: []};
 		const hasSent = {consents: []};
 		const hasRequired = 'yes';
-		const service = new SendEmailOnConsentService(hasConsented, hasSent, 'cvsent', hasRequired);
+		const service = new SendEmailOnConsentService(hasConsented, hasSent, 'cvsent', hasRequired, false);
 		expect(service.canSendEmail()).toBeTruthy();
 	});
 	it('should send on interview', () => {
@@ -140,7 +143,7 @@ describe('consent send email logic', () => {
 		const hasSent = {consents: []};
 		const hasRequired = null;
 		const service = new SendEmailOnConsentService(
-			hasConsented, hasSent, 'clientinterview', hasRequired);
+			hasConsented, hasSent, 'clientinterview', hasRequired,false);
 		expect(service.canSendEmail()).toBeTruthy();
 	});
 
@@ -149,7 +152,7 @@ describe('consent send email logic', () => {
 		const hasSent = {consents: []};
 		const hasRequired = 'yes';
 		const service = new SendEmailOnConsentService(
-			hasConsented, hasSent, 'clientinterview', hasRequired);
+			hasConsented, hasSent, 'clientinterview', hasRequired, false);
 		expect(service.canSendEmail()).toBeTruthy();
 	});
 });

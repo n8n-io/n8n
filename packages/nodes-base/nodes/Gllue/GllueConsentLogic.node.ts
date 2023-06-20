@@ -9,7 +9,7 @@ import {
 } from './constants';
 import {buildConsentUrl} from './helpers';
 import {ConsentService} from './services/consent';
-import {EmailNotificationService, SendEmailOnConsentService} from './services/email';
+import {EmailNotificationService, SendEmailOnConsentService, HandsOffService} from './services/email';
 import {Gllue} from './services/gllue';
 
 const helpers = require('./helpers');
@@ -50,14 +50,21 @@ export class GllueConsentLogic implements INodeType {
 		const token = helpers.generateTokenWithAESKey(timestamp, credentials.apiUsername, credentials.apiAesKey);
 		const gllue = new Gllue(credentials.apiHost as string, token, this.helpers.request);
 		const simpleData = await gllue.getDetail(resource, resourceId,
-			'id,jobsubmission__candidate__email,gllueext_send_terms_cv_sent');
-
+			'id,jobsubmission__candidate__email,gllueext_send_terms_cv_sent,jobsubmission__candidate__company__warning_situation,jobsubmission__candidate__company__clientcontract_set__is_handsoff,contractInfo');
 		const candidateData = Gllue.extractIdAndEmail(simpleData);
+		const clientData =  Gllue.getClientDataFromCvsent(simpleData);
+		const clienContractDate = Gllue.getClientContract(simpleData);
+		let isHandsOff = false;
+		if (clientData && clienContractDate) {
+			const handsOffService = new HandsOffService(clientData, clienContractDate);
+			isHandsOff = handsOffService.isHandsoff();
+		}
+
 		const source = item.source as string;
 		const consentService = new ConsentService(this.helpers.request);
 		const consented = await consentService.getConsented(candidateData.id, source, EMAIL_CHANNEL);
 		const sent = await consentService.getSentIn30Days(candidateData.id, source, EMAIL_CHANNEL);
-		const service = new SendEmailOnConsentService(consented, sent, resource, candidateData.cvsentField);
+		const service = new SendEmailOnConsentService(consented, sent, resource, candidateData.cvsentField, isHandsOff);
 
 		let emailData = {};
 		if (service.canSendEmail()) {

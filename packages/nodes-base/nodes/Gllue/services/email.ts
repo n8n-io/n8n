@@ -1,18 +1,40 @@
-import {Consents} from '../interfaces';
+import {ClientResponse, Consents, ClientContractResponse} from '../interfaces';
 import {CONSENT_EMAIL_TYPE, CONSENT_FROM_EMAIL, INTERVIEW_PIPELINE_NAME} from '../constants';
 import {Hasura, N8nRequest} from '../GenericFunctions';
+
+export class HandsOffService {
+	client: ClientResponse;
+	contracts:ClientContractResponse[];
+
+	constructor(client: ClientResponse, contracts: ClientContractResponse[]) {
+		this.client = client;
+		this.contracts = contracts;
+	}
+
+	isHandsoff() {
+		let warningSituation = this.getWarningSituation()
+		return warningSituation ? true : false;
+	}
+
+	getWarningSituation() {
+		return this.client.warning_situation;
+	}
+
+}
 
 export class SendEmailOnConsentService {
 	hasConsented: Consents;
 	hasSent: Consents;
 	pipelineName: string;
 	hasRequired: string | null;
+	isHandsOff: boolean;
 
-	constructor(hasConsented: Consents, hasSent: Consents, pipelineName: string, hasRequired: string | null) {
+	constructor(hasConsented: Consents, hasSent: Consents, pipelineName: string, hasRequired: string | null, isHandsOff: boolean) {
 		this.hasConsented = hasConsented;
 		this.hasSent = hasSent;
 		this.pipelineName = pipelineName;
 		this.hasRequired = hasRequired;
+		this.isHandsOff = isHandsOff;
 	}
 
 	canSendEmail() {
