@@ -2,10 +2,7 @@
 
 Great that you are here and you want to contribute to n8n
 
-## Table of Contents
-
-<details>
-<summary>Contributing</summary>
+## Contents
 
 - [Contributing to n8n](#contributing-to-n8n)
   - [Contents](#contents)
@@ -26,7 +23,6 @@ Great that you are here and you want to contribute to n8n
   - [Create custom nodes](#create-custom-nodes)
   - [Extend documentation](#extend-documentation)
   - [Contributor License Agreement](#contributor-license-agreement)
-</details>
 
 ## Code of conduct
 
@@ -89,7 +85,7 @@ With Node.js v16.17 or newer, you can install the latest version of pnpm: `corep
 
 #### Build tools
 
-The packages which n8n uses depend on a few build tools.
+The packages which n8n uses depend on a few build tools:
 
 Debian/Ubuntu:
 
@@ -175,18 +171,18 @@ automatically build your code, restart the backend and refresh the frontend
    ```
    pnpm dev
    ```
-2. Hack, hack, hack
-3. Check if everything still runs in production mode:
+1. Hack, hack, hack
+1. Check if everything still runs in production mode:
    ```
    pnpm build
    pnpm start
    ```
-4. Create tests
-5. Run all [tests](#test-suite):
+1. Create tests
+1. Run all [tests](#test-suite):
    ```
    pnpm test
    ```
-6. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
 ### Test suite
 
@@ -230,4 +226,4 @@ That we do not have any potential problems later it is sadly necessary to sign a
 
 We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally only a few lines long.
 
-Once a pull request is opened, an automated bot will promptly leave a comment requesting the agreement to be signed. Sadly, the pull request can only be merged once the signature is obtained.
+Once a pull request is opened, an automated bot will promptly leave a comment requesting the agreement to be signed. The pull request can only be merged once the signature is obtained.
