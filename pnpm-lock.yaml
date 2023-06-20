@@ -347,6 +347,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
+      nanoid:
+        specifier: ^3.3.6
+        version: 3.3.6
       nodemailer:
         specifier: ^6.7.1
         version: 6.8.0

@@ -7,7 +7,7 @@ import {
 	useNodeTypesStore,
 	useUIStore,
 	useHistoryStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
@@ -43,7 +43,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
-	const versionControlStore = useVersionControlStore();
+	const sourceControlStore = useSourceControlStore();
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
@@ -59,7 +59,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
-	const readOnlyEnv = computed(() => versionControlStore.preferences.branchReadOnly);
+	const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
 	watch(readOnlyEnv, (readOnly) => {
 		if (jsPlumbInstanceRef.value) {
