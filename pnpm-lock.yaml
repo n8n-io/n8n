@@ -326,6 +326,9 @@ importers:
       localtunnel:
         specifier: ^2.0.0
         version: 2.0.2
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       luxon:
         specifier: ^3.3.0
         version: 3.3.0
