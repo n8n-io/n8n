@@ -10,7 +10,7 @@ export class CrowdDevApi implements ICredentialType {
 
 	displayName = 'crowd.dev API';
 
-	documentationUrl = 'https://docs.crowd.dev/reference/getting-started-with-crowd-dev-api';
+	documentationUrl = 'https://docs.crowd.dev/reference/getting-started-with-crowdDev';
 
 	properties: INodeProperties[] = [
 		{
