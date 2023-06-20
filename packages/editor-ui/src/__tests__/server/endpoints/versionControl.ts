@@ -19,7 +19,7 @@ export function routesForVersionControl(server: Server) {
 	};
 
 	server.post(`${versionControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {
-		const requestBody = jsonParse(request.requestBody) as Partial<VersionControlPreferences>;
+		const requestBody: Partial<VersionControlPreferences> = jsonParse(request.requestBody);
 
 		return new Response(
 			200,
@@ -34,7 +34,7 @@ export function routesForVersionControl(server: Server) {
 	});
 
 	server.patch(`${versionControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {
-		const requestBody = jsonParse(request.requestBody) as Partial<VersionControlPreferences>;
+		const requestBody: Partial<VersionControlPreferences> = jsonParse(request.requestBody);
 
 		return new Response(
 			200,

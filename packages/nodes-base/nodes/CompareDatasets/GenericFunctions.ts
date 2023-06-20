@@ -1,11 +1,11 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import difference from 'lodash.difference';
-import get from 'lodash.get';
-import intersection from 'lodash.intersection';
-import isEmpty from 'lodash.isempty';
-import omit from 'lodash.omit';
-import unset from 'lodash.unset';
+import difference from 'lodash/difference';
+import get from 'lodash/get';
+import intersection from 'lodash/intersection';
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+import unset from 'lodash/unset';
 import { cloneDeep } from 'lodash';
 import set from 'lodash.set';
 import union from 'lodash.union';

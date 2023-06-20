@@ -1,13 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { merge } from 'lodash-es';
 import { STORES } from '@/constants';
 import { i18nInstance } from '@/plugins/i18n';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
 import { useUsersStore, useVersionControlStore } from '@/stores';
-import { merge } from 'lodash-es';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let versionControlStore: ReturnType<typeof useVersionControlStore>;
@@ -65,21 +66,45 @@ describe('MainSidebarVersionControl', () => {
 		expect(queryByTestId('main-sidebar-version-control-connected')).not.toBeInTheDocument();
 	});
 
-	it('should render connected content', async () => {
-		vi.spyOn(versionControlStore, 'preferences', 'get').mockReturnValue({
-			branchName: 'main',
-			branches: [],
-			authorName: '',
-			authorEmail: '',
-			repositoryUrl: '',
-			branchReadOnly: false,
-			branchColor: '#F4A6DC',
-			connected: true,
-			publicKey: '',
+	describe('when connected', () => {
+		beforeEach(() => {
+			vi.spyOn(versionControlStore, 'preferences', 'get').mockReturnValue({
+				branchName: 'main',
+				branches: [],
+				authorName: '',
+				authorEmail: '',
+				repositoryUrl: '',
+				branchReadOnly: false,
+				branchColor: '#F4A6DC',
+				connected: true,
+				publicKey: '',
+			});
 		});
 
-		const { getByTestId, queryByTestId } = renderComponent({ props: { isCollapsed: false } });
-		expect(getByTestId('main-sidebar-version-control-connected')).toBeInTheDocument();
-		expect(queryByTestId('main-sidebar-version-control-setup')).not.toBeInTheDocument();
+		it('should render the appropriate content', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({ props: { isCollapsed: false } });
+			expect(getByTestId('main-sidebar-version-control-connected')).toBeInTheDocument();
+			expect(queryByTestId('main-sidebar-version-control-setup')).not.toBeInTheDocument();
+		});
+
+		it('should show toast error if pull response http status code is not 409', async () => {
+			vi.spyOn(versionControlStore, 'pullWorkfolder').mockRejectedValueOnce({
+				response: { status: 400 },
+			});
+			const { getAllByRole, getByRole } = renderComponent({ props: { isCollapsed: false } });
+
+			await userEvent.click(getAllByRole('button')[0]);
+			await waitFor(() => expect(getByRole('alert')).toBeInTheDocument());
+		});
+
+		it('should show confirm if pull response http status code is 409', async () => {
+			vi.spyOn(versionControlStore, 'pullWorkfolder').mockRejectedValueOnce({
+				response: { status: 409 },
+			});
+			const { getAllByRole, getByRole } = renderComponent({ props: { isCollapsed: false } });
+
+			await userEvent.click(getAllByRole('button')[0]);
+			await waitFor(() => expect(getByRole('dialog')).toBeInTheDocument());
+		});
 	});
 });

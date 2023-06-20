@@ -44,6 +44,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 			logStreaming: false,
 			variables: false,
 			versionControl: false,
+			auditLogs: false,
 		},
 		executionMode: 'regular',
 		executionTimeout: 0,
