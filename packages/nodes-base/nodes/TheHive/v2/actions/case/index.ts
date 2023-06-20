@@ -5,9 +5,10 @@ import * as create from './create.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as getMany from './getMany.operation';
+import * as getTimeline from './getTimeline.operation';
 import * as update from './update.operation';
 
-export { count, create, executeResponder, get, getMany, update };
+export { count, create, executeResponder, get, getMany, getTimeline, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -44,6 +45,11 @@ export const description: INodeProperties[] = [
 				action: 'Get many cases',
 			},
 			{
+				name: 'Get Timeline',
+				value: 'getTimeline',
+				action: 'Get the timeline of a case',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update a case',
@@ -60,5 +66,6 @@ export const description: INodeProperties[] = [
 	...executeResponder.description,
 	...get.description,
 	...getMany.description,
+	...getTimeline.description,
 	...update.description,
 ];

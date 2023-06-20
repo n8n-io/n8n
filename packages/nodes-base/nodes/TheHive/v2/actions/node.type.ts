@@ -12,7 +12,8 @@ type NodeMap = {
 		| 'merge'
 		| 'promote'
 		| 'update';
-	case: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'update';
+	case: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'getTimeline' | 'update';
+	comment: 'add' | 'deleteComment' | 'update';
 	log: 'create' | 'executeResponder' | 'get' | 'getMany';
 	observable:
 		| 'count'
@@ -23,6 +24,7 @@ type NodeMap = {
 		| 'getMany'
 		| 'search'
 		| 'update';
+	page: 'create' | 'deletePage' | 'update';
 	task: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'search' | 'update';
 };
 

@@ -3,9 +3,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import * as alert from './alert';
 import * as case_ from './case';
+import * as comment from './comment';
 import * as log from './log';
 import * as observable from './observable';
 import * as task from './task';
+import * as page from './page';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'TheHive',
@@ -43,12 +45,20 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'case',
 				},
 				{
+					name: 'Comment',
+					value: 'comment',
+				},
+				{
 					name: 'Log',
 					value: 'log',
 				},
 				{
 					name: 'Observable',
 					value: 'observable',
+				},
+				{
+					name: 'Page',
+					value: 'page',
 				},
 				{
 					name: 'Task',
@@ -59,9 +69,11 @@ export const versionDescription: INodeTypeDescription = {
 		},
 
 		...alert.description,
-		...observable.description,
 		...case_.description,
-		...task.description,
+		...comment.description,
 		...log.description,
+		...observable.description,
+		...page.description,
+		...task.description,
 	],
 };

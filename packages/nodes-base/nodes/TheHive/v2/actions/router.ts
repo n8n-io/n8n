@@ -5,8 +5,10 @@ import type { TheHiveType } from './node.type';
 
 import * as alert from './alert';
 import * as case_ from './case';
+import * as comment from './comment';
 import * as log from './log';
 import * as observable from './observable';
+import * as page from './page';
 import * as task from './task';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -33,11 +35,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'case':
 					executionData = await case_[theHiveNodeData.operation].execute.call(this, i);
 					break;
+				case 'comment':
+					executionData = await comment[theHiveNodeData.operation].execute.call(this, i);
+					break;
 				case 'log':
 					executionData = await log[theHiveNodeData.operation].execute.call(this, i);
 					break;
 				case 'observable':
 					executionData = await observable[theHiveNodeData.operation].execute.call(this, i);
+					break;
+				case 'page':
+					executionData = await page[theHiveNodeData.operation].execute.call(this, i);
 					break;
 				case 'task':
 					executionData = await task[theHiveNodeData.operation].execute.call(this, i);
