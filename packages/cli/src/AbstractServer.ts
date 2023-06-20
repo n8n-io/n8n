@@ -24,11 +24,11 @@ import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
-import { RedisService } from './services/RedisService';
-import { EVENT_BUS_REDIS_CHANNEL } from './eventbus/MessageEventBus/MessageEventBusHelper';
+import { RedisServiceSubscriber } from './services/RedisServiceSubscriber';
 import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
 import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
 import { eventBus } from './eventbus';
+import { EVENT_BUS_REDIS_CHANNEL } from './services/RedisServiceHelper';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -184,10 +184,10 @@ export abstract class AbstractServer {
 	// We will be using a retryStrategy to control how and when to exit.
 	// We are also subscribing to the event log channel to receive events from workers
 	private async setupRedisChecks() {
-		const redisService = Container.get(RedisService);
-		await redisService.init();
-		await redisService.subscribeToEventLog();
-		redisService.addMessageHandler(
+		const redisSubscriber = Container.get(RedisServiceSubscriber);
+		await redisSubscriber.init();
+		await redisSubscriber.subscribeToEventLog();
+		redisSubscriber.addMessageHandler(
 			'AbstractServerEventLogReceiver',
 			async (channel: string, message: string) => {
 				if (channel === EVENT_BUS_REDIS_CHANNEL) {

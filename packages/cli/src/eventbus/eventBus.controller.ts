@@ -29,6 +29,8 @@ import type { MessageEventBusDestination } from './MessageEventBusDestination/Me
 import type { DeleteResult } from 'typeorm';
 import { AuthenticatedRequest } from '@/requests';
 import { getEventMessageObjectByType } from './EventMessageClasses/Helpers';
+import { Container } from 'typedi';
+import { RedisServicePublisher } from '../services/RedisServicePublisher';
 
 // ----------------------------------------
 // TypeGuards
@@ -189,6 +191,9 @@ export class EventBusController {
 			}
 			if (result) {
 				await result.saveToDb();
+				await Container.get(RedisServicePublisher).publishToCommandChannel({
+					command: 'restartEventBus',
+				});
 				return {
 					...result.serialize(),
 					eventBusInstance: undefined,

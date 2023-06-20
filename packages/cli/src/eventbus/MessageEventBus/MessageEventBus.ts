@@ -37,6 +37,11 @@ export interface MessageWithCallback {
 	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void;
 }
 
+export interface MessageEventBusInitializeOptions {
+	skipUnsentCheck?: boolean;
+	workerId?: string;
+}
+
 export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
@@ -70,7 +75,7 @@ export class MessageEventBus extends EventEmitter {
 	 *
 	 * Sets `isInitialized` to `true` once finished.
 	 */
-	async initialize() {
+	async initialize(options?: MessageEventBusInitializeOptions): Promise<void> {
 		if (this.isInitialized) {
 			return;
 		}
@@ -93,30 +98,40 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		LoggerProxy.debug('Initializing event writer');
-		this.logWriter = await MessageEventBusLogWriter.getInstance();
-
-		// unsent event check:
-		// - find unsent messages in current event log(s)
-		// - cycle event logs and start the logging to a fresh file
-		// - retry sending events
-		LoggerProxy.debug('Checking for unsent event messages');
-		const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
-		LoggerProxy.debug(
-			`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
-		);
-		this.logWriter?.startLogging();
-		await this.send(unsentAndUnfinished.unsentMessages);
-
-		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
-			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
-				await recoverExecutionDataFromEventLogMessages(
-					executionId,
-					unsentAndUnfinished.unfinishedExecutions[executionId],
-					true,
-				);
-			}
+		if (options?.workerId) {
+			this.logWriter = await MessageEventBusLogWriter.getInstance({
+				logBaseName:
+					config.getEnv('eventBus.logWriter.logBaseName') + '-worker-' + options.workerId,
+			});
+		} else {
+			this.logWriter = await MessageEventBusLogWriter.getInstance();
 		}
 
+		if (options?.skipUnsentCheck) {
+			LoggerProxy.debug('Skipping unsent event check');
+		} else {
+			// unsent event check:
+			// - find unsent messages in current event log(s)
+			// - cycle event logs and start the logging to a fresh file
+			// - retry sending events
+			LoggerProxy.debug('Checking for unsent event messages');
+			const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
+			LoggerProxy.debug(
+				`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
+			);
+			this.logWriter?.startLogging();
+			await this.send(unsentAndUnfinished.unsentMessages);
+
+			if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
+				for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
+					await recoverExecutionDataFromEventLogMessages(
+						executionId,
+						unsentAndUnfinished.unfinishedExecutions[executionId],
+						true,
+					);
+				}
+			}
+		}
 		// if configured, run this test every n ms
 		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
 			if (this.pushIntervalTimer) {
@@ -178,7 +193,13 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
+		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
+	}
+
+	async restart() {
+		await this.close();
+		await this.initialize({ skipUnsentCheck: true });
 	}
 
 	async send(msgs: EventMessageTypes | EventMessageTypes[]) {

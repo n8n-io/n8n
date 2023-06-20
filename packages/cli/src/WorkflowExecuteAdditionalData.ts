@@ -71,9 +71,8 @@ import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from './databases/repositories';
-import { RedisService } from './services/RedisService';
-import { EventMessageWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
-import { EventMessageNode } from './eventbus/EventMessageClasses/EventMessageNode';
+import { RedisServicePublisher } from './services/RedisServicePublisher';
+import { eventBus } from './eventbus';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -738,23 +737,33 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
  * instance.
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
-	const redisService = Container.get(RedisService);
+	const redisPublisher = Container.get(RedisServicePublisher);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const nodeInWorkflow = this.workflowData.nodes.find((node) => node.name === nodeName);
-				await redisService.publishToEventLog(
-					new EventMessageNode({
-						eventName: 'n8n.node.started',
-						payload: {
-							executionId: this.executionId,
-							nodeName,
-							workflowId: this.workflowData.id?.toString(),
-							workflowName: this.workflowData.name,
-							nodeType: nodeInWorkflow?.type,
-						},
-					}),
-				);
+				// await redisPublisher.publishToEventLog(
+				// 	new EventMessageNode({
+				// 		eventName: 'n8n.node.started',
+				// 		payload: {
+				// 			executionId: this.executionId,
+				// 			nodeName,
+				// 			workflowId: this.workflowData.id?.toString(),
+				// 			workflowName: this.workflowData.name,
+				// 			nodeType: nodeInWorkflow?.type,
+				// 		},
+				// 	}),
+				// );
+				void eventBus.sendNodeEvent({
+					eventName: 'n8n.node.started',
+					payload: {
+						executionId: this.executionId,
+						nodeName,
+						workflowId: this.workflowData.id?.toString(),
+						workflowName: this.workflowData.name,
+						nodeType: nodeInWorkflow?.type,
+					},
+				});
 			},
 		],
 		nodeExecuteAfter: [
@@ -765,24 +774,49 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				executionData: IRunExecutionData,
 			): Promise<void> {
 				const nodeInWorkflow = this.workflowData.nodes.find((node) => node.name === nodeName);
-				await redisService.publishToEventLog(
-					new EventMessageNode({
-						eventName: 'n8n.node.finished',
-						payload: {
-							executionId: this.executionId,
-							nodeName,
-							workflowId: this.workflowData.id?.toString(),
-							workflowName: this.workflowData.name,
-							nodeType: nodeInWorkflow?.type,
-						},
-					}),
-				);
+				// await redisPublisher.publishToEventLog(
+				// 	new EventMessageNode({
+				// 		eventName: 'n8n.node.finished',
+				// 		payload: {
+				// 			executionId: this.executionId,
+				// 			nodeName,
+				// 			workflowId: this.workflowData.id?.toString(),
+				// 			workflowName: this.workflowData.name,
+				// 			nodeType: nodeInWorkflow?.type,
+				// 		},
+				// 	}),
+				// );
+				await eventBus.sendNodeEvent({
+					eventName: 'n8n.node.finished',
+					payload: {
+						executionId: this.executionId,
+						nodeName,
+						workflowId: this.workflowData.id?.toString(),
+						workflowName: this.workflowData.name,
+						nodeType: nodeInWorkflow?.type,
+					},
+				});
 			},
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks, workflow: Workflow): Promise<void> {
-				await redisService.publishToEventLog(
-					new EventMessageWorkflow({
+				// await redisPublisher.publishToEventLog(
+				// 	new EventMessageWorkflow({
+				// 		eventName: 'n8n.workflow.started',
+				// 		id: workflow.id as string,
+				// 		payload: {
+				// 			executionId: this.executionId,
+				// 			workflowId: workflow.id as string,
+				// 			isManual: false,
+				// 			workflowName: workflow.name,
+				// 		},
+				// 	}),
+				// );
+				void Promise.all([
+					// this.executionRepository.updateExistingExecution(executionId, {
+					// 	status: 'running',
+					// }),
+					eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.started',
 						id: workflow.id as string,
 						payload: {
@@ -792,7 +826,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							workflowName: workflow.name,
 						},
 					}),
-				);
+				]);
 			},
 		],
 		workflowExecuteAfter: [
@@ -870,53 +904,81 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					});
 
 					if (fullExecutionData.status === 'success') {
-						await redisService.publishToEventLog(
-							new EventMessageWorkflow({
-								eventName: 'n8n.workflow.success',
-								id: this.executionId,
-								payload: {
-									executionId: this.executionId,
-									success: true,
-									// userId: this.workflowData.,
-									workflowId: this.workflowData.id as string,
-									isManual: false,
-									workflowName: this.workflowData.name,
-									metaData: fullRunData.data?.resultData?.metadata,
-								},
-							}),
-						);
+						// await redisPublisher.publishToEventLog(
+						// 	new EventMessageWorkflow({
+						// 		eventName: 'n8n.workflow.success',
+						// 		id: this.executionId,
+						// 		payload: {
+						// 			executionId: this.executionId,
+						// 			success: true,
+						// 			// userId: this.workflowData.,
+						// 			workflowId: this.workflowData.id as string,
+						// 			isManual: false,
+						// 			workflowName: this.workflowData.name,
+						// 			metaData: fullRunData.data?.resultData?.metadata,
+						// 		},
+						// 	}),
+						// );
+						await eventBus.sendWorkflowEvent({
+							eventName: 'n8n.workflow.success',
+							id: this.executionId,
+							payload: {
+								executionId: this.executionId,
+								success: true,
+								// userId: this.workflowData.,
+								workflowId: this.workflowData.id as string,
+								isManual: false,
+								workflowName: this.workflowData.name,
+								metaData: fullRunData.data?.resultData?.metadata,
+							},
+						});
 					} else {
-						let errorNodeName = 'unknown';
 						let errorNodeId = 'unknown';
 						let errorMessage = 'unknown';
 						let errorNodeType = 'unknown';
 						if (fullRunData?.data?.resultData?.error) {
 							if ('node' in fullRunData?.data?.resultData?.error) {
-								errorNodeName = fullRunData.data.resultData.error.node?.name || 'unknown';
 								errorNodeType = fullRunData.data.resultData.error.node?.type || 'unknown';
 								errorNodeId = fullRunData.data.resultData.error.node?.id || 'unknown';
 							}
 							errorMessage = fullRunData.data.resultData.error.message || 'unknown';
 						}
-						await redisService.publishToEventLog(
-							new EventMessageWorkflow({
-								eventName: 'n8n.workflow.failed',
-								id: this.executionId,
-								payload: {
-									executionId: this.executionId,
-									success: false,
-									// userId: this.workflowData.,
-									workflowId: this.workflowData.id as string,
-									lastNodeExecuted: fullRunData?.data.resultData?.lastNodeExecuted,
-									errorNodeType,
-									errorNodeId,
-									errorMessage,
-									isManual: false,
-									workflowName: this.workflowData.name,
-									metaData: fullRunData.data?.resultData?.metadata,
-								},
-							}),
-						);
+						// await redisPublisher.publishToEventLog(
+						// 	new EventMessageWorkflow({
+						// 		eventName: 'n8n.workflow.failed',
+						// 		id: this.executionId,
+						// 		payload: {
+						// 			executionId: this.executionId,
+						// 			success: false,
+						// 			// userId: this.workflowData.,
+						// 			workflowId: this.workflowData.id as string,
+						// 			lastNodeExecuted: fullRunData?.data.resultData?.lastNodeExecuted,
+						// 			errorNodeType,
+						// 			errorNodeId,
+						// 			errorMessage,
+						// 			isManual: false,
+						// 			workflowName: this.workflowData.name,
+						// 			metaData: fullRunData.data?.resultData?.metadata,
+						// 		},
+						// 	}),
+						// );
+						await eventBus.sendWorkflowEvent({
+							eventName: 'n8n.workflow.failed',
+							id: this.executionId,
+							payload: {
+								executionId: this.executionId,
+								success: false,
+								// userId: this.workflowData.,
+								workflowId: this.workflowData.id as string,
+								lastNodeExecuted: fullRunData?.data.resultData?.lastNodeExecuted,
+								errorNodeType,
+								errorNodeId,
+								errorMessage,
+								isManual: false,
+								workflowName: this.workflowData.name,
+								metaData: fullRunData.data?.resultData?.metadata,
+							},
+						});
 					}
 
 					try {
