@@ -146,7 +146,14 @@ const resourceMapperMode = computed<string | undefined>(() => {
 	return resourceMapperTypeOptions.value?.mode;
 });
 
+const resourceMapperValuesLabel = computed<string | undefined>(() => {
+	return resourceMapperTypeOptions.value?.valuesLabel;
+});
+
 const valuesLabel = computed<string>(() => {
+	if (resourceMapperValuesLabel.value) {
+		return resourceMapperValuesLabel.value;
+	}
 	if (resourceMapperMode.value && resourceMapperMode.value === 'update') {
 		return locale.baseText('resourceMapper.valuesToUpdate.label');
 	}

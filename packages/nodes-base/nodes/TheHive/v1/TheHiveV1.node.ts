@@ -36,7 +36,7 @@ import {
 	theHiveApiRequest,
 } from './GenericFunctions';
 
-import set from 'lodash.set';
+import set from 'lodash/set';
 
 import { oldVersionNotice } from '../../../utils/descriptions';
 
