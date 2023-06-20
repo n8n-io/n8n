@@ -76,7 +76,8 @@ const SIMPLE_RESPONSE = {
 	result: {
 		cvsent: [{id: 30817, gllueext_send_terms_cv_sent: 'yes'}],
 		candidate: [{id: 1234, email: 'fake@email.com'}],
-		client:[]
+		client:[],
+		clientcontract:[]
 
 	},
 };
@@ -86,7 +87,8 @@ const INTERVIEW_RESPONSE = {
 	result: {
 		clientinterview: [{id: 31230}],
 		candidate: [{id: 1234, email: 'fake@email.com'}],
-		client:[]
+		client:[],
+		clientcontract:[]
 	},
 };
 describe('gllue api', () => {

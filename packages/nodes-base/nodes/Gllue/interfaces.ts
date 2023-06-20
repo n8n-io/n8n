@@ -44,7 +44,7 @@ export interface PipelineResponse {
 		cvsent?: CvSentDetailResponse[];
 		candidate: CandidateResponse[];
 		client: ClientResponse[];
-		clientcontract?:ClientContractResponse[];
+		clientcontract:ClientContractResponse[];
 	};
 }
 

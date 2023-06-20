@@ -54,11 +54,8 @@ export class GllueConsentLogic implements INodeType {
 		const candidateData = Gllue.extractIdAndEmail(simpleData);
 		const clientData =  Gllue.getClientDataFromCvsent(simpleData);
 		const clienContractDate = Gllue.getClientContract(simpleData);
-		let isHandsOff = false;
-		if (clientData && clienContractDate) {
-			const handsOffService = new HandsOffService(clientData, clienContractDate);
-			isHandsOff = handsOffService.isHandsoff();
-		}
+		const handsOffService = new HandsOffService(clientData, clienContractDate);
+		const isHandsOff = handsOffService.isHandsoff();
 
 		const source = item.source as string;
 		const consentService = new ConsentService(this.helpers.request);

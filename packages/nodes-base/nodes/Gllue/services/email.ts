@@ -3,21 +3,37 @@ import {CONSENT_EMAIL_TYPE, CONSENT_FROM_EMAIL, INTERVIEW_PIPELINE_NAME} from '.
 import {Hasura, N8nRequest} from '../GenericFunctions';
 
 export class HandsOffService {
-	client: ClientResponse;
-	contracts:ClientContractResponse[];
+	client: ClientResponse|null;
+	contracts: ClientContractResponse[]|null;
 
-	constructor(client: ClientResponse, contracts: ClientContractResponse[]) {
+	constructor(client: ClientResponse|null, contracts: ClientContractResponse[]|null) {
 		this.client = client;
 		this.contracts = contracts;
 	}
 
 	isHandsoff() {
 		let warningSituation = this.getWarningSituation()
-		return warningSituation ? true : false;
+		let handsOff = this.getHandsoff()
+		return ((warningSituation !==null) || handsOff) ? true : false;
 	}
 
-	getWarningSituation() {
+	private getWarningSituation() {
+		if (this.client === null) {
+			return '';
+		}
 		return this.client.warning_situation;
+	}
+
+	private getHandsoff() {
+
+		if (this.contracts !== null) {
+			for (let contract of this.contracts) {
+				if (contract.is_handsoff) {
+					return true
+				}
+			}
+	}
+		return false
 	}
 
 }

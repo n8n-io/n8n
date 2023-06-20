@@ -43,10 +43,8 @@ export class Gllue {
 
 	static getClientContract(data: PipelineResponse) {
 		let hasClientContract=data.result.hasOwnProperty('clientcontract');
-		return hasClientContract?data.result.clientcontract:null;
+		return hasClientContract?data.result.clientcontract:[];
 	}
-
-
 }
 
 export class GllueCandidateListEndpoint extends Gllue {
