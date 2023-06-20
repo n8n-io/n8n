@@ -9,7 +9,7 @@ import {
 	N8nBadge,
 	N8nBlockUi,
 	N8nButton,
-	// N8nElButton,
+	N8nElButton,
 	N8nCallout,
 	N8nCard,
 	N8nCheckbox,

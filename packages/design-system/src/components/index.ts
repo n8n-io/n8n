@@ -6,7 +6,7 @@ export { default as N8nAvatar } from './N8nAvatar';
 export { default as N8nBadge } from './N8nBadge';
 export { default as N8nBlockUi } from './N8nBlockUi';
 export { default as N8nButton } from './N8nButton';
-// export { N8nElButton } from './N8nButton/overrides';
+export { N8nElButton } from './N8nButton/overrides';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCheckbox } from './N8nCheckbox';
