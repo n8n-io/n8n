@@ -187,8 +187,6 @@ export class Server extends AbstractServer {
 
 	loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	codeVerifer: string;
-
 	nodeTypes: NodeTypes;
 
 	credentialTypes: ICredentialTypes;
