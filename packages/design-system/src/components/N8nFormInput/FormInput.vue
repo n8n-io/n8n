@@ -2,7 +2,7 @@
 	<n8n-checkbox
 		v-if="type === 'checkbox'"
 		v-bind="$props"
-		@input="onInput"
+		@update:modelValue="onUpdateModelValue"
 		@focus="onFocus"
 		ref="inputRef"
 	/>
@@ -17,10 +17,10 @@
 			{{ tooltipText }}
 		</template>
 		<el-switch
-			:value="value"
-			@change="onInput"
+			:modelValue="modelValue"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
+			@change="onUpdateModelValue"
 		></el-switch>
 	</n8n-input-label>
 	<n8n-input-label
@@ -34,11 +34,11 @@
 			<slot v-if="hasDefaultSlot" />
 			<n8n-select
 				v-else-if="type === 'select' || type === 'multi-select'"
-				:value="value"
+				:modelValue="modelValue"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
 				:disabled="disabled"
-				@change="onInput"
+				@update:modelValue="onUpdateModelValue"
 				@focus="onFocus"
 				@blur="onBlur"
 				:name="name"
@@ -56,11 +56,11 @@
 				:name="name"
 				:type="type"
 				:placeholder="placeholder"
-				:value="value"
+				:modelValue="modelValue"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
-				@input="onInput"
+				@update:modelValue="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"
 				ref="inputRef"
@@ -100,7 +100,7 @@ import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../
 import { t } from '../../locale';
 
 export interface Props {
-	value: Validatable;
+	modelValue: Validatable;
 	label: string;
 	infoText?: string;
 	required?: boolean;
@@ -137,7 +137,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	(event: 'validate', shouldValidate: boolean): void;
-	(event: 'input', value: unknown): void;
+	(event: 'update:modelValue', value: unknown): void;
 	(event: 'focus'): void;
 	(event: 'blur'): void;
 	(event: 'enter'): void;
@@ -160,7 +160,11 @@ function getInputValidationError(): ReturnType<IValidator['validate']> {
 	} as { [key: string]: IValidator | RuleGroup };
 
 	if (props.required) {
-		const error = getValidationError(props.value, validators, validators.REQUIRED as IValidator);
+		const error = getValidationError(
+			props.modelValue,
+			validators,
+			validators.REQUIRED as IValidator,
+		);
 		if (error) return error;
 	}
 
@@ -169,7 +173,7 @@ function getInputValidationError(): ReturnType<IValidator['validate']> {
 			const rule = rules[i] as Rule;
 			if (validators[rule.name]) {
 				const error = getValidationError(
-					props.value,
+					props.modelValue,
 					validators,
 					validators[rule.name] as IValidator,
 					rule.config,
@@ -180,7 +184,7 @@ function getInputValidationError(): ReturnType<IValidator['validate']> {
 
 		if (rules[i].hasOwnProperty('rules')) {
 			const rule = rules[i] as RuleGroup;
-			const error = getValidationError(props.value, validators, rule);
+			const error = getValidationError(props.modelValue, validators, rule);
 			if (error) return error;
 		}
 	}
@@ -194,9 +198,9 @@ function onBlur() {
 	emit('blur');
 }
 
-function onInput(value: FormState) {
+function onUpdateModelValue(value: FormState) {
 	state.isTyping = true;
-	emit('input', value);
+	emit('update:modelValue', value);
 }
 
 function onFocus() {

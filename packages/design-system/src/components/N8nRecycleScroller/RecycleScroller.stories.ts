@@ -9,7 +9,8 @@ export default {
 	argTypes: {},
 };
 
-const Template: StoryFn = () => ({
+const Template: StoryFn = (args) => ({
+	setup: () => ({ args }),
 	components: {
 		N8nRecycleScroller,
 	},

@@ -12,6 +12,8 @@ import {
 	// N8nElButton,
 	N8nCallout,
 	N8nCard,
+	N8nCheckbox,
+	N8nColorPicker,
 	N8nDatatable,
 	// N8nFormBox,
 	// N8nFormInputs,
@@ -36,6 +38,8 @@ import {
 	N8nPopover,
 	N8nPulse,
 	N8nRadioButtons,
+	N8nRecycleScroller,
+	N8nResizeWrapper,
 	N8nSelect,
 	N8nSpinner,
 	N8nSticky,
@@ -46,12 +50,8 @@ import {
 	N8nTooltip,
 	N8nTree,
 	N8nUserInfo,
-	// N8nUserSelect,
-	// N8nUsersList,
-	// N8nResizeWrapper,
-	// N8nRecycleScroller,
-	// N8nCheckbox,
-	// N8nColorPicker,
+	N8nUserSelect,
+	N8nUsersList,
 } from './components';
 
 export const N8nPlugin: Plugin<{}> = {
@@ -67,6 +67,8 @@ export const N8nPlugin: Plugin<{}> = {
 		// app.component('el-button', N8nElButton);
 		app.component('n8n-callout', N8nCallout);
 		app.component('n8n-card', N8nCard);
+		app.component('n8n-checkbox', N8nCheckbox);
+		app.component('n8n-color-picker', N8nColorPicker);
 		app.component('n8n-datatable', N8nDatatable);
 		// app.component('n8n-form-box', N8nFormBox);
 		// app.component('n8n-form-inputs', N8nFormInputs);
@@ -91,6 +93,8 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-popover', N8nPopover);
 		app.component('n8n-pulse', N8nPulse);
 		app.component('n8n-radio-buttons', N8nRadioButtons);
+		app.component('n8n-recycle-scroller', N8nRecycleScroller);
+		app.component('n8n-resize-wrapper', N8nResizeWrapper);
 		app.component('n8n-select', N8nSelect);
 		app.component('n8n-spinner', N8nSpinner);
 		app.component('n8n-sticky', N8nSticky);
@@ -101,11 +105,7 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-tooltip', N8nTooltip);
 		app.component('n8n-tree', N8nTree);
 		app.component('n8n-user-info', N8nUserInfo);
-		// app.component('n8n-users-list', N8nUsersList);
-		// app.component('n8n-user-select', N8nUserSelect);
-		// app.component('n8n-resize-wrapper', N8nResizeWrapper);
-		// app.component('n8n-recycle-scroller', N8nRecycleScroller);
-		// app.component('n8n-checkbox', N8nCheckbox);
-		// app.component('n8n-color-picker', N8nColorPicker);
+		app.component('n8n-users-list', N8nUsersList);
+		app.component('n8n-user-select', N8nUserSelect);
 	},
 };

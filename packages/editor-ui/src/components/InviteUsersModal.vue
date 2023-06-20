@@ -35,7 +35,7 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@input="onInput"
+				@update:modelValue="onInput"
 				@submit="onSubmit"
 			/>
 			<n8n-info-tip v-if="!settingsStore.isSmtpSetup" class="mt-s">

@@ -1,6 +1,7 @@
 <template>
 	<n8n-select
-		:value="value"
+		v-bind="$attrs"
+		:modelValue="modelValue"
 		:filterable="true"
 		:filterMethod="setFilter"
 		:placeholder="placeholder"
@@ -52,7 +53,7 @@ export default defineComponent({
 			type: Array as PropType<IUser[]>,
 			default: () => [],
 		},
-		value: {
+		modelValue: {
 			type: String,
 			default: '',
 		},
@@ -123,7 +124,7 @@ export default defineComponent({
 			this.filter = value;
 		},
 		onChange(value: string) {
-			this.$emit('input', value);
+			this.$emit('update:modelValue', value);
 		},
 		onBlur() {
 			this.$emit('blur');

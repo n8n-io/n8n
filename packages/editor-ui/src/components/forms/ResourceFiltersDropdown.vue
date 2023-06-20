@@ -32,9 +32,9 @@
 				<n8n-user-select
 					:users="ownedByUsers"
 					:currentUserId="usersStore.currentUser.id"
-					:value="value.ownedBy"
+					:modelValue="value.ownedBy"
 					size="medium"
-					@input="setKeyValue('ownedBy', $event)"
+					@update:modelValue="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
@@ -48,9 +48,9 @@
 				<n8n-user-select
 					:users="sharedWithUsers"
 					:currentUserId="usersStore.currentUser.id"
-					:value="value.sharedWith"
+					:modelValue="value.sharedWith"
 					size="medium"
-					@input="setKeyValue('sharedWith', $event)"
+					@update:modelValue="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>
 			<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">

@@ -29,10 +29,10 @@
 						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
 							<n8n-user-select
 								:users="usersStore.allUsers"
-								:value="transferId"
+								:modelValue="transferId"
 								:ignoreIds="ignoreIds"
 								:currentUserId="usersStore.currentUserId"
-								@input="setTransferId"
+								@update:modelValue="setTransferId"
 							/>
 						</n8n-input-label>
 					</div>

@@ -12,7 +12,7 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@input="onInput"
+				@update:modelValue="onInput"
 				@submit="onSubmit"
 			/>
 		</template>

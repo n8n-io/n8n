@@ -62,7 +62,7 @@
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
 				data-test-id="credential-sharing-modal-users-select"
-				@input="onAddSharee"
+				@update:modelValue="onAddSharee"
 			>
 				<template #prefix>
 					<n8n-icon icon="search" />

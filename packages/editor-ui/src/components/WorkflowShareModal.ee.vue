@@ -39,7 +39,7 @@
 						:currentUserId="currentUser.id"
 						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="workflow-sharing-modal-users-select"
-						@input="onAddSharee"
+						@update:modelValue="onAddSharee"
 					>
 						<template #prefix>
 							<n8n-icon icon="search" />

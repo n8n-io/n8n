@@ -147,9 +147,9 @@ async function commitAndPush() {
 					>
 						<div :class="$style.listItemBody">
 							<n8n-checkbox
-								:value="staged[file.file]"
+								:modelValue="staged[file.file]"
 								:class="$style.listItemCheckbox"
-								@input="setStagedStatus(file, !staged[file.file])"
+								@update:modelValue="setStagedStatus(file, !staged[file.file])"
 							/>
 							<n8n-text bold>
 								<span v-if="file.status === 'deleted'">

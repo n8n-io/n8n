@@ -43,7 +43,10 @@ export default defineComponent({
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 
-				this.$set(this.values, variable, value);
+				this.values = {
+					...this.values,
+					[variable]: value,
+				};
 			});
 		};
 

@@ -41,7 +41,7 @@
 					:eventBus="formBus"
 					:columnView="true"
 					verticalSpacing="l"
-					@input="onInput"
+					@update:modelValue="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
