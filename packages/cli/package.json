@@ -145,7 +145,6 @@
     "jwks-rsa": "^3.0.1",
     "ldapts": "^4.2.6",
     "localtunnel": "^2.0.0",
-    ">o": "^4.17.21",
     "luxon": "^3.3.0",
     "mysql2": "~2.3.3",
     "n8n-core": "workspace:*",
