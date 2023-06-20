@@ -176,7 +176,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { createEventBus, EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];

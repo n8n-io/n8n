@@ -61,7 +61,8 @@ import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
-import { createEventBus, EventBus } from 'n8n-design-system/utils';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 type ParamRef = InstanceType<typeof ParameterInput>;
 
