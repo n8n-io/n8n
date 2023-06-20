@@ -28,6 +28,7 @@
 				:droppable="droppable"
 				:node="node"
 				:path="path"
+				:event-bus="eventBus"
 				@input="valueChanged"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -390,8 +391,8 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import Vue from 'vue';
-
-type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -461,6 +462,10 @@ export default defineComponent({
 			default: () => ({
 				size: 'small',
 			}),
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
 		},
 	},
 	data() {
@@ -1111,9 +1116,7 @@ export default defineComponent({
 				}
 			} else if (command === 'refreshOptions') {
 				if (this.isResourceLocatorParameter) {
-					const resourceLocatorRef = this.$refs.resourceLocator as ResourceLocatorRef | undefined;
-
-					resourceLocatorRef?.$emit('refreshList');
+					this.eventBus.emit('refreshList');
 				}
 				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
@@ -1145,7 +1148,7 @@ export default defineComponent({
 		});
 	},
 	mounted() {
-		this.$on('optionSelected', this.optionSelected);
+		this.eventBus.on('optionSelected', this.optionSelected);
 
 		this.tempValue = this.displayValue as string;
 		if (this.node !== null) {
@@ -1184,6 +1187,9 @@ export default defineComponent({
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});
+	},
+	beforeDestroy() {
+		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 });
 </script>

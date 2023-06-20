@@ -1,6 +1,6 @@
-import flow from 'lodash.flow';
-import isEmpty from 'lodash.isempty';
-import omit from 'lodash.omit';
+import flow from 'lodash/flow';
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
