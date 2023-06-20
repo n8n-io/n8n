@@ -82,6 +82,8 @@
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -120,6 +122,10 @@ export default defineComponent({
 		width: {
 			type: Number,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	data() {
 		return {
@@ -128,7 +134,10 @@ export default defineComponent({
 		};
 	},
 	mounted() {
-		this.$on('keyDown', this.onKeyDown);
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeDestroy() {
+		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
