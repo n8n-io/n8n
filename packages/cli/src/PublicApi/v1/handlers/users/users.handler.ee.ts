@@ -3,13 +3,18 @@ import type express from 'express';
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
+import {
+	authorize,
+	validCursor,
+	validLicenseWithUserQuota,
+} from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
 import Container from 'typedi';
 
 export = {
 	getUser: [
+		validLicenseWithUserQuota,
 		authorize(['owner']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
@@ -34,6 +39,7 @@ export = {
 		},
 	],
 	getUsers: [
+		validLicenseWithUserQuota,
 		validCursor,
 		authorize(['owner']),
 		async (req: UserRequest.Get, res: express.Response) => {
