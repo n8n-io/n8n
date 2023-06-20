@@ -46,7 +46,7 @@ oauth2CredentialController.use((req, res, next) => {
 	}
 	next();
 });
-let codeVerifier = '';
+
 const restEndpoint = config.getEnv('endpoints.rest');
 
 /**
@@ -143,6 +143,16 @@ oauth2CredentialController.get(
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
 
+		if (oauthCredentials.grantType === 'pkce') {
+			const { code_verifier, code_challenge } = pkceChallenge();
+			oAuthOptions.query = {
+				...oAuthOptions.query,
+				code_challenge,
+				code_challenge_method: 'S256',
+			};
+			decryptedDataOriginal.codeVerifier = code_verifier;
+		}
+
 		credentials.setData(decryptedDataOriginal, encryptionKey);
 		const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
@@ -161,12 +171,6 @@ oauth2CredentialController.get(
 			const scope = get(oauthCredentials, 'scope') as string;
 			const percentEncoded = [data, `scope=${encodeURIComponent(scope)}`].join('&');
 			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${percentEncoded}`;
-		}
-
-		if (oauthCredentials.grantType === 'pkce') {
-			const { code_verifier, code_challenge } = pkceChallenge();
-			returnUri += `&code_challenge=${code_challenge}&code_challenge_method=S256`;
-			codeVerifier = code_verifier;
 		}
 
 		if (authQueryParameters) {
@@ -267,10 +271,13 @@ oauth2CredentialController.get(
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
+
 			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
-						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
+						...(oauthCredentials.grantType === 'pkce' && {
+							code_verifier: decryptedDataOriginal.codeVerifier,
+						}),
 						...(oauthCredentials.grantType === 'authorizationCode' && {
 							client_id: get(oauthCredentials, 'clientId') as string,
 							client_secret: get(oauthCredentials, 'clientSecret', '') as string,
@@ -281,7 +288,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			} else if (oauthCredentials.grantType === 'pkce') {
 				options = {
-					body: { code_verifier: codeVerifier },
+					body: { code_verifier: decryptedDataOriginal.codeVerifier },
 				};
 			}
 
