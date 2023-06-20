@@ -9,7 +9,7 @@ import type {
 import { connect, copyInputItems, destroy, execute } from './GenericFunctions';
 
 import snowflake from 'snowflake-sdk';
-import { getResolvables } from '../../utils/utilities';
+import { getResolvables } from '@utils/utilities';
 
 export class Snowflake implements INodeType {
 	description: INodeTypeDescription = {

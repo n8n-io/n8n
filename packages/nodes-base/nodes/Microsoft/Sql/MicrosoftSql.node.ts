@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten, getResolvables } from '../../../utils/utilities';
+import { chunk, flatten, getResolvables } from '@utils/utilities';
 
 import mssql from 'mssql';
 

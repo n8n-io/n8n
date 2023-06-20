@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
-import { getResolvables } from '../../../utils/utilities';
+import { getResolvables } from '@utils/utilities';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -170,7 +170,7 @@ export async function pgQueryV2(
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
 	options?: {
-		overrideMode?: string,
+		overrideMode?: string;
 		resolveExpression?: boolean;
 	},
 ): Promise<IDataObject[]> {

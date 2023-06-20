@@ -1,4 +1,4 @@
-import { fuzzyCompare, keysToLowercase, wrapData } from '../../utils/utilities';
+import { fuzzyCompare, keysToLowercase, wrapData } from '@utils/utilities';
 
 //most test cases for fuzzyCompare are done in Compare Datasets node tests
 describe('Test fuzzyCompare', () => {

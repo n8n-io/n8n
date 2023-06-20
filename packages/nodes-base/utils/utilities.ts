@@ -218,15 +218,15 @@ export const keysToLowercase = <T>(headers: T) => {
 /**
  * @TECH_DEBT Explore replacing with handlebars
  */
-export function getResolvables(html: string) {
-	if (!html) return [];
+export function getResolvables(expression: string) {
+	if (!expression) return [];
 
 	const resolvables = [];
 	const resolvableRegex = /({{[\s\S]*?}})/g;
 
 	let match;
 
-	while ((match = resolvableRegex.exec(html)) !== null) {
+	while ((match = resolvableRegex.exec(expression)) !== null) {
 		if (match[1]) {
 			resolvables.push(match[1]);
 		}

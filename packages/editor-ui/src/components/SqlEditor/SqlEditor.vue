@@ -58,7 +58,7 @@ const SQL_DIALECTS = {
 } as const;
 
 type SQLEditorData = {
-	editor: EditorView | null,
+	editor: EditorView | null;
 	isFocused: boolean;
 	skipSegments: string[];
 	expressionsDocsUrl: string;
