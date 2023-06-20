@@ -8,4 +8,4 @@ export * from './pairedItemUtils';
 export * from './typeGuards';
 export * from './typesUtils';
 export * from './userUtils';
-export * from './versionControlUtils';
+export * from './sourceControlUtils';

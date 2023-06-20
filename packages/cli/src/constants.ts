@@ -77,7 +77,7 @@ export const enum LICENSE_FEATURES {
 	LOG_STREAMING = 'feat:logStreaming',
 	ADVANCED_EXECUTION_FILTERS = 'feat:advancedExecutionFilters',
 	VARIABLES = 'feat:variables',
-	VERSION_CONTROL = 'feat:versionControl',
+	SOURCE_CONTROL = 'feat:sourceControl',
 	API_DISABLED = 'feat:apiDisabled',
 }
 

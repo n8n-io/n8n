@@ -166,10 +166,10 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper.ee';
-import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
-import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
-import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
+import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
+import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
+import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
 import { ExecutionRepository } from './databases/repositories';
 import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
 
@@ -313,7 +313,7 @@ export class Server extends AbstractServer {
 				logStreaming: false,
 				advancedExecutionFilters: false,
 				variables: false,
-				versionControl: false,
+				sourceControl: false,
 				auditLogs: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
@@ -431,7 +431,7 @@ export class Server extends AbstractServer {
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
-			versionControl: isVersionControlLicensed(),
+			sourceControl: isSourceControlLicensed(),
 		});
 
 		if (isLdapEnabled()) {
@@ -468,8 +468,8 @@ export class Server extends AbstractServer {
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
-		const versionControlService = Container.get(VersionControlService);
-		const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
+		const sourceControlService = Container.get(SourceControlService);
+		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -498,7 +498,7 @@ export class Server extends AbstractServer {
 				postHog,
 			}),
 			new SamlController(samlService),
-			new VersionControlController(versionControlService, versionControlPreferencesService),
+			new SourceControlController(sourceControlService, sourceControlPreferencesService),
 		];
 
 		if (isLdapEnabled()) {
@@ -638,15 +638,12 @@ export class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
 
 		// ----------------------------------------
-		// Version Control
+		// Source Control
 		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
 		try {
-			await Container.get(VersionControlService).init();
+			await Container.get(SourceControlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`Version Control initialization failed: ${error.message}`);
+			LoggerProxy.warn(`Source Control initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
