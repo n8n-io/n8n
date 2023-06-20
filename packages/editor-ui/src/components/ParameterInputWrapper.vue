@@ -18,6 +18,7 @@
 			:expressionEvaluated="expressionValueComputed"
 			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
+			:event-bus="internalEventBus"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
@@ -64,14 +65,17 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
-type ParamRef = InstanceType<typeof ParameterInput>;
-
 export default defineComponent({
 	name: 'parameter-input-wrapper',
 	mixins: [workflowHelpers],
 	components: {
 		ParameterInput,
 		InputHint,
+	},
+	data() {
+		return {
+			internalEventBus: createEventBus(),
+		};
 	},
 	mounted() {
 		this.eventBus.on('optionSelected', this.optionSelected);
@@ -226,7 +230,7 @@ export default defineComponent({
 			this.$emit('drop', data);
 		},
 		optionSelected(command: string) {
-			this.eventBus.emit('optionSelected', command);
+			this.internalEventBus.emit('optionSelected', command);
 		},
 		onValueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
