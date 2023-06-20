@@ -68,7 +68,7 @@ const main = async () => {
 	}, []);
 
 	if(missingTests.length) {
-		console.error(`Missing tests for: ${missingTests.join('\n')}`);
+		console.error(`Missing tests for:\n${missingTests.join('\n')}`);
 		process.exit(1);
 	}
 };
