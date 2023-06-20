@@ -6,12 +6,6 @@ export const executionFilterToQueryFilter = (
 	filter: ExecutionFilterType,
 ): ExecutionsQueryFilter => {
 	const queryFilter: IDataObject = {};
-	if (filter.status === 'waiting') {
-		queryFilter.waitTill = true;
-	} else if (filter.status !== 'all') {
-		queryFilter.finished = filter.status === 'success';
-	}
-
 	if (filter.workflowId !== 'all') {
 		queryFilter.workflowId = filter.workflowId;
 	}
@@ -37,13 +31,16 @@ export const executionFilterToQueryFilter = (
 			queryFilter.status = ['waiting'];
 			break;
 		case 'error':
-			queryFilter.status = ['failed', 'crashed'];
+			queryFilter.status = ['failed', 'crashed', 'error'];
 			break;
 		case 'success':
 			queryFilter.status = ['success'];
 			break;
 		case 'running':
-			queryFilter.status = ['running'];
+			queryFilter.status = ['running', 'new'];
+			break;
+		case 'canceled':
+			queryFilter.status = ['canceled'];
 			break;
 	}
 	return queryFilter;

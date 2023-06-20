@@ -16,13 +16,15 @@ import { validate } from 'class-validator';
 import { Like } from 'typeorm';
 import config from '@/config';
 import * as Db from '@/Db';
-import type { ICredentialsDb, IExecutionDb, IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
+import type { ICredentialsDb, IExecutionDb, IWorkflowDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserUpdatePayload } from '@/requests';
+import Container from 'typedi';
+import { ExecutionRepository } from './databases/repositories';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -194,9 +196,7 @@ export async function createErrorExecution(
 		status: 'error',
 	};
 
-	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-	await Db.collections.Execution.save(execution as IExecutionFlattedDb);
+	await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 }
 
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

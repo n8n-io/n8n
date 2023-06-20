@@ -12,8 +12,8 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import get from 'lodash.get';
-import isEqual from 'lodash.isequal';
+import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 
 import type {
 	IContextObject,

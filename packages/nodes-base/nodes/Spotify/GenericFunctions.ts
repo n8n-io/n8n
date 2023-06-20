@@ -3,7 +3,7 @@ import type { OptionsWithUri } from 'request';
 import type { IExecuteFunctions, IHookFunctions, IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 /**
  * Make an API request to Spotify
