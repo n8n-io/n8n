@@ -17,7 +17,12 @@ import { tweetFields, tweetOperations } from './TweetDescription';
 import { userOperations, userFields } from './UserDescription';
 
 import ISO6391 from 'iso-639-1';
-import { returnId, returnIdFromUsername, twitterApiRequest } from './GenericFunctions';
+import {
+	returnId,
+	returnIdFromUsername,
+	twitterApiRequest,
+	twitterApiRequestAllItems,
+} from './GenericFunctions';
 import { DateTime } from 'luxon';
 
 export class TwitterV2 implements INodeType {
@@ -152,7 +157,7 @@ export class TwitterV2 implements INodeType {
 				if (resource === 'tweet') {
 					if (operation === 'search') {
 						const searchText = this.getNodeParameter('searchText', i, '', {});
-						const limit = this.getNodeParameter('limit', i, 0, {});
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const { sortOrder, startTime, endTime, tweetFieldsObject } = this.getNodeParameter(
 							'additionalFields',
 							i,
@@ -169,9 +174,6 @@ export class TwitterV2 implements INodeType {
 						if (endTime) {
 							qs.end_time = endTime;
 						}
-						if (limit) {
-							qs.max_results = limit;
-						}
 						if (sortOrder) {
 							qs.sort_order = sortOrder;
 						}
@@ -184,13 +186,26 @@ export class TwitterV2 implements INodeType {
 								qs['tweet.fields'] = tweetFieldsObject.join(',');
 							}
 						}
-						responseData = await twitterApiRequest.call(
-							this,
-							'GET',
-							'/tweets/search/recent',
-							{},
-							qs,
-						);
+						if (returnAll) {
+							responseData = await twitterApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								'/tweets/search/recent',
+								{},
+								qs,
+							);
+						} else {
+							const limit = this.getNodeParameter('limit', i);
+							qs.max_results = limit;
+							responseData = await twitterApiRequest.call(
+								this,
+								'GET',
+								'/tweets/search/recent',
+								{},
+								qs,
+							);
+						}
 					}
 					if (operation === 'create') {
 						const text = this.getNodeParameter('text', i, '', {});

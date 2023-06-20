@@ -245,22 +245,34 @@ export const tweetFields: INodeProperties[] = [
 			'A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.',
 	},
 	{
-		// displayName: 'Limit',
-		displayName: 'Maximum Returned Tweets',
-		name: 'limit',
-		type: 'number',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: ['search'],
 				resource: ['tweet'],
-				// returnAll: [false],
+				operation: ['search'],
 			},
 		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
-		default: 50,
-		description: 'Max number of results to return',
+		displayOptions: {
+			show: {
+				resource: ['tweet'],
+				operation: ['search'],
+				returnAll: [false],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -299,7 +311,7 @@ export const tweetFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Tweets before this date will not be returned. This date must be within the last 7 days.',
+					"Tweets before this date will not be returned. This date must be within the last 7 days if you don't have Academic Research access.",
 			},
 			{
 				displayName: 'Before',
@@ -307,7 +319,7 @@ export const tweetFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Tweets after this date will not be returned. This date must be within the last 7 days.',
+					"Tweets after this date will not be returned. This date must be within the last 7 days if you don't have Academic Research access.",
 			},
 			{
 				displayName: 'Tweet Fields',
