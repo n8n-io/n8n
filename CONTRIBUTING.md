@@ -2,7 +2,10 @@
 
 Great that you are here and you want to contribute to n8n
 
-## Contents
+## Table of Contents
+
+<details>
+<summary>Contributing</summary>
 
 - [Contributing to n8n](#contributing-to-n8n)
   - [Contents](#contents)
@@ -23,6 +26,7 @@ Great that you are here and you want to contribute to n8n
   - [Create custom nodes](#create-custom-nodes)
   - [Extend documentation](#extend-documentation)
   - [Contributor License Agreement](#contributor-license-agreement)
+</details>
 
 ## Code of conduct
 
