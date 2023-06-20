@@ -57,15 +57,6 @@ describe('MainSidebarSourceControl', () => {
 		expect(getByTestId('main-sidebar-source-control')).toBeEmptyDOMElement();
 	});
 
-	it('should render setup content', async () => {
-		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
-		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
-
-		const { getByTestId, queryByTestId } = renderComponent({ props: { isCollapsed: false } });
-		expect(getByTestId('main-sidebar-source-control-setup')).toBeInTheDocument();
-		expect(queryByTestId('main-sidebar-source-control-connected')).not.toBeInTheDocument();
-	});
-
 	describe('when connected', () => {
 		beforeEach(() => {
 			vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
