@@ -421,7 +421,7 @@
       "dist/nodes/Cortex/Cortex.node.js",
       "dist/nodes/CrateDb/CrateDb.node.js",
       "dist/nodes/Cron/Cron.node.js",
-      "dist/nodes/CrowdDev/CrowdDevNode.node.js",
+      "dist/nodes/CrowdDev/CrowdDev.node.js",
       "dist/nodes/CrowdDev/CrowdDevTrigger.node.js",
       "dist/nodes/Crypto/Crypto.node.js",
       "dist/nodes/CustomerIo/CustomerIo.node.js",
