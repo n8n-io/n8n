@@ -129,8 +129,8 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
 
-	isVersionControlLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	isSourceControlLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
 	}
 
 	isAPIDisabled() {

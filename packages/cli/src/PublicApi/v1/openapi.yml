@@ -26,8 +26,8 @@ tags:
     description: Operations about workflows
   - name: Credential
     description: Operations about credentials
-  - name: VersionControl
-    description: Operations about version control
+  - name: SourceControl
+    description: Operations about source control
 
 paths:
   /audit:
@@ -50,12 +50,12 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
-  /version-control/pull:
-    $ref: './handlers/versionControl/spec/paths/versionControl.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:
     $ref: './handlers/users/spec/paths/users.id.yml'
+  /source-control/pull:
+    $ref: "./handlers/sourceControl/spec/paths/sourceControl.yml"
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

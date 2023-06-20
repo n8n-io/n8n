@@ -32,6 +32,7 @@
 				:isForCredential="true"
 				:eventSource="eventSource"
 				:hint="!showRequiredErrors ? hint : ''"
+				:event-bus="eventBus"
 				@focus="onFocus"
 				@blur="onBlur"
 				@textInput="valueChanged"
@@ -65,6 +66,7 @@ import { isValueExpression } from '@/utils';
 import type { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
 type ParamRef = InstanceType<typeof ParameterInputWrapper>;
 
@@ -100,6 +102,7 @@ export default defineComponent({
 			focused: false,
 			blurredEver: false,
 			menuExpanded: false,
+			eventBus: createEventBus(),
 		};
 	},
 	computed: {
@@ -147,9 +150,7 @@ export default defineComponent({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as ParamRef).$emit('optionSelected', command);
-			}
+			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('change', parameterData);

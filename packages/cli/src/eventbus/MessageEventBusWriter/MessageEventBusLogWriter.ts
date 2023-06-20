@@ -7,7 +7,7 @@ import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import remove from 'lodash.remove';
+import remove from 'lodash/remove';
 import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import type { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
