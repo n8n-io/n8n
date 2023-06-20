@@ -166,6 +166,7 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system';
 import { useCloudPlanStore } from '@/stores';
+import { nodeViewEventBus } from '@/event-bus';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -442,7 +443,7 @@ export default defineComponent({
 					return;
 				}
 
-				this.$root.$emit('importWorkflowData', { data: workflowData });
+				nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
 			};
 
 			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
@@ -502,7 +503,7 @@ export default defineComponent({
 							},
 						)) as MessageBoxInputData;
 
-						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
+						nodeViewEventBus.emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 					break;
 				}

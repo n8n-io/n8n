@@ -56,6 +56,7 @@
 							:hint="hint"
 							:hide-issues="hideIssues"
 							:label="label"
+							:event-bus="eventBus"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
@@ -98,6 +99,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '@/utils/mappingUtils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 type ParameterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
 
@@ -112,7 +114,10 @@ export default defineComponent({
 		ParameterInputWrapper,
 	},
 	setup() {
+		const eventBus = createEventBus();
+
 		return {
+			eventBus,
 			...useToast(),
 		};
 	},
@@ -234,17 +239,14 @@ export default defineComponent({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
-			paramRef?.$emit('optionSelected', command);
+			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
-
 			if (isValueExpression(this.parameter, parameterData.value)) {
-				paramRef?.$emit('optionSelected', 'addExpression');
+				this.eventBus.emit('optionSelected', 'addExpression');
 			}
 		},
 		onDrop(newParamValue: string) {
