@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { getId, mapWith, showFor } from './utils';
+import { getAdditionalOptions, getId, mapWith, showFor } from './utils';
 import * as shared from './shared';
 import { memberPresend } from '../GenericFunctions';
 
@@ -89,6 +89,9 @@ const commonFields: INodeProperties[] = [
 		required: true,
 		default: '',
 	},
+];
+
+const additionalOptions: INodeProperties[] = [
 	{
 		displayName: 'Display Name',
 		name: 'displayName',
@@ -266,6 +269,7 @@ const commonFields: INodeProperties[] = [
 const memberFields: INodeProperties[] = [
 	Object.assign(getId(), { description: 'The ID of the member' }, displayFor.id),
 	...commonFields.map(mapWith(displayFor.createOrUpdate)),
+	Object.assign({}, getAdditionalOptions(additionalOptions), displayFor.createOrUpdate),
 ];
 
 export { memberOperations, memberFields };

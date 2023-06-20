@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { organizationPresend } from '../GenericFunctions';
-import { getId, mapWith, showFor } from './utils';
+import { getAdditionalOptions, getId, mapWith, showFor } from './utils';
 
 const displayOpts = showFor(['organization']);
 
@@ -80,6 +80,9 @@ const commonFields: INodeProperties[] = [
 		required: true,
 		default: '',
 	},
+];
+
+const additionalOptions: INodeProperties[] = [
 	{
 		displayName: 'Url',
 		name: 'url',
@@ -141,6 +144,7 @@ const commonFields: INodeProperties[] = [
 const organizationFields: INodeProperties[] = [
 	Object.assign(getId(), { description: 'The ID of the organization' }, displayFor.id),
 	...commonFields.map(mapWith(displayFor.createOrUpdate)),
+	Object.assign({}, getAdditionalOptions(additionalOptions), displayFor.createOrUpdate),
 ];
 
 export { organizationOperations, organizationFields };
