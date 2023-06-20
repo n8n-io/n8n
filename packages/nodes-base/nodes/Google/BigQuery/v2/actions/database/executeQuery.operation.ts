@@ -35,7 +35,6 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
-			sqlDialect: 'StandardSQL',
 		},
 		displayOptions: {
 			show: {

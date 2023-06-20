@@ -8,7 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
-import { pgInsert, pgQuery, pgQueryV2 } from '../Postgres/v1/genericFunctions';
+import { pgInsert, pgQueryV2 } from '../Postgres/v1/genericFunctions';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {

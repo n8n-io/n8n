@@ -91,7 +91,7 @@ export const expressionManager = defineComponent({
 			fullTree.cursor().iterate((node) => {
 				const text = this.editor.state.sliceDoc(node.from, node.to);
 
-				if (skipSegments.includes(node.type.name) || text === '') return;
+				if (text === '' || skipSegments.includes(node.type.name)) return;
 
 				rawSegments.push({
 					from: node.from,

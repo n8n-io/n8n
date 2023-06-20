@@ -8,6 +8,8 @@ import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { expressionManager } from '@/mixins/expressionManager';
 import type { TargetItem } from '@/Interface';
 
+const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
+
 const RESOLVABLES: { [key: string]: string | number | boolean } = {
 	'{{ $json.schema }}': 'public',
 	'{{ $json.table }}': 'users',
@@ -55,7 +57,7 @@ describe('SQL Editor Preview Tests', () => {
 			},
 		});
 		await waitAllPromises();
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent('SELECT * FROM users');
+		expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent('SELECT * FROM users');
 	});
 
 	it('renders basic query with expression', async () => {
@@ -65,7 +67,7 @@ describe('SQL Editor Preview Tests', () => {
 			},
 		});
 		await waitAllPromises();
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent('SELECT * FROM users');
+		expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent('SELECT * FROM users');
 	});
 
 	it('renders resolved expressions with dot between resolvables', async () => {
@@ -75,9 +77,7 @@ describe('SQL Editor Preview Tests', () => {
 			},
 		});
 		await waitAllPromises();
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent(
-			'SELECT * FROM public.users',
-		);
+		expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent('SELECT * FROM public.users');
 	});
 
 	it('renders resolved expressions which resolve to 0', async () => {
@@ -88,7 +88,7 @@ describe('SQL Editor Preview Tests', () => {
 			},
 		});
 		await waitAllPromises();
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent(
+		expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent(
 			'SELECT * FROM public.users WHERE id > 0',
 		);
 	});
@@ -101,12 +101,12 @@ describe('SQL Editor Preview Tests', () => {
 			},
 		});
 		await waitAllPromises();
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent(
+		expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent(
 			'SELECT * FROM public.users WHERE id > 0 AND active = false;',
 		);
 		// Output should have the same number of lines as the input
 		expect(getByTestId('sql-editor-container').getElementsByClassName('cm-line').length).toEqual(
-			getByTestId('inline-expression-editor-output').getElementsByClassName('cm-line').length,
+			getByTestId(EXPRESSION_OUTPUT_TEST_ID).getElementsByClassName('cm-line').length,
 		);
 	});
 });

@@ -102,7 +102,7 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		ndvInputData() {
+		'ndvStore.ndvInputData'() {
 			this.editor?.dispatch({
 				changes: {
 					from: 0,
@@ -117,9 +117,6 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		ndvInputData(): object {
-			return this.ndvStore.ndvInputData;
-		},
 		doc(): string {
 			return this.editor ? this.editor.state.doc.toString() : '';
 		},
