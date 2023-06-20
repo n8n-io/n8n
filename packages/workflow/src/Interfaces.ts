@@ -2016,6 +2016,7 @@ export interface IVersionNotificationSettings {
 
 export interface IUserManagementSettings {
 	enabled: boolean;
+	quota: number;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;

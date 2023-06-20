@@ -4,10 +4,9 @@ import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelpe
 import {
 	sanitizeUser,
 	withFeatureFlags,
-	throwOnDisabledUserManagement,
 	isUserManagementEnabled,
 } from '@/UserManagement/UserManagementHelper';
-import { issueCookie, resolveJwt } from '@/auth/jwt';
+import { issueCookie, resolveJwt, isWithinUsersLimitQuota } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
@@ -70,13 +69,13 @@ export class AuthController {
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password } = req.body;
+		const isWithinUsersQuota = await isWithinUsersLimitQuota();
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
 		let user: User | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
-
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
@@ -96,7 +95,9 @@ export class AuthController {
 			user = await handleEmailLogin(email, password);
 		}
 		if (user) {
-			throwOnDisabledUserManagement(user);
+			if (!user.isOwner && !isWithinUsersQuota)
+				throw new AuthError('Maximum number of users reached');
+
 			await issueCookie(res, user);
 			void Container.get(InternalHooks).onUserLoginSuccess({
 				user,
@@ -126,7 +127,7 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				throwOnDisabledUserManagement(user);
+
 				return await withFeatureFlags(this.postHog, sanitizeUser(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
@@ -151,7 +152,7 @@ export class AuthController {
 		if (user.email || user.password) {
 			throw new InternalServerError('Invalid database state - user has password set.');
 		}
-		throwOnDisabledUserManagement(user);
+
 		await issueCookie(res, user);
 		return withFeatureFlags(this.postHog, sanitizeUser(user));
 	}
@@ -161,6 +162,7 @@ export class AuthController {
 	 */
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
+		const isWithinUsersQuota = await isWithinUsersLimitQuota();
 		const { inviterId, inviteeId } = req.query;
 
 		if (!inviterId || !inviteeId) {
@@ -169,6 +171,14 @@ export class AuthController {
 				{ inviterId, inviteeId },
 			);
 			throw new BadRequestError('Invalid payload');
+		}
+
+		if (!isWithinUsersQuota) {
+			this.logger.debug(
+				'Request to resolve signup token failed because the maximum number of users has been reached',
+				{ inviterId, inviteeId },
+			);
+			throw new AuthError('Maximum number of users reached');
 		}
 
 		if (!isUserManagementEnabled()) {

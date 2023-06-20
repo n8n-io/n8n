@@ -39,6 +39,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
 			enabled: false,
+			quota: -1,
 			showSetupOnFirstLoad: false,
 			smtpSetup: false,
 			authenticationMethod: UserManagementAuthenticationMethod.Email,
@@ -173,6 +174,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		isDefaultAuthenticationSaml(): boolean {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
+		},
+		isWithinUserQuota(): boolean {
+			const userStore = useUsersStore();
+			return (
+				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
+			);
 		},
 	},
 	actions: {

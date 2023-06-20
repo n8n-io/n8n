@@ -113,4 +113,15 @@ export class User extends AbstractEntity implements IUser {
 	computeIsPending(): void {
 		this.isPending = this.password === null;
 	}
+
+	/**
+	 * Whether the user is instance owner
+	 */
+	isOwner: boolean;
+
+	@AfterLoad()
+	@AfterUpdate()
+	computeIsOwner(): void {
+		this.isOwner = this.globalRole.name === 'owner';
+	}
 }

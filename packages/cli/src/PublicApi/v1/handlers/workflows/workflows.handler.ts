@@ -12,7 +12,6 @@ import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getWorkflowOwnerRole } from '../users/users.service';
-import { isInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -102,7 +101,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (isInstanceOwner(req.user)) {
+			if (req.user.isOwner) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					where.id = In(workflowIds);

@@ -36,13 +36,32 @@ export function issueJWT(user: User): JwtToken {
 		expiresIn,
 	};
 }
+export async function isWithinUsersLimitQuota() {
+	const usersLimit = Db.collections.Settings.usersQuota;
+	// If users limit is -1 -> no limit
+	if (usersLimit === -1) {
+		return true;
+	}
+
+	if (config.getEnv('userManagement.disabled')) {
+		return false;
+	}
+
+	const usersCount = await Db.collections.User.count();
+	return usersCount < usersLimit;
+}
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
+	const isWithinUsersQuota = await isWithinUsersLimitQuota();
+
 	const user = await Db.collections.User.findOne({
 		where: { id: jwtPayload.id },
 		relations: ['globalRole'],
 	});
 
+	if (!user?.isOwner && !isWithinUsersQuota) {
+		throw new ResponseHelper.AuthError('Maximum number of users reached');
+	}
 	let passwordHash = null;
 	if (user?.password) {
 		passwordHash = createHash('sha256')

@@ -17,8 +17,8 @@ import {
 	isUserManagementEnabled,
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
-import { issueCookie } from '@/auth/jwt';
-import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import { issueCookie, isWithinUsersLimitQuota } from '@/auth/jwt';
+import { AuthError, BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
 import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
@@ -41,7 +41,7 @@ import type {
 	SharedWorkflowRepository,
 	UserRepository,
 } from '@db/repositories';
-import { UserService } from '../user/user.service';
+import { UserService } from '@/user/user.service';
 import { plainToInstance } from 'class-transformer';
 
 @Authorized(['global', 'owner'])
@@ -123,6 +123,13 @@ export class UsersController {
 				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 			);
 			throw new BadRequestError('You must set up your own account before inviting others');
+		}
+
+		if (!(await isWithinUsersLimitQuota())) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new AuthError('You have reached the maximum number of users allowed for your plan.');
 		}
 
 		if (!Array.isArray(req.body)) {

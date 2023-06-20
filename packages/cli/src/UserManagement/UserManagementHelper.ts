@@ -4,7 +4,6 @@ import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
-import { AuthError } from '@/ResponseHelper';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
@@ -13,8 +12,8 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories';
 import config from '@/config';
-import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { License } from '@/License';
+import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import type { PostHogClient } from '@/posthog';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
@@ -38,14 +37,6 @@ export function isEmailSetUp(): boolean {
 }
 
 export function isUserManagementEnabled(): boolean {
-	const license = Container.get(License);
-	const usersLimit = license.getUsersLimit();
-	// If users limit is 1, UM is disabled
-	if (usersLimit === 1) {
-		console.log('User management is disabled because users limit is 1');
-		return false;
-	}
-
 	// This can be simplified but readability is more important here
 	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 		// Short circuit - if owner is set up, UM cannot be disabled.
@@ -270,16 +261,4 @@ export function whereClause({
 	}
 
 	return where;
-}
-
-export function isInstanceOwner(user: User): boolean {
-	return user.globalRole.name === 'owner';
-}
-
-export function throwOnDisabledUserManagement(user: User) {
-	const isOwner = isInstanceOwner(user);
-	const isUMEnable = isUserManagementEnabled();
-	if (!isOwner && !isUMEnable) {
-		throw new AuthError('User management is disabled. Please contact your instance owner.');
-	}
 }
