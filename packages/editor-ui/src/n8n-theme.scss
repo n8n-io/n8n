@@ -184,9 +184,16 @@
 		border: none;
 	}
 
-	.el-select .el-input.is-disabled .el-input__icon {
-		cursor: not-allowed;
-		color: var(--color-text-lighter);
+	.el-select .el-input.is-disabled {
+		.el-input__icon {
+			opacity: 1 !important;
+			cursor: not-allowed;
+			color: var(--color-foreground-dark);
+		}
+		.el-input__inner, .el-input__inner::placeholder {
+			opacity: 1;
+			color: var(--color-foreground-dark);
+		}
 	}
 	.el-select .el-input:not(.is-disabled ) .el-input__icon {
 		color: var(--color-text-dark);
