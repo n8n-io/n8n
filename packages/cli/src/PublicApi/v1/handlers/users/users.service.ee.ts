@@ -2,7 +2,7 @@ import { Container } from 'typedi';
 import { RoleRepository, UserRepository } from '@db/repositories';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
 
 export function isInstanceOwner(user: User): boolean {
