@@ -15,11 +15,11 @@
 			:hasMore="currentQueryHasMore"
 			:errorView="currentQueryError"
 			:width="width"
+			:event-bus="eventBus"
 			@input="onListItemSelected"
 			@hide="onDropdownHide"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDebounced"
-			ref="dropdown"
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
@@ -176,8 +176,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-
-type ResourceLocatorDropdownRef = InstanceType<typeof ResourceLocatorDropdown>;
+import { createEventBus, EventBus } from 'n8n-design-system/utils';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -255,6 +254,10 @@ export default defineComponent({
 		},
 		loadOptionsMethod: {
 			type: String,
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
 		},
 	},
 	data() {
@@ -475,17 +478,20 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.$on('refreshList', this.refreshList);
+		this.eventBus.on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
+
 		useNDVStore().$subscribe((mutation, state) => {
 			// Update the width when main panel dimension change
 			this.setWidth();
 		});
+
 		setTimeout(() => {
 			this.setWidth();
 		}, 0);
 	},
 	beforeDestroy() {
+		this.eventBus.off('refreshList', this.refreshList);
 		window.removeEventListener('resize', this.setWidth);
 	},
 	methods: {
@@ -510,9 +516,8 @@ export default defineComponent({
 			this.trackEvent('User refreshed resource locator list');
 		},
 		onKeyDown(e: MouseEvent) {
-			const dropdownRef = this.$refs.dropdown as ResourceLocatorDropdownRef | undefined;
-			if (dropdownRef && this.showResourceDropdown && !this.isSearchable) {
-				dropdownRef.$emit('keyDown', e);
+			if (this.showResourceDropdown && !this.isSearchable) {
+				this.eventBus.emit('keyDown', e);
 			}
 		},
 		openResource(url: string) {

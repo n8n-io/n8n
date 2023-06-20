@@ -31,7 +31,7 @@ export default defineComponent({
 			this.eventBus.emit('observe', this.$refs.observed);
 		});
 	},
-	beforeUnmount() {
+	beforeDestroy() {
 		if (this.enabled) {
 			this.eventBus.emit('unobserve', this.$refs.observed);
 		}
