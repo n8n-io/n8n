@@ -164,13 +164,7 @@ oauth2CredentialController.get(
 		}
 
 		if (oauthCredentials.grantType === 'pkce') {
-			let { code_verifier, code_challenge } = pkceChallenge();
-			// Twitter OAuth2 doesn't allow ~ in the code_verifier
-			if (code_verifier.includes('~')) {
-				do {
-					({ code_verifier, code_challenge } = pkceChallenge());
-				} while (code_verifier.includes('~'));
-			}
+			const { code_verifier, code_challenge } = pkceChallenge();
 			returnUri += `&code_challenge=${code_challenge}&code_challenge_method=S256`;
 			codeVerifier = code_verifier;
 		}
