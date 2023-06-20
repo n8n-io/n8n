@@ -11,6 +11,7 @@ import * as testDb from '../shared/testDb';
 
 let app: express.Application;
 let globalOwnerRole: Role;
+let globalMemberRole: Role;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -21,9 +22,10 @@ beforeAll(async () => {
 
 	await testDb.init();
 
-	const [fetchedGlobalOwnerRole] = await testDb.getAllRoles();
+	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
+	globalMemberRole = fetchedGlobalMemberRole;
 });
 
 beforeEach(async () => {
@@ -256,8 +258,10 @@ test('GET /users/:email should return a user', async () => {
 	expect(updatedAt).toBeDefined();
 });
 
-test('GET /users/:id should return a user', async () => {
+test('GET /users/:id should return a pending user', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+	const { id: memberId } = await testDb.createUserShell(globalMemberRole);
 
 	const authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -266,7 +270,7 @@ test('GET /users/:id should return a user', async () => {
 		user: owner,
 	});
 
-	const response = await authOwnerAgent.get(`/users/${owner.id}`);
+	const response = await authOwnerAgent.get(`/users/${memberId}`);
 
 	expect(response.statusCode).toBe(200);
 
@@ -293,5 +297,7 @@ test('GET /users/:id should return a user', async () => {
 	expect(resetPasswordToken).toBeUndefined();
 	expect(globalRole).toBeUndefined();
 	expect(createdAt).toBeDefined();
+	expect(isPending).toBeDefined();
+	expect(isPending).toBeTruthy();
 	expect(updatedAt).toBeDefined();
 });
