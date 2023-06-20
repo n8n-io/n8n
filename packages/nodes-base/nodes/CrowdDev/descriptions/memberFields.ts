@@ -22,6 +22,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Create or Update',
 			value: 'createOrUpdate',
+			description: 'Create or update a member',
 			action: 'Create or update a member',
 			routing: {
 				send: { preSend: [memberPresend] },
@@ -34,6 +35,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Delete',
 			value: 'delete',
+			description: 'Delete a member',
 			action: 'Delete a member',
 			routing: {
 				request: {
@@ -45,6 +47,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Find',
 			value: 'find',
+			description: 'Find a member',
 			action: 'Find a member',
 			routing: {
 				request: {
@@ -56,6 +59,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Update',
 			value: 'update',
+			description: 'Update a member',
 			action: 'Update a member',
 			routing: {
 				send: { preSend: [memberPresend] },

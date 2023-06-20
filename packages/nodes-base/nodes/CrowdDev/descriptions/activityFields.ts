@@ -20,8 +20,9 @@ const activityOperations: INodeProperties = {
 	default: 'createWithMember',
 	options: [
 		{
-			name: 'Create or Update an Activity (with a Member)',
+			name: 'Create or Update with a Member',
 			value: 'createWithMember',
+			description: 'Create or update an activity with a member',
 			action: 'Create or update an activity with a member',
 			routing: {
 				send: { preSend: [activityPresend] },
@@ -32,8 +33,9 @@ const activityOperations: INodeProperties = {
 			},
 		},
 		{
-			name: 'Create an Activity for a Member',
+			name: 'Create',
 			value: 'createForMember',
+			description: 'Create an activity for a member',
 			action: 'Create an activity for a member',
 			routing: {
 				send: { preSend: [activityPresend] },

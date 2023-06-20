@@ -21,6 +21,7 @@ const organizationOperations: INodeProperties = {
 		{
 			name: 'Create',
 			value: 'create',
+			description: 'Create an organization',
 			action: 'Create an organization',
 			routing: {
 				send: { preSend: [organizationPresend] },
@@ -33,6 +34,7 @@ const organizationOperations: INodeProperties = {
 		{
 			name: 'Delete',
 			value: 'delete',
+			description: 'Delete an organization',
 			action: 'Delete an organization',
 			routing: {
 				request: {
@@ -44,6 +46,7 @@ const organizationOperations: INodeProperties = {
 		{
 			name: 'Find',
 			value: 'find',
+			description: 'Find an organization',
 			action: 'Find an organization',
 			routing: {
 				request: {
@@ -55,6 +58,7 @@ const organizationOperations: INodeProperties = {
 		{
 			name: 'Update',
 			value: 'update',
+			description: 'Update an organization',
 			action: 'Update an organization',
 			routing: {
 				send: { preSend: [organizationPresend] },
