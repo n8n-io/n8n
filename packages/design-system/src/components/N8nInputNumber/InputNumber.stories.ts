@@ -49,7 +49,7 @@ export default {
 };
 
 const methods = {
-	onInput: action('input'),
+	onUpdateModelValue: action('update:modelValue'),
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
@@ -58,7 +58,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nInputNumber,
 	},
-	template: '<n8n-input-number v-bind="args" v-model="val" @input="onInput" />',
+	template:
+		'<n8n-input-number v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" />',
 	data() {
 		return {
 			val: null,
@@ -80,7 +81,7 @@ const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nInputNumber,
 	},
 	template:
-		'<div> <n8n-input-number style="margin-bottom:10px" v-bind="args" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="args" size="medium" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="args" size="small" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="args" v-model="val" size="mini" @input="onInput" /> </div>',
+		'<div> <n8n-input-number style="margin-bottom:10px" v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" /> <n8n-input-number style="margin-bottom:10px" v-bind="args" size="medium" v-model="val" @update:modelValue="onUpdateModelValue" /> <n8n-input-number style="margin-bottom:10px" v-bind="args" size="small" v-model="val" @update:modelValue="onUpdateModelValue" /> <n8n-input-number style="margin-bottom:10px" v-bind="args" v-model="val" size="mini" @update:modelValue="onUpdateModelValue" /> </div>',
 	methods,
 	data() {
 		return {

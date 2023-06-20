@@ -13,7 +13,7 @@ export default {
 
 const methods = {
 	onSubmit: action('submit'),
-	onInput: action('input'),
+	onUpdateModelValue: action('update:modelValue'),
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
@@ -22,7 +22,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nFormBox,
 	},
-	template: '<n8n-form-box v-bind="args" @submit="onSubmit" @input="onInput" />',
+	template:
+		'<n8n-form-box v-bind="args" @submit="onSubmit" @update:modelValue="onUpdateModelValue" />',
 	methods,
 });
 

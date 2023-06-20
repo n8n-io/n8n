@@ -116,7 +116,7 @@ export default defineComponent({
 			this.activeTab = this.items.length > 0 ? this.items[0].id : '';
 		}
 
-		this.$emit('input', this.activeTab);
+		this.$emit('update:modelValue', this.activeTab);
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
@@ -144,7 +144,7 @@ export default defineComponent({
 				this.activeTab = option;
 			}
 			this.$emit('select', option);
-			this.$emit('input', this.activeTab);
+			this.$emit('update:modelValue', this.activeTab);
 		},
 	},
 	watch: {

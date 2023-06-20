@@ -167,7 +167,7 @@
 				<el-color-picker
 					size="small"
 					class="color-picker"
-					:value="displayValue"
+					:modelValue="displayValue"
 					:disabled="isReadOnly"
 					@focus="setFocus"
 					@blur="onBlur"

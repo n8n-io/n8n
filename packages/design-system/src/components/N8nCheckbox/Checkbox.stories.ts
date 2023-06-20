@@ -8,7 +8,7 @@ export default {
 };
 
 const methods = {
-	onInput: action('input'),
+	onUpdateModelValue: action('update:modelValue'),
 	onFocus: action('focus'),
 	onChange: action('change'),
 };
@@ -21,7 +21,8 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 	data: () => ({
 		isChecked: false,
 	}),
-	template: '<n8n-checkbox v-model="isChecked" v-bind="args" @input="onInput"></n8n-checkbox>',
+	template:
+		'<n8n-checkbox v-model="isChecked" v-bind="args" @update:modelValue="onUpdateModelValue"></n8n-checkbox>',
 	methods,
 });
 

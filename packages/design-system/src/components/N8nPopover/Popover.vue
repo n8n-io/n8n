@@ -15,9 +15,9 @@ export default defineComponent({
 
 <template>
 	<el-popover v-bind="{ ...$props, ...$attrs }">
-		<slot />
-		<template #content>
-			<slot name="content" />
+		<template #reference>
+			<slot />
 		</template>
+		<slot name="content" />
 	</el-popover>
 </template>

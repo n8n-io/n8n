@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { ColorPicker } from 'element-ui';
+import { ElColorPicker } from 'element-plus';
 import N8nInput from '../N8nInput';
 
 export type Props = {
@@ -10,7 +10,7 @@ export type Props = {
 	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
 	popperClass?: string;
 	predefine?: string[];
-	value?: string;
+	modelValue?: string;
 	showInput?: boolean;
 };
 
@@ -21,10 +21,10 @@ const props = withDefaults(defineProps<Props>(), {
 	colorFormat: 'hex',
 	popperClass: '',
 	showInput: true,
-	value: null,
+	modelValue: null,
 });
 
-const color = ref(props.value);
+const color = ref(props.modelValue);
 
 const colorPickerProps = computed(() => {
 	const { value, showInput, ...rest } = props;
@@ -32,7 +32,7 @@ const colorPickerProps = computed(() => {
 });
 
 const emit = defineEmits<{
-	(event: 'input', value: string): void;
+	(event: 'update:modelValue', value: string): void;
 	(event: 'change', value: string): void;
 	(event: 'active-change', value: string): void;
 }>();
@@ -43,7 +43,7 @@ const model = computed({
 	},
 	set(value: string) {
 		color.value = value;
-		emit('input', value);
+		emit('update:modelValue', value);
 	},
 });
 
@@ -61,7 +61,7 @@ const onActiveChange = (value: string) => {
 </script>
 <template>
 	<span :class="['n8n-color-picker', $style.component]">
-		<color-picker
+		<el-color-picker
 			v-model="model"
 			v-bind="colorPickerProps"
 			@change="onChange"
@@ -72,8 +72,8 @@ const onActiveChange = (value: string) => {
 			:class="$style.input"
 			:disabled="props.disabled"
 			:size="props.size"
-			:value="color"
-			@input="onInput"
+			:modelValue="color"
+			@update:modelValue="onInput"
 			type="text"
 		/>
 	</span>

@@ -9,7 +9,7 @@ export default {
 };
 
 const methods = {
-	onInput: action('input'),
+	onUpdateModelValue: action('update:modelValue'),
 	onFocus: action('focus'),
 	onChange: action('change'),
 };
@@ -21,7 +21,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nFormInput,
 	},
 	template: `
-		<n8n-form-input v-bind="args" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />
+		<n8n-form-input v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange" @focus="onFocus" />
 	`,
 	methods,
 	data() {

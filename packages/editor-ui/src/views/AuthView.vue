@@ -13,7 +13,7 @@
 				:buttonLoading="formLoading"
 				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"
-				@input="onInput"
+				@update:modelValue="onInput"
 			>
 				<SSOLogin v-if="withSso" />
 			</n8n-form-box>

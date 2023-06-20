@@ -32,10 +32,11 @@ export default {
 const methods = {
 	onChange: action('change'),
 	onActiveChange: action('active-change'),
-	onInput: action('input'),
+	onInput: action('update:modelValue'),
 };
 
 const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nColorPicker,
@@ -44,7 +45,7 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 		color: null,
 	}),
 	template:
-		'<n8n-color-picker v-model="color" v-bind="args" @input="onInput" @change="onChange" @active-change="onActiveChange" />',
+		'<n8n-color-picker v-model="color" v-bind="args" @update:modelValue="onInput" @change="onChange" @active-change="onActiveChange" />',
 	methods,
 });
 

@@ -15,9 +15,9 @@ import {
 	N8nCheckbox,
 	N8nColorPicker,
 	N8nDatatable,
-	// N8nFormBox,
-	// N8nFormInputs,
-	// N8nFormInput,
+	N8nFormBox,
+	N8nFormInputs,
+	N8nFormInput,
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
@@ -70,9 +70,9 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-checkbox', N8nCheckbox);
 		app.component('n8n-color-picker', N8nColorPicker);
 		app.component('n8n-datatable', N8nDatatable);
-		// app.component('n8n-form-box', N8nFormBox);
-		// app.component('n8n-form-inputs', N8nFormInputs);
-		// app.component('n8n-form-input', N8nFormInput);
+		app.component('n8n-form-box', N8nFormBox);
+		app.component('n8n-form-inputs', N8nFormInputs);
+		app.component('n8n-form-input', N8nFormInput);
 		app.component('n8n-heading', N8nHeading);
 		app.component('n8n-icon', N8nIcon);
 		app.component('n8n-icon-button', N8nIconButton);
