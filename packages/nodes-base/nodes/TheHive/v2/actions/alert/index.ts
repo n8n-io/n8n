@@ -68,12 +68,12 @@ export const description: INodeProperties[] = [
 				action: 'Mark the alert as unread',
 			},
 			{
-				name: 'Merge',
+				name: 'Merge Into Case',
 				value: 'merge',
 				action: 'Merge alert into an existing case',
 			},
 			{
-				name: 'Promote',
+				name: 'Promote to Case',
 				value: 'promote',
 				action: 'Promote an alert into a case',
 			},

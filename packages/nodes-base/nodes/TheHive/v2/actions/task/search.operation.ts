@@ -101,16 +101,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let responseData: IDataObject | IDataObject[] = [];
 
 	const credentials = await this.getCredentials('theHiveApi');
+	const version = credentials.apiVersion;
 
 	const returnAll = this.getNodeParameter('returnAll', i);
-
-	const version = credentials.apiVersion;
+	const options = this.getNodeParameter('options', i);
 
 	const queryAttributs = prepareOptional(this.getNodeParameter('filters', i, {}));
 
 	const _searchQuery: IQueryObject = And();
-
-	const options = this.getNodeParameter('options', i);
 
 	for (const key of Object.keys(queryAttributs)) {
 		if (key === 'title' || key === 'description') {
@@ -123,13 +121,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	let endpoint;
-
 	let method;
-
 	let body: IDataObject = {};
-
 	const qs: IDataObject = {};
-
 	let limit = undefined;
 
 	if (!returnAll) {
@@ -138,9 +132,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (version === 'v1') {
 		endpoint = '/v1/query';
-
 		method = 'POST';
-
 		body = {
 			query: [
 				{
@@ -162,7 +154,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		qs.name = 'tasks';
 	} else {
 		method = 'POST';
-
 		endpoint = '/case/task/_search';
 
 		if (limit !== undefined) {

@@ -16,8 +16,8 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['alert'],
-		operation: ['task'],
+		resource: ['task'],
+		operation: ['get'],
 	},
 };
 
