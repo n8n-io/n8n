@@ -1364,8 +1364,6 @@
 	"settings.sourceControl.sync.prompt.error": "Please enter a commit message",
 	"settings.sourceControl.button.push": "Push",
 	"settings.sourceControl.button.pull": "Pull",
-	"settings.sourceControl.button.setup": "Set up source control",
-	"settings.sourceControl.button.setup.tooltip": "Source control is available on this instance. Go to the settings page to connect to your Git repository.",
 	"settings.sourceControl.modals.push.title": "Commit and push changes",
 	"settings.sourceControl.modals.push.description": "Select the files you want to stage in your commit and add a commit message. ",
 	"settings.sourceControl.modals.push.description.workflows": "Since you are on the Workflows page, the modified workflow files have been pre-selected for you.",

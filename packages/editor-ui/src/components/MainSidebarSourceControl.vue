@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router/composables';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
-import { useUIStore, useUsersStore, useSourceControlStore } from '@/stores';
+import { useUIStore, useSourceControlStore } from '@/stores';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 
 const props = defineProps<{
@@ -14,7 +14,6 @@ const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
-const usersStore = useUsersStore();
 const message = useMessage();
 const toast = useToast();
 const { i18n } = useI18n();
@@ -153,27 +152,6 @@ const goToSourceControlSetup = async () => {
 				</n8n-tooltip>
 			</div>
 		</div>
-		<n8n-tooltip
-			v-else-if="sourceControlStore.isEnterpriseSourceControlEnabled && usersStore.isInstanceOwner"
-			:open-delay="tooltipOpenDelay"
-			:placement="setupButtonTooltipPlacement"
-			data-test-id="main-sidebar-source-control-setup"
-		>
-			<template #content>
-				<div>
-					{{ i18n.baseText('settings.sourceControl.button.setup.tooltip') }}
-				</div>
-			</template>
-			<n8n-button
-				icon="code-branch"
-				type="tertiary"
-				size="mini"
-				:square="isCollapsed"
-				@click="goToSourceControlSetup"
-			>
-				<span v-if="!isCollapsed">{{ i18n.baseText('settings.sourceControl.button.setup') }}</span>
-			</n8n-button>
-		</n8n-tooltip>
 	</div>
 </template>
 
