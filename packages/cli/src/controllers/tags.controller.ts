@@ -75,7 +75,7 @@ export class TagsController {
 	}
 
 	// Updates a tag
-	@Patch('/:id(\\d+)')
+	@Patch('/:id(\\w+)')
 	async updateTag(req: TagsRequest.Update): Promise<TagEntity> {
 		const { name } = req.body;
 		const { id } = req.params;
@@ -93,7 +93,7 @@ export class TagsController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Delete('/:id(\\d+)')
+	@Delete('/:id(\\w+)')
 	async deleteTag(req: TagsRequest.Delete) {
 		const { id } = req.params;
 		await this.externalHooks.run('tag.beforeDelete', [id]);

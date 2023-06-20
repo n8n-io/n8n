@@ -50,12 +50,9 @@ EEVariablesController.post(
 );
 
 EEVariablesController.patch(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: VariablesRequest.Update) => {
-		const id = parseInt(req.params.id);
-		if (isNaN(id)) {
-			throw new ResponseHelper.BadRequestError('Invalid variable id ' + req.params.id);
-		}
+		const id = req.params.id;
 		if (req.user.globalRole.name !== 'owner') {
 			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
 				id,
