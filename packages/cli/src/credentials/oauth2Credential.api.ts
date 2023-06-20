@@ -287,9 +287,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			} else if (oauthCredentials.grantType === 'pkce') {
 				options = {
-					body: {
-						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
-					},
+					body: { code_verifier: codeVerifier },
 				};
 			}
 
