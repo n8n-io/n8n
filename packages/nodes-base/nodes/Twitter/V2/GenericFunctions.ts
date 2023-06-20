@@ -45,11 +45,13 @@ export async function twitterApiRequest(
 			return data;
 		}
 	} catch (error) {
-		if (error.error.required_enrollment === 'Appropriate Level of API Access') {
+		if (error.error?.required_enrollment === 'Appropriate Level of API Access') {
 			throw new NodeOperationError(
 				this.getNode(),
 				'The operation requires Twitter Api to be either Basic or Pro.',
 			);
+		} else if (error.error.errors[0].message.includes('must be ')) {
+			throw new NodeOperationError(this.getNode(), error.error.errors[0].message as string);
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
