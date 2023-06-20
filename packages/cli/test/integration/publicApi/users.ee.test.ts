@@ -9,9 +9,17 @@ import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
+import { License } from '@/License';
+
 let app: express.Application;
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
+
+const licenseLike = {
+	getUsersLimit: jest.fn().mockReturnValue(-1),
+};
+
+utils.mockInstance(License, licenseLike);
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -42,74 +50,196 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-test('GET /users should fail due to missing API Key', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+describe('With license unlimited quota:users', () => {
+	test('GET /users should fail due to missing API Key', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
+
+		await testDb.createUser();
+
+		const response = await authOwnerAgent.get('/users');
+
+		expect(response.statusCode).toBe(401);
 	});
 
-	await testDb.createUser();
+	test('GET /users should fail due to invalid API Key', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const response = await authOwnerAgent.get('/users');
+		owner.apiKey = null;
 
-	expect(response.statusCode).toBe(401);
-});
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
 
-test('GET /users should fail due to invalid API Key', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+		const response = await authOwnerAgent.get('/users');
 
-	owner.apiKey = null;
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
+		expect(response.statusCode).toBe(401);
 	});
 
-	const response = await authOwnerAgent.get('/users');
+	test('GET /users should fail due to member trying to access owner only endpoint', async () => {
+		const member = await testDb.createUser({ apiKey: randomApiKey() });
 
-	expect(response.statusCode).toBe(401);
-});
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: member,
+		});
 
-test('GET /users should fail due to member trying to access owner only endpoint', async () => {
-	const member = await testDb.createUser({ apiKey: randomApiKey() });
+		const response = await authOwnerAgent.get('/users');
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: member,
+		expect(response.statusCode).toBe(403);
 	});
 
-	const response = await authOwnerAgent.get('/users');
+	test('GET /users should return all users', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	expect(response.statusCode).toBe(403);
-});
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
 
-test('GET /users should return all users', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+		await testDb.createUser();
 
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
+		const response = await authOwnerAgent.get('/users');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).toBeNull();
+
+		for (const user of response.body.data) {
+			const {
+				id,
+				email,
+				firstName,
+				lastName,
+				personalizationAnswers,
+				globalRole,
+				password,
+				resetPasswordToken,
+				isPending,
+				createdAt,
+				updatedAt,
+			} = user;
+
+			expect(validator.isUUID(id)).toBe(true);
+			expect(email).toBeDefined();
+			expect(firstName).toBeDefined();
+			expect(lastName).toBeDefined();
+			expect(personalizationAnswers).toBeUndefined();
+			expect(password).toBeUndefined();
+			expect(resetPasswordToken).toBeUndefined();
+			expect(isPending).toBe(false);
+			expect(globalRole).toBeUndefined();
+			expect(createdAt).toBeDefined();
+			expect(updatedAt).toBeDefined();
+		}
 	});
 
-	await testDb.createUser();
+	test('GET /users/:identifier should fail due to missing API Key', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const response = await authOwnerAgent.get('/users');
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
 
-	expect(response.statusCode).toBe(200);
-	expect(response.body.data.length).toBe(2);
-	expect(response.body.nextCursor).toBeNull();
+		await testDb.createUser();
 
-	for (const user of response.body.data) {
+		const response = await authOwnerAgent.get(`/users/${owner.id}`);
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('GET /users/:identifier should fail due to invalid API Key', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+		owner.apiKey = null;
+
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
+
+		const response = await authOwnerAgent.get(`/users/${owner.id}`);
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('GET /users/:identifier should fail due to member trying to access owner only endpoint', async () => {
+		const member = await testDb.createUser({ apiKey: randomApiKey() });
+
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: member,
+		});
+
+		const response = await authOwnerAgent.get(`/users/${member.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('GET /users/:email with non-existing email should return 404', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
+
+		const response = await authOwnerAgent.get('/users/jhondoe@gmail.com');
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('GET /users/:id with non-existing id should return 404', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
+
+		const response = await authOwnerAgent.get(`/users/${uuid()}`);
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('GET /users/:email should return a user', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
+
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
+
+		const response = await authOwnerAgent.get(`/users/${owner.email}`);
+
+		expect(response.statusCode).toBe(200);
+
 		const {
 			id,
 			email,
@@ -122,7 +252,7 @@ test('GET /users should return all users', async () => {
 			isPending,
 			createdAt,
 			updatedAt,
-		} = user;
+		} = response.body;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBeDefined();
@@ -135,169 +265,79 @@ test('GET /users should return all users', async () => {
 		expect(globalRole).toBeUndefined();
 		expect(createdAt).toBeDefined();
 		expect(updatedAt).toBeDefined();
-	}
-});
-
-test('GET /users/:identifier should fail due to missing API Key', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
 	});
 
-	await testDb.createUser();
+	test('GET /users/:id should return a pending user', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 
-	const response = await authOwnerAgent.get(`/users/${owner.id}`);
+		const { id: memberId } = await testDb.createUserShell(globalMemberRole);
 
-	expect(response.statusCode).toBe(401);
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: owner,
+		});
+
+		const response = await authOwnerAgent.get(`/users/${memberId}`);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			personalizationAnswers,
+			globalRole,
+			password,
+			resetPasswordToken,
+			isPending,
+			createdAt,
+			updatedAt,
+		} = response.body;
+
+		expect(validator.isUUID(id)).toBe(true);
+		expect(email).toBeDefined();
+		expect(firstName).toBeDefined();
+		expect(lastName).toBeDefined();
+		expect(personalizationAnswers).toBeUndefined();
+		expect(password).toBeUndefined();
+		expect(resetPasswordToken).toBeUndefined();
+		expect(globalRole).toBeUndefined();
+		expect(createdAt).toBeDefined();
+		expect(isPending).toBeDefined();
+		expect(isPending).toBeTruthy();
+		expect(updatedAt).toBeDefined();
+	});
 });
 
-test('GET /users/:identifier should fail due to invalid API Key', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
-
-	owner.apiKey = null;
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
+describe('With license without quota:users', () => {
+	beforeEach(async () => {
+		utils.mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
 	});
 
-	const response = await authOwnerAgent.get(`/users/${owner.id}`);
-
-	expect(response.statusCode).toBe(401);
-});
-
-test('GET /users/:identifier should fail due to member trying to access owner only endpoint', async () => {
-	const member = await testDb.createUser({ apiKey: randomApiKey() });
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: member,
+	test('GET /users should fail due to invalid license', async () => {
+		const member = await testDb.createUser({ apiKey: randomApiKey() });
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: member,
+		});
+		const response = await authOwnerAgent.get('/users');
+		expect(response.statusCode).toBe(403);
 	});
 
-	const response = await authOwnerAgent.get(`/users/${member.id}`);
-
-	expect(response.statusCode).toBe(403);
-});
-
-test('GET /users/:email with non-existing email should return 404', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
+	test('GET /users/:id should fail due to invalid license', async () => {
+		const member = await testDb.createUser({ apiKey: randomApiKey() });
+		const authOwnerAgent = utils.createAgent(app, {
+			apiPath: 'public',
+			version: 1,
+			auth: true,
+			user: member,
+		});
+		const response = await authOwnerAgent.get(`/users/${member.id}`);
+		expect(response.statusCode).toBe(403);
 	});
-
-	const response = await authOwnerAgent.get('/users/jhondoe@gmail.com');
-
-	expect(response.statusCode).toBe(404);
-});
-
-test('GET /users/:id with non-existing id should return 404', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
-	});
-
-	const response = await authOwnerAgent.get(`/users/${uuid()}`);
-
-	expect(response.statusCode).toBe(404);
-});
-
-test('GET /users/:email should return a user', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
-	});
-
-	const response = await authOwnerAgent.get(`/users/${owner.email}`);
-
-	expect(response.statusCode).toBe(200);
-
-	const {
-		id,
-		email,
-		firstName,
-		lastName,
-		personalizationAnswers,
-		globalRole,
-		password,
-		resetPasswordToken,
-		isPending,
-		createdAt,
-		updatedAt,
-	} = response.body;
-
-	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBeDefined();
-	expect(firstName).toBeDefined();
-	expect(lastName).toBeDefined();
-	expect(personalizationAnswers).toBeUndefined();
-	expect(password).toBeUndefined();
-	expect(resetPasswordToken).toBeUndefined();
-	expect(isPending).toBe(false);
-	expect(globalRole).toBeUndefined();
-	expect(createdAt).toBeDefined();
-	expect(updatedAt).toBeDefined();
-});
-
-test('GET /users/:id should return a pending user', async () => {
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
-
-	const { id: memberId } = await testDb.createUserShell(globalMemberRole);
-
-	const authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
-	});
-
-	const response = await authOwnerAgent.get(`/users/${memberId}`);
-
-	expect(response.statusCode).toBe(200);
-
-	const {
-		id,
-		email,
-		firstName,
-		lastName,
-		personalizationAnswers,
-		globalRole,
-		password,
-		resetPasswordToken,
-		isPending,
-		createdAt,
-		updatedAt,
-	} = response.body;
-
-	expect(validator.isUUID(id)).toBe(true);
-	expect(email).toBeDefined();
-	expect(firstName).toBeDefined();
-	expect(lastName).toBeDefined();
-	expect(personalizationAnswers).toBeUndefined();
-	expect(password).toBeUndefined();
-	expect(resetPasswordToken).toBeUndefined();
-	expect(globalRole).toBeUndefined();
-	expect(createdAt).toBeDefined();
-	expect(isPending).toBeDefined();
-	expect(isPending).toBeTruthy();
-	expect(updatedAt).toBeDefined();
 });
