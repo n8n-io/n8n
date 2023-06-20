@@ -34,6 +34,13 @@ export class CrowdDevApi implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
+		},
 	];
 
 	// This allows the credential to be used by other parts of n8n
@@ -55,6 +62,7 @@ export class CrowdDevApi implements ICredentialType {
 			method: 'POST',
 			baseURL: '={{$credentials?.url + "/api/tenant/" + $credentials?.tenantId}}',
 			url: '/member/query',
+			skipSslCertificateValidation: '={{ $credentials.allowUnauthorizedCerts }}',
 			body: {
 				limit: 1,
 				offset: 0,

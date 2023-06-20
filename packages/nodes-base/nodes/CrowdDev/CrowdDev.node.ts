@@ -25,6 +25,7 @@ export class CrowdDev implements INodeType {
 		requestDefaults: {
 			baseURL: '={{$credentials.url}}/api/tenant/{{$credentials.tenantId}}',
 			json: true,
+			skipSslCertificateValidation: '={{ $credentials.allowUnauthorizedCerts }}',
 		},
 		properties: allProperties,
 	};
