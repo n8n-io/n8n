@@ -9,7 +9,7 @@ import type {
 	INodeParameterResourceLocator,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -45,6 +45,12 @@ export async function twitterApiRequest(
 			return data;
 		}
 	} catch (error) {
+		if (error.error.required_enrollment === 'Appropriate Level of API Access') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The operation requires elevated access. You need to upgrade your developer account to either Basic or Pro.',
+			);
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
