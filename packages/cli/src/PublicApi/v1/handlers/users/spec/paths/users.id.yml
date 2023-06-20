@@ -1,6 +1,6 @@
 get:
   x-eov-operation-id: getUser
-  x-eov-operation-handler: v1/handlers/users/users.handler
+  x-eov-operation-handler: v1/handlers/users/users.handler.ee
   tags:
     - User
   summary: Get user by ID/Email
