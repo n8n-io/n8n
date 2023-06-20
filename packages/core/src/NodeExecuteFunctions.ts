@@ -425,6 +425,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	if (requestObject.rejectUnauthorized === false) {
 		axiosConfig.httpsAgent = new Agent({
 			rejectUnauthorized: false,
+			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
 		});
 	}
 
