@@ -1,5 +1,5 @@
 <template>
-	<div :class="[$style.sqlEditor, 'sql-editor']">
+	<div :class="[$style.sqlEditor, 'sql-editor']" v-click-outside="onBlur">
 		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
@@ -13,9 +13,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { autocompletion } from '@codemirror/autocomplete';
+import { acceptCompletion, autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
-import { foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
+import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import {
 	dropCursor,
@@ -144,9 +144,6 @@ export default defineComponent({
 				focus: () => {
 					this.isFocused = true;
 				},
-				blur: () => {
-					this.isFocused = false;
-				},
 			}),
 		];
 
@@ -156,9 +153,10 @@ export default defineComponent({
 			extensions.push(
 				history(),
 				keymap.of([
-					indentWithTab,
 					{ key: 'Mod-Shift-z', run: redo },
 					{ key: 'Mod-/', run: toggleComment },
+					{ key: 'Tab', run: acceptCompletion },
+					indentWithTab,
 				]),
 				autocompletion(),
 				indentOnInput(),
@@ -166,6 +164,7 @@ export default defineComponent({
 				highlightActiveLineGutter(),
 				foldGutter(),
 				dropCursor(),
+				bracketMatching(),
 				EditorView.updateListener.of((viewUpdate) => {
 					if (!viewUpdate.docChanged || !this.editor) return;
 
@@ -180,6 +179,11 @@ export default defineComponent({
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
 
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
+	},
+	methods: {
+		onBlur(event: FocusEvent) {
+			this.isFocused = false;
+		},
 	},
 });
 </script>
