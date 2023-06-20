@@ -2112,7 +2112,7 @@ export interface IN8nUISettings {
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;
-		versionControl: boolean;
+		sourceControl: boolean;
 		auditLogs: boolean;
 	};
 	hideUsagePage: boolean;

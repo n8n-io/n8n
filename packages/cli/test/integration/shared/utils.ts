@@ -79,9 +79,9 @@ import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { License } from '@/License';
-import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
-import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
-import { VersionControlPreferencesService } from '@/environments/versionControl/versionControlPreferences.service.ee';
+import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
+import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -202,13 +202,13 @@ export async function initTestServer({
 					const samlService = Container.get(SamlService);
 					registerController(testServer.app, config, new SamlController(samlService));
 					break;
-				case 'versionControl':
-					const versionControlService = Container.get(VersionControlService);
-					const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
+				case 'sourceControl':
+					const sourceControlService = Container.get(SourceControlService);
+					const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 					registerController(
 						testServer.app,
 						config,
-						new VersionControlController(versionControlService, versionControlPreferencesService),
+						new SourceControlController(sourceControlService, sourceControlPreferencesService),
 					);
 					break;
 				case 'nodes':

@@ -16,7 +16,7 @@ const defaultSettings: IN8nUISettings = {
 		logStreaming: false,
 		advancedExecutionFilters: false,
 		variables: true,
-		versionControl: false,
+		sourceControl: false,
 		auditLogs: false,
 	},
 	executionMode: 'regular',
