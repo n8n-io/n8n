@@ -444,3 +444,9 @@ export class NodeApiError extends NodeError {
 		}
 	}
 }
+
+export class NodeSSLError extends ExecutionBaseError {
+	constructor(cause: Error) {
+		super("SSL Issue: consider using the 'Ignore SSL issues' option", { cause });
+	}
+}
