@@ -154,6 +154,7 @@ export = {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
+			updateData.id = id;
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 

@@ -1,7 +1,5 @@
-import { parse, stringify } from 'flatted';
 import type { IRun, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
-import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { Push } from '@/push';
@@ -11,24 +9,21 @@ import { eventBus } from './MessageEventBus';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
+import { ExecutionRepository } from '@/databases/repositories';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
 	messages: EventMessageTypes[],
 	applyToDb = true,
 ): Promise<IRunExecutionData | undefined> {
-	const executionEntry = await Db.collections.Execution.findOne({
-		where: {
-			id: executionId,
-		},
+	const executionEntry = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
+		includeData: true,
+		unflattenData: true,
 	});
 
 	if (executionEntry && messages) {
-		let executionData: IRunExecutionData | undefined;
+		let executionData = executionEntry.data;
 		let workflowError: WorkflowOperationError | undefined;
-		try {
-			executionData = parse(executionEntry.data) as IRunExecutionData;
-		} catch {}
 		if (!executionData) {
 			executionData = { resultData: { runData: {} } };
 		}
@@ -156,8 +151,8 @@ export async function recoverExecutionDataFromEventLogMessages(
 
 		if (applyToDb) {
 			const newStatus = executionEntry.status === 'failed' ? 'failed' : 'crashed';
-			await Db.collections.Execution.update(executionId, {
-				data: stringify(executionData),
+			await Container.get(ExecutionRepository).updateExistingExecution(executionId, {
+				data: executionData,
 				status: newStatus,
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 			});

@@ -4,9 +4,9 @@ import { IConnections, IDataObject, IWorkflowSettings } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
 import {
+	BeforeInsert,
 	Column,
 	Entity,
-	Generated,
 	Index,
 	JoinColumn,
 	JoinTable,
@@ -20,14 +20,29 @@ import type { TagEntity } from './TagEntity';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { WorkflowStatistics } from './WorkflowStatistics';
 import type { WorkflowTagMapping } from './WorkflowTagMapping';
-import { idStringifier, objectRetriever, sqlite } from '../utils/transformers';
+import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
+import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
-	@Generated()
-	@PrimaryColumn({ transformer: idStringifier })
+	constructor(data?: Partial<WorkflowEntity>) {
+		super();
+		Object.assign(this, data);
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
+	@BeforeInsert()
+	nanoId() {
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
+	@PrimaryColumn('varchar')
 	id: string;
 
 	// TODO: Add XSS check
