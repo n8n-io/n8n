@@ -77,6 +77,7 @@ import {
 	fileTypeFromMimeType,
 	ExpressionError,
 	validateFieldType,
+	NodeSSLError,
 } from 'n8n-workflow';
 
 import pick from 'lodash/pick';
@@ -726,6 +727,9 @@ export async function proxyRequestToAxios(
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else {
+				if (error instanceof Error && error.message.includes('SSL routines'))
+					throw new NodeSSLError(error);
+
 				throw Object.assign(error, {
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
 				});
