@@ -57,14 +57,20 @@ const main = async () => {
 	);
 
   // For each .ts or .vue file, check if there's a corresponding .test.ts or .spec.ts file in the repository
-	changedVueFiles.concat(changedTsFilesWithFunction).forEach(async file => {
-		const fileName = path.parse(file).name;
+	const missingTests = changedVueFiles.concat(changedTsFilesWithFunction).reduce((filesList, nextFile) => {
+		const fileName = path.parse(nextFile).name;
 
 		if (!specAndTestTsFilesNames.includes(fileName)) {
-			console.error(`No corresponding test file for: ${file}`);
-			process.exit(1);
+			filesList.push(nextFile);
 		}
-	});
+
+		return filesList;
+	}, []);
+
+	if(missingTests.length) {
+		console.error(`Missing tests for: ${missingTests.join('\n')}`);
+		process.exit(1);
+	}
 };
 
 main();
