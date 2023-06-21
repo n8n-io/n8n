@@ -4,7 +4,7 @@
 			ref="param"
 			:inputSize="inputSize"
 			:parameter="parameter"
-			:value="value"
+			:modelValue="value"
 			:path="path"
 			:isReadOnly="isReadOnly"
 			:droppable="droppable"

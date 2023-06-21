@@ -1,7 +1,7 @@
 <template>
 	<div v-if="dialogVisible">
 		<el-dialog
-			:visible="dialogVisible"
+			:modelValue="dialogVisible"
 			append-to-body
 			width="80%"
 			:title="`${$locale.baseText('textEdit.edit')} ${$locale

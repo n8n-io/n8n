@@ -15,7 +15,7 @@
 		</span>
 
 		<span @click="onClick" class="preview" v-else>
-			<ExpandableInputPreview :value="previewValue || value" />
+			<ExpandableInputPreview :modelValue="previewValue || modelValue" />
 		</span>
 	</span>
 </template>
@@ -34,7 +34,7 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		value: {
+		modelValue: {
 			type: String,
 			default: '',
 		},
@@ -75,7 +75,7 @@ export default defineComponent({
 				return;
 			}
 
-			this.$data.newValue = this.value;
+			this.$data.newValue = this.modelValue;
 			this.$emit('toggle');
 		},
 		onBlur() {

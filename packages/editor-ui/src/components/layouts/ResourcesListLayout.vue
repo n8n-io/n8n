@@ -66,7 +66,6 @@
 								v-model="filters.search"
 								:class="[$style['search'], 'mr-2xs']"
 								:placeholder="$locale.baseText(`${resourceKey}.search.placeholder`)"
-								size="medium"
 								clearable
 								ref="search"
 								data-test-id="resources-list-search"
@@ -76,7 +75,7 @@
 								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" size="medium" data-test-id="resources-list-sort">
+								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
 										:key="sortOption"

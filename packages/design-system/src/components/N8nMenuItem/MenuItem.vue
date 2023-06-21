@@ -9,7 +9,7 @@
 				[$style.active]: mode === 'router' && isItemActive(item),
 			}"
 			:index="item.id"
-			popper-append-to-body
+			teleported
 			:popper-class="`${$style.submenuPopper} ${popperClass}`"
 		>
 			<template #title>

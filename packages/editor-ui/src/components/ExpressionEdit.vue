@@ -1,7 +1,7 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
 		<el-dialog
-			:visible="dialogVisible"
+			:modelValue="dialogVisible"
 			class="expression-dialog classic"
 			append-to-body
 			width="80%"

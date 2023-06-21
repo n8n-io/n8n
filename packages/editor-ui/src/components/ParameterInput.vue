@@ -3,7 +3,11 @@
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
 			:modelValue="
-				isResourceLocatorParameter && typeof value !== 'string' ? (value ? value.value : '') : value
+				isResourceLocatorParameter && typeof modelValue !== 'string'
+					? modelValue
+						? modelValue.value
+						: ''
+					: modelValue
 			"
 			:parameter="parameter"
 			:path="path"
@@ -17,7 +21,7 @@
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				:parameter="parameter"
-				:modelValue="value"
+				:modelValue="modelValue"
 				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
@@ -55,7 +59,7 @@
 			>
 				<el-dialog
 					v-if="codeEditDialogVisible"
-					visible
+					:modelValue="true"
 					append-to-body
 					:close-on-click-modal="false"
 					width="80%"
@@ -66,18 +70,18 @@
 				>
 					<div class="ignore-key-press">
 						<code-node-editor
-							:value="value"
+							:modelValue="modelValue"
 							:defaultValue="parameter.default"
 							:language="editorLanguage"
 							:isReadOnly="isReadOnly"
-							@valueChanged="expressionUpdated"
+							@update:modelValue="expressionUpdated"
 						/>
 					</div>
 				</el-dialog>
 
 				<text-edit
 					:dialogVisible="textEditDialogVisible"
-					:value="value"
+					:value="modelValue"
 					:parameter="parameter"
 					:path="path"
 					:isReadOnly="isReadOnly"
@@ -88,17 +92,17 @@
 				<code-node-editor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:value="value"
+					:modelValue="modelValue"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
-					@valueChanged="valueChangedDebounced"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="value"
+					:html="modelValue"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -108,7 +112,7 @@
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="value"
+					:query="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
@@ -121,7 +125,7 @@
 				>
 					<code-node-editor
 						v-if="!codeEditDialogVisible"
-						:value="value"
+						:modelValue="modelValue"
 						:language="editorLanguage"
 						:isReadOnly="true"
 					/>
@@ -137,8 +141,8 @@
 					:rows="getArgument('rows')"
 					:modelValue="displayValue"
 					:disabled="isReadOnly"
-					@update:modelValue="onTextInputChange"
-					@change="valueChanged"
+					@update:modelValue="valueChanged"
+					@change="onTextInputChange"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -171,7 +175,7 @@
 					:disabled="isReadOnly"
 					@focus="setFocus"
 					@blur="onBlur"
-					@change="valueChanged"
+					@update:modelValue="valueChanged"
 					:title="displayTitle"
 					:show-alpha="getArgument('showAlpha')"
 				/>
@@ -203,7 +207,7 @@
 						: $locale.baseText('parameterInput.selectDateAndTime')
 				"
 				:picker-options="dateTimePickerOptions"
-				@change="valueChanged"
+				@update:modelValue="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -221,8 +225,8 @@
 				:disabled="isReadOnly"
 				:title="displayTitle"
 				:placeholder="parameter.placeholder"
-				@change="valueChanged"
-				@update:modelValue="onTextInputChange"
+				@change="onTextInputChange"
+				@update:modelValue="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -260,7 +264,7 @@
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
-				@change="valueChanged"
+				@update:modelValue="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -298,7 +302,7 @@
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
 				:placeholder="$locale.baseText('parameterInput.select')"
-				@change="valueChanged"
+				@update:modelValue="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -335,7 +339,7 @@
 				active-color="#13ce66"
 				:value="displayValue"
 				:disabled="isReadOnly"
-				@change="valueChanged"
+				@update:modelValue="valueChanged"
 			/>
 		</div>
 
@@ -417,7 +421,7 @@ export default defineComponent({
 		path: {
 			type: String,
 		},
-		value: {
+		modelValue: {
 			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 		},
 		hideLabel: {
@@ -521,7 +525,7 @@ export default defineComponent({
 			// on which the current field depends on changes
 			await this.loadRemoteParameterOptions();
 		},
-		value() {
+		modelValue() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
 				// Do not set for color with alpha else wrong value gets displayed in field
 				return;
@@ -542,7 +546,9 @@ export default defineComponent({
 				return '';
 			}
 
-			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
+			const value = isResourceLocatorValue(this.modelValue)
+				? this.modelValue.value
+				: this.modelValue;
 			if (typeof value === 'string' && value.startsWith('=')) {
 				return value.slice(1);
 			}
@@ -550,7 +556,7 @@ export default defineComponent({
 			return `${this.displayValue ?? ''}`;
 		},
 		isValueExpression(): boolean {
-			return isValueExpression(this.parameter, this.value);
+			return isValueExpression(this.parameter, this.modelValue);
 		},
 		codeAutocomplete(): string | undefined {
 			return this.getArgument('codeAutocomplete') as string | undefined;
@@ -608,16 +614,16 @@ export default defineComponent({
 			let returnValue;
 			if (this.isValueExpression === false) {
 				returnValue = this.isResourceLocatorParameter
-					? isResourceLocatorValue(this.value)
-						? this.value.value
+					? isResourceLocatorValue(this.modelValue)
+						? this.modelValue.value
 						: ''
-					: this.value;
+					: this.modelValue;
 			} else {
 				returnValue = this.expressionEvaluated;
 			}
 
-			if (this.parameter.type === 'credentialsSelect' && typeof this.value === 'string') {
-				const credType = this.credentialsStore.getCredentialTypeByName(this.value);
+			if (this.parameter.type === 'credentialsSelect' && typeof this.modelValue === 'string') {
+				const credType = this.credentialsStore.getCredentialTypeByName(this.modelValue);
 				if (credType) {
 					returnValue = credType.displayName;
 				}
@@ -942,7 +948,7 @@ export default defineComponent({
 		},
 		expressionUpdated(value: string) {
 			const val: NodeParameterValueType = this.isResourceLocatorParameter
-				? { __rl: true, value, mode: this.value.mode }
+				? { __rl: true, value, mode: this.modelValue.mode }
 				: value;
 			this.valueChanged(val);
 		},
@@ -1063,26 +1069,30 @@ export default defineComponent({
 			}
 		},
 		optionSelected(command: string) {
-			const prevValue = this.value;
+			const prevValue = this.modelValue;
 
 			if (command === 'resetValue') {
 				this.valueChanged(this.parameter.default);
 			} else if (command === 'addExpression') {
 				if (this.isResourceLocatorParameter) {
-					if (isResourceLocatorValue(this.value)) {
-						this.valueChanged({ __rl: true, value: `=${this.value.value}`, mode: this.value.mode });
+					if (isResourceLocatorValue(this.modelValue)) {
+						this.valueChanged({
+							__rl: true,
+							value: `=${this.modelValue.value}`,
+							mode: this.modelValue.mode,
+						});
 					} else {
-						this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
+						this.valueChanged({ __rl: true, value: `=${this.modelValue}`, mode: '' });
 					}
 				} else if (
 					this.parameter.type === 'number' &&
-					(!this.value || this.value === '[Object: null]')
+					(!this.modelValue || this.modelValue === '[Object: null]')
 				) {
 					this.valueChanged('={{ 0 }}');
 				} else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-					this.valueChanged(`={{ ${this.value} }}`);
+					this.valueChanged(`={{ ${this.modelValue} }}`);
 				} else {
-					this.valueChanged(`=${this.value}`);
+					this.valueChanged(`=${this.modelValue}`);
 				}
 
 				this.setFocus();
@@ -1101,14 +1111,14 @@ export default defineComponent({
 						);
 				}
 
-				if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
-					this.valueChanged({ __rl: true, value, mode: this.value.mode });
+				if (this.isResourceLocatorParameter && isResourceLocatorValue(this.modelValue)) {
+					this.valueChanged({ __rl: true, value, mode: this.modelValue.mode });
 				} else {
 					let newValue = typeof value !== 'undefined' ? value : null;
 
 					if (this.parameter.type === 'string') {
 						// Strip the '=' from the beginning
-						newValue = this.value ? this.value.toString().substring(1) : null;
+						newValue = this.modelValue ? this.modelValue.toString().substring(1) : null;
 					}
 
 					this.valueChanged(newValue);

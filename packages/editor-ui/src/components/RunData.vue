@@ -132,7 +132,7 @@
 				:modelValue="runIndex"
 				@update:modelValue="onRunIndexChange"
 				@click.stop
-				popper-append-to-body
+				teleported
 			>
 				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option
@@ -195,9 +195,9 @@
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
 					<code-node-editor
-						:value="editMode.value"
+						:modelValue="editMode.value"
 						language="json"
-						@valueChanged="ndvStore.setOutputPanelEditModeValue($event)"
+						@update:modelValue="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
@@ -459,7 +459,7 @@
 					size="mini"
 					:modelValue="pageSize"
 					@update:modelValue="onPageSizeChange"
-					popper-append-to-body
+					teleported
 				>
 					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">

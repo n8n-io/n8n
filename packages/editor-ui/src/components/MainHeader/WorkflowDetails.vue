@@ -10,7 +10,7 @@
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
-							:value="workflowName"
+							:modelValue="workflowName"
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
 							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
@@ -77,7 +77,7 @@
 						</n8n-button>
 						<template #content>
 							<i18n-t
-								:path="
+								:keypath="
 									contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
 								"
 								tag="span"

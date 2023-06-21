@@ -129,10 +129,10 @@ function onBackButton() {
 			/>
 			<div :class="$style.renderedItems">
 				<!-- Actions mode -->
-				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-on="$listeners" />
+				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
 
 				<!-- Nodes Mode -->
-				<NodesRenderer v-else :rootView="nodeCreatorView" v-on="$listeners" />
+				<NodesRenderer v-else :rootView="nodeCreatorView" v-bind="$attrs" />
 			</div>
 		</aside>
 	</transition>

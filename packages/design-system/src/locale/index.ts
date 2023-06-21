@@ -36,8 +36,6 @@ export async function use(l: string) {
 	try {
 		const ndsLang = (await import(`./lang/${l}.ts`)) as { default: N8nLocale };
 
-		console.log('ndsLang', ndsLang);
-
 		lang = ndsLang.default;
 
 		// todo breaks select empty data

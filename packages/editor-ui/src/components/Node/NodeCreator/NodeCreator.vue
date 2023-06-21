@@ -13,7 +13,7 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<NodesListPanel @nodeTypeSelected="$listeners.nodeTypeSelected" />
+				<NodesListPanel @nodeTypeSelected="onNodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
@@ -33,6 +33,7 @@ import NodesListPanel from './Panel/NodesListPanel.vue';
 
 export interface Props {
 	active?: boolean;
+	onNodeTypeSelected?: (nodeType: string) => void;
 }
 
 const props = defineProps<Props>();

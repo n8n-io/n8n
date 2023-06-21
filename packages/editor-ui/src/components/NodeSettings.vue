@@ -48,7 +48,7 @@
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
 					<i18n-t
-						path="nodeSettings.communityNodeUnknown.description"
+						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
 						@click="onMissingNodeTextClick"
 					>
@@ -68,7 +68,7 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n-t v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"

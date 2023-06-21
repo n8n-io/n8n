@@ -445,7 +445,9 @@ export default defineComponent({
 			}
 		},
 		goToRoute(route: string | { name: string }) {
+			console.log(this.$router);
 			this.$router.push(route).catch((failure) => {
+				console.log(failure);
 				// Catch navigation failures caused by route guards
 				if (!isNavigationFailure(failure)) {
 					console.error(failure);
@@ -465,8 +467,6 @@ export default defineComponent({
 					break;
 				}
 			}
-
-			console.log(defaultSettingsRoute);
 
 			return defaultSettingsRoute;
 		},

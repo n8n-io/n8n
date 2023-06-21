@@ -1,5 +1,5 @@
 <template>
-	<ExpandableInputBase :value="modelValue" :placeholder="placeholder">
+	<ExpandableInputBase :modelValue="modelValue" :placeholder="placeholder">
 		<input
 			class="el-input__inner"
 			:value="modelValue"

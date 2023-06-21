@@ -71,7 +71,7 @@
 					<template #fallback>
 						<n8n-text>
 							<i18n-t
-								:path="
+								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
 								"
 								tag="span"

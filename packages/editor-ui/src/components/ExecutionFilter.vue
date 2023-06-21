@@ -244,7 +244,7 @@ onBeforeMount(() => {
 				<div :class="$style.group">
 					<n8n-tooltip placement="right">
 						<template #content>
-							<i18n-t tag="span" path="executionsFilter.customData.docsTooltip">
+							<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip">
 								<template #link>
 									<a
 										target="_blank"
@@ -266,7 +266,7 @@ onBeforeMount(() => {
 						}}</label>
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
-								<i18n-t tag="span" path="executionsFilter.customData.inputTooltip">
+								<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a
 											href="#"
@@ -294,7 +294,7 @@ onBeforeMount(() => {
 						}}</label>
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
-								<i18n-t tag="span" path="executionsFilter.customData.inputTooltip">
+								<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a href="#" @click.prevent="goToUpgrade">{{
 											locale.baseText('executionsFilter.customData.inputTooltip.link')

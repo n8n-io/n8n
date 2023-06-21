@@ -25,7 +25,7 @@
 			<div :class="$style.titleSection">
 				<n8n-select
 					v-if="parentNodes.length"
-					:popper-append-to-body="true"
+					teleported
 					size="small"
 					:modelValue="currentNodeName"
 					@update:modelValue="onSelect"

@@ -12,7 +12,7 @@
 		<div v-if="apiKey">
 			<p class="mb-s">
 				<n8n-info-tip :bold="false">
-					<i18n-t path="settings.api.view.info" tag="span">
+					<i18n-t keypath="settings.api.view.info" tag="span">
 						<template #apiAction>
 							<a
 								href="https://docs.n8n.io/api"

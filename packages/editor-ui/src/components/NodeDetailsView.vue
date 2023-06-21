@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:visible="(!!activeNode || renaming) && !isActiveStickyNode"
+		:modelValue="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
 		class="data-display-wrapper ndv-wrapper"

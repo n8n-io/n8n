@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, defineComponent } from 'vue';
+import { computed, getCurrentInstance, onMounted, defineComponent, h } from 'vue';
 import type { VNode, PropType } from 'vue';
 import type {
 	INodeCreateElement,
@@ -211,15 +211,16 @@ const OrderSwitcher = defineComponent({
 			type: String as PropType<NodeFilterType>,
 		},
 	},
-	render(h): VNode {
-		const triggers = this.$slots?.triggers?.[0];
-		const actions = this.$slots?.actions?.[0];
+	setup(props, { slots }) {
+		const triggers = slots.triggers?.();
+		const actions = slots.actions?.();
 
-		return h(
-			'div',
-			{},
-			this.rootView === REGULAR_NODE_CREATOR_VIEW ? [actions, triggers] : [triggers, actions],
-		);
+		return () =>
+			h(
+				'div',
+				{},
+				props.rootView === REGULAR_NODE_CREATOR_VIEW ? [actions, triggers] : [triggers, actions],
+			);
 	},
 });
 

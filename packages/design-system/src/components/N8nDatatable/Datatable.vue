@@ -159,7 +159,7 @@ export default defineComponent({
 					size="mini"
 					:value="rowsPerPage"
 					@update:modelValue="onRowsPerPageChange"
-					popper-append-to-body
+					teleported
 				>
 					<template #prepend>{{ t('datatable.pageSize') }}</template>
 					<n8n-option

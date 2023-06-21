@@ -66,7 +66,7 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		value: {
+		modelValue: {
 			type: String,
 		},
 	},
@@ -209,8 +209,8 @@ export default defineComponent({
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
 		// empty on first load, default param value
-		if (!this.value) {
-			this.$emit('valueChanged', this.placeholder);
+		if (!this.modelValue) {
+			this.$emit('update:modelValue', this.placeholder);
 		}
 
 		const { isReadOnly, language } = this;
@@ -242,7 +242,7 @@ export default defineComponent({
 
 					this.trackCompletion(viewUpdate);
 
-					this.$emit('valueChanged', this.editor?.state.doc.toString());
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
 				}),
 			);
 		}
@@ -251,7 +251,7 @@ export default defineComponent({
 		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
 
 		const state = EditorState.create({
-			doc: this.value || this.placeholder,
+			doc: this.modelValue || this.placeholder,
 			extensions,
 		});
 

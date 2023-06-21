@@ -65,7 +65,7 @@
 						<n8n-tooltip placement="bottom-end">
 							<template #content>
 								<div>
-									<i18n-t path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<i18n-t keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{

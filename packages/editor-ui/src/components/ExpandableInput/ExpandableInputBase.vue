@@ -10,10 +10,10 @@ import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'ExpandableInputBase',
-	props: ['value', 'placeholder', 'staticSize'],
+	props: ['modelValue', 'placeholder', 'staticSize'],
 	computed: {
 		hiddenValue() {
-			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
+			let value = (this.modelValue as string).replace(/\s/g, '.'); // force input to expand on space chars
 			if (!value) {
 				// @ts-ignore
 				value = this.placeholder;

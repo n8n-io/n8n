@@ -138,7 +138,7 @@ const openPricingPage = () => {
 		/>
 		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
 			<n8n-heading :class="$style.title" size="large">
-				<i18n-t path="settings.usageAndPlan.description">
+				<i18n-t keypath="settings.usageAndPlan.description">
 					<template #name>{{ usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
@@ -160,7 +160,7 @@ const openPricingPage = () => {
 							:style="{ width: `${usageStore.executionPercentage}%` }"
 						></span>
 					</span>
-					<i18n-t :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
+					<i18n-t :class="$style.count" keypath="settings.usageAndPlan.activeWorkflows.count">
 						<template #count>{{ usageStore.executionCount }}</template>
 						<template #limit>
 							<span v-if="usageStore.executionLimit < 0">{{
@@ -203,7 +203,7 @@ const openPricingPage = () => {
 				top="0"
 				@closed="onDialogClosed"
 				@opened="onDialogOpened"
-				:visible.sync="activationKeyModal"
+				v-model="activationKeyModal"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 			>
 				<template #default>

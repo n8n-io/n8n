@@ -6,7 +6,7 @@
 		:filterMethod="setFilter"
 		:placeholder="placeholder"
 		:default-first-option="true"
-		:popper-append-to-body="true"
+		teleported
 		:popper-class="$style.limitPopperWidth"
 		:noDataText="t('nds.userSelect.noMatchingUsers')"
 		:size="size"

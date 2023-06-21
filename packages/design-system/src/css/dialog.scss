@@ -3,6 +3,17 @@
 @use './common/var';
 @use 'common/popup';
 
+@include mixins.b(overlay) {
+	width: 100%;
+	height: 100%;
+	display: block;
+	position: fixed;
+	top: 0;
+	left: 0;
+	padding: var(--spacing-2xl);
+	background-color: rgba(0, 0, 0, 0.5);
+}
+
 @include mixins.b(dialog) {
 	position: relative;
 	margin: 0 auto 50px;

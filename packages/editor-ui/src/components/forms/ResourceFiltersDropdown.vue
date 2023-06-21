@@ -1,5 +1,5 @@
 <template>
-	<n8n-popover trigger="click">
+	<n8n-popover trigger="click" width="304" size="large">
 		<template #reference>
 			<n8n-button
 				icon="filter"

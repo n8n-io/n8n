@@ -189,7 +189,7 @@ const refreshBranches = async () => {
 			data-test-id="version-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
-				<i18n-t path="settings.versionControl.description">
+				<i18n-t keypath="settings.versionControl.description">
 					<template #link>
 						<a :href="versionControlDocsSetupUrl" target="_blank">
 							{{ locale.baseText('settings.versionControl.description.link') }}
@@ -280,7 +280,7 @@ const refreshBranches = async () => {
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n-t path="settings.versionControl.sshKeyDescription">
+					<i18n-t keypath="settings.versionControl.sshKeyDescription">
 						<template #link>
 							<a :href="versionControlDocsSetupUrl" target="_blank">{{
 								locale.baseText('settings.versionControl.sshKeyDescriptionLink')
@@ -342,7 +342,7 @@ const refreshBranches = async () => {
 						v-model="versionControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n-t path="settings.versionControl.readonly">
+						<i18n-t keypath="settings.versionControl.readonly">
 							<template #bold>
 								<strong>{{ locale.baseText('settings.versionControl.readonly.bold') }}</strong>
 							</template>

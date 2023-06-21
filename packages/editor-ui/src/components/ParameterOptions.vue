@@ -44,6 +44,7 @@ import type { NodeParameterValueType } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
+import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({
 	name: 'parameter-options',
@@ -81,7 +82,7 @@ export default defineComponent({
 		loadingMessage: {
 			type: String,
 			default() {
-				return this.$locale.baseText('genericHelpers.loading');
+				return i18n.baseText('genericHelpers.loading');
 			},
 		},
 	},
