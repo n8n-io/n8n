@@ -698,6 +698,7 @@ export const workflowHelpers = defineComponent({
 			redirect = true,
 			forceSave = false,
 		): Promise<boolean> {
+			const hasChanges = this.uiStore.stateIsDirty;
 			const currentWorkflow = id || this.$route.params.name;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
@@ -706,6 +707,10 @@ export const workflowHelpers = defineComponent({
 
 			// Workflow exists already so update it
 			try {
+				// Prevent saving if nothing has changed and not forced
+				if (!forceSave && !hasChanges) {
+					return false;
+				}
 				this.uiStore.addActiveAction('workflowSaving');
 
 				const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
