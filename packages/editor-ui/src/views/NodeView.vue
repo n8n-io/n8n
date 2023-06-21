@@ -94,14 +94,18 @@
 				@stopExecution="stopExecution"
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
-			<node-creation
-				v-if="!isReadOnly && !readOnlyEnv"
-				:create-node-active="createNodeActive"
-				:node-view-scale="nodeViewScale"
-				@toggleNodeCreator="onToggleNodeCreator"
-				@addNode="onAddNode"
-			/>
-			<canvas-controls />
+			<Suspense>
+				<NodeCreation
+					v-if="!isReadOnly && !readOnlyEnv"
+					:create-node-active="createNodeActive"
+					:node-view-scale="nodeViewScale"
+					@toggleNodeCreator="onToggleNodeCreator"
+					@addNode="onAddNode"
+				/>
+			</Suspense>
+			<Suspense>
+				<CanvasControls />
+			</Suspense>
 			<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 				<span
 					@mouseenter="showTriggerMissingToltip(true)"
@@ -162,7 +166,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import type {
@@ -179,7 +183,7 @@ import {
 	EVENT_CONNECTION_MOVED,
 	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-plus';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -316,8 +320,8 @@ interface AddNodeOptions {
 	dragAndDrop?: boolean;
 }
 
-const NodeCreation = async () => import('@/components/Node/NodeCreation.vue');
-const CanvasControls = async () => import('@/components/CanvasControls.vue');
+const NodeCreation = defineAsyncComponent(() => import('@/components/Node/NodeCreation.vue'));
+const CanvasControls = defineAsyncComponent(() => import('@/components/CanvasControls.vue'));
 
 export default defineComponent({
 	name: 'NodeView',
@@ -2029,7 +2033,7 @@ export default defineComponent({
 
 			// If a node is last selected then connect between the active and its child ones
 			if (lastSelectedNode) {
-				await Vue.nextTick();
+				await this.$nextTick();
 
 				if (lastSelectedConnection && lastSelectedConnection.__meta) {
 					this.__deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
@@ -3055,7 +3059,7 @@ export default defineComponent({
 				);
 
 				// Wait till it had time to display
-				await Vue.nextTick();
+				await this.$nextTick();
 
 				// Get the input and select the text in it
 				const nameInput = document.querySelector('.rename-prompt .el-input__inner') as
@@ -3109,7 +3113,7 @@ export default defineComponent({
 			this.workflowsStore.removeAllNodes({ removePinData: false, setStateDirty: true });
 
 			// Wait a tick that the old nodes had time to get removed
-			await Vue.nextTick();
+			await this.$nextTick();
 
 			// Add the new updated nodes
 			await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode, false);
@@ -3267,7 +3271,7 @@ export default defineComponent({
 			});
 
 			// Wait for the node to be rendered
-			await Vue.nextTick();
+			await this.$nextTick();
 
 			// Suspend drawing
 			this.instance?.setSuspendDrawing(true);

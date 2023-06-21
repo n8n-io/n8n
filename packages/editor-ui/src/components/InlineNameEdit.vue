@@ -1,7 +1,7 @@
 <template>
 	<div class="ph-no-capture" :class="$style.container">
 		<span v-if="readonly" :class="$style.headline">
-			{{ name }}
+			{{ modelValue }}
 		</span>
 		<div
 			v-else
@@ -11,12 +11,12 @@
 			v-click-outside="disableNameEdit"
 		>
 			<div v-if="!isNameEdit">
-				<span>{{ name }}</span>
+				<span>{{ modelValue }}</span>
 				<i><font-awesome-icon icon="pen" /></i>
 			</div>
 			<div v-else :class="$style.nameInput">
 				<n8n-input
-					:modelValue="name"
+					:modelValue="modelValue"
 					size="xlarge"
 					ref="nameInput"
 					@update:modelValue="onNameEdit"
@@ -38,7 +38,7 @@ import { useToast } from '@/composables';
 export default defineComponent({
 	name: 'InlineNameEdit',
 	props: {
-		name: {
+		modelValue: {
 			type: String,
 		},
 		subtitle: {
@@ -64,7 +64,7 @@ export default defineComponent({
 	},
 	methods: {
 		onNameEdit(value: string) {
-			this.$emit('input', value);
+			this.$emit('update:modelValue', value);
 		},
 		enableNameEdit() {
 			this.isNameEdit = true;
@@ -77,8 +77,8 @@ export default defineComponent({
 			}, 0);
 		},
 		disableNameEdit() {
-			if (!this.name) {
-				this.$emit('input', `Untitled ${this.type}`);
+			if (!this.modelValue) {
+				this.$emit('update:modelValue', `Untitled ${this.type}`);
 
 				this.showToast({
 					title: 'Error',

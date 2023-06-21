@@ -189,13 +189,13 @@ const refreshBranches = async () => {
 			data-test-id="version-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
-				<i18n path="settings.versionControl.description">
+				<i18n-t path="settings.versionControl.description">
 					<template #link>
 						<a :href="versionControlDocsSetupUrl" target="_blank">
 							{{ locale.baseText('settings.versionControl.description.link') }}
 						</a>
 					</template>
-				</i18n>
+				</i18n-t>
 			</n8n-callout>
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.versionControl.gitConfig')
@@ -280,13 +280,13 @@ const refreshBranches = async () => {
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n path="settings.versionControl.sshKeyDescription">
+					<i18n-t path="settings.versionControl.sshKeyDescription">
 						<template #link>
 							<a :href="versionControlDocsSetupUrl" target="_blank">{{
 								locale.baseText('settings.versionControl.sshKeyDescriptionLink')
 							}}</a>
 						</template>
-					</i18n>
+					</i18n-t>
 				</n8n-notice>
 			</div>
 			<n8n-button
@@ -342,7 +342,7 @@ const refreshBranches = async () => {
 						v-model="versionControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n path="settings.versionControl.readonly">
+						<i18n-t path="settings.versionControl.readonly">
 							<template #bold>
 								<strong>{{ locale.baseText('settings.versionControl.readonly.bold') }}</strong>
 							</template>
@@ -351,7 +351,7 @@ const refreshBranches = async () => {
 									{{ locale.baseText('settings.versionControl.readonly.link') }}
 								</a>
 							</template>
-						</i18n>
+						</i18n-t>
 					</n8n-checkbox>
 				</div>
 				<div :class="$style.group">

@@ -48,7 +48,7 @@ const TemplateForSlots: StoryFn = (args, { argTypes }) => ({
 	template: `<div style="position: relative; width: 100%; height: 300px;">
 			  <n8n-alert v-bind="args">
 					<template #title>Title</template>
-					<template>Description</template>
+					Description
 					<template #aside><button>Button</button></template>
 					<template #icon>
 						<n8n-icon icon="grin-stars" size="xlarge" />

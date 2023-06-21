@@ -107,7 +107,7 @@
 </template>
 
 <script lang="ts">
-import type { Table as ElTable } from 'element-ui';
+import type { ElTable } from 'element-plus';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
 import { defineComponent } from 'vue';
@@ -248,7 +248,7 @@ export default defineComponent({
 	margin-left: 2px;
 }
 
-::v-deep tr.disabled {
+:deep(tr.disabled) {
 	pointer-events: none;
 }
 

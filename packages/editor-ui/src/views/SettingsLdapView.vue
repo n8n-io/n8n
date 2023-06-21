@@ -28,9 +28,7 @@
 			</div>
 			<div :class="$style.docsInfoTip">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
 				</n8n-info-tip>
 			</div>
 			<div :class="$style.settingsForm">
@@ -41,7 +39,7 @@
 					:eventBus="formBus"
 					:columnView="true"
 					verticalSpacing="l"
-					@update:modelValue="onInput"
+					@change="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
@@ -157,7 +155,7 @@ import type {
 import { MODAL_CONFIRM } from '@/constants';
 
 import humanizeDuration from 'humanize-duration';
-import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
+import { ElTable, ElTableColumn } from 'element-plus';
 import { capitalizeFirstLetter } from '@/utils';
 import InfiniteLoading from 'vue-infinite-loading';
 import { mapStores } from 'pinia';
@@ -166,10 +164,11 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system';
 import type { N8nFormInputs } from 'n8n-design-system';
+import type { CellStyle } from 'element-plus';
 
 type N8nFormInputsRef = InstanceType<typeof N8nFormInputs>;
 
-type tableRow = {
+type TableRow = {
 	status: string;
 	startAt: string;
 	endedAt: string;
@@ -177,14 +176,12 @@ type tableRow = {
 	runMode: string;
 };
 
-type rowType = rowCallbackParams & tableRow;
-
-type cellType = cellCallbackParams & { property: keyof tableRow };
-
 export default defineComponent({
 	name: 'SettingsLdapView',
 	components: {
 		InfiniteLoading,
+		ElTable,
+		ElTableColumn,
 	},
 	setup() {
 		return {
@@ -227,7 +224,7 @@ export default defineComponent({
 		goToUpgrade() {
 			this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
 		},
-		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
+		cellClassStyle({ row, column }: CellStyle<TableRow>) {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
 					return { color: 'green' };

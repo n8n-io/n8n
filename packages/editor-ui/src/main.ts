@@ -1,6 +1,6 @@
 // The Vue build version to load with the `import` command
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
-import Vue from 'vue';
+import { createApp } from 'vue';
 
 import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
@@ -26,24 +26,30 @@ import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { useWebhooksStore } from '@/stores';
 
-Vue.config.productionTip = false;
-
-Vue.use(TelemetryPlugin);
-Vue.use(PiniaVuePlugin);
-
-Vue.use(I18nPlugin);
-Vue.use(FontAwesomePlugin);
-Vue.use(GlobalComponentsPlugin);
-Vue.use(GlobalDirectivesPlugin);
-
 const pinia = createPinia();
 
-new Vue({
-	i18n: i18nInstance,
-	router,
-	pinia,
-	render: (h) => h(App),
-}).$mount('#app');
+const app = createApp(App);
+
+// Vue.config.productionTip = false;
+
+app.use(TelemetryPlugin);
+app.use(PiniaVuePlugin);
+app.use(I18nPlugin);
+app.use(FontAwesomePlugin);
+app.use(GlobalComponentsPlugin);
+app.use(GlobalDirectivesPlugin);
+app.use(pinia);
+app.use(router);
+app.use(i18nInstance);
+
+app.mount('#app');
+
+// new Vue({
+// 	i18n: i18nInstance,
+// 	router,
+// 	pinia,
+// 	render: (h) => h(App),
+// }).$mount('#app');
 
 router.afterEach((to, from) => {
 	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });

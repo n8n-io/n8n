@@ -70,14 +70,14 @@
 					</n8n-users-list>
 					<template #fallback>
 						<n8n-text>
-							<i18n
+							<i18n-t
 								:path="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
 								"
 								tag="span"
 							>
 								<template #action />
-							</i18n>
+							</i18n-t>
 						</n8n-text>
 					</template>
 				</enterprise-edition>

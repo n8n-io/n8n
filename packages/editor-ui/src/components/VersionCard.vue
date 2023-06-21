@@ -13,9 +13,7 @@
 					{{ `${$locale.baseText('versionCard.version')} ${version.name}` }}
 				</div>
 				<WarningTooltip v-if="version.hasSecurityIssue">
-					<template>
-						<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
-					</template>
+					<span v-html="$locale.baseText('versionCard.thisVersionHasASecurityIssue')"></span>
 				</WarningTooltip>
 				<Badge
 					v-if="version.hasSecurityFix"

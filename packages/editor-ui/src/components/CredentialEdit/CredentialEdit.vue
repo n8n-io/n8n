@@ -15,11 +15,11 @@
 						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
-						:name="credentialName"
+						:modelValue="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
 						:readonly="!credentialPermissions.updateName || !credentialType"
 						type="Credential"
-						@input="onNameEdit"
+						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
 					/>
 				</div>

@@ -1,18 +1,19 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router/composables';
-import { Notification } from 'element-ui';
+import { useRoute, useRouter } from 'vue-router';
 import type { UsageTelemetry } from '@/stores/usage.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores';
 import { N8N_PRICING_PAGE_URL } from '@/constants';
+import { useToast } from '@/composables';
 
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
+const toast = useToast();
 
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
@@ -26,7 +27,8 @@ const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
 const showActivationSuccess = () => {
-	Notification.success({
+	toast.showMessage({
+		type: 'success',
 		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
 		message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
 			interpolate: {
@@ -36,16 +38,15 @@ const showActivationSuccess = () => {
 					: locale.baseText('settings.usageAndPlan.edition'),
 			},
 		}),
-		position: 'bottom-right',
 	});
 };
 
 const showActivationError = (error: Error) => {
-	Notification.error({
-		title: locale.baseText('settings.usageAndPlan.license.activation.error.title'),
-		message: error.message,
-		position: 'bottom-right',
-	});
+	toast.showError(
+		error,
+		locale.baseText('settings.usageAndPlan.license.activation.error.title'),
+		error.message,
+	);
 };
 
 const onLicenseActivation = async () => {
@@ -86,11 +87,7 @@ onMounted(async () => {
 		if (!error.name) {
 			error.name = locale.baseText('settings.usageAndPlan.error');
 		}
-		Notification.error({
-			title: error.name,
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, error.name, error.message);
 	}
 });
 
@@ -141,7 +138,7 @@ const openPricingPage = () => {
 		/>
 		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
 			<n8n-heading :class="$style.title" size="large">
-				<i18n path="settings.usageAndPlan.description">
+				<i18n-t path="settings.usageAndPlan.description">
 					<template #name>{{ usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
@@ -149,7 +146,7 @@ const openPricingPage = () => {
 						}}</span>
 						<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 					</template>
-				</i18n>
+				</i18n-t>
 			</n8n-heading>
 
 			<div :class="$style.quota">
@@ -163,7 +160,7 @@ const openPricingPage = () => {
 							:style="{ width: `${usageStore.executionPercentage}%` }"
 						></span>
 					</span>
-					<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
+					<i18n-t :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
 						<template #count>{{ usageStore.executionCount }}</template>
 						<template #limit>
 							<span v-if="usageStore.executionLimit < 0">{{
@@ -171,7 +168,7 @@ const openPricingPage = () => {
 							}}</span>
 							<span v-else>{{ usageStore.executionLimit }}</span>
 						</template>
-					</i18n>
+					</i18n-t>
 				</div>
 			</div>
 

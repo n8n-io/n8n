@@ -51,10 +51,10 @@ const template: StoryFn<Args> = (args, { argTypes }) => ({
 	template: `
 		<n8n-callout v-bind="args">
 			${args.default}
-			<template #actions v-if="actions">
+			<template #actions v-if="args.actions">
 				${args.actions}
 			</template>
-			<template #trailingContent v-if="trailingContent">
+			<template #trailingContent v-if="args.trailingContent">
 				${args.trailingContent}
 			</template>
 		</n8n-callout>

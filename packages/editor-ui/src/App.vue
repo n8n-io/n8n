@@ -17,7 +17,9 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<keep-alive include="NodeView" :max="1">
-					<router-view />
+					<main>
+						<router-view />
+					</main>
 				</keep-alive>
 			</div>
 			<Modals />
@@ -51,7 +53,7 @@ import {
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
-import { useRoute } from 'vue-router/composables';
+import { useRoute } from 'vue-router';
 import { useExternalHooks } from '@/composables';
 
 export default defineComponent({

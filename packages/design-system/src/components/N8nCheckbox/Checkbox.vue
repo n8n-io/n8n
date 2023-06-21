@@ -6,7 +6,7 @@
 		:disabled="disabled"
 		:indeterminate="indeterminate"
 		:modelValue="modelValue"
-		@change="onChange"
+		@update:modelValue="onUpdateModelValue"
 	>
 		<slot></slot>
 		<n8n-input-label
@@ -57,8 +57,8 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onChange(event: Event) {
-			this.$emit('update:modelValue', event);
+		onUpdateModelValue(value: boolean) {
+			this.$emit('update:modelValue', value);
 		},
 		onLabelClick() {
 			const checkboxComponent = this.$refs.checkbox as ElCheckbox;

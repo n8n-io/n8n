@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, reactive, onBeforeMount, ref } from 'vue';
 import debounce from 'lodash/debounce';
-import type { PopoverPlacement } from 'element-ui/types/popover';
 import type {
 	ExecutionFilterType,
 	ExecutionFilterMetadata,
@@ -15,10 +14,11 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables';
+import type { Placement } from '@floating-ui/core';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
-	popoverPlacement?: PopoverPlacement;
+	popoverPlacement?: Placement;
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
@@ -30,7 +30,7 @@ const uiStore = useUIStore();
 const telemetry = useTelemetry();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
-	popoverPlacement: 'bottom',
+	popoverPlacement: 'bottom' as Placement,
 });
 const emit = defineEmits<{
 	(event: 'filterChanged', value: ExecutionFilterType): void;
@@ -244,7 +244,7 @@ onBeforeMount(() => {
 				<div :class="$style.group">
 					<n8n-tooltip placement="right">
 						<template #content>
-							<i18n tag="span" path="executionsFilter.customData.docsTooltip">
+							<i18n-t tag="span" path="executionsFilter.customData.docsTooltip">
 								<template #link>
 									<a
 										target="_blank"
@@ -253,7 +253,7 @@ onBeforeMount(() => {
 										{{ locale.baseText('executionsFilter.customData.docsTooltip.link') }}
 									</a>
 								</template>
-							</i18n>
+							</i18n-t>
 						</template>
 						<span :class="$style.label">
 							{{ locale.baseText('executionsFilter.savedData') }}
@@ -266,7 +266,7 @@ onBeforeMount(() => {
 						}}</label>
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
-								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
+								<i18n-t tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a
 											href="#"
@@ -275,7 +275,7 @@ onBeforeMount(() => {
 											>{{ locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 										>
 									</template>
-								</i18n>
+								</i18n-t>
 							</template>
 							<n8n-input
 								id="execution-filter-saved-data-key"
@@ -284,8 +284,8 @@ onBeforeMount(() => {
 								size="medium"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
-								:value="filter.metadata[0]?.key"
-								@input="onFilterMetaChange(0, 'key', $event)"
+								:modelValue="filter.metadata[0]?.key"
+								@update:modelValue="onFilterMetaChange(0, 'key', $event)"
 								data-test-id="execution-filter-saved-data-key-input"
 							/>
 						</n8n-tooltip>
@@ -294,13 +294,13 @@ onBeforeMount(() => {
 						}}</label>
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
-								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
+								<i18n-t tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a href="#" @click.prevent="goToUpgrade">{{
 											locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>
-								</i18n>
+								</i18n-t>
 							</template>
 							<n8n-input
 								id="execution-filter-saved-data-value"

@@ -2,10 +2,14 @@
 	<el-dialog
 		:visible="uiStore.isModalOpen(this.name)"
 		:before-close="closeDialog"
-		:class="{ 'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable }"
+		:class="{
+			'dialog-wrapper': true,
+			[$style.center]: center,
+			scrollable: scrollable,
+			[getCustomClass()]: true,
+		}"
 		:width="width"
 		:show-close="showClose"
-		:custom-class="getCustomClass()"
 		:close-on-click-modal="closeOnClickModal"
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"

@@ -65,14 +65,14 @@
 						<n8n-tooltip placement="bottom-end">
 							<template #content>
 								<div>
-									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<i18n-t path="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
 												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
 											}}</a>
 										</template>
-									</i18n>
+									</i18n-t>
 								</div>
 							</template>
 							<span>

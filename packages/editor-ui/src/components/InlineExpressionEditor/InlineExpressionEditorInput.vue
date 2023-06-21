@@ -25,7 +25,7 @@ export default defineComponent({
 	name: 'InlineExpressionEditorInput',
 	mixins: [completionManager, expressionManager, workflowHelpers],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
 		},
 		isReadOnly: {
@@ -46,7 +46,7 @@ export default defineComponent({
 				effects: editableConf.reconfigure(EditorView.editable.of(!newValue)),
 			});
 		},
-		value(newValue) {
+		modelValue(newValue) {
 			const isInternalChange = newValue === this.editor?.state.doc.toString();
 
 			if (isInternalChange) return;
@@ -66,7 +66,7 @@ export default defineComponent({
 				changes: {
 					from: 0,
 					to: this.editor.state.doc.length,
-					insert: this.value,
+					insert: this.modelValue,
 				},
 			});
 
@@ -133,7 +133,7 @@ export default defineComponent({
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
-				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
+				doc: this.modelValue.startsWith('=') ? this.modelValue.slice(1) : this.modelValue,
 				extensions,
 			}),
 		});

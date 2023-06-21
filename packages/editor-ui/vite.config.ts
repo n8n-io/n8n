@@ -62,7 +62,7 @@ const alias = [
 		replacement: require.resolve('vue2-boring-avatars'),
 	},
 	{
-		find: /element-ui\/(packages|lib)\/button$/,
+		find: /element-plus\/(packages|lib)\/button$/,
 		replacement: resolve(
 			__dirname,
 			'..',

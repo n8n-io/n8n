@@ -7,7 +7,7 @@
 		:modal="modal"
 		:wrapperClosable="wrapperClosable"
 	>
-		<template #title>
+		<template #header>
 			<slot name="header" />
 		</template>
 		<template>

@@ -7,9 +7,9 @@
 		>
 			<!-- <template #header> -->
 			<checkbox
-				:value="group.selected"
+				:modelValue="group.selected"
 				:indeterminate="!group.selected && group.indeterminate"
-				@input="onInput"
+				@update:modelValue="onInput"
 				@change="onCheckboxChecked(group.name, $event)"
 				:disabled="readonly"
 			>
@@ -28,8 +28,8 @@
 			</checkbox>
 			<checkbox
 				v-if="group.name === 'n8n.audit'"
-				:value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
-				@input="onInput"
+				:modelValue="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
+				@update:modelValue="onInput"
 				@change="anonymizeAuditMessagesChanged"
 				:disabled="readonly"
 			>
@@ -49,10 +49,10 @@
 					:class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`"
 				>
 					<checkbox
-						:value="event.selected || group.selected"
+						:modelValue="event.selected || group.selected"
 						:indeterminate="event.indeterminate"
 						:disabled="group.selected || readonly"
-						@input="onInput"
+						@update:modelValue="onInput"
 						@change="onCheckboxChecked(event.name, $event)"
 					>
 						{{ event.label }}
@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts">
-import { Checkbox } from 'element-ui';
+import { ElCheckbox as Checkbox } from 'element-plus';
 import { mapStores } from 'pinia';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';

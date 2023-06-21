@@ -43,8 +43,8 @@ import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import type { EventBus } from '@/utils';
-import { createEventBus } from '@/utils';
+import type { EventBus } from '../../utils';
+import { createEventBus } from '../../utils';
 
 export interface IAccordionItem {
 	id: string;

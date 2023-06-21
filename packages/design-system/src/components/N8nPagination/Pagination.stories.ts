@@ -7,12 +7,27 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
+	setup: () => {
+		const onUpdateCurrentPage = (currentPage: number) => {
+			args.currentPage = currentPage;
+		};
+
+		const onUpdatePageSize = (pageSize: number) => {
+			args.pageSize = pageSize;
+		};
+
+		return { onUpdateCurrentPage, onUpdatePageSize, args };
+	},
 	props: Object.keys(argTypes),
 	components: {
 		N8nPagination,
 	},
-	template: '<n8n-pagination v-bind="args" />',
+	template: `
+		<n8n-pagination
+			v-bind="args"
+			v-model:current-page="args.currentPage"
+			v-model:page-size="args.pageSize"
+		/>`,
 });
 
 export const Pagination: StoryFn = Template.bind({});

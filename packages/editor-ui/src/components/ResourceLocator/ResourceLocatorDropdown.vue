@@ -3,7 +3,7 @@
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
+		:modelValue="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
 		v-click-outside="onClickOutside"
@@ -16,7 +16,7 @@
 				size="medium"
 				:modelValue="filter"
 				:clearable="true"
-				@input="onFilterInput"
+				@update:modelValue="onFilterInput"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 			>
@@ -45,7 +45,7 @@
 				:key="result.value"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === value,
+					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
 				class="ph-no-capture"
@@ -91,7 +91,7 @@ const SCROLL_MARGIN_PX = 10;
 export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
-		value: {
+		modelValue: {
 			type: [String, Number],
 		},
 		show: {
@@ -149,7 +149,7 @@ export default defineComponent({
 					}
 					seen.add(item.value);
 
-					if (this.value && item.value === this.value) {
+					if (this.modelValue && item.value === this.modelValue) {
 						acc.selected = item;
 					} else {
 						acc.notSelected.push(item);
@@ -210,7 +210,7 @@ export default defineComponent({
 					}
 				}
 			} else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
+				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
 			}
 		},
 		onFilterInput(value: string) {
@@ -220,7 +220,7 @@ export default defineComponent({
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
-			this.$emit('input', selected);
+			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;

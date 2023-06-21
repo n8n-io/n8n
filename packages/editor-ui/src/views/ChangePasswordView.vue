@@ -4,7 +4,7 @@
 		:form="config"
 		:formLoading="loading"
 		@submit="onSubmit"
-		@input="onInput"
+		@change="onInput"
 	/>
 </template>
 

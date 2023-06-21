@@ -58,67 +58,65 @@
 		<span v-else class="tags"></span>
 
 		<PushConnectionTracker class="actions">
-			<template>
-				<span class="activator">
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
-				</span>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-button
-						type="secondary"
-						class="mr-2xs"
-						@click="onShareButtonClick"
-						data-test-id="workflow-share-button"
-					>
-						{{ $locale.baseText('workflowDetails.share') }}
-					</n8n-button>
-					<template #fallback>
-						<n8n-tooltip>
-							<n8n-button type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
-								{{ $locale.baseText('workflowDetails.share') }}
-							</n8n-button>
-							<template #content>
-								<i18n
-									:path="
-										contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
-									"
-									tag="span"
-								>
-									<template #action>
-										<a @click="goToUpgrade">
-											{{
-												$locale.baseText(
-													contextBasedTranslationKeys.workflows.sharing.unavailable.button,
-												)
-											}}
-										</a>
-									</template>
-								</i18n>
-							</template>
-						</n8n-tooltip>
-					</template>
-				</enterprise-edition>
-				<SaveButton
-					type="primary"
-					:saved="!this.isDirty && !this.isNewWorkflow"
-					:disabled="isWorkflowSaving || readOnly"
-					data-test-id="workflow-save-button"
-					@click="onSaveButtonClick"
+			<span class="activator">
+				<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
+			</span>
+			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<n8n-button
+					type="secondary"
+					class="mr-2xs"
+					@click="onShareButtonClick"
+					data-test-id="workflow-share-button"
+				>
+					{{ $locale.baseText('workflowDetails.share') }}
+				</n8n-button>
+				<template #fallback>
+					<n8n-tooltip>
+						<n8n-button type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
+							{{ $locale.baseText('workflowDetails.share') }}
+						</n8n-button>
+						<template #content>
+							<i18n-t
+								:path="
+									contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
+								"
+								tag="span"
+							>
+								<template #action>
+									<a @click="goToUpgrade">
+										{{
+											$locale.baseText(
+												contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+											)
+										}}
+									</a>
+								</template>
+							</i18n-t>
+						</template>
+					</n8n-tooltip>
+				</template>
+			</enterprise-edition>
+			<SaveButton
+				type="primary"
+				:saved="!this.isDirty && !this.isNewWorkflow"
+				:disabled="isWorkflowSaving || readOnly"
+				data-test-id="workflow-save-button"
+				@click="onSaveButtonClick"
+			/>
+			<div :class="$style.workflowMenuContainer">
+				<input
+					:class="$style.hiddenInput"
+					type="file"
+					ref="importFile"
+					data-test-id="workflow-import-input"
+					@change="handleFileImport()"
 				/>
-				<div :class="$style.workflowMenuContainer">
-					<input
-						:class="$style.hiddenInput"
-						type="file"
-						ref="importFile"
-						data-test-id="workflow-import-input"
-						@change="handleFileImport()"
-					/>
-					<n8n-action-dropdown
-						:items="workflowMenuItems"
-						data-test-id="workflow-menu"
-						@select="onWorkflowMenuSelect"
-					/>
-				</div>
-			</template>
+				<n8n-action-dropdown
+					:items="workflowMenuItems"
+					data-test-id="workflow-menu"
+					@select="onWorkflowMenuSelect"
+				/>
+			</div>
 		</PushConnectionTracker>
 	</div>
 </template>
@@ -152,7 +150,7 @@ import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '
 
 import { saveAs } from 'file-saver';
 import { useTitleChange, useToast, useMessage } from '@/composables';
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import type { MessageBoxInputData } from 'element-plus';
 import {
 	useUIStore,
 	useSettingsStore,

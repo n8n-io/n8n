@@ -93,7 +93,7 @@
 								<span v-if="isRunning(execution)" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
 								</span>
-								<i18n
+								<i18n-t
 									v-if="!isWaitTillIndefinite(execution)"
 									:path="getStatusTextTranslationPath(execution)"
 								>
@@ -115,7 +115,7 @@
 										</span>
 										<execution-time v-else :start-time="execution.startedAt" />
 									</template>
-								</i18n>
+								</i18n-t>
 								<n8n-tooltip v-else placement="top">
 									<template #content>
 										<span>{{ getStatusTooltipText(execution) }}</span>

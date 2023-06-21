@@ -11,7 +11,7 @@
 				<ExpressionFunctionIcon />
 			</div>
 			<InlineExpressionEditorInput
-				:value="value"
+				:modelValue="modelValue"
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
 				:isSingleLine="isForRecordLocator"
@@ -37,7 +37,7 @@
 			</n8n-text>
 			<n8n-text :class="$style.body">
 				<InlineExpressionEditorOutput
-					:value="value"
+					:value="modelValue"
 					:isReadOnly="isReadOnly"
 					:segments="segments"
 				/>
@@ -99,7 +99,7 @@ export default defineComponent({
 		path: {
 			type: String,
 		},
-		value: {
+		modelValue: {
 			type: String,
 		},
 		isReadOnly: {
@@ -158,7 +158,7 @@ export default defineComponent({
 			if (wasFocused) {
 				const telemetryPayload = createExpressionTelemetryPayload(
 					this.segments,
-					this.value,
+					this.modelValue,
 					this.workflowsStore.workflowId,
 					this.ndvStore.sessionId,
 					this.ndvStore.activeNode?.type ?? '',
@@ -172,9 +172,9 @@ export default defineComponent({
 
 			this.segments = segments;
 
-			if (value === '=' + this.value) return; // prevent report on change of target item
+			if (value === '=' + this.modelValue) return; // prevent report on change of target item
 
-			this.$emit('valueChanged', value);
+			this.$emit('update:modelValue', value);
 		},
 	},
 });

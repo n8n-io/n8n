@@ -1,18 +1,15 @@
 <script lang="ts" setup>
-import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso.store';
+import { useToast } from '@/composables';
 
 const ssoStore = useSSOStore();
+const toast = useToast();
 
 const onSSOLogin = async () => {
 	try {
 		window.location.href = await ssoStore.getSSORedirectUrl();
 	} catch (error) {
-		Notification.error({
-			title: 'Error',
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, 'Error', error.message);
 	}
 };
 </script>

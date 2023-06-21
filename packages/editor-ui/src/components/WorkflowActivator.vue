@@ -162,7 +162,7 @@ export default defineComponent({
 	margin-left: 0.5em;
 }
 
-::v-deep .el-loading-spinner {
+:deep(.el-loading-spinner) {
 	margin-top: -10px;
 }
 </style>

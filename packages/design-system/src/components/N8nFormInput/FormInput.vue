@@ -20,7 +20,7 @@
 			:modelValue="modelValue"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
-			@change="onUpdateModelValue"
+			@update:modelValue="onUpdateModelValue"
 		></el-switch>
 	</n8n-input-label>
 	<n8n-input-label

@@ -24,7 +24,7 @@ export default defineComponent({
 	name: 'ExpressionEditorModalInput',
 	mixins: [expressionManager, completionManager, workflowHelpers],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
 		},
 		path: {
@@ -89,7 +89,7 @@ export default defineComponent({
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
-				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
+				doc: this.modelValue.startsWith('=') ? this.modelValue.slice(1) : this.modelValue,
 				extensions,
 			}),
 		});

@@ -110,7 +110,7 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import {
 	useUIStore,
@@ -341,7 +341,7 @@ export default defineComponent({
 		} else {
 			this.uiStore.sidebarMenuCollapsed = false;
 		}
-		await Vue.nextTick();
+		await this.$nextTick();
 		this.fullyExpanded = !this.isCollapsed;
 	},
 	created() {
@@ -453,22 +453,21 @@ export default defineComponent({
 			});
 		},
 		findFirstAccessibleSettingsRoute() {
-			// Get all settings rotes by filtering them by pageCategory property
 			const settingsRoutes = this.$router
 				.getRoutes()
-				.filter(
-					(category) =>
-						category.meta.telemetry && category.meta.telemetry.pageCategory === 'settings',
-				)
-				.map((route) => route.name || '');
-			let defaultSettingsRoute = null;
+				.find((route) => route.path === '/settings')!
+				.children.map((route) => route.name || '');
 
+			let defaultSettingsRoute = null;
 			for (const route of settingsRoutes) {
 				if (this.canUserAccessRouteByName(route)) {
 					defaultSettingsRoute = route;
 					break;
 				}
 			}
+
+			console.log(defaultSettingsRoute);
+
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
@@ -481,7 +480,7 @@ export default defineComponent({
 		checkWidthAndAdjustSidebar(width: number) {
 			if (width < 900) {
 				this.uiStore.sidebarMenuCollapsed = true;
-				Vue.nextTick(() => {
+				this.$nextTick(() => {
 					this.fullyExpanded = !this.isCollapsed;
 				});
 			}

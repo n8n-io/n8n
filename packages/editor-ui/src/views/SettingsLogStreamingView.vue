@@ -14,9 +14,7 @@
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
@@ -58,9 +56,7 @@
 		<template v-else>
 			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<div data-test-id="action-box-unlicensed">

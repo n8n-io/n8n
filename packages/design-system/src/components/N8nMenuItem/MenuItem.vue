@@ -180,26 +180,26 @@ export default defineComponent({
 <style module lang="scss">
 // Element menu-item overrides
 :global(.el-menu-item),
-:global(.el-submenu__title) {
+:global(.el-sub-menu__title) {
 	--menu-font-color: var(--color-text-base);
 	--menu-item-active-background-color: var(--color-foreground-base);
 	--menu-item-active-font-color: var(--color-text-dark);
 	--menu-item-hover-fill: var(--color-foreground-base);
 	--menu-item-hover-font-color: var(--color-text-dark);
 	--menu-item-height: 35px;
-	--submenu-item-height: 27px;
+	--sub-menu-item-height: 27px;
 }
 
 .submenu {
 	background: none !important;
 
-	&.compact :global(.el-submenu__title) {
+	&.compact :global(.el-sub-menu__title) {
 		i {
 			display: none;
 		}
 	}
 
-	:global(.el-submenu__title) {
+	:global(.el-sub-menu__title) {
 		display: flex;
 		align-items: center;
 		border-radius: var(--border-radius-base) !important;
@@ -221,7 +221,7 @@ export default defineComponent({
 	}
 
 	.menuItem {
-		height: var(--submenu-item-height) !important;
+		height: var(--sub-menu-item-height) !important;
 		min-width: auto !important;
 		margin: var(--spacing-2xs) 0 !important;
 		padding-left: var(--spacing-l) !important;
@@ -248,7 +248,7 @@ export default defineComponent({
 		svg {
 			color: var(--color-text-dark) !important;
 		}
-		&:global(.el-submenu) {
+		&:global(.el-sub-menu) {
 			background-color: unset !important;
 		}
 	}
@@ -256,7 +256,7 @@ export default defineComponent({
 
 .active {
 	&,
-	& :global(.el-submenu__title) {
+	& :global(.el-sub-menu__title) {
 		background-color: var(--color-foreground-base);
 		border-radius: var(--border-radius-base);
 		.icon {

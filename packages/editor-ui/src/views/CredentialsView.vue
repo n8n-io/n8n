@@ -51,7 +51,6 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
-import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -59,7 +58,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 export default defineComponent({
 	name: 'CredentialsView',

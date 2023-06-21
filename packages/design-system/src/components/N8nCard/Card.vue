@@ -14,7 +14,7 @@
 				<slot name="footer" />
 			</div>
 		</div>
-		<div :class="$style.actions" v-if="$slots.append">
+		<div v-if="$slots.append">
 			<slot name="append" />
 		</div>
 	</div>

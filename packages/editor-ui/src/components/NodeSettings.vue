@@ -9,11 +9,12 @@
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
+					v-if="node"
 					class="node-name"
-					:value="node && node.name"
+					:modelValue="node.name"
 					:nodeType="nodeType"
 					:isReadOnly="isReadOnly"
-					@input="nameChanged"
+					@update:modelValue="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
@@ -46,7 +47,7 @@
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n
+					<i18n-t
 						path="nodeSettings.communityNodeUnknown.description"
 						tag="span"
 						@click="onMissingNodeTextClick"
@@ -58,7 +59,7 @@
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n>
+					</i18n-t>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -67,7 +68,7 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<i18n-t v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -75,7 +76,7 @@
 						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n>
+			</i18n-t>
 		</div>
 		<div class="node-parameters-wrapper" data-test-id="node-parameters" v-if="node && nodeValid">
 			<n8n-notice

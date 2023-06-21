@@ -14,6 +14,7 @@ const methods = {
 };
 
 const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nCheckbox,

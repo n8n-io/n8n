@@ -26,7 +26,7 @@
 import { ElInput } from 'element-plus';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import { uid } from '@/utils';
+import { uid } from '../../utils';
 
 type InputRef = InstanceType<typeof ElInput>;
 
@@ -69,7 +69,7 @@ export default defineComponent({
 		},
 		rows: {
 			type: Number,
-			default: 3,
+			default: 2,
 		},
 		maxlength: {
 			type: Number,

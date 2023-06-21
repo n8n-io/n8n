@@ -100,7 +100,6 @@ import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
@@ -111,7 +110,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 const StatusFilter = {
 	ACTIVE: true,

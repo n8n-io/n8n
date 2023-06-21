@@ -3,11 +3,11 @@
 		<span v-if="isEditEnabled && !disabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
-				:value="newValue"
+				:modelValue="newValue"
 				:maxlength="maxLength"
 				:autofocus="true"
 				:eventBus="inputBus"
-				@input="onInput"
+				@update:modelValue="onInput"
 				@esc="onEscape"
 				@blur="onBlur"
 				@enter="submit"

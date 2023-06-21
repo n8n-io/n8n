@@ -135,7 +135,7 @@ import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
-import { Dropdown as ElDropdown } from 'element-ui';
+import { ElDropdown } from 'element-plus';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 

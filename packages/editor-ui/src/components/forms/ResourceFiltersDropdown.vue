@@ -16,7 +16,7 @@
 			</n8n-button>
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
-			<slot :filters="value" :setKeyValue="setKeyValue" />
+			<slot :filters="modelValue" :setKeyValue="setKeyValue" />
 			<enterprise-edition
 				class="mb-s"
 				:features="[EnterpriseEditionFeature.Sharing]"
@@ -32,7 +32,7 @@
 				<n8n-user-select
 					:users="ownedByUsers"
 					:currentUserId="usersStore.currentUser.id"
-					:modelValue="value.ownedBy"
+					:modelValue="modelValue.ownedBy"
 					size="medium"
 					@update:modelValue="setKeyValue('ownedBy', $event)"
 				/>
@@ -48,7 +48,7 @@
 				<n8n-user-select
 					:users="sharedWithUsers"
 					:currentUserId="usersStore.currentUser.id"
-					:modelValue="value.sharedWith"
+					:modelValue="modelValue.sharedWith"
 					size="medium"
 					@update:modelValue="setKeyValue('sharedWith', $event)"
 				/>
@@ -74,7 +74,7 @@ export type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 export default defineComponent({
 	props: {
-		value: {
+		modelValue: {
 			type: Object as PropType<IResourceFiltersType>,
 			default: () => ({}),
 		},
@@ -99,12 +99,12 @@ export default defineComponent({
 		...mapStores(useUsersStore),
 		ownedByUsers(): IUser[] {
 			return this.usersStore.allUsers.map((user) =>
-				user.id === this.value.sharedWith ? { ...user, disabled: true } : user,
+				user.id === this.modelValue.sharedWith ? { ...user, disabled: true } : user,
 			);
 		},
 		sharedWithUsers(): IUser[] {
 			return this.usersStore.allUsers.map((user) =>
-				user.id === this.value.ownedBy ? { ...user, disabled: true } : user,
+				user.id === this.modelValue.ownedBy ? { ...user, disabled: true } : user,
 			);
 		},
 		filtersLength(): number {
@@ -116,7 +116,9 @@ export default defineComponent({
 				}
 
 				length += (
-					Array.isArray(this.value[key]) ? this.value[key].length > 0 : this.value[key] !== ''
+					Array.isArray(this.modelValue[key])
+						? this.modelValue[key].length > 0
+						: this.modelValue[key] !== ''
 				)
 					? 1
 					: 0;
@@ -131,23 +133,23 @@ export default defineComponent({
 	methods: {
 		setKeyValue(key: string, value: unknown) {
 			const filters = {
-				...this.value,
+				...this.modelValue,
 				[key]: value,
 			};
 
-			this.$emit('input', filters);
+			this.$emit('update:modelValue', filters);
 		},
 		resetFilters() {
 			if (this.reset) {
 				this.reset();
 			} else {
-				const filters = { ...this.value };
+				const filters = { ...this.modelValue };
 
 				(this.keys as string[]).forEach((key) => {
-					filters[key] = Array.isArray(this.value[key]) ? [] : '';
+					filters[key] = Array.isArray(this.modelValue[key]) ? [] : '';
 				});
 
-				this.$emit('input', filters);
+				this.$emit('update:modelValue', filters);
 			}
 		},
 	},

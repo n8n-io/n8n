@@ -230,31 +230,30 @@ export default defineComponent({
 	}
 }
 
-::v-deep {
-	.button {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
-	}
+:deep(.button) {
+	--button-background-color: var(--color-background-base);
+	--button-border-color: var(--color-foreground-base);
+}
 
-	.duplicate-parameter-item {
-		position: relative;
+:deep(.duplicate-parameter-item) {
+	position: relative;
 
-		.multi > .delete-item {
-			top: 0.1em;
-		}
-	}
-
-	.duplicate-parameter-input-item {
-		margin: 0.5em 0 0.25em 2em;
-	}
-
-	.duplicate-parameter-item + .duplicate-parameter-item {
-		.collection-parameter-wrapper {
-			border-top: 1px dashed #999;
-			margin-top: var(--spacing-xs);
-		}
+	.multi > .delete-item {
+		top: 0.1em;
 	}
 }
+
+:deep(.duplicate-parameter-input-item) {
+	margin: 0.5em 0 0.25em 2em;
+}
+
+:deep(.duplicate-parameter-item + .duplicate-parameter-item) {
+	.collection-parameter-wrapper {
+		border-top: 1px dashed #999;
+		margin-top: var(--spacing-xs);
+	}
+}
+
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
 }

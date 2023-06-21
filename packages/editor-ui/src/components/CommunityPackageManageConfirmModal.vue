@@ -15,9 +15,7 @@
 				v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE"
 			>
 				<n8n-info-tip theme="info" type="note" :bold="false">
-					<template>
-						<span v-text="getModalContent.description"></span>
-					</template>
+					<span v-text="getModalContent.description"></span>
 				</n8n-info-tip>
 			</div>
 		</template>

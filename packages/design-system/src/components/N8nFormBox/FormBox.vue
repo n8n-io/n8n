@@ -88,7 +88,7 @@ export default defineComponent({
 	},
 	methods: {
 		onUpdateModelValue(e: { name: string; value: string }) {
-			this.$emit('update:modelValue', e);
+			this.$emit('change', e);
 		},
 		onSubmit(e: { [key: string]: string }) {
 			this.$emit('submit', e);

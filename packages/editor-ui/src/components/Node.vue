@@ -169,7 +169,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -574,7 +574,7 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 
-			Vue.nextTick(() => {
+			this.$nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
 			});
@@ -585,7 +585,7 @@ export default defineComponent({
 				button_name: 'duplicate',
 				workflow_id: this.workflowsStore.workflowId,
 			});
-			Vue.nextTick(() => {
+			this.$nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});

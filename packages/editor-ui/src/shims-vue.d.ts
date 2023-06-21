@@ -1,13 +1,12 @@
-import Vue from 'vue';
-import 'n8n-design-system/shims-element-ui';
-
 declare module '*.vue' {
-	import Vue from 'vue';
-	export default Vue;
+	import type { DefineComponent } from 'vue';
+	const component: DefineComponent<{}, {}, any>;
+	export default component;
 }
 
-declare module 'vue/types/vue' {
-	interface Vue {
+// @TODO Check if still needed
+declare module '@vue/runtime-core' {
+	interface ComponentCustomProperties {
 		$style: Record<string, string>;
 	}
 }

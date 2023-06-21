@@ -22,12 +22,12 @@
 				<div :class="$style.header">
 					<div :class="$style.destinationInfo">
 						<InlineNameEdit
-							:name="headerLabel"
+							:modelValue="headerLabel"
 							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
 							:readonly="isTypeAbstract"
 							type="Credential"
 							data-test-id="subtitle-showing-type"
-							@input="onLabelChange"
+							@update:modelValue="onLabelChange"
 						/>
 					</div>
 					<div :class="$style.destinationActions">
@@ -158,7 +158,7 @@
 								<event-selection
 									class=""
 									:destinationId="destination.id"
-									@input="onInput"
+									@update:modelValue="onInput"
 									@change="valueChanged"
 									:readonly="!isInstanceOwner"
 								/>

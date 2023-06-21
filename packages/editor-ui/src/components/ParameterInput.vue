@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="
+			:modelValue="
 				isResourceLocatorParameter && typeof value !== 'string' ? (value ? value.value : '') : value
 			"
 			:parameter="parameter"
@@ -10,14 +10,14 @@
 			:eventSource="eventSource || 'ndv'"
 			:isReadOnly="isReadOnly"
 			@closeDialog="closeExpressionEditDialog"
-			@valueChanged="expressionUpdated"
+			@update:modelValue="expressionUpdated"
 		></expression-edit>
 		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
 			<resource-locator
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				:parameter="parameter"
-				:value="value"
+				:modelValue="value"
 				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
@@ -29,7 +29,7 @@
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@input="valueChanged"
+				@update:modelValue="valueChanged"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -37,11 +37,11 @@
 			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
-				:value="expressionDisplayValue"
+				:modelValue="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
-				@valueChanged="expressionUpdated"
+				@update:modelValue="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -390,7 +390,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
-import Vue from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
@@ -976,7 +975,7 @@ export default defineComponent({
 				this.nodeName = this.node.name;
 			}
 
-			Vue.nextTick(() => {
+			this.$nextTick(() => {
 				// @ts-ignore
 				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore
@@ -1217,7 +1216,7 @@ export default defineComponent({
 	display: inline-block;
 }
 
-::v-deep .color-input {
+:deep(.color-input) {
 	display: flex;
 
 	.el-color-picker__trigger {

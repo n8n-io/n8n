@@ -27,7 +27,6 @@
 						:showValidationWarnings="showValidationWarnings"
 						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
-						@change="(value) => onUpdateModelValue(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>
@@ -113,7 +112,7 @@ export default defineComponent({
 				...this.values,
 				[name]: value,
 			};
-			this.$emit('update:modelValue', { name, value });
+			this.$emit('change', { name, value });
 		},
 		onValidate(name: string, valid: boolean) {
 			this.validity = {

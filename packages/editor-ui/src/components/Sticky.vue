@@ -56,7 +56,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -163,7 +163,7 @@ export default defineComponent({
 	},
 	methods: {
 		deleteNode() {
-			Vue.nextTick(() => {
+			this.$nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
 			});

@@ -124,8 +124,8 @@ function onBackButton() {
 						? searchPlaceholder
 						: $locale.baseText('nodeCreator.searchBar.searchNodes')
 				"
-				@input="onSearch"
-				:value="activeViewStack.search"
+				:modelValue="activeViewStack.search"
+				@update:modelValue="onSearch"
 			/>
 			<div :class="$style.renderedItems">
 				<!-- Actions mode -->

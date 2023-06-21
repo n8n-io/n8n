@@ -11,8 +11,8 @@
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
-				:value="autoRefresh"
-				@input="$emit('update:autoRefresh', $event)"
+				:modelValue="autoRefresh"
+				@update:modelValue="$emit('update:autoRefresh', $event)"
 				data-test-id="auto-refresh-checkbox"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}

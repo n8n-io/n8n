@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<n8n-popover placement="right" width="200" :value="editName" :disabled="!editable">
+		<n8n-popover placement="right" width="200" :modelValue="editName" :disabled="!editable">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
@@ -29,7 +29,7 @@
 			</div>
 			<template #reference>
 				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: editable }">
-					{{ value }}
+					{{ modelValue }}
 					<div :class="$style.editIconContainer">
 						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="editable" />
 					</div>
@@ -49,8 +49,9 @@ export default defineComponent({
 		NodeIcon,
 	},
 	props: {
-		value: {
+		modelValue: {
 			type: String,
+			default: '',
 		},
 		nodeType: {},
 		readOnly: {
@@ -71,7 +72,7 @@ export default defineComponent({
 	},
 	methods: {
 		onEdit() {
-			this.newName = this.value;
+			this.newName = this.modelValue;
 			this.editName = true;
 			this.$nextTick(() => {
 				const inputRef = this.$refs.input as HTMLInputElement | undefined;
@@ -82,7 +83,7 @@ export default defineComponent({
 		},
 		onRename() {
 			if (this.newName.trim() !== '') {
-				this.$emit('input', this.newName.trim());
+				this.$emit('update:modelValue', this.newName.trim());
 			}
 
 			this.editName = false;

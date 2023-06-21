@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription, IPinData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils';
@@ -13,7 +13,7 @@ export interface IPinDataContext {
 	$showError(error: Error, title: string): void;
 }
 
-export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend({
+export const pinData = defineComponent({
 	setup() {
 		return {
 			...useToast(),

@@ -250,7 +250,7 @@ export default defineComponent({
 <style lang="scss" scoped>
 $--max-input-height: 60px;
 
-::v-deep .el-select {
+:deep(.el-select) {
 	.el-select__tags {
 		max-height: $--max-input-height;
 		overflow-y: scroll;

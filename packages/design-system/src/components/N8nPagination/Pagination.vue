@@ -13,5 +13,9 @@ export default defineComponent({
 </script>
 
 <template>
-	<el-pagination background layout="prev, pager, next" v-bind="{ ...$props, ...$attrs }" />
+	<el-pagination
+		class="is-background"
+		layout="prev, pager, next"
+		v-bind="{ ...$props, ...$attrs }"
+	/>
 </template>

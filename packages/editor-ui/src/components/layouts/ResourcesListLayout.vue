@@ -88,9 +88,9 @@
 									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
-									:value="filters"
+									:modelValue="filters"
 									:shareable="shareable"
-									@input="$emit('update:filters', $event)"
+									@update:modelValue="$emit('update:filters', $event)"
 									@update:filtersLength="onUpdateFiltersLength"
 								>
 									<template #default="resourceFiltersSlotProps">

@@ -245,12 +245,23 @@
 		min-width: 200px;
 	}
 	@include mixins.e(icon-arrow) {
+		right: 20px;
 		position: absolute;
 		top: 50%;
-		right: 20px;
-		margin-top: -7px;
+		margin-top: -6px;
 		transition: transform 0.3s;
+		margin-right: 0;
 		font-size: 12px;
+		width: 12px;
+		height: 12px;
+
+		svg {
+			width: 12px;
+			height: 12px;
+			position: relative;
+			display: block;
+			margin-top: -2px;
+		}
 	}
 	@include mixins.when(active) {
 		.el-sub-menu__title {

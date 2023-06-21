@@ -10,6 +10,7 @@ export default {
 };
 
 export const Default: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,
@@ -18,6 +19,7 @@ export const Default: StoryFn = (args, { argTypes }) => ({
 });
 
 export const Hoverable: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,
@@ -37,6 +39,7 @@ Hoverable.args = {
 };
 
 export const WithSlots: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,
@@ -45,21 +48,21 @@ export const WithSlots: StoryFn = (args, { argTypes }) => ({
 		N8nText,
 	},
 	template: `<n8n-card v-bind="args">
-		<template slot="prepend">
+		<template #prepend>
 			<n8n-icon icon="check" size="large" />
 		</template>
-		<template slot="header">
+		<template #header>
 			<strong>Card header</strong>
 		</template>
 		<n8n-text color="text-light" size="medium" class="mt-2xs mb-2xs">
 			This is the card body.
 		</n8n-text>
-		<template slot="footer">
+		<template #footer>
 			<n8n-text size="medium">
 				Card footer
 			</n8n-text>
 		</template>
-		<template slot="append">
+		<template #append>
 			<n8n-button>Click me</n8n-button>
 		</template>
 	</n8n-card>`,

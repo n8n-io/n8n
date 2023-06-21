@@ -3,8 +3,7 @@
 		:visible="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
-		custom-class="data-display-wrapper"
-		class="ndv-wrapper"
+		class="data-display-wrapper ndv-wrapper"
 		width="auto"
 		append-to-body
 		data-test-id="ndv"
