@@ -302,7 +302,7 @@ import {
 	EVENT_CONNECTION_ABORT,
 	EVENT_CONNECTION_MOUSEOUT,
 	EVENT_CONNECTION_MOUSEOVER,
-	ready,
+	ready as jsPlumbBrowserUiReady,
 } from '@jsplumb/browser-ui';
 import type { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
 import {
@@ -434,9 +434,8 @@ export default defineComponent({
 			}
 		},
 	},
-	async beforeRouteLeave(to, from, next) {
-		next();
-		/*if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
+	/*async beforeRouteLeave(to, from, next) {
+		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
 			next();
 			return;
 		}
@@ -486,8 +485,8 @@ export default defineComponent({
 			}
 		} else {
 			next();
-		}*/
-	},
+		}
+	},*/
 	computed: {
 		...mapStores(
 			useCanvasStore,
@@ -761,10 +760,9 @@ export default defineComponent({
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
 			);
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-				this.uiStore.stateIsDirty = false;
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = false;
 			void this.$externalHooks().run('execution.open', {
 				workflowId: data.workflowData.id,
 				workflowName: data.workflowData.name,
@@ -2557,7 +2555,9 @@ export default defineComponent({
 					);
 					if (confirmModal === MODAL_CONFIRM) {
 						const saved = await this.saveCurrentWorkflow();
-						if (saved) await this.settingsStore.fetchPromptsData();
+						if (saved) {
+							await this.settingsStore.fetchPromptsData();
+						}
 					} else if (confirmModal === MODAL_CLOSE) {
 						return;
 					}
@@ -2589,12 +2589,6 @@ export default defineComponent({
 					await this.newWorkflow();
 				}
 			}
-			this.historyStore.reset();
-			this.uiStore.nodeViewInitialized = true;
-			document.addEventListener('keydown', this.keyDown);
-			document.addEventListener('keyup', this.keyUp);
-
-			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -3783,6 +3777,7 @@ export default defineComponent({
 		document.addEventListener('keydown', this.keyDown);
 		document.addEventListener('keyup', this.keyUp);
 		window.addEventListener('pageshow', this.onPageShow);
+		window.addEventListener('beforeunload', this.onBeforeUnload);
 
 		nodeViewEventBus.on('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.on('importWorkflowData', this.onImportWorkflowDataEvent);
@@ -3825,12 +3820,14 @@ export default defineComponent({
 			);
 			return;
 		}
-		ready(async () => {
+		jsPlumbBrowserUiReady(async () => {
 			try {
 				try {
 					this.bindCanvasEvents();
 				} catch {} // This will break if mounted after jsplumb has been initiated from executions preview, so continue if it breaks
 				await this.initView();
+				this.historyStore.reset();
+				this.uiStore.nodeViewInitialized = true;
 				if (this.executionId) {
 					this.isExecutionPreview = true;
 					await this.openExecution(this.executionId);
@@ -3895,6 +3892,7 @@ export default defineComponent({
 		// Make sure the event listeners get removed again else we
 		// could add up with them registered multiple times
 		window.removeEventListener('pageshow', this.onPageShow);
+		window.removeEventListener('beforeunload', this.onBeforeUnload);
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
@@ -3904,8 +3902,8 @@ export default defineComponent({
 		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 
 		// TODO: Handle this properly when user just switches tabs between the editor and executions
-		//this.uiStore.stateIsDirty = false;
-		//this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		this.uiStore.stateIsDirty = false;
+		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		this.unbindCanvasEvents();
 		this.instance.unbind();
 		this.instance.destroy();
