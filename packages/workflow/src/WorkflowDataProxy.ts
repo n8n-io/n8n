@@ -806,6 +806,13 @@ export class WorkflowDataProxy {
 						.filter((result) => result !== null);
 
 					if (results.length !== 1) {
+						// Check if the results are all the same
+						const firstResult = results[0];
+						if (results.every((result) => result === firstResult)) {
+							// All results are the same so return the first one
+							return firstResult;
+						}
+
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
 							functionality: 'pairedItem',
