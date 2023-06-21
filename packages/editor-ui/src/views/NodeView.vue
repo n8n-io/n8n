@@ -430,7 +430,7 @@ export default defineComponent({
 		},
 		executionId(newExecId, oldExecId) {
 			if (newExecId !== oldExecId) {
-				this.openExecution(newExecId);
+				void this.openExecution(newExecId);
 			}
 		},
 	},
@@ -734,6 +734,7 @@ export default defineComponent({
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
 		async openExecution(executionId: string) {
+			this.isExecutionPreview = true;
 			this.startLoading();
 			this.resetWorkspace();
 			let data: IExecutionResponse | undefined;
@@ -756,10 +757,7 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
-			await this.addNodes(
-				deepCopy(data.workflowData.nodes),
-				deepCopy(data.workflowData.connections),
-			);
+			await this.addNodes(data.workflowData.nodes, data.workflowData.connections);
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
 			this.uiStore.stateIsDirty = false;
@@ -822,17 +820,17 @@ export default defineComponent({
 				throw new Error('Invalid workflow object');
 			}
 			this.resetWorkspace();
-			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes);
-
-			await this.addNodes(data.workflow.nodes as INodeUi[], data.workflow.connections);
+			await this.addNodes(
+				NodeViewUtils.getFixedNodesList(data.workflow.nodes),
+				data.workflow.connections,
+			);
 
 			if (data.workflow.pinData) {
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
 
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.startLoading();
@@ -860,17 +858,17 @@ export default defineComponent({
 				return;
 			}
 
-			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
-
 			this.blankRedirect = true;
 			void this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
-			await this.addNodes(data.workflow.nodes, data.workflow.connections);
+			await this.addNodes(
+				NodeViewUtils.getFixedNodesList(data.workflow.nodes),
+				data.workflow.connections,
+			);
 			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-				this.uiStore.stateIsDirty = true;
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = true;
 
 			void this.$externalHooks().run('template.open', {
 				templateId,
@@ -2521,7 +2519,6 @@ export default defineComponent({
 			this.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
-			const newWorkflow = this.workflowData;
 			this.canvasStore.zoomToFit();
 		},
 		async initView(): Promise<void> {

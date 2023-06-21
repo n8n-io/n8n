@@ -26,8 +26,8 @@
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
-			<div v-if="template" :class="$style.image">
-				<NodeView :is-demo="true" :workflow="template.workflow" />
+			<div v-if="workflow" :class="$style.image">
+				<NodeView :is-demo="true" :workflow="workflow" />
 			</div>
 			<div :class="$style.content">
 				<div :class="$style.markdown">
@@ -73,6 +73,9 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useTemplatesStore),
+		workflow(): null | ITemplatesWorkflow | ITemplatesWorkflowFull {
+			return this.template?.workflow;
+		},
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
 			return this.templatesStore.getTemplateById(this.templateId);
 		},
