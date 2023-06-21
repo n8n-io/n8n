@@ -83,7 +83,7 @@ export const tweetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Location',
+				displayName: 'Location ID',
 				name: 'location',
 				type: 'string',
 				placeholder: '4e696bef7e24d378',
@@ -91,7 +91,7 @@ export const tweetFields: INodeProperties[] = [
 				description: 'Location information for the tweet',
 			},
 			{
-				displayName: 'Media',
+				displayName: 'Media ID',
 				name: 'attachments',
 				type: 'string',
 				default: '',

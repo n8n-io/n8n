@@ -91,7 +91,7 @@ export const directMessageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attachment',
+				displayName: 'Attachment ID',
 				name: 'attachments',
 				type: 'string',
 				default: '',
