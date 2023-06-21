@@ -163,6 +163,7 @@
     "passport-cookie": "^1.0.9",
     "passport-jwt": "^4.0.0",
     "pg": "^8.8.0",
+    "pkce-challenge": "^3.0.0",
     "picocolors": "^1.0.0",
     "posthog-node": "^2.2.2",
     "prom-client": "^13.1.0",
