@@ -1,5 +1,5 @@
-import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
+import type * as tmpl from '@n8n_io/riot-tmpl';
 
 import type {
 	IExecuteData,
@@ -22,12 +22,29 @@ import type { Workflow } from './Workflow';
 import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
+import {
+	checkEvaluatorDifferences,
+	evaluateExpression,
+	setErrorHandler,
+} from './ExpressionEvaluatorProxy';
 
-// Set it to use double curly brackets instead of single ones
-tmpl.brackets.set('{{ }}');
+// // Set it to use double curly brackets instead of single ones
+// tmpl.brackets.set('{{ }}');
 
-// Make sure that error get forwarded
-tmpl.tmpl.errorHandler = (error: Error) => {
+// // Make sure that error get forwarded
+// tmpl.tmpl.errorHandler = (error: Error) => {
+// 	if (error instanceof ExpressionError) {
+// 		if (error.context.failExecution) {
+// 			throw error;
+// 		}
+
+// 		if (typeof process === 'undefined' && error.clientOnly) {
+// 			throw error;
+// 		}
+// 	}
+// };
+
+setErrorHandler((error: Error) => {
 	if (error instanceof ExpressionError) {
 		if (error.context.failExecution) {
 			throw error;
@@ -37,7 +54,7 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 			throw error;
 		}
 	}
-};
+});
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
@@ -59,7 +76,7 @@ export class Expression {
 	}
 
 	static resolveWithoutWorkflow(expression: string) {
-		return tmpl.tmpl(expression, {});
+		return evaluateExpression(expression, {});
 	}
 
 	/**
@@ -330,7 +347,8 @@ export class Expression {
 			[Function, AsyncFunction].forEach(({ prototype }) =>
 				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
 			);
-			return tmpl.tmpl(expression, data);
+			checkEvaluatorDifferences(expression);
+			return evaluateExpression(expression, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed

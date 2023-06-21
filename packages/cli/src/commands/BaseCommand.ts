@@ -20,6 +20,7 @@ import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
+import { initExpressionEvaluator } from '@/ExpressionEvalator';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -41,6 +42,7 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		await initErrorHandling();
+		initExpressionEvaluator();
 
 		process.once('SIGTERM', async () => this.stopProcess());
 		process.once('SIGINT', async () => this.stopProcess());

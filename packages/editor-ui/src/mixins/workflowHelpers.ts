@@ -9,7 +9,7 @@ import {
 	MODAL_CONFIRM,
 } from '@/constants';
 
-import type {
+import {
 	IConnections,
 	IDataObject,
 	INode,
@@ -27,6 +27,7 @@ import type {
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
+	ExpressionEvaluatorProxy,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -61,7 +62,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import type { ICredentialsResponse } from '@/Interface';
-import { useEnvironmentsStore } from '@/stores';
+import { useEnvironmentsStore, useSettingsStore } from '@/stores';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -156,6 +157,10 @@ export function resolveParameter(
 		runIndexCurrent = workflowRunData[activeNode!.name].length - 1;
 	}
 	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
+
+	ExpressionEvaluatorProxy.setEvaluator(
+		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+	);
 
 	return workflow.expression.getParameterValue(
 		parameter,

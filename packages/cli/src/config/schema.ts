@@ -1185,4 +1185,13 @@ export const schema = {
 			},
 		},
 	},
+
+	expression: {
+		evaluator: {
+			doc: 'Expression evaluator to use',
+			format: ['tmpl', 'tournament'] as const,
+			default: 'tmpl',
+			env: 'N8N_EXPRESSION_EVALUATOR',
+		},
+	},
 };
