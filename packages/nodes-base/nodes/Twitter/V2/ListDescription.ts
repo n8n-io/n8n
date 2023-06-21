@@ -31,7 +31,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'List',
 		name: 'list',
 		type: 'resourceLocator',
-		default: { mode: 'name', value: '' },
+		default: { mode: 'id', value: '' },
 		required: true,
 		description: 'The list you want to add the user to',
 		displayOptions: {
