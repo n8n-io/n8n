@@ -3,11 +3,11 @@ import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
 import pkceChallenge from 'pkce-challenge';
-import get from 'lodash.get';
-import omit from 'lodash.omit';
-import set from 'lodash.set';
-import split from 'lodash.split';
-import unset from 'lodash.unset';
+import get from 'lodash/get';
+import omit from 'lodash/omit';
+import set from 'lodash/set';
+import split from 'lodash/split';
+import unset from 'lodash/unset';
 import { Credentials, UserSettings } from 'n8n-core';
 import type {
 	WorkflowExecuteMode,
@@ -143,6 +143,16 @@ oauth2CredentialController.get(
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
 
+		if (oauthCredentials.grantType === 'pkce') {
+			const { code_verifier, code_challenge } = pkceChallenge();
+			oAuthOptions.query = {
+				...oAuthOptions.query,
+				code_challenge,
+				code_challenge_method: 'S256',
+			};
+			decryptedDataOriginal.codeVerifier = code_verifier;
+		}
+
 		credentials.setData(decryptedDataOriginal, encryptionKey);
 		const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
@@ -275,8 +285,11 @@ oauth2CredentialController.get(
 			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
-						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
+						...(oauthCredentials.grantType === 'pkce' && {
+							code_verifier: decryptedDataOriginal.codeVerifier,
+						}),
 						...(oauthCredentials.grantType === 'authorizationCode' && {
+							client_id: get(oauthCredentials, 'clientId') as string,
 							client_secret: get(oauthCredentials, 'clientSecret', '') as string,
 						}),
 					},
@@ -285,9 +298,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			} else if (oauthCredentials.grantType === 'pkce') {
 				options = {
-					body: {
-						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
-					},
+					body: { code_verifier: decryptedDataOriginal.codeVerifier },
 				};
 			}
 

@@ -16,7 +16,7 @@ import { createHash } from 'crypto';
 
 import { snakeCase } from 'change-case';
 
-import omit from 'lodash.omit';
+import omit from 'lodash/omit';
 
 export async function woocommerceApiRequest(
 	this:

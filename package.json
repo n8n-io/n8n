@@ -1,13 +1,13 @@
 {
   "name": "n8n",
-  "version": "0.231.0",
+  "version": "0.233.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=16.9",
-    "pnpm": ">=8.1"
+    "pnpm": ">=8.6"
   },
-  "packageManager": "pnpm@8.1.0",
+  "packageManager": "pnpm@8.6.1",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
@@ -94,7 +94,8 @@
     "patchedDependencies": {
       "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",
-      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch"
+      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch",
+      "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch"
     }
   }
 }

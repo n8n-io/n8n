@@ -77,9 +77,10 @@ import {
 	fileTypeFromMimeType,
 	ExpressionError,
 	validateFieldType,
+	NodeSSLError,
 } from 'n8n-workflow';
 
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { Agent } from 'https';
 import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
@@ -92,7 +93,7 @@ import type {
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import crypto, { createHmac } from 'crypto';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
@@ -425,6 +426,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	if (requestObject.rejectUnauthorized === false) {
 		axiosConfig.httpsAgent = new Agent({
 			rejectUnauthorized: false,
+			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
 		});
 	}
 
@@ -726,6 +728,9 @@ export async function proxyRequestToAxios(
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else {
+				if (error instanceof Error && error.message.includes('SSL routines'))
+					throw new NodeSSLError(error);
+
 				throw Object.assign(error, {
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
 				});
@@ -747,6 +752,8 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		auth,
 		proxy,
 		url,
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
@@ -915,7 +922,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
+	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
 }
 
 /**

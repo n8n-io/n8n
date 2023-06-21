@@ -121,7 +121,7 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
+	async getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer> {
 		if (binaryData.id) {
 			return this.retrieveBinaryDataByIdentifier(binaryData.id);
 		}

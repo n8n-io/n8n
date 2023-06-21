@@ -107,16 +107,12 @@ export class LinkedIn implements INodeType {
 							lifecycleState: 'PUBLISHED',
 							distribution: {
 								feedDistribution: 'MAIN_FEED',
-								targetEnties: [],
 								thirdPartyDistributionChannels: [],
 							},
 							visibility,
 						};
 
 						if (shareMediaCategory === 'IMAGE') {
-							if (additionalFields.description) {
-								description = additionalFields.description as string;
-							}
 							if (additionalFields.title) {
 								title = additionalFields.title as string;
 							}
@@ -146,7 +142,6 @@ export class LinkedIn implements INodeType {
 									media: {
 										title,
 										id: image,
-										description,
 									},
 								},
 								commentary: text,

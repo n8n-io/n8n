@@ -193,9 +193,4 @@ export default defineComponent({
 		display: none !important;
 	}
 }
-
-.menuPrefix,
-.menuSuffix {
-	padding: var(--spacing-xs) var(--spacing-l);
-}
 </style>
