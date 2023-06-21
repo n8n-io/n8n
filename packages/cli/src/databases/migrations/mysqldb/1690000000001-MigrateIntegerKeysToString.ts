@@ -160,7 +160,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}workflow_entity MODIFY COLUMN tmp_id INT NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity DROP CONSTRAINT PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
+			`ALTER TABLE ${tablePrefix}workflow_entity DROP PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
 		);
 		await queryRunner.query(
 			`DROP INDEX \`TMP_idx_workflow_entity_id\` ON ${tablePrefix}workflow_entity;`,
@@ -171,7 +171,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}tag_entity MODIFY COLUMN tmp_id INT NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}tag_entity DROP CONSTRAINT PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
+			`ALTER TABLE ${tablePrefix}tag_entity DROP PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
 		);
 		await queryRunner.query(`DROP INDEX \`TMP_idx_tag_entity_id\` ON ${tablePrefix}tag_entity;`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}tag_entity DROP COLUMN tmp_id;`);
@@ -211,7 +211,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}shared_credentials MODIFY COLUMN tmp_credentialsId INT NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_credentials DROP CONSTRAINT PRIMARY KEY, ADD PRIMARY KEY (\`userId\`,\`credentialsId\`);`,
+			`ALTER TABLE ${tablePrefix}shared_credentials DROP PRIMARY KEY, ADD PRIMARY KEY (\`userId\`,\`credentialsId\`);`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}shared_credentials DROP COLUMN tmp_credentialsId;`,
@@ -221,7 +221,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}credentials_entity MODIFY COLUMN tmp_id INT NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}credentials_entity DROP CONSTRAINT PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
+			`ALTER TABLE ${tablePrefix}credentials_entity DROP PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
 		);
 		await queryRunner.query(
 			`DROP INDEX \`TMP_idx_credentials_entity_id\` ON ${tablePrefix}credentials_entity;`,
