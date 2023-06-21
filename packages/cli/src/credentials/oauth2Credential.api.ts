@@ -272,22 +272,19 @@ oauth2CredentialController.get(
 				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
-			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
+			if (oauthCredentials.grantType === 'pkce') {
+				options = {
+					body: { code_verifier: decryptedDataOriginal.codeVerifier },
+				};
+			} else if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
-						...(oauthCredentials.grantType === 'pkce' && {
-							code_verifier: decryptedDataOriginal.codeVerifier,
-						}),
 						client_id: get(oauthCredentials, 'clientId') as string,
 						client_secret: get(oauthCredentials, 'clientSecret', '') as string,
 					},
 				};
 				// @ts-ignore
 				delete oAuth2Parameters.clientSecret;
-			} else if (oauthCredentials.grantType === 'pkce') {
-				options = {
-					body: { code_verifier: decryptedDataOriginal.codeVerifier },
-				};
 			}
 
 			await Container.get(ExternalHooks).run('oauth2.callback', [oAuth2Parameters]);
