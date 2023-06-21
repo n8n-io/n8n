@@ -10,7 +10,7 @@ export interface ITicket {
 	subject?: string;
 	comment?: IComment;
 	type?: string;
-	group?: string;
+	group_id?: number;
 	external_id?: string;
 	tags?: string[];
 	status?: string;
