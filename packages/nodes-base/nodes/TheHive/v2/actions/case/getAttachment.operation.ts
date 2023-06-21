@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -22,7 +22,31 @@ const properties: INodeProperties[] = [
 			'ID of the attachment. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getCaseAttachments',
+			loadOptionsDependsOn: ['id'],
 		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'File Name',
+				name: 'fileName',
+				type: 'string',
+				default: '',
+				description: 'Rename the file when downloading',
+			},
+			{
+				displayName: 'Data Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				description: 'Name of the binary property to which write the data of the attachment',
+			},
+		],
 	},
 ];
 
@@ -36,17 +60,53 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
 	const caseId = this.getNodeParameter('id', i) as string;
+	const options = this.getNodeParameter('options', i);
 	const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 
-	responseData = await theHiveApiRequest.call(
+	const requestOptions = {
+		useStream: true,
+		resolveWithFullResponse: true,
+		encoding: null,
+		json: false,
+	};
+
+	const response = await theHiveApiRequest.call(
 		this,
 		'GET',
-		`/v1/case/${caseId}/attachment/${attachmentId}`,
+		`/v1/case/${caseId}/attachment/${attachmentId}/download`,
+		undefined,
+		undefined,
+		undefined,
+		requestOptions,
 	);
 
-	const executionData = this.helpers.constructExecutionMetaData(wrapData({ data: responseData }), {
+	const mimeType = (response.headers as IDataObject)?.['content-type'] ?? undefined;
+
+	let fileName = (options.fileName as string) || 'attachment';
+
+	if (!options.fileName && response.headers['content-disposition'] !== undefined) {
+		const contentDisposition = response.headers['content-disposition'] as string;
+		const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+		if (fileNameMatch !== null) {
+			fileName = fileNameMatch[1];
+		}
+	}
+
+	const newItem: INodeExecutionData = {
+		json: {
+			_id: attachmentId,
+			caseId,
+			fileName,
+			mimeType,
+		},
+		binary: {},
+	};
+
+	newItem.binary![(options.dataPropertyName as string) || 'data'] =
+		await this.helpers.prepareBinaryData(response.body as Buffer, fileName, mimeType as string);
+
+	const executionData = this.helpers.constructExecutionMetaData([newItem], {
 		itemData: { item: i },
 	});
 
