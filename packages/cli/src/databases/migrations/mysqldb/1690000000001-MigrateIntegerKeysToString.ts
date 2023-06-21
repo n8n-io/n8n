@@ -28,7 +28,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}workflows_tags CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
+			`ALTER TABLE ${tablePrefix}workflows_tags ADD COLUMN \`workflowId\` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;`,
 		);
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}workflows_tags SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
@@ -69,7 +69,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}shared_workflow CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_workflow ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
+			`ALTER TABLE ${tablePrefix}shared_workflow ADD COLUMN \`workflowId\` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;`,
 		);
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}shared_workflow SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
@@ -94,7 +94,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}workflow_statistics CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_statistics ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
+			`ALTER TABLE ${tablePrefix}workflow_statistics ADD COLUMN \`workflowId\` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;`,
 		);
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}workflow_statistics SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
@@ -119,7 +119,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}webhook_entity CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}webhook_entity ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
+			`ALTER TABLE ${tablePrefix}webhook_entity ADD COLUMN \`workflowId\` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;`,
 		);
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}webhook_entity SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
@@ -135,7 +135,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}execution_entity ADD COLUMN \`workflowId\` varchar(36);`,
+			`ALTER TABLE ${tablePrefix}execution_entity ADD COLUMN \`workflowId\` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`,
 		);
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}execution_entity SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
@@ -182,7 +182,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}credentials_entity CHANGE id tmp_id int NOT NULL AUTO_INCREMENT;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}credentials_entity ADD COLUMN id varchar(36) NOT NULL;`,
+			`ALTER TABLE ${tablePrefix}credentials_entity ADD COLUMN id varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;`,
 		);
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}credentials_entity SET id = CONVERT(tmp_id, CHAR);`,
@@ -195,7 +195,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}shared_credentials CHANGE credentialsId tmp_credentialsId int NOT NULL;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_credentials ADD COLUMN credentialsId varchar(36) NOT NULL;`,
+			`ALTER TABLE ${tablePrefix}shared_credentials ADD COLUMN credentialsId varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL;`,
 		);
 		await queryRunner.query(
 			`UPDATE ${tablePrefix}shared_credentials SET credentialsId = CONVERT(tmp_credentialsId, CHAR);`,
