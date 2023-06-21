@@ -18,9 +18,10 @@ interface InfisicalSecret {
 export class InfisicalProvider implements SecretsProvider {
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Token',
+			displayName: 'Service Token',
 			name: 'token',
 			type: 'string',
+			hint: 'Infisical Service Token with read access. <a href="https://infisical.com/docs/documentation/platform/token" target="_blank">More info</a>',
 			default: '',
 			required: true,
 			placeholder: '***************',
