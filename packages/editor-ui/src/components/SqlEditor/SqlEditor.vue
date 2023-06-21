@@ -13,10 +13,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { acceptCompletion, autocompletion } from '@codemirror/autocomplete';
+import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocomplete';
 import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
 import {
 	dropCursor,
 	EditorView,
@@ -63,12 +64,6 @@ type SQLEditorData = {
 	skipSegments: string[];
 	expressionsDocsUrl: string;
 };
-
-function n8nLanguageSupport(dialect: SQLDialectType) {
-	return new LanguageSupport(dialect.language, [
-		n8nCompletionSources().map((source) => dialect.language.data.of(source)),
-	]);
-}
 
 export default defineComponent({
 	name: 'sql-editor',
@@ -123,61 +118,69 @@ export default defineComponent({
 		hoveringItemNumber(): number {
 			return this.ndvStore.hoveringItemNumber;
 		},
+		sqlDialect(): SQLDialectType {
+			return SQL_DIALECTS[this.dialect as keyof typeof SQL_DIALECTS] ?? SQL_DIALECTS.StandardSQL;
+		},
+		extensions(): Extension[] {
+			const dialect = this.sqlDialect;
+
+			function sqlWithN8nLanguageSupport() {
+				return new LanguageSupport(dialect.language, [
+					dialect.language.data.of({
+						autocomplete: ifNotIn(['Resolvable'], keywordCompletionSource(dialect, true)),
+					}),
+					n8nCompletionSources().map((source) => dialect.language.data.of(source)),
+				]);
+			}
+
+			const extensions = [
+				sqlWithN8nLanguageSupport(),
+				expressionInputHandler(),
+				codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
+				lineNumbers(),
+				EditorView.lineWrapping,
+				EditorState.readOnly.of(this.isReadOnly),
+				EditorView.domEventHandlers({
+					focus: () => {
+						this.isFocused = true;
+					},
+				}),
+			];
+
+			if (this.isReadOnly) {
+				extensions.push(EditorView.editable.of(this.isReadOnly));
+			} else {
+				extensions.push(
+					history(),
+					keymap.of([
+						{ key: 'Mod-Shift-z', run: redo },
+						{ key: 'Mod-/', run: toggleComment },
+						{ key: 'Tab', run: acceptCompletion },
+						indentWithTab,
+					]),
+					autocompletion(),
+					indentOnInput(),
+					highlightActiveLine(),
+					highlightActiveLineGutter(),
+					foldGutter(),
+					dropCursor(),
+					bracketMatching(),
+					EditorView.updateListener.of((viewUpdate) => {
+						if (!viewUpdate.docChanged || !this.editor) return;
+
+						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
+						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
+
+						this.$emit('valueChanged', this.doc);
+					}),
+				);
+			}
+			return extensions;
+		},
 	},
 	mounted() {
-		const dialect =
-			SQL_DIALECTS[this.dialect as keyof typeof SQL_DIALECTS] ?? SQL_DIALECTS.StandardSQL;
-		const extensions = [
-			n8nLanguageSupport(dialect),
-			[
-				dialect,
-				dialect.language.data.of({
-					autocomplete: keywordCompletionSource(dialect, true),
-				}),
-			],
-			expressionInputHandler(),
-			codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
-			lineNumbers(),
-			EditorView.lineWrapping,
-			EditorState.readOnly.of(this.isReadOnly),
-			EditorView.domEventHandlers({
-				focus: () => {
-					this.isFocused = true;
-				},
-			}),
-		];
-
-		if (this.isReadOnly) {
-			extensions.push(EditorView.editable.of(this.isReadOnly));
-		} else {
-			extensions.push(
-				history(),
-				keymap.of([
-					{ key: 'Mod-Shift-z', run: redo },
-					{ key: 'Mod-/', run: toggleComment },
-					{ key: 'Tab', run: acceptCompletion },
-					indentWithTab,
-				]),
-				autocompletion(),
-				indentOnInput(),
-				highlightActiveLine(),
-				highlightActiveLineGutter(),
-				foldGutter(),
-				dropCursor(),
-				bracketMatching(),
-				EditorView.updateListener.of((viewUpdate) => {
-					if (!viewUpdate.docChanged || !this.editor) return;
-
-					highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
-					highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
-
-					this.$emit('valueChanged', this.doc);
-				}),
-			);
-		}
-		const state = EditorState.create({ doc: this.query, extensions });
+		const state = EditorState.create({ doc: this.query, extensions: this.extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
-
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 	},
 	methods: {
