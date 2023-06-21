@@ -172,7 +172,8 @@ export class TwitterV2 implements INodeType {
 							query: searchText,
 						};
 						if (endTime) {
-							qs.end_time = endTime;
+							const endTimeISO = DateTime.fromISO(endTime).toISO();
+							qs.end_time = endTimeISO;
 						}
 						if (sortOrder) {
 							qs.sort_order = sortOrder;
