@@ -1,0 +1,89 @@
+<script lang="ts" setup>
+import type { PropType } from 'vue';
+import type { ExternalSecretsProvider } from '@/Interface';
+import { useExternalSecretsStore } from '@/stores';
+import { useI18n, useLoadingService, useToast } from '@/composables';
+import { computed } from 'vue';
+
+const emit = defineEmits<{
+	(e: 'change', value: boolean): void;
+}>();
+
+const props = defineProps({
+	provider: {
+		type: Object as PropType<ExternalSecretsProvider>,
+		required: true,
+	},
+});
+
+const loadingService = useLoadingService();
+const externalSecretsStore = useExternalSecretsStore();
+const { i18n } = useI18n();
+const toast = useToast();
+
+const connectedTextColor = computed(() => {
+	return props.provider.connected
+		? props.provider.state === 'error'
+			? 'danger'
+			: 'success'
+		: 'text-light';
+});
+
+const connectedSwitchColor = computed(() => {
+	return props.provider.state === 'error' ? '#ff4027' : '#13ce66';
+});
+
+async function onUpdateConnected(value: boolean) {
+	try {
+		loadingService.startLoading();
+		await externalSecretsStore.updateProviderConnected(props.provider.name, value);
+
+		emit('change', value);
+
+		toast.showMessage({
+			title: i18n.baseText(
+				`settings.externalSecrets.provider.${value ? 'connected' : 'disconnected'}.success.title`,
+			),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, 'Error');
+	} finally {
+		loadingService.stopLoading();
+	}
+}
+</script>
+
+<template>
+	<div :class="$style.connectionSwitch">
+		<n8n-text :color="connectedTextColor" bold class="mr-2xs">
+			{{
+				i18n.baseText(
+					`settings.externalSecrets.card.${provider.connected ? 'connected' : 'disconnected'}`,
+				)
+			}}
+		</n8n-text>
+		<el-switch
+			:value="provider.connected"
+			@change="onUpdateConnected"
+			:title="
+				i18n.baseText('settings.externalSecrets.card.connectedSwitch.title', {
+					interpolate: { provider: provider.displayName },
+				})
+			"
+			:active-color="connectedSwitchColor"
+			inactive-color="#8899AA"
+			element-loading-spinner="el-icon-loading"
+			data-test-id="settings-external-secrets-connected-switch"
+		>
+		</el-switch>
+	</div>
+</template>
+
+<style lang="scss" module>
+.connectionSwitch {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+</style>

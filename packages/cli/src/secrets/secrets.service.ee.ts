@@ -123,13 +123,14 @@ export class SecretsService {
 			throw new ProviderNotFoundError(providerName);
 		}
 		await this.secretsManager.setProviderConnected(providerName, connected);
+		return this.getProvider(providerName);
 	}
 
 	getAllSecrets(): Record<string, string[]> {
 		return this.secretsManager.getAllSecretNames();
 	}
 
-	async testProviderSettings(providerName: string, data: IDataObject): Promise<boolean> {
+	async testProviderSettings(providerName: string, data: IDataObject) {
 		const providerAndSettings = this.secretsManager.getProviderWithSettings(providerName);
 		if (!providerAndSettings) {
 			throw new ProviderNotFoundError(providerName);

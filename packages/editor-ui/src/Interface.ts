@@ -976,13 +976,10 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export type Modals =
-	| {
-			[key: string]: ModalState;
-	  }
-	| {
-			[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
-	  };
+export type Modals = {
+	[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
+	[key: string]: ModalState;
+};
 
 export type ModalState = {
 	open: boolean;
@@ -1535,7 +1532,7 @@ export interface ExternalSecretsProvider {
 	displayName: string;
 	connected: boolean;
 	connectedAt: string | false;
-	state: 'connected' | 'initializing' | 'error';
+	state: 'connected' | 'tested' | 'initializing' | 'error';
 	data?: Record<string, IUpdateInformation['value']>;
 }
 

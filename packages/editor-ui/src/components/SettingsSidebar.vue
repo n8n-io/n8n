@@ -76,7 +76,7 @@ export default defineComponent({
 				},
 				{
 					id: 'settings-external-secrets',
-					icon: 'external-link-alt',
+					icon: 'vault',
 					label: this.$locale.baseText('settings.externalSecrets.title'),
 					position: 'top',
 					available: this.canAccessExternalSecrets(),
@@ -84,6 +84,14 @@ export default defineComponent({
 						VIEWS.EXTERNAL_SECRETS_SETTINGS,
 						VIEWS.EXTERNAL_SECRETS_PROVIDER_SETTINGS,
 					],
+				},
+				{
+					id: 'settings-audit-logs',
+					icon: 'clipboard-list',
+					label: this.$locale.baseText('settings.auditLogs.title'),
+					position: 'top',
+					available: this.canAccessAuditLogs(),
+					activateOnRouteNames: [VIEWS.AUDIT_LOGS],
 				},
 				{
 					id: 'settings-version-control',
@@ -173,6 +181,9 @@ export default defineComponent({
 		canAccessVersionControl(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
 		},
+		canAccessAuditLogs(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.AUDIT_LOGS);
+		},
 		canAccessSso(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.SSO_SETTINGS);
 		},
@@ -224,6 +235,11 @@ export default defineComponent({
 					break;
 				case 'settings-external-secrets':
 					await this.navigateTo(VIEWS.EXTERNAL_SECRETS_SETTINGS);
+					break;
+				case 'settings-audit-logs':
+					if (this.$router.currentRoute.name !== VIEWS.AUDIT_LOGS) {
+						void this.$router.push({ name: VIEWS.AUDIT_LOGS });
+					}
 					break;
 				default:
 					break;

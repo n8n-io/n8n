@@ -98,7 +98,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	async function updateProviderConnected(id: string, value: boolean) {
 		await connectProvider(rootStore.getRestApiContext, id, value);
 		await fetchAllSecrets();
-		updateStoredProvider(id, { connected: value });
+		updateStoredProvider(id, { connected: value, state: value ? 'connected' : 'initializing' });
 	}
 
 	async function updateProvider(id: string, { data }: Partial<ExternalSecretsProvider>) {
