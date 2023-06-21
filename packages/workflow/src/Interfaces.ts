@@ -1908,11 +1908,12 @@ export interface IConnectedNode {
 }
 
 export const enum OAuth2GrantType {
+	pkce = 'pkce',
 	authorizationCode = 'authorizationCode',
 	clientCredentials = 'clientCredentials',
 }
 export interface IOAuth2Credentials {
-	grantType: 'authorizationCode' | 'clientCredentials';
+	grantType: 'authorizationCode' | 'clientCredentials' | 'pkce';
 	clientId: string;
 	clientSecret: string;
 	accessTokenUrl: string;
