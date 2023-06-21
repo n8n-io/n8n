@@ -1,19 +1,26 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
+import config from '@/config';
 
 const COLLATION_57 = 'utf8mb4_general_ci';
 const COLLATION_80 = 'utf8mb4_0900_ai_ci';
 
 export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const dbVersionQuery = (await queryRunner.query('SELECT @@version')) as  // eslint-disable-next-line @typescript-eslint/naming-convention
-			| Array<{ '@@version': string }>
-			| undefined;
-		let collation = COLLATION_80;
-		if (dbVersionQuery?.length === 1) {
-			const dbVersion = dbVersionQuery[0]['@@version'];
-			if (dbVersion.startsWith('5.7')) {
-				collation = COLLATION_57;
+		const databaseType = config.get('database.type');
+		let collation: string;
+		if (databaseType === 'mariadb') {
+			collation = COLLATION_57;
+		} else {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const dbVersionQuery = (await queryRunner.query('SELECT @@version')) as  // eslint-disable-next-line @typescript-eslint/naming-convention
+				| Array<{ '@@version': string }>
+				| undefined;
+			collation = COLLATION_80;
+			if (dbVersionQuery?.length === 1) {
+				const dbVersion = dbVersionQuery[0]['@@version'];
+				if (dbVersion.startsWith('5.7')) {
+					collation = COLLATION_57;
+				}
 			}
 		}
 
