@@ -183,6 +183,8 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
+		globalRole,
+		isOwner: attributes.isOwner ?? true,
 		...rest,
 	};
 
@@ -196,7 +198,7 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 }
 
 export async function createOwner() {
-	return createUser({ globalRole: await getGlobalOwnerRole() });
+	return createUser({ globalRole: await getGlobalOwnerRole(), isOwner: true });
 }
 
 export async function createUserShell(globalRole: Role): Promise<User> {

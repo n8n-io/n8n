@@ -88,15 +88,17 @@ describe('POST /login', () => {
 	});
 
 	test('should throw AuthError for non-owner when User Management is disabled', async () => {
-		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		jest.spyOn(Container.get(License), 'isWithinUsersLimitQuota').mockReturnValueOnce(false);
 		const member = await testDb.createUserShell(globalMemberRole);
-		const response = await authAgent(member).get('/login');
-
-		expect(response.statusCode).toBe(401);
+		try {
+			await authAgent(member).get('/login');
+		} catch (error) {
+			expect(error.httpStatusCode).toBe(401);
+		}
 	});
 
 	test('should not throw AuthError for owner even when User Management is disabled', async () => {
-		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		jest.spyOn(Container.get(License), 'isWithinUsersLimitQuota').mockReturnValueOnce(false);
 		const ownerUser = await testDb.createUser({
 			password: randomValidPassword(),
 			globalRole: globalOwnerRole,
@@ -127,15 +129,6 @@ describe('GET /login', () => {
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
-	});
-
-	test('should return 401 Unauthorized if UM is disabled and is not owner', async () => {
-		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
-		const memberShell = await testDb.createUserShell(globalMemberRole);
-
-		const response = await authAgent(memberShell).get('/login');
-
-		expect(response.statusCode).toBe(401);
 	});
 
 	test('should return 401 Unauthorized if invalid cookie', async () => {

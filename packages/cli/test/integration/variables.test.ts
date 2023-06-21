@@ -16,6 +16,7 @@ let variablesSpy: jest.SpyInstance<boolean>;
 const licenseLike = {
 	isVariablesEnabled: jest.fn().mockReturnValue(true),
 	getVariablesLimit: jest.fn().mockReturnValue(-1),
+	isWithinUsersLimitQuota: jest.fn().mockReturnValue(-1),
 };
 
 beforeAll(async () => {

@@ -6,7 +6,7 @@ import {
 	withFeatureFlags,
 	isUserManagementEnabled,
 } from '@/UserManagement/UserManagementHelper';
-import { issueCookie, resolveJwt, isWithinUsersLimitQuota } from '@/auth/jwt';
+import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
@@ -30,6 +30,7 @@ import {
 import type { UserRepository } from '@db/repositories';
 import { InternalHooks } from '../InternalHooks';
 import Container from 'typedi';
+import { License } from '@/License';
 
 @RestController()
 export class AuthController {
@@ -69,7 +70,6 @@ export class AuthController {
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password } = req.body;
-		const isWithinUsersQuota = await isWithinUsersLimitQuota();
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
@@ -95,9 +95,6 @@ export class AuthController {
 			user = await handleEmailLogin(email, password);
 		}
 		if (user) {
-			if (!user.isOwner && !isWithinUsersQuota)
-				throw new AuthError('Maximum number of users reached');
-
 			await issueCookie(res, user);
 			void Container.get(InternalHooks).onUserLoginSuccess({
 				user,
@@ -162,8 +159,9 @@ export class AuthController {
 	 */
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
-		const isWithinUsersQuota = await isWithinUsersLimitQuota();
 		const { inviterId, inviteeId } = req.query;
+		const license = Container.get(License);
+		const isWithinUsersQuota = license.isWithinUsersLimitQuota();
 
 		if (!inviterId || !inviteeId) {
 			this.logger.debug(
@@ -173,20 +171,16 @@ export class AuthController {
 			throw new BadRequestError('Invalid payload');
 		}
 
-		if (!isWithinUsersQuota) {
-			this.logger.debug(
-				'Request to resolve signup token failed because the maximum number of users has been reached',
-				{ inviterId, inviteeId },
-			);
-			throw new AuthError('Maximum number of users reached');
-		}
-
 		if (!isUserManagementEnabled()) {
 			this.logger.debug(
 				'Request to resolve signup token failed because user management is disabled',
 				{ inviterId, inviteeId },
 			);
 			throw new BadRequestError('User management is disabled');
+		}
+
+		if (!isWithinUsersQuota) {
+			throw new AuthError('Maximum number of users reached');
 		}
 
 		// Postgres validates UUID format

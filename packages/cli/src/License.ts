@@ -203,4 +203,13 @@ export class License {
 
 		return this.manager.toString();
 	}
+
+	isWithinUsersLimitQuota(): boolean {
+		// If users limit is -1 -> no limit
+		if (this.getUsersLimit() === -1) {
+			return true;
+		}
+
+		return false;
+	}
 }

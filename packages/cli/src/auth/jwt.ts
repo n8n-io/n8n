@@ -9,10 +9,14 @@ import type { JwtPayload, JwtToken } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
+import { License } from '@/License';
+import { Container } from 'typedi';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
 	const expiresIn = 7 * 86400000; // 7 days
+	const license = Container.get(License);
+	const isWithinUsersQuota = license.isWithinUsersLimitQuota();
 
 	const payload: JwtPayload = {
 		id,
@@ -20,6 +24,9 @@ export function issueJWT(user: User): JwtToken {
 		password: password ?? null,
 	};
 
+	if (!user.isOwner && !isWithinUsersQuota) {
+		throw new ResponseHelper.AuthError('Maximum number of users reached');
+	}
 	if (password) {
 		payload.password = createHash('sha256')
 			.update(password.slice(password.length / 2))
@@ -36,23 +43,10 @@ export function issueJWT(user: User): JwtToken {
 		expiresIn,
 	};
 }
-export async function isWithinUsersLimitQuota() {
-	const usersLimit = Db.collections.Settings.usersQuota;
-	// If users limit is -1 -> no limit
-	if (usersLimit === -1) {
-		return true;
-	}
-
-	if (config.getEnv('userManagement.disabled')) {
-		return false;
-	}
-
-	const usersCount = await Db.collections.User.count();
-	return usersCount < usersLimit;
-}
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const isWithinUsersQuota = await isWithinUsersLimitQuota();
+	const license = Container.get(License);
+	const isWithinUsersQuota = license.isWithinUsersLimitQuota();
 
 	const user = await Db.collections.User.findOne({
 		where: { id: jwtPayload.id },

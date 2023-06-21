@@ -23,8 +23,19 @@
 				</n8n-tooltip>
 			</div>
 		</div>
+
+		<div v-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
+			<n8n-action-box
+				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
+				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
+				:description="`${
+					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
+				}`"
+				@click="redirectToSetup"
+			/>
+		</div>
 		<div
-			v-if="!settingsStore.isUserManagementEnabled || !settingsStore.isWithinUserQuota"
+			v-else-if="!settingsStore.isUserManagementEnabled || !settingsStore.isWithinUserQuota"
 			:class="$style.setupInfoContainer"
 		>
 			<n8n-action-box
@@ -42,20 +53,13 @@
 				@click="goToUpgrade"
 			/>
 		</div>
-		<div v-else-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
-			<n8n-action-box
-				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
-				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
-				:description="`${
-					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
-				}`"
-				@click="redirectToSetup"
-			/>
-		</div>
 		<!-- If there's more than 1 user it means UM was enabled before. So we need to allow instance
 			owner to be able to delete users and transfer workflows.
 		-->
-		<div :class="$style.usersContainer" v-if="usersStore.allUsers.length > 1">
+		<div
+			:class="$style.usersContainer"
+			v-if="settingsStore.isWithinUserQuota || usersStore.allUsers.length > 1"
+		>
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="usersStore.allUsers"

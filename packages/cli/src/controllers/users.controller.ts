@@ -17,8 +17,8 @@ import {
 	isUserManagementEnabled,
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
-import { issueCookie, isWithinUsersLimitQuota } from '@/auth/jwt';
-import { AuthError, BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import { issueCookie } from '@/auth/jwt';
+import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
 import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
@@ -43,6 +43,8 @@ import type {
 } from '@db/repositories';
 import { UserService } from '@/user/user.service';
 import { plainToInstance } from 'class-transformer';
+import { License } from '@/License';
+import { Container } from 'typedi';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -109,6 +111,9 @@ export class UsersController {
 	 */
 	@Post('/', { middlewares: [userManagementEnabledMiddleware] })
 	async sendEmailInvites(req: UserRequest.Invite) {
+		const license = Container.get(License);
+		const isWithinUsersQuota = license.isWithinUsersLimitQuota();
+
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
@@ -125,11 +130,13 @@ export class UsersController {
 			throw new BadRequestError('You must set up your own account before inviting others');
 		}
 
-		if (!(await isWithinUsersLimitQuota())) {
+		if (!isWithinUsersQuota) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
-			throw new AuthError('You have reached the maximum number of users allowed for your plan.');
+			throw new BadRequestError(
+				'You have reached the maximum number of users allowed for your plan.',
+			);
 		}
 
 		if (!Array.isArray(req.body)) {
@@ -560,6 +567,8 @@ export class UsersController {
 	@Post('/:id/reinvite')
 	async reinviteUser(req: UserRequest.Reinvite) {
 		const { id: idToReinvite } = req.params;
+		const license = Container.get(License);
+		const isWithinUsersQuota = license.isWithinUsersLimitQuota();
 
 		if (!isUserManagementEnabled()) {
 			this.logger.error('Request to reinvite a user failed because user management is not enabled');
@@ -573,6 +582,14 @@ export class UsersController {
 			throw new InternalServerError('Email sending must be set up in order to invite other users');
 		}
 
+		if (!isWithinUsersQuota) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new BadRequestError(
+				'You have reached the maximum number of users allowed for your plan.',
+			);
+		}
 		const reinvitee = await this.userRepository.findOneBy({ id: idToReinvite });
 		if (!reinvitee) {
 			this.logger.debug(
