@@ -261,7 +261,7 @@ export class TwitterV2 implements INodeType {
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/users/${user.id}/liked_tweets`,
+							`/users/${user.id}/likes`,
 							body,
 						);
 					}
