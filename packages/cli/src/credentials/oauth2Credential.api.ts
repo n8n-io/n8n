@@ -46,7 +46,7 @@ oauth2CredentialController.use((req, res, next) => {
 	}
 	next();
 });
-let codeVerifier = '';
+
 const restEndpoint = config.getEnv('endpoints.rest');
 
 /**
@@ -171,17 +171,6 @@ oauth2CredentialController.get(
 			const scope = get(oauthCredentials, 'scope') as string;
 			const percentEncoded = [data, `scope=${encodeURIComponent(scope)}`].join('&');
 			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${percentEncoded}`;
-		}
-
-		if (oauthCredentials.grantType === 'pkce') {
-			let { code_verifier, code_challenge } = pkceChallenge();
-			if (code_verifier.includes('~')) {
-				do {
-					({ code_verifier, code_challenge } = pkceChallenge());
-				} while (code_verifier.includes('~'));
-			}
-			returnUri += `&code_challenge=${code_challenge}&code_challenge_method=S256`;
-			codeVerifier = code_verifier;
 		}
 
 		if (authQueryParameters) {
