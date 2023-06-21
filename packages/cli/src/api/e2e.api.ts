@@ -29,7 +29,7 @@ const enabledFeatures = {
 	[LICENSE_FEATURES.SAML]: false,
 	[LICENSE_FEATURES.LOG_STREAMING]: false,
 	[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
-	[LICENSE_FEATURES.VERSION_CONTROL]: false,
+	[LICENSE_FEATURES.SOURCE_CONTROL]: false,
 };
 
 type Feature = keyof typeof enabledFeatures;

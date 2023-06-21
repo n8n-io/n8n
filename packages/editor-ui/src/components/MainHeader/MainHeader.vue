@@ -30,7 +30,7 @@ import {
 } from '@/constants';
 import type { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useUIStore, useNDVStore, useVersionControlStore } from '@/stores';
+import { useUIStore, useNDVStore, useSourceControlStore } from '@/stores';
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -53,7 +53,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore, useUIStore, useVersionControlStore),
+		...mapStores(useNDVStore, useUIStore, useSourceControlStore),
 		tabBarItems(): ITabBarItem[] {
 			return [
 				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
@@ -83,7 +83,7 @@ export default defineComponent({
 			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
 		},
 		readOnly(): boolean {
-			return this.versionControlStore.preferences.branchReadOnly;
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	mounted() {
