@@ -200,6 +200,7 @@ export default defineComponent({
 <style module lang="scss">
 .container {
 	display: grid;
+	grid-auto-rows: auto auto 1fr auto;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	padding: var(--spacing-l) 0 0 var(--spacing-l);
