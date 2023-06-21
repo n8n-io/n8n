@@ -54,7 +54,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let responseData: IDataObject | IDataObject[] = [];
 
 	const caseId = this.getNodeParameter('id', i) as string;
-	const options = this.getNodeParameter('options', i, {});
+	const canRename = this.getNodeParameter('options.canRename', i, false) as boolean;
 	const inputDataFields = (this.getNodeParameter('inputDataFiels', i, '') as string)
 		.split(',')
 		.filter((item) => item)
@@ -88,7 +88,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			},
 			formData: {
 				attachments,
-				...options,
+				canRename: JSON.stringify(canRename),
 			},
 		},
 	);
