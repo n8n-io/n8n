@@ -28,7 +28,7 @@ import { RedisServicePublisher } from '../services/RedisServicePublisher';
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
 import { generateNanoId } from '../databases/utils/generators';
 import { COMMAND_REDIS_CHANNEL } from '../services/RedisServiceHelper';
-import type { RedisCommandObject } from '../services/RedisTypes';
+import type { RedisServiceCommandObject } from '../services/RedisServiceCommands';
 import { RedisServiceSubscriber } from '../services/RedisServiceSubscriber';
 import { eventBus } from '../eventbus';
 
@@ -272,17 +272,20 @@ export class Worker extends BaseCommand {
 		await redisSubscriber.subscribeToCommandChannel();
 		redisSubscriber.addMessageHandler(
 			'WorkerCommandChannelReceiver',
-			async (channel: string, message: string) => {
+			async (channel: string, messageString: string) => {
 				if (channel === COMMAND_REDIS_CHANNEL) {
-					const command = jsonParse<RedisCommandObject>(message);
-					if (command) {
-						switch (command.command) {
+					const message = jsonParse<RedisServiceCommandObject>(messageString);
+					if (message) {
+						if (message.targets && !message.targets.includes(this.workerId)) {
+							return; // early return if the message is not for this worker
+						}
+						switch (message.command) {
 							case 'restartEventBus':
 								await eventBus.restart();
 								break;
 							default:
 								LoggerProxy.debug(
-									`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${command.command}"`,
+									`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
 								);
 								break;
 						}

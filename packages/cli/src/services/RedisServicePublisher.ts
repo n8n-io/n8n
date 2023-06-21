@@ -7,7 +7,7 @@ import {
 	EVENT_BUS_REDIS_CHANNEL,
 	getRedisClient,
 } from './RedisServiceHelper';
-import type { RedisCommandObject } from './RedisTypes';
+import type { RedisServiceCommandObject } from './RedisServiceCommands';
 
 type MessageHandler = (channel: string, message: string) => void;
 
@@ -57,7 +57,7 @@ export class RedisServicePublisher {
 		await this.publish(EVENT_BUS_REDIS_CHANNEL, message.toString());
 	}
 
-	async publishToCommandChannel(message: RedisCommandObject): Promise<void> {
+	async publishToCommandChannel(message: RedisServiceCommandObject): Promise<void> {
 		await this.publish(COMMAND_REDIS_CHANNEL, JSON.stringify(message));
 	}
 }
