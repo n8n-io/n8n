@@ -32,8 +32,8 @@ import type {
 } from './descriptions/MemberDescription';
 import { memberFields, memberOperations } from './descriptions/MemberDescription';
 
-import isEmpty from 'lodash.isempty';
-import partialRight from 'lodash.partialright';
+import isEmpty from 'lodash/isEmpty';
+import partialRight from 'lodash/partialRight';
 
 export class Bitwarden implements INodeType {
 	description: INodeTypeDescription = {

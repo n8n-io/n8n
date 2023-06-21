@@ -21,6 +21,6 @@ CredentialType:
 Audit:
   $ref: "./../../../handlers/audit/spec/schemas/audit.yml"
 Pull:
-  $ref: "./../../../handlers/versionControl/spec/schemas/pull.yml"
+  $ref: "./../../../handlers/sourceControl/spec/schemas/pull.yml"
 ImportResult:
-  $ref: "./../../../handlers/versionControl/spec/schemas/importResult.yml"
+  $ref: "./../../../handlers/sourceControl/spec/schemas/importResult.yml"

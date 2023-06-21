@@ -8,7 +8,6 @@ import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import Vue from 'vue';
 import type { CommunityNodesState, CommunityPackageMap } from '@/Interface';
 import { STORES } from '@/constants';
 
@@ -86,7 +85,8 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
 			);
 		},
 		removePackageByName(name: string): void {
-			Vue.delete(this.installedPackages, name);
+			const { [name]: removedPackage, ...remainingPackages } = this.installedPackages;
+			this.installedPackages = remainingPackages;
 		},
 		updatePackageObject(newPackage: PublicInstalledPackage) {
 			this.installedPackages[newPackage.packageName] = newPackage;
