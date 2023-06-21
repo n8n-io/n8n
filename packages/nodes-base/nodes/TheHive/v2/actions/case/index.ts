@@ -1,5 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as addAttachemnt from './addAttachemnt.operation';
 import * as count from './count.operation';
 import * as create from './create.operation';
 import * as executeResponder from './executeResponder.operation';
@@ -8,7 +9,7 @@ import * as getMany from './getMany.operation';
 import * as getTimeline from './getTimeline.operation';
 import * as update from './update.operation';
 
-export { count, create, executeResponder, get, getMany, getTimeline, update };
+export { addAttachemnt, count, create, executeResponder, get, getMany, getTimeline, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -19,6 +20,11 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		required: true,
 		options: [
+			{
+				name: 'Add Attachemnt',
+				value: 'addAttachemnt',
+				action: 'Add Attachemnt to a case',
+			},
 			{
 				name: 'Count',
 				value: 'count',
@@ -61,6 +67,7 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	...addAttachemnt.description,
 	...count.description,
 	...create.description,
 	...executeResponder.description,

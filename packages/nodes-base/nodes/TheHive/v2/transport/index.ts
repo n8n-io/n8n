@@ -1,31 +1,31 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
+	IHttpRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
 
 export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	body: IDataObject = {},
+	body: IDataObject | FormData = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials('theHiveApi');
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/api${resource}`,
+		url: uri || `${credentials.url}/api${resource}`,
 		body,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
+		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 		json: true,
 	};
 

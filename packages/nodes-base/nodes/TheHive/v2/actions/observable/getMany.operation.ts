@@ -1,5 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IHttpRequestMethods,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { returnAllAndLimit } from '../common.description';
 import {
@@ -65,7 +70,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let endpoint;
 
-	let method;
+	let method: IHttpRequestMethods;
 
 	let body: IDataObject = {};
 

@@ -12,7 +12,15 @@ type NodeMap = {
 		| 'merge'
 		| 'promote'
 		| 'update';
-	case: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'getTimeline' | 'update';
+	case:
+		| 'addAttachemnt'
+		| 'count'
+		| 'create'
+		| 'executeResponder'
+		| 'get'
+		| 'getMany'
+		| 'getTimeline'
+		| 'update';
 	comment: 'add' | 'deleteComment' | 'update';
 	log: 'create' | 'executeResponder' | 'get' | 'getMany';
 	observable:
