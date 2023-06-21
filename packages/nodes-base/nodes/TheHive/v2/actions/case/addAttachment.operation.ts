@@ -20,7 +20,7 @@ const properties: INodeProperties[] = [
 		default: 'data',
 		required: true,
 		description:
-			'The names of the fields in a input item which contain the binary data to be send as attachements',
+			'The names of the fields in a input item which contain the binary data to be send as attachments',
 	},
 	{
 		displayName: 'Options',
@@ -44,7 +44,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		resource: ['case'],
-		operation: ['addAttachemnt'],
+		operation: ['addAttachment'],
 	},
 };
 

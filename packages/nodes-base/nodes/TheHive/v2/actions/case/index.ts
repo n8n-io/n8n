@@ -1,15 +1,28 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as addAttachemnt from './addAttachemnt.operation';
+import * as addAttachment from './addAttachment.operation';
 import * as count from './count.operation';
 import * as create from './create.operation';
+import * as deleteAttachment from './deleteAttachment.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
+import * as getAttachment from './getAttachment.operation';
 import * as getMany from './getMany.operation';
 import * as getTimeline from './getTimeline.operation';
 import * as update from './update.operation';
 
-export { addAttachemnt, count, create, executeResponder, get, getMany, getTimeline, update };
+export {
+	addAttachment,
+	count,
+	create,
+	deleteAttachment,
+	executeResponder,
+	get,
+	getMany,
+	getAttachment,
+	getTimeline,
+	update,
+};
 
 export const description: INodeProperties[] = [
 	{
@@ -21,9 +34,9 @@ export const description: INodeProperties[] = [
 		required: true,
 		options: [
 			{
-				name: 'Add Attachemnt',
-				value: 'addAttachemnt',
-				action: 'Add Attachemnt to a case',
+				name: 'Add Attachment',
+				value: 'addAttachment',
+				action: 'Add Attachment to a case',
 			},
 			{
 				name: 'Count',
@@ -36,6 +49,11 @@ export const description: INodeProperties[] = [
 				action: 'Create a case',
 			},
 			{
+				name: 'Delete Attachment',
+				value: 'deleteAttachment',
+				action: 'Delete attachment from the case',
+			},
+			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
 				action: 'Execute a responder on the specified case',
@@ -44,6 +62,11 @@ export const description: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				action: 'Get a single case',
+			},
+			{
+				name: 'Get Attachment',
+				value: 'getAttachment',
+				action: 'Get attachment from the case',
 			},
 			{
 				name: 'Get Many',
@@ -67,11 +90,13 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
-	...addAttachemnt.description,
+	...addAttachment.description,
 	...count.description,
 	...create.description,
+	...deleteAttachment.description,
 	...executeResponder.description,
 	...get.description,
+	...getAttachment.description,
 	...getMany.description,
 	...getTimeline.description,
 	...update.description,

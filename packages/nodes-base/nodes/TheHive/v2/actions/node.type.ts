@@ -13,12 +13,14 @@ type NodeMap = {
 		| 'promote'
 		| 'update';
 	case:
-		| 'addAttachemnt'
+		| 'addAttachment'
 		| 'count'
 		| 'create'
+		| 'deleteAttachment'
 		| 'executeResponder'
 		| 'get'
 		| 'getMany'
+		| 'getAttachment'
 		| 'getTimeline'
 		| 'update';
 	comment: 'add' | 'deleteComment' | 'update';

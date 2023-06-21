@@ -112,3 +112,33 @@ export async function loadObservableTypes(
 
 	return returnData;
 }
+
+export async function getCaseAttachments(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const caseId = this.getNodeParameter('id') as string;
+
+	const body = {
+		query: [
+			{
+				_name: 'getCase',
+				idOrName: caseId,
+			},
+			{
+				_name: 'attachments',
+			},
+		],
+	};
+
+	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+
+	for (const entry of response) {
+		returnData.push({
+			name: entry.name as string,
+			value: entry._id,
+			description: `Content-Type: ${entry.contentType}`,
+		});
+	}
+	return returnData;
+}
