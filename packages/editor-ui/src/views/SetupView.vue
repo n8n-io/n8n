@@ -11,14 +11,13 @@
 import AuthView from './AuthView.vue';
 import { defineComponent } from 'vue';
 
-import { useToast, useMessage } from '@/composables';
+import { useToast } from '@/composables';
 import type { IFormBoxConfig } from '@/Interface';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
 
 export default defineComponent({
 	name: 'SetupView',
@@ -26,15 +25,7 @@ export default defineComponent({
 		AuthView,
 	},
 	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
-	},
-	async mounted() {
-		const { credentials, workflows } = await this.usersStore.preOwnerSetup();
-		this.credentialsCount = credentials;
-		this.workflowsCount = workflows;
+		return useToast();
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -97,62 +88,14 @@ export default defineComponent({
 		return {
 			FORM_CONFIG,
 			loading: false,
-			workflowsCount: 0,
-			credentialsCount: 0,
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useSettingsStore, useUIStore, useUsersStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore),
 	},
 	methods: {
-		async confirmSetupOrGoBack(): Promise<boolean> {
-			if (this.workflowsCount === 0 && this.credentialsCount === 0) {
-				return true;
-			}
-
-			const workflows =
-				this.workflowsCount > 0
-					? this.$locale.baseText('auth.setup.setupConfirmation.existingWorkflows', {
-							adjustToNumber: this.workflowsCount,
-					  })
-					: '';
-
-			const credentials =
-				this.credentialsCount > 0
-					? this.$locale.baseText('auth.setup.setupConfirmation.credentials', {
-							adjustToNumber: this.credentialsCount,
-					  })
-					: '';
-
-			const entities =
-				workflows && credentials
-					? this.$locale.baseText('auth.setup.setupConfirmation.concatEntities', {
-							interpolate: { workflows, credentials },
-					  })
-					: workflows || credentials;
-			const confirm = await this.confirm(
-				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
-					interpolate: {
-						entities,
-					},
-				}),
-				this.$locale.baseText('auth.setup.confirmOwnerSetup'),
-				{
-					dangerouslyUseHTMLString: true,
-					confirmButtonText: this.$locale.baseText('auth.setup.createAccount'),
-					cancelButtonText: this.$locale.baseText('auth.setup.goBack'),
-				},
-			);
-
-			return confirm === MODAL_CONFIRM;
-		},
 		async onSubmit(values: { [key: string]: string | boolean }) {
 			try {
-				const confirmSetup = await this.confirmSetupOrGoBack();
-				if (!confirmSetup) {
-					return;
-				}
-
 				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				this.loading = true;
 				await this.usersStore.createOwner(
