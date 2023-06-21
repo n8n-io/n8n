@@ -1,0 +1,48 @@
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
+
+export class UniqueWorkflowNames1620821879465 implements ReversibleMigration {
+	protected indexSuffix = '943d8f922be094eb507cb9a7f9';
+
+	async up({ isMysql, escape, executeQuery }: MigrationContext) {
+		const tableName = escape.tableName('workflow_entity');
+		const workflowNames: Array<Pick<WorkflowEntity, 'name'>> = await executeQuery(
+			`SELECT name FROM ${tableName}`,
+		);
+
+		for (const { name } of workflowNames) {
+			const duplicates: Array<Pick<WorkflowEntity, 'id' | 'name'>> = await executeQuery(
+				`SELECT id, name FROM ${tableName} WHERE name = :name ORDER BY createdAt ASC`,
+				{ name },
+			);
+
+			if (duplicates.length > 1) {
+				await Promise.all(
+					duplicates.map(async (workflow, index) => {
+						if (index === 0) return;
+						return executeQuery(
+							`UPDATE ${tableName} SET name = :name WHERE id = :id`,
+							{ name: `${workflow.name} ${index + 1}` },
+							{ id: workflow.id },
+						);
+					}),
+				);
+			}
+		}
+
+		const indexName = escape.indexName(this.indexSuffix);
+		await executeQuery(
+			isMysql
+				? `ALTER TABLE ${tableName} ADD UNIQUE INDEX ${indexName} (${escape.columnName('name')})`
+				: `CREATE UNIQUE INDEX ${indexName} ON ${tableName} ("name")`,
+		);
+	}
+
+	async down({ isMysql, escape, executeQuery }: MigrationContext) {
+		const tableName = escape.tableName('workflow_entity');
+		const indexName = escape.indexName(this.indexSuffix);
+		await executeQuery(
+			isMysql ? `ALTER TABLE ${tableName} DROP INDEX ${indexName}` : `DROP INDEX ${indexName}`,
+		);
+	}
+}
