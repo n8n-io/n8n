@@ -26,7 +26,6 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-// TODO: Replace this once `codemirror-lang-n8n-sql` npm package is updated
 import {
 	MSSQL,
 	MySQL,
@@ -37,8 +36,8 @@ import {
 	Cassandra,
 	PLSQL,
 	keywordCompletionSource,
-} from './sql-parser-skipping-whitespace';
-import type { SQLDialect as SQLDialectType } from './sql-parser-skipping-whitespace';
+} from '@n8n/codemirror-lang-sql';
+import type { SQLDialect as SQLDialectType } from '@n8n/codemirror-lang-sql';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
