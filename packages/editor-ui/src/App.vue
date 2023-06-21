@@ -263,6 +263,7 @@ export default defineComponent({
 		'sidebar content';
 	grid-auto-columns: auto 1fr;
 	grid-template-rows: auto 1fr;
+	height: 100%;
 }
 
 .content {

@@ -199,10 +199,10 @@ export default defineComponent({
 
 <style module lang="scss">
 .container {
-	flex: 310px 0 0;
+	display: grid;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
-	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
+	padding: var(--spacing-l) 0 0 var(--spacing-l);
 	z-index: 1;
 	overflow: hidden;
 }
@@ -228,7 +228,6 @@ export default defineComponent({
 }
 
 .executionList {
-	height: calc(100% - 10.5em);
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
 	background-color: var(--color-background-xlight) !important;
@@ -250,10 +249,7 @@ export default defineComponent({
 }
 
 .infoAccordion {
-	position: absolute;
-	bottom: 0;
-	margin-left: calc(-1 * var(--spacing-l));
-	border-top: var(--border-base);
+	margin-left: calc(var(--spacing-l) * -1);
 
 	& > div {
 		width: 309px;
