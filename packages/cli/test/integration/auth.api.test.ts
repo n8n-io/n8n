@@ -87,7 +87,7 @@ describe('POST /login', () => {
 		expect(authToken).toBeDefined();
 	});
 
-	test('should throw AuthError for non-owner when User Management is disabled', async () => {
+	test('should throw AuthError for non-owner if not within users limit quota', async () => {
 		jest.spyOn(Container.get(License), 'isWithinUsersLimitQuota').mockReturnValueOnce(false);
 		const member = await testDb.createUserShell(globalMemberRole);
 		try {
@@ -97,11 +97,12 @@ describe('POST /login', () => {
 		}
 	});
 
-	test('should not throw AuthError for owner even when User Management is disabled', async () => {
+	test('should not throw AuthError for owner if not within users limit quota', async () => {
 		jest.spyOn(Container.get(License), 'isWithinUsersLimitQuota').mockReturnValueOnce(false);
 		const ownerUser = await testDb.createUser({
 			password: randomValidPassword(),
 			globalRole: globalOwnerRole,
+			isOwner: true,
 		});
 
 		const response = await authAgent(ownerUser).get('/login');
