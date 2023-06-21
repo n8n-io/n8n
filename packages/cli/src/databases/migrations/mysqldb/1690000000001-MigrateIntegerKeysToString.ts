@@ -177,7 +177,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}tag_entity DROP COLUMN tmp_id;`);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}credentials_entity CHANGE id tmp_id int NOT NULL AUTO INCREMENT;`,
+			`ALTER TABLE ${tablePrefix}credentials_entity CHANGE id tmp_id int NOT NULL AUTO_INCREMENT;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}credentials_entity ADD COLUMN id varchar(36) NOT NULL;`,
@@ -229,7 +229,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}credentials_entity DROP COLUMN tmp_id;`);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}variables CHANGE id tmp_id int NOT NULL AUTO INCREMENT;`,
+			`ALTER TABLE ${tablePrefix}variables CHANGE id tmp_id int NOT NULL AUTO_INCREMENT;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}variables ADD COLUMN \`id\` varchar(36) NOT NULL;`,
