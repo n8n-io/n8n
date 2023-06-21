@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '@db/types';
 export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity RENAME COLUMN id to tmp_id;`,
+			`ALTER TABLE ${tablePrefix}workflow_entity CHANGE id tmp_id int NOT NULL AUTO_INCREMENT;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN id varchar(36) NOT NULL;`,
@@ -13,7 +13,9 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`CREATE INDEX \`TMP_idx_workflow_entity_id\` ON ${tablePrefix}workflow_entity (\`id\`);`,
 		);
 
-		await queryRunner.query(`ALTER TABLE ${tablePrefix}tag_entity RENAME COLUMN id to tmp_id;`);
+		await queryRunner.query(
+			`ALTER TABLE ${tablePrefix}tag_entity CHANGE id tmp_id int NOT NULL AUTO_INCREMENT;`,
+		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}tag_entity ADD COLUMN id varchar(36) NOT NULL;`,
 		);
@@ -23,7 +25,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags RENAME COLUMN \`workflowId\` to \`tmp_workflowId\`;`,
+			`ALTER TABLE ${tablePrefix}workflows_tags CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflows_tags ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
@@ -32,7 +34,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`UPDATE ${tablePrefix}workflows_tags SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags RENAME COLUMN \`tagId\` to \`tmp_tagId\`;`,
+			`ALTER TABLE ${tablePrefix}workflows_tags CHANGE tagId tmp_tagId int NOT NULL;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflows_tags ADD COLUMN \`tagId\` varchar(36) NOT NULL;`,
@@ -64,7 +66,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflows_tags DROP COLUMN \`tmp_tagId\`;`);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_workflow RENAME COLUMN \`workflowId\` to \`tmp_workflowId\`;`,
+			`ALTER TABLE ${tablePrefix}shared_workflow CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}shared_workflow ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
@@ -89,7 +91,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_statistics RENAME COLUMN \`workflowId\` to \`tmp_workflowId\`;`,
+			`ALTER TABLE ${tablePrefix}workflow_statistics CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_statistics ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
@@ -114,7 +116,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}webhook_entity RENAME COLUMN \`workflowId\` to \`tmp_workflowId\`;`,
+			`ALTER TABLE ${tablePrefix}webhook_entity CHANGE workflowId tmp_workflowId int NOT NULL;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}webhook_entity ADD COLUMN \`workflowId\` varchar(36) NOT NULL;`,
@@ -129,7 +131,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}webhook_entity ADD CONSTRAINT \`fk_webhook_entity_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}execution_entity RENAME COLUMN \`workflowId\` to \`tmp_workflowId\`;`,
+			`ALTER TABLE ${tablePrefix}execution_entity CHANGE workflowId tmp_workflowId int NULL;`,
 		);
 
 		await queryRunner.query(
@@ -175,7 +177,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}tag_entity DROP COLUMN tmp_id;`);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}credentials_entity RENAME COLUMN id to tmp_id;`,
+			`ALTER TABLE ${tablePrefix}credentials_entity CHANGE id tmp_id int NOT NULL AUTO INCREMENT;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}credentials_entity ADD COLUMN id varchar(36) NOT NULL;`,
@@ -188,7 +190,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_credentials RENAME COLUMN credentialsId to tmp_credentialsId;`,
+			`ALTER TABLE ${tablePrefix}shared_credentials CHANGE credentialsId tmp_credentialsId int NOT NULL;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}shared_credentials ADD COLUMN credentialsId varchar(36) NOT NULL;`,
@@ -227,7 +229,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}credentials_entity DROP COLUMN tmp_id;`);
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}variables RENAME COLUMN \`id\` to \`tmp_id\`;`,
+			`ALTER TABLE ${tablePrefix}variables CHANGE id tmp_id int NOT NULL AUTO INCREMENT;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}variables ADD COLUMN \`id\` varchar(36) NOT NULL;`,
