@@ -10,7 +10,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 		await queryRunner.query(`UPDATE ${tablePrefix}workflow_entity SET id = CONVERT(tmp_id, CHAR);`);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_workflow_entity_id\` ON ${tablePrefix}workflow_entity (\`id\`);`,
+			`CREATE INDEX \`TMP_idx_${tablePrefix}workflow_entity_id\` ON ${tablePrefix}workflow_entity (\`id\`);`,
 		);
 
 		await queryRunner.query(
@@ -21,7 +21,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 		await queryRunner.query(`UPDATE ${tablePrefix}tag_entity SET id = CONVERT(tmp_id, CHAR);`);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_tag_entity_id\` ON ${tablePrefix}tag_entity (\`id\`);`,
+			`CREATE INDEX \`TMP_idx_${tablePrefix}tag_entity_id\` ON ${tablePrefix}tag_entity (\`id\`);`,
 		);
 
 		await queryRunner.query(
@@ -46,19 +46,19 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}workflows_tags DROP PRIMARY KEY, ADD PRIMARY KEY (\`workflowId\`, \`tagId\`);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`idx_workflows_tags_workflowid\` ON ${tablePrefix}workflows_tags (\`workflowId\`);`,
+			`CREATE INDEX \`idx_${tablePrefix}workflows_tags_workflowid\` ON ${tablePrefix}workflows_tags (\`workflowId\`);`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags DROP FOREIGN KEY \`FK_54b2f0343d6a2078fa137443869\`;`,
+			`ALTER TABLE ${tablePrefix}workflows_tags DROP FOREIGN KEY \`FK_${tablePrefix}54b2f0343d6a2078fa137443869\`;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT \`fk_workflows_tags_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
+			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT \`fk_${tablePrefix}workflows_tags_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags DROP FOREIGN KEY \`FK_77505b341625b0b4768082e2171\`;`,
+			`ALTER TABLE ${tablePrefix}workflows_tags DROP FOREIGN KEY \`FK_${tablePrefix}77505b341625b0b4768082e2171\`;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT \`fk_workflows_tags_tag_id\` FOREIGN KEY (\`tagId\`) REFERENCES tag_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
+			`ALTER TABLE ${tablePrefix}workflows_tags ADD CONSTRAINT \`fk_${tablePrefix}workflows_tags_tag_id\` FOREIGN KEY (\`tagId\`) REFERENCES ${tablePrefix}tag_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflows_tags DROP COLUMN \`tmp_workflowId\`;`,
@@ -78,13 +78,13 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}shared_workflow DROP PRIMARY KEY, ADD PRIMARY KEY (\`userId\`, \`workflowId\`);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`idx_shared_workflow_workflow_id\` ON ${tablePrefix}shared_workflow (\`workflowId\`);`,
+			`CREATE INDEX \`idx_${tablePrefix}shared_workflow_workflow_id\` ON ${tablePrefix}shared_workflow (\`workflowId\`);`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_workflow DROP FOREIGN KEY \`FK_b83f8d2530884b66a9c848c8b88\`;`,
+			`ALTER TABLE ${tablePrefix}shared_workflow DROP FOREIGN KEY \`FK_${tablePrefix}b83f8d2530884b66a9c848c8b88\`;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_workflow ADD CONSTRAINT \`fk_shared_workflow_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
+			`ALTER TABLE ${tablePrefix}shared_workflow ADD CONSTRAINT \`fk_${tablePrefix}shared_workflow_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}shared_workflow DROP COLUMN \`tmp_workflowId\`;`,
@@ -100,13 +100,13 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`UPDATE ${tablePrefix}workflow_statistics SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`idx_workflow_statistics_workflow_id\` ON ${tablePrefix}workflow_statistics (\`workflowId\`);`,
+			`CREATE INDEX \`idx_${tablePrefix}workflow_statistics_workflow_id\` ON ${tablePrefix}workflow_statistics (\`workflowId\`);`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_statistics DROP FOREIGN KEY \`workflow_statistics_ibfk_1\`;`,
+			`ALTER TABLE ${tablePrefix}workflow_statistics DROP FOREIGN KEY \`${tablePrefix}workflow_statistics_ibfk_1\`;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_statistics ADD CONSTRAINT \`fk_workflow_statistics_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
+			`ALTER TABLE ${tablePrefix}workflow_statistics ADD CONSTRAINT \`fk_${tablePrefix}workflow_statistics_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_statistics DROP PRIMARY KEY, ADD PRIMARY KEY (\`workflowId\`, \`name\`);`,
@@ -128,7 +128,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN \`tmp_workflowId\`;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}webhook_entity ADD CONSTRAINT \`fk_webhook_entity_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
+			`ALTER TABLE ${tablePrefix}webhook_entity ADD CONSTRAINT \`fk_${tablePrefix}webhook_entity_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity CHANGE workflowId tmp_workflowId int NULL;`,
@@ -141,16 +141,16 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`UPDATE ${tablePrefix}execution_entity SET \`workflowId\` = CONVERT(\`tmp_workflowId\`, CHAR);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`idx_execution_entity_workflow_id_id\` ON ${tablePrefix}execution_entity (\`workflowId\`,\`id\`);`,
+			`CREATE INDEX \`idx_${tablePrefix}execution_entity_workflow_id_id\` ON ${tablePrefix}execution_entity (\`workflowId\`,\`id\`);`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}execution_entity DROP FOREIGN KEY \`FK_execution_entity_workflowId\`;`,
+			`ALTER TABLE ${tablePrefix}execution_entity DROP FOREIGN KEY \`FK_${tablePrefix}execution_entity_workflowId\`;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}execution_entity ADD CONSTRAINT \`fk_execution_entity_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
+			`ALTER TABLE ${tablePrefix}execution_entity ADD CONSTRAINT \`fk_${tablePrefix}execution_entity_workflow_id\` FOREIGN KEY (\`workflowId\`) REFERENCES ${tablePrefix}workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
-			`DROP INDEX \`IDX_81fc04c8a17de15835713505e4\` ON ${tablePrefix}execution_entity;`,
+			`DROP INDEX \`IDX_${tablePrefix}81fc04c8a17de15835713505e4\` ON ${tablePrefix}execution_entity;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity DROP COLUMN \`tmp_workflowId\`;`,
@@ -163,7 +163,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}workflow_entity DROP PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
 		);
 		await queryRunner.query(
-			`DROP INDEX \`TMP_idx_workflow_entity_id\` ON ${tablePrefix}workflow_entity;`,
+			`DROP INDEX \`TMP_idx_${tablePrefix}workflow_entity_id\` ON ${tablePrefix}workflow_entity;`,
 		);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN tmp_id;`);
 
@@ -173,7 +173,9 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}tag_entity DROP PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
 		);
-		await queryRunner.query(`DROP INDEX \`TMP_idx_tag_entity_id\` ON ${tablePrefix}tag_entity;`);
+		await queryRunner.query(
+			`DROP INDEX \`TMP_idx_${tablePrefix}tag_entity_id\` ON ${tablePrefix}tag_entity;`,
+		);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}tag_entity DROP COLUMN tmp_id;`);
 
 		await queryRunner.query(
@@ -186,7 +188,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`UPDATE ${tablePrefix}credentials_entity SET id = CONVERT(tmp_id, CHAR);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_credentials_entity_id\` ON ${tablePrefix}credentials_entity (\`id\`);`,
+			`CREATE INDEX \`TMP_idx_${tablePrefix}credentials_entity_id\` ON ${tablePrefix}credentials_entity (\`id\`);`,
 		);
 
 		await queryRunner.query(
@@ -199,13 +201,13 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`UPDATE ${tablePrefix}shared_credentials SET credentialsId = CONVERT(tmp_credentialsId, CHAR);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`idx_shared_credentials_id\` ON ${tablePrefix}shared_credentials (\`credentialsId\`);`,
+			`CREATE INDEX \`idx_${tablePrefix}shared_credentials_id\` ON ${tablePrefix}shared_credentials (\`credentialsId\`);`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_credentials DROP FOREIGN KEY \`FK_68661def1d4bcf2451ac8dbd949\`;`,
+			`ALTER TABLE ${tablePrefix}shared_credentials DROP FOREIGN KEY \`FK_${tablePrefix}68661def1d4bcf2451ac8dbd949\`;`,
 		);
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}shared_credentials ADD CONSTRAINT \`fk_shared_credentials_credentials_id\` FOREIGN KEY (\`credentialsId\`) REFERENCES credentials_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
+			`ALTER TABLE ${tablePrefix}shared_credentials ADD CONSTRAINT \`fk_${tablePrefix}shared_credentials_credentials_id\` FOREIGN KEY (\`credentialsId\`) REFERENCES ${tablePrefix}credentials_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}shared_credentials MODIFY COLUMN tmp_credentialsId INT NOT NULL;`,
@@ -224,7 +226,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`ALTER TABLE ${tablePrefix}credentials_entity DROP PRIMARY KEY, ADD PRIMARY KEY (\`id\`);`,
 		);
 		await queryRunner.query(
-			`DROP INDEX \`TMP_idx_credentials_entity_id\` ON ${tablePrefix}credentials_entity;`,
+			`DROP INDEX \`TMP_idx_${tablePrefix}credentials_entity_id\` ON ${tablePrefix}credentials_entity;`,
 		);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}credentials_entity DROP COLUMN tmp_id;`);
 
@@ -238,7 +240,7 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 			`UPDATE ${tablePrefix}variables SET \`id\` = CONVERT(\`tmp_id\`, CHAR);`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX \`TMP_idx_variables_id\` ON ${tablePrefix}variables (\`id\`);`,
+			`CREATE INDEX \`TMP_idx_${tablePrefix}variables_id\` ON ${tablePrefix}variables (\`id\`);`,
 		);
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}variables CHANGE \`tmp_id\` \`tmp_id\` int NOT NULL;`,
