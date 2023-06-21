@@ -9,7 +9,7 @@ export class MigrateIntegerKeysToString1690000000002 implements ReversibleMigrat
 		await queryRunner.query(`
 CREATE TABLE "${tablePrefix}TMP_workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36), "triggerCount" integer NOT NULL DEFAULT 0);`);
 		await queryRunner.query(
-			`INSERT INTO "${tablePrefix}TMP_workflow_entity" SELECT * FROM "${tablePrefix}workflow_entity";`,
+			`INSERT INTO "${tablePrefix}TMP_workflow_entity" (id, name, active, nodes, connections, createdAt, updatedAt, settings, staticData, pinData, triggerCount, versionId) SELECT id, name, active, nodes, connections, createdAt, updatedAt, settings, staticData, pinData, triggerCount, versionId FROM "${tablePrefix}workflow_entity";`,
 		);
 		await queryRunner.query('DROP TABLE "workflow_entity";');
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}TMP_workflow_entity" RENAME TO "${tablePrefix}workflow_entity";
