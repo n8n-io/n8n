@@ -66,6 +66,28 @@ describe('Workflow Actions', () => {
 			.should('eq', NEW_WORKFLOW_NAME);
 	});
 
+	it('should not save workflow if canvas is loading', () => {
+		let interceptCalledCount = 0;
+
+    // There's no way in Cypress to check if intercept was not called
+		// so we'll count the number of times it was called
+    cy.intercept('PATCH', '/rest/workflows/*', () => {
+      interceptCalledCount++;
+    });
+
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		cy.get('body').type('{meta}', { release: false }).type('s');
+		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
+		cy.reload();
+		cy.get('.el-loading-mask').should('exist');
+		cy.get('body').type('{meta}', { release: false }).type('s');
+		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		cy.get('body').type('{meta}', { release: false }).type('s');
+		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(2));
+	})
 	it('should copy nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
