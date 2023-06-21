@@ -648,38 +648,6 @@ export default defineComponent({
 			NODE_CREATOR_OPEN_SOURCES,
 		};
 	},
-	beforeDestroy() {
-		this.resetWorkspace();
-		// Make sure the event listeners get removed again else we
-		// could add up with them registered multiple times
-		window.removeEventListener('pageshow', this.onPageShow);
-		document.removeEventListener('keydown', this.keyDown);
-		document.removeEventListener('keyup', this.keyUp);
-		this.unregisterCustomAction('showNodeCreator');
-
-		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
-		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
-		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-
-		// TODO: Handle this properly when user just switches tabs between the editor and executions
-		//this.uiStore.stateIsDirty = false;
-		//this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-		this.unbindCanvasEvents();
-		this.instance.unbind();
-		this.instance.destroy();
-
-		historyBus.off('nodeMove', this.onMoveNode);
-		historyBus.off('revertAddNode', this.onRevertAddNode);
-		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
-		historyBus.off('revertAddConnection', this.onRevertAddConnection);
-		historyBus.off('revertRemoveConnection', this.onRevertRemoveConnection);
-		historyBus.off('revertRenameNode', this.onRevertNameChange);
-		historyBus.off('enableNodeToggle', this.onRevertEnableToggle);
-
-		dataPinningEventBus.off('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
-	},
 	methods: {
 		showTriggerMissingToltip(isVisible: boolean) {
 			this.showTriggerMissingTooltip = isVisible;
@@ -3807,15 +3775,14 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
-		console.log('NodeView mounted');
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		}
 		this.uiStore.addFirstStepOnLoad = false;
-		window.addEventListener('pageshow', this.onPageShow);
 		document.addEventListener('keydown', this.keyDown);
 		document.addEventListener('keyup', this.keyUp);
+		window.addEventListener('pageshow', this.onPageShow);
 
 		nodeViewEventBus.on('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.on('importWorkflowData', this.onImportWorkflowDataEvent);
@@ -3922,6 +3889,38 @@ export default defineComponent({
 				}, promptTimeout);
 			}
 		}
+	},
+	beforeDestroy() {
+		this.resetWorkspace();
+		// Make sure the event listeners get removed again else we
+		// could add up with them registered multiple times
+		window.removeEventListener('pageshow', this.onPageShow);
+		document.removeEventListener('keydown', this.keyDown);
+		document.removeEventListener('keyup', this.keyUp);
+		this.unregisterCustomAction('showNodeCreator');
+
+		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
+		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
+		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
+		// TODO: Handle this properly when user just switches tabs between the editor and executions
+		//this.uiStore.stateIsDirty = false;
+		//this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		this.unbindCanvasEvents();
+		this.instance.unbind();
+		this.instance.destroy();
+
+		historyBus.off('nodeMove', this.onMoveNode);
+		historyBus.off('revertAddNode', this.onRevertAddNode);
+		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.off('revertAddConnection', this.onRevertAddConnection);
+		historyBus.off('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.off('revertRenameNode', this.onRevertNameChange);
+		historyBus.off('enableNodeToggle', this.onRevertEnableToggle);
+
+		dataPinningEventBus.off('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
 });
 </script>
