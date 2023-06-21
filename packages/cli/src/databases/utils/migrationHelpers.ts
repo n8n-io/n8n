@@ -67,8 +67,14 @@ export const wrapMigration = (migration: Migration) => {
 	const dbType = config.getEnv('database.type');
 	const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
 	const tablePrefix = config.getEnv('database.tablePrefix');
+
+	const schemaPrefix =
+		config.getEnv('database.type') === 'postgresdb'
+			? config.getEnv('database.postgresdb.schema')
+			: '';
+
 	const migrationName = migration.name;
-	const context = { tablePrefix, dbType, dbName, migrationName };
+	const context = { tablePrefix, dbType, dbName, migrationName, schemaPrefix };
 
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {

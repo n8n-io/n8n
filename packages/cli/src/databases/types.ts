@@ -10,6 +10,7 @@ export interface MigrationContext {
 	dbType: DatabaseType;
 	dbName: string;
 	migrationName: string;
+	schemaPrefix?: string;
 }
 
 type MigrationFn = (ctx: MigrationContext) => Promise<void>;

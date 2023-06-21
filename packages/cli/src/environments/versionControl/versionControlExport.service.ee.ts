@@ -29,7 +29,7 @@ import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
 import { TagEntity } from '@/databases/entities/TagEntity';
 import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
-import without from 'lodash.without';
+import without from 'lodash/without';
 import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
 import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
 import { In } from 'typeorm';

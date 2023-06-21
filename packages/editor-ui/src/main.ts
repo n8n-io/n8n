@@ -2,12 +2,11 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue';
 
-import './plugins';
 import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
-import './n8n-theme.scss';
 
+import './n8n-theme.scss';
 import './styles/autocomplete-theme.scss';
 
 import '@fontsource/open-sans/latin-400.css';
@@ -17,19 +16,25 @@ import '@fontsource/open-sans/latin-700.css';
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from '@/utils';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
+import { GlobalComponentsPlugin } from './plugins/components';
+import { GlobalDirectivesPlugin } from './plugins/directives';
+import { FontAwesomePlugin } from './plugins/icons';
 
+import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
-
 import { useWebhooksStore } from '@/stores';
 
 Vue.config.productionTip = false;
 
 Vue.use(TelemetryPlugin);
-Vue.use((vue) => I18nPlugin(vue));
 Vue.use(PiniaVuePlugin);
+
+Vue.use(I18nPlugin);
+Vue.use(FontAwesomePlugin);
+Vue.use(GlobalComponentsPlugin);
+Vue.use(GlobalDirectivesPlugin);
 
 const pinia = createPinia();
 

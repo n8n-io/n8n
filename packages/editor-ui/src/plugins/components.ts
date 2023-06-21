@@ -1,5 +1,4 @@
-import Vue from 'vue';
-import Fragment from 'vue-fragment';
+import type { PluginObject } from 'vue';
 import VueAgile from 'vue-agile';
 
 import 'regenerator-runtime/runtime';
@@ -10,24 +9,23 @@ import { N8nPlugin } from 'n8n-design-system';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import { useMessage } from '@/composables/useMessage';
 
-Vue.use(Fragment.Plugin);
-Vue.use(VueAgile);
+export const GlobalComponentsPlugin: PluginObject<{}> = {
+	install(app) {
+		const messageService = useMessage();
 
-Vue.use(ElementUI);
-Vue.use(N8nPlugin);
+		app.component('enterprise-edition', EnterpriseEdition);
 
-Vue.component('enterprise-edition', EnterpriseEdition);
+		app.use(VueAgile);
+		app.use(ElementUI);
+		app.use(N8nPlugin);
+		app.use(Loading.directive);
 
-Vue.use(Loading.directive);
-
-Vue.prototype.$loading = Loading.service;
-Vue.prototype.$msgbox = MessageBox;
-
-const messageService = useMessage();
-
-Vue.prototype.$alert = messageService.alert;
-Vue.prototype.$confirm = messageService.confirm;
-Vue.prototype.$prompt = messageService.prompt;
-Vue.prototype.$message = messageService.message;
-
-Vue.prototype.$notify = Notification;
+		app.prototype.$loading = Loading.service;
+		app.prototype.$msgbox = MessageBox;
+		app.prototype.$alert = messageService.alert;
+		app.prototype.$confirm = messageService.confirm;
+		app.prototype.$prompt = messageService.prompt;
+		app.prototype.$message = messageService.message;
+		app.prototype.$notify = Notification;
+	},
+};
