@@ -4,6 +4,7 @@
 		@observed="onObserved"
 		class="tags-container"
 		:enabled="responsive"
+		:event-bus="intersectionEventBus"
 	>
 		<template>
 			<span class="tags">
@@ -26,6 +27,7 @@
 						:class="{ hidden: tag.hidden }"
 						:data-id="tag.id"
 						:enabled="responsive"
+						:event-bus="intersectionEventBus"
 						v-else
 					>
 						<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
@@ -46,6 +48,7 @@ import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
@@ -62,6 +65,7 @@ export default defineComponent({
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],
 	data() {
 		return {
+			intersectionEventBus: createEventBus(),
 			visibility: {} as { [id: string]: boolean },
 		};
 	},
