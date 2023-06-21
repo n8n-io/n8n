@@ -6,7 +6,7 @@ import type { ITaskData } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';

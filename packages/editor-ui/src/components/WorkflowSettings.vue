@@ -337,7 +337,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
@@ -367,7 +366,7 @@ import {
 	useRootStore,
 	useWorkflowsEEStore,
 	useUsersStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores';
 import { createEventBus } from 'n8n-design-system';
 
@@ -440,7 +439,7 @@ export default defineComponent({
 			useSettingsStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
@@ -465,7 +464,7 @@ export default defineComponent({
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
 		readOnlyEnv(): boolean {
-			return this.versionControlStore.preferences.branchReadOnly;
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	async mounted() {
@@ -537,7 +536,7 @@ export default defineComponent({
 			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
 
-		Vue.set(this, 'workflowSettings', workflowSettings);
+		this.workflowSettings = workflowSettings;
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
@@ -752,7 +751,7 @@ export default defineComponent({
 			}
 		},
 		async loadWorkflows() {
-			const workflows = await this.workflowsStore.fetchAllWorkflows();
+			const workflows = (await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;
@@ -763,13 +762,12 @@ export default defineComponent({
 				return 0;
 			});
 
-			// @ts-ignore
 			workflows.unshift({
 				id: undefined as unknown as string,
 				name: this.$locale.baseText('workflowSettings.noWorkflow'),
-			});
+			} as IWorkflowShortResponse);
 
-			Vue.set(this, 'workflows', workflows);
+			this.workflows = workflows;
 		},
 		async saveSettings() {
 			// Set that the active state should be changed

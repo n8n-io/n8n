@@ -1763,6 +1763,23 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 }
 
+export interface WorkflowTestData {
+	description: string;
+	input: {
+		workflowData: {
+			nodes: INode[];
+			connections: IConnections;
+			settings?: IWorkflowSettings;
+		};
+	};
+	output: {
+		nodeExecutionOrder?: string[];
+		nodeData: {
+			[key: string]: any[][];
+		};
+	};
+}
+
 export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
 
 export interface ILogger {
@@ -1890,11 +1907,12 @@ export interface IConnectedNode {
 }
 
 export const enum OAuth2GrantType {
+	pkce = 'pkce',
 	authorizationCode = 'authorizationCode',
 	clientCredentials = 'clientCredentials',
 }
 export interface IOAuth2Credentials {
-	grantType: 'authorizationCode' | 'clientCredentials';
+	grantType: 'authorizationCode' | 'clientCredentials' | 'pkce';
 	clientId: string;
 	clientSecret: string;
 	accessTokenUrl: string;
@@ -2111,7 +2129,8 @@ export interface IN8nUISettings {
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 		variables: boolean;
-		versionControl: boolean;
+		sourceControl: boolean;
+		auditLogs: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

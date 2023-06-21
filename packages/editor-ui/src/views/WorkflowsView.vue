@@ -105,7 +105,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -131,7 +131,7 @@ const WorkflowsView = defineComponent({
 				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
-			versionControlStoreUnsubscribe: () => {},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -141,7 +141,7 @@ const WorkflowsView = defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 			useCredentialsStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
@@ -169,7 +169,7 @@ const WorkflowsView = defineComponent({
 			];
 		},
 		readOnlyEnv(): boolean {
-			return this.versionControlStore.preferences.branchReadOnly;
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {
@@ -229,7 +229,7 @@ const WorkflowsView = defineComponent({
 	mounted() {
 		void this.usersStore.showPersonalizationSurvey();
 
-		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
 			if (name === 'pullWorkfolder' && after) {
 				after(() => {
 					void this.initialize();
@@ -238,7 +238,7 @@ const WorkflowsView = defineComponent({
 		});
 	},
 	beforeUnmount() {
-		this.versionControlStoreUnsubscribe();
+		this.sourceControlStoreUnsubscribe();
 	},
 });
 

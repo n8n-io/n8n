@@ -10,7 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { CronJob } from 'cron';
 import moment from 'moment';
 import type { IRecurencyRule } from './SchedulerInterface';
-import { recurencyCheck } from './GenericFunctions';
+import { convertToUnixFormat, recurencyCheck } from './GenericFunctions';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +18,7 @@ export class ScheduleTrigger implements INodeType {
 		name: 'scheduleTrigger',
 		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -415,6 +415,7 @@ export class ScheduleTrigger implements INodeType {
 		const rule = this.getNodeParameter('rule', []) as IDataObject;
 		const interval = rule.interval as IDataObject[];
 		const timezone = this.getTimezone();
+		const version = this.getNode().typeVersion;
 		const cronJobs: CronJob[] = [];
 		const intervalArr: NodeJS.Timeout[] = [];
 		const staticData = this.getWorkflowStaticData('node') as {
@@ -450,6 +451,10 @@ export class ScheduleTrigger implements INodeType {
 		for (let i = 0; i < interval.length; i++) {
 			let intervalValue = 1000;
 			if (interval[i].field === 'cronExpression') {
+				if (version > 1) {
+					// ! Remove this part if we use a cron library that follows unix cron expression
+					convertToUnixFormat(interval[i]);
+				}
 				const cronExpression = interval[i].expression as string;
 				try {
 					const cronJob = new CronJob(

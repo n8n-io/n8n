@@ -8,3 +8,7 @@ WorkflowId:
   $ref: '../../../handlers/workflows/spec/schemas/parameters/workflowId.yml'
 IncludeData:
   $ref: '../../../handlers/executions/spec/schemas/parameters/includeData.yml'
+UserIdentifier:
+  $ref: '../../../handlers/users/spec/schemas/parameters/userIdentifier.yml'
+IncludeRole:
+  $ref: '../../../handlers/users/spec/schemas/parameters/includeRole.yml'

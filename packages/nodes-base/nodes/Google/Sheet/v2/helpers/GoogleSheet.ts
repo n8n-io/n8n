@@ -7,7 +7,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { apiRequest } from '../transport';
 import { utils as xlsxUtils } from 'xlsx';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import type {
 	ILookupValues,
 	ISheetUpdateData,
