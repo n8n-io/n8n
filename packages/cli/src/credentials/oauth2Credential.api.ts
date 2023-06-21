@@ -2,6 +2,7 @@ import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
+import pkceChallenge from 'pkce-challenge';
 import get from 'lodash/get';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
@@ -142,6 +143,16 @@ oauth2CredentialController.get(
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
 
+		if (oauthCredentials.grantType === 'pkce') {
+			const { code_verifier, code_challenge } = pkceChallenge();
+			oAuthOptions.query = {
+				...oAuthOptions.query,
+				code_challenge,
+				code_challenge_method: 'S256',
+			};
+			decryptedDataOriginal.codeVerifier = code_verifier;
+		}
+
 		credentials.setData(decryptedDataOriginal, encryptionKey);
 		const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
@@ -189,7 +200,6 @@ oauth2CredentialController.get(
 		try {
 			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: stateEncoded } = req.query;
-
 			if (!code || !stateEncoded) {
 				return renderCallbackError(
 					res,
@@ -262,7 +272,11 @@ oauth2CredentialController.get(
 				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
-			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
+			if (oauthCredentials.grantType === 'pkce') {
+				options = {
+					body: { code_verifier: decryptedDataOriginal.codeVerifier },
+				};
+			} else if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
 						client_id: get(oauthCredentials, 'clientId') as string,
