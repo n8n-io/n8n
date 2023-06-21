@@ -73,7 +73,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useTemplatesStore),
-		workflow(): null | ITemplatesWorkflow | ITemplatesWorkflowFull {
+		workflow(): undefined | ITemplatesWorkflow {
 			return this.template?.workflow;
 		},
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
