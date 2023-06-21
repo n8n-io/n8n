@@ -21,6 +21,7 @@ export class CredentialsFlow {
 	 */
 	async getToken(opts?: Partial<ClientOAuth2Options>): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
+
 		expects(options, 'clientId', 'clientSecret', 'accessTokenUri');
 
 		const body: CredentialsFlowBody = {

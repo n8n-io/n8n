@@ -27,6 +27,7 @@ export class CodeFlow {
 
 		// Check the required parameters are set.
 		expects(options, 'clientId', 'authorizationUri');
+
 		const query: Record<string, string | undefined> = {
 			client_id: options.clientId,
 			redirect_uri: options.redirectUri,
@@ -53,6 +54,7 @@ export class CodeFlow {
 		opts?: Partial<ClientOAuth2Options>,
 	): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
+
 		expects(options, 'clientId', 'accessTokenUri');
 
 		const url = uri instanceof URL ? uri : new URL(uri, DEFAULT_URL_BASE);
