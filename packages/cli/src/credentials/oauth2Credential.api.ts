@@ -278,10 +278,8 @@ oauth2CredentialController.get(
 						...(oauthCredentials.grantType === 'pkce' && {
 							code_verifier: decryptedDataOriginal.codeVerifier,
 						}),
-						...(oauthCredentials.grantType === 'authorizationCode' && {
-							client_id: get(oauthCredentials, 'clientId') as string,
-							client_secret: get(oauthCredentials, 'clientSecret', '') as string,
-						}),
+						client_id: get(oauthCredentials, 'clientId') as string,
+						client_secret: get(oauthCredentials, 'clientSecret', '') as string,
 					},
 				};
 				// @ts-ignore
