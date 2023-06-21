@@ -3,6 +3,7 @@ import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
 import pkceChallenge from 'pkce-challenge';
+import * as qs from 'querystring';
 import get from 'lodash/get';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
@@ -121,15 +122,21 @@ oauth2CredentialController.get(
 		};
 		const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
+		const scopes = get(oauthCredentials, 'scope', 'openid') as string;
 		const oAuthOptions: ClientOAuth2Options = {
 			clientId: get(oauthCredentials, 'clientId') as string,
 			clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 			accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 			authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
 			redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
-			scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
+			scopes: split(scopes, ','),
+			scopesSeparator: scopes.includes(',') ? ',' : ' ',
 			state: stateEncodedStr,
 		};
+		const authQueryParameters = get(oauthCredentials, 'authQueryParameters', '') as string;
+		if (authQueryParameters) {
+			oAuthOptions.query = qs.parse(authQueryParameters);
+		}
 
 		await Container.get(ExternalHooks).run('oauth2.authenticate', [oAuthOptions]);
 
@@ -162,26 +169,12 @@ oauth2CredentialController.get(
 		// Update the credentials in DB
 		await Db.collections.Credentials.update(req.query.id, newCredentialsData);
 
-		const authQueryParameters = get(oauthCredentials, 'authQueryParameters', '') as string;
-		let returnUri = oAuthObj.code.getUri();
-
-		// if scope uses comma, change it as the library always return then with spaces
-		if ((get(oauthCredentials, 'scope') as string).includes(',')) {
-			const data = returnUri.split('?')[1];
-			const scope = get(oauthCredentials, 'scope') as string;
-			const percentEncoded = [data, `scope=${encodeURIComponent(scope)}`].join('&');
-			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${percentEncoded}`;
-		}
-
-		if (authQueryParameters) {
-			returnUri += `&${authQueryParameters}`;
-		}
-
-		LoggerProxy.verbose('OAuth2 authentication successful for new credential', {
+		LoggerProxy.verbose('OAuth2 authorization url created for credential', {
 			userId: req.user.id,
 			credentialId,
 		});
-		return returnUri;
+
+		return oAuthObj.code.getUri();
 	}),
 );
 
@@ -263,13 +256,15 @@ oauth2CredentialController.get(
 
 			let options: Partial<ClientOAuth2Options> = {};
 
+			const scopes = get(oauthCredentials, 'scope', 'openid') as string;
 			const oAuth2Parameters: ClientOAuth2Options = {
 				clientId: get(oauthCredentials, 'clientId') as string,
 				clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
-				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
+				scopes: split(scopes, ','),
+				scopesSeparator: scopes.includes(',') ? ',' : ' ',
 			};
 
 			if (oauthCredentials.grantType === 'pkce') {
