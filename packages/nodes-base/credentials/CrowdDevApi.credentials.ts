@@ -16,7 +16,7 @@ export class CrowdDevApi implements ICredentialType {
 		{
 			displayName: 'URL',
 			name: 'url',
-			type: 'hidden',
+			type: 'string',
 			default: 'https://app.crowd.dev',
 		},
 		{
@@ -60,7 +60,7 @@ export class CrowdDevApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			method: 'POST',
-			baseURL: '={{$credentials?.url + "/api/tenant/" + $credentials?.tenantId}}',
+			baseURL: '={{$credentials.url.replace(/\\/$/, "") + "/api/tenant/" + $credentials.tenantId}}',
 			url: '/member/query',
 			skipSslCertificateValidation: '={{ $credentials.allowUnauthorizedCerts }}',
 			body: {
