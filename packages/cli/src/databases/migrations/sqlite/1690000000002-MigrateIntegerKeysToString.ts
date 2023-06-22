@@ -1,8 +1,8 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class MigrateIntegerKeysToString1690000000002 implements ReversibleMigration {
 	transaction = false as const;
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
+export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query('PRAGMA foreign_keys=OFF');
 		await queryRunner.startTransaction();
@@ -179,7 +179,4 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 		await queryRunner.commitTransaction();
 		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
-
-	// eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
-	async down({ queryRunner, tablePrefix }: MigrationContext) {}
 }
