@@ -26,8 +26,8 @@
 				<el-switch
 					class="mr-s"
 					:disabled="!isInstanceOwner"
-					:value="nodeParameters.enabled"
-					@change="onEnabledSwitched($event, destination.id)"
+					:modelValue="nodeParameters.enabled"
+					@update:modelValue="onEnabledSwitched($event, destination.id)"
 					:title="
 						nodeParameters.enabled
 							? $locale.baseText('workflowActivator.deactivateWorkflow')

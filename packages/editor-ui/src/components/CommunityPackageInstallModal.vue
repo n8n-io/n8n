@@ -59,7 +59,7 @@
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
-					@change="onCheckboxChecked"
+					@update:modelValue="onCheckboxChecked"
 				>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text

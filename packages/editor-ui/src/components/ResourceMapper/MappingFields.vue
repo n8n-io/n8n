@@ -355,7 +355,7 @@ defineExpose({
 				"
 				size="small"
 				:disabled="addFieldOptions.length == 0"
-				@change="addField"
+				@update:modelValue="addField"
 			>
 				<n8n-option
 					v-for="item in addFieldOptions"

@@ -9,7 +9,7 @@
 						v-else
 						class="mr-xl"
 						v-model="autoRefresh"
-						@change="handleAutoRefreshToggle"
+						@update:modelValue="handleAutoRefreshToggle"
 						data-test-id="execution-auto-refresh-checkbox"
 					>
 						{{ $locale.baseText('executionsList.autoRefresh') }}
@@ -31,8 +31,8 @@
 						interpolate: { executionNum: finishedExecutionsCount },
 					})
 				"
-				:value="allExistingSelected"
-				@change="handleCheckAllExistingChange"
+				:modelValue="allExistingSelected"
+				@update:modelValue="handleCheckAllExistingChange"
 				data-test-id="select-all-executions-checkbox"
 			/>
 
@@ -46,8 +46,8 @@
 					<tr>
 						<th>
 							<el-checkbox
-								:value="allVisibleSelected"
-								@change="handleCheckAllVisibleChange"
+								:modelValue="allVisibleSelected"
+								@update:modelValue="handleCheckAllVisibleChange"
 								:disabled="finishedExecutionsCount < 1"
 								label=""
 								data-test-id="select-visible-executions-checkbox"
@@ -72,8 +72,8 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:value="selectedItems[execution.id] || allExistingSelected"
-								@change="handleCheckboxChanged(execution.id)"
+								:modelValue="selectedItems[execution.id] || allExistingSelected"
+								@update:modelValue="handleCheckboxChanged(execution.id)"
 								label=""
 								data-test-id="select-execution-checkbox"
 							/>

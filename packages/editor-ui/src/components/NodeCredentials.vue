@@ -30,7 +30,7 @@
 				>
 					<n8n-select
 						:modelValue="getSelectedId(credentialTypeDescription.name)"
-						@change="
+						@update:modelValue="
 							(value) =>
 								onCredentialSelected(
 									credentialTypeDescription.name,

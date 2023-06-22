@@ -49,7 +49,7 @@
 						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
-						@change="onModeSelected"
+						@update:modelValue="onModeSelected"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
 					>

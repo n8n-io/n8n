@@ -96,7 +96,7 @@
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
-					@change="optionSelected"
+					@update:modelValue="optionSelected"
 					filterable
 				>
 					<n8n-option

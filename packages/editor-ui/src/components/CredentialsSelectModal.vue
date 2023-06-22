@@ -25,7 +25,7 @@
 					size="xlarge"
 					ref="select"
 					:modelValue="selected"
-					@change="onSelect"
+					@update:modelValue="onSelect"
 					data-test-id="new-credential-type-select"
 				>
 					<template #prefix>

@@ -20,7 +20,11 @@
 							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</n8n-text>
 					</div>
-					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
+					<el-radio
+						:modelValue="operation"
+						label="transfer"
+						@update:modelValue="() => setOperation('transfer')"
+					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
 						}}</n8n-text>
@@ -36,7 +40,11 @@
 							/>
 						</n8n-input-label>
 					</div>
-					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
+					<el-radio
+						:modelValue="operation"
+						label="delete"
+						@update:modelValue="() => setOperation('delete')"
+					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
 						}}</n8n-text>

@@ -57,7 +57,7 @@
 								:class="$style.roleSelect"
 								modelValue="editor"
 								size="small"
-								@change="onRoleAction(user, $event)"
+								@update:modelValue="onRoleAction(user, $event)"
 							>
 								<n8n-option :label="$locale.baseText('workflows.roles.editor')" value="editor" />
 								<n8n-option :class="$style.roleSelectRemoveOption" value="remove">

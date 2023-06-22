@@ -261,8 +261,8 @@
 							<el-switch
 								ref="inputField"
 								:disabled="readOnlyEnv"
-								:value="workflowSettings.executionTimeout > -1"
-								@change="toggleTimeout"
+								:modelValue="workflowSettings.executionTimeout > -1"
+								@update:modelValue="toggleTimeout"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 							></el-switch>

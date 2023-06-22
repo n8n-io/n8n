@@ -19,8 +19,8 @@
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
-				:value="workflowActive"
-				@change="activeChanged"
+				:modelValue="workflowActive"
+				@update:modelValue="activeChanged"
 				:title="
 					workflowActive
 						? $locale.baseText('workflowActivator.deactivateWorkflow')

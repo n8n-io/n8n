@@ -134,7 +134,7 @@ defineExpose({
 				:modelValue="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"
-				@change="onSelectionChange"
+				@update:modelValue="onSelectionChange"
 			>
 				<n8n-option v-for="field in availableMatchingFields" :key="field.id" :value="field.id">
 					{{ field.displayName }}

@@ -6,7 +6,7 @@
 			:loading="tagsStore.isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
-			@change="onTagsUpdated"
+			@update:modelValue="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
 			filterable

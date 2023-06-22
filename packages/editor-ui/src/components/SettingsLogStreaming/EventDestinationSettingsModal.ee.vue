@@ -85,7 +85,7 @@
 						<n8n-select
 							:modelValue="typeSelectValue"
 							:placeholder="typeSelectPlaceholder"
-							@change="onTypeSelectInput"
+							@update:modelValue="onTypeSelectInput"
 							data-test-id="select-destination-type"
 							name="name"
 							ref="typeSelectRef"
@@ -155,9 +155,8 @@
 								:underline="false"
 							/>
 							<event-selection
-								class=""
 								:destinationId="destination.id"
-								@update:modelValue="onInput"
+								@input="onInput"
 								@change="valueChanged"
 								:readonly="!isInstanceOwner"
 							/>
