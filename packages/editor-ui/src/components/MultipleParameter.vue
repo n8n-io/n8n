@@ -209,6 +209,32 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+.duplicate-parameter {
+	:deep(.button) {
+		--button-background-color: var(--color-background-base);
+		--button-border-color: var(--color-foreground-base);
+	}
+
+	:deep(.duplicate-parameter-item) {
+		position: relative;
+
+		.multi > .delete-item {
+			top: 0.1em;
+		}
+	}
+
+	:deep(.duplicate-parameter-input-item) {
+		margin: 0.5em 0 0.25em 2em;
+	}
+
+	:deep(.duplicate-parameter-item + .duplicate-parameter-item) {
+		.collection-parameter-wrapper {
+			border-top: 1px dashed #999;
+			margin-top: var(--spacing-xs);
+		}
+	}
+}
+
 .duplicate-parameter-item {
 	~ .add-item-wrapper {
 		margin-top: var(--spacing-xs);
@@ -227,30 +253,6 @@ export default defineComponent({
 
 	:hover {
 		color: #ff0000;
-	}
-}
-
-:deep(.button) {
-	--button-background-color: var(--color-background-base);
-	--button-border-color: var(--color-foreground-base);
-}
-
-:deep(.duplicate-parameter-item) {
-	position: relative;
-
-	.multi > .delete-item {
-		top: 0.1em;
-	}
-}
-
-:deep(.duplicate-parameter-input-item) {
-	margin: 0.5em 0 0.25em 2em;
-}
-
-:deep(.duplicate-parameter-item + .duplicate-parameter-item) {
-	.collection-parameter-wrapper {
-		border-top: 1px dashed #999;
-		margin-top: var(--spacing-xs);
 	}
 }
 

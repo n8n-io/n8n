@@ -281,17 +281,15 @@ onMounted(() => {
 					:expanded="!isTriggerRootView || parsedTriggerActions.length === 0"
 					@selected="onSelected"
 				>
-					<template>
-						<n8n-callout
-							theme="info"
-							iconless
-							v-if="!userActivated && isTriggerRootView"
-							slim
-							data-test-id="actions-panel-activation-callout"
-						>
-							<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
-						</n8n-callout>
-					</template>
+					<n8n-callout
+						theme="info"
+						iconless
+						v-if="!userActivated && isTriggerRootView"
+						slim
+						data-test-id="actions-panel-activation-callout"
+					>
+						<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
+					</n8n-callout>
 					<!-- Empty state -->
 					<template #empty>
 						<n8n-info-tip theme="info" type="note" v-if="!search" :class="$style.actionsEmpty">

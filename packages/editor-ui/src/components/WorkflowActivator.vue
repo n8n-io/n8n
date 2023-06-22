@@ -154,15 +154,15 @@ export default defineComponent({
 	display: inline-flex;
 	flex-wrap: nowrap;
 	align-items: center;
+
+	:deep(.el-loading-spinner) {
+		margin-top: -10px;
+	}
 }
 
 .could-not-be-started {
 	display: inline-block;
 	color: #ff4949;
 	margin-left: 0.5em;
-}
-
-:deep(.el-loading-spinner) {
-	margin-top: -10px;
 }
 </style>

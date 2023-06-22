@@ -20,7 +20,7 @@
 					iconSize="small"
 					:actions="actions"
 					:iconOrientation="iconOrientation"
-					@action="(action) => $emit('optionSelected', action)"
+					@action="(action) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
 			</div>
@@ -55,7 +55,7 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		value: {
+		modelValue: {
 			type: [Object, String, Number, Boolean, Array] as PropType<NodeParameterValueType>,
 		},
 		showOptions: {
@@ -88,10 +88,10 @@ export default defineComponent({
 	},
 	computed: {
 		isDefault(): boolean {
-			return this.parameter.default === this.value;
+			return this.parameter.default === this.modelValue;
 		},
 		isValueExpression(): boolean {
-			return isValueExpression(this.parameter, this.value);
+			return isValueExpression(this.parameter, this.modelValue);
 		},
 		isHtmlEditor(): boolean {
 			return this.getArgument('editor') === 'htmlEditor';
@@ -153,8 +153,8 @@ export default defineComponent({
 			if (
 				this.hasRemoteMethod ||
 				(this.parameter.type === 'resourceLocator' &&
-					isResourceLocatorValue(this.value) &&
-					this.value.mode === 'list')
+					isResourceLocatorValue(this.modelValue) &&
+					this.modelValue.mode === 'list')
 			) {
 				return [
 					{
@@ -174,11 +174,14 @@ export default defineComponent({
 		},
 		onViewSelected(selected: string) {
 			if (selected === 'expression') {
-				this.$emit('optionSelected', this.isValueExpression ? 'openExpression' : 'addExpression');
+				this.$emit(
+					'update:modelValue',
+					this.isValueExpression ? 'openExpression' : 'addExpression',
+				);
 			}
 
 			if (selected === 'fixed' && this.isValueExpression) {
-				this.$emit('optionSelected', 'removeExpression');
+				this.$emit('update:modelValue', 'removeExpression');
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {

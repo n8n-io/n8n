@@ -146,24 +146,22 @@
 						</template>
 					</div>
 					<div v-if="activeTab === 'events'" :class="$style.mainContent">
-						<template>
-							<div class="">
-								<n8n-input-label
-									class="mb-m mt-m"
-									:label="$locale.baseText('settings.log-streaming.tab.events.title')"
-									:bold="true"
-									size="medium"
-									:underline="false"
-								/>
-								<event-selection
-									class=""
-									:destinationId="destination.id"
-									@update:modelValue="onInput"
-									@change="valueChanged"
-									:readonly="!isInstanceOwner"
-								/>
-							</div>
-						</template>
+						<div class="">
+							<n8n-input-label
+								class="mb-m mt-m"
+								:label="$locale.baseText('settings.log-streaming.tab.events.title')"
+								:bold="true"
+								size="medium"
+								:underline="false"
+							/>
+							<event-selection
+								class=""
+								:destinationId="destination.id"
+								@update:modelValue="onInput"
+								@change="valueChanged"
+								:readonly="!isInstanceOwner"
+							/>
+						</div>
 					</div>
 				</template>
 			</div>

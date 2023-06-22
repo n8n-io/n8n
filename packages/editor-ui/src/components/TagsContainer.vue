@@ -6,37 +6,35 @@
 		:enabled="responsive"
 		:event-bus="intersectionEventBus"
 	>
-		<template>
-			<span class="tags">
-				<span
-					v-for="tag in tags"
-					:key="tag.id"
-					:class="{ clickable: !tag.hidden }"
-					@click="(e) => onClick(e, tag)"
+		<span class="tags">
+			<span
+				v-for="tag in tags"
+				:key="tag.id"
+				:class="{ clickable: !tag.hidden }"
+				@click="(e) => onClick(e, tag)"
+			>
+				<el-tag
+					:title="tag.title"
+					type="info"
+					size="small"
+					v-if="tag.isCount"
+					class="count-container"
 				>
-					<el-tag
-						:title="tag.title"
-						type="info"
-						size="small"
-						v-if="tag.isCount"
-						class="count-container"
-					>
+					{{ tag.name }}
+				</el-tag>
+				<IntersectionObserved
+					:class="{ hidden: tag.hidden }"
+					:data-id="tag.id"
+					:enabled="responsive"
+					:event-bus="intersectionEventBus"
+					v-else
+				>
+					<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
 						{{ tag.name }}
 					</el-tag>
-					<IntersectionObserved
-						:class="{ hidden: tag.hidden }"
-						:data-id="tag.id"
-						:enabled="responsive"
-						:event-bus="intersectionEventBus"
-						v-else
-					>
-						<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
-							{{ tag.name }}
-						</el-tag>
-					</IntersectionObserved>
-				</span>
+				</IntersectionObserved>
 			</span>
-		</template>
+		</span>
 	</IntersectionObserver>
 </template>
 

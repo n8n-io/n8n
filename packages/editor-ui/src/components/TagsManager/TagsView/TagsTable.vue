@@ -1,5 +1,6 @@
 <template>
 	<el-table
+		class="tags-table"
 		stripe
 		max-height="450"
 		ref="table"
@@ -214,6 +215,12 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+.tags-table {
+	:deep(tr.disabled) {
+		pointer-events: none;
+	}
+}
+
 .name {
 	min-height: 45px;
 	display: flex;
@@ -246,10 +253,6 @@ export default defineComponent({
 .ops.main {
 	display: none;
 	margin-left: 2px;
-}
-
-:deep(tr.disabled) {
-	pointer-events: none;
 }
 
 tr:hover .ops:not(.disabled) {

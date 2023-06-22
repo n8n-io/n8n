@@ -1,6 +1,6 @@
 import type { Plugin } from 'vue';
 import axios from 'axios';
-import { createI18n, VueI18n } from 'vue-i18n';
+import { createI18n } from 'vue-i18n';
 import type { INodeTranslationHeaders } from '@/Interface';
 import {
 	deriveMiddleKey,
@@ -19,7 +19,6 @@ export const i18nInstance = createI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
-	silentTranslationWarn: true,
 });
 
 export class I18nClass {

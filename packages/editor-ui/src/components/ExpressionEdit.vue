@@ -1,5 +1,5 @@
 <template>
-	<div v-if="dialogVisible" @keydown.stop>
+	<div class="expression-edit" v-if="dialogVisible" @keydown.stop>
 		<el-dialog
 			:modelValue="dialogVisible"
 			class="expression-dialog classic"
@@ -248,6 +248,28 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+.expression-edit {
+	:deep(.expression-dialog) {
+		.el-dialog__header {
+			padding: 0;
+		}
+		.el-dialog__title {
+			display: none;
+		}
+
+		.el-dialog__body {
+			padding: 0;
+			font-size: var(--font-size-s);
+		}
+
+		.right-side {
+			background-color: var(--color-background-light);
+			border-top-right-radius: 8px;
+			border-bottom-right-radius: 8px;
+		}
+	}
+}
+
 .editor-description {
 	line-height: 1.5;
 	font-weight: bold;
@@ -286,26 +308,6 @@ export default defineComponent({
 
 .expression-result-wrapper {
 	margin-top: 1em;
-}
-
-:deep(.expression-dialog) {
-	.el-dialog__header {
-		padding: 0;
-	}
-	.el-dialog__title {
-		display: none;
-	}
-
-	.el-dialog__body {
-		padding: 0;
-		font-size: var(--font-size-s);
-	}
-
-	.right-side {
-		background-color: var(--color-background-light);
-		border-top-right-radius: 8px;
-		border-bottom-right-radius: 8px;
-	}
 }
 
 .header-side-menu {

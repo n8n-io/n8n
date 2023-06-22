@@ -108,7 +108,7 @@
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
 			:showValidationWarnings="showValidationWarning"
-			@change="onDataChange"
+			@update="onDataChange"
 		/>
 
 		<OauthButton

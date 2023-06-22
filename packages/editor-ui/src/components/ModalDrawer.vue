@@ -10,11 +10,9 @@
 		<template #header>
 			<slot name="header" />
 		</template>
-		<template>
-			<span @keydown.stop>
-				<slot name="content" />
-			</span>
-		</template>
+		<span @keydown.stop>
+			<slot name="content" />
+		</span>
 	</el-drawer>
 </template>
 

@@ -126,7 +126,7 @@ const openPricingPage = () => {
 </script>
 
 <template>
-	<div>
+	<div class="settings-usage-and-plan">
 		<n8n-heading size="2xlarge">{{ locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
 		<n8n-action-box
 			v-if="usageStore.isDesktop"
@@ -321,17 +321,19 @@ div[class*='info'] > span > span:last-child {
 </style>
 
 <style lang="scss" scoped>
-:deep(.el-dialog__wrapper) {
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.settings-usage-and-plan {
+	:deep(.el-dialog__wrapper) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 
-	.el-dialog {
-		margin: 0;
+		.el-dialog {
+			margin: 0;
 
-		.el-dialog__footer {
-			button {
-				margin-left: var(--spacing-xs);
+			.el-dialog__footer {
+				button {
+					margin-left: var(--spacing-xs);
+				}
 			}
 		}
 	}

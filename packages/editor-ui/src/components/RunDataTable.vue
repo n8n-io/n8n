@@ -102,59 +102,57 @@
 						:can-drop="canDrop"
 					/>
 				</template>
-				<template>
-					<tr
-						v-for="(row, index1) in tableData.data"
-						:key="index1"
-						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-						:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+				<tr
+					v-for="(row, index1) in tableData.data"
+					:key="index1"
+					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+				>
+					<td
+						v-for="(data, index2) in row"
+						:key="index2"
+						:data-row="index1"
+						:data-col="index2"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 					>
-						<td
-							v-for="(data, index2) in row"
-							:key="index2"
-							:data-row="index1"
-							:data-col="index2"
-							@mouseenter="onMouseEnterCell"
-							@mouseleave="onMouseLeaveCell"
-							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
+						<span
+							v-if="isSimple(data)"
+							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+							class="ph-no-capture"
+							>{{ getValueToRender(data) }}</span
 						>
-							<span
-								v-if="isSimple(data)"
-								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-								class="ph-no-capture"
-								>{{ getValueToRender(data) }}</span
-							>
-							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
-								<template #label="{ label, path }">
-									<span
-										@mouseenter="() => onMouseEnterKey(path, index2)"
-										@mouseleave="onMouseLeaveKey"
-										:class="{
-											[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
-											[$style.draggingKey]: isDraggingKey(path, index2),
-											[$style.dataKey]: true,
-											[$style.mappable]: mappingEnabled,
-										}"
-										data-target="mappable"
-										:data-name="getCellPathName(path, index2)"
-										:data-value="getCellExpression(path, index2)"
-										:data-depth="path.length"
-										>{{ label || $locale.baseText('runData.unnamedField') }}</span
-									>
-								</template>
-								<template #value="{ value }">
-									<span
-										:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-										class="ph-no-capture"
-										>{{ getValueToRender(value) }}</span
-									>
-								</template>
-							</n8n-tree>
-						</td>
-						<td v-if="columnLimitExceeded"></td>
-						<td :class="$style.tableRightMargin"></td>
-					</tr>
-				</template>
+						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
+							<template #label="{ label, path }">
+								<span
+									@mouseenter="() => onMouseEnterKey(path, index2)"
+									@mouseleave="onMouseLeaveKey"
+									:class="{
+										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
+										[$style.draggingKey]: isDraggingKey(path, index2),
+										[$style.dataKey]: true,
+										[$style.mappable]: mappingEnabled,
+									}"
+									data-target="mappable"
+									:data-name="getCellPathName(path, index2)"
+									:data-value="getCellExpression(path, index2)"
+									:data-depth="path.length"
+									>{{ label || $locale.baseText('runData.unnamedField') }}</span
+								>
+							</template>
+							<template #value="{ value }">
+								<span
+									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+									class="ph-no-capture"
+									>{{ getValueToRender(value) }}</span
+								>
+							</template>
+						</n8n-tree>
+					</td>
+					<td v-if="columnLimitExceeded"></td>
+					<td :class="$style.tableRightMargin"></td>
+				</tr>
 			</draggable>
 		</table>
 	</div>

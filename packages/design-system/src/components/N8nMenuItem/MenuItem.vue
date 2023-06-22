@@ -32,7 +32,7 @@
 				}"
 				data-test-id="menu-item"
 				:index="child.id"
-				@click="onItemClick(child, $event)"
+				@click="onItemClick(child)"
 			>
 				<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
 				<span :class="$style.label">{{ child.label }}</span>
@@ -59,7 +59,7 @@
 				}"
 				data-test-id="menu-item"
 				:index="item.id"
-				@click="onItemClick(item, $event)"
+				@click="onItemClick(item)"
 			>
 				<n8n-icon
 					v-if="item.icon"
@@ -158,7 +158,7 @@ export default defineComponent({
 				return item.id === this.activeTab;
 			}
 		},
-		onItemClick(item: IMenuItem, event: MouseEvent) {
+		onItemClick(item: IMenuItem) {
 			if (item && item.type === 'link' && item.properties) {
 				const href: string = item.properties.href;
 				if (!href) {
@@ -171,7 +171,8 @@ export default defineComponent({
 					window.location.assign(item.properties.href);
 				}
 			}
-			this.$emit('click', event, item.id);
+
+			this.$emit('select', item.id);
 		},
 	},
 });

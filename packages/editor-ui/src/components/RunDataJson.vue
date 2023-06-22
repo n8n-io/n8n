@@ -20,51 +20,47 @@
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
 			</template>
-			<template>
-				<vue-json-pretty
-					:data="jsonData"
-					:deep="10"
-					:showLength="true"
-					:selected-value.sync="selectedJsonPath"
-					rootPath=""
-					selectableType="single"
-					class="json-data"
-				>
-					<template #nodeKey="{ node }">
-						<span
-							data-target="mappable"
-							:data-value="getJsonParameterPath(node.path)"
-							:data-name="node.key"
-							:data-path="node.path"
-							:data-depth="node.level"
-							:class="{
-								[$style.mappable]: mappingEnabled,
-								[$style.dragged]: draggingPath === node.path,
-							}"
-							>"{{ node.key }}"</span
-						>
-					</template>
-					<template #nodeValue="{ node }">
-						<span v-if="isNaN(node.index)" class="ph-no-capture">{{
-							getContent(node.content)
-						}}</span>
-						<span
-							v-else
-							data-target="mappable"
-							:data-value="getJsonParameterPath(node.path)"
-							:data-name="getListItemName(node.path)"
-							:data-path="node.path"
-							:data-depth="node.level"
-							:class="{
-								[$style.mappable]: mappingEnabled,
-								[$style.dragged]: draggingPath === node.path,
-							}"
-							class="ph-no-capture"
-							>{{ getContent(node.content) }}</span
-						>
-					</template>
-				</vue-json-pretty>
-			</template>
+			<vue-json-pretty
+				:data="jsonData"
+				:deep="10"
+				:showLength="true"
+				:selected-value.sync="selectedJsonPath"
+				rootPath=""
+				selectableType="single"
+				class="json-data"
+			>
+				<template #nodeKey="{ node }">
+					<span
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="node.key"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						>"{{ node.key }}"</span
+					>
+				</template>
+				<template #nodeValue="{ node }">
+					<span v-if="isNaN(node.index)" class="ph-no-capture">{{ getContent(node.content) }}</span>
+					<span
+						v-else
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="getListItemName(node.path)"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						class="ph-no-capture"
+						>{{ getContent(node.content) }}</span
+					>
+				</template>
+			</vue-json-pretty>
 		</draggable>
 	</div>
 </template>

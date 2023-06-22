@@ -270,8 +270,10 @@ export default defineComponent({
 </style>
 
 <style lang="scss" scoped>
-:deep(.el-skeleton__item) {
-	height: 60px;
-	border-radius: 0;
+.executions-sidebar {
+	:deep(.el-skeleton__item) {
+		height: 60px;
+		border-radius: 0;
+	}
 }
 </style>

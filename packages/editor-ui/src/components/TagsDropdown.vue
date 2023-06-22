@@ -245,25 +245,22 @@ export default defineComponent({
 	},
 });
 </script>
-
-<style lang="scss" scoped>
-$--max-input-height: 60px;
-
-:deep(.el-select) {
-	.el-select__tags {
-		max-height: $--max-input-height;
-		overflow-y: scroll;
-		overflow-x: hidden;
-	}
-
-	input {
-		max-height: $--max-input-height;
-	}
-}
-</style>
-
 <style lang="scss">
 .tags-container {
+	$--max-input-height: 60px;
+
+	:deep(.el-select) {
+		.el-select__tags {
+			max-height: $--max-input-height;
+			overflow-y: scroll;
+			overflow-x: hidden;
+		}
+
+		input {
+			max-height: $--max-input-height;
+		}
+	}
+
 	.el-tag {
 		padding: 1px var(--spacing-4xs);
 		color: var(--color-text-dark);

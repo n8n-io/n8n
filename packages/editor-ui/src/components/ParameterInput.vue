@@ -141,8 +141,7 @@
 					:rows="getArgument('rows')"
 					:modelValue="displayValue"
 					:disabled="isReadOnly"
-					@update:modelValue="valueChanged"
-					@change="onTextInputChange"
+					@update:modelValue="valueChanged($event) && onTextInputChange($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -225,8 +224,7 @@
 				:disabled="isReadOnly"
 				:title="displayTitle"
 				:placeholder="parameter.placeholder"
-				@change="onTextInputChange"
-				@update:modelValue="valueChanged"
+				@update:modelValue="valueChanged($event) && onTextInputChange($event)"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -1055,7 +1053,7 @@ export default defineComponent({
 				value,
 			};
 
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update:modelValue', parameterData);
 
 			if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
 				this.$telemetry.track('User set node operation or mode', {
@@ -1224,13 +1222,13 @@ export default defineComponent({
 
 .parameter-input {
 	display: inline-block;
-}
 
-:deep(.color-input) {
-	display: flex;
+	:deep(.color-input) {
+		display: flex;
 
-	.el-color-picker__trigger {
-		border: none;
+		.el-color-picker__trigger {
+			border: none;
+		}
 	}
 }
 </style>

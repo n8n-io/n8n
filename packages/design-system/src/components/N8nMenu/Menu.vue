@@ -14,7 +14,7 @@
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-bind="$attrs">
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed">
 					<n8n-menu-item
 						v-for="item in upperMenuItems"
 						:key="item.id"
@@ -23,13 +23,13 @@
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
-						@click="onSelect"
+						@select="onSelect"
 					/>
 				</el-menu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
 				<slot name="beforeLowerMenu"></slot>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-bind="$attrs">
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
 						:key="item.id"
@@ -38,7 +38,7 @@
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
-						@click="onSelect"
+						@select="onSelect"
 					/>
 				</el-menu>
 				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
@@ -139,12 +139,12 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onSelect(event: MouseEvent, option: string): void {
+		onSelect(option: string): void {
 			if (this.mode === 'tabs') {
 				this.activeTab = option;
 			}
 			this.$emit('select', option);
-			this.$emit('update:modelValue', this.activeTab);
+			this.$emit('update:modelValue', option);
 		},
 	},
 	watch: {

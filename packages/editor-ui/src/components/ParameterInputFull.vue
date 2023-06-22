@@ -20,54 +20,52 @@
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<template>
-			<draggable-target
-				type="mapping"
-				:disabled="isDropDisabled"
-				:sticky="true"
-				:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
-				@drop="onDrop"
-			>
-				<template #default="{ droppable, activeDrop }">
-					<n8n-tooltip
-						placement="left"
-						:manual="true"
-						:value="showMappingTooltip"
-						:buttons="dataMappingTooltipButtons"
-					>
-						<template #content>
-							<span
-								v-html="
-									$locale.baseText(`dataMapping.${displayMode}Hint`, {
-										interpolate: { name: parameter.displayName },
-									})
-								"
-							/>
-						</template>
-						<parameter-input-wrapper
-							ref="param"
-							:parameter="parameter"
-							:value="value"
-							:path="path"
-							:isReadOnly="isReadOnly"
-							:droppable="droppable"
-							:activeDrop="activeDrop"
-							:forceShowExpression="forceShowExpression"
-							:hint="hint"
-							:hide-issues="hideIssues"
-							:label="label"
-							:event-bus="eventBus"
-							@valueChanged="valueChanged"
-							@textInput="onTextInput"
-							@focus="onFocus"
-							@blur="onBlur"
-							@drop="onDrop"
-							inputSize="small"
+		<draggable-target
+			type="mapping"
+			:disabled="isDropDisabled"
+			:sticky="true"
+			:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+			@drop="onDrop"
+		>
+			<template #default="{ droppable, activeDrop }">
+				<n8n-tooltip
+					placement="left"
+					:manual="true"
+					:value="showMappingTooltip"
+					:buttons="dataMappingTooltipButtons"
+				>
+					<template #content>
+						<span
+							v-html="
+								$locale.baseText(`dataMapping.${displayMode}Hint`, {
+									interpolate: { name: parameter.displayName },
+								})
+							"
 						/>
-					</n8n-tooltip>
-				</template>
-			</draggable-target>
-		</template>
+					</template>
+					<parameter-input-wrapper
+						ref="param"
+						:parameter="parameter"
+						:modelValue="value"
+						:path="path"
+						:isReadOnly="isReadOnly"
+						:droppable="droppable"
+						:activeDrop="activeDrop"
+						:forceShowExpression="forceShowExpression"
+						:hint="hint"
+						:hide-issues="hideIssues"
+						:label="label"
+						:event-bus="eventBus"
+						@update:modelValue="valueChanged"
+						@textInput="onTextInput"
+						@focus="onFocus"
+						@blur="onBlur"
+						@drop="onDrop"
+						inputSize="small"
+					/>
+				</n8n-tooltip>
+			</template>
+		</draggable-target>
 	</n8n-input-label>
 </template>
 

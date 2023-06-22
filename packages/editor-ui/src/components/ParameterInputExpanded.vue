@@ -11,11 +11,11 @@
 		<template #options>
 			<parameter-options
 				:parameter="parameter"
-				:value="value"
+				:modelValue="value"
 				:isReadOnly="false"
 				:showOptions="true"
 				:isValueExpression="isValueExpression"
-				@optionSelected="optionSelected"
+				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
@@ -23,7 +23,7 @@
 			ref="param"
 			inputSize="large"
 			:parameter="parameter"
-			:value="value"
+			:modelValue="value"
 			:path="parameter.name"
 			:hideIssues="true"
 			:documentationUrl="documentationUrl"
@@ -35,7 +35,7 @@
 			@focus="onFocus"
 			@blur="onBlur"
 			@textInput="valueChanged"
-			@valueChanged="valueChanged"
+			@update:modelValue="valueChanged"
 		/>
 		<div :class="$style.errors" v-if="showRequiredErrors">
 			<n8n-text color="danger" size="small">
@@ -151,7 +151,7 @@ export default defineComponent({
 			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('change', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onDocumentationUrlClick(): void {
 			this.$telemetry.track('User clicked credential modal docs link', {

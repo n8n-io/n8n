@@ -1132,7 +1132,7 @@
 	"runData.editor.save": "Save",
 	"runData.editor.cancel": "Cancel",
 	"runData.editor.copyDataInfo": "You can copy data from previous executions and paste it above.",
-	"saveButton.save": "@:_reusableBaseText.save",
+	"saveButton.save": "@:{'saveButton.saved'}",
 	"saveButton.saved": "Saved",
 	"saveButton.saving": "Saving",
 	"settings": "Settings",

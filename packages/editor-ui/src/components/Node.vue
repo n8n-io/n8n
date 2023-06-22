@@ -486,6 +486,10 @@ export default defineComponent({
 			}
 		},
 		nodeRunData(newValue) {
+			if (!this.data) {
+				return;
+			}
+
 			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
 		},
 	},
