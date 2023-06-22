@@ -1,13 +1,6 @@
-import { randFirstName, randLastName } from '@ngneat/falso';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const workflowPage = new WorkflowPageClass();
-
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 
 function checkStickiesStyle( top: number, left: number, height: number, width: number, zIndex?: number) {
 	workflowPage.getters.stickies().should(($el) => {
@@ -22,12 +15,7 @@ function checkStickiesStyle( top: number, left: number, height: number, width: n
 }
 
 describe('Canvas Actions', () => {
-	before(() => {
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	beforeEach(() => {
-		cy.signin({ email, password });
 		workflowPage.actions.visit();
 
 		cy.window().then(
