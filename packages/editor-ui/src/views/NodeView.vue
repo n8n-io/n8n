@@ -8,6 +8,7 @@
 			@drop="onDrop"
 		>
 			<div
+				ref="nodeViewWrapper"
 				class="node-view-wrapper"
 				:class="workflowClasses"
 				@touchstart="mouseDown"
@@ -2701,11 +2702,7 @@ export default defineComponent({
 			if (node) {
 				const nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
-				if (
-					nodeTypeData &&
-					nodeTypeData.maxNodes !== undefined &&
-					this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes
-				) {
+				if (nodeTypeData && this.getNodeTypeCount(node.type) >= (nodeTypeData.maxNodes ?? 0)) {
 					this.showMaxNodeTypeError(nodeTypeData);
 					return;
 				}
@@ -2886,50 +2883,46 @@ export default defineComponent({
 				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
 			const outputMap = NodeViewUtils.getOutputSummary(data, nodeConnections || []);
 
-			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
-				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
-					Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach(
-						(targetInputIndex: string) => {
-							if (targetNodeName) {
-								const connection = this.getJSPlumbConnection(
-									sourceNodeName,
-									parseInt(sourceOutputIndex, 10),
-									targetNodeName,
-									parseInt(targetInputIndex, 10),
-								);
-
-								if (connection) {
-									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
-
-									if (output.isArtificialRecoveredEventItem) {
-										NodeViewUtils.recoveredConnection(connection);
-									} else if ((!output || !output.total) && !output.isArtificialRecoveredEventItem) {
-										NodeViewUtils.resetConnection(connection);
-									} else {
-										NodeViewUtils.addConnectionOutputSuccess(connection, output);
-									}
-								}
-							}
-
-							const endpoint = this.getPlusEndpoint(
+			for (const sourceOutputIndex in outputMap) {
+				for (const targetNodeName in outputMap[sourceOutputIndex]) {
+					for (const targetInputIndex in outputMap[sourceOutputIndex][targetNodeName]) {
+						if (targetNodeName) {
+							const connection = this.getJSPlumbConnection(
 								sourceNodeName,
 								parseInt(sourceOutputIndex, 10),
+								targetNodeName,
+								parseInt(targetInputIndex, 10),
 							);
-							if (endpoint && endpoint.endpoint) {
-								const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
 
-								if (output && output.total > 0) {
-									(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(
-										NodeViewUtils.getRunItemsLabel(output),
-									);
+							if (connection) {
+								const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
+
+								if (output.isArtificialRecoveredEventItem) {
+									NodeViewUtils.recoveredConnection(connection);
+								} else if ((!output || !output.total) && !output.isArtificialRecoveredEventItem) {
+									NodeViewUtils.resetConnection(connection);
 								} else {
-									(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+									NodeViewUtils.addConnectionOutputSuccess(connection, output);
 								}
 							}
-						},
-					);
-				});
-			});
+						}
+
+						const endpoint = this.getPlusEndpoint(sourceNodeName, parseInt(sourceOutputIndex, 10));
+
+						if (endpoint?.endpoint) {
+							const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
+
+							if (output && output.total > 0) {
+								(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(
+									NodeViewUtils.getRunItemsLabel(output),
+								);
+							} else {
+								(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+							}
+						}
+					}
+				}
+			}
 		},
 		removeNode(nodeName: string, trackHistory = false, trackBulk = true) {
 			if (!this.editAllowedCheck()) {
@@ -3771,6 +3764,7 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
+		this.setMousePositionBoundaryElement(this.$refs.nodeViewWrapper);
 		this.resetWorkspace();
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
