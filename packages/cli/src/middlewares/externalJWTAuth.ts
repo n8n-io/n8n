@@ -1,8 +1,30 @@
-import type { Application } from 'express';
+import type { Request, Application } from 'express';
 import jwt from 'jsonwebtoken';
 import jwks from 'jwks-rsa';
 import type { Config } from '@/config';
 import { jwtAuthAuthorizationError } from '@/ResponseHelper';
+
+export interface QpJwt {
+	gcip: {
+		x_qp_entitlements: {
+			allowed_products: Array<{
+				datastudio: string;
+				product_id: string;
+				storefront: string;
+				workflow: string; // n8n User
+			}>;
+		};
+	};
+}
+
+export interface QpJwtRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> extends Request<RouteParams, ResponseBody, RequestBody, RequestQuery> {
+	jwt: QpJwt;
+}
 
 export const setupExternalJWTAuth = (app: Application, config: Config, authIgnoreRegex: RegExp) => {
 	const jwtAuthHeader = config.getEnv('security.jwtAuth.jwtHeader');
@@ -42,7 +64,7 @@ export const setupExternalJWTAuth = (app: Application, config: Config, authIgnor
 	}
 
 	// eslint-disable-next-line consistent-return
-	app.use((req, res, next) => {
+	app.use((req: QpJwtRequest, res, next) => {
 		if (authIgnoreRegex.exec(req.url)) {
 			return next();
 		}
@@ -72,12 +94,13 @@ export const setupExternalJWTAuth = (app: Application, config: Config, authIgnor
 			ignoreExpiration: false,
 		};
 
-		jwt.verify(token, getKey, jwtVerifyOptions, (error: jwt.VerifyErrors, decoded: object) => {
+		jwt.verify(token, getKey, jwtVerifyOptions, (error: jwt.VerifyErrors, decoded: QpJwt) => {
 			if (error) {
 				jwtAuthAuthorizationError(res, 'Invalid token');
 			} else if (!isTenantAllowed(decoded)) {
 				jwtAuthAuthorizationError(res, 'Tenant not allowed');
 			} else {
+				req.jwt = decoded;
 				next();
 			}
 		});
