@@ -14,13 +14,17 @@ export interface MigrationContext {
 
 type MigrationFn = (ctx: MigrationContext) => Promise<void>;
 
-export interface ReversibleMigration {
+interface BaseMigration {
 	up: MigrationFn;
+	down?: MigrationFn | never;
+	pruneAndVacuum?: boolean;
+}
+
+export interface ReversibleMigration extends BaseMigration {
 	down: MigrationFn;
 }
 
-export interface IrreversibleMigration {
-	up: MigrationFn;
+export interface IrreversibleMigration extends BaseMigration {
 	down?: never;
 }
 

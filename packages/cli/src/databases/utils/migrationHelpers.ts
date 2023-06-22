@@ -78,6 +78,12 @@ export const wrapMigration = (migration: Migration) => {
 
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {
+		async beforeTransaction(this: typeof migration.prototype, queryRunner: QueryRunner) {
+			if (this.pruneAndVacuum && dbType === 'sqlite') {
+				// TODO: add pruning here;
+				await queryRunner.query('VACUUM');
+			}
+		},
 		async up(queryRunner: QueryRunner) {
 			logMigrationStart(migrationName);
 			await up.call(this, { queryRunner, ...context });
