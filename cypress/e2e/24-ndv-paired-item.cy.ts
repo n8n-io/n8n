@@ -1,23 +1,11 @@
-import { randFirstName, randLastName } from '@ngneat/falso';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
-
 describe('NDV', () => {
-	before(() => {
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	beforeEach(() => {
-		cy.signin({ email, password });
 		workflowPage.actions.visit();
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
@@ -311,6 +299,9 @@ describe('NDV', () => {
 			.realHover();
 
 		ndv.actions.changeOutputRunSelector('1 of 2 (2 items)')
+		ndv.getters.inputTableRow(1)
+			.should('have.text', '8888')
+			.realHover();
 		ndv.getters.outputHoveringItem().should('have.text', '8888');
 		// todo there's a bug here need to fix ADO-534
 		// ndv.getters.outputHoveringItem().should('not.exist');
