@@ -9,7 +9,7 @@ import unset from 'lodash/unset';
 import { cloneDeep } from 'lodash';
 import set from 'lodash/set';
 import union from 'lodash/union';
-import { fuzzyCompare } from '../../utils/utilities';
+import { fuzzyCompare } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
