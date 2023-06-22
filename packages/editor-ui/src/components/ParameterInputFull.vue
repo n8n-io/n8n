@@ -30,8 +30,7 @@
 			<template #default="{ droppable, activeDrop }">
 				<n8n-tooltip
 					placement="left"
-					:manual="true"
-					:value="showMappingTooltip"
+					:visible="showMappingTooltip"
 					:buttons="dataMappingTooltipButtons"
 				>
 					<template #content>

@@ -63,11 +63,7 @@
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('ndv.input.noOutputData.title')
 				}}</n8n-text>
-				<n8n-tooltip
-					v-if="!readOnly"
-					:manual="true"
-					:value="showDraggableHint && showDraggableHintWithDelay"
-				>
+				<n8n-tooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
 						<div
 							v-html="

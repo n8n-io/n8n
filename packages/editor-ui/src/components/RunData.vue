@@ -74,8 +74,11 @@
 					placement="bottom-end"
 					v-if="canPinData && jsonData && jsonData.length > 0"
 					v-show="!editMode.enabled"
-					:value="pinDataDiscoveryTooltipVisible"
-					:manual="isControlledPinDataTooltip"
+					:visible="
+						isControlledPinDataTooltip
+							? isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible
+							: undefined
+					"
 				>
 					<template #content v-if="!isControlledPinDataTooltip">
 						<div :class="$style.tooltipContainer">

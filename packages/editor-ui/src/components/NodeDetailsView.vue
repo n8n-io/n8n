@@ -4,15 +4,15 @@
 		:before-close="close"
 		:show-close="false"
 		class="data-display-wrapper ndv-wrapper"
+		overlay-class="data-display-overlay"
 		width="auto"
 		append-to-body
 		data-test-id="ndv"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
-			:value="showTriggerWaitingWarning"
+			:visible="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
-			manual
 		>
 			<template #content>
 				<div :class="$style.triggerWarning">
@@ -698,9 +698,8 @@ export default defineComponent({
 }
 
 .data-display-wrapper {
-	height: 93%;
+	height: calc(100% - var(--spacing-2xl));
 	width: 100%;
-	margin-top: var(--spacing-xl) !important;
 	background: none;
 	border: none;
 

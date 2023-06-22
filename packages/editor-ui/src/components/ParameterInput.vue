@@ -197,7 +197,7 @@
 				ref="inputField"
 				type="datetime"
 				:size="inputSize"
-				:value="displayValue"
+				:modelValue="displayValue"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				:placeholder="
@@ -335,7 +335,7 @@
 				class="switch-input"
 				ref="inputField"
 				active-color="#13ce66"
-				:value="displayValue"
+				:modelValue="displayValue"
 				:disabled="isReadOnly"
 				@update:modelValue="valueChanged"
 			/>

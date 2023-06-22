@@ -70,8 +70,7 @@
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip
 						placement="top"
-						manual
-						:value="showTriggerNodeTooltip"
+						:visible="showTriggerNodeTooltip"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>
@@ -82,8 +81,7 @@
 					<n8n-tooltip
 						v-if="isTriggerNode"
 						placement="top"
-						manual
-						:value="pinDataDiscoveryTooltipVisible"
+						:visible="pinDataDiscoveryTooltipVisible"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>

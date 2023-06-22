@@ -10,8 +10,13 @@
 	position: fixed;
 	top: 0;
 	left: 0;
-	padding: var(--spacing-2xl);
-	background-color: rgba(0, 0, 0, 0.5);
+	background-color: hsla(247deg, 14%, 30%, 0.75);
+}
+
+@include mixins.b(overlay-dialog) {
+	width: 100%;
+	height: 100%;
+	padding-top: var(--spacing-2xl);
 }
 
 @include mixins.b(dialog) {
