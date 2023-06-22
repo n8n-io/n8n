@@ -19,6 +19,8 @@ import {
 } from '../Webhook/description';
 import { Webhook } from '../Webhook/Webhook.node';
 
+const authPropertyName = 'incomingAuthentication';
+
 export class Wait extends Webhook {
 	description: INodeTypeDescription = {
 		displayName: 'Wait',
@@ -33,7 +35,7 @@ export class Wait extends Webhook {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: credentialsProperty,
+		credentials: credentialsProperty(authPropertyName),
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -44,7 +46,7 @@ export class Wait extends Webhook {
 		],
 		properties: [
 			{
-				...authenticationProperty,
+				...authenticationProperty(authPropertyName),
 				description:
 					'If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security',
 			},

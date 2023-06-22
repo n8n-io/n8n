@@ -1,24 +1,4 @@
 import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
-export const credentialsProperty: INodeTypeDescription['credentials'] = [
-	{
-		name: 'httpBasicAuth',
-		required: true,
-		displayOptions: {
-			show: {
-				authentication: ['basicAuth'],
-			},
-		},
-	},
-	{
-		name: 'httpHeaderAuth',
-		required: true,
-		displayOptions: {
-			show: {
-				authentication: ['headerAuth'],
-			},
-		},
-	},
-];
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
@@ -35,9 +15,34 @@ export const defaultWebhookDescription: IWebhookDescription = {
 	path: '={{$parameter["path"]}}',
 };
 
-export const authenticationProperty: INodeProperties = {
+export const credentialsProperty = (
+	propertyName: string = 'authentication',
+): INodeTypeDescription['credentials'] => [
+	{
+		name: 'httpBasicAuth',
+		required: true,
+		displayOptions: {
+			show: {
+				[propertyName]: ['basicAuth'],
+			},
+		},
+	},
+	{
+		name: 'httpHeaderAuth',
+		required: true,
+		displayOptions: {
+			show: {
+				[propertyName]: ['headerAuth'],
+			},
+		},
+	},
+];
+
+export const authenticationProperty = (
+	propertyName: string = 'authentication',
+): INodeProperties => ({
 	displayName: 'Authentication',
-	name: 'authentication',
+	name: propertyName,
 	type: 'options',
 	options: [
 		{
@@ -55,7 +60,7 @@ export const authenticationProperty: INodeProperties = {
 	],
 	default: 'none',
 	description: 'The way to authenticate',
-};
+});
 
 export const httpMethodsProperty: INodeProperties = {
 	displayName: 'HTTP Method',

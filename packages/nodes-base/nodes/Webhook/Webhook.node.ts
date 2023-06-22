@@ -59,10 +59,10 @@ export class Webhook extends Node {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
-		credentials: credentialsProperty,
+		credentials: credentialsProperty(),
 		webhooks: [defaultWebhookDescription],
 		properties: [
-			authenticationProperty,
+			authenticationProperty(),
 			httpMethodsProperty,
 			{
 				displayName: 'Path',
