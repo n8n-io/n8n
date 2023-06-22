@@ -7,15 +7,15 @@ import { senderFields, senderOperations } from './SenderDescrition';
 
 export class SendInBlue implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'SendInBlue',
+		displayName: 'Brevo',
 		name: 'sendInBlue',
-		icon: 'file:sendinblue.svg',
+		icon: 'file:brevo.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Sendinblue API',
 		defaults: {
-			name: 'SendInBlue',
+			name: 'Brevo',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

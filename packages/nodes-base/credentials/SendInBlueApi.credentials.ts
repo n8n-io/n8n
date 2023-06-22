@@ -8,7 +8,7 @@ import type {
 export class SendInBlueApi implements ICredentialType {
 	name = 'sendInBlueApi';
 
-	displayName = 'SendInBlue';
+	displayName = 'Brevo';
 
 	documentationUrl = 'sendinblue';
 
