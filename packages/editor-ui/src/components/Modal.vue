@@ -4,7 +4,6 @@
 		:before-close="closeDialog"
 		:class="{
 			'dialog-wrapper': true,
-			[$style.center]: center,
 			scrollable: scrollable,
 			[getCustomClass()]: true,
 		}"

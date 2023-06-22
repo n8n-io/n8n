@@ -421,9 +421,9 @@ export default defineComponent({
 				case 'settings': {
 					const defaultRoute = this.findFirstAccessibleSettingsRoute();
 					if (defaultRoute) {
-						const routeProps = this.$router.resolve({ name: defaultRoute });
+						const route = this.$router.resolve({ name: defaultRoute });
 						if (this.$router.currentRoute.name !== defaultRoute) {
-							this.goToRoute(routeProps.route.path);
+							this.goToRoute(route.path);
 						}
 					}
 					break;
@@ -445,7 +445,6 @@ export default defineComponent({
 			}
 		},
 		goToRoute(route: string | { name: string }) {
-			console.log(this.$router);
 			this.$router.push(route).catch((failure) => {
 				console.log(failure);
 				// Catch navigation failures caused by route guards

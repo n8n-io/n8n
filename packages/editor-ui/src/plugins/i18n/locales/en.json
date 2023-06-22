@@ -1,21 +1,33 @@
 {
-	"_reusableBaseText.cancel": "Cancel",
-	"_reusableBaseText.codeNodeEditor.linter.useJson": "Access the properties of an item under `.json`, e.g. `item.json`",
-	"_reusableBaseText.codeNodeEditor.completer.all": "Get all items",
-	"_reusableBaseText.codeNodeEditor.completer.first": "Get the first item",
-	"_reusableBaseText.codeNodeEditor.completer.last": "Get the last item",
-	"_reusableBaseText.codeNodeEditor.completer.itemMatching": "Get the item matching a specified input item. Pass the input item index",
-	"_reusableBaseText.name": "Name",
-	"_reusableBaseText.save": "Save",
-	"_reusableBaseText.dismiss": "Dismiss",
-	"_reusableDynamicText.readMore": "Read more",
-	"_reusableDynamicText.learnMore": "Learn more",
-	"_reusableDynamicText.moreInfo": "More info",
-	"_reusableDynamicText.oauth2.clientId": "Client ID",
-	"_reusableDynamicText.oauth2.clientSecret": "Client Secret",
-	"_reusableBaseText.unlimited": "Unlimited",
-	"_reusableBaseText.activate": "Activate",
-	"_reusableBaseText.error": "Error",
+	"_reusableBaseText": {
+		"cancel": "Cancel",
+		"codeNodeEditor": {
+			"linter": {
+				"useJson": "Access the properties of an item under `.json`, e.g. `item.json`"
+			},
+			"completer": {
+				"all": "Get all items",
+				"first": "Get the first item",
+				"last": "Get the last item",
+				"itemMatching": "Get the item matching a specified input item. Pass the input item index"
+			}
+		},
+		"name": "Name",
+		"save": "Save",
+		"dismiss": "Dismiss",
+		"unlimited": "Unlimited",
+		"activate": "Activate",
+		"error": "Error"
+	},
+	"_reusableDynamicText": {
+		"readMore": "Read more",
+		"learnMore": "Learn more",
+		"moreInfo": "More info",
+		"oauth2": {
+			"clientId": "Client ID",
+			"clientSecret": "Client Secret"
+		}
+	},
 	"generic.any": "Any",
 	"generic.cancel": "Cancel",
 	"generic.confirm": "Confirm",
@@ -1132,7 +1144,7 @@
 	"runData.editor.save": "Save",
 	"runData.editor.cancel": "Cancel",
 	"runData.editor.copyDataInfo": "You can copy data from previous executions and paste it above.",
-	"saveButton.save": "@:{'saveButton.saved'}",
+	"saveButton.save": "@:_reusableBaseText.save",
 	"saveButton.saved": "Saved",
 	"saveButton.saving": "Saving",
 	"settings": "Settings",

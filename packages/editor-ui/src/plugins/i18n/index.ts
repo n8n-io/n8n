@@ -597,8 +597,8 @@ export const I18nPlugin: Plugin<{}> = {
 	async install(app) {
 		await locale.use('en');
 
-		locale.i18n((key: string, options?: { interpolate: object }) =>
-			i18nInstance.global.t(key, options && options.interpolate),
+		locale.i18n((key: string, options?: { interpolate: Record<string, unknown> }) =>
+			i18nInstance.global.t(key, options?.interpolate || {}),
 		);
 
 		app.config.globalProperties.$locale = i18n;
