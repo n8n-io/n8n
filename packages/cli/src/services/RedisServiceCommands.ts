@@ -1,4 +1,4 @@
-export type RedisServiceCommand = 'getStatus' | 'restartEventBus' | 'stopExecution' | 'stopWorker'; // TODO: add more commands
+export type RedisServiceCommand = 'getStatus' | 'restartEventBus' | 'stopWorker'; // TODO: add more commands
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.

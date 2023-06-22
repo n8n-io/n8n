@@ -31,6 +31,7 @@ import { COMMAND_REDIS_CHANNEL } from '../services/RedisServiceHelper';
 import type { RedisServiceCommandObject } from '../services/RedisServiceCommands';
 import { RedisServiceSubscriber } from '../services/RedisServiceSubscriber';
 import { eventBus } from '../eventbus';
+import * as os from 'os';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -281,12 +282,25 @@ export class Worker extends BaseCommand {
 						}
 						switch (message.command) {
 							case 'getStatus':
+								// TODO: just a sample implementation
 								await redisPublisher.publishToWorkerChannel({
 									workerId: this.workerId,
 									command: 'getStatus',
 									args: {
 										workerId: this.workerId,
 										runningJobs: Object.keys(Worker.runningJobs),
+										freeMem: os.freemem(),
+										totalMem: os.totalmem(),
+										uptime: process.uptime(),
+										loadAvg: os.loadavg(),
+										cpus: os.cpus().map((cpu) => `${cpu.model} - speed: ${cpu.speed}`),
+										arch: os.arch(),
+										platform: os.platform(),
+										hostname: os.hostname(),
+										net: Object.values(os.networkInterfaces()).flatMap(
+											(interfaces) =>
+												interfaces?.map((net) => `${net.family} - address: ${net.address}`) ?? '',
+										),
 									},
 								});
 								break;
@@ -298,6 +312,7 @@ export class Worker extends BaseCommand {
 								break;
 							default:
 								LoggerProxy.debug(
+									// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 									`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
 								);
 								break;
