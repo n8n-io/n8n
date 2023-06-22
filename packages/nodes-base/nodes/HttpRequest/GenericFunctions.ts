@@ -1,7 +1,7 @@
 import type { IDataObject, INodeExecutionData, IOAuth2Options } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request-promise-native';
 
-import set from 'lodash.set';
+import set from 'lodash/set';
 
 export type BodyParameter = { name: string; value: string };
 

@@ -24,7 +24,7 @@ import { TelemetryHelpers } from 'n8n-workflow';
 
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
-import { codeNodeEditorEventBus } from '@/event-bus';
+import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -351,9 +351,12 @@ export const pushConnection = defineComponent({
 
 					let action;
 					if (!isSavingExecutions) {
-						this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
-							if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
-							this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+						globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
+							key: 'open-settings',
+							action: async () => {
+								if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
+								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+							},
 						});
 
 						action =

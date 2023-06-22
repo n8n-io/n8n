@@ -11,7 +11,6 @@ import {
 } from '@/utils';
 import type { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
-import Vue from 'vue';
 
 export interface Props {
 	credentialType: Object;
@@ -27,7 +26,7 @@ const ndvStore = useNDVStore();
 const props = defineProps<Props>();
 
 const selected = ref('');
-const authRelatedFieldsValues = ref({} as { [key: string]: NodeParameterValue });
+const authRelatedFieldsValues = ref<{ [key: string]: NodeParameterValue }>({});
 
 onMounted(() => {
 	if (activeNodeType.value?.credentials) {
@@ -43,7 +42,10 @@ onMounted(() => {
 
 	// Populate default values of related fields
 	authRelatedFields.value.forEach((field) => {
-		Vue.set(authRelatedFieldsValues.value, field.name, field.default);
+		authRelatedFieldsValues.value = {
+			...authRelatedFieldsValues.value,
+			[field.name]: field.default as NodeParameterValue,
+		};
 	});
 });
 
@@ -102,7 +104,10 @@ function onAuthTypeChange(newType: string): void {
 }
 
 function valueChanged(data: IUpdateInformation): void {
-	Vue.set(authRelatedFieldsValues.value, data.name, data.value);
+	authRelatedFieldsValues.value = {
+		...authRelatedFieldsValues.value,
+		[data.name]: data.value as NodeParameterValue,
+	};
 }
 
 defineExpose({

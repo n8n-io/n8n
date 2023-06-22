@@ -19,6 +19,7 @@ import type {
 	IHttpRequestOptions,
 	ILogger,
 	INode,
+	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeType,
 	INodeTypeData,
@@ -29,10 +30,10 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	NodeLoadingDetails,
+	WorkflowTestData,
 } from 'n8n-workflow';
 import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
-import type { WorkflowTestData } from './types';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
 
@@ -237,7 +238,7 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	const nodes = [...new Set(testData.flatMap((data) => data.input.workflowData.nodes))];
 	const credentialNames = nodes
 		.filter((n) => n.credentials)
-		.flatMap(({ credentials }) => Object.keys(credentials!));
+		.flatMap(({ credentials }) => Object.keys(credentials as INodeCredentials));
 	for (const credentialName of credentialNames) {
 		const loadInfo = knownCredentials[credentialName];
 		if (!loadInfo) {
