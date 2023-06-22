@@ -1,23 +1,11 @@
-import { randFirstName, randLastName } from '@ngneat/falso';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { WorkflowPage } from '../pages';
 
 const wf = new WorkflowPage();
 
 const TEST_TAGS = ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4', 'Tag 5'];
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
-
 describe('Workflow tags', () => {
-	before(() => {
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	beforeEach(() => {
-		cy.signin({ email, password });
 		wf.actions.visit();
 	});
 

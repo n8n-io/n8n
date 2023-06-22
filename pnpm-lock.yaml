@@ -98,9 +98,6 @@ importers:
       nock:
         specifier: ^13.2.9
         version: 13.2.9
-      node-fetch:
-        specifier: ^2.6.7
-        version: 2.6.7
       p-limit:
         specifier: ^3.1.0
         version: 3.1.0
@@ -17053,18 +17050,6 @@ packages:
 
   /node-fetch-native@1.0.1:
     resolution: {integrity: sha512-VzW+TAk2wE4X9maiKMlT+GsPU4OMmR1U9CrHSmd3DFLn2IcZ9VJ6M6BBugGfYUnPCLSYxXdZy17M0BEJyhUTwg==}
-    dev: true
-
-  /node-fetch@2.6.7:
-    resolution: {integrity: sha512-ZjMPFEfVx5j+y2yF35Kzx5sF7kDzxuDj6ziH4FFbOp87zKDZNx8yExJIb05OGF4Nlt9IHFIMBkRl41VdvcNdbQ==}
-    engines: {node: 4.x || >=6.0.0}
-    peerDependencies:
-      encoding: ^0.1.0
-    peerDependenciesMeta:
-      encoding:
-        optional: true
-    dependencies:
-      whatwg-url: 5.0.0
     dev: true
 
   /node-fetch@2.6.8:

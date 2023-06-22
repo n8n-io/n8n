@@ -59,7 +59,9 @@
     "bin",
     "templates",
     "dist",
-    "oclif.manifest.json"
+    "oclif.manifest.json",
+    "!dist/**/e2e.*",
+    "!dist/ReloadNodesAndCredentials.*"
   ],
   "devDependencies": {
     "@apidevtools/swagger-cli": "4.0.0",

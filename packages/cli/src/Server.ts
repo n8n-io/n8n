@@ -68,6 +68,7 @@ import {
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
 	inDevelopment,
+	inE2ETests,
 	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -338,10 +339,6 @@ export class Server extends AbstractServer {
 
 		this.push = Container.get(Push);
 
-		if (process.env.E2E_TESTS === 'true') {
-			this.app.use('/e2e', require('./api/e2e.api').e2eController);
-		}
-
 		await super.start();
 
 		const cpus = os.cpus();
@@ -461,7 +458,7 @@ export class Server extends AbstractServer {
 		return this.frontendSettings;
 	}
 
-	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
@@ -513,6 +510,12 @@ export class Server extends AbstractServer {
 			controllers.push(
 				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
 			);
+		}
+
+		if (inE2ETests) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { E2EController } = await import('./controllers/e2e.controller');
+			controllers.push(Container.get(E2EController));
 		}
 
 		controllers.forEach((controller) => registerController(app, config, controller));
@@ -590,7 +593,7 @@ export class Server extends AbstractServer {
 
 		await handleLdapInit();
 
-		this.registerControllers(ignoredEndpoints);
+		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
