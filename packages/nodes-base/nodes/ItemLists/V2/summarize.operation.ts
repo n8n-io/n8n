@@ -9,6 +9,8 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
+import { DateTime } from 'luxon';
+
 type AggregationType =
 	| 'append'
 	| 'average'
@@ -132,7 +134,7 @@ export const description: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description:
-							'The name of an input field that you want to summarize. The field should contain numerical values; null, undefined, empty strings would be ignored.',
+							'The name of an input field that you want to summarize. The field should contain numerical values; null, undefined, empty strings would be ignored. Min, Max and Average also support date values in ISO format, Javascript Date object, or luxon DateTime object format.',
 						placeholder: 'e.g. cost',
 						hint: ' Enter the field name as text',
 						displayOptions: {
@@ -379,6 +381,55 @@ function checkIfFieldExists(
 	}
 }
 
+function aggregateDates(
+	items: IDataObject[],
+	aggregation: AggregationType,
+	field: string,
+	getValue: ValueGetterFn,
+) {
+	if (aggregation === 'sum') {
+		return null;
+	}
+	const data = [...items];
+
+	const dates: DateTime[] = [];
+
+	for (const item of data) {
+		const value = getValue(item, field);
+
+		if (value instanceof DateTime) {
+			dates.push(value);
+			continue;
+		}
+
+		if (value instanceof Date) {
+			dates.push(DateTime.fromJSDate(value));
+			continue;
+		}
+
+		if (typeof value === 'string' && DateTime.fromISO(value).isValid) {
+			dates.push(DateTime.fromISO(value));
+			continue;
+		}
+	}
+
+	if (dates.length) {
+		if (aggregation === 'min') {
+			return dates.reduce((a, b) => (a < b ? a : b)).toISO();
+		}
+		if (aggregation === 'max') {
+			return dates.reduce((a, b) => (a > b ? a : b)).toISO();
+		}
+		if (aggregation === 'average') {
+			const datesAsNumbers = dates.map((date) => date.toMillis());
+			const sum = datesAsNumbers.reduce((a, b) => a + b, 0);
+			return DateTime.fromMillis(sum / datesAsNumbers.length).toISO();
+		}
+	}
+
+	return null;
+}
+
 function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGetterFn) {
 	const { aggregation, field } = entry;
 	let data = [...items];
@@ -387,6 +438,11 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 		data = data.filter(
 			(item) => typeof getValue(item, field) === 'number' && !isEmpty(getValue(item, field)),
 		);
+
+		// no numbers in input, try to aggregate dates
+		if (!data.length) {
+			return aggregateDates(items, aggregation, field, getValue);
+		}
 	}
 
 	switch (aggregation) {
