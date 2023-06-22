@@ -8,11 +8,6 @@
 	content: 'n8n supports all JavaScript functions, including those not listed.';
 }
 
-.sql-editor .cm-tooltip-autocomplete:after {
-	display: block;
-	content: 'n8n supports all SQL commands, including those not listed.';
-}
-
 // Custom autocomplete item type icons
 // 1. Native and n8n extension functions:
 .cm-completionIcon-extension-function, .cm-completionIcon-native-function {

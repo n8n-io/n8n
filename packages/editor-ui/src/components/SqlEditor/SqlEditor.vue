@@ -45,6 +45,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { codeNodeEditorEventBus } from '@/event-bus';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -178,6 +179,8 @@ export default defineComponent({
 		},
 	},
 	mounted() {
+		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
+
 		const state = EditorState.create({ doc: this.query, extensions: this.extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
@@ -185,6 +188,20 @@ export default defineComponent({
 	methods: {
 		onBlur(event: FocusEvent) {
 			this.isFocused = false;
+		},
+		highlightLine(line: number | 'final') {
+			if (!this.editor) return;
+
+			if (line === 'final') {
+				this.editor.dispatch({
+					selection: { anchor: this.query.length },
+				});
+				return;
+			}
+
+			this.editor.dispatch({
+				selection: { anchor: this.editor.state.doc.line(line).from },
+			});
 		},
 	},
 });

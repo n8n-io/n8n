@@ -12,7 +12,7 @@ import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
-import { IS_V1_RELEASE } from '@utils/constants';
+import { IS_V1_RELEASE } from '../../utils/constants';
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
