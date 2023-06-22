@@ -197,7 +197,7 @@ export default defineComponent({
 
 		this.loading = false;
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},

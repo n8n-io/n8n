@@ -62,24 +62,26 @@
 					:underline="true"
 					color="text-dark"
 				/>
-				<collection-parameter
-					v-if="parameter.type === 'collection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
-				<fixed-collection-parameter
-					v-else-if="parameter.type === 'fixedCollection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
+				<Suspense>
+					<collection-parameter
+						v-if="parameter.type === 'collection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+					<fixed-collection-parameter
+						v-else-if="parameter.type === 'fixedCollection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+				</Suspense>
 			</div>
 			<resource-mapper
 				v-else-if="parameter.type === 'resourceMapper'"

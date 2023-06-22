@@ -40,7 +40,7 @@ export default defineComponent({
 			customClass: this.popupClass || '',
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.alert) {
 			this.alert.close();
 		}

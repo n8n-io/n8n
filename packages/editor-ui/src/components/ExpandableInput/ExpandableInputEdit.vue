@@ -40,7 +40,7 @@ export default defineComponent({
 		}
 		this.eventBus?.on('focus', this.focus);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('focus', this.focus);
 	},
 	methods: {

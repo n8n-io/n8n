@@ -140,12 +140,12 @@ export default defineComponent({
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
 
-		this.$emit('change', {
+		this.$emit('update', {
 			value: this.unresolvedExpression,
 			segments: this.displayableSegments,
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	methods: {

@@ -630,7 +630,7 @@ export default defineComponent({
 			NODE_CREATOR_OPEN_SOURCES,
 		};
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.resetWorkspace();
 		// Make sure the event listeners get removed again else we
 		// could add up with them registered multiple times
@@ -3960,7 +3960,7 @@ export default defineComponent({
 		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.resetWorkspace();
 		this.instance.unbind();
 		this.instance.destroy();

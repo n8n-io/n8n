@@ -302,49 +302,51 @@
 				</n8n-text>
 			</div>
 
-			<run-data-table
-				v-else-if="hasNodeRun && displayMode === 'table'"
-				:node="node"
-				:inputData="inputData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:runIndex="runIndex"
-				:pageOffset="currentPageOffset"
-				:totalRuns="maxRunIndex"
-				:hasDefaultHoverState="paneType === 'input'"
-				@mounted="$emit('tableMounted', $event)"
-				@activeRowChanged="onItemHover"
-				@displayModeChange="onDisplayModeChange"
-			/>
+			<Suspense v-else-if="hasNodeRun && displayMode === 'table'">
+				<run-data-table
+					:node="node"
+					:inputData="inputData"
+					:mappingEnabled="mappingEnabled"
+					:distanceFromActive="distanceFromActive"
+					:runIndex="runIndex"
+					:pageOffset="currentPageOffset"
+					:totalRuns="maxRunIndex"
+					:hasDefaultHoverState="paneType === 'input'"
+					@mounted="$emit('tableMounted', $event)"
+					@activeRowChanged="onItemHover"
+					@displayModeChange="onDisplayModeChange"
+				/>
+			</Suspense>
 
-			<run-data-json
-				v-else-if="hasNodeRun && displayMode === 'json'"
-				:paneType="paneType"
-				:editMode="editMode"
-				:sessioId="sessionId"
-				:node="node"
-				:inputData="inputData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:runIndex="runIndex"
-				:totalRuns="maxRunIndex"
-			/>
+			<Suspense v-else-if="hasNodeRun && displayMode === 'json'">
+				<run-data-json
+					:paneType="paneType"
+					:editMode="editMode"
+					:sessioId="sessionId"
+					:node="node"
+					:inputData="inputData"
+					:mappingEnabled="mappingEnabled"
+					:distanceFromActive="distanceFromActive"
+					:runIndex="runIndex"
+					:totalRuns="maxRunIndex"
+				/>
+			</Suspense>
 
-			<run-data-html
-				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
-				:inputData="inputData"
-			/>
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
+				<run-data-html :inputData="inputData" />
+			</Suspense>
 
-			<run-data-schema
-				v-else-if="hasNodeRun && isSchemaView"
-				:data="jsonData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:node="node"
-				:paneType="paneType"
-				:runIndex="runIndex"
-				:totalRuns="maxRunIndex"
-			/>
+			<Suspense v-else-if="hasNodeRun && isSchemaView">
+				<run-data-schema
+					:data="jsonData"
+					:mappingEnabled="mappingEnabled"
+					:distanceFromActive="distanceFromActive"
+					:node="node"
+					:paneType="paneType"
+					:runIndex="runIndex"
+					:totalRuns="maxRunIndex"
+				/>
+			</Suspense>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
 				<n8n-text align="center" tag="div">{{
@@ -636,7 +638,7 @@ export default defineComponent({
 
 		if (this.paneType === 'output') this.setDisplayMode();
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.hidePinDataDiscoveryTooltip();
 		dataPinningEventBus.off('data-pinning-error', this.onDataPinningError);
 		dataPinningEventBus.off('data-unpinning', this.onDataUnpinning);

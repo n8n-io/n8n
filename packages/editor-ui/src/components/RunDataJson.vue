@@ -1,15 +1,17 @@
 <template>
 	<div :class="$style.jsonDisplay">
-		<run-data-json-actions
-			v-if="!editMode.enabled"
-			:node="node"
-			:sessioId="sessionId"
-			:displayMode="displayMode"
-			:distanceFromActive="distanceFromActive"
-			:selectedJsonPath="selectedJsonPath"
-			:jsonData="jsonData"
-			:paneType="paneType"
-		/>
+		<Suspense>
+			<run-data-json-actions
+				v-if="!editMode.enabled"
+				:node="node"
+				:sessioId="sessionId"
+				:displayMode="displayMode"
+				:distanceFromActive="distanceFromActive"
+				:selectedJsonPath="selectedJsonPath"
+				:jsonData="jsonData"
+				:paneType="paneType"
+			/>
+		</Suspense>
 		<draggable
 			type="mapping"
 			targetDataKey="mappable"

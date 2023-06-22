@@ -133,7 +133,7 @@ export default defineComponent({
 			activeElement.blur();
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus?.off('close', this.closeDialog);
 		this.eventBus?.off('closeAll', this.uiStore.closeAllModals);
 		window.removeEventListener('keydown', this.onWindowKeydown);

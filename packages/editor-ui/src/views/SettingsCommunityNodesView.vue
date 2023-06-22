@@ -134,7 +134,7 @@ export default defineComponent({
 			this.$data.loading = false;
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.pushDisconnect();
 	},
 	computed: {

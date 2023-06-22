@@ -111,7 +111,7 @@ export default defineComponent({
 			}
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		const sliderRef = this.$refs.slider as SliderRef | undefined;
 		if (sliderRef) {
 			sliderRef.destroy();

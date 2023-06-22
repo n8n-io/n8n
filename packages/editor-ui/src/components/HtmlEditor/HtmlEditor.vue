@@ -274,7 +274,7 @@ export default defineComponent({
 		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 	},
 
-	destroyed() {
+	beforeUnmount() {
 		htmlEditorEventBus.off('format-html', this.format);
 	},
 });

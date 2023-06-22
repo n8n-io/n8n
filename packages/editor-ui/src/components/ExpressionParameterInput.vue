@@ -18,7 +18,7 @@
 				:path="path"
 				@focus="onFocus"
 				@blur="onBlur"
-				@change="onChange"
+				@update="onChange"
 				ref="inlineInput"
 			/>
 			<n8n-icon

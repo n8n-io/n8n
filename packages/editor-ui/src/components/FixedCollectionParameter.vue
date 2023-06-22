@@ -49,14 +49,16 @@
 								/>
 							</div>
 						</div>
-						<parameter-input-list
-							:parameters="property.values"
-							:nodeValues="nodeValues"
-							:path="getPropertyPath(property.name, index)"
-							:hideDelete="true"
-							:isReadOnly="isReadOnly"
-							@valueChanged="valueChanged"
-						/>
+						<Suspense>
+							<parameter-input-list
+								:parameters="property.values"
+								:nodeValues="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:hideDelete="true"
+								:isReadOnly="isReadOnly"
+								@valueChanged="valueChanged"
+							/>
+						</Suspense>
 					</div>
 				</div>
 			</div>

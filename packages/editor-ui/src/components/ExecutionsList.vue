@@ -363,7 +363,7 @@ export default defineComponent({
 			workflow_id: this.workflowsStore.workflowId,
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},

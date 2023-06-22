@@ -133,7 +133,7 @@ export default defineComponent({
 
 		void this.tagsStore.fetchAll();
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('focus', this.onBusFocus);
 	},
 	computed: {

@@ -107,7 +107,7 @@ export default defineComponent({
 			segments: this.displayableSegments,
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	methods: {

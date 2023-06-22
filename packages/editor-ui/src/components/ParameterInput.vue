@@ -1193,7 +1193,7 @@ export default defineComponent({
 			inputFieldRef: this.$refs['inputField'],
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 });

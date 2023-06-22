@@ -135,7 +135,7 @@ export default defineComponent({
 	mounted() {
 		this.eventBus.on('keyDown', this.onKeyDown);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	computed: {

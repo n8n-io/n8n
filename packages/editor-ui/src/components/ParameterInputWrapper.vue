@@ -80,7 +80,7 @@ export default defineComponent({
 	mounted() {
 		this.eventBus.on('optionSelected', this.optionSelected);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 	props: {

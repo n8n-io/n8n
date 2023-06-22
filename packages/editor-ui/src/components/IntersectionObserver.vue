@@ -61,7 +61,7 @@ export default defineComponent({
 			observer.unobserve(observed);
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.enabled) {
 			this.$data.observer.disconnect();
 		}

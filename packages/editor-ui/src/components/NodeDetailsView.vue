@@ -213,7 +213,7 @@ export default defineComponent({
 	mounted() {
 		dataPinningEventBus.on('data-pinning-discovery', this.setIsTooltipVisible);
 	},
-	destroyed() {
+	beforeUnmount() {
 		dataPinningEventBus.off('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	computed: {

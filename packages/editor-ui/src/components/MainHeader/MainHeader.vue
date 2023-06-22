@@ -91,7 +91,7 @@ export default defineComponent({
 		// Initialize the push connection
 		this.pushConnect();
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.pushDisconnect();
 	},
 	watch: {

@@ -5,15 +5,17 @@
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list
-				:parameters="getProperties"
-				:nodeValues="nodeValues"
-				:path="path"
-				:hideDelete="hideDelete"
-				:indent="true"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
-			/>
+			<Suspense>
+				<parameter-input-list
+					:parameters="getProperties"
+					:nodeValues="nodeValues"
+					:path="path"
+					:hideDelete="hideDelete"
+					:indent="true"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
+			</Suspense>
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button

@@ -491,7 +491,7 @@ export default defineComponent({
 			this.setWidth();
 		}, 0);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus.off('refreshList', this.refreshList);
 		window.removeEventListener('resize', this.setWidth);
 	},

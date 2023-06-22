@@ -952,7 +952,7 @@ export default defineComponent({
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });

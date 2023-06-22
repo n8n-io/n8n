@@ -47,7 +47,7 @@ export default defineComponent({
 			}),
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	computed: {

@@ -202,7 +202,7 @@ export default defineComponent({
 			} catch {}
 		},
 	},
-	destroyed() {
+	beforeUnmount() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
 	},
 	mounted() {

@@ -347,7 +347,7 @@ export default defineComponent({
 	created() {
 		window.addEventListener('resize', this.onResize);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('resize', this.onResize);
 	},
 	methods: {

@@ -59,7 +59,7 @@ export default defineComponent({
 			activeElement.blur();
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus?.off('close', this.close);
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
