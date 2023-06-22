@@ -26,9 +26,5 @@ export class MainSidebar extends BasePage {
 		openUserMenu: () => {
 			this.getters.userMenu().find('[role="button"]').last().click();
 		},
-		signout: () => {
-			this.actions.openUserMenu();
-			cy.getByTestId('workflow-menu-item-logout').click();
-		},
 	};
 }
