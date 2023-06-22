@@ -1,8 +1,5 @@
-import { randFirstName, randLastName } from '@ngneat/falso';
 import {
 	CODE_NODE_NAME,
-	DEFAULT_USER_EMAIL,
-	DEFAULT_USER_PASSWORD,
 	MANUAL_TRIGGER_NODE_NAME,
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
@@ -14,20 +11,10 @@ const IMPORT_WORKFLOW_URL = 'https://gist.githubusercontent.com/OlegIvaniv/010bd
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
 const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
-
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
-	before(() => {
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	beforeEach(() => {
-		cy.signin({ email, password });
 		WorkflowPage.actions.visit();
 	});
 

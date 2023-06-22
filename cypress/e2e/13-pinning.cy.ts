@@ -1,7 +1,4 @@
-import { randFirstName, randLastName } from '@ngneat/falso';
 import {
-	DEFAULT_USER_EMAIL,
-	DEFAULT_USER_PASSWORD,
 	HTTP_REQUEST_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
@@ -12,18 +9,8 @@ import { WorkflowPage, NDV } from '../pages';
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
-
 describe('Data pinning', () => {
-	before(() => {
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	beforeEach(() => {
-		cy.signin({ email, password });
 		workflowPage.actions.visit();
 	});
 

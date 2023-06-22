@@ -1,4 +1,4 @@
-name: Build, unit/smoke test and lint branch
+name: Build, unit test and lint branch
 
 on: [pull_request]
 
@@ -107,20 +107,6 @@ jobs:
         env:
           ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
         run: pnpm lint
-
-  smoke-test:
-    name: E2E [Electron/Node 18]
-    uses: ./.github/workflows/e2e-reusable.yml
-    with:
-      branch: ${{ github.event.pull_request.base.ref }}
-      user: ${{ github.event.inputs.user || 'PR User' }}
-      spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
-      record: false
-      parallel: false
-      pr_number: ${{ github.event.number }}
-      containers: '[1]'
-    secrets:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
   checklist_job:
     runs-on: ubuntu-latest
