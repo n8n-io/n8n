@@ -1,5 +1,9 @@
 <template>
-	<div :class="$style['expression-parameter-input']" v-click-outside="onBlur" @keydown.tab="onBlur">
+	<div
+		:class="$style['expression-parameter-input']"
+		v-on-click-outside="onBlur"
+		@keydown.tab="onBlur"
+	>
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
 			<div
 				:class="[
@@ -36,11 +40,7 @@
 				{{ $locale.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 			</n8n-text>
 			<n8n-text :class="$style.body">
-				<InlineExpressionEditorOutput
-					:value="modelValue"
-					:isReadOnly="isReadOnly"
-					:segments="segments"
-				/>
+				<InlineExpressionEditorOutput :isReadOnly="isReadOnly" :segments="segments" />
 			</n8n-text>
 			<div :class="$style.footer">
 				<n8n-text size="small" compact>

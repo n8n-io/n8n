@@ -31,7 +31,7 @@
 				selectableType="single"
 				class="json-data"
 			>
-				<template #nodeKey="{ node }">
+				<template #renderNodeKey="{ node }">
 					<span
 						data-target="mappable"
 						:data-value="getJsonParameterPath(node.path)"
@@ -45,7 +45,7 @@
 						>"{{ node.key }}"</span
 					>
 				</template>
-				<template #nodeValue="{ node }">
+				<template #renderNodeValue="{ node }">
 					<span v-if="isNaN(node.index)" class="ph-no-capture">{{ getContent(node.content) }}</span>
 					<span
 						v-else
