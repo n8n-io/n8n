@@ -38,9 +38,9 @@ patchedDependencies:
   typedi@0.10.0:
     hash: 62r6bc2crgimafeyruodhqlgo4
     path: patches/typedi@0.10.0.patch
-  typeorm@0.3.12:
-    hash: yav7zi22hnry26k2lwg6jcumde
-    path: patches/typeorm@0.3.12.patch
+  typeorm@0.3.17:
+    hash: ibk2jwd6bthwtdemuvwf74jcui
+    path: patches/typeorm@0.3.17.patch
 
 importers:
 
@@ -441,8 +441,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       typeorm:
-        specifier: ^0.3.12
-        version: 0.3.12(patch_hash=yav7zi22hnry26k2lwg6jcumde)(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
+        specifier: ^0.3.17
+        version: 0.3.17(patch_hash=ibk2jwd6bthwtdemuvwf74jcui)(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -21388,8 +21388,8 @@ packages:
     dev: false
     patched: true
 
-  /typeorm@0.3.12(patch_hash=yav7zi22hnry26k2lwg6jcumde)(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
-    resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}
+  /typeorm@0.3.17(patch_hash=ibk2jwd6bthwtdemuvwf74jcui)(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
+    resolution: {integrity: sha512-UDjUEwIQalO9tWw9O2A4GU+sT3oyoUXheHJy4ft+RFdnRdQctdQ34L9SqE2p7LdwzafHx1maxT+bqXON+Qnmig==}
     engines: {node: '>= 12.9.0'}
     hasBin: true
     peerDependencies:
@@ -21398,8 +21398,8 @@ packages:
       better-sqlite3: ^7.1.2 || ^8.0.0
       hdb-pool: ^0.1.6
       ioredis: ^5.0.4
-      mongodb: ^3.6.0
-      mssql: ^7.3.0
+      mongodb: ^5.2.0
+      mssql: ^9.1.1
       mysql2: ^2.2.5 || ^3.0.1
       oracledb: ^5.1.0
       pg: ^8.5.1
@@ -21456,7 +21456,6 @@ packages:
       dotenv: 16.0.3
       glob: 8.1.0
       ioredis: 5.2.4
-      js-yaml: 4.1.0
       mkdirp: 2.1.3
       mysql2: 2.3.3
       pg: 8.8.0
@@ -21465,7 +21464,6 @@ packages:
       sqlite3: 5.1.6
       tslib: 2.5.0
       uuid: 9.0.0
-      xml2js: 0.5.0
       yargs: 17.6.2
     transitivePeerDependencies:
       - supports-color

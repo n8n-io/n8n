@@ -1,0 +1,94 @@
+diff --git a/migration/MigrationExecutor.js b/migration/MigrationExecutor.js
+index 0a93832eb094db347e3fd5241a45974486979e09..47f07376587798e4c4fb99ef0139642220253abe 100644
+--- a/migration/MigrationExecutor.js
++++ b/migration/MigrationExecutor.js
+@@ -124,6 +124,7 @@ class MigrationExecutor {
+      * thus not saved in the database.
+      */
+     async executePendingMigrations() {
++        var _a, _b, _c, _d;
+         const queryRunner = this.queryRunner || this.connection.createQueryRunner();
+         // create migrations table if it's not created yet
+         await this.createMigrationsTableIfNotExist(queryRunner);
+@@ -218,31 +219,29 @@ class MigrationExecutor {
+                     continue;
+                 }
+                 if (migration.transaction && !queryRunner.isTransactionActive) {
++                    await ((_b = (_a = migration.instance).beforeTransaction) === null || _b === void 0 ? void 0 : _b.call(_a, queryRunner));
+                     await queryRunner.beforeMigration();
+                     await queryRunner.startTransaction();
+                     transactionStartedByUs = true;
+                 }
+-                await migration
+-                    .instance.up(queryRunner)
+-                    .catch((error) => {
+-                    // informative log about migration failure
++                try {
++                    await migration.instance.up(queryRunner);
++                }
++                catch (error) {
+                     this.connection.logger.logMigration(`Migration "${migration.name}" failed, error: ${error === null || error === void 0 ? void 0 : error.message}`);
+                     throw error;
+-                })
+-                    .then(async () => {
+-                    // now when migration is executed we need to insert record about it into the database
+-                    await this.insertExecutedMigration(queryRunner, migration);
+-                    // commit transaction if we started it
+-                    if (migration.transaction && transactionStartedByUs) {
+-                        await queryRunner.commitTransaction();
+-                        await queryRunner.afterMigration();
+-                    }
+-                })
+-                    .then(() => {
+-                    // informative log about migration success
+-                    successMigrations.push(migration);
+-                    this.connection.logger.logSchemaBuild(`Migration ${migration.name} has been ${this.fake ? "(fake)" : ""} executed successfully.`);
+-                });
++                }
++                // now when migration is executed we need to insert record about it into the database
++                await this.insertExecutedMigration(queryRunner, migration);
++                // commit transaction if we started it
++                if (migration.transaction && transactionStartedByUs) {
++                    await queryRunner.commitTransaction();
++                    await queryRunner.afterMigration();
++                    await ((_d = (_c = migration.instance).afterTransaction) === null || _d === void 0 ? void 0 : _d.call(_c, queryRunner));
++                }
++                // informative log about migration success
++                successMigrations.push(migration);
++                this.connection.logger.logSchemaBuild(`Migration ${migration.name} has been ${this.fake ? "(fake)" : ""} executed successfully.`);
+             }
+             // commit transaction if we started it
+             if (this.transaction === "all" && transactionStartedByUs) {
+@@ -262,6 +261,9 @@ class MigrationExecutor {
+             throw err;
+         }
+         finally {
++            // If a migration failed, still call `afterMigration` to reset foreign-key checks
++            if (!this.fake)
++                await queryRunner.afterMigration();
+             // if query runner was created by us then release it
+             if (!this.queryRunner)
+                 await queryRunner.release();
+@@ -310,7 +312,6 @@ class MigrationExecutor {
+             if (!this.fake) {
+                 await queryRunner.beforeMigration();
+                 await migrationToRevert.instance.down(queryRunner);
+-                await queryRunner.afterMigration();
+             }
+             await this.deleteExecutedMigration(queryRunner, migrationToRevert);
+             this.connection.logger.logSchemaBuild(`Migration ${migrationToRevert.name} has been ${this.fake ? "(fake)" : ""} reverted successfully.`);
+@@ -330,6 +331,8 @@ class MigrationExecutor {
+             throw err;
+         }
+         finally {
++            if (!this.fake)
++                await queryRunner.afterMigration();
+             // if query runner was created by us then release it
+             if (!this.queryRunner)
+                 await queryRunner.release();
+@@ -530,5 +533,4 @@ class MigrationExecutor {
+     }
+ }
+ exports.MigrationExecutor = MigrationExecutor;
+-
+ //# sourceMappingURL=MigrationExecutor.js.map
