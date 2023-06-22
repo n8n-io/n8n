@@ -1190,9 +1190,33 @@ export class Workflow {
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
 
-			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
+			if (inputData.main?.length > 0) {
 				// We always use the data of main input and the first input for executeSingle
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
+			}
+
+			let forceInputNodeExecution = nodeType.description.forceInputNodeExecution;
+			if (forceInputNodeExecution !== undefined) {
+				if (typeof forceInputNodeExecution === 'string') {
+					forceInputNodeExecution = !!this.expression.getSimpleParameterValue(
+						node,
+						forceInputNodeExecution,
+						mode,
+						additionalData.timezone,
+						{ $version: node.typeVersion },
+					);
+				}
+
+				if (!forceInputNodeExecution) {
+					// If the nodes do not get force executed data of some inputs may be missing
+					// for that reason do we use the data of the first one that contains any
+					for (const mainData of inputData.main) {
+						if (mainData?.length) {
+							connectionInputData = mainData;
+							break;
+						}
+					}
+				}
 			}
 
 			if (connectionInputData.length === 0) {
