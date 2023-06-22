@@ -26,7 +26,7 @@ export class Brevo implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://api.sendinblue.com',
+			baseURL: 'https://api.brevo.com',
 		},
 		properties: [
 			{

@@ -297,7 +297,7 @@ export namespace BrevoWebhookApi {
 	}
 
 	const credentialsName = 'sendInBlueApi';
-	const baseURL = 'https://api.sendinblue.com/v3';
+	const baseURL = 'https://api.brevo.com/v3';
 	export const supportedAuthMap = new Map<string, (ref: IWebhookFunctions) => Promise<string>>([
 		[
 			'apiKey',

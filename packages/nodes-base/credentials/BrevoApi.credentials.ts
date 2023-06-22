@@ -10,7 +10,7 @@ export class BrevoApi implements ICredentialType {
 
 	displayName = 'Brevo';
 
-	documentationUrl = 'sendinblue';
+	documentationUrl = 'brevo';
 
 	properties: INodeProperties[] = [
 		{
@@ -33,7 +33,7 @@ export class BrevoApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.sendinblue.com/v3',
+			baseURL: 'https://api.brevo.com/v3',
 			url: '/account',
 		},
 	};

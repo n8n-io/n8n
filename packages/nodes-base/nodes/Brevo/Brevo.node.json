@@ -1,17 +1,17 @@
 {
-	"node": "n8n-nodes-base.sendInBlue",
+	"node": "n8n-nodes-base.brevo",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Marketing & Content", "Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/sendInBlue"
+				"url": "https://docs.n8n.io/credentials/brevo"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sendinblue/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.brevo/"
 			}
 		]
 	},
