@@ -819,7 +819,6 @@ export default defineComponent({
 			if (!data.workflow.nodes || !data.workflow.connections) {
 				throw new Error('Invalid workflow object');
 			}
-			this.resetWorkspace();
 			await this.addNodes(
 				NodeViewUtils.getFixedNodesList(data.workflow.nodes),
 				data.workflow.connections,
@@ -829,6 +828,7 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
 
+			this.canvasStore.resetZoom();
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
 		},
@@ -2533,6 +2533,11 @@ export default defineComponent({
 			} else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId);
+			} else if (this.executionId) {
+				this.isExecutionPreview = true;
+				await this.openExecution(this.executionId);
+			} else if (this.workflow) {
+				await this.importWorkflowExact({ workflow: this.workflow });
 			} else {
 				const result = this.uiStore.stateIsDirty;
 				if (result) {
@@ -3766,6 +3771,7 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
+		this.resetWorkspace();
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
@@ -3825,13 +3831,6 @@ export default defineComponent({
 				await this.initView();
 				this.historyStore.reset();
 				this.uiStore.nodeViewInitialized = true;
-				if (this.executionId) {
-					this.isExecutionPreview = true;
-					await this.openExecution(this.executionId);
-				}
-				if (this.workflow) {
-					await this.importWorkflowExact({ workflow: this.workflow });
-				}
 			} catch (error) {
 				this.showError(
 					error,
