@@ -1,5 +1,4 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
-import { idStringifier } from '../utils/transformers';
 import { datetimeColumnType } from './AbstractEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 
@@ -25,6 +24,6 @@ export class WorkflowStatistics {
 	@ManyToOne('WorkflowEntity', 'shared')
 	workflow: WorkflowEntity;
 
-	@PrimaryColumn({ transformer: idStringifier })
+	@PrimaryColumn()
 	workflowId: string;
 }

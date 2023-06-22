@@ -32,6 +32,9 @@ patchedDependencies:
   element-ui@2.15.12:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
+  pkce-challenge@3.0.0:
+    hash: dypouzb3lve7vncq25i5fuanki
+    path: patches/pkce-challenge@3.0.0.patch
   typedi@0.10.0:
     hash: 62r6bc2crgimafeyruodhqlgo4
     path: patches/typedi@0.10.0.patch
@@ -347,6 +350,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
+      nanoid:
+        specifier: ^3.3.6
+        version: 3.3.6
       nodemailer:
         specifier: ^6.7.1
         version: 6.8.0
@@ -380,6 +386,9 @@ importers:
       picocolors:
         specifier: ^1.0.0
         version: 1.0.0
+      pkce-challenge:
+        specifier: ^3.0.0
+        version: 3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki)
       posthog-node:
         specifier: ^2.2.2
         version: 2.2.2
@@ -764,9 +773,6 @@ importers:
       '@codemirror/lang-python':
         specifier: ^6.1.2
         version: 6.1.2(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
-      '@codemirror/lang-sql':
-        specifier: ^6.4.1
-        version: 6.4.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       '@codemirror/language':
         specifier: ^6.2.1
         version: 6.2.1
@@ -809,6 +815,9 @@ importers:
       '@jsplumb/util':
         specifier: ^5.13.2
         version: 5.13.2
+      '@n8n/codemirror-lang-sql':
+        specifier: ^1.0.0
+        version: 1.0.0(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       axios:
         specifier: ^0.21.1
         version: 0.21.4
@@ -4119,19 +4128,6 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@codemirror/lang-sql@6.4.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
-    resolution: {integrity: sha512-PFB56L+A0WGY35uRya+Trt5g19V9k2V9X3c55xoFW4RgiATr/yLqWsbbnEsdxuMn5tLpuikp7Kmj9smRsqBXAg==}
-    dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
-      '@codemirror/language': 6.2.1
-      '@codemirror/state': 6.1.4
-      '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
-    transitivePeerDependencies:
-      - '@codemirror/view'
-      - '@lezer/common'
-    dev: false
-
   /@codemirror/language@6.2.1:
     resolution: {integrity: sha512-MC3svxuvIj0MRpFlGHxLS6vPyIdbTr2KKPEW46kCoCXw2ktb4NTkpkPBI/lSP/FoNXLCBJ0mrnUi1OoZxtpW1Q==}
     dependencies:
@@ -5262,6 +5258,19 @@ packages:
     os: [win32]
     dev: false
     optional: true
+
+  /@n8n/codemirror-lang-sql@1.0.0(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+    resolution: {integrity: sha512-7bmlhaSW+f/g+IarWbif/D9bUgwW8bjCbjfW6BCGqZHXTz9UQt8fM6tQ9MNh/3sZz9LPwcnT7XSSv73Ku0rriw==}
+    dependencies:
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/language': 6.2.1
+      '@codemirror/state': 6.1.4
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/view'
+      - '@lezer/common'
+    dev: false
 
   /@n8n_io/license-sdk@2.4.0:
     resolution: {integrity: sha512-99kuCVH4NcBi4nyn/WIpd6KSIMLk/pbBks0zr8bC65ALKj0se7/2MwC6N+WwGkG7NqH0kMdGe/7Y5KnJkMTefg==}
@@ -18088,6 +18097,13 @@ packages:
     resolution: {integrity: sha512-8V9+HQPupnaXMA23c5hvl69zXvTwTzyAYasnkb0Tts4XvO4CliqONMOnvlq26rkhLC3nWDFBJf73LU1e1VZLaQ==}
     engines: {node: '>= 6'}
     dev: true
+
+  /pkce-challenge@3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki):
+    resolution: {integrity: sha512-sQ8sJJJuLhA5pFnoxayMCrFnBMNj7DDpa+TWxOXl4B24oXHlVSADi/3Bowm66QuzWkBuF6DhmaelCdlC2JKwsg==}
+    dependencies:
+      crypto-js: 4.1.1
+    dev: false
+    patched: true
 
   /pkg-dir@3.0.0:
     resolution: {integrity: sha512-/E57AYkoeQ25qkxMj5PBOVgF8Kiu/h7cYS30Z5+R7WaiCCBfLq58ZI/dSeaEKb9WVJV5n/03QwrN3IeWIFllvw==}
