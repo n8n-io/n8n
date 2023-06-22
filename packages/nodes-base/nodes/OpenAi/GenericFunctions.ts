@@ -66,17 +66,18 @@ export async function callExternalAPI(
 
 		const { url, method } = functionUI as IDataObject;
 
-		const response = await this.helpers.httpRequest({
-			url: url as string,
-			method: method as IHttpRequestMethods,
-			qs: functionArguments,
-		});
+		let response;
+		try {
+			response = await this.helpers.httpRequest({
+				url: url as string,
+				method: method as IHttpRequestMethods,
+				qs: functionArguments,
+			});
+		} catch (error) {
+			throw new NodeApiError(this.getNode(), { message: 'Error calling external API function' });
+		}
 
 		const responseData = response;
-
-		if (response.statusCode !== 200) {
-			throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
-		}
 
 		returnItems.push({
 			json: responseData,
