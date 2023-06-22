@@ -34,19 +34,19 @@ export class PostgresTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Trigger Mode',
+				displayName: 'Listen For',
 				name: 'triggerMode',
 				type: 'options',
 				options: [
 					{
-						name: 'Listen and Create Trigger Rule',
+						name: 'Table Row Change Events',
 						value: 'createTrigger',
-						description: 'Create a trigger rule and listen to it',
+						description: 'Insert, update or delete',
 					},
 					{
-						name: 'Listen to Channel',
+						name: 'Advanced',
 						value: 'listenTrigger',
-						description: 'Receive real-time notifications from a channel',
+						description: 'Listen to existing Postgres channel',
 					},
 				],
 				default: 'createTrigger',
@@ -126,7 +126,7 @@ export class PostgresTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Events to Listen To',
+				displayName: 'Event to listen for',
 				name: 'firesOn',
 				type: 'options',
 				displayOptions: {
