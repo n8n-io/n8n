@@ -142,14 +142,14 @@ export class License {
 	}
 
 	getFeatureValue(
-		feature: string,
-		requireValidCert?: boolean,
-	): undefined | boolean | number | string {
+		feature: (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS],
+	): number | undefined;
+	getFeatureValue(feature: 'planName'): string | undefined;
+	getFeatureValue(feature: string): undefined | boolean | number | string {
 		if (!this.manager) {
 			return undefined;
 		}
-
-		return this.manager.getFeatureValue(feature, requireValidCert);
+		return this.manager.getFeatureValue(feature);
 	}
 
 	getManagementJwt(): string {
@@ -181,19 +181,19 @@ export class License {
 	getUsersLimit(): number {
 		const limit = this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT);
 
-		return (limit ?? -1) as number;
+		return limit ?? -1;
 	}
 
 	getTriggerLimit(): number {
-		return (this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? -1) as number;
+		return this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? -1;
 	}
 
 	getVariablesLimit(): number {
-		return (this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1) as number;
+		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1;
 	}
 
 	getPlanName(): string {
-		return (this.getFeatureValue('planName') ?? 'Community') as string;
+		return this.getFeatureValue('planName') ?? 'Community';
 	}
 
 	getInfo(): string {
