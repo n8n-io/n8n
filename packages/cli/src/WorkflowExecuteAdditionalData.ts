@@ -38,6 +38,7 @@ import type {
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
+	TelemetryHelpers,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -58,6 +59,7 @@ import type {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
+	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
@@ -73,6 +75,8 @@ import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from './databases/repositories';
 import { RedisServicePublisher } from './services/RedisServicePublisher';
 import { eventBus } from './eventbus';
+import { Telemetry } from './telemetry';
+import { N8N_VERSION } from './constants';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -835,6 +839,39 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				fullRunData: IRun,
 				newStaticData: IDataObject,
 			): Promise<void> {
+				// collect Tracking Data
+				const trackingProperties: IExecutionTrackProperties = {
+					workflow_id: this.workflowData.id as string,
+					is_manual: false,
+					version_cli: N8N_VERSION,
+					success: false,
+				};
+				trackingProperties.success = !!fullRunData?.finished;
+				trackingProperties.execution_mode = fullRunData.mode;
+				if (!trackingProperties.success && fullRunData?.data.resultData.error) {
+					trackingProperties.error_message = fullRunData?.data.resultData.error.message;
+					let errorNodeName =
+						'node' in fullRunData?.data.resultData.error
+							? fullRunData?.data.resultData.error.node?.name
+							: undefined;
+					trackingProperties.error_node_type =
+						'node' in fullRunData?.data.resultData.error
+							? fullRunData?.data.resultData.error.node?.type
+							: undefined;
+
+					if (fullRunData.data.resultData.lastNodeExecuted) {
+						const lastNode = TelemetryHelpers.getNodeTypeForName(
+							this.workflowData,
+							fullRunData.data.resultData.lastNodeExecuted,
+						);
+
+						if (lastNode !== undefined) {
+							trackingProperties.error_node_type = lastNode.type;
+							errorNodeName = lastNode.name;
+						}
+					}
+				}
+
 				try {
 					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
@@ -904,21 +941,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					});
 
 					if (fullExecutionData.status === 'success') {
-						// await redisPublisher.publishToEventLog(
-						// 	new EventMessageWorkflow({
-						// 		eventName: 'n8n.workflow.success',
-						// 		id: this.executionId,
-						// 		payload: {
-						// 			executionId: this.executionId,
-						// 			success: true,
-						// 			// userId: this.workflowData.,
-						// 			workflowId: this.workflowData.id as string,
-						// 			isManual: false,
-						// 			workflowName: this.workflowData.name,
-						// 			metaData: fullRunData.data?.resultData?.metadata,
-						// 		},
-						// 	}),
-						// );
 						await eventBus.sendWorkflowEvent({
 							eventName: 'n8n.workflow.success',
 							id: this.executionId,
@@ -943,25 +965,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							}
 							errorMessage = fullRunData.data.resultData.error.message || 'unknown';
 						}
-						// await redisPublisher.publishToEventLog(
-						// 	new EventMessageWorkflow({
-						// 		eventName: 'n8n.workflow.failed',
-						// 		id: this.executionId,
-						// 		payload: {
-						// 			executionId: this.executionId,
-						// 			success: false,
-						// 			// userId: this.workflowData.,
-						// 			workflowId: this.workflowData.id as string,
-						// 			lastNodeExecuted: fullRunData?.data.resultData?.lastNodeExecuted,
-						// 			errorNodeType,
-						// 			errorNodeId,
-						// 			errorMessage,
-						// 			isManual: false,
-						// 			workflowName: this.workflowData.name,
-						// 			metaData: fullRunData.data?.resultData?.metadata,
-						// 		},
-						// 	}),
-						// );
 						await eventBus.sendWorkflowEvent({
 							eventName: 'n8n.workflow.failed',
 							id: this.executionId,
@@ -1010,6 +1013,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						fullRunData,
 					);
 				}
+				await Container.get(Telemetry).trackWorkflowExecution(trackingProperties);
 			},
 		],
 		nodeFetchedData: [

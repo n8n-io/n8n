@@ -296,158 +296,157 @@ export class InternalHooks implements IInternalHooksClass {
 			return;
 		}
 
-		const promises = [];
-
-		const properties: IExecutionTrackProperties = {
-			workflow_id: workflow.id,
-			is_manual: false,
-			version_cli: N8N_VERSION,
-			success: false,
-		};
-
-		if (userId) {
-			properties.user_id = userId;
-		}
-
-		if (runData?.data.resultData.error?.message?.includes('canceled')) {
-			runData.status = 'canceled';
-		}
-
-		properties.success = !!runData?.finished;
-
-		let executionStatus: ExecutionStatus;
-		if (runData?.status === 'crashed') {
-			executionStatus = 'crashed';
-		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
-			executionStatus = 'waiting';
-		} else if (runData?.status === 'canceled') {
-			executionStatus = 'canceled';
+		if (config.getEnv('executions.mode') === 'queue') {
+			await eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.completed',
+				payload: {
+					executionId,
+					// success: properties.success,
+					userId,
+					workflowId: workflow.id?.toString(),
+					isManual: false,
+					workflowName: workflow.name,
+					// metaData: runData?.data?.resultData?.metadata,
+				},
+			});
+			await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
 		} else {
-			executionStatus = properties.success ? 'success' : 'failed';
-		}
+			const promises = [];
 
-		if (runData !== undefined) {
-			properties.execution_mode = runData.mode;
-			properties.is_manual = runData.mode === 'manual';
+			const properties: IExecutionTrackProperties = {
+				workflow_id: workflow.id,
+				is_manual: false,
+				version_cli: N8N_VERSION,
+				success: false,
+			};
 
-			let nodeGraphResult: INodesGraphResult | null = null;
+			if (userId) {
+				properties.user_id = userId;
+			}
 
-			if (!properties.success && runData?.data.resultData.error) {
-				properties.error_message = runData?.data.resultData.error.message;
-				let errorNodeName =
-					'node' in runData?.data.resultData.error
-						? runData?.data.resultData.error.node?.name
-						: undefined;
-				properties.error_node_type =
-					'node' in runData?.data.resultData.error
-						? runData?.data.resultData.error.node?.type
-						: undefined;
+			if (runData?.data.resultData.error?.message?.includes('canceled')) {
+				runData.status = 'canceled';
+			}
 
-				if (runData.data.resultData.lastNodeExecuted) {
-					const lastNode = TelemetryHelpers.getNodeTypeForName(
-						workflow,
-						runData.data.resultData.lastNodeExecuted,
-					);
+			properties.success = !!runData?.finished;
 
-					if (lastNode !== undefined) {
-						properties.error_node_type = lastNode.type;
-						errorNodeName = lastNode.name;
+			let executionStatus: ExecutionStatus;
+			if (runData?.status === 'crashed') {
+				executionStatus = 'crashed';
+			} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
+				executionStatus = 'waiting';
+			} else if (runData?.status === 'canceled') {
+				executionStatus = 'canceled';
+			} else {
+				executionStatus = properties.success ? 'success' : 'failed';
+			}
+
+			if (runData !== undefined) {
+				properties.execution_mode = runData.mode;
+				properties.is_manual = runData.mode === 'manual';
+
+				let nodeGraphResult: INodesGraphResult | null = null;
+
+				if (!properties.success && runData?.data.resultData.error) {
+					properties.error_message = runData?.data.resultData.error.message;
+					let errorNodeName =
+						'node' in runData?.data.resultData.error
+							? runData?.data.resultData.error.node?.name
+							: undefined;
+					properties.error_node_type =
+						'node' in runData?.data.resultData.error
+							? runData?.data.resultData.error.node?.type
+							: undefined;
+
+					if (runData.data.resultData.lastNodeExecuted) {
+						const lastNode = TelemetryHelpers.getNodeTypeForName(
+							workflow,
+							runData.data.resultData.lastNodeExecuted,
+						);
+
+						if (lastNode !== undefined) {
+							properties.error_node_type = lastNode.type;
+							errorNodeName = lastNode.name;
+						}
+					}
+
+					if (properties.is_manual) {
+						nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+						properties.node_graph = nodeGraphResult.nodeGraph;
+						properties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+
+						if (errorNodeName) {
+							properties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
+						}
 					}
 				}
 
 				if (properties.is_manual) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					properties.node_graph = nodeGraphResult.nodeGraph;
-					properties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
-
-					if (errorNodeName) {
-						properties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
+					if (!nodeGraphResult) {
+						nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 					}
-				}
-			}
 
-			if (properties.is_manual) {
-				if (!nodeGraphResult) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-				}
-
-				let userRole: 'owner' | 'sharee' | undefined = undefined;
-				if (userId) {
-					const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
-					if (role) {
-						userRole = role.name === 'owner' ? 'owner' : 'sharee';
+					let userRole: 'owner' | 'sharee' | undefined = undefined;
+					if (userId) {
+						const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
+						if (role) {
+							userRole = role.name === 'owner' ? 'owner' : 'sharee';
+						}
 					}
-				}
 
-				const manualExecEventProperties: ITelemetryTrackProperties = {
-					user_id: userId,
-					workflow_id: workflow.id,
-					status: executionStatus,
-					executionStatus: runData?.status ?? 'unknown',
-					error_message: properties.error_message as string,
-					error_node_type: properties.error_node_type,
-					node_graph_string: properties.node_graph_string as string,
-					error_node_id: properties.error_node_id as string,
-					webhook_domain: null,
-					sharing_role: userRole,
-				};
-
-				if (!manualExecEventProperties.node_graph_string) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
-				}
-
-				if (runData.data.startData?.destinationNode) {
-					const telemetryPayload = {
-						...manualExecEventProperties,
-						node_type: TelemetryHelpers.getNodeTypeForName(
-							workflow,
-							runData.data.startData?.destinationNode,
-						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+					const manualExecEventProperties: ITelemetryTrackProperties = {
+						user_id: userId,
+						workflow_id: workflow.id,
+						status: executionStatus,
+						executionStatus: runData?.status ?? 'unknown',
+						error_message: properties.error_message as string,
+						error_node_type: properties.error_node_type,
+						node_graph_string: properties.node_graph_string as string,
+						error_node_id: properties.error_node_id as string,
+						webhook_domain: null,
+						sharing_role: userRole,
 					};
 
-					promises.push(
-						this.telemetry.track('Manual node exec finished', telemetryPayload, {
-							withPostHog: true,
-						}),
-					);
-				} else {
-					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
-						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
-							?.json as { headers?: { origin?: string } };
-						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
-							manualExecEventProperties.webhook_domain = pslGet(
-								execJson.headers.origin.replace(/^https?:\/\//, ''),
-							);
-						}
-					});
+					if (!manualExecEventProperties.node_graph_string) {
+						nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+						manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+					}
 
-					promises.push(
-						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties, {
-							withPostHog: true,
-						}),
-					);
+					if (runData.data.startData?.destinationNode) {
+						const telemetryPayload = {
+							...manualExecEventProperties,
+							node_type: TelemetryHelpers.getNodeTypeForName(
+								workflow,
+								runData.data.startData?.destinationNode,
+							)?.type,
+							node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						};
+
+						promises.push(
+							this.telemetry.track('Manual node exec finished', telemetryPayload, {
+								withPostHog: true,
+							}),
+						);
+					} else {
+						nodeGraphResult.webhookNodeNames.forEach((name: string) => {
+							const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
+								?.json as { headers?: { origin?: string } };
+							if (execJson?.headers?.origin && execJson.headers.origin !== '') {
+								manualExecEventProperties.webhook_domain = pslGet(
+									execJson.headers.origin.replace(/^https?:\/\//, ''),
+								);
+							}
+						});
+
+						promises.push(
+							this.telemetry.track('Manual workflow exec finished', manualExecEventProperties, {
+								withPostHog: true,
+							}),
+						);
+					}
 				}
 			}
-		}
 
-		if (config.getEnv('executions.mode') === 'queue') {
-			promises.push(
-				eventBus.sendWorkflowEvent({
-					eventName: 'n8n.workflow.completed',
-					payload: {
-						executionId,
-						success: properties.success,
-						userId: properties.user_id,
-						workflowId: properties.workflow_id,
-						isManual: properties.is_manual,
-						workflowName: workflow.name,
-						metaData: runData?.data?.resultData?.metadata,
-					},
-				}),
-			);
-		} else {
 			promises.push(
 				properties.success
 					? eventBus.sendWorkflowEvent({
@@ -479,11 +478,11 @@ export class InternalHooks implements IInternalHooksClass {
 							},
 					  }),
 			);
+
+			await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
+
+			void Promise.all([...promises, this.telemetry.trackWorkflowExecution(properties)]);
 		}
-
-		await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
-
-		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(properties)]);
 	}
 
 	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
