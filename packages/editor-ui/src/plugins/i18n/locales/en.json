@@ -1603,6 +1603,7 @@
 	"workflowSettings.defaultTimezone": "Default - {defaultTimezoneValue}",
 	"workflowSettings.defaultTimezoneNotValid": "Default Timezone not valid",
 	"workflowSettings.errorWorkflow": "Error Workflow",
+	"workflowSettings.executionOrder": "Execution Order",
 	"workflowSettings.helpTexts.errorWorkflow": "A second workflow to run if the current one fails.<br />The second workflow should an 'Error Trigger' node.",
 	"workflowSettings.helpTexts.executionTimeout": "How long the workflow should wait before timing out",
 	"workflowSettings.helpTexts.executionTimeoutToggle": "Whether to cancel workflow execution after a defined time",

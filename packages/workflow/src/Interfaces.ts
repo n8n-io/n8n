@@ -1769,6 +1769,7 @@ export interface IWorkflowSettings {
 	saveManualExecutions?: 'DEFAULT' | boolean;
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
+	executionOrder?: 'legacy' | 'v1';
 }
 
 export interface WorkflowTestData {
