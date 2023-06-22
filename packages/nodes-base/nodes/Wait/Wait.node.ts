@@ -3,6 +3,7 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	INodeProperties,
+	IDisplayOptions,
 } from 'n8n-workflow';
 import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 
@@ -20,6 +21,12 @@ import {
 import { Webhook } from '../Webhook/Webhook.node';
 
 const authPropertyName = 'incomingAuthentication';
+
+const displayOnWebhook: IDisplayOptions = {
+	show: {
+		resume: ['webhook'],
+	},
+};
 
 export class Wait extends Webhook {
 	description: INodeTypeDescription = {
@@ -46,11 +53,6 @@ export class Wait extends Webhook {
 		],
 		properties: [
 			{
-				...authenticationProperty(authPropertyName),
-				description:
-					'If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security',
-			},
-			{
 				displayName: 'Resume',
 				name: 'resume',
 				type: 'options',
@@ -73,6 +75,12 @@ export class Wait extends Webhook {
 				],
 				default: 'timeInterval',
 				description: 'Determines the waiting mode to use before the workflow continues',
+			},
+			{
+				...authenticationProperty(authPropertyName),
+				description:
+					'If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security',
+				displayOptions: displayOnWebhook,
 			},
 
 			// ----------------------------------
@@ -149,44 +157,28 @@ export class Wait extends Webhook {
 					'The webhook URL will be generated at run time. It can be referenced with the <strong>$execution.resumeUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 				name: 'webhookNotice',
 				type: 'notice',
-				displayOptions: {
-					show: {
-						resume: ['webhook'],
-					},
-				},
+				displayOptions: displayOnWebhook,
 				default: '',
 			},
 			{
 				...httpMethodsProperty,
-				displayOptions: {
-					show: {
-						resume: ['webhook'],
-					},
-				},
+				displayOptions: displayOnWebhook,
 				description: 'The HTTP method of the Webhook call',
 			},
 			{
 				...responseCodeProperty,
-				displayOptions: {
-					show: {
-						resume: ['webhook'],
-					},
-				},
+				displayOptions: displayOnWebhook,
 			},
 			{
 				...responseModeProperty,
-				displayOptions: {
-					show: {
-						resume: ['webhook'],
-					},
-				},
+				displayOptions: displayOnWebhook,
 			},
 			{
 				...responseDataProperty,
 				displayOptions: {
 					show: {
 						...responseDataProperty.displayOptions?.show,
-						resume: ['webhook'],
+						...displayOnWebhook.show,
 					},
 				},
 			},
@@ -195,7 +187,7 @@ export class Wait extends Webhook {
 				displayOptions: {
 					show: {
 						...responseBinaryPropertyNameProperty.displayOptions?.show,
-						resume: ['webhook'],
+						...displayOnWebhook.show,
 					},
 				},
 			},
@@ -207,11 +199,7 @@ export class Wait extends Webhook {
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description:
 					'If no webhook call is received, the workflow will automatically resume execution after the specified limit type',
-				displayOptions: {
-					show: {
-						resume: ['webhook'],
-					},
-				},
+				displayOptions: displayOnWebhook,
 			},
 			{
 				displayName: 'Limit Type',
@@ -223,7 +211,7 @@ export class Wait extends Webhook {
 				displayOptions: {
 					show: {
 						limitWaitTime: [true],
-						resume: ['webhook'],
+						...displayOnWebhook.show,
 					},
 				},
 				options: [
@@ -247,7 +235,7 @@ export class Wait extends Webhook {
 					show: {
 						limitType: ['afterTimeInterval'],
 						limitWaitTime: [true],
-						resume: ['webhook'],
+						...displayOnWebhook.show,
 					},
 				},
 				typeOptions: {
@@ -265,7 +253,7 @@ export class Wait extends Webhook {
 					show: {
 						limitType: ['afterTimeInterval'],
 						limitWaitTime: [true],
-						resume: ['webhook'],
+						...displayOnWebhook.show,
 					},
 				},
 				options: [
@@ -297,7 +285,7 @@ export class Wait extends Webhook {
 					show: {
 						limitType: ['atSpecifiedTime'],
 						limitWaitTime: [true],
-						resume: ['webhook'],
+						...displayOnWebhook.show,
 					},
 				},
 				default: '',
@@ -305,6 +293,7 @@ export class Wait extends Webhook {
 			},
 			{
 				...optionsProperty,
+				displayOptions: displayOnWebhook,
 				options: [
 					...(optionsProperty.options as INodeProperties[]),
 					{
