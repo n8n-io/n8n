@@ -34,6 +34,16 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Azure Service Principal Authentication
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to Azure Container Registry
+        run: az acr login -n ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
@@ -42,5 +52,7 @@ jobs:
           platforms: linux/amd64
           provenance: false
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:1.0.0-rc
           no-cache: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/n8n:1.0.0-rc
+            ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/n8n:1.0.0-rc
