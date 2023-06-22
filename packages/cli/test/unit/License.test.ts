@@ -71,9 +71,9 @@ describe('License', () => {
 	});
 
 	test('check fetching feature values', async () => {
-		await license.getFeatureValue(MOCK_FEATURE_FLAG, false);
+		await license.getFeatureValue(MOCK_FEATURE_FLAG);
 
-		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG, false);
+		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check management jwt', async () => {

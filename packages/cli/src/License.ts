@@ -145,6 +145,7 @@ export class License {
 		feature: (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS],
 	): number | undefined;
 	getFeatureValue(feature: 'planName'): string | undefined;
+	getFeatureValue(feature: string): undefined | boolean | number | string;
 	getFeatureValue(feature: string): undefined | boolean | number | string {
 		if (!this.manager) {
 			return undefined;
