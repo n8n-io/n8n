@@ -943,6 +943,10 @@ export class WorkflowDataProxy {
 					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
+				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
+					throw createExpressionError(`no data, execute "${nodeName}" node first`);
+				}
+
 				return new Proxy(
 					{},
 					{
