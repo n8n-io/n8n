@@ -1,5 +1,10 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { sendErrorPostReceive } from './GenericFunctions';
+import {
+	MODELS_THAT_SUPPORT_FUNCTION,
+	callExternalAPI,
+	prepareFunctions,
+	sendErrorPostReceive,
+} from './GenericFunctions';
 
 export const chatOperations: INodeProperties[] = [
 	{
@@ -23,7 +28,10 @@ export const chatOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/chat/completions',
 					},
-					output: { postReceive: [sendErrorPostReceive] },
+					send: {
+						preSend: [prepareFunctions],
+					},
+					output: { postReceive: [callExternalAPI, sendErrorPostReceive] },
 				},
 			},
 		],
@@ -147,6 +155,132 @@ const completeOperations: INodeProperties[] = [
 				type: 'body',
 				property: 'messages',
 				value: '={{ $value.messages }}',
+			},
+		},
+	},
+	{
+		displayName: 'Functions',
+		name: 'functions',
+		type: 'fixedCollection',
+		typeOptions: {
+			sortable: true,
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['chat'],
+				operation: ['complete'],
+				model: MODELS_THAT_SUPPORT_FUNCTION,
+			},
+		},
+		placeholder: 'Add Function',
+		default: {},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'External API URL',
+						name: 'url',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'External API Method',
+						name: 'method',
+						type: 'options',
+						options: [
+							{
+								name: 'GET',
+								value: 'GET',
+							},
+							{
+								name: 'POST',
+								value: 'POST',
+							},
+						],
+						default: 'GET',
+					},
+					{
+						displayName: 'Function Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Properties',
+						name: 'properties',
+						type: 'fixedCollection',
+						typeOptions: {
+							sortable: true,
+							multipleValues: true,
+						},
+						placeholder: 'Add Property',
+						default: {},
+						options: [
+							{
+								displayName: 'Values',
+								name: 'values',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Description',
+										name: 'description',
+										type: 'string',
+										default: '',
+									},
+									{
+										displayName: 'Required',
+										name: 'required',
+										type: 'boolean',
+										default: true,
+									},
+									{
+										displayName: 'Send in ...',
+										name: 'sendIn',
+										type: 'options',
+										options: [
+											{
+												name: 'Query Parameters',
+												value: 'queryParameters',
+											},
+											{
+												name: 'Body',
+												value: 'body',
+											},
+										],
+										default: 'queryParameters',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		],
+		routing: {
+			send: {
+				type: 'body',
+				property: 'functions',
+				value: '={{ $value.values }}',
 			},
 		},
 	},
