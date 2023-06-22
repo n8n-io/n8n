@@ -5,6 +5,7 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 
 export const EVENT_BUS_REDIS_CHANNEL = 'n8n.events';
 export const COMMAND_REDIS_CHANNEL = 'n8n.commands';
+export const WORKER_RESPONSE_REDIS_CHANNEL = 'n8n.worker-response';
 
 export const getRedisClient = async (): Promise<Redis> => {
 	let lastTimer = 0;

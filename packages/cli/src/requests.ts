@@ -17,6 +17,7 @@ import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
+import { RedisServiceCommandObject } from './services/RedisServiceCommands';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -425,4 +426,13 @@ export declare namespace VariablesRequest {
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
 	type Delete = Get;
+}
+
+// ----------------------------------
+//           /variables
+// ----------------------------------
+//
+export declare namespace WorkersRequest {
+	type GetAll = AuthenticatedRequest;
+	type Command = AuthenticatedRequest<{}, {}, RedisServiceCommandObject, {}>;
 }

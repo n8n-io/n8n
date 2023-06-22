@@ -1,4 +1,4 @@
-export type RedisServiceCommand = 'reloadConfig' | 'restartEventBus' | 'stopExecution'; // TODO: add more commands
+export type RedisServiceCommand = 'getStatus' | 'restartEventBus' | 'stopExecution' | 'stopWorker'; // TODO: add more commands
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -10,6 +10,14 @@ export interface RedisServiceCommandObject {
 	command: RedisServiceCommand;
 	targets?: string[];
 	args?: {
-		[key: string]: string | number | boolean;
+		[key: string]: string | number | boolean | string[] | number[] | boolean[];
+	};
+}
+
+export interface RedisServiceWorkerResponseObject {
+	command: RedisServiceCommand;
+	workerId: string;
+	args?: {
+		[key: string]: string | number | boolean | string[] | number[] | boolean[];
 	};
 }

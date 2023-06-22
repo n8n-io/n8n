@@ -172,6 +172,7 @@ import { SourceControlController } from '@/environments/sourceControl/sourceCont
 import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
 import { ExecutionRepository } from './databases/repositories';
 import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
+import { OrchestratorController } from './controllers/orchestrator.controller';
 
 const exec = promisify(callbackExec);
 
@@ -499,6 +500,7 @@ export class Server extends AbstractServer {
 			}),
 			new SamlController(samlService),
 			new SourceControlController(sourceControlService, sourceControlPreferencesService),
+			new OrchestratorController(),
 		];
 
 		if (isLdapEnabled()) {

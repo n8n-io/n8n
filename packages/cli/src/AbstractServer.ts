@@ -28,7 +28,11 @@ import { RedisServiceSubscriber } from './services/RedisServiceSubscriber';
 import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
 import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
 import { eventBus } from './eventbus';
-import { EVENT_BUS_REDIS_CHANNEL } from './services/RedisServiceHelper';
+import {
+	EVENT_BUS_REDIS_CHANNEL,
+	WORKER_RESPONSE_REDIS_CHANNEL,
+} from './services/RedisServiceHelper';
+import type { RedisServiceWorkerResponseObject } from './services/RedisServiceCommands';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -175,7 +179,7 @@ export abstract class AbstractServer {
 		});
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			await this.setupRedisChecks();
+			await this.setupRedis();
 		}
 	}
 
@@ -183,18 +187,25 @@ export abstract class AbstractServer {
 	// IORedis automatically pings redis and tries to reconnect
 	// We will be using a retryStrategy to control how and when to exit.
 	// We are also subscribing to the event log channel to receive events from workers
-	private async setupRedisChecks() {
+	private async setupRedis() {
 		const redisSubscriber = Container.get(RedisServiceSubscriber);
 		await redisSubscriber.init();
 		await redisSubscriber.subscribeToEventLog();
+		await redisSubscriber.subscribeToWorkerResponseChannel();
 		redisSubscriber.addMessageHandler(
-			'AbstractServerEventLogReceiver',
+			'AbstractServerReceiver',
 			async (channel: string, message: string) => {
 				if (channel === EVENT_BUS_REDIS_CHANNEL) {
 					const eventData = jsonParse<AbstractEventMessageOptions>(message);
 					if (eventData) {
 						const eventMessage = getEventMessageObjectByType(eventData);
 						await eventBus.send(eventMessage);
+					}
+				} else if (channel === WORKER_RESPONSE_REDIS_CHANNEL) {
+					const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(message);
+					if (workerResponse) {
+						// TODO: Handle worker response
+						console.log('Received worker response', workerResponse);
 					}
 				}
 			},

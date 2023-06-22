@@ -5,9 +5,13 @@ import type { AbstractEventMessage } from '../eventbus/EventMessageClasses/Abstr
 import {
 	COMMAND_REDIS_CHANNEL,
 	EVENT_BUS_REDIS_CHANNEL,
+	WORKER_RESPONSE_REDIS_CHANNEL,
 	getRedisClient,
 } from './RedisServiceHelper';
-import type { RedisServiceCommandObject } from './RedisServiceCommands';
+import type {
+	RedisServiceCommandObject,
+	RedisServiceWorkerResponseObject,
+} from './RedisServiceCommands';
 
 type MessageHandler = (channel: string, message: string) => void;
 
@@ -59,5 +63,9 @@ export class RedisServicePublisher {
 
 	async publishToCommandChannel(message: RedisServiceCommandObject): Promise<void> {
 		await this.publish(COMMAND_REDIS_CHANNEL, JSON.stringify(message));
+	}
+
+	async publishToWorkerChannel(message: RedisServiceWorkerResponseObject): Promise<void> {
+		await this.publish(WORKER_RESPONSE_REDIS_CHANNEL, JSON.stringify(message));
 	}
 }

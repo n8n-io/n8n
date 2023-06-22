@@ -4,6 +4,7 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import {
 	COMMAND_REDIS_CHANNEL,
 	EVENT_BUS_REDIS_CHANNEL,
+	WORKER_RESPONSE_REDIS_CHANNEL,
 	getRedisClient,
 } from './RedisServiceHelper';
 
@@ -69,6 +70,10 @@ export class RedisServiceSubscriber {
 
 	async subscribeToCommandChannel(): Promise<void> {
 		await this.subscribe(COMMAND_REDIS_CHANNEL);
+	}
+
+	async subscribeToWorkerResponseChannel(): Promise<void> {
+		await this.subscribe(WORKER_RESPONSE_REDIS_CHANNEL);
 	}
 
 	addMessageHandler(handlerName: string, handler: MessageHandler): void {

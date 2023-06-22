@@ -280,8 +280,21 @@ export class Worker extends BaseCommand {
 							return; // early return if the message is not for this worker
 						}
 						switch (message.command) {
+							case 'getStatus':
+								await redisPublisher.publishToWorkerChannel({
+									workerId: this.workerId,
+									command: 'getStatus',
+									args: {
+										workerId: this.workerId,
+										runningJobs: Object.keys(Worker.runningJobs),
+									},
+								});
+								break;
 							case 'restartEventBus':
 								await eventBus.restart();
+								break;
+							case 'stopWorker':
+								await this.stopProcess();
 								break;
 							default:
 								LoggerProxy.debug(
