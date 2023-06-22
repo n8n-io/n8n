@@ -8,6 +8,7 @@ import { senderFields, senderOperations } from './SenderDescrition';
 export class Brevo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Brevo',
+		// keep sendinblue name for backward compatibility
 		name: 'sendInBlue',
 		icon: 'file:brevo.svg',
 		group: ['transform'],

@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 export class BrevoApi implements ICredentialType {
+	// keep sendinblue name for backward compatibility
 	name = 'sendInBlueApi';
 
 	displayName = 'Brevo';

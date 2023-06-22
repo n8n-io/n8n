@@ -24,6 +24,7 @@ export class BrevoTrigger implements INodeType {
 		group: ['trigger'],
 		icon: 'file:brevo.svg',
 		inputs: [],
+		// keep sendinblue name for backward compatibility
 		name: 'sendInBlueTrigger',
 		outputs: ['main'],
 		version: 1,
