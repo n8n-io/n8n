@@ -44,6 +44,7 @@ import type {
 	AuthProviderSyncHistoryRepository,
 	CredentialsRepository,
 	EventDestinationsRepository,
+	ExecutionDataRepository,
 	ExecutionMetadataRepository,
 	ExecutionRepository,
 	InstalledNodesRepository,
@@ -90,6 +91,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Credentials: CredentialsRepository;
 	EventDestinations: EventDestinationsRepository;
 	Execution: ExecutionRepository;
+	ExecutionData: ExecutionDataRepository;
 	ExecutionMetadata: ExecutionMetadataRepository;
 	InstalledNodes: InstalledNodesRepository;
 	InstalledPackages: InstalledPackagesRepository;
@@ -217,19 +219,6 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 }
 
-export interface IExecutionResponseApi {
-	id: string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId?: string;
-	finished: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	data?: object;
-	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
-}
 export interface IExecutionsListResponse {
 	count: number;
 	// results: IExecutionShortResponse[];

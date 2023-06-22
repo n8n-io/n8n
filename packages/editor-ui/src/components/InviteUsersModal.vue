@@ -38,18 +38,6 @@
 				@input="onInput"
 				@submit="onSubmit"
 			/>
-			<n8n-info-tip v-if="!settingsStore.isSmtpSetup" class="mt-s">
-				<i18n path="settings.users.setupSMTPInfo">
-					<template #link>
-						<a
-							href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
-							target="_blank"
-						>
-							{{ $locale.baseText('settings.users.setupSMTPInfo.link') }}
-						</a>
-					</template>
-				</i18n>
-			</n8n-info-tip>
 		</template>
 		<template v-if="!showInviteUrls" #footer>
 			<n8n-button

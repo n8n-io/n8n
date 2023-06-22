@@ -197,7 +197,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 	res.status(httpStatusCode).json(response);
 }
 
-const isUniqueConstraintError = (error: Error) =>
+export const isUniqueConstraintError = (error: Error) =>
 	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
 
 /**
@@ -241,6 +241,7 @@ export function send<T, R extends Request, S extends Response>(
  *
  * @param {IExecutionDb} fullExecutionData The data to flatten
  */
+// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
 export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutionFlatted {
 	// Flatten the data
 	const returnData: IExecutionFlatted = {
@@ -277,6 +278,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
  *
  * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
  */
+// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
 		id: fullExecutionData.id,

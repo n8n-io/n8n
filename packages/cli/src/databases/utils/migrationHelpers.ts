@@ -72,12 +72,12 @@ export const wrapMigration = (migration: Migration) => {
 
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {
-		up: async (queryRunner: QueryRunner) => {
+		async up(queryRunner: QueryRunner) {
 			logMigrationStart(migrationName);
 			await up.call(this, { queryRunner, ...context });
 			logMigrationEnd(migrationName);
 		},
-		down: async (queryRunner: QueryRunner) => {
+		async down(queryRunner: QueryRunner) {
 			await down?.call(this, { queryRunner, ...context });
 		},
 	});

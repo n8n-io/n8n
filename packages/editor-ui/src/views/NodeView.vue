@@ -281,7 +281,7 @@ import {
 	useSettingsStore,
 	useUIStore,
 	useHistoryStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -483,10 +483,10 @@ export default defineComponent({
 			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		readOnlyEnv(): boolean {
-			return this.versionControlStore.preferences.branchReadOnly;
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.rootStore.nativelyNumberSuffixedDefaults;
@@ -672,9 +672,12 @@ export default defineComponent({
 					? this.$locale.baseText('nodeView.addOrEnableTriggerNode')
 					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
 
-			this.registerCustomAction('showNodeCreator', () =>
-				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
-			);
+			this.registerCustomAction({
+				key: 'showNodeCreator',
+				action: () =>
+					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
+			});
+
 			const notice = this.showMessage({
 				type: 'info',
 				title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
@@ -776,9 +779,14 @@ export default defineComponent({
 
 				if (!nodeErrorFound && data.data.resultData.error.stack) {
 					// Display some more information for now in console to make debugging easier
-					// TODO: Improve this in the future by displaying in UI
 					console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
 					console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
+					this.showMessage({
+						title: this.$locale.baseText('nodeView.showError.workflowError'),
+						message: data.data.resultData.error.message,
+						type: 'error',
+						duration: 0,
+					});
 				}
 			}
 			if ((data as IExecutionsSummary).waitTill) {
@@ -1045,7 +1053,7 @@ export default defineComponent({
 				}
 
 				if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
-					this.$root.$emit('newWorkflow');
+					nodeViewEventBus.emit('newWorkflow');
 				} else {
 					void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				}
@@ -3908,9 +3916,9 @@ export default defineComponent({
 		window.addEventListener('message', this.onPostMessageReceived);
 		window.addEventListener('pageshow', this.onPageShow);
 
-		this.$root.$on('newWorkflow', this.newWorkflow);
-		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.on('newWorkflow', this.newWorkflow);
+		nodeViewEventBus.on('importWorkflowData', this.onImportWorkflowDataEvent);
+		nodeViewEventBus.on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		historyBus.on('nodeMove', this.onMoveNode);
 		historyBus.on('revertAddNode', this.onRevertAddNode);
 		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
@@ -3933,9 +3941,9 @@ export default defineComponent({
 		window.removeEventListener('beforeunload', this.onBeforeUnload);
 		window.removeEventListener('pageshow', this.onPageShow);
 
-		this.$root.$off('newWorkflow', this.newWorkflow);
-		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
+		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
+		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		historyBus.off('nodeMove', this.onMoveNode);
 		historyBus.off('revertAddNode', this.onRevertAddNode);
 		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
@@ -3954,9 +3962,9 @@ export default defineComponent({
 		this.instance.destroy();
 		this.uiStore.stateIsDirty = false;
 		window.removeEventListener('message', this.onPostMessageReceived);
-		this.$root.$off('newWorkflow', this.newWorkflow);
-		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
+		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
+		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 	},
 });
