@@ -72,7 +72,7 @@ export const expressionManager = defineComponent({
 		},
 
 		segments(): Segment[] {
-			if (!this.editor || !this.editor.state) return [];
+			if (!this.editor?.state) return [];
 
 			const rawSegments: RawSegment[] = [];
 
@@ -91,7 +91,7 @@ export const expressionManager = defineComponent({
 			fullTree.cursor().iterate((node) => {
 				const text = this.editor.state.sliceDoc(node.from, node.to);
 
-				if (text === '' || skipSegments.includes(node.type.name)) return;
+				if (skipSegments.includes(node.type.name)) return;
 
 				rawSegments.push({
 					from: node.from,
@@ -112,6 +112,9 @@ export const expressionManager = defineComponent({
 						from,
 						to,
 						resolvable: text,
+						// TODO:
+						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
+						// This fixes that but as as TODO we should figure out why this is happening
 						resolved: String(resolved),
 						error,
 						fullError,

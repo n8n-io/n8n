@@ -29,7 +29,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: `
-		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a target="_blank" href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/" target="_blank">More info</a>.
+		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a target="_blank" href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/">More info</a>.
 		`,
 		name: 'notice',
 		type: 'notice',

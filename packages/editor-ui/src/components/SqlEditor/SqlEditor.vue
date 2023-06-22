@@ -1,5 +1,5 @@
 <template>
-	<div :class="[$style.sqlEditor, 'sql-editor']" v-click-outside="onBlur">
+	<div :class="$style.sqlEditor" v-click-outside="onBlur">
 		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
@@ -113,7 +113,7 @@ export default defineComponent({
 	},
 	computed: {
 		doc(): string {
-			return this.editor ? this.editor.state.doc.toString() : '';
+			return this.editor?.state.doc.toString() ?? '';
 		},
 		hoveringItemNumber(): number {
 			return this.ndvStore.hoveringItemNumber;
@@ -145,11 +145,11 @@ export default defineComponent({
 						this.isFocused = true;
 					},
 				}),
+				EditorState.readOnly.of(this.isReadOnly),
+				EditorView.editable.of(!this.isReadOnly),
 			];
 
-			if (this.isReadOnly) {
-				extensions.push(EditorView.editable.of(this.isReadOnly));
-			} else {
+			if (!this.isReadOnly) {
 				extensions.push(
 					history(),
 					keymap.of([
@@ -186,7 +186,7 @@ export default defineComponent({
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 	},
 	methods: {
-		onBlur(event: FocusEvent) {
+		onBlur() {
 			this.isFocused = false;
 		},
 		highlightLine(line: number | 'final') {
