@@ -192,10 +192,6 @@ export class License {
 		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1;
 	}
 
-	getUsersLimit(): number {
-		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) as number;
-	}
-
 	getPlanName(): string {
 		return this.getFeatureValue('planName') ?? 'Community';
 	}
