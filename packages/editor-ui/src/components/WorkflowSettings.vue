@@ -27,7 +27,6 @@
 						<n8n-select
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
-							size="medium"
 							filterable
 							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
@@ -60,7 +59,6 @@
 								v-model="workflowSettings.callerPolicy"
 								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.selectOption')"
-								size="medium"
 								filterable
 								:limit-popper-width="true"
 							>
@@ -89,7 +87,6 @@
 								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
-								size="medium"
 								v-model="workflowSettings.callerIds"
 								@update:modelValue="onCallerIdsInput"
 							/>
@@ -110,7 +107,6 @@
 						<n8n-select
 							v-model="workflowSettings.timezone"
 							placeholder="Select Timezone"
-							size="medium"
 							filterable
 							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
@@ -140,7 +136,6 @@
 						<n8n-select
 							v-model="workflowSettings.saveDataErrorExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
 							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
@@ -170,7 +165,6 @@
 						<n8n-select
 							v-model="workflowSettings.saveDataSuccessExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
 							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
@@ -200,7 +194,6 @@
 						<n8n-select
 							v-model="workflowSettings.saveManualExecutions"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
 							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
@@ -230,7 +223,6 @@
 						<n8n-select
 							v-model="workflowSettings.saveExecutionProgress"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
 							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
@@ -285,7 +277,6 @@
 						</el-col>
 						<el-col :span="4">
 							<n8n-input
-								size="medium"
 								:disabled="readOnlyEnv"
 								:modelValue="timeoutHMS.hours"
 								@update:modelValue="(value) => setTimeout('hours', value)"
@@ -296,7 +287,6 @@
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
-								size="medium"
 								:disabled="readOnlyEnv"
 								:modelValue="timeoutHMS.minutes"
 								:min="0"
@@ -308,7 +298,6 @@
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
-								size="medium"
 								:disabled="readOnlyEnv"
 								:modelValue="timeoutHMS.seconds"
 								:min="0"

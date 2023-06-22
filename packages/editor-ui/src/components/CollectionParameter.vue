@@ -46,8 +46,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { Component } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -59,6 +58,8 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { get } from 'lodash-es';
 
 import { useNDVStore } from '@/stores/ndv.store';
+
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 export default defineComponent({
 	name: 'CollectionParameter',
@@ -72,7 +73,7 @@ export default defineComponent({
 		'isReadOnly', // boolean
 	],
 	components: {
-		ParameterInputList: async () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {

@@ -112,7 +112,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import type { Component, PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -125,6 +125,8 @@ import type {
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
+
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 export default defineComponent({
 	name: 'FixedCollectionParameter',
@@ -151,7 +153,7 @@ export default defineComponent({
 		},
 	},
 	components: {
-		ParameterInputList: async () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {
@@ -340,7 +342,7 @@ export default defineComponent({
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 
-	:deep (.button) {
+	:deep(.button) {
 		--button-background-color: var(--color-background-base);
 		--button-border-color: var(--color-foreground-base);
 	}

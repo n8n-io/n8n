@@ -64,7 +64,7 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-badge', N8nBadge);
 		app.component('n8n-block-ui', N8nBlockUi);
 		app.component('n8n-button', N8nButton);
-		// app.component('el-button', N8nElButton);
+		app.component('el-button', N8nElButton);
 		app.component('n8n-callout', N8nCallout);
 		app.component('n8n-card', N8nCard);
 		app.component('n8n-checkbox', N8nCheckbox);

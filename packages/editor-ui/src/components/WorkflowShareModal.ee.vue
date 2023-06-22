@@ -111,7 +111,6 @@
 					v-show="workflowPermissions.updateSharing"
 					:loading="loading"
 					:disabled="!isDirty"
-					size="medium"
 					data-test-id="workflow-sharing-modal-save-button"
 					@click="onSave"
 				>

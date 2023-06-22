@@ -39,7 +39,6 @@
 									? 'Event sent and returned OK'
 									: 'Event returned with error'
 							"
-							size="medium"
 							type="tertiary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
@@ -51,7 +50,6 @@
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="$locale.baseText('settings.log-streaming.delete')"
 								icon="trash"
-								size="medium"
 								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"

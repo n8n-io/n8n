@@ -35,7 +35,7 @@ const SQL_DIALECTS = {
 export default defineComponent({
 	name: 'sql-editor',
 	props: {
-		query: {
+		modelValue: {
 			type: String,
 			required: true,
 		},
@@ -84,11 +84,11 @@ export default defineComponent({
 				dropCursor(),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
-					this.$emit('valueChanged', this.doc);
+					this.$emit('update:modelValue', this.doc);
 				}),
 			);
 		}
-		const state = EditorState.create({ doc: this.query, extensions });
+		const state = EditorState.create({ doc: this.modelValue, extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
 	},
 });

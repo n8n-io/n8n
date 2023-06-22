@@ -8,7 +8,7 @@
 			:class="[$style.headline, $style['headline-editable']]"
 			@keydown.stop
 			@click="enableNameEdit"
-			v-click-outside="disableNameEdit"
+			v-on-click-outside="disableNameEdit"
 		>
 			<div v-if="!isNameEdit">
 				<span>{{ modelValue }}</span>

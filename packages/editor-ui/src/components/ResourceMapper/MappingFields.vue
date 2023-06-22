@@ -271,7 +271,7 @@ defineExpose({
 					:customActions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loadingMessage="fetchingFieldsLabel"
-					@optionSelected="onParameterActionSelected"
+					@update:modelValue="onParameterActionSelected"
 				/>
 			</template>
 		</n8n-input-label>
@@ -337,7 +337,7 @@ defineExpose({
 					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"
-					@valueChanged="onValueChanged"
+					@update="onValueChanged"
 				/>
 			</div>
 			<parameter-issues

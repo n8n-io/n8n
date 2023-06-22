@@ -56,7 +56,7 @@
 					:displayOptions="true"
 					:hideLabel="true"
 					:path="getPath(index)"
-					@valueChanged="valueChanged"
+					@update="valueChanged"
 					inputSize="small"
 					:isReadOnly="isReadOnly"
 				/>

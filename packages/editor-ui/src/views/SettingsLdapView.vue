@@ -157,7 +157,7 @@ import { MODAL_CONFIRM } from '@/constants';
 import humanizeDuration from 'humanize-duration';
 import { ElTable, ElTableColumn } from 'element-plus';
 import { capitalizeFirstLetter } from '@/utils';
-import InfiniteLoading from 'vue-infinite-loading';
+import InfiniteLoading from 'v3-infinite-loading';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';

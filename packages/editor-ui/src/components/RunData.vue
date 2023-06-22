@@ -476,7 +476,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { saveAs } from 'file-saver';
@@ -526,10 +526,10 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
 
-const RunDataTable = async () => import('@/components/RunDataTable.vue');
-const RunDataJson = async () => import('@/components/RunDataJson.vue');
-const RunDataSchema = async () => import('@/components/RunDataSchema.vue');
-const RunDataHtml = async () => import('@/components/RunDataHtml.vue');
+const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
+const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
+const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));
+const RunDataHtml = defineAsyncComponent(async () => import('@/components/RunDataHtml.vue'));
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';

@@ -23,7 +23,7 @@
 			@blur="onBlur"
 			@drop="onDrop"
 			@textInput="onTextInput"
-			@update:modelValue="onValueChanged"
+			@update="onValueChanged"
 		/>
 		<input-hint
 			v-if="expressionOutput"
@@ -235,7 +235,7 @@ export default defineComponent({
 			this.internalEventBus.emit('optionSelected', command);
 		},
 		onValueChanged(parameterData: IUpdateInformation) {
-			this.$emit('update:modelValue', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
 			this.$emit('textInput', parameterData);

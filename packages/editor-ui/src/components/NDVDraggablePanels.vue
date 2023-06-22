@@ -305,7 +305,6 @@ export default defineComponent({
 			return px / this.windowWidth;
 		},
 		relativeWidthToPx(relativeWidth: number) {
-			console.log('relativeWidth', relativeWidth, this.windowWidth);
 			return relativeWidth * this.windowWidth;
 		},
 		onResizeStart() {

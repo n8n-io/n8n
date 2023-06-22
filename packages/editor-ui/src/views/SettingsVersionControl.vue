@@ -309,7 +309,6 @@ const refreshBranches = async () => {
 						<n8n-select
 							:modelValue="versionControlStore.preferences.branchName"
 							class="mb-s"
-							size="medium"
 							filterable
 							@update:modelValue="onSelect"
 							data-test-id="version-control-branch-select"

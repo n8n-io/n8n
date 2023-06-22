@@ -81,12 +81,12 @@
 
 				<text-edit
 					:dialogVisible="textEditDialogVisible"
-					:value="modelValue"
+					:modelValue="modelValue"
 					:parameter="parameter"
 					:path="path"
 					:isReadOnly="isReadOnly"
 					@closeDialog="closeTextEditDialog"
-					@valueChanged="expressionUpdated"
+					@update:modelValue="expressionUpdated"
 				></text-edit>
 
 				<code-node-editor
@@ -102,20 +102,20 @@
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="modelValue"
+					:modelValue="modelValue"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
 					:disableExpressionCompletions="!isHtmlNode(node)"
-					@valueChanged="valueChangedDebounced"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="modelValue"
+					:modelValue="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
-					@valueChanged="valueChangedDebounced"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
 				<div
@@ -139,9 +139,8 @@
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
-					:modelValue="displayValue"
 					:disabled="isReadOnly"
-					@update:modelValue="valueChanged($event) && onTextInputChange($event)"
+					@update:modelValue="onTextInputChange($event) && valueChanged($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -197,7 +196,6 @@
 				ref="inputField"
 				type="datetime"
 				:size="inputSize"
-				:modelValue="displayValue"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				:placeholder="
@@ -222,12 +220,12 @@
 				:min="getArgument('minValue')"
 				:precision="getArgument('numberPrecision')"
 				:disabled="isReadOnly"
-				:title="displayTitle"
-				:placeholder="parameter.placeholder"
-				@update:modelValue="valueChanged($event) && onTextInputChange($event)"
+				@update:modelValue="onTextInputChange($event) && valueChanged($event)"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
+				:title="displayTitle"
+				:placeholder="parameter.placeholder"
 			/>
 
 			<credentials-select
@@ -241,7 +239,7 @@
 				:isReadOnly="isReadOnly"
 				:displayTitle="displayTitle"
 				@credentialSelected="credentialSelected"
-				@valueChanged="valueChanged"
+				@update:modelValue="valueChanged"
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
@@ -1053,7 +1051,7 @@ export default defineComponent({
 				value,
 			};
 
-			this.$emit('update:modelValue', parameterData);
+			this.$emit('update', parameterData);
 
 			if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
 				this.$telemetry.track('User set node operation or mode', {

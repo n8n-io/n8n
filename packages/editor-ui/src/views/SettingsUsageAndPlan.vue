@@ -210,15 +210,14 @@ const openPricingPage = () => {
 					<n8n-input
 						ref="activationKeyInput"
 						v-model="activationKey"
-						size="medium"
 						:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
 					/>
 				</template>
 				<template #footer>
-					<n8n-button @click="activationKeyModal = false" size="medium" type="secondary">
+					<n8n-button @click="activationKeyModal = false" type="secondary">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</n8n-button>
-					<n8n-button @click="onLicenseActivation" size="medium">
+					<n8n-button @click="onLicenseActivation">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 					</n8n-button>
 				</template>

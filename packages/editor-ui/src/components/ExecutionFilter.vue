@@ -151,7 +151,6 @@ onBeforeMount(() => {
 				<n8n-button
 					icon="filter"
 					type="tertiary"
-					size="medium"
 					:active="!!countSelectedFilterProps"
 					data-test-id="executions-filter-button"
 				>
@@ -172,7 +171,6 @@ onBeforeMount(() => {
 						id="execution-filter-workflows"
 						v-model="vModel.workflowId"
 						:placeholder="locale.baseText('executionsFilter.selectWorkflow')"
-						size="medium"
 						filterable
 						data-test-id="executions-filter-workflows-select"
 					>
@@ -205,7 +203,6 @@ onBeforeMount(() => {
 						id="execution-filter-status"
 						v-model="vModel.status"
 						:placeholder="locale.baseText('executionsFilter.selectStatus')"
-						size="medium"
 						filterable
 						data-test-id="executions-filter-status-select"
 					>
@@ -281,7 +278,6 @@ onBeforeMount(() => {
 								id="execution-filter-saved-data-key"
 								name="execution-filter-saved-data-key"
 								type="text"
-								size="medium"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 								:modelValue="filter.metadata[0]?.key"
@@ -306,7 +302,6 @@ onBeforeMount(() => {
 								id="execution-filter-saved-data-value"
 								name="execution-filter-saved-data-value"
 								type="text"
-								size="medium"
 								:disabled="!isAdvancedExecutionFilterEnabled"
 								:placeholder="locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 								:modelValue="filter.metadata[0]?.value"

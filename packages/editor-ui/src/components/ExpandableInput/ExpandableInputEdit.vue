@@ -10,7 +10,7 @@
 			@keydown.esc="onEscape"
 			ref="input"
 			size="4"
-			v-click-outside="onClickOutside"
+			v-on-click-outside="onClickOutside"
 		/>
 	</ExpandableInputBase>
 </template>

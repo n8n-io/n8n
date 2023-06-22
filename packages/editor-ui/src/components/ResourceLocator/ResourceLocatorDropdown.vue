@@ -6,14 +6,13 @@
 		:modelValue="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
-		v-click-outside="onClickOutside"
+		v-on-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input
-				size="medium"
 				:modelValue="filter"
 				:clearable="true"
 				@update:modelValue="onFilterInput"

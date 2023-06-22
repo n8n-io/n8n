@@ -12,11 +12,11 @@
 			<parameter-options
 				v-if="displayOptions"
 				:parameter="parameter"
-				:value="value"
+				:modelValue="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
 				:showExpressionSelector="showExpressionSelector"
-				@optionSelected="optionSelected"
+				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
@@ -55,7 +55,7 @@
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
-						@update:modelValue="valueChanged"
+						@update="valueChanged"
 						@textInput="onTextInput"
 						@focus="onFocus"
 						@blur="onBlur"
@@ -97,8 +97,6 @@ import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { createEventBus } from 'n8n-design-system/utils';
-
-type ParameterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
@@ -239,7 +237,7 @@ export default defineComponent({
 			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
 			if (isValueExpression(this.parameter, parameterData.value)) {
@@ -296,7 +294,7 @@ export default defineComponent({
 						};
 					}
 
-					this.$emit('valueChanged', parameterData);
+					this.valueChanged(parameterData);
 
 					if (!this.ndvStore.isMappingOnboarded) {
 						this.showMessage({

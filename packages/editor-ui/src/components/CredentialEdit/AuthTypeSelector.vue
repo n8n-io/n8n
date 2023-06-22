@@ -123,7 +123,7 @@ defineExpose({
 				:value="authRelatedFieldsValues[parameter.name] || parameter.default"
 				:path="parameter.name"
 				:displayOptions="false"
-				@valueChanged="valueChanged"
+				@update="valueChanged"
 			/>
 		</div>
 		<div>

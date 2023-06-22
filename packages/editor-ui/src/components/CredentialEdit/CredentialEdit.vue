@@ -28,7 +28,6 @@
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
-						size="medium"
 						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"

@@ -320,8 +320,8 @@ interface AddNodeOptions {
 	dragAndDrop?: boolean;
 }
 
-const NodeCreation = defineAsyncComponent(() => import('@/components/Node/NodeCreation.vue'));
-const CanvasControls = defineAsyncComponent(() => import('@/components/CanvasControls.vue'));
+const NodeCreation = defineAsyncComponent(async () => import('@/components/Node/NodeCreation.vue'));
+const CanvasControls = defineAsyncComponent(async () => import('@/components/CanvasControls.vue'));
 
 export default defineComponent({
 	name: 'NodeView',

@@ -6,7 +6,7 @@
 				v-if="active"
 				:class="$style.nodeCreator"
 				ref="nodeCreator"
-				v-click-outside="onClickOutside"
+				v-on-click-outside="onClickOutside"
 				@dragover="onDragOver"
 				@drop="onDrop"
 				@mousedown="onMouseDown"

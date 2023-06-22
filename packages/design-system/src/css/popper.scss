@@ -8,6 +8,14 @@
 	word-wrap: break-word;
 	visibility: visible;
 
+	&:not(.el-popover) {
+		max-width: 240px;
+	}
+
+	img {
+		max-width: 100%;
+	}
+
 	.el-select-dropdown,
 	.el-dropdown-menu {
 		position: relative;

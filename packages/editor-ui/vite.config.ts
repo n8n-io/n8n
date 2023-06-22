@@ -11,7 +11,6 @@ const { coverageReporters } = require('../../jest.config.js');
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
-	'vue2-boring-avatars',
 	'vue-template-compiler',
 	'@fontsource/open-sans',
 	'normalize-wheel',
@@ -56,10 +55,6 @@ const alias = [
 	{
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash-es/$1',
-	},
-	{
-		find: 'vue2-boring-avatars',
-		replacement: require.resolve('vue2-boring-avatars'),
 	},
 	{
 		find: /element-plus\/(packages|lib)\/button$/,

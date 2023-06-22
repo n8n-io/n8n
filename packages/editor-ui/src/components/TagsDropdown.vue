@@ -1,5 +1,9 @@
 <template>
-	<div :class="{ 'tags-container': true, focused }" @keydown.stop v-click-outside="onClickOutside">
+	<div
+		:class="{ 'tags-container': true, focused }"
+		@keydown.stop
+		v-on-click-outside="onClickOutside"
+	>
 		<n8n-select
 			:popperAppendToBody="false"
 			:modelValue="appliedTags"

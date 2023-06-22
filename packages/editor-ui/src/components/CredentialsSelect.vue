@@ -11,7 +11,7 @@
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				ref="innerSelect"
-				@update:modelValue="(value) => $emit('valueChanged', value)"
+				@update:modelValue="(value) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"

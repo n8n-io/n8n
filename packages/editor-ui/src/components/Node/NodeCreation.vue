@@ -20,7 +20,6 @@
 					data-test-id="add-sticky-button"
 				>
 					<n8n-icon-button
-						size="medium"
 						type="tertiary"
 						:icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')"
@@ -51,7 +50,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 
 const NodeCreator = defineAsyncComponent(
-	() => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
 );
 
 export default defineComponent({

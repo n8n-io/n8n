@@ -37,7 +37,6 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
-							size="medium"
 							@update:modelValue="onInputChange"
 						/>
 						<div :class="$style.button">

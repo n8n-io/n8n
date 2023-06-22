@@ -66,7 +66,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
@@ -81,7 +81,9 @@ import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
 
-const runDataJsonActions = async () => import('@/components/RunDataJsonActions.vue');
+const RunDataJsonActions = defineAsyncComponent(
+	async () => import('@/components/RunDataJsonActions.vue'),
+);
 
 export default defineComponent({
 	name: 'run-data-json',
@@ -89,7 +91,7 @@ export default defineComponent({
 	components: {
 		VueJsonPretty,
 		Draggable,
-		runDataJsonActions,
+		RunDataJsonActions,
 		MappingPill,
 	},
 	props: {
