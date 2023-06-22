@@ -5,7 +5,8 @@
 		"types": ["node", "jest"],
 		"noEmit": true,
 		"paths": {
-			"@test/*": ["./test/*"]
+			"@test/*": ["./test/*"],
+			"@utils/*": ["./utils/*"]
 		},
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
@@ -16,5 +17,12 @@
 	"references": [
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }
-	]
+	],
+	"tsc-alias": {
+		"replacers": {
+			"base-url": {
+				"enabled": false
+			}
+		}
+	}
 }
