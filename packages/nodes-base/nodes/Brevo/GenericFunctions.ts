@@ -8,7 +8,7 @@ import type {
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 import MailComposer from 'nodemailer/lib/mail-composer';
-export namespace SendInBlueNode {
+export namespace BrevoNode {
 	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };
 	type Address = { address: string; name?: string };
 	type Email = { email: string; name?: string };
@@ -277,7 +277,7 @@ export namespace SendInBlueNode {
 	}
 }
 
-export namespace SendInBlueWebhookApi {
+export namespace BrevoWebhookApi {
 	interface WebhookDetails {
 		url: string;
 		id: number;

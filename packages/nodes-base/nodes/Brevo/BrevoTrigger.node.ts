@@ -6,9 +6,9 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { SendInBlueWebhookApi } from './GenericFunctions';
+import { BrevoWebhookApi } from './GenericFunctions';
 
-export class SendInBlueTrigger implements INodeType {
+export class BrevoTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		credentials: [
 			{
@@ -213,7 +213,7 @@ export class SendInBlueTrigger implements INodeType {
 				const events = this.getNodeParameter('events') as string[];
 
 				try {
-					const { webhooks } = await SendInBlueWebhookApi.fetchWebhooks(this, type);
+					const { webhooks } = await BrevoWebhookApi.fetchWebhooks(this, type);
 
 					for (const webhook of webhooks) {
 						if (
@@ -240,12 +240,7 @@ export class SendInBlueTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				const responseData = await SendInBlueWebhookApi.createWebHook(
-					this,
-					type,
-					events,
-					webhookUrl,
-				);
+				const responseData = await BrevoWebhookApi.createWebHook(this, type, events, webhookUrl);
 
 				if (responseData === undefined || responseData.id === undefined) {
 					// Required data is missing so was not successful
@@ -261,7 +256,7 @@ export class SendInBlueTrigger implements INodeType {
 
 				if (webhookData.webhookId !== undefined) {
 					try {
-						await SendInBlueWebhookApi.deleteWebhook(this, webhookData.webhookId as string);
+						await BrevoWebhookApi.deleteWebhook(this, webhookData.webhookId as string);
 					} catch (error) {
 						return false;
 					}

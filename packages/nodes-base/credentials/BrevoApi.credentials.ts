@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class SendInBlueApi implements ICredentialType {
+export class BrevoApi implements ICredentialType {
 	name = 'sendInBlueApi';
 
 	displayName = 'Brevo';
