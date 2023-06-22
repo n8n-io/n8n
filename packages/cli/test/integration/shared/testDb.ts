@@ -61,9 +61,7 @@ export async function init() {
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
 		await Db.init(getSqliteOptions({ name: testDbName }));
-	}
-
-	if (dbType === 'postgresdb') {
+	} else if (dbType === 'postgresdb') {
 		let bootstrapPostgres;
 		const pgOptions = getBootstrapDBOptions('postgres');
 
@@ -92,9 +90,7 @@ export async function init() {
 		await bootstrapPostgres.destroy();
 
 		await Db.init(getDBOptions('postgres', testDbName));
-	}
-
-	if (dbType === 'mysqldb') {
+	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapMysql.destroy();
