@@ -3,7 +3,7 @@ import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ExcelResponse, SheetData, UpdateSummary } from './interfaces';
 import { constructExecutionMetaData } from 'n8n-core';
-import { wrapData } from '../../../../../utils/utilities';
+import { wrapData } from '@utils/utilities';
 
 type PrepareOutputConfig = {
 	rawData: boolean;
