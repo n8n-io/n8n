@@ -32,6 +32,9 @@ patchedDependencies:
   element-ui@2.15.12:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
+  pkce-challenge@3.0.0:
+    hash: dypouzb3lve7vncq25i5fuanki
+    path: patches/pkce-challenge@3.0.0.patch
   typedi@0.10.0:
     hash: 62r6bc2crgimafeyruodhqlgo4
     path: patches/typedi@0.10.0.patch
@@ -383,6 +386,9 @@ importers:
       picocolors:
         specifier: ^1.0.0
         version: 1.0.0
+      pkce-challenge:
+        specifier: ^3.0.0
+        version: 3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki)
       posthog-node:
         specifier: ^2.2.2
         version: 2.2.2
@@ -18091,6 +18097,13 @@ packages:
     resolution: {integrity: sha512-8V9+HQPupnaXMA23c5hvl69zXvTwTzyAYasnkb0Tts4XvO4CliqONMOnvlq26rkhLC3nWDFBJf73LU1e1VZLaQ==}
     engines: {node: '>= 6'}
     dev: true
+
+  /pkce-challenge@3.0.0(patch_hash=dypouzb3lve7vncq25i5fuanki):
+    resolution: {integrity: sha512-sQ8sJJJuLhA5pFnoxayMCrFnBMNj7DDpa+TWxOXl4B24oXHlVSADi/3Bowm66QuzWkBuF6DhmaelCdlC2JKwsg==}
+    dependencies:
+      crypto-js: 4.1.1
+    dev: false
+    patched: true
 
   /pkg-dir@3.0.0:
     resolution: {integrity: sha512-/E57AYkoeQ25qkxMj5PBOVgF8Kiu/h7cYS30Z5+R7WaiCCBfLq58ZI/dSeaEKb9WVJV5n/03QwrN3IeWIFllvw==}
