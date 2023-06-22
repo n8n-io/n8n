@@ -185,6 +185,7 @@ import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MAIN_HEADER_TABS,
+	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	NODE_OUTPUT_DEFAULT_KEY,
@@ -262,7 +263,7 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import type { Route } from 'vue-router';
+import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import {
 	useEnvironmentsStore,
@@ -435,7 +436,7 @@ export default defineComponent({
 			}
 		},
 	},
-	/*async beforeRouteLeave(to, from, next) {
+	async beforeRouteLeave(to, from, next) {
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
 			next();
 			return;
@@ -487,7 +488,7 @@ export default defineComponent({
 		} else {
 			next();
 		}
-	},*/
+	},
 	computed: {
 		...mapStores(
 			useCanvasStore,
