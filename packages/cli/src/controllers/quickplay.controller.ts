@@ -1,31 +1,16 @@
-import validator from 'validator';
-import { Authorized, Get, Post, RestController } from '@/decorators';
-import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
+import { Get, Post, RestController } from '@/decorators';
+import { AuthError } from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
-import { AuthlessRequest, LoginRequest, UserRequest } from '@/requests';
-import { In } from 'typeorm';
 import type { Config } from '@/config';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IInternalHooksClass,
-	CurrentUser,
-} from '@/Interfaces';
-import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import type { IDatabaseCollections, IInternalHooksClass, CurrentUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
-import {
-	getCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
-	isSamlCurrentAuthenticationMethod,
-} from '@/sso/ssoHelpers';
+
 import type { UserRepository } from '@db/repositories';
-import { InternalHooks } from '../InternalHooks';
-import Container from 'typedi';
 import { QpJwtRequest } from '@/middlewares/externalJWTAuth';
 
 export type TenantRequest = QpJwtRequest<
