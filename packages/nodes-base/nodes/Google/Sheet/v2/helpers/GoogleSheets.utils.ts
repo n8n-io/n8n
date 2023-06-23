@@ -102,7 +102,9 @@ export function trimToFirstEmptyRow(data: SheetRangeData, includesRowNumber = tr
 export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) {
 	const baseLength = includesRowNumber ? 1 : 0;
 	const notEmptyRows = data.filter((row) =>
-		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
+		row
+			.slice(baseLength)
+			.some((cell) => cell || typeof cell === 'number' || typeof cell === 'boolean'),
 	);
 	if (includesRowNumber) {
 		notEmptyRows[0][0] = ROW_NUMBER;
@@ -143,7 +145,9 @@ export function removeEmptyColumns(data: SheetRangeData) {
 			returnData.push(column);
 		}
 	}
-	return (returnData[0] || []).map((_, i) => returnData.map((row) => row[i] || ''));
+	return (returnData[0] || []).map((_, i) =>
+		returnData.map((row) => (row[i] === undefined ? '' : row[i])),
+	);
 }
 
 export function prepareSheetData(
