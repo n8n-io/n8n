@@ -10,9 +10,6 @@ export class TagEntity extends AbstractEntity {
 	constructor(data?: Partial<TagEntity>) {
 		super();
 		Object.assign(this, data);
-		if (!this.id) {
-			this.id = generateNanoId();
-		}
 	}
 
 	@BeforeInsert()

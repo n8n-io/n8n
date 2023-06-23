@@ -5,9 +5,6 @@ import { generateNanoId } from '../utils/generators';
 export class Variables {
 	constructor(data?: Partial<Variables>) {
 		Object.assign(this, data);
-		if (!this.id) {
-			this.id = generateNanoId();
-		}
 	}
 
 	@BeforeInsert()
