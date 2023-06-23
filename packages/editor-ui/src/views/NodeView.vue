@@ -185,8 +185,6 @@ import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MAIN_HEADER_TABS,
-	MODAL_CANCEL,
-	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	NODE_OUTPUT_DEFAULT_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
@@ -263,7 +261,7 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import type { Route, RawLocation } from 'vue-router';
+import type { RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import {
 	useEnvironmentsStore,
@@ -374,47 +372,6 @@ export default defineComponent({
 		console.error(err); // eslint-disable-line no-console
 	},
 	watch: {
-		// Listen to route changes and load the workflow accordingly
-		$route(to: Route, from: Route) {
-			const currentTab = getNodeViewTab(to);
-			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
-			let workflowChanged =
-				from.params.name !== to.params.name &&
-				// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
-				!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) &&
-				// Also ignore if workflow id changes when saving new workflow
-				to.params.action !== 'workflowSave';
-			const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
-
-			// When entering this tab:
-			if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
-				if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
-					this.startLoading();
-					if (nodeViewNotInitialized) {
-						const previousDirtyState = this.uiStore.stateIsDirty;
-						this.resetWorkspace();
-						this.uiStore.stateIsDirty = previousDirtyState;
-					}
-					void this.loadCredentials();
-					void this.initView().then(() => {
-						this.stopLoading();
-						if (this.blankRedirect) {
-							this.blankRedirect = false;
-						}
-					});
-				}
-			}
-			// Also, when landing on executions tab, check if workflow data is changed
-			if (currentTab === MAIN_HEADER_TABS.EXECUTIONS) {
-				workflowChanged =
-					from.params.name !== to.params.name &&
-					!(to.params.name === 'new' && from.params.name === undefined);
-				if (workflowChanged) {
-					// This will trigger node view to update next time workflow tab is opened
-					this.uiStore.nodeViewInitialized = false;
-				}
-			}
-		},
 		activeNode() {
 			// When a node gets set as active deactivate the create-menu
 			this.createNodeActive = false;
@@ -438,6 +395,9 @@ export default defineComponent({
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
+			this.uiStore.stateIsDirtyCached = this.uiStore.stateIsDirty;
+			this.workflowsStore.workflowCached = deepCopy(this.workflowsStore.workflow);
+			this.resetWorkspace();
 			next();
 			return;
 		}
@@ -457,14 +417,10 @@ export default defineComponent({
 				},
 			);
 			if (confirmModal === MODAL_CONFIRM) {
-				// Make sure workflow id is empty when leaving the editor
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
 				}
-				this.uiStore.stateIsDirty = false;
-
 				if (from.name === VIEWS.NEW_WORKFLOW) {
 					// Replace the current route with the new workflow route
 					// before navigating to the new route when saving new workflow.
@@ -476,18 +432,13 @@ export default defineComponent({
 							void this.$router.push(to as RawLocation);
 						},
 					);
-				} else {
-					next();
 				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.resetWorkspace();
-				this.uiStore.stateIsDirty = false;
-				next();
 			}
-		} else {
-			next();
+			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			this.resetWorkspace();
+			this.uiStore.stateIsDirty = false;
 		}
+		next();
 	},
 	computed: {
 		...mapStores(
@@ -647,6 +598,7 @@ export default defineComponent({
 			// This should prevent automatically removed connections from populating undo stack
 			suspendRecordingDetachedConnections: false,
 			NODE_CREATOR_OPEN_SOURCES,
+			savedIsStateDirty: false,
 		};
 	},
 	methods: {
@@ -884,8 +836,6 @@ export default defineComponent({
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
 
-			this.resetWorkspace();
-
 			this.workflowsStore.addWorkflow(workflow);
 			this.workflowsStore.setActive(workflow.active || false);
 			this.workflowsStore.setWorkflowId(workflow.id);
@@ -919,8 +869,10 @@ export default defineComponent({
 
 			await this.addNodes(workflow.nodes, workflow.connections);
 
-			if (!this.credentialsUpdated) {
+			if (!this.credentialsUpdated && !this.workflowsStore.workflowCached) {
 				this.uiStore.stateIsDirty = false;
+			} else if (this.workflowsStore.workflowCached) {
+				this.uiStore.stateIsDirty = this.uiStore.stateIsDirtyCached;
 			}
 			this.canvasStore.zoomToFit();
 			void this.$externalHooks().run('workflow.open', {
@@ -2541,52 +2493,31 @@ export default defineComponent({
 			} else if (this.workflow) {
 				await this.importWorkflowExact({ workflow: this.workflow });
 			} else {
-				const result = this.uiStore.stateIsDirty;
-				if (result) {
-					const confirmModal = await this.confirm(
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-						{
-							title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-							type: 'warning',
-							confirmButtonText: this.$locale.baseText(
-								'generic.unsavedWork.confirmMessage.confirmButtonText',
-							),
-							cancelButtonText: this.$locale.baseText(
-								'generic.unsavedWork.confirmMessage.cancelButtonText',
-							),
-							showClose: true,
-						},
-					);
-					if (confirmModal === MODAL_CONFIRM) {
-						const saved = await this.saveCurrentWorkflow();
-						if (saved) {
-							await this.settingsStore.fetchPromptsData();
-						}
-					} else if (confirmModal === MODAL_CLOSE) {
-						return;
-					}
-				}
 				// Load a workflow
 				let workflowId = null as string | null;
 				if (this.$route.params.name) {
 					workflowId = this.$route.params.name;
 				}
 				if (workflowId !== null) {
-					let workflow: IWorkflowDb | undefined = undefined;
-					try {
-						workflow = await this.workflowsStore.fetchWorkflow(workflowId);
-					} catch (error) {
-						this.showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+					let workflow: IWorkflowDb | null = this.workflowsStore.workflowCached;
 
-						void this.$router.push({
-							name: VIEWS.NEW_WORKFLOW,
-						});
+					if (!workflow) {
+						try {
+							workflow = await this.workflowsStore.fetchWorkflow(workflowId);
+						} catch (error) {
+							this.showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+
+							void this.$router.push({
+								name: VIEWS.NEW_WORKFLOW,
+							});
+						}
 					}
 
 					if (workflow) {
 						this.titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflow);
+						this.workflowsStore.workflowCached = null;
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow
@@ -3547,6 +3478,7 @@ export default defineComponent({
 
 			this.uiStore.resetSelectedNodes();
 			this.uiStore.nodeViewOffsetPosition = [0, 0];
+			this.uiStore.stateIsDirty = false;
 
 			this.credentialsUpdated = false;
 		},
@@ -3765,7 +3697,6 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
-		this.setMousePositionBoundaryElement(this.$refs.nodeViewWrapper);
 		this.resetWorkspace();
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
@@ -3793,6 +3724,7 @@ export default defineComponent({
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
+		this.setMousePositionBoundaryElement(this.$refs.nodeViewWrapper);
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
 		this.titleReset();
 
@@ -3879,9 +3811,6 @@ export default defineComponent({
 		}
 	},
 	beforeDestroy() {
-		this.resetWorkspace();
-		// Make sure the event listeners get removed again else we
-		// could add up with them registered multiple times
 		window.removeEventListener('pageshow', this.onPageShow);
 		window.removeEventListener('beforeunload', this.onBeforeUnload);
 		document.removeEventListener('keydown', this.keyDown);

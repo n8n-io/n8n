@@ -171,6 +171,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			stickyPosition: null,
 		},
 		stateIsDirty: false,
+		stateIsDirtyCached: false,
 		lastSelectedNode: null,
 		lastSelectedNodeOutputIndex: null,
 		nodeViewOffsetPosition: [0, 0],

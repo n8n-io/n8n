@@ -108,6 +108,7 @@ let cachedWorkflow: Workflow | null = null;
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
 		workflow: createEmptyWorkflow(),
+		workflowCached: null,
 		usedCredentials: {},
 		activeWorkflows: [],
 		activeExecutions: [],

@@ -49,7 +49,6 @@ export default defineComponent({
 		return {
 			activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
 			workflowToReturnTo: '',
-			dirtyState: false,
 		};
 	},
 	computed: {
@@ -87,7 +86,6 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.dirtyState = this.uiStore.stateIsDirty;
 		this.syncTabsWithRoute(this.$route);
 		// Initialize the push connection
 		this.pushConnect();
@@ -129,13 +127,11 @@ export default defineComponent({
 					} else {
 						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
 							void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							this.uiStore.stateIsDirty = this.dirtyState;
 						}
 					}
 					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 					break;
 				case MAIN_HEADER_TABS.EXECUTIONS:
-					this.dirtyState = this.uiStore.stateIsDirty;
 					this.workflowToReturnTo = this.currentWorkflow;
 					const routeWorkflowId =
 						this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
@@ -152,7 +148,6 @@ export default defineComponent({
 							params: { name: routeWorkflowId },
 						});
 					}
-					// this.modalBus.emit('closeAll');
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 					break;
 				default:

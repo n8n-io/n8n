@@ -879,6 +879,7 @@ export interface WorkflowsState {
 	subWorkflowExecutionError: Error | null;
 	usedCredentials: Record<string, IUsedCredential>;
 	workflow: IWorkflowDb;
+	workflowCached: IWorkflowDb | null;
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
@@ -1058,6 +1059,7 @@ export interface UIState {
 		stickyPosition: null | XYPosition;
 	};
 	stateIsDirty: boolean;
+	stateIsDirtyCached: boolean;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeViewOffsetPosition: XYPosition;

@@ -99,8 +99,8 @@
 				</enterprise-edition>
 				<SaveButton
 					type="primary"
-					:saved="!this.isDirty && !this.isNewWorkflow"
-					:disabled="isWorkflowSaving || readOnly"
+					:saved="!isDirty && !isNewWorkflow"
+					:disabled="isSaveButtonDisabled"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
@@ -319,6 +319,9 @@ export default defineComponent({
 			}
 
 			return actions;
+		},
+		isSaveButtonDisabled() {
+			return this.isWorkflowSaving || this.readOnly || !this.isDirty;
 		},
 	},
 	methods: {
