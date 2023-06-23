@@ -758,11 +758,6 @@ export class NotionV2 implements INodeType {
 			}
 		}
 
-		if (download) {
-			const rawData = returnData.map((data) => data.json);
-			return this.prepareOutputData(rawData as INodeExecutionData[]);
-		}
-
 		return this.prepareOutputData(returnData);
 	}
 }
