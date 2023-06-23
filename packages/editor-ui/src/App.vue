@@ -48,7 +48,7 @@ import {
 	useTemplatesStore,
 	useNodeTypesStore,
 	useCloudPlanStore,
-	useVersionControlStore,
+	useSourceControlStore,
 	useUsageStore,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
@@ -81,7 +81,7 @@ export default defineComponent({
 			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
-			useVersionControlStore,
+			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
 		),
@@ -225,10 +225,10 @@ export default defineComponent({
 		void this.checkForCloudPlanData();
 
 		if (
-			this.versionControlStore.isEnterpriseVersionControlEnabled &&
+			this.sourceControlStore.isEnterpriseSourceControlEnabled &&
 			this.usersStore.isInstanceOwner
 		) {
-			await this.versionControlStore.getPreferences();
+			await this.sourceControlStore.getPreferences();
 		}
 
 		this.loading = false;

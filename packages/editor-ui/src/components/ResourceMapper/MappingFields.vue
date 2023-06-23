@@ -346,7 +346,7 @@ defineExpose({
 				:class="[$style.parameterIssues, 'ml-5xs']"
 			/>
 		</div>
-		<div class="add-option" data-test-id="add-fields-select">
+		<div :class="['add-option', $style.addOption]" data-test-id="add-fields-select">
 			<n8n-select
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {
@@ -373,7 +373,7 @@ defineExpose({
 <style module lang="scss">
 .parameterItem {
 	display: flex;
-	padding: 0 0 0 1em;
+	padding: 0 0 0 var(--spacing-s);
 
 	.parameterInput {
 		width: 100%;
@@ -394,5 +394,10 @@ defineExpose({
 
 .parameterTooltipIcon {
 	color: var(--color-text-light) !important;
+}
+
+.addOption {
+	margin-top: var(--spacing-l);
+	padding: 0 0 0 var(--spacing-s);
 }
 </style>

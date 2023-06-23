@@ -108,7 +108,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (this.parameter.typeOptions?.editor === 'codeNodeEditor') {
+			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor)) {
 				return false;
 			}
 

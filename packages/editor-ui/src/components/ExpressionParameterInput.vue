@@ -35,32 +35,13 @@
 			/>
 		</div>
 
-		<div :class="isFocused ? $style.dropdown : $style.hidden">
-			<n8n-text size="small" compact :class="$style.header">
-				{{ $locale.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
-			</n8n-text>
-			<n8n-text :class="$style.body">
-				<InlineExpressionEditorOutput :isReadOnly="isReadOnly" :segments="segments" />
-			</n8n-text>
-			<div :class="$style.footer">
-				<n8n-text size="small" compact>
-					{{ $locale.baseText('parameterInput.anythingInside') }}
-				</n8n-text>
-				<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
-				<n8n-text size="small" compact>
-					{{ $locale.baseText('parameterInput.isJavaScript') }}
-				</n8n-text>
-				<n8n-link
-					:class="$style['learn-more']"
-					size="small"
-					underline
-					theme="text"
-					:to="expressionsDocsUrl"
-				>
-					{{ $locale.baseText('parameterInput.learnMore') }}
-				</n8n-link>
-			</div>
-		</div>
+		<InlineExpressionEditorOutput
+			:segments="segments"
+			:value="value"
+			:isReadOnly="isReadOnly"
+			:visible="isFocused"
+			:hoveringItemNumber="hoveringItemNumber"
+		/>
 	</div>
 </template>
 
@@ -74,7 +55,6 @@ import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/Inl
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
@@ -92,7 +72,6 @@ export default defineComponent({
 		return {
 			isFocused: false,
 			segments: [] as Segment[],
-			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
 	props: {
@@ -114,14 +93,10 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItemNumber(): number {
-			return (this.hoveringItem?.itemIndex ?? 0) + 1;
+			return this.ndvStore.hoveringItemNumber;
 		},
 		hoveringItem(): TargetItem | null {
-			if (this.ndvStore.isInputParentOfActiveNode) {
-				return this.ndvStore.hoveringItem;
-			}
-
-			return null;
+			return this.ndvStore.getHoveringItem;
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
@@ -240,65 +215,5 @@ export default defineComponent({
 	border-color: var(--color-secondary);
 	border-bottom-right-radius: 0;
 	background-color: white;
-}
-
-.hidden {
-	display: none;
-}
-
-.dropdown {
-	display: flex;
-	flex-direction: column;
-	position: absolute;
-	z-index: 2; // cover tooltips
-	background: white;
-	border: var(--border-base);
-	border-top: none;
-	width: 100%;
-	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
-	border-bottom-left-radius: 4px;
-	border-bottom-right-radius: 4px;
-
-	.header,
-	.body,
-	.footer {
-		padding: var(--spacing-3xs);
-	}
-
-	.header {
-		color: var(--color-text-dark);
-		font-weight: var(--font-weight-bold);
-		padding-left: var(--spacing-2xs);
-		padding-top: var(--spacing-2xs);
-	}
-
-	.body {
-		padding-top: 0;
-		padding-left: var(--spacing-2xs);
-		color: var(--color-text-dark);
-	}
-
-	.footer {
-		border-top: var(--border-base);
-		padding: var(--spacing-4xs);
-		padding-left: var(--spacing-2xs);
-		padding-top: 0;
-		line-height: var(--font-line-height-regular);
-		color: var(--color-text-base);
-
-		.expression-syntax-example {
-			display: inline-block;
-			font-size: var(--font-size-2xs);
-			height: var(--font-size-m);
-			background-color: #f0f0f0;
-			margin-left: var(--spacing-5xs);
-			margin-right: var(--spacing-5xs);
-		}
-
-		.learn-more {
-			line-height: 1;
-			white-space: nowrap;
-		}
-	}
 }
 </style>

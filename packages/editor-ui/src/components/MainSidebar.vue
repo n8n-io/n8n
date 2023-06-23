@@ -46,7 +46,7 @@
 							}}
 						</n8n-text>
 					</div>
-					<MainSidebarVersionControl :is-collapsed="isCollapsed" />
+					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -120,18 +120,18 @@ import {
 	useRootStore,
 	useVersionsStore,
 	useCloudPlanStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores/';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
-import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
+import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
 		ExecutionsUsage,
-		MainSidebarVersionControl,
+		MainSidebarSourceControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
 	setup(props) {
@@ -155,7 +155,7 @@ export default defineComponent({
 			useVersionsStore,
 			useWorkflowsStore,
 			useCloudPlanStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
@@ -215,7 +215,7 @@ export default defineComponent({
 				{
 					id: 'workflows',
 					icon: 'network-wired',
-					secondaryIcon: this.versionControlStore.preferences.branchReadOnly
+					secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
 						? { name: 'lock' }
 						: undefined,
 					label: this.$locale.baseText('mainSidebar.workflows'),

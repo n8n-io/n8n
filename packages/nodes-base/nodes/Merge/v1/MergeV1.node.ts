@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',

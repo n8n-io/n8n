@@ -7,6 +7,7 @@ import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
+import * as Db from '@/Db';
 
 let ownerShell: User;
 let authOwnerAgent: SuperAgentTest;
@@ -62,6 +63,8 @@ describe('GET /workflows/:id', () => {
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
 
 		const { id } = workflowCreationResponse.body.data as { id: string };
+
+		const sw = await Db.collections.SharedWorkflow.find();
 
 		const workflowRetrievalResponse = await authOwnerAgent.get(`/workflows/${id}`);
 

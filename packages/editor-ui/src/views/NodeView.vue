@@ -285,7 +285,7 @@ import {
 	useSettingsStore,
 	useUIStore,
 	useHistoryStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -487,10 +487,10 @@ export default defineComponent({
 			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		readOnlyEnv(): boolean {
-			return this.versionControlStore.preferences.branchReadOnly;
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.rootStore.nativelyNumberSuffixedDefaults;
