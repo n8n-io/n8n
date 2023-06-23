@@ -82,6 +82,7 @@ describe('Workflow Actions', () => {
 		cy.intercept(
 			{
 				url: '/rest/workflows/*',
+				method: 'GET',
 				middleware: true,
 			},
 			(req) => {
