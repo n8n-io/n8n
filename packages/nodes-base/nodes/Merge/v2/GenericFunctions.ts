@@ -6,12 +6,12 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import assign from 'lodash.assign';
-import assignWith from 'lodash.assignwith';
-import get from 'lodash.get';
-import merge from 'lodash.merge';
-import mergeWith from 'lodash.mergewith';
-import { fuzzyCompare } from '../../../utils/utilities';
+import assign from 'lodash/assign';
+import assignWith from 'lodash/assignWith';
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import mergeWith from 'lodash/mergeWith';
+import { fuzzyCompare } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
