@@ -37,7 +37,6 @@
 
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:value="value"
 			:isReadOnly="isReadOnly"
 			:visible="isFocused"
 			:hoveringItemNumber="hoveringItemNumber"

@@ -47,9 +47,6 @@ export default defineComponent({
 			type: Array as PropType<Segment[]>,
 			required: true,
 		},
-		value: {
-			type: String,
-		},
 		isReadOnly: {
 			type: Boolean,
 			default: false,
@@ -120,11 +117,6 @@ export default defineComponent({
 					return segment;
 				})
 				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
-		},
-	},
-	methods: {
-		getValue() {
-			return '=' + this.resolvedExpression;
 		},
 	},
 });
