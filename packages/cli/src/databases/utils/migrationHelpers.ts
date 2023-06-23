@@ -1,15 +1,27 @@
 /* eslint-disable no-await-in-loop */
-import { readFileSync, rmSync } from 'fs';
+import { readFileSync, rmSync, statSync } from 'fs';
 import { UserSettings } from 'n8n-core';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
 import { inTest } from '@/constants';
 import type { Migration, MigrationContext } from '@db/types';
+import path from 'path';
 
 const logger = getLogger();
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
+
+const DESIRED_DATABASE_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1 GB
+
+function getSqliteDbFileSize(): number {
+	const filename = path.resolve(
+		UserSettings.getUserN8nFolderPath(),
+		config.getEnv('database.sqlite.database'),
+	);
+	const { size } = statSync(filename);
+	return size;
+}
 
 export function loadSurveyFromDisk(): string | null {
 	const userSettingsPath = UserSettings.getUserN8nFolderPath();
@@ -79,8 +91,38 @@ export const wrapMigration = (migration: Migration) => {
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {
 		async beforeTransaction(this: typeof migration.prototype, queryRunner: QueryRunner) {
-			if (this.pruneAndVacuum && dbType === 'sqlite') {
-				// TODO: add pruning here;
+			if (
+				this.pruneAndVacuum &&
+				dbType === 'sqlite' &&
+				process.env.ENABLE_MIGRATIONS_PRUNING === 'true'
+			) {
+				const dbFileSize = getSqliteDbFileSize();
+				if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
+					return;
+				}
+				const counting = (await queryRunner.query(
+					`select count(id) as rows from "${tablePrefix}execution_entity";`,
+				)) as Array<{ rows: number }>;
+
+				const averageExecutionSize = dbFileSize / counting[0].rows;
+				const nubmerOfExecutionsToKeep = Math.floor(
+					DESIRED_DATABASE_FILE_SIZE / averageExecutionSize,
+				);
+
+				const query = `
+					SELECT id FROM "${tablePrefix}execution_entity"
+					ORDER BY id DESC limit ${nubmerOfExecutionsToKeep}, 1;
+				`;
+
+				const idToKeep = (await queryRunner.query(query)) as Array<{ id: number }>;
+
+				const removalQuery = `
+					DELETE FROM "${tablePrefix}execution_entity"
+					WHERE id < ${idToKeep[0].id} and status IN ("success");
+				`;
+
+				await queryRunner.query(removalQuery);
+
 				await queryRunner.query('VACUUM');
 			}
 		},
