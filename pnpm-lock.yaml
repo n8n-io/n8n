@@ -810,8 +810,8 @@ importers:
         specifier: ^5.13.2
         version: 5.13.2
       '@n8n/codemirror-lang-sql':
-        specifier: ^1.0.0
-        version: 1.0.0(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+        specifier: ^1.0.1
+        version: 1.0.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       axios:
         specifier: ^0.21.1
         version: 0.21.4
@@ -5256,8 +5256,8 @@ packages:
     dev: false
     optional: true
 
-  /@n8n/codemirror-lang-sql@1.0.0(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
-    resolution: {integrity: sha512-7bmlhaSW+f/g+IarWbif/D9bUgwW8bjCbjfW6BCGqZHXTz9UQt8fM6tQ9MNh/3sZz9LPwcnT7XSSv73Ku0rriw==}
+  /@n8n/codemirror-lang-sql@1.0.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+    resolution: {integrity: sha512-wwuYHg+iCP6HMZjzBiBSO7oQ44EXnfkLaPl+9ZMvr4/8QYURqbulDdUhIW0A9d/zQcXhqkyoxS7ukS3s5oN6Hg==}
     dependencies:
       '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       '@codemirror/language': 6.2.1
