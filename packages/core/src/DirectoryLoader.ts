@@ -109,9 +109,8 @@ export abstract class DirectoryLoader {
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				Logger.warn(
-					`"executeSingle" will get deprecated soon. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
-					{ filePath },
+				throw new Error(
+					`"executeSingle" has been removed. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
 				);
 			}
 		} else {
