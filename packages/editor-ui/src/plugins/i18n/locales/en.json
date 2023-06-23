@@ -1373,6 +1373,7 @@
 	"settings.sourceControl.modals.push.description.learnMore": "Learn more",
 	"settings.sourceControl.modals.push.description.learnMore.url": "https://docs.n8n.io/source-control/using/",
 	"settings.sourceControl.modals.push.filesToCommit": "Files to commit",
+	"settings.sourceControl.modals.push.workflowsToCommit": "Workflows to commit",
 	"settings.sourceControl.modals.push.everythingIsUpToDate": "Everything is up to date",
 	"settings.sourceControl.modals.push.commitMessage": "Commit message",
 	"settings.sourceControl.modals.push.commitMessage.placeholder": "e.g. My commit",

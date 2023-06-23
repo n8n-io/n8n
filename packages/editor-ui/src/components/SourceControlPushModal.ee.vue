@@ -66,6 +66,25 @@ const sortedFiles = computed(() => {
 	});
 });
 
+const selectAll = computed(() => {
+	return files.value.every((file) => staged.value[file.file]);
+});
+
+const workflowFiles = computed(() => {
+	return files.value.filter((file) => file.type === 'workflow');
+});
+
+const stagedWorkflowFiles = computed(() => {
+	return workflowFiles.value.filter((workflow) => staged.value[workflow.file]);
+});
+
+const selectAllIndeterminate = computed(() => {
+	return (
+		stagedWorkflowFiles.value.length > 0 &&
+		stagedWorkflowFiles.value.length < workflowFiles.value.length
+	);
+});
+
 onMounted(async () => {
 	context.value = getContext();
 	try {
@@ -76,6 +95,22 @@ onMounted(async () => {
 		loading.value = false;
 	}
 });
+
+function onToggleSelectAll() {
+	if (selectAll.value) {
+		files.value.forEach((file) => {
+			if (!defaultStagedFileTypes.includes(file.type)) {
+				staged.value[file.file] = false;
+			}
+		});
+	} else {
+		files.value.forEach((file) => {
+			if (!defaultStagedFileTypes.includes(file.type)) {
+				staged.value[file.file] = true;
+			}
+		});
+	}
+}
 
 function getContext() {
 	if (route.fullPath.startsWith('/workflows')) {
@@ -93,23 +128,24 @@ function getContext() {
 }
 
 function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<string, boolean> {
-	const stagedFiles: SourceControlAggregatedFile[] = [];
-	if (context.value === 'workflow') {
-		stagedFiles.push(
-			...files.filter((file) => file.type === 'workflow' && file.id === workflowId.value),
-		);
-	} else {
-		stagedFiles.push(...files.filter((file) => file.type === 'workflow'));
-	}
-
-	defaultStagedFileTypes.forEach((type) => {
-		stagedFiles.push(...files.filter((file) => file.type === type));
-	});
-
-	return stagedFiles.reduce<Record<string, boolean>>((acc, file) => {
-		acc[file.file] = true;
+	const stagedFiles = files.reduce((acc, file) => {
+		acc[file.file] = false;
 		return acc;
 	}, {});
+
+	files.forEach((file) => {
+		if (defaultStagedFileTypes.includes(file.type)) {
+			stagedFiles[file.file] = true;
+		}
+
+		if (context.value === 'workflow' && file.type === 'workflow' && file.id === workflowId.value) {
+			stagedFiles[file.file] = true;
+		} else if (context.value === 'workflows' && file.type === 'workflow') {
+			stagedFiles[file.file] = true;
+		}
+	});
+
+	return stagedFiles;
 }
 
 function setStagedStatus(file: SourceControlAggregatedFile, status: boolean) {
@@ -170,9 +206,20 @@ async function commitAndPush() {
 				</n8n-text>
 
 				<div v-if="files.length > 0">
-					<n8n-text bold tag="p" class="mt-l mb-2xs">
-						{{ i18n.baseText('settings.sourceControl.modals.push.filesToCommit') }}
-					</n8n-text>
+					<div class="mt-l mb-2xs">
+						<n8n-checkbox
+							:indeterminate="selectAllIndeterminate"
+							:value="selectAll"
+							@input="onToggleSelectAll"
+						>
+							<n8n-text bold tag="strong">
+								{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
+							</n8n-text>
+							<n8n-text tag="strong" v-show="stagedWorkflowFiles.length > 0">
+								({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
+							</n8n-text>
+						</n8n-checkbox>
+					</div>
 					<n8n-card
 						v-for="file in sortedFiles"
 						v-show="!defaultStagedFileTypes.includes(file.type)"
