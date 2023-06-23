@@ -57,7 +57,6 @@ describe('WorkflowExecute', () => {
 						return nodeData.data.main[0]!.map((entry) => entry.json);
 					});
 
-					// expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 				}
 
