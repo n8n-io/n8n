@@ -88,7 +88,6 @@ export class Kafka implements ICredentialType {
 			},
 			default: '',
 			description: 'Shared passphrase used for a single private key and/or a PFX.', 
-			placeholder: '',
 		},
 		{
 			displayName: 'Authentication',
