@@ -10,7 +10,6 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
-import { add } from 'lodash';
 
 export async function matrixApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
