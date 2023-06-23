@@ -3,7 +3,6 @@
 		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:value="modelValue"
 			:isReadOnly="isReadOnly"
 			:visible="isFocused"
 			:hoveringItemNumber="hoveringItemNumber"
