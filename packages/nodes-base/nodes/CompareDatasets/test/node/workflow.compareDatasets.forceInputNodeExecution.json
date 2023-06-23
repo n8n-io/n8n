@@ -1,0 +1,496 @@
+{
+	"name": "Compare Datasets Node Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0312bddf-aae0-423c-9041-d54fb124934f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [480, 720]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      number: 0\n    }\n  },\n  {\n    json: {\n      number: 1\n    }\n  },\n  {\n    json: {\n      number: 2\n    }\n  }\n];"
+			},
+			"id": "0542886d-6ab2-4695-b686-2cd60729ba9a",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [900, 640]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "number",
+							"field2": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "f3e5e43b-a3bf-46c7-acd7-ae3d7d19d9f9",
+			"name": "Compare Datasets 2.2 - Old",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.2,
+			"position": [1260, 40]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      number: 0\n    }\n  },\n  {\n    json: {\n      number: 1,\n      k: 2,\n    }\n  },\n  {\n    json: {\n      number: 10\n    }\n  },\n  {\n    json: {\n      number: 11\n    }\n  },\n  {\n    json: {\n      number: 12\n    }\n  }\n];"
+			},
+			"id": "c62e90b3-f84a-48a5-94bf-3267a4c8b69e",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [900, 60]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      number: 0\n    }\n  },\n  {\n    json: {\n      number: 1,\n      k: 2,\n    }\n  },\n  {\n    json: {\n      number: 10\n    }\n  },\n  {\n    json: {\n      number: 11\n    }\n  },\n  {\n    json: {\n      number: 12\n    }\n  }\n];"
+			},
+			"id": "46320ca2-8e8e-4ecf-b4f6-5899807c1500",
+			"name": "Code2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [900, 840]
+		},
+		{
+			"parameters": {},
+			"id": "4ae12a83-5d3f-4d5b-845b-65c930d8ef5a",
+			"name": "Old - A only",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, -180]
+		},
+		{
+			"parameters": {},
+			"id": "d4f5fd94-4b46-4b8c-8b8a-073e8c32ad85",
+			"name": "New - A only",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 440]
+		},
+		{
+			"parameters": {},
+			"id": "0939f79b-fd75-4d2f-b40b-50780114c3f2",
+			"name": "Old - Same",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, -40]
+		},
+		{
+			"parameters": {},
+			"id": "199ea52c-b30a-401d-a920-9db5c8e10d38",
+			"name": "Old - Different",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 100]
+		},
+		{
+			"parameters": {},
+			"id": "1ebcb5bb-3061-47ef-8c79-847ae8bdb568",
+			"name": "Old - B only",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 240]
+		},
+		{
+			"parameters": {},
+			"id": "38689dbf-49f2-4f3b-855b-abd821ec316f",
+			"name": "New - B only",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 860]
+		},
+		{
+			"parameters": {},
+			"id": "dfcac903-95dc-4519-b49f-a6a65bf8fdb8",
+			"name": "New - Different",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 720]
+		},
+		{
+			"parameters": {},
+			"id": "b8588ebc-4dc8-41f5-9a0a-64d151d7122e",
+			"name": "New - Same",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 580]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      number: 0\n    }\n  },\n  {\n    json: {\n      number: 1,\n      k: 2,\n    }\n  },\n  {\n    json: {\n      number: 10\n    }\n  },\n  {\n    json: {\n      number: 11\n    }\n  },\n  {\n    json: {\n      number: 12\n    }\n  }\n];"
+			},
+			"id": "d35f3f52-c967-46e8-be3a-0bf709b20ef8",
+			"name": "Code3",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [880, 1340]
+		},
+		{
+			"parameters": {},
+			"id": "75690ad6-c870-4950-9085-12fdd9c12ddd",
+			"name": "New - A only1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 1100]
+		},
+		{
+			"parameters": {},
+			"id": "9abb523f-349c-48b0-b36b-0c74064a6219",
+			"name": "New - B only1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 1520]
+		},
+		{
+			"parameters": {},
+			"id": "c4230d94-eaa6-420d-baff-288463722a03",
+			"name": "New - Different1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 1380]
+		},
+		{
+			"parameters": {},
+			"id": "58287181-dc90-4806-a053-83b3ef36e673",
+			"name": "New - Same1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1520, 1240]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "number",
+							"field2": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "5514c636-ee64-45f3-8832-77ad6652cc08",
+			"name": "Compare Datasets 2.3 - New - Connected",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.3,
+			"position": [1260, 1320]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "number",
+							"field2": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "a25f4766-9bb4-40a0-9ae2-ef0004f5938a",
+			"name": "Compare Datasets 2.3 - New - Not Connected",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.3,
+			"position": [1260, 660]
+		}
+	],
+	"pinData": {
+		"Old - A only": [
+			{
+				"json": {
+					"number": 2
+				}
+			}
+		],
+		"Old - Same": [
+			{
+				"json": {
+					"number": 0
+				}
+			}
+		],
+		"Old - Different": [
+			{
+				"json": {
+					"keys": {
+						"number": 1
+					},
+					"same": {
+						"number": 1
+					},
+					"different": {
+						"k": {
+							"inputA": null,
+							"inputB": 2
+						}
+					}
+				}
+			}
+		],
+		"Old - B only": [
+			{
+				"json": {
+					"number": 10
+				}
+			},
+			{
+				"json": {
+					"number": 11
+				}
+			},
+			{
+				"json": {
+					"number": 12
+				}
+			}
+		],
+		"New - A only": [
+			{
+				"json": {
+					"number": 0
+				}
+			},
+			{
+				"json": {
+					"number": 1
+				}
+			},
+			{
+				"json": {
+					"number": 2
+				}
+			}
+		],
+		"New - A only1": [
+			{
+				"json": {
+					"number": 2
+				}
+			}
+		],
+		"New - Same1": [
+			{
+				"json": {
+					"number": 0
+				}
+			}
+		],
+		"New - Different1": [
+			{
+				"json": {
+					"keys": {
+						"number": 1
+					},
+					"same": {
+						"number": 1
+					},
+					"different": {
+						"k": {
+							"inputA": null,
+							"inputB": 2
+						}
+					}
+				}
+			}
+		],
+		"New - B only1": [
+			{
+				"json": {
+					"number": 10
+				}
+			},
+			{
+				"json": {
+					"number": 11
+				}
+			},
+			{
+				"json": {
+					"number": 12
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets 2.3 - New - Not Connected",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Compare Datasets 2.2 - Old",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Compare Datasets 2.3 - New - Connected",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets 2.2 - Old",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Code2": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets 2.3 - New - Not Connected",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Compare Datasets 2.2 - Old": {
+			"main": [
+				[
+					{
+						"node": "Old - A only",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Old - Same",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Old - Different",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Old - B only",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code3": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets 2.3 - New - Connected",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Compare Datasets 2.3 - New - Connected": {
+			"main": [
+				[
+					{
+						"node": "New - A only1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "New - Same1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "New - Different1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "New - B only1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets 2.3 - New - Not Connected": {
+			"main": [
+				[
+					{
+						"node": "New - A only",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "New - Same",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "New - Different",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "New - B only",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "d5c0f040-7406-4e69-bd5d-a362a739c8d8",
+	"id": "1114",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

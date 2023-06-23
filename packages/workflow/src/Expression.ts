@@ -358,8 +358,8 @@ export class Expression {
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
-		defaultValue?: boolean | number | string,
-	): boolean | number | string | undefined {
+		defaultValue?: boolean | number | string | unknown[],
+	): boolean | number | string | undefined | unknown[] {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
