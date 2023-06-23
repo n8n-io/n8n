@@ -21,9 +21,39 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'airtableTokenApi',
 			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['airtableTokenApi'],
+				},
+			},
+		},
+		{
+			name: 'airtableOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['airtableOAuth2Api'],
+				},
+			},
 		},
 	],
 	properties: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'Access Token',
+					value: 'airtableTokenApi',
+				},
+				{
+					name: 'OAuth2',
+					value: 'airtableOAuth2Api',
+				},
+			],
+			default: 'airtableTokenApi',
+		},
 		{
 			displayName: 'Resource',
 			name: 'resource',

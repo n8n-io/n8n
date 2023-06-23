@@ -44,7 +44,8 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'airtableTokenApi', options);
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**

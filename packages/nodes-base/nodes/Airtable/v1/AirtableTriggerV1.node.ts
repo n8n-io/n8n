@@ -44,6 +44,15 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: 'airtableOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['airtableOAuth2Api'],
+				},
+			},
+		},
 	],
 	polling: true,
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -62,6 +71,10 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Access Token',
 					value: 'airtableTokenApi',
+				},
+				{
+					name: 'OAuth2',
+					value: 'airtableOAuth2Api',
 				},
 			],
 			default: 'airtableApi',
