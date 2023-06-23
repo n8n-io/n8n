@@ -1,23 +1,12 @@
 import type { ICredentialNodeAccess } from 'n8n-workflow';
-import { BeforeInsert, Column, Entity, Index, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Index, OneToMany } from 'typeorm';
 import { IsArray, IsObject, IsString, Length } from 'class-validator';
 import type { SharedCredentials } from './SharedCredentials';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-import { generateNanoId } from '../utils/generators';
 
 @Entity()
-export class CredentialsEntity extends AbstractEntity implements ICredentialsDb {
-	@BeforeInsert()
-	nanoId(): void {
-		if (!this.id) {
-			this.id = generateNanoId();
-		}
-	}
-
-	@PrimaryColumn('varchar')
-	id: string;
-
+export class CredentialsEntity extends WithTimestampsAndStringId implements ICredentialsDb {
 	@Column({ length: 128 })
 	@IsString({ message: 'Credential `name` must be of type string.' })
 	@Length(3, 128, {

@@ -3,17 +3,7 @@ import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import {
-	BeforeInsert,
-	Column,
-	Entity,
-	Index,
-	JoinColumn,
-	JoinTable,
-	ManyToMany,
-	OneToMany,
-	PrimaryColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 
 import config from '@/config';
 import type { TagEntity } from './TagEntity';
@@ -21,22 +11,11 @@ import type { SharedWorkflow } from './SharedWorkflow';
 import type { WorkflowStatistics } from './WorkflowStatistics';
 import type { WorkflowTagMapping } from './WorkflowTagMapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
-import { generateNanoId } from '../utils/generators';
 
 @Entity()
-export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
-	@BeforeInsert()
-	nanoId() {
-		if (!this.id) {
-			this.id = generateNanoId();
-		}
-	}
-
-	@PrimaryColumn('varchar')
-	id: string;
-
+export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
 	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {
