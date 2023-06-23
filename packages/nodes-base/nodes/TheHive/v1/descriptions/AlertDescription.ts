@@ -136,6 +136,11 @@ export const alertFields: INodeProperties[] = [
 				name: 'High',
 				value: 3,
 			},
+			{
+				name: 'Critical',
+				value: 4,
+				description: 'Only for TheHive 4+',
+			},
 		],
 		required: true,
 		default: 2,
@@ -670,6 +675,11 @@ export const alertFields: INodeProperties[] = [
 						name: 'High',
 						value: 3,
 					},
+					{
+						name: 'Critical',
+						value: 4,
+						description: 'Only for TheHive 4+',
+					},
 				],
 				default: 2,
 				description: 'Severity of the alert. Default=Medium.',
@@ -863,6 +873,11 @@ export const alertFields: INodeProperties[] = [
 					{
 						name: 'High',
 						value: 3,
+					},
+					{
+						name: 'Critical',
+						value: 4,
+						description: 'Only for TheHive 4+',
 					},
 				],
 				default: 2,
