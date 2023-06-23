@@ -3,10 +3,6 @@ import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class Variables {
-	constructor(data?: Partial<Variables>) {
-		Object.assign(this, data);
-	}
-
 	@BeforeInsert()
 	nanoId() {
 		if (!this.id) {

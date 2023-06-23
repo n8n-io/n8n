@@ -7,11 +7,6 @@ import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class TagEntity extends AbstractEntity {
-	constructor(data?: Partial<TagEntity>) {
-		super();
-		Object.assign(this, data);
-	}
-
 	@BeforeInsert()
 	nanoId() {
 		if (!this.id) {

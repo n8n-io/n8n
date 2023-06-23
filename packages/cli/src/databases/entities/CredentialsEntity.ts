@@ -8,11 +8,6 @@ import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class CredentialsEntity extends AbstractEntity implements ICredentialsDb {
-	constructor(data?: Partial<CredentialsEntity>) {
-		super();
-		Object.assign(this, data);
-	}
-
 	@BeforeInsert()
 	nanoId(): void {
 		if (!this.id) {
