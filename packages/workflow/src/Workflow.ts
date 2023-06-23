@@ -1181,17 +1181,13 @@ export class Workflow {
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (
-			nodeType.execute ||
-			nodeType.executeSingle ||
-			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
-		) {
-			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
+		if (nodeType.execute || (!nodeType.poll && !nodeType.trigger && !nodeType.webhook)) {
+			// Only stop if first input is empty for execute runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
 
 			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
-				// We always use the data of main input and the first input for executeSingle
+				// We always use the data of main input and the first input for execute
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
 			}
 
@@ -1226,35 +1222,7 @@ export class Workflow {
 			inputData = newInputData;
 		}
 
-		if (nodeType.executeSingle) {
-			const returnPromises: Array<Promise<INodeExecutionData>> = [];
-
-			for (let itemIndex = 0; itemIndex < connectionInputData.length; itemIndex++) {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
-					this,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					inputData,
-					node,
-					itemIndex,
-					additionalData,
-					executionData,
-					mode,
-				);
-
-				returnPromises.push(nodeType.executeSingle.call(thisArgs));
-			}
-
-			if (returnPromises.length === 0) {
-				return { data: null };
-			}
-
-			const promiseResults = await Promise.all(returnPromises);
-			if (promiseResults) {
-				return { data: [promiseResults] };
-			}
-		} else if (nodeType.execute) {
+		if (nodeType.execute) {
 			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(
 				this,
 				runExecutionData,
