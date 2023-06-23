@@ -10,7 +10,7 @@ import type {
 
 import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { copyInputItems, replaceEmptyStringsByNulls } from '../../helpers/utils';
 

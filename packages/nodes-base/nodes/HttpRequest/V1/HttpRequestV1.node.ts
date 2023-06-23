@@ -590,6 +590,13 @@ export class HttpRequestV1 implements INodeType {
 						},
 					],
 				},
+				{
+					displayName:
+						"You can view the raw requests this node makes in your browser's developer console",
+					name: 'infoMessage',
+					type: 'notice',
+					default: '',
+				},
 			],
 		};
 	}
