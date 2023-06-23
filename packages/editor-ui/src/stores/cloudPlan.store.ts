@@ -53,7 +53,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.loadingPlan = true;
 		let plan;
 		try {
-			plan = await getCurrentPlan(rootStore.getRestApiContext, `${cloudUserId}`);
+			plan = await getCurrentPlan(rootStore.getRestApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
 		} catch (error) {
