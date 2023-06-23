@@ -380,6 +380,12 @@ const refreshBranches = async () => {
 			<template #heading>
 				<span>{{ locale.baseText('settings.sourceControl.actionBox.title') }}</span>
 			</template>
+			<template #description>
+				{{ locale.baseText('settings.sourceControl.actionBox.description') }}
+				<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
+					{{ locale.baseText('settings.sourceControl.actionBox.description.link') }}
+				</a>
+			</template>
 		</n8n-action-box>
 	</div>
 </template>
