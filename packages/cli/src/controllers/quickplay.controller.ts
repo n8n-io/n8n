@@ -4,10 +4,8 @@ import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementH
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
-import type { Config } from '@/config';
-import type { IDatabaseCollections, IInternalHooksClass, CurrentUser } from '@/Interfaces';
+import type { IDatabaseCollections, CurrentUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 
 import type { UserRepository } from '@db/repositories';
@@ -23,32 +21,17 @@ export type TenantRequest = QpJwtRequest<
 
 @RestController('/quickplay')
 export class QuickplayController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
 	private readonly userRepository: UserRepository;
 
 	private readonly postHog?: PostHogClient;
 
 	constructor({
-		config,
-		logger,
-		internalHooks,
 		repositories,
 		postHog,
 	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
 		postHog?: PostHogClient;
 	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
 		this.postHog = postHog;
 	}

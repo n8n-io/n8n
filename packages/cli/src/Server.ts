@@ -500,7 +500,7 @@ export class Server extends AbstractServer {
 			}),
 			new SamlController(samlService),
 			new SourceControlController(sourceControlService, sourceControlPreferencesService),
-			new QuickplayController({ config, internalHooks, repositories, logger, postHog }),
+			new QuickplayController({ repositories, postHog }),
 		];
 
 		if (isLdapEnabled()) {
