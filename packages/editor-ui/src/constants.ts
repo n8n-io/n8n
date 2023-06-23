@@ -429,6 +429,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
+	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 }

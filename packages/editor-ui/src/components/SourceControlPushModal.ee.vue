@@ -17,6 +17,8 @@ const props = defineProps({
 	},
 });
 
+const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
+
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const toast = useToast();
@@ -62,15 +64,20 @@ function getContext() {
 }
 
 function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<string, boolean> {
+	console.log(files);
 	const stagedFiles: SourceControlAggregatedFile[] = [];
 	if (context.value === 'workflows') {
 		stagedFiles.push(...files.filter((file) => file.file.startsWith('workflows')));
 	} else if (context.value === 'credentials') {
-		stagedFiles.push(...files.filter((file) => file.file.startsWith('credentials')));
+		stagedFiles.push(...files.filter((file) => file.type === 'credential'));
 	} else if (context.value === 'workflow') {
 		const workflowId = route.params.name as string;
 		stagedFiles.push(...files.filter((file) => file.type === 'workflow' && file.id === workflowId));
 	}
+
+	defaultStagedFileTypes.forEach((type) => {
+		stagedFiles.push(...files.filter((file) => file.type === type));
+	});
 
 	return stagedFiles.reduce<Record<string, boolean>>((acc, file) => {
 		acc[file.file] = true;
@@ -141,6 +148,7 @@ async function commitAndPush() {
 					</n8n-text>
 					<n8n-card
 						v-for="file in files"
+						v-show="!defaultStagedFileTypes.includes(file.type)"
 						:key="file.file"
 						:class="$style.listItem"
 						@click="setStagedStatus(file, !staged[file.file])"

@@ -65,6 +65,11 @@ async function pullWorkfolder() {
 			try {
 				if (confirm === 'confirm') {
 					await sourceControlStore.pullWorkfolder(true);
+					toast.showMessage({
+						message: i18n.baseText('settings.sourceControl.pull.success.description'),
+						title: i18n.baseText('settings.sourceControl.pull.success.title'),
+						type: 'success',
+					});
 				}
 			} catch (error) {
 				toast.showError(error, 'Error');
