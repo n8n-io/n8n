@@ -33,8 +33,37 @@ const commitMessage = ref('');
 const loading = ref(true);
 const context = ref<'workflow' | 'workflows' | 'credentials' | string>('');
 
+const statusToBadgeThemeMap = {
+	created: 'success',
+	deleted: 'danger',
+	modified: 'warning',
+	renamed: 'warning',
+};
+
 const isSubmitDisabled = computed(() => {
 	return !commitMessage.value || Object.values(staged.value).every((value) => !value);
+});
+
+const workflowId = computed(() => {
+	if (context.value === 'workflow') {
+		return route.params.name as string;
+	}
+
+	return '';
+});
+
+const sortedFiles = computed(() => {
+	return [...files.value].sort((a, b) => {
+		if (context.value === 'workflow') {
+			if (a.id === workflowId.value) {
+				return -1;
+			} else if (b.id === workflowId.value) {
+				return 1;
+			}
+		}
+
+		return 0;
+	});
 });
 
 onMounted(async () => {
@@ -64,15 +93,13 @@ function getContext() {
 }
 
 function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<string, boolean> {
-	console.log(files);
 	const stagedFiles: SourceControlAggregatedFile[] = [];
-	if (context.value === 'workflows') {
-		stagedFiles.push(...files.filter((file) => file.file.startsWith('workflows')));
-	} else if (context.value === 'credentials') {
-		stagedFiles.push(...files.filter((file) => file.type === 'credential'));
-	} else if (context.value === 'workflow') {
-		const workflowId = route.params.name as string;
-		stagedFiles.push(...files.filter((file) => file.type === 'workflow' && file.id === workflowId));
+	if (context.value === 'workflow') {
+		stagedFiles.push(
+			...files.filter((file) => file.type === 'workflow' && file.id === workflowId.value),
+		);
+	} else {
+		stagedFiles.push(...files.filter((file) => file.type === 'workflow'));
 	}
 
 	defaultStagedFileTypes.forEach((type) => {
@@ -147,7 +174,7 @@ async function commitAndPush() {
 						{{ i18n.baseText('settings.sourceControl.modals.push.filesToCommit') }}
 					</n8n-text>
 					<n8n-card
-						v-for="file in files"
+						v-for="file in sortedFiles"
 						v-show="!defaultStagedFileTypes.includes(file.type)"
 						:key="file.file"
 						:class="$style.listItem"
@@ -169,9 +196,14 @@ async function commitAndPush() {
 									{{ file.name }}
 								</span>
 							</n8n-text>
-							<n8n-badge :class="$style.listItemStatus">
-								{{ file.status }}
-							</n8n-badge>
+							<div :class="$style.listItemStatus">
+								<n8n-badge class="mr-2xs" v-if="workflowId === file.id && file.type === 'workflow'">
+									Current workflow
+								</n8n-badge>
+								<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
+									{{ file.status }}
+								</n8n-badge>
+							</div>
 						</div>
 					</n8n-card>
 
@@ -236,22 +268,22 @@ async function commitAndPush() {
 	&:last-child {
 		margin-bottom: 0;
 	}
+}
 
-	.listItemBody {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
+.listItemBody {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
 
-		.listItemCheckbox {
-			display: inline-flex !important;
-			margin-bottom: 0 !important;
-			margin-right: var(--spacing-2xs);
-		}
+.listItemCheckbox {
+	display: inline-flex !important;
+	margin-bottom: 0 !important;
+	margin-right: var(--spacing-2xs) !important;
+}
 
-		.listItemStatus {
-			margin-left: var(--spacing-2xs);
-		}
-	}
+.listItemStatus {
+	margin-left: auto;
 }
 
 .footer {
