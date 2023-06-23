@@ -20,8 +20,6 @@ import {
 } from '../Webhook/description';
 import { Webhook } from '../Webhook/Webhook.node';
 
-const authPropertyName = 'incomingAuthentication';
-
 const displayOnWebhook: IDisplayOptions = {
 	show: {
 		resume: ['webhook'],
@@ -29,6 +27,8 @@ const displayOnWebhook: IDisplayOptions = {
 };
 
 export class Wait extends Webhook {
+	authPropertyName = 'incomingAuthentication';
+
 	description: INodeTypeDescription = {
 		displayName: 'Wait',
 		name: 'wait',
@@ -42,7 +42,7 @@ export class Wait extends Webhook {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: credentialsProperty(authPropertyName),
+		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -77,7 +77,7 @@ export class Wait extends Webhook {
 				description: 'Determines the waiting mode to use before the workflow continues',
 			},
 			{
-				...authenticationProperty(authPropertyName),
+				...authenticationProperty(this.authPropertyName),
 				description:
 					'If and how incoming resume-webhook-requests to $execution.resumeUrl should be authenticated for additional security',
 				displayOptions: displayOnWebhook,

@@ -33,6 +33,8 @@ import { WebhookAuthorizationError } from './error';
 const pipeline = promisify(stream.pipeline);
 
 export class Webhook extends Node {
+	authPropertyName = 'authentication';
+
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
 		icon: 'file:webhook.svg',
@@ -59,10 +61,10 @@ export class Webhook extends Node {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
-		credentials: credentialsProperty(),
+		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		properties: [
-			authenticationProperty(),
+			authenticationProperty(this.authPropertyName),
 			httpMethodsProperty,
 			{
 				displayName: 'Path',
@@ -149,7 +151,7 @@ export class Webhook extends Node {
 	}
 
 	private async validateAuth(context: IWebhookFunctions) {
-		const authentication = context.getNodeParameter('authentication') as string;
+		const authentication = context.getNodeParameter(this.authPropertyName) as string;
 		if (authentication === 'none') return;
 
 		const req = context.getRequestObject();
