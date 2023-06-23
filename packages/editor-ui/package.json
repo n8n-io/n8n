@@ -45,7 +45,7 @@
     "@jsplumb/connector-bezier": "^5.13.2",
     "@jsplumb/core": "^5.13.2",
     "@jsplumb/util": "^5.13.2",
-    "@n8n/codemirror-lang-sql": "^1.0.0",
+    "@n8n/codemirror-lang-sql": "^1.0.1",
     "axios": "^0.21.1",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
