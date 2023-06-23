@@ -17,7 +17,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc",
-    "build": "tsc -p tsconfig.build.json && gulp build:icons && gulp build:translations && pnpm build:metadata",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && gulp build:icons && gulp build:translations && pnpm build:metadata",
     "build:translations": "gulp build:translations",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier --write . --ignore-path ../../.prettierignore",

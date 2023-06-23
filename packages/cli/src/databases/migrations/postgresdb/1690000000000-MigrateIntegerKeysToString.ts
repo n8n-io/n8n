@@ -1,7 +1,7 @@
 /* eslint-disable n8n-local-rules/no-unneeded-backticks */
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class MigrateIntegerKeysToString1690000000000 implements ReversibleMigration {
+export class MigrateIntegerKeysToString1690000000000 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_entity RENAME COLUMN id to tmp_id;`,
@@ -260,7 +260,4 @@ export class MigrateIntegerKeysToString1690000000000 implements ReversibleMigrat
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}variables DROP COLUMN tmp_id;`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}variables ADD PRIMARY KEY (id);`);
 	}
-
-	// eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
-	async down({ queryRunner, tablePrefix }: MigrationContext) {}
 }

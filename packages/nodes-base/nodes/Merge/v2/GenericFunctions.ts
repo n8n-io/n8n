@@ -11,7 +11,7 @@ import assignWith from 'lodash/assignWith';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import mergeWith from 'lodash/mergeWith';
-import { fuzzyCompare } from '../../../utils/utilities';
+import { fuzzyCompare } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;

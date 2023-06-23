@@ -38,6 +38,9 @@ patchedDependencies:
   typedi@0.10.0:
     hash: 62r6bc2crgimafeyruodhqlgo4
     path: patches/typedi@0.10.0.patch
+  typeorm@0.3.12:
+    hash: yav7zi22hnry26k2lwg6jcumde
+    path: patches/typeorm@0.3.12.patch
 
 importers:
 
@@ -439,7 +442,7 @@ importers:
         version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       typeorm:
         specifier: ^0.3.12
-        version: 0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
+        version: 0.3.12(patch_hash=yav7zi22hnry26k2lwg6jcumde)(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -773,9 +776,6 @@ importers:
       '@codemirror/lang-python':
         specifier: ^6.1.2
         version: 6.1.2(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
-      '@codemirror/lang-sql':
-        specifier: ^6.4.1
-        version: 6.4.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       '@codemirror/language':
         specifier: ^6.2.1
         version: 6.2.1
@@ -818,6 +818,9 @@ importers:
       '@jsplumb/util':
         specifier: ^5.13.2
         version: 5.13.2
+      '@n8n/codemirror-lang-sql':
+        specifier: ^1.0.0
+        version: 1.0.0(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       axios:
         specifier: ^0.21.1
         version: 0.21.4
@@ -4128,19 +4131,6 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@codemirror/lang-sql@6.4.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
-    resolution: {integrity: sha512-PFB56L+A0WGY35uRya+Trt5g19V9k2V9X3c55xoFW4RgiATr/yLqWsbbnEsdxuMn5tLpuikp7Kmj9smRsqBXAg==}
-    dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
-      '@codemirror/language': 6.2.1
-      '@codemirror/state': 6.1.4
-      '@lezer/highlight': 1.1.1
-      '@lezer/lr': 1.2.3
-    transitivePeerDependencies:
-      - '@codemirror/view'
-      - '@lezer/common'
-    dev: false
-
   /@codemirror/language@6.2.1:
     resolution: {integrity: sha512-MC3svxuvIj0MRpFlGHxLS6vPyIdbTr2KKPEW46kCoCXw2ktb4NTkpkPBI/lSP/FoNXLCBJ0mrnUi1OoZxtpW1Q==}
     dependencies:
@@ -5271,6 +5261,19 @@ packages:
     os: [win32]
     dev: false
     optional: true
+
+  /@n8n/codemirror-lang-sql@1.0.0(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+    resolution: {integrity: sha512-7bmlhaSW+f/g+IarWbif/D9bUgwW8bjCbjfW6BCGqZHXTz9UQt8fM6tQ9MNh/3sZz9LPwcnT7XSSv73Ku0rriw==}
+    dependencies:
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/language': 6.2.1
+      '@codemirror/state': 6.1.4
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/view'
+      - '@lezer/common'
+    dev: false
 
   /@n8n_io/license-sdk@2.4.0:
     resolution: {integrity: sha512-99kuCVH4NcBi4nyn/WIpd6KSIMLk/pbBks0zr8bC65ALKj0se7/2MwC6N+WwGkG7NqH0kMdGe/7Y5KnJkMTefg==}
@@ -21385,7 +21388,7 @@ packages:
     dev: false
     patched: true
 
-  /typeorm@0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
+  /typeorm@0.3.12(patch_hash=yav7zi22hnry26k2lwg6jcumde)(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
     resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}
     engines: {node: '>= 12.9.0'}
     hasBin: true
@@ -21467,6 +21470,7 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: false
+    patched: true
 
   /typescript@5.1.3:
     resolution: {integrity: sha512-XH627E9vkeqhlZFQuL+UsyAXEnibT0kWR2FWONlr4sTjvxyJYnyefgrkyECLzM5NenmKzRAy2rR/OlYLA1HkZw==}

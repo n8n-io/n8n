@@ -1,10 +1,10 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
 
 const COLLATION_57 = 'utf8mb4_general_ci';
 const COLLATION_80 = 'utf8mb4_0900_ai_ci';
 
-export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigration {
+export class MigrateIntegerKeysToString1690000000001 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const databaseType = config.get('database.type');
 		let collation: string;
@@ -272,7 +272,4 @@ export class MigrateIntegerKeysToString1690000000001 implements ReversibleMigrat
 		);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}variables DROP COLUMN \`tmp_id\`;`);
 	}
-
-	// eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
-	async down({ queryRunner, tablePrefix }: MigrationContext) {}
 }

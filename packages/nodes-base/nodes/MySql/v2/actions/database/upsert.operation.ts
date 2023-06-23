@@ -4,7 +4,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
