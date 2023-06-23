@@ -113,14 +113,14 @@ export class GoogleDriveTrigger implements INodeType {
 						extractValue: {
 							type: 'regex',
 							regex:
-								'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								'https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex:
-										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+										'https:\\/\\/(?:drive|docs)\\.google.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 									errorMessage: 'Not a valid Google Drive File URL',
 								},
 							},
