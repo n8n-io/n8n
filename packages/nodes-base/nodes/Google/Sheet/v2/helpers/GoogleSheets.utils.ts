@@ -143,7 +143,9 @@ export function removeEmptyColumns(data: SheetRangeData) {
 			returnData.push(column);
 		}
 	}
-	return (returnData[0] || []).map((_, i) => returnData.map((row) => row[i] || ''));
+	return (returnData[0] || []).map((_, i) =>
+		returnData.map((row) => (row[i] === undefined ? '' : row[i])),
+	);
 }
 
 export function prepareSheetData(
