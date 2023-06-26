@@ -54,6 +54,7 @@ import {
 	faFileAlt,
 	faFileArchive,
 	faFileCode,
+	faFileDownload,
 	faFileExport,
 	faFileImport,
 	faFilePdf,
