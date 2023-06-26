@@ -177,7 +177,7 @@ export class WorkflowPage extends BasePage {
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
-			cy.get('body').type('{meta}', { release: false }).type('s');
+			cy.get('body').type(META_KEY, { release: false }).type('s');
 		},
 		deleteNode: (name: string) => {
 			this.getters.canvasNodeByName(name).first().click();

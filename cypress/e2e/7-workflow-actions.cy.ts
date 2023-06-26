@@ -95,14 +95,13 @@ describe('Workflow Actions', () => {
 		)
 		cy.reload();
 		cy.get('.el-loading-mask').should('exist');
-		cy.get('body').type('{meta}', { release: false }).type('s');
-		cy.get('body').type('{meta}', { release: false }).type('s');
-		cy.get('body').type('{meta}', { release: false }).type('s');
-		cy.get('body').type('{meta}', { release: false }).type('s');
+		cy.get('body').type(META_KEY, { release: false }).type('s');
+		cy.get('body').type(META_KEY, { release: false }).type('s');
+		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		cy.wait(500);
-		cy.get('body').type('{meta}', { release: false }).type('s');
+		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wait('@saveWorkflow');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
 	})
