@@ -1,12 +1,22 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
+const addOptName = 'additionalOptions';
+
 const getAllParams = (execFns: IExecuteSingleFunctions): Record<string, unknown> => {
 	const params = execFns.getNode().parameters;
-	const paramsWithValues = Object.keys(params).map((name) => [
-		name,
-		execFns.getNodeParameter(name),
-	]);
-	return Object.fromEntries(paramsWithValues);
+	const keys = Object.keys(params);
+	const paramsWithValues = keys
+		.filter((i) => i !== addOptName)
+		.map((name) => [name, execFns.getNodeParameter(name)]);
+
+	const paramsWithValuesObj = Object.fromEntries(paramsWithValues);
+
+	if (keys.includes(addOptName)) {
+		const additionalOptions = execFns.getNodeParameter(addOptName);
+		return Object.assign(paramsWithValuesObj, additionalOptions);
+	}
+
+	return paramsWithValuesObj;
 };
 
 const formatParams = (

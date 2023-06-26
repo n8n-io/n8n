@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { activityPresend } from '../GenericFunctions';
 import { emailsField } from './shared';
-import { mapWith, showFor } from './utils';
+import { getAdditionalOptions, mapWith, showFor } from './utils';
 
 const displayOpts = showFor(['activity']);
 
@@ -20,8 +20,9 @@ const activityOperations: INodeProperties = {
 	default: 'createWithMember',
 	options: [
 		{
-			name: 'Create or Update an Activity (with a Member)',
+			name: 'Create or Update with a Member',
 			value: 'createWithMember',
+			description: 'Create or update an activity with a member',
 			action: 'Create or update an activity with a member',
 			routing: {
 				send: { preSend: [activityPresend] },
@@ -32,8 +33,9 @@ const activityOperations: INodeProperties = {
 			},
 		},
 		{
-			name: 'Create an Activity for a Member',
+			name: 'Create',
 			value: 'createForMember',
+			description: 'Create an activity for a member',
 			action: 'Create an activity for a member',
 			routing: {
 				send: { preSend: [activityPresend] },
@@ -145,6 +147,17 @@ const createCommonFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Source ID',
+		name: 'sourceId',
+		description: 'The ID of the activity in the platform (e.g. the ID of the message in Discord)',
+		type: 'string',
+		required: true,
+		default: '',
+	},
+];
+
+const additionalOptions: INodeProperties[] = [
+	{
 		displayName: 'Title',
 		name: 'title',
 		description: 'Title of the activity',
@@ -166,14 +179,6 @@ const createCommonFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Source ID',
-		name: 'sourceId',
-		description: 'The ID of the activity in the platform (e.g. the ID of the message in Discord)',
-		type: 'string',
-		required: true,
-		default: '',
-	},
-	{
 		displayName: 'Source Parent ID',
 		name: 'sourceParentId',
 		description:
@@ -187,6 +192,7 @@ const activityFields: INodeProperties[] = [
 	Object.assign({}, memberField, displayFor.createWithMember),
 	Object.assign({}, memberIdField, displayFor.createForMember),
 	...createCommonFields.map(mapWith(displayFor.resource)),
+	Object.assign({}, getAdditionalOptions(additionalOptions), displayFor.resource),
 ];
 
 export { activityOperations, activityFields };

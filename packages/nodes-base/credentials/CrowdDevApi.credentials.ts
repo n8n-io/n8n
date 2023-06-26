@@ -10,13 +10,13 @@ export class CrowdDevApi implements ICredentialType {
 
 	displayName = 'crowd.dev API';
 
-	documentationUrl = 'https://docs.crowd.dev/reference/getting-started-with-crowd-dev-api';
+	documentationUrl = 'https://docs.crowd.dev/reference/getting-started-with-crowdDev';
 
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
 			name: 'url',
-			type: 'hidden',
+			type: 'string',
 			default: 'https://app.crowd.dev',
 		},
 		{
@@ -33,6 +33,13 @@ export class CrowdDevApi implements ICredentialType {
 				password: true,
 			},
 			default: '',
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
 		},
 	];
 
@@ -53,8 +60,9 @@ export class CrowdDevApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			method: 'POST',
-			baseURL: '={{$credentials?.url + "/api/tenant/" + $credentials?.tenantId}}',
+			baseURL: '={{$credentials.url.replace(/\\/$/, "") + "/api/tenant/" + $credentials.tenantId}}',
 			url: '/member/query',
+			skipSslCertificateValidation: '={{ $credentials.allowUnauthorizedCerts }}',
 			body: {
 				limit: 1,
 				offset: 0,

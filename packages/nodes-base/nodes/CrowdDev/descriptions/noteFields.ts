@@ -21,6 +21,7 @@ const noteOperations: INodeProperties = {
 		{
 			name: 'Create',
 			value: 'create',
+			description: 'Create a note',
 			action: 'Create a note',
 			routing: {
 				send: { preSend: [notePresend] },
@@ -33,6 +34,7 @@ const noteOperations: INodeProperties = {
 		{
 			name: 'Delete',
 			value: 'delete',
+			description: 'Delete a note',
 			action: 'Delete a note',
 			routing: {
 				request: {
@@ -44,6 +46,7 @@ const noteOperations: INodeProperties = {
 		{
 			name: 'Find',
 			value: 'find',
+			description: 'Find a note',
 			action: 'Find a note',
 			routing: {
 				request: {
@@ -55,6 +58,7 @@ const noteOperations: INodeProperties = {
 		{
 			name: 'Update',
 			value: 'update',
+			description: 'Update a note',
 			action: 'Update a note',
 			routing: {
 				send: { preSend: [notePresend] },

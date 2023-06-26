@@ -39,3 +39,19 @@ export const getId = (): INodeProperties => ({
 		},
 	},
 });
+
+export const getAdditionalOptions = (fields: INodeProperties[]): INodeProperties => {
+	return {
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Option',
+		options: fields,
+	};
+};

@@ -21,6 +21,7 @@ const automationOperations: INodeProperties = {
 		{
 			name: 'Create',
 			value: 'create',
+			description: 'Create a new automation for the tenant',
 			action: 'Create a new automation for the tenant',
 			routing: {
 				send: { preSend: [automationPresend] },
@@ -33,6 +34,7 @@ const automationOperations: INodeProperties = {
 		{
 			name: 'Destroy',
 			value: 'destroy',
+			description: 'Destroy an existing automation for the tenant',
 			action: 'Destroy an existing automation for the tenant',
 			routing: {
 				request: {
@@ -44,6 +46,7 @@ const automationOperations: INodeProperties = {
 		{
 			name: 'Find',
 			value: 'find',
+			description: 'Get an existing automation data for the tenant',
 			action: 'Get an existing automation data for the tenant',
 			routing: {
 				request: {
@@ -55,6 +58,7 @@ const automationOperations: INodeProperties = {
 		{
 			name: 'List',
 			value: 'list',
+			description: 'Get all existing automation data for tenant',
 			action: 'Get all existing automation data for tenant',
 			routing: {
 				request: {
@@ -66,6 +70,7 @@ const automationOperations: INodeProperties = {
 		{
 			name: 'Update',
 			value: 'update',
+			description: 'Updates an existing automation for the tenant',
 			action: 'Updates an existing automation for the tenant',
 			routing: {
 				send: { preSend: [automationPresend] },

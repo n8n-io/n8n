@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { getId, mapWith, showFor } from './utils';
+import { getAdditionalOptions, getId, mapWith, showFor } from './utils';
 import * as shared from './shared';
 import { memberPresend } from '../GenericFunctions';
 
@@ -22,6 +22,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Create or Update',
 			value: 'createOrUpdate',
+			description: 'Create or update a member',
 			action: 'Create or update a member',
 			routing: {
 				send: { preSend: [memberPresend] },
@@ -34,6 +35,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Delete',
 			value: 'delete',
+			description: 'Delete a member',
 			action: 'Delete a member',
 			routing: {
 				request: {
@@ -45,6 +47,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Find',
 			value: 'find',
+			description: 'Find a member',
 			action: 'Find a member',
 			routing: {
 				request: {
@@ -56,6 +59,7 @@ const memberOperations: INodeProperties = {
 		{
 			name: 'Update',
 			value: 'update',
+			description: 'Update a member',
 			action: 'Update a member',
 			routing: {
 				send: { preSend: [memberPresend] },
@@ -85,6 +89,9 @@ const commonFields: INodeProperties[] = [
 		required: true,
 		default: '',
 	},
+];
+
+const additionalOptions: INodeProperties[] = [
 	{
 		displayName: 'Display Name',
 		name: 'displayName',
@@ -262,6 +269,7 @@ const commonFields: INodeProperties[] = [
 const memberFields: INodeProperties[] = [
 	Object.assign(getId(), { description: 'The ID of the member' }, displayFor.id),
 	...commonFields.map(mapWith(displayFor.createOrUpdate)),
+	Object.assign({}, getAdditionalOptions(additionalOptions), displayFor.createOrUpdate),
 ];
 
 export { memberOperations, memberFields };

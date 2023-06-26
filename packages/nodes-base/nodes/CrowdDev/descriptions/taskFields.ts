@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { taskPresend } from '../GenericFunctions';
-import { getId, mapWith, showFor } from './utils';
+import { getAdditionalOptions, getId, showFor } from './utils';
 
 const displayOpts = showFor(['task']);
 
@@ -21,6 +21,7 @@ const taskOperations: INodeProperties = {
 		{
 			name: 'Create',
 			value: 'create',
+			description: 'Create a task',
 			action: 'Create a task',
 			routing: {
 				send: { preSend: [taskPresend] },
@@ -33,6 +34,7 @@ const taskOperations: INodeProperties = {
 		{
 			name: 'Delete',
 			value: 'delete',
+			description: 'Delete a task',
 			action: 'Delete a task',
 			routing: {
 				request: {
@@ -44,6 +46,7 @@ const taskOperations: INodeProperties = {
 		{
 			name: 'Find',
 			value: 'find',
+			description: 'Find a task',
 			action: 'Find a task',
 			routing: {
 				request: {
@@ -55,6 +58,7 @@ const taskOperations: INodeProperties = {
 		{
 			name: 'Update',
 			value: 'update',
+			description: 'Update a task',
 			action: 'Update a task',
 			routing: {
 				send: { preSend: [taskPresend] },
@@ -67,7 +71,7 @@ const taskOperations: INodeProperties = {
 	],
 };
 
-const commonFields: INodeProperties[] = [
+const additionalOptions: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -153,7 +157,7 @@ const commonFields: INodeProperties[] = [
 
 const taskFields: INodeProperties[] = [
 	Object.assign(getId(), { description: 'The ID of the task' }, displayFor.id),
-	...commonFields.map(mapWith(displayFor.createOrUpdate)),
+	Object.assign({}, getAdditionalOptions(additionalOptions), displayFor.createOrUpdate),
 ];
 
 export { taskOperations, taskFields };

@@ -11,6 +11,7 @@ interface ICrowdDevCreds {
 	url: string;
 	tenantId: string;
 	token: string;
+	allowUnauthorizedCerts: boolean;
 }
 
 const credsName = 'crowdDevApi';
@@ -26,6 +27,7 @@ const createRequest = (
 		baseURL: `${creds.url}/api/tenant/${creds.tenantId}`,
 		url: '',
 		json: true,
+		skipSslCertificateValidation: creds.allowUnauthorizedCerts,
 	};
 	return Object.assign(defaults, opts);
 };
