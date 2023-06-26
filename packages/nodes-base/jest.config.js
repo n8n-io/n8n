@@ -4,5 +4,6 @@ module.exports = {
 	collectCoverageFrom: ['credentials/**/*.ts', 'nodes/**/*.ts', 'utils/**/*.ts'],
 	moduleNameMapper: {
 		'^@test/(.*)$': '<rootDir>/test/$1',
+		'^@utils/(.*)$': '<rootDir>/utils/$1',
 	},
 };
