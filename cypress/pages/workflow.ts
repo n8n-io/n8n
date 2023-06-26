@@ -241,14 +241,15 @@ export class WorkflowPage extends BasePage {
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
 		},
-		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string, action?: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters
 				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
 				.find('.add')
 				.first()
 				.click({ force: true });
-			this.actions.addNodeToCanvas(newNodeName, false);
+
+			this.actions.addNodeToCanvas(newNodeName, false, false, action);
 		},
 		deleteNodeBetweenNodes: (
 			sourceNodeName: string,
