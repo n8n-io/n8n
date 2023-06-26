@@ -75,7 +75,7 @@ describe('Workflow Actions', () => {
 		// so we'll count the number of times it was called
     cy.intercept('PATCH', '/rest/workflows/*', () => {
       interceptCalledCount++;
-    });
+    }).as('saveWorkflow');
 
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
@@ -102,6 +102,7 @@ describe('Workflow Actions', () => {
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		cy.get('body').type('{meta}', { release: false }).type('s');
+		cy.wait('@saveWorkflow');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
 	})
 	it('should copy nodes', () => {
