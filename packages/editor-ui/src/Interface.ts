@@ -1059,13 +1059,10 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export type Modals =
-	| {
-			[key: string]: ModalState;
-	  }
-	| {
-			[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
-	  };
+export type Modals = {
+	[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
+	[key: string]: ModalState;
+};
 
 export type ModalState = {
 	open: boolean;
@@ -1529,7 +1526,7 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
-export type VersionControlPreferences = {
+export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
 	authorName: string;
@@ -1542,7 +1539,7 @@ export type VersionControlPreferences = {
 	currentBranch?: string;
 };
 
-export interface VersionControlStatus {
+export interface SourceControlStatus {
 	ahead: number;
 	behind: number;
 	conflicted: string[];
@@ -1562,7 +1559,7 @@ export interface VersionControlStatus {
 	tracking: null;
 }
 
-export interface VersionControlAggregatedFile {
+export interface SourceControlAggregatedFile {
 	conflict: boolean;
 	file: string;
 	id: string;

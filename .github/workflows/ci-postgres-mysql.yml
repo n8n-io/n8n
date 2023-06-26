@@ -38,19 +38,11 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql
+        run: DB_TABLE_PREFIX=test_ pnpm test:mysql
 
       - name: Test Postgres
         working-directory: packages/cli
-        run: pnpm test:postgres
-
-      - name: Test Postgres (alternate schema)
-        working-directory: packages/cli
-        run: pnpm test:postgres:alt-schema
-
-      - name: Test Postgres (table prefix)
-        working-directory: packages/cli
-        run: pnpm test:postgres:with-table-prefix
+        run: DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ pnpm test:postgres
 
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0

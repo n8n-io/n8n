@@ -28,6 +28,7 @@
 				:droppable="droppable"
 				:node="node"
 				:path="path"
+				:event-bus="eventBus"
 				@input="valueChanged"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -87,7 +88,7 @@
 				<code-node-editor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:value="editorContent"
+					:value="value"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
@@ -97,7 +98,7 @@
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="editorContent"
+					:html="value"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -107,7 +108,7 @@
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="editorContent"
+					:query="value"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
@@ -365,9 +366,8 @@ import type {
 	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
-	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -392,8 +392,8 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import Vue from 'vue';
-
-type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -463,6 +463,10 @@ export default defineComponent({
 			default: () => ({
 				size: 'small',
 			}),
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
 		},
 	},
 	data() {
@@ -601,6 +605,11 @@ export default defineComponent({
 				// display the user the key instead of the value it
 				// represents
 				return this.$locale.baseText('parameterInput.loadingOptions');
+			}
+
+			// if the value is marked as empty return empty string, to prevent displaying the asterisks
+			if (this.value === CREDENTIAL_EMPTY_VALUE) {
+				return '';
 			}
 
 			let returnValue;
@@ -820,22 +829,6 @@ export default defineComponent({
 		},
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
-		},
-		nodeType(): INodeTypeDescription | null {
-			if (!this.node) return null;
-			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-		},
-		editorContent(): string | undefined {
-			if (!this.nodeType) {
-				return;
-			}
-			const editorProp = this.nodeType.properties.find(
-				(p) => p.typeOptions?.editor === (this.editorType as string),
-			);
-			if (!editorProp) {
-				return;
-			}
-			return this.node.parameters[editorProp.name] as string;
 		},
 	},
 	methods: {
@@ -1129,9 +1122,7 @@ export default defineComponent({
 				}
 			} else if (command === 'refreshOptions') {
 				if (this.isResourceLocatorParameter) {
-					const resourceLocatorRef = this.$refs.resourceLocator as ResourceLocatorRef | undefined;
-
-					resourceLocatorRef?.$emit('refreshList');
+					this.eventBus.emit('refreshList');
 				}
 				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
@@ -1163,7 +1154,7 @@ export default defineComponent({
 		});
 	},
 	mounted() {
-		this.$on('optionSelected', this.optionSelected);
+		this.eventBus.on('optionSelected', this.optionSelected);
 
 		this.tempValue = this.displayValue as string;
 		if (this.node !== null) {
@@ -1202,6 +1193,9 @@ export default defineComponent({
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});
+	},
+	beforeDestroy() {
+		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 });
 </script>

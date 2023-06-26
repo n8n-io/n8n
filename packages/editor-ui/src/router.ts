@@ -42,7 +42,8 @@ import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
-import SettingsVersionControl from './views/SettingsVersionControl.vue';
+import SettingsSourceControl from './views/SettingsSourceControl.vue';
+import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
 import { usePostHog } from './stores/posthog.store';
 
 Vue.use(Router);
@@ -581,10 +582,10 @@ export const routes = [
 				},
 			},
 			{
-				path: 'version-control',
-				name: VIEWS.VERSION_CONTROL,
+				path: 'source-control',
+				name: VIEWS.SOURCE_CONTROL,
 				components: {
-					settingsView: SettingsVersionControl,
+					settingsView: SettingsSourceControl,
 				},
 				meta: {
 					telemetry: {
@@ -600,7 +601,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !window.localStorage.getItem('version-control'),
+							shouldDeny: () => !window.localStorage.getItem('source-control'),
 						},
 					},
 				},
@@ -711,6 +712,31 @@ export const routes = [
 						},
 						deny: {
 							role: [ROLE.Member],
+						},
+					},
+				},
+			},
+			{
+				path: 'audit-logs',
+				name: VIEWS.AUDIT_LOGS,
+				components: {
+					settingsView: SettingsAuditLogs,
+				},
+				meta: {
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties(route: Route) {
+							return {
+								feature: 'audit-logs',
+							};
+						},
+					},
+					permissions: {
+						allow: {
+							role: [ROLE.Owner],
+						},
+						deny: {
+							shouldDeny: () => !window.localStorage.getItem('audit-logs'),
 						},
 					},
 				},

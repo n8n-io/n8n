@@ -47,8 +47,8 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
+export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
-export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -376,7 +376,8 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
-	VERSION_CONTROL = 'VersionControl',
+	SOURCE_CONTROL = 'SourceControl',
+	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
 }
 
@@ -444,7 +445,8 @@ export const enum EnterpriseEditionFeature {
 	LogStreaming = 'logStreaming',
 	Variables = 'variables',
 	Saml = 'saml',
-	VersionControl = 'versionControl',
+	SourceControl = 'sourceControl',
+	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

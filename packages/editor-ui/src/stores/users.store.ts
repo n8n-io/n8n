@@ -35,7 +35,6 @@ import type {
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
@@ -137,17 +136,29 @@ export const useUsersStore = defineStore(STORES.USERS, {
 					isPendingUser: isPendingUser(updatedUser),
 					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
 				};
-				Vue.set(this.users, user.id, user);
+
+				this.users = {
+					...this.users,
+					[user.id]: user,
+				};
 			});
 		},
 		deleteUserById(userId: string): void {
-			Vue.delete(this.users, userId);
+			const { [userId]: _, ...users } = this.users;
+			this.users = users;
 		},
 		setPersonalizationAnswers(answers: IPersonalizationLatestVersion): void {
 			if (!this.currentUser) {
 				return;
 			}
-			Vue.set(this.currentUser, 'personalizationAnswers', answers);
+
+			this.users = {
+				...this.users,
+				[this.currentUser.id]: {
+					...this.currentUser,
+					personalizationAnswers: answers,
+				},
+			};
 		},
 		async loginWithCookie(): Promise<void> {
 			const rootStore = useRootStore();

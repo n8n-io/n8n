@@ -49,6 +49,7 @@ import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { filterTemplateNodes, abbreviateNumber } from '@/utils';
 import NodeList from './NodeList.vue';
+import TimeAgo from '@/components/TimeAgo.vue';
 
 export default defineComponent({
 	name: 'TemplateCard',
@@ -73,6 +74,7 @@ export default defineComponent({
 		},
 	},
 	components: {
+		TimeAgo,
 		NodeList,
 	},
 	data() {
