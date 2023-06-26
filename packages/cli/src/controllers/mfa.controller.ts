@@ -4,7 +4,7 @@ import { BadRequestError } from '@/ResponseHelper';
 import { MfaService } from '@/Mfa/mfa.service';
 import Container from 'typedi';
 import { ExternalHooks } from '@/ExternalHooks';
-import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
+import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service.ee';
 
 @Authorized()
 @RestController('/mfa')
