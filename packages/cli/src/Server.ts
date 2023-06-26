@@ -14,7 +14,7 @@ import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve } from 'path';
+import { join as pathJoin, resolve as pathResolve, relative as pathRelative } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -1467,6 +1467,9 @@ export class Server extends AbstractServer {
 						loader.directory,
 						req.originalUrl.substring(pathPrefix.length),
 					);
+					if (pathRelative(loader.directory, filePath).includes('..')) {
+						return res.status(404).end();
+					}
 					try {
 						await fsAccess(filePath);
 						return res.sendFile(filePath);

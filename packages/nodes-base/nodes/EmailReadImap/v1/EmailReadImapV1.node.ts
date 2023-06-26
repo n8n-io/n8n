@@ -72,6 +72,17 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Email Trigger (IMAP)',
 		color: '#44AA22',
 	},
+	triggerPanel: {
+		header: '',
+		executionsHelp: {
+			inactive:
+				"<b>While building your workflow</b>, click the 'listen' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time an email is received, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+			active:
+				"<b>While building your workflow</b>, click the 'listen' button, then send an email to make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time an email is received, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+		},
+		activationHint:
+			"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
+	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: [],
 	outputs: ['main'],
