@@ -111,8 +111,7 @@ const resetLogStreaming = async () => {
 
 const removeActiveWorkflows = async () => {
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	const activeWf = await Container.get(ActiveWorkflowRunner).getActiveWorkflows();
-	console.log('Active WFS: ', activeWf);
+
 	workflowRunner.removeAllQueuedWorkflowActivations();
 	await workflowRunner.removeAll();
 };
