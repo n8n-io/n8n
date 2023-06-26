@@ -8,10 +8,12 @@ COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node packages ./packages
 COPY --chown=node:node patches ./patches
 
+
 RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
+RUN cd ./packages/design-system/src/css && mv _tokens.quickplay.scss _tokens.scss
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN rm -rf node_modules
