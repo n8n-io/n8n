@@ -536,7 +536,8 @@ export default defineComponent({
 
 						const status = await this.sourceControlStore.getAggregatedStatus();
 						const workflowStatus = status.filter(
-							(s) => s.id === this.currentWorkflowId && s.type === 'workflow',
+							(s) =>
+								(s.id === this.currentWorkflowId && s.type === 'workflow') || s.type !== 'workflow',
 						);
 
 						this.uiStore.openModalWithData({
