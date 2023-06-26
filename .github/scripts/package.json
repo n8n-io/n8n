@@ -1,8 +1,10 @@
 {
   "dependencies": {
-    "conventional-changelog-cli": "^2.2.2",
-    "glob": "^10.2.7",
-    "semver": "^7.3.8",
+    "add-stream": "^1.0.0",
+    "conventional-changelog": "^4.0.0",
+    "glob": "^10.3.0",
+    "semver": "^7.5.2",
+    "tempfile": "^5.0.0",
     "typescript": "*"
   }
 }
