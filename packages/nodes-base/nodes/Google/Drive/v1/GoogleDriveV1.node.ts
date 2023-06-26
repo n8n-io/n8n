@@ -16,6 +16,8 @@ import { v4 as uuid } from 'uuid';
 import type { Readable } from 'stream';
 import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
 
+import { oldVersionNotice } from '@utils/descriptions';
+
 const UPLOAD_CHUNK_SIZE = 256 * 1024;
 
 const versionDescription: INodeTypeDescription = {
@@ -52,12 +54,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		{
-			displayName: 'Version 1',
-			name: 'version',
-			type: 'notice',
-			default: '',
-		},
+		oldVersionNotice,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
