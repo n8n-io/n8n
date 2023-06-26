@@ -7,6 +7,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: ALL
+    permissions:
+      id-token: write
+      contents: read
 
     strategy:
       matrix:
