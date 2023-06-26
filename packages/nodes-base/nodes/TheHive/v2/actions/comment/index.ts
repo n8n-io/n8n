@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as add from './add.operation';
 import * as deleteComment from './deleteComment.operation';
 import * as update from './update.operation';
+import { warningTH5 } from '../common.description';
 
 export { add, deleteComment, update };
 
@@ -31,6 +32,14 @@ export const description: INodeProperties[] = [
 				action: 'Update a comment',
 			},
 		],
+		displayOptions: {
+			show: {
+				resource: ['comment'],
+			},
+		},
+	},
+	{
+		...warningTH5,
 		displayOptions: {
 			show: {
 				resource: ['comment'],

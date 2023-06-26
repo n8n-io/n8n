@@ -1,6 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { TLP } from '../helpers/interfaces';
 
+export const warningTH5: INodeProperties = {
+	displayName:
+		'This operation available only for TheHive 5, make sure correct API version is selected in credentials',
+	name: 'warningTH5',
+	type: 'notice',
+	default: '',
+};
+
 export const returnAllAndLimit: INodeProperties[] = [
 	{
 		displayName: 'Return All',

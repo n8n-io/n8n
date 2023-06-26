@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as create from './create.operation';
 import * as deletePage from './deletePage.operation';
 import * as update from './update.operation';
+import { warningTH5 } from '../common.description';
 
 export { create, deletePage, update };
 
@@ -31,6 +32,14 @@ export const description: INodeProperties[] = [
 				action: 'Update a page',
 			},
 		],
+		displayOptions: {
+			show: {
+				resource: ['page'],
+			},
+		},
+	},
+	{
+		...warningTH5,
 		displayOptions: {
 			show: {
 				resource: ['page'],
