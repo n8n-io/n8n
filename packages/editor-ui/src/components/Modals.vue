@@ -73,6 +73,10 @@
 			<ActivationModal />
 		</ModalRoot>
 
+		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
+			<MfaSetupModal />
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
 				<WorkflowShareModal :data="data" :isActive="active" :modalName="modalName" />
