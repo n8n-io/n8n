@@ -160,7 +160,6 @@ export class SourceControlExportService {
 					connections: e.workflow?.connections,
 					settings: e.workflow?.settings,
 					triggerCount: e.workflow?.triggerCount,
-					owner: e.user.email,
 					versionId: e.workflow?.versionId,
 				};
 				LoggerProxy.debug(`Writing workflow ${e.workflowId} to ${fileName}`);

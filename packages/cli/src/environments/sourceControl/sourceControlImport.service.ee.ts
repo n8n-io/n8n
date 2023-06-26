@@ -304,13 +304,10 @@ export class SourceControlImportService {
 					if (upsertResult?.identifiers?.length !== 1) {
 						throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
 					}
-					// due to sequential Ids, this may have changed during the insert
-					// TODO: once IDs are unique and we removed autoincrement, remove this
-					const upsertedWorkflowId = upsertResult.identifiers[0].id as string;
 					await transactionManager.upsert(
 						SharedWorkflow,
 						{
-							workflowId: upsertedWorkflowId,
+							workflowId: importedWorkflow.id,
 							userId,
 							roleId: ownerWorkflowRole.id,
 						},
