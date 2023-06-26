@@ -12,6 +12,7 @@ import { Container } from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { RoleRepository } from '@db/repositories';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -108,10 +109,19 @@ const resetLogStreaming = async () => {
 	}
 };
 
+const removeActiveWorkflows = async () => {
+	const workflowRunner = Container.get(ActiveWorkflowRunner);
+	const activeWf = await Container.get(ActiveWorkflowRunner).getActiveWorkflows();
+	console.log('Active WFS: ', activeWf);
+	workflowRunner.removeAllQueuedWorkflowActivations();
+	await workflowRunner.removeAll();
+};
+
 export const e2eController = Router();
 
 e2eController.post('/db/reset', async (req, res) => {
 	await resetLogStreaming();
+	await removeActiveWorkflows();
 	await truncateAll();
 	await setupUserManagement();
 
