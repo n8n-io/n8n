@@ -8,10 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: ALL
+    # environment: ALL
     permissions:
       id-token: write
-      contents: read
+      # contents: read
 
     steps:
       - uses: actions/checkout@v3
