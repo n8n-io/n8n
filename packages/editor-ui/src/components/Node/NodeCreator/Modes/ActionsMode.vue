@@ -142,7 +142,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		(p) => p.key === actionCreateElement.key,
 	);
 
-	if (isPlaceholderTriggerAction && isTriggerRootView) {
+	if (isPlaceholderTriggerAction && isTriggerRootView.value) {
 		const actionNode = actions.value[0].key;
 
 		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
