@@ -146,11 +146,10 @@
 				></n8n-option>
 			</n8n-select>
 
-			<n8n-tooltip
-				placement="right"
-				v-if="canLinkRuns"
-				:content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint')"
-			>
+			<n8n-tooltip placement="right" v-if="canLinkRuns">
+				<template #content>
+					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+				</template>
 				<n8n-icon-button
 					v-if="linkedRuns"
 					icon="unlink"

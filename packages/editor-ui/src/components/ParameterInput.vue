@@ -133,14 +133,14 @@
 
 				<n8n-input
 					v-else
-					v-model="tempValue"
+					:modelValue="tempValue"
 					ref="inputField"
 					class="input-with-opener"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
 					:disabled="isReadOnly"
-					@update:modelValue="onTextInputChange($event) && valueChanged($event)"
+					@update:modelValue="onUpdateTextInput"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -220,7 +220,7 @@
 				:min="getArgument('minValue')"
 				:precision="getArgument('numberPrecision')"
 				:disabled="isReadOnly"
-				@update:modelValue="onTextInputChange($event) && valueChanged($event)"
+				@update:modelValue="onUpdateTextInput"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -1021,6 +1021,10 @@ export default defineComponent({
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
 			void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+		},
+		onUpdateTextInput(value: string) {
+			this.valueChanged(value);
+			this.onTextInputChange(value);
 		},
 		valueChanged(value: NodeParameterValueType | {} | Date) {
 			if (this.parameter.name === 'nodeCredentialType') {

@@ -89,8 +89,8 @@ export default mergeConfig(
 	defineConfig({
 		define: {
 			// This causes test to fail but is required for actually running it
-			...(NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
-			...(NODE_ENV === 'development' ? { process: { env: {} } } : {}),
+			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
+			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
 			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins,

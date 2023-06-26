@@ -18,7 +18,7 @@
 			:expressionEvaluated="expressionValueComputed"
 			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
-			:event-bus="internalEventBus"
+			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
@@ -71,17 +71,6 @@ export default defineComponent({
 	components: {
 		ParameterInput,
 		InputHint,
-	},
-	data() {
-		return {
-			internalEventBus: createEventBus(),
-		};
-	},
-	mounted() {
-		this.eventBus.on('optionSelected', this.optionSelected);
-	},
-	beforeUnmount() {
-		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 	props: {
 		isReadOnly: {
@@ -230,9 +219,6 @@ export default defineComponent({
 		},
 		onDrop(data: string) {
 			this.$emit('drop', data);
-		},
-		optionSelected(command: string) {
-			this.internalEventBus.emit('optionSelected', command);
 		},
 		onValueChanged(parameterData: IUpdateInformation) {
 			this.$emit('update', parameterData);

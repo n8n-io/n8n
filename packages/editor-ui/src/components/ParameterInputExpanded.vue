@@ -11,7 +11,7 @@
 		<template #options>
 			<parameter-options
 				:parameter="parameter"
-				:modelValue="value"
+				:value="value"
 				:isReadOnly="false"
 				:showOptions="true"
 				:isValueExpression="isValueExpression"

@@ -69,6 +69,8 @@ export default defineComponent({
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
+				this.editorState = this.editor.state;
+
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
@@ -94,6 +96,7 @@ export default defineComponent({
 			}),
 		});
 
+		this.editorState = this.editor.state;
 		this.editor.focus();
 
 		highlighter.addColor(this.editor, this.resolvableSegments);

@@ -114,6 +114,9 @@ export default defineComponent({
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
+				// Force segments value update by keeping track of editor state
+				this.editorState = this.editor.state;
+
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
@@ -137,10 +140,11 @@ export default defineComponent({
 				extensions,
 			}),
 		});
+		this.editorState = this.editor.state;
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
 
-		this.$emit('update', {
+		this.$emit('change', {
 			value: this.unresolvedExpression,
 			segments: this.displayableSegments,
 		});

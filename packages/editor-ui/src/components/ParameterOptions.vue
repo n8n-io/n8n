@@ -55,7 +55,7 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		modelValue: {
+		value: {
 			type: [Object, String, Number, Boolean, Array] as PropType<NodeParameterValueType>,
 		},
 		showOptions: {
@@ -88,10 +88,10 @@ export default defineComponent({
 	},
 	computed: {
 		isDefault(): boolean {
-			return this.parameter.default === this.modelValue;
+			return this.parameter.default === this.value;
 		},
 		isValueExpression(): boolean {
-			return isValueExpression(this.parameter, this.modelValue);
+			return isValueExpression(this.parameter, this.value);
 		},
 		isHtmlEditor(): boolean {
 			return this.getArgument('editor') === 'htmlEditor';
@@ -153,8 +153,8 @@ export default defineComponent({
 			if (
 				this.hasRemoteMethod ||
 				(this.parameter.type === 'resourceLocator' &&
-					isResourceLocatorValue(this.modelValue) &&
-					this.modelValue.mode === 'list')
+					isResourceLocatorValue(this.value) &&
+					this.value.mode === 'list')
 			) {
 				return [
 					{
@@ -173,6 +173,7 @@ export default defineComponent({
 			this.$emit('menu-expanded', visible);
 		},
 		onViewSelected(selected: string) {
+			console.log('onViewSelected', selected);
 			if (selected === 'expression') {
 				this.$emit(
 					'update:modelValue',

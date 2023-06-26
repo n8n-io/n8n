@@ -24,6 +24,7 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
+	ViewUpdate,
 } from '@codemirror/view';
 import {
 	MSSQL,
@@ -167,6 +168,8 @@ export default defineComponent({
 					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 						if (!viewUpdate.docChanged || !this.editor) return;
 
+						this.editorState = this.editor.state;
+
 						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
 						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 
@@ -182,6 +185,7 @@ export default defineComponent({
 
 		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
+		this.editorState = this.editor.state;
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 	},
 	methods: {

@@ -1,21 +1,15 @@
 <template>
 	<el-tooltip v-bind="{ ...$props, ...$attrs }">
-		<template v-for="(_, slotName) in $slots" #[slotName]>
-			<slot :name="slotName" />
-			<div
-				:key="slotName"
-				v-if="slotName === 'content' && buttons.length"
-				:class="$style.buttons"
-				:style="{ justifyContent: justifyButtons }"
-			>
-				<n8n-button
-					v-for="button in buttons"
-					:key="button.attrs.label"
-					v-bind="button.attrs"
-					v-on="button.listeners"
-				/>
-			</div>
+		<template #content>
+			<n8n-button
+				v-for="button in buttons"
+				:key="button.attrs.label"
+				v-bind="button.attrs"
+				v-on="button.listeners"
+			/>
+			<slot name="content"></slot>
 		</template>
+		<slot />
 	</el-tooltip>
 </template>
 

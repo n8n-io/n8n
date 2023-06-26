@@ -12,7 +12,7 @@
 			<parameter-options
 				v-if="displayOptions"
 				:parameter="parameter"
-				:modelValue="value"
+				:value="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
 				:showExpressionSelector="showExpressionSelector"
@@ -234,12 +234,14 @@ export default defineComponent({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
+			console.log('optionSelected', command);
 			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
+			console.log('onTextInput', parameterData);
 			if (isValueExpression(this.parameter, parameterData.value)) {
 				this.eventBus.emit('optionSelected', 'addExpression');
 			}

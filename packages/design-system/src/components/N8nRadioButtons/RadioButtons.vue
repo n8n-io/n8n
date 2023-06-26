@@ -10,7 +10,7 @@
 			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			@click="() => onClick(option)"
+			@click.prevent.stop="onClick(option)"
 		/>
 	</div>
 </template>

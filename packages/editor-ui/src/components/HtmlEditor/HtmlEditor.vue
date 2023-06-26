@@ -106,6 +106,8 @@ export default defineComponent({
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
 
+					this.editorState = this.editor.state;
+
 					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
 					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 
@@ -270,6 +272,7 @@ export default defineComponent({
 		const state = EditorState.create({ doc, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.root(), state });
+		this.editorState = this.editor.state;
 
 		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 	},
