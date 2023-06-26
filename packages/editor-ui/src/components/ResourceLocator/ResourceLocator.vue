@@ -56,7 +56,6 @@
 						<n8n-option
 							v-for="mode in parameter.modes"
 							:key="mode.name"
-							:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
 							:value="mode.name"
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
@@ -65,6 +64,7 @@
 									: ''
 							"
 						>
+							{{ getModeLabel(mode.name) || mode.displayName }}
 						</n8n-option>
 					</n8n-select>
 				</div>
