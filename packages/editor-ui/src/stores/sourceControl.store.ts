@@ -21,7 +21,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		authorEmail: '',
 		repositoryUrl: '',
 		branchReadOnly: false,
-		branchColor: '#F4A6DC',
+		branchColor: '#5296D6',
 		connected: false,
 		publicKey: '',
 	});
