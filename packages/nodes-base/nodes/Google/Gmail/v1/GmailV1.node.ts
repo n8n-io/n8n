@@ -30,7 +30,7 @@ import { draftFields, draftOperations } from './DraftDescription';
 
 import isEmpty from 'lodash/isEmpty';
 
-import { oldVersionNotice } from '../../../../utils/descriptions';
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',

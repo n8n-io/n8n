@@ -1,11 +1,7 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class MigrateIntegerKeysToString1690000000002 implements ReversibleMigration {
-	transaction = false as const;
-
+export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
-		await queryRunner.startTransaction();
 		await queryRunner.query(`
 CREATE TABLE "${tablePrefix}TMP_workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36), "triggerCount" integer NOT NULL DEFAULT 0);`);
 		await queryRunner.query(
@@ -174,12 +170,8 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_variables" RENAME TO "${tablePrefix}variables";`,
 		);
-		await queryRunner.query(`CREATE UNIQUE INDEX "idx_${tablePrefix}variables_key" ON "${tablePrefix}variables" ("key");
-`);
-		await queryRunner.commitTransaction();
-		await queryRunner.query('PRAGMA foreign_keys=ON');
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "idx_${tablePrefix}variables_key" ON "${tablePrefix}variables" ("key")`,
+		);
 	}
-
-	// eslint-disable-next-line @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars
-	async down({ queryRunner, tablePrefix }: MigrationContext) {}
 }
