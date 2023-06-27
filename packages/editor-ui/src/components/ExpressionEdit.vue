@@ -45,7 +45,7 @@
 						<div class="expression-editor ph-no-capture">
 							<ExpressionEditorModalInput
 								:value="value"
-								:isReadOnly="isReadOnly"
+								:isReadOnly="isReadOnlyRoute"
 								:path="path"
 								@change="valueChanged"
 								@close="closeDialog"
