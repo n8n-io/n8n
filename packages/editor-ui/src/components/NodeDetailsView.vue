@@ -28,13 +28,20 @@
 			</div>
 		</n8n-tooltip>
 
-		<div class="data-display" v-if="activeNode">
+		<div
+			v-if="activeNode"
+			class="data-display"
+			ref="container"
+			@keydown.capture="onKeyDown"
+			tabindex="0"
+		>
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels
 				:isTriggerNode="isTriggerNode"
 				:hideInputAndOutput="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
 				:isDraggable="!isTriggerNode"
+				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
 				@close="close"
 				@init="onPanelsInit"
@@ -118,15 +125,18 @@
 </template>
 
 <script lang="ts">
-import {
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
+import type {
 	INodeConnections,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 	Workflow,
-	jsonParse,
 } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import { jsonParse } from 'n8n-workflow';
+import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -135,8 +145,6 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
-import mixins from 'vue-typed-mixins';
-import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
@@ -144,27 +152,24 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
+	MODAL_CONFIRM,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { pinData } from '@/mixins/pinData';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
+import { dataPinningEventBus } from '@/event-bus';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import useDeviceSupport from '@/composables/useDeviceSupport';
+import { useMessage } from '@/composables';
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	workflowHelpers,
-	workflowActivate,
-	pinData,
-).extend({
+export default defineComponent({
 	name: 'NodeDetailsView',
+	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -184,9 +189,16 @@ export default mixins(
 			default: false,
 		},
 	},
+	setup(props) {
+		return {
+			...useDeviceSupport(),
+			...useMessage(),
+			...workflowActivate.setup?.(props),
+		};
+	},
 	data() {
 		return {
-			settingsEventBus: new Vue(),
+			settingsEventBus: createEventBus(),
 			runInputIndex: -1,
 			runOutputIndex: -1,
 			isLinkingEnabled: true,
@@ -200,15 +212,10 @@ export default mixins(
 		};
 	},
 	mounted() {
-		dataPinningEventBus.$on(
-			'data-pinning-discovery',
-			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
-				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
-			},
-		);
+		dataPinningEventBus.on('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	destroyed() {
-		dataPinningEventBus.$off('data-pinning-discovery');
+		dataPinningEventBus.off('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
@@ -402,8 +409,8 @@ export default mixins(
 		},
 	},
 	watch: {
-		activeNode(node: INodeUi | null) {
-			if (node && !this.isActiveStickyNode) {
+		activeNode(node: INodeUi | null, oldNode: INodeUi | null) {
+			if (node && node.name !== oldNode?.name && !this.isActiveStickyNode) {
 				this.runInputIndex = -1;
 				this.runOutputIndex = -1;
 				this.isLinkingEnabled = true;
@@ -413,7 +420,7 @@ export default mixins(
 				this.avgInputRowHeight = 0;
 
 				setTimeout(this.ndvStore.setNDVSessionId, 0);
-				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
+				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
@@ -469,6 +476,19 @@ export default mixins(
 		},
 	},
 	methods: {
+		setIsTooltipVisible({ isTooltipVisible }: { isTooltipVisible: boolean }) {
+			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
+		},
+		onKeyDown(e: KeyboardEvent) {
+			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				if (this.readOnly) return;
+
+				this.$emit('saveKeyboardShortcut', e);
+			}
+		},
 		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (!this.inputNodeName) {
 				return;
@@ -509,7 +529,7 @@ export default mixins(
 		onWorkflowActivate() {
 			this.ndvStore.activeNodeName = null;
 			setTimeout(() => {
-				this.activateCurrentWorkflow('ndv');
+				void this.activateCurrentWorkflow('ndv');
 			}, 1000);
 		},
 		onFeatureRequestClick() {
@@ -574,7 +594,7 @@ export default mixins(
 			}, 1000);
 		},
 		openSettings() {
-			this.settingsEventBus.$emit('openSettings');
+			this.settingsEventBus.emit('openSettings');
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
@@ -588,19 +608,20 @@ export default mixins(
 			}
 
 			if (this.outputPanelEditMode.enabled) {
-				const shouldPinDataBeforeClosing = await this.confirmMessage(
+				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
-					null,
-					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
-					this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+					{
+						confirmButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
+						cancelButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+					},
 				);
 
-				if (shouldPinDataBeforeClosing) {
+				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'data-too-large',
 							source: 'on-ndv-close-modal',
 						});
@@ -608,7 +629,7 @@ export default mixins(
 					}
 
 					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'invalid-json',
 							source: 'on-ndv-close-modal',
 						});
@@ -623,7 +644,7 @@ export default mixins(
 				this.ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
-			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+			await this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,

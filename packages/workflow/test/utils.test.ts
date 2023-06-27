@@ -1,4 +1,77 @@
-import { jsonParse, jsonStringify, deepCopy } from '@/utils';
+import { jsonParse, jsonStringify, deepCopy, isObjectEmpty } from '@/utils';
+
+describe('isObjectEmpty', () => {
+	it('should handle null and undefined', () => {
+		expect(isObjectEmpty(null)).toEqual(true);
+		expect(isObjectEmpty(undefined)).toEqual(true);
+	});
+
+	it('should handle arrays', () => {
+		expect(isObjectEmpty([])).toEqual(true);
+		expect(isObjectEmpty([1, 2, 3])).toEqual(false);
+	});
+
+	it('should handle Set and Map', () => {
+		expect(isObjectEmpty(new Set())).toEqual(true);
+		expect(isObjectEmpty(new Set([1, 2, 3]))).toEqual(false);
+
+		expect(isObjectEmpty(new Map())).toEqual(true);
+		expect(
+			isObjectEmpty(
+				new Map([
+					['a', 1],
+					['b', 2],
+				]),
+			),
+		).toEqual(false);
+	});
+
+	it('should handle Buffer, ArrayBuffer, and Uint8Array', () => {
+		expect(isObjectEmpty(Buffer.from(''))).toEqual(true);
+		expect(isObjectEmpty(Buffer.from('abcd'))).toEqual(false);
+
+		expect(isObjectEmpty(Uint8Array.from([]))).toEqual(true);
+		expect(isObjectEmpty(Uint8Array.from([1, 2, 3]))).toEqual(false);
+
+		expect(isObjectEmpty(new ArrayBuffer(0))).toEqual(true);
+		expect(isObjectEmpty(new ArrayBuffer(1))).toEqual(false);
+	});
+
+	it('should handle plain objects', () => {
+		expect(isObjectEmpty({})).toEqual(true);
+		expect(isObjectEmpty({ a: 1, b: 2 })).toEqual(false);
+	});
+
+	it('should handle instantiated classes', () => {
+		expect(isObjectEmpty(new (class Test {})())).toEqual(true);
+		expect(
+			isObjectEmpty(
+				new (class Test {
+					prop = 123;
+				})(),
+			),
+		).toEqual(false);
+	});
+
+	it('should not call Object.keys unless a plain object', () => {
+		const keySpy = jest.spyOn(Object, 'keys');
+		const { calls } = keySpy.mock;
+
+		const assertCalls = (count: number) => {
+			if (calls.length !== count) throw new Error(`Object.keys was called ${calls.length} times`);
+		};
+
+		assertCalls(0);
+		isObjectEmpty(null);
+		assertCalls(0);
+		isObjectEmpty([1, 2, 3]);
+		assertCalls(0);
+		isObjectEmpty(Buffer.from('123'));
+		assertCalls(0);
+		isObjectEmpty({});
+		assertCalls(1);
+	});
+});
 
 describe('jsonParse', () => {
 	it('parses JSON', () => {
@@ -18,7 +91,7 @@ describe('jsonParse', () => {
 });
 
 describe('jsonStringify', () => {
-	const source: any = { a: 1, b: 2 };
+	const source: any = { a: 1, b: 2, d: new Date(1680089084200), r: new RegExp('^test$', 'ig') };
 	source.c = source;
 
 	it('should throw errors on circular references by default', () => {
@@ -27,7 +100,15 @@ describe('jsonStringify', () => {
 
 	it('should break circular references when requested', () => {
 		expect(jsonStringify(source, { replaceCircularRefs: true })).toEqual(
-			'{"a":1,"b":2,"c":"[Circular Reference]"}',
+			'{"a":1,"b":2,"d":"2023-03-29T11:24:44.200Z","r":{},"c":"[Circular Reference]"}',
+		);
+	});
+
+	it('should not detect duplicates as circular references', () => {
+		const y = { z: 5 };
+		const x = [y, y, { y }];
+		expect(jsonStringify(x, { replaceCircularRefs: true })).toEqual(
+			'[{"z":5},{"z":5},{"y":{"z":5}}]',
 		);
 	});
 });

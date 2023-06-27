@@ -216,7 +216,7 @@ export function removePackageFromMissingList(packageName: string): void {
 		);
 
 		config.set('nodes.packagesMissing', packageFailedToLoad.join(' '));
-	} catch (_error) {
+	} catch {
 		// Do nothing
 	}
 }

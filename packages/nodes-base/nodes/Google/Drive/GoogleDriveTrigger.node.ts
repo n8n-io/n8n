@@ -9,10 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { extractId, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/GenericFunctions';
 
 import moment from 'moment';
-import { fileSearch, folderSearch } from './SearchFunctions';
+import { fileSearch, folderSearch } from './v1/SearchFunctions';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -113,14 +113,14 @@ export class GoogleDriveTrigger implements INodeType {
 						extractValue: {
 							type: 'regex',
 							regex:
-								'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								'https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex:
-										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+										'https:\\/\\/(?:drive|docs)\\.google.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 									errorMessage: 'Not a valid Google Drive File URL',
 								},
 							},
@@ -193,14 +193,14 @@ export class GoogleDriveTrigger implements INodeType {
 						extractValue: {
 							type: 'regex',
 							regex:
-								'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+								'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
 									regex:
-										'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+										'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 									errorMessage: 'Not a valid Google Drive Folder URL',
 								},
 							},
@@ -402,7 +402,7 @@ export class GoogleDriveTrigger implements INodeType {
 			folderSearch,
 		},
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
 			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

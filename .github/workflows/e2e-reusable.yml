@@ -7,7 +7,6 @@ on:
         description: 'GitHub branch to test.'
         required: false
         type: string
-        default: 'master'
       user:
         description: 'User who kicked this off.'
         required: false
@@ -21,7 +20,7 @@ on:
       run-env:
         description: 'Node env version to run tests with.'
         required: false
-        default: 'browsers:node16.18.0-chrome90-ff88'
+        default: 'browsers:node18.12.0-chrome107'
         type: string
       cache-key:
         description: 'Cache key for modules and build artifacts.'
@@ -43,10 +42,18 @@ on:
         required: false
         default: '[1, 2, 3, 4, 5, 6, 7, 8]'
         type: string
+      pr_number:
+        description: 'PR number to run tests for.'
+        required: false
+        type: number
     secrets:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
         required: true
+    outputs:
+      tests_passed:
+        description: 'True if all E2E tests passed, otherwise false'
+        value: ${{ jobs.check_testing_matrix.outputs.all_tests_passed }}
 
 jobs:
   # single job that generates and outputs a common id
@@ -73,6 +80,12 @@ jobs:
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
+
+      - name: Checkout PR
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -109,12 +122,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        containers: ${{ fromJSON(inputs.containers) }}
+        # If spec is not e2e/* then we run only one container to prevent
+        # running the same tests multiple times
+        containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
       - uses: actions/checkout@v3
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
+
+      - name: Checkout PR
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -135,16 +156,36 @@ jobs:
           install: false
           start: pnpm start
           wait-on: 'http://localhost:5678'
-          wait-on-timeout: 120 #
+          wait-on-timeout: 120
           record: ${{ inputs.record }}
-          parallel: ${{ inputs.parallel }}
+          parallel: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.parallel || false ) }}
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ needs.prepare.outputs.uuid }}
-          spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
+          spec: '/__w/n8n/n8n/cypress/${{ inputs.spec }}'
           config-file: /__w/n8n/n8n/cypress.config.js
         env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+
+  # Check if all tests passed and set the output variable
+  check_testing_matrix:
+    runs-on: ubuntu-latest
+    needs: [testing]
+    outputs:
+      all_tests_passed: ${{ steps.all_tests_passed.outputs.result }}
+    steps:
+      - name: Check all tests passed
+        id: all_tests_passed
+        run: |
+          success=true
+          for status in ${{ needs.testing.result }}; do
+            if [ $status != "success" ]; then
+              success=false
+              break
+            fi
+          done
+          echo "::set-output name=result::$success"

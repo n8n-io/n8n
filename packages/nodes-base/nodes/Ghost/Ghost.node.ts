@@ -87,7 +87,7 @@ export class Ghost implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the authors to display them to user so that he can
+			// Get all the authors to display them to user so that they can
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -100,7 +100,7 @@ export class Ghost implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

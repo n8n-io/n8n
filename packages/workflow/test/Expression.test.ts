@@ -6,12 +6,9 @@ import { DateTime, Duration, Interval } from 'luxon';
 import { Expression } from '@/Expression';
 import { Workflow } from '@/Workflow';
 import * as Helpers from './Helpers';
-import {
-	baseFixtures,
-	ExpressionTestEvaluation,
-	ExpressionTestTransform,
-} from './ExpressionFixtures/base';
-import { INodeExecutionData } from '@/Interfaces';
+import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
+import { baseFixtures } from './ExpressionFixtures/base';
+import type { INodeExecutionData } from '@/Interfaces';
 import { extendSyntax } from '@/Extensions/ExpressionExtension';
 
 describe('Expression', () => {
@@ -88,7 +85,7 @@ describe('Expression', () => {
 
 			expect(evaluate('={{new Object()}}')).toEqual(new Object());
 
-			expect(evaluate('={{new Array()}}')).toEqual(new Array());
+			expect(evaluate('={{new Array()}}')).toEqual([]);
 			expect(evaluate('={{new Int8Array()}}')).toEqual(new Int8Array());
 			expect(evaluate('={{new Uint8Array()}}')).toEqual(new Uint8Array());
 			expect(evaluate('={{new Uint8ClampedArray()}}')).toEqual(new Uint8ClampedArray());
@@ -152,6 +149,13 @@ describe('Expression', () => {
 
 			expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
+		});
+
+		it('should not able to do arbitrary code execution', () => {
+			const testFn = jest.fn();
+			Object.assign(global, { testFn });
+			evaluate("={{ Date['constructor']('testFn()')()}}");
+			expect(testFn).not.toHaveBeenCalled();
 		});
 	});
 

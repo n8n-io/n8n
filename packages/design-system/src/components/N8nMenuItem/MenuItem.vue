@@ -32,10 +32,13 @@
 				}"
 				data-test-id="menu-item"
 				:index="child.id"
-				@click="onItemClick(child)"
+				@click="onItemClick(child, $event)"
 			>
 				<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
 				<span :class="$style.label">{{ child.label }}</span>
+				<span v-if="child.secondaryIcon" :class="$style.secondaryIcon">
+					<n8n-icon :icon="child.secondaryIcon.name" :size="child.secondaryIcon.size || 'small'" />
+				</span>
 			</el-menu-item>
 		</el-submenu>
 		<n8n-tooltip
@@ -56,7 +59,7 @@
 				}"
 				data-test-id="menu-item"
 				:index="item.id"
-				@click="onItemClick(item)"
+				@click="onItemClick(item, $event)"
 			>
 				<n8n-icon
 					v-if="item.icon"
@@ -65,6 +68,9 @@
 					:size="item.customIconSize || 'large'"
 				/>
 				<span :class="$style.label">{{ item.label }}</span>
+				<span v-if="item.secondaryIcon" :class="$style.secondaryIcon">
+					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
+				</span>
 			</el-menu-item>
 		</n8n-tooltip>
 	</div>
@@ -74,10 +80,11 @@
 import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
-import { IMenuItem } from '../../types';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { IMenuItem, RouteObject } from '../../types';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-menu-item',
 	components: {
 		ElSubmenu,
@@ -117,6 +124,14 @@ export default Vue.extend({
 				? this.item.children.filter((child) => child.available !== false)
 				: [];
 		},
+		currentRoute(): RouteObject {
+			return (
+				(this as typeof this & { $route: RouteObject }).$route || {
+					name: '',
+					path: '',
+				}
+			);
+		},
 	},
 	methods: {
 		isItemActive(item: IMenuItem): boolean {
@@ -130,12 +145,12 @@ export default Vue.extend({
 				if (item.activateOnRoutePaths) {
 					return (
 						Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.$route.path)
+						item.activateOnRoutePaths.includes(this.currentRoute.path)
 					);
 				} else if (item.activateOnRouteNames) {
 					return (
 						Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.$route.name || '')
+						item.activateOnRouteNames.includes(this.currentRoute.name || '')
 					);
 				}
 				return false;
@@ -255,12 +270,20 @@ export default Vue.extend({
 	padding: var(--spacing-2xs) var(--spacing-xs) !important;
 	margin: 0 !important;
 	border-radius: var(--border-radius-base) !important;
+	overflow: hidden;
 }
 
 .icon {
 	min-width: var(--spacing-s);
 	margin-right: var(--spacing-xs);
 	text-align: center;
+}
+
+.secondaryIcon {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 1;
 }
 
 .label {
@@ -283,6 +306,9 @@ export default Vue.extend({
 		height: initial !important;
 	}
 	.label {
+		display: none;
+	}
+	.secondaryIcon {
 		display: none;
 	}
 }

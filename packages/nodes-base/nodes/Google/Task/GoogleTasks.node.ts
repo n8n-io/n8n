@@ -54,7 +54,7 @@ export class GoogleTasks implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tasklists to display them to user so that he can select them easily
+			// Get all the tasklists to display them to user so that they can select them easily
 
 			async getTasks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

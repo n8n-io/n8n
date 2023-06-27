@@ -1,11 +1,11 @@
 import type { IDataObject } from 'n8n-workflow';
-export enum AlertStatus {
+export const enum AlertStatus {
 	NEW = 'New',
 	UPDATED = 'Updated',
 	IGNORED = 'Ignored',
 	IMPORTED = 'Imported',
 }
-export enum TLP {
+export const enum TLP {
 	white,
 	green,
 	amber,

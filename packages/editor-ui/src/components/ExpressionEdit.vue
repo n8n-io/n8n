@@ -45,7 +45,7 @@
 						<div class="expression-editor ph-no-capture">
 							<ExpressionEditorModalInput
 								:value="value"
-								:isReadOnly="isReadOnly"
+								:isReadOnly="isReadOnlyRoute"
 								:path="path"
 								@change="valueChanged"
 								@close="closeDialog"
@@ -74,28 +74,29 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
-import { IVariableItemSelected } from '@/Interface';
+import type { IVariableItemSelected } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 
-export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'ExpressionEdit',
+	mixins: [externalHooks, genericHelpers, debounceHelper],
 	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
 	components: {
 		ExpressionEditorModalInput,
@@ -122,7 +123,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				this.updateDisplayValue();
 				this.$emit('valueChanged', this.latestValue);
 			} else {
-				this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
 			}
 		},
 
@@ -143,7 +144,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 		itemSelected(eventData: IVariableItemSelected) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
-			this.$externalHooks().run('expressionEdit.itemSelected', {
+			void this.$externalHooks().run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
 				value: this.value,
 				selectedItem: eventData,
@@ -181,21 +182,22 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 					trackProperties.variable_type = 'Raw value';
 				}
 
-				if (splitVar[0].startsWith('$node')) {
-					const sourceNodeName = splitVar[0].split('"')[1];
-					trackProperties.node_type_source =
-						this.workflowsStore.getNodeByName(sourceNodeName)?.type;
-					const nodeConnections: Array<Array<{ node: string }>> =
-						this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
-					trackProperties.is_immediate_input =
-						nodeConnections &&
-						nodeConnections[0] &&
-						!!nodeConnections[0].find(({ node }) => node === this.ndvStore.activeNode?.name || '')
-							? true
-							: false;
+				if (splitVar[0].startsWith("$('")) {
+					const match = /\$\('(.*?)'\)/.exec(splitVar[0]);
+					if (match && match.length > 1) {
+						const sourceNodeName = match[1];
+						trackProperties.node_type_source =
+							this.workflowsStore.getNodeByName(sourceNodeName)?.type;
+						const nodeConnections: Array<Array<{ node: string }>> =
+							this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
+						trackProperties.is_immediate_input =
+							nodeConnections &&
+							nodeConnections[0] &&
+							nodeConnections[0].some(({ node }) => node === this.ndvStore.activeNode?.name || '');
 
-					if (splitVar[1].startsWith('parameter')) {
-						trackProperties.parameter_name_source = splitVar[1].split('"')[1];
+						if (splitVar[1].startsWith('parameter')) {
+							trackProperties.parameter_name_source = splitVar[1].split('"')[1];
+						}
 					}
 				} else {
 					trackProperties.is_immediate_input = true;
@@ -221,7 +223,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
 				undefined;
-			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
+			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
 				dialogVisible: newValue,
 				parameter: this.parameter,
 				value: this.value,
@@ -238,7 +240,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
+				void this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},

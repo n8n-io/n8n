@@ -24,6 +24,7 @@ import type {
 	INodeParameterResourceLocator,
 	NodeParameterValueType,
 	WorkflowExecuteMode,
+	ProxyInput,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
@@ -111,7 +112,7 @@ export class WorkflowDataProxy {
 		this.siblingParameters = siblingParameters;
 		this.mode = mode;
 		this.defaultTimezone = defaultTimezone;
-		this.timezone = (this.workflow.settings.timezone as string) || this.defaultTimezone;
+		this.timezone = workflow.settings?.timezone ?? defaultTimezone;
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
 		this.executeData = executeData;
@@ -719,18 +720,11 @@ export class WorkflowDataProxy {
 				};
 			}
 
-			const previousNodeHasPinData =
-				sourceData && this.workflow.getPinDataOfNode(sourceData.previousNode) !== undefined;
-
 			let currentPairedItem = pairedItem;
 
 			let nodeBeforeLast: string | undefined;
 
-			while (
-				!previousNodeHasPinData &&
-				sourceData !== null &&
-				destinationNodeName !== sourceData.previousNode
-			) {
+			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
 				taskData =
 					that.runExecutionData!.resultData.runData[sourceData.previousNode][
 						sourceData?.previousNodeRun || 0
@@ -812,6 +806,13 @@ export class WorkflowDataProxy {
 						.filter((result) => result !== null);
 
 					if (results.length !== 1) {
+						// Check if the results are all the same
+						const firstResult = results[0];
+						if (results.every((result) => result === firstResult)) {
+							// All results are the same so return the first one
+							return firstResult;
+						}
+
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
 							functionality: 'pairedItem',
@@ -1074,90 +1075,87 @@ export class WorkflowDataProxy {
 				);
 			},
 
-			$input: new Proxy(
-				{},
-				{
-					ownKeys(target) {
-						return ['all', 'context', 'first', 'item', 'last', 'params'];
-					},
-					getOwnPropertyDescriptor(k) {
-						return {
-							enumerable: true,
-							configurable: true,
-						};
-					},
-					get(target, property, receiver) {
-						if (property === 'isProxy') return true;
-
-						if (property === 'item') {
-							return that.connectionInputData[that.itemIndex];
-						}
-						if (property === 'first') {
-							return (...args: unknown[]) => {
-								if (args.length) {
-									throw createExpressionError('$input.first() should have no arguments');
-								}
-
-								const result = that.connectionInputData;
-								if (result[0]) {
-									return result[0];
-								}
-								return undefined;
-							};
-						}
-						if (property === 'last') {
-							return (...args: unknown[]) => {
-								if (args.length) {
-									throw createExpressionError('$input.last() should have no arguments');
-								}
-
-								const result = that.connectionInputData;
-								if (result.length && result[result.length - 1]) {
-									return result[result.length - 1];
-								}
-								return undefined;
-							};
-						}
-						if (property === 'all') {
-							return () => {
-								const result = that.connectionInputData;
-								if (result.length) {
-									return result;
-								}
-								return [];
-							};
-						}
-
-						if (['context', 'params'].includes(property as string)) {
-							// For the following properties we need the source data so fail in case it is missing
-							// for some reason (even though that should actually never happen)
-							if (!that.executeData?.source) {
-								throw createExpressionError('Can’t get data for expression', {
-									messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-									functionOverrides: {
-										message: 'Can’t get data',
-									},
-									description:
-										'Apologies, this is an internal error. See details for more information',
-									causeDetailed: 'Missing sourceData (probably an internal error)',
-									runIndex: that.runIndex,
-								});
-							}
-
-							const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
-
-							if (property === 'context') {
-								return that.nodeContextGetter(sourceData.previousNode);
-							}
-							if (property === 'params') {
-								return that.workflow.getNode(sourceData.previousNode)?.parameters;
-							}
-						}
-
-						return Reflect.get(target, property, receiver);
-					},
+			$input: new Proxy({} as ProxyInput, {
+				ownKeys(target) {
+					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
-			),
+				getOwnPropertyDescriptor(k) {
+					return {
+						enumerable: true,
+						configurable: true,
+					};
+				},
+				get(target, property, receiver) {
+					if (property === 'isProxy') return true;
+
+					if (property === 'item') {
+						return that.connectionInputData[that.itemIndex];
+					}
+					if (property === 'first') {
+						return (...args: unknown[]) => {
+							if (args.length) {
+								throw createExpressionError('$input.first() should have no arguments');
+							}
+
+							const result = that.connectionInputData;
+							if (result[0]) {
+								return result[0];
+							}
+							return undefined;
+						};
+					}
+					if (property === 'last') {
+						return (...args: unknown[]) => {
+							if (args.length) {
+								throw createExpressionError('$input.last() should have no arguments');
+							}
+
+							const result = that.connectionInputData;
+							if (result.length && result[result.length - 1]) {
+								return result[result.length - 1];
+							}
+							return undefined;
+						};
+					}
+					if (property === 'all') {
+						return () => {
+							const result = that.connectionInputData;
+							if (result.length) {
+								return result;
+							}
+							return [];
+						};
+					}
+
+					if (['context', 'params'].includes(property as string)) {
+						// For the following properties we need the source data so fail in case it is missing
+						// for some reason (even though that should actually never happen)
+						if (!that.executeData?.source) {
+							throw createExpressionError('Can’t get data for expression', {
+								messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+								functionOverrides: {
+									message: 'Can’t get data',
+								},
+								description:
+									'Apologies, this is an internal error. See details for more information',
+								causeDetailed: 'Missing sourceData (probably an internal error)',
+								runIndex: that.runIndex,
+							});
+						}
+
+						const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
+
+						if (property === 'context') {
+							return that.nodeContextGetter(sourceData.previousNode);
+						}
+						if (property === 'params') {
+							return that.workflow.getNode(sourceData.previousNode)?.parameters;
+						}
+					}
+
+					return Reflect.get(target, property, receiver);
+				},
+			}),
 
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder

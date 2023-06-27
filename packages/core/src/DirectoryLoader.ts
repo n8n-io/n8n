@@ -100,6 +100,10 @@ export abstract class DirectoryLoader {
 				this.fixIconPath(versionNode.description, filePath);
 			}
 
+			for (const version of Object.values(tempNode.nodeVersions)) {
+				this.addLoadOptionsMethods(version);
+			}
+
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: currentVersionNode, filePath, isCustom });
 			nodeVersion = tempNode.currentVersion;
@@ -111,6 +115,7 @@ export abstract class DirectoryLoader {
 				);
 			}
 		} else {
+			this.addLoadOptionsMethods(tempNode);
 			// Short renaming to avoid type issues
 
 			nodeVersion = Array.isArray(tempNode.description.version)
@@ -241,6 +246,12 @@ export abstract class DirectoryLoader {
 					categories: [CUSTOM_NODES_CATEGORY],
 				};
 			}
+		}
+	}
+
+	private addLoadOptionsMethods(node: INodeType) {
+		if (node?.methods?.loadOptions) {
+			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
 		}
 	}
 

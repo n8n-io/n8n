@@ -20,6 +20,7 @@ import type {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
+	IPairedItemData,
 	IPinData,
 	IRun,
 	IRunData,
@@ -37,7 +38,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {
@@ -199,10 +200,11 @@ export class WorkflowExecute {
 						if (node && pinData && pinData[node.name]) {
 							incomingData.push(pinData[node.name]);
 						} else {
-							incomingData.push(
-								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-								runData[connection.node][runIndex].data![connection.type][connection.index]!,
-							);
+							const nodeIncomingData =
+								runData[connection.node][runIndex]?.data?.[connection.type][connection.index];
+							if (nodeIncomingData) {
+								incomingData.push(nodeIncomingData);
+							}
 						}
 
 						incomingSourceData.main.push({
@@ -746,7 +748,9 @@ export class WorkflowExecute {
 
 			const returnPromise = (async () => {
 				try {
-					await this.executeHook('workflowExecuteBefore', [workflow]);
+					if (!this.additionalData.restartExecutionId) {
+						await this.executeHook('workflowExecuteBefore', [workflow]);
+					}
 				} catch (error) {
 					// Set the error that it can be saved correctly
 					executionError = {
@@ -790,7 +794,7 @@ export class WorkflowExecute {
 					}
 
 					if (gotCancel) {
-						return Promise.resolve();
+						return;
 					}
 
 					nodeSuccessData = null;
@@ -917,7 +921,7 @@ export class WorkflowExecute {
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						if (gotCancel) {
-							return Promise.resolve();
+							return;
 						}
 						try {
 							if (tryIndex !== 0) {
@@ -968,32 +972,35 @@ export class WorkflowExecute {
 								workflowId: workflow.id,
 							});
 
-							if (nodeSuccessData) {
-								// Check if the output data contains pairedItem data
+							if (nodeSuccessData?.length) {
+								// Check if the output data contains pairedItem data and if not try
+								// to automatically fix it
+
+								const isSingleInputAndOutput =
+									executionData.data.main.length === 1 && executionData.data.main[0]?.length === 1;
+
+								const isSameNumberOfItems =
+									nodeSuccessData.length === 1 &&
+									executionData.data.main.length === 1 &&
+									executionData.data.main[0]?.length === nodeSuccessData[0].length;
+
 								checkOutputData: for (const outputData of nodeSuccessData) {
 									if (outputData === null) {
 										continue;
 									}
 									for (const [index, item] of outputData.entries()) {
-										if (!item.pairedItem) {
+										if (item.pairedItem === undefined) {
 											// The pairedItem data is missing, so check if it can get automatically fixed
-											if (
-												executionData.data.main.length === 1 &&
-												executionData.data.main[0]?.length === 1
-											) {
+											if (isSingleInputAndOutput) {
 												// The node has one input and one incoming item, so we know
 												// that all items must originate from that single
 												item.pairedItem = {
 													item: 0,
 												};
-											} else if (
-												nodeSuccessData.length === 1 &&
-												executionData.data.main.length === 1 &&
-												executionData.data.main[0]?.length === nodeSuccessData[0].length
-											) {
-												// The node has one input and one output. The number of items on both is
-												// identical so we can make the reasonable assumption that each of the input
-												// items is the origin of the corresponding output items
+											} else if (isSameNumberOfItems) {
+												// The number of oncoming and outcoming items is identical so we can
+												// make the reasonable assumption that each of the input items
+												// is the origin of the corresponding output items
 												item.pairedItem = {
 													item: index,
 												};
@@ -1015,10 +1022,26 @@ export class WorkflowExecute {
 
 							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
 								if (executionData.node.alwaysOutputData === true) {
+									const pairedItem: IPairedItemData[] = [];
+
+									// Get pairedItem from all input items
+									executionData.data.main.forEach((inputData, inputIndex) => {
+										if (!inputData) {
+											return;
+										}
+										inputData.forEach((item, itemIndex) => {
+											pairedItem.push({
+												item: itemIndex,
+												input: inputIndex,
+											});
+										});
+									});
+
 									nodeSuccessData = nodeSuccessData || [];
 									nodeSuccessData[0] = [
 										{
 											json: {},
+											pairedItem,
 										},
 									];
 								}
@@ -1173,10 +1196,8 @@ export class WorkflowExecute {
 									outputIndex
 								]) {
 									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
-										return Promise.reject(
-											new Error(
-												`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`,
-											),
+										throw new Error(
+											`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`,
 										);
 									}
 
@@ -1210,7 +1231,7 @@ export class WorkflowExecute {
 					]);
 				}
 
-				return Promise.resolve();
+				return;
 			})()
 				.then(async () => {
 					if (gotCancel && executionError === undefined) {
@@ -1286,12 +1307,16 @@ export class WorkflowExecute {
 				message: executionError.message,
 				stack: executionError.stack,
 			} as ExecutionError;
+			if (executionError.message?.includes('canceled')) {
+				fullRunData.status = 'canceled';
+			}
 		} else if (this.runExecutionData.waitTill!) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
+			fullRunData.status = 'waiting';
 		} else {
 			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
@@ -1304,7 +1329,6 @@ export class WorkflowExecute {
 			// Static data of workflow changed
 			newStaticData = workflow.staticData;
 		}
-
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 		if (closeFunction) {

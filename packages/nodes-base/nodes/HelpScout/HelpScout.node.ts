@@ -87,7 +87,7 @@ export class HelpScout implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the countries codes to display them to user so that he can
+			// Get all the countries codes to display them to user so that they can
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -101,7 +101,7 @@ export class HelpScout implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -121,7 +121,7 @@ export class HelpScout implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the mailboxes to display them to user so that he can
+			// Get all the mailboxes to display them to user so that they can
 			// select them easily
 			async getMailboxes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

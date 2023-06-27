@@ -31,6 +31,7 @@ let credentialOwnerRole: Role;
 let owner: User;
 let authlessAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
+let authAgentFor: (user: User) => SuperAgentTest;
 
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['users'] });
@@ -49,7 +50,8 @@ beforeAll(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	authlessAgent = utils.createAgent(app);
-	authOwnerAgent = utils.createAuthAgent(app)(owner);
+	authAgentFor = utils.createAuthAgent(app);
+	authOwnerAgent = authAgentFor(owner);
 });
 
 beforeEach(async () => {
@@ -69,7 +71,7 @@ afterAll(async () => {
 });
 
 describe('GET /users', () => {
-	test('should return all users', async () => {
+	test('should return all users (for owner)', async () => {
 		await testDb.createUser({ globalRole: globalMemberRole });
 
 		const response = await authOwnerAgent.get('/users');
@@ -102,6 +104,14 @@ describe('GET /users', () => {
 			expect(globalRole).toBeDefined();
 			expect(apiKey).not.toBeDefined();
 		});
+	});
+
+	test('should return all users (for member)', async () => {
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const response = await authAgentFor(member).get('/users');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
 	});
 });
 
@@ -504,7 +514,7 @@ describe('UserManagementMailer expect NodeMailer.verifyConnection', () => {
 	test('not be called when SMTP not set up', async () => {
 		const userManagementMailer = new UserManagementMailer();
 		// NodeMailer.verifyConnection gets called only explicitly
-		expect(async () => await userManagementMailer.verifyConnection()).rejects.toThrow();
+		await expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
 
 		expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 	});
@@ -516,6 +526,6 @@ describe('UserManagementMailer expect NodeMailer.verifyConnection', () => {
 
 		const userManagementMailer = new UserManagementMailer();
 		// NodeMailer.verifyConnection gets called only explicitly
-		expect(async () => await userManagementMailer.verifyConnection()).not.toThrow();
+		expect(async () => userManagementMailer.verifyConnection()).not.toThrow();
 	});
 });

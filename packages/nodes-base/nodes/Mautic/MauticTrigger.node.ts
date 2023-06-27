@@ -105,7 +105,7 @@ export class MauticTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the events to display them to user so that he can
+			// Get all the events to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

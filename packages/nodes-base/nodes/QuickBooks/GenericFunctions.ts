@@ -13,8 +13,8 @@ import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.int
 
 import { capitalCase } from 'change-case';
 
-import omit from 'lodash.omit';
-import pickBy from 'lodash.pickby';
+import omit from 'lodash/omit';
+import pickBy from 'lodash/pickBy';
 
 import type { OptionsWithUri } from 'request';
 

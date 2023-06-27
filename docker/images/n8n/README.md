@@ -40,12 +40,12 @@ Additional information and example workflows on the n8n.io website: [https://n8n
 
 ## Start n8n in Docker
 
-```
+```bash
 docker run -it --rm \
-	--name n8n \
-	-p 5678:5678 \
-	-v ~/.n8n:/home/node/.n8n \
-	n8nio/n8n
+ --name n8n \
+ -p 5678:5678 \
+ -v ~/.n8n:/home/node/.n8n \
+ docker.n8n.io/n8nio/n8n
 ```
 
 You can then access n8n by opening:
@@ -62,13 +62,13 @@ n8n instance.
 
 To use it simply start n8n with `--tunnel`
 
-```
+```bash
 docker run -it --rm \
-	--name n8n \
-	-p 5678:5678 \
-	-v ~/.n8n:/home/node/.n8n \
-	n8nio/n8n \
-	n8n start --tunnel
+ --name n8n \
+ -p 5678:5678 \
+ -v ~/.n8n:/home/node/.n8n \
+ docker.n8n.io/n8nio/n8n \
+ n8n start --tunnel
 ```
 
 ## Securing n8n
@@ -79,7 +79,7 @@ to make sure that n8n is protected!
 Right now we have very basic protection via basic-auth in place. It can be activated
 by setting the following environment variables:
 
-```
+```text
 N8N_BASIC_AUTH_ACTIVE=true
 N8N_BASIC_AUTH_USER=<USER>
 N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
@@ -91,12 +91,12 @@ The workflow data gets by default saved in an SQLite database in the user
 folder (`/home/node/.n8n`). That folder also additionally contains the
 settings like webhook URL and encryption key.
 
-```
+```bash
 docker run -it --rm \
-	--name n8n \
-	-p 5678:5678 \
-	-v ~/.n8n:/home/node/.n8n \
-	n8nio/n8n
+ --name n8n \
+ -p 5678:5678 \
+ -v ~/.n8n:/home/node/.n8n \
+ docker.n8n.io/n8nio/n8n
 ```
 
 ### Start with other Database
@@ -123,20 +123,20 @@ Replace the following placeholders with the actual data:
 - POSTGRES_USER
 - POSTGRES_SCHEMA
 
-```
+```bash
 docker run -it --rm \
-	--name n8n \
-	-p 5678:5678 \
-	-e DB_TYPE=postgresdb \
-	-e DB_POSTGRESDB_DATABASE=<POSTGRES_DATABASE> \
-	-e DB_POSTGRESDB_HOST=<POSTGRES_HOST> \
-	-e DB_POSTGRESDB_PORT=<POSTGRES_PORT> \
-	-e DB_POSTGRESDB_USER=<POSTGRES_USER> \
-	-e DB_POSTGRESDB_SCHEMA=<POSTGRES_SCHEMA> \
-	-e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
-	-v ~/.n8n:/home/node/.n8n \
-	n8nio/n8n \
-	n8n start
+ --name n8n \
+ -p 5678:5678 \
+ -e DB_TYPE=postgresdb \
+ -e DB_POSTGRESDB_DATABASE=<POSTGRES_DATABASE> \
+ -e DB_POSTGRESDB_HOST=<POSTGRES_HOST> \
+ -e DB_POSTGRESDB_PORT=<POSTGRES_PORT> \
+ -e DB_POSTGRESDB_USER=<POSTGRES_USER> \
+ -e DB_POSTGRESDB_SCHEMA=<POSTGRES_SCHEMA> \
+ -e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
+ -v ~/.n8n:/home/node/.n8n \
+ docker.n8n.io/n8nio/n8n \
+ n8n start
 ```
 
 A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
@@ -151,19 +151,19 @@ Replace the following placeholders with the actual data:
 - MYSQLDB_PORT
 - MYSQLDB_USER
 
-```
+```bash
 docker run -it --rm \
-	--name n8n \
-	-p 5678:5678 \
-	-e DB_TYPE=mysqldb \
-	-e DB_MYSQLDB_DATABASE=<MYSQLDB_DATABASE> \
-	-e DB_MYSQLDB_HOST=<MYSQLDB_HOST> \
-	-e DB_MYSQLDB_PORT=<MYSQLDB_PORT> \
-	-e DB_MYSQLDB_USER=<MYSQLDB_USER> \
-	-e DB_MYSQLDB_PASSWORD=<MYSQLDB_PASSWORD> \
-	-v ~/.n8n:/home/node/.n8n \
-	n8nio/n8n \
-	n8n start
+ --name n8n \
+ -p 5678:5678 \
+ -e DB_TYPE=mysqldb \
+ -e DB_MYSQLDB_DATABASE=<MYSQLDB_DATABASE> \
+ -e DB_MYSQLDB_HOST=<MYSQLDB_HOST> \
+ -e DB_MYSQLDB_PORT=<MYSQLDB_PORT> \
+ -e DB_MYSQLDB_USER=<MYSQLDB_USER> \
+ -e DB_MYSQLDB_PASSWORD=<MYSQLDB_PASSWORD> \
+ -v ~/.n8n:/home/node/.n8n \
+ docker.n8n.io/n8nio/n8n \
+ n8n start
 ```
 
 ## Passing Sensitive Data via File
@@ -191,16 +191,21 @@ A basic step by step example setup of n8n with docker-compose and Lets Encrypt i
 
 ## Updating a running docker-compose instance
 
-```
-# Pull down the latest version from dockerhub
-docker pull n8nio/n8n
-# Stop current setup
-sudo docker-compose stop
-# Delete it (will only delete the docker-containers, data is stored separately)
-sudo docker-compose rm
-# Then start it again
-sudo docker-compose up -d
-```
+1. Pull the latest version from the registry
+
+    `docker pull docker.n8n.io/n8nio/n8n`
+
+2. Stop the current setup
+
+    `sudo docker-compose stop`
+
+3. Delete it (will only delete the docker-containers, data is stored separately)
+
+    `sudo docker-compose rm`
+
+4. Then start it again
+
+    `sudo docker-compose up -d`
 
 ## Setting Timezone
 
@@ -212,22 +217,22 @@ the environment variable `TZ`.
 
 Example to use the same timezone for both:
 
-```
+```bash
 docker run -it --rm \
-	--name n8n \
-	-p 5678:5678 \
-	-e GENERIC_TIMEZONE="Europe/Berlin" \
-	-e TZ="Europe/Berlin" \
-	n8nio/n8n
+ --name n8n \
+ -p 5678:5678 \
+ -e GENERIC_TIMEZONE="Europe/Berlin" \
+ -e TZ="Europe/Berlin" \
+ docker.n8n.io/n8nio/n8n
 ```
 
 ## Build Docker-Image
 
-```
-docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
+```bash
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=<VERSION> -t n8n:<VERSION> .
 
 # For example:
-docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8nio/n8n:0.114.0 .
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8n:0.114.0 .
 ```
 
 ## What does n8n mean and how do you pronounce it?

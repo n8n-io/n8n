@@ -72,7 +72,7 @@ export class MicrosoftToDo implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the team's channels to display them to user so that he can
+			// Get all the team's channels to display them to user so that they can
 			// select them easily
 			async getTaskLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

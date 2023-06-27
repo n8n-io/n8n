@@ -10,7 +10,6 @@ const settingsLogStreamingPage = new SettingsLogStreamingPage();
 
 describe('Log Streaming Settings', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
 	});
 
@@ -26,7 +25,7 @@ describe('Log Streaming Settings', () => {
 	});
 
 	it('should show the licensed view when the feature is enabled', () => {
-		cy.enableFeature('logStreaming');
+		cy.enableFeature('feat:logStreaming');
 		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.getters.getActionBoxLicensed().should('be.visible');
 		settingsLogStreamingPage.getters.getAddFirstDestinationButton().should('be.visible');

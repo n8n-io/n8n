@@ -211,7 +211,7 @@ export class Salesforce implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the lead statuses to display them to user so that he can
+			// Get all the lead statuses to display them to user so that they can
 			// select them easily
 			async getLeadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -236,7 +236,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -262,7 +262,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the users and case queues to display them to user so that he can
+			// Get all the users and case queues to display them to user so that they can
 			// select them easily
 			async getCaseOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -308,7 +308,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the users and lead queues to display them to user so that he can
+			// Get all the users and lead queues to display them to user so that they can
 			// select them easily
 			async getLeadOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -354,7 +354,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the lead sources to display them to user so that he can
+			// Get all the lead sources to display them to user so that they can
 			// select them easily
 			async getLeadSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -376,7 +376,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the lead custom fields to display them to user so that he can
+			// Get all the lead custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -400,7 +400,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the record types to display them to user so that he can
+			// Get all the record types to display them to user so that they can
 			// select them easily
 			async getRecordTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -430,7 +430,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the external id fields to display them to user so that he can
+			// Get all the external id fields to display them to user so that they can
 			// select them easily
 			async getExternalIdFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -457,7 +457,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the accounts to display them to user so that he can
+			// Get all the accounts to display them to user so that they can
 			// select them easily
 			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -483,7 +483,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the campaigns to display them to user so that he can
+			// Get all the campaigns to display them to user so that they can
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -509,7 +509,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the stages to display them to user so that he can
+			// Get all the stages to display them to user so that they can
 			// select them easily
 			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -534,7 +534,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the stages to display them to user so that he can
+			// Get all the stages to display them to user so that they can
 			// select them easily
 			async getAccountTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -559,7 +559,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the account sources to display them to user so that he can
+			// Get all the account sources to display them to user so that they can
 			// select them easily
 			async getAccountSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -584,7 +584,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the case types to display them to user so that he can
+			// Get all the case types to display them to user so that they can
 			// select them easily
 			async getCaseTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -605,7 +605,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the case statuses to display them to user so that he can
+			// Get all the case statuses to display them to user so that they can
 			// select them easily
 			async getCaseStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -626,7 +626,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the case reasons to display them to user so that he can
+			// Get all the case reasons to display them to user so that they can
 			// select them easily
 			async getCaseReasons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -647,7 +647,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the case origins to display them to user so that he can
+			// Get all the case origins to display them to user so that they can
 			// select them easily
 			async getCaseOrigins(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -668,7 +668,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the case priorities to display them to user so that he can
+			// Get all the case priorities to display them to user so that they can
 			// select them easily
 			async getCasePriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -689,7 +689,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the task statuses to display them to user so that he can
+			// Get all the task statuses to display them to user so that they can
 			// select them easily
 			async getTaskStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -710,7 +710,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the task types to display them to user so that he can
+			// Get all the task types to display them to user so that they can
 			// select them easily
 			async getTaskTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -731,7 +731,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the task subjects to display them to user so that he can
+			// Get all the task subjects to display them to user so that they can
 			// select them easily
 			async getTaskSubjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -752,7 +752,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the task call types to display them to user so that he can
+			// Get all the task call types to display them to user so that they can
 			// select them easily
 			async getTaskCallTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -773,7 +773,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the task call priorities to display them to user so that he can
+			// Get all the task call priorities to display them to user so that they can
 			// select them easily
 			async getTaskPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -794,7 +794,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the task recurrence types to display them to user so that he can
+			// Get all the task recurrence types to display them to user so that they can
 			// select them easily
 			async getTaskRecurrenceTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -815,7 +815,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the task recurrence instances to display them to user so that he can
+			// Get all the task recurrence instances to display them to user so that they can
 			// select them easily
 			async getTaskRecurrenceInstances(
 				this: ILoadOptionsFunctions,
@@ -839,7 +839,7 @@ export class Salesforce implements INodeType {
 				return returnData;
 			},
 
-			// Get all the custom objects recurrence instances to display them to user so that he can
+			// Get all the custom objects recurrence instances to display them to user so that they can
 			// select them easily
 			async getCustomObjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -859,7 +859,7 @@ export class Salesforce implements INodeType {
 				return returnData;
 			},
 
-			// Get all the custom objects fields recurrence instances to display them to user so that he can
+			// Get all the custom objects fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getCustomObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -881,7 +881,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the account fields recurrence instances to display them to user so that he can
+			// Get all the account fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -902,7 +902,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the attachment fields recurrence instances to display them to user so that he can
+			// Get all the attachment fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getAtachmentFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -923,7 +923,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the case fields recurrence instances to display them to user so that he can
+			// Get all the case fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getCaseFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -940,7 +940,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the lead fields recurrence instances to display them to user so that he can
+			// Get all the lead fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -957,7 +957,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the opportunity fields recurrence instances to display them to user so that he can
+			// Get all the opportunity fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getOpportunityFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -978,7 +978,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the opportunity fields recurrence instances to display them to user so that he can
+			// Get all the opportunity fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -995,7 +995,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the users fields recurrence instances to display them to user so that he can
+			// Get all the users fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1012,7 +1012,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the contact fields recurrence instances to display them to user so that he can
+			// Get all the contact fields recurrence instances to display them to user so that they can
 			// select them easily
 			async getContactFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1033,7 +1033,7 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// // Get all folders to display them to user so that he can
+			// // Get all folders to display them to user so that they can
 			// // select them easily
 			// async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			// 	const returnData: INodePropertyOptions[] = [];
