@@ -289,7 +289,10 @@ export class SourceControlExportService {
 				} else if (typeof data[key] === 'object') {
 					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
 				} else if (typeof data[key] === 'string') {
-					data[key] = (data[key] as string)?.startsWith('={{') ? data[key] : '';
+					data[key] =
+						(data[key] as string)?.startsWith('={{') && (data[key] as string)?.includes('$secret')
+							? data[key]
+							: '';
 				} else if (typeof data[key] === 'number') {
 					// TODO: leaving numbers in for now, but maybe we should remove them
 					continue;
