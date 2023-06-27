@@ -17,7 +17,8 @@ type MigrationFn = (ctx: MigrationContext) => Promise<void>;
 interface BaseMigration {
 	up: MigrationFn;
 	down?: MigrationFn | never;
-	pruneAndVacuum?: boolean;
+	pruneBeforeRunning?: boolean;
+	vacuumAfterRunning?: boolean;
 }
 
 export interface ReversibleMigration extends BaseMigration {

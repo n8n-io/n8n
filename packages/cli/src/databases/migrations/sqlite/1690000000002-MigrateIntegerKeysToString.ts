@@ -1,7 +1,7 @@
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
-	pruneAndVacuum = true;
+	pruneBeforeRunning = true;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`

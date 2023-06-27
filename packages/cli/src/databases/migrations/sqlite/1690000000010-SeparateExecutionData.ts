@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class SeparateExecutionData1690000000010 implements ReversibleMigration {
-	pruneAndVacuum = true;
+	vacuumAfterRunning = true;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {
 		await queryRunner.query(

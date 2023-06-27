@@ -92,9 +92,9 @@ export const wrapMigration = (migration: Migration) => {
 	Object.assign(migration.prototype, {
 		async beforeTransaction(this: typeof migration.prototype, queryRunner: QueryRunner) {
 			if (
-				this.pruneAndVacuum &&
+				this.pruneBeforeRunning &&
 				dbType === 'sqlite' &&
-				process.env.ENABLE_MIGRATIONS_PRUNING === 'true'
+				process.env.MIGRATIONS_PRUNING_ENABLED === 'true'
 			) {
 				const dbFileSize = getSqliteDbFileSize();
 				if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
@@ -118,11 +118,18 @@ export const wrapMigration = (migration: Migration) => {
 
 				const removalQuery = `
 					DELETE FROM "${tablePrefix}execution_entity"
-					WHERE id < ${idToKeep[0].id} and status IN ("success");
+					WHERE id < ${idToKeep[0].id} and status IN ('success');
 				`;
 
 				await queryRunner.query(removalQuery);
-
+			}
+		},
+		async afterTransaction(this: typeof migration.prototype, queryRunner: QueryRunner) {
+			if (
+				this.vacuumAfterRunning &&
+				dbType === 'sqlite' &&
+				process.env.MIGRATIONS_PRUNING_ENABLED === 'true'
+			) {
 				await queryRunner.query('VACUUM');
 			}
 		},
