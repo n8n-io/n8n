@@ -212,7 +212,7 @@ export default defineComponent({
 				copy_type: copyType,
 				workflow_id: this.workflowsStore.workflowId,
 				pane: this.paneType,
-				in_execution_log: this.isReadOnly,
+				in_execution_log: this.isReadOnlyRoute,
 			});
 
 			this.copyToClipboard(value);
