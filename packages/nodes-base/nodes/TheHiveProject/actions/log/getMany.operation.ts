@@ -1,15 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type {
-	IDataObject,
-	IHttpRequestMethods,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 import { returnAllAndLimit } from '../common.description';
-import { And, Id, Parent, prepareRangeQuery } from '../../helpers/utils';
-import type { BodyWithQuery } from '../../helpers/interfaces';
+import { prepareRangeQuery } from '../../helpers/utils';
+
 import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [

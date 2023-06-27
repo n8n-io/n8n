@@ -1,10 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type {
-	IDataObject,
-	IHttpRequestMethods,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { filtersCollection, returnAllAndLimit } from '../common.description';
 import {
@@ -18,7 +13,7 @@ import {
 	prepareSortQuery,
 } from '../../helpers/utils';
 import { prepareCustomFields, theHiveApiRequest } from '../../transport';
-import type { BodyWithQuery, IQueryObject } from '../../helpers/interfaces';
+import type { IQueryObject } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	...returnAllAndLimit,
@@ -99,10 +94,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		],
 	};
 
-	prepareSortQuery(options.sort as string, body as BodyWithQuery);
+	prepareSortQuery(options.sort as string, body);
 
 	if (limit !== undefined) {
-		prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
+		prepareRangeQuery(`0-${limit}`, body);
 	}
 
 	qs.name = 'alerts';
