@@ -75,14 +75,16 @@ const memberField: INodeProperties = {
 							name: 'itemChoice',
 							values: [
 								{
-									displayName: 'Key',
+									displayName: 'Platform',
+									description: 'Platform name (e.g twitter, github, etc)',
 									name: 'key',
 									type: 'string',
 									required: true,
 									default: '',
 								},
 								{
-									displayName: 'Value',
+									displayName: 'Username',
+									description: 'Username at the specified Platform',
 									name: 'value',
 									type: 'string',
 									required: true,
