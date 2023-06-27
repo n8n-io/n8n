@@ -9,10 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { extractId, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/GenericFunctions';
 
 import moment from 'moment';
-import { fileSearch, folderSearch } from './SearchFunctions';
+import { fileSearch, folderSearch } from './v1/SearchFunctions';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
