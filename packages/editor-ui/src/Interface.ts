@@ -1520,3 +1520,18 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
+
+export type AuditLog = {
+	event: {
+		name: string;
+		time: string;
+	};
+	user: {
+		email: string;
+		ip: string;
+	};
+	workflow: {
+		id: string;
+		name: string;
+	};
+};

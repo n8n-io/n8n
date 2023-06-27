@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { onBeforeMount, onMounted, ref } from 'vue';
 import { useI18n } from '@/composables';
 import { useUIStore, useAuditLogsStore } from '@/stores';
 
@@ -6,9 +7,20 @@ const { i18n: locale } = useI18n();
 const uiStore = useUIStore();
 const auditLogsStore = useAuditLogsStore();
 
+const isMounting = ref(true);
+
 const goToUpgrade = () => {
 	uiStore.goToUpgrade('audit-logs', 'upgrade-audit-logs');
 };
+
+onBeforeMount(async () => {
+	isMounting.value = true;
+	await auditLogsStore.getAuditLogs();
+});
+
+onMounted(() => {
+	isMounting.value = false;
+});
 </script>
 
 <template>
@@ -19,7 +31,11 @@ const goToUpgrade = () => {
 		<div
 			v-if="auditLogsStore.isEnterpriseAuditLogsFeatureEnabled"
 			data-test-id="audit-logs-content-licensed"
-		></div>
+		>
+			<div :key="log.event.time + idx" v-for="(log, idx) in auditLogsStore.items">
+				{{ log }}
+			</div>
+		</div>
 		<n8n-action-box
 			v-else
 			data-test-id="audit-logs-content-unlicensed"
