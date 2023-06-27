@@ -1,23 +1,15 @@
-import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
-import { VersionedNodeType } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { TheHiveProjectV1 } from './v1/TheHiveProjectV1.node';
+import { versionDescription } from './actions/versionDescription';
+import { router } from './actions/router';
+import { loadOptions } from './methods';
 
-export class TheHiveProject extends VersionedNodeType {
-	constructor() {
-		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'TheHive 5',
-			name: 'theHiveProject',
-			icon: 'file:thehive.svg',
-			group: ['transform'],
-			description: 'Consume TheHive 5 API',
-			defaultVersion: 1,
-		};
+export class TheHiveProject implements INodeType {
+	description: INodeTypeDescription = versionDescription;
 
-		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new TheHiveProjectV1(baseDescription),
-		};
+	methods = { loadOptions };
 
-		super(nodeVersions, baseDescription);
+	async execute(this: IExecuteFunctions) {
+		return router.call(this);
 	}
 }
