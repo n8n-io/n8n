@@ -96,6 +96,7 @@ export const wrapMigration = (migration: Migration) => {
 				dbType === 'sqlite' &&
 				process.env.MIGRATIONS_PRUNING_ENABLED === 'true'
 			) {
+				console.time('pruningData');
 				const dbFileSize = getSqliteDbFileSize();
 				if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
 					return;
@@ -122,6 +123,7 @@ export const wrapMigration = (migration: Migration) => {
 				`;
 
 				await queryRunner.query(removalQuery);
+				console.timeEnd('pruningData');
 			}
 		},
 		async afterTransaction(this: typeof migration.prototype, queryRunner: QueryRunner) {
@@ -130,7 +132,9 @@ export const wrapMigration = (migration: Migration) => {
 				dbType === 'sqlite' &&
 				process.env.MIGRATIONS_PRUNING_ENABLED === 'true'
 			) {
+				console.time('vacuuming');
 				await queryRunner.query('VACUUM');
+				console.timeEnd('vacuuming');
 			}
 		},
 		async up(queryRunner: QueryRunner) {
