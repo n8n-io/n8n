@@ -1067,6 +1067,7 @@ export interface UIState {
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
+	showBanners: boolean;
 }
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;

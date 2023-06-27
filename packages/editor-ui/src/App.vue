@@ -9,6 +9,23 @@
 				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
+			<div v-if="showBanners" id="banners" :class="$style.banners">
+				<n8n-callout theme="warning" icon="info-circle" override-icon :class="$style['v1-banner']">
+					<span v-html="'Here be Banners. '"></span>
+					<a>
+						<span v-html="'Learn more'"></span>
+					</a>
+					<template #trailingContent>
+						<n8n-icon size="small" icon="xmark" :class="$style.xmark" />
+					</template>
+				</n8n-callout>
+				<n8n-callout theme="danger" icon="info-circle" override-icon :class="$style['v1-banner']">
+					<span v-html="'Here be Banners. '"></span>
+					<a>
+						<span v-html="'Learn more'"></span>
+					</a>
+				</n8n-callout>
+			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
@@ -85,6 +102,9 @@ export default defineComponent({
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
+		},
+		showBanners(): boolean {
+			return this.uiStore.showBanners;
 		},
 	},
 	data() {
@@ -261,17 +281,23 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
+		'banners banners'
 		'sidebar header'
 		'sidebar content';
 	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-	grid-template-rows: fit-content($sidebar-width) 1fr;
+	grid-template-rows: fit-content($sidebar-width) 0 1fr;
+	height: 100vh;
+}
+
+.banners {
+	grid-area: banners;
 }
 
 .content {
 	display: flex;
 	grid-area: content;
 	overflow: auto;
-	height: 100vh;
+	height: 100%;
 	width: 100%;
 	justify-content: center;
 }
@@ -283,7 +309,7 @@ export default defineComponent({
 
 .sidebar {
 	grid-area: sidebar;
-	height: 100vh;
+	height: 100%;
 	z-index: 999;
 }
 </style>

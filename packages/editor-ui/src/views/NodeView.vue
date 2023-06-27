@@ -4022,7 +4022,7 @@ export default defineComponent({
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: 110px;
+	bottom: var(--spacing-2xl);
 	width: auto;
 
 	@media (max-width: $breakpoint-2xs) {

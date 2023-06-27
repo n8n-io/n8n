@@ -180,6 +180,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
+		showBanners: true,
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
