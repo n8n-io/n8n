@@ -11,6 +11,13 @@ export class OAuth1Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'Some operations requires a Basic or a Pro API for more informations see <a href="https://developer.twitter.com/en/products/twitter-api" target="_blank">Twitter Api Doc</a>',
+			name: 'apiPermissioms',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'string',
