@@ -11,21 +11,21 @@ import * as task from './task';
 import * as page from './page';
 
 export const versionDescription: INodeTypeDescription = {
-	displayName: 'TheHive',
-	name: 'theHive',
+	displayName: 'TheHive 5',
+	name: 'theHiveProject',
 	icon: 'file:thehive.svg',
 	group: ['transform'],
 	subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
-	version: 2,
-	description: 'Consume TheHive API',
+	version: 1,
+	description: 'Consume TheHive 5 API',
 	defaults: {
-		name: 'TheHive',
+		name: 'TheHive 5',
 	},
 	inputs: ['main'],
 	outputs: ['main'],
 	credentials: [
 		{
-			name: 'theHiveApi',
+			name: 'theHiveProjectApi',
 			required: true,
 		},
 	],

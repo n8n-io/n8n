@@ -9,7 +9,7 @@ import { versionDescription } from './actions/versionDescription';
 import { router } from './actions/router';
 import { loadOptions } from './methods';
 
-export class TheHiveV2 implements INodeType {
+export class TheHiveProjectV1 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {

@@ -5,10 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class TheHiveApi implements ICredentialType {
-	name = 'theHiveApi';
+export class TheHiveProjectApi implements ICredentialType {
+	name = 'theHiveProjectApi';
 
-	displayName = 'The Hive API';
+	displayName = 'The Hive 5 API';
 
 	documentationUrl = 'theHive';
 
@@ -26,26 +26,6 @@ export class TheHiveApi implements ICredentialType {
 			type: 'string',
 			description: 'The URL of TheHive instance',
 			placeholder: 'https://localhost:9000',
-		},
-		{
-			displayName: 'API Version',
-			name: 'apiVersion',
-			default: '',
-			type: 'options',
-			description: 'The version of api to be used',
-			options: [
-				{
-					name: 'TheHive 4+ (api v1)',
-					value: 'v1',
-					description:
-						'API version with TheHive 4 support, also works with TheHive 5 but not all features are supported',
-				},
-				{
-					name: 'TheHive 3 (api v0)',
-					value: '',
-					description: 'API version with TheHive 3 support',
-				},
-			],
 		},
 		{
 			displayName: 'Ignore SSL Issues',

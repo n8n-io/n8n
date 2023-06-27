@@ -18,7 +18,7 @@ export async function theHiveApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('theHiveApi');
+	const credentials = await this.getCredentials('theHiveProjectApi');
 
 	let options: IHttpRequestOptions = {
 		method,
@@ -40,7 +40,7 @@ export async function theHiveApiRequest(
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	return this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'theHiveProjectApi', options);
 }
 
 export async function prepareCustomFields(
