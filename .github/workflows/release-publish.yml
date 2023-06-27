@@ -49,6 +49,7 @@ jobs:
           tag: 'n8n@${{env.RELEASE}}'
           prerelease: true
           makeLatest: false
+          body: ${{github.event.pull_request.body}}
 
       - name: Trigger a release note
         continue-on-error: true
