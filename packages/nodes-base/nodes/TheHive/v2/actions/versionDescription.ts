@@ -6,6 +6,7 @@ import * as case_ from './case';
 import * as comment from './comment';
 import * as log from './log';
 import * as observable from './observable';
+import * as query from './query';
 import * as task from './task';
 import * as page from './page';
 
@@ -61,6 +62,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'page',
 				},
 				{
+					name: 'Query',
+					value: 'query',
+				},
+				{
 					name: 'Task',
 					value: 'task',
 				},
@@ -74,6 +79,7 @@ export const versionDescription: INodeTypeDescription = {
 		...log.description,
 		...observable.description,
 		...page.description,
+		...query.description,
 		...task.description,
 	],
 };

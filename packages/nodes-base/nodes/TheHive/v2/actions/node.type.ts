@@ -35,6 +35,7 @@ type NodeMap = {
 		| 'search'
 		| 'update';
 	page: 'create' | 'deletePage' | 'update';
+	query: 'executeQuery';
 	task: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'search' | 'update';
 };
 

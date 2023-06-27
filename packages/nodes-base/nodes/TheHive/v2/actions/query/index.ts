@@ -1,0 +1,38 @@
+import type { INodeProperties } from 'n8n-workflow';
+import { warningTH5 } from '../common.description';
+
+import * as executeQuery from './executeQuery.operation';
+
+export { executeQuery };
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		noDataExpression: true,
+		type: 'options',
+		required: true,
+		default: 'create',
+		options: [
+			{
+				name: 'Execute Query',
+				value: 'executeQuery',
+				action: 'Execute a query',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['query'],
+			},
+		},
+	},
+	{
+		...warningTH5,
+		displayOptions: {
+			show: {
+				resource: ['query'],
+			},
+		},
+	},
+	...executeQuery.description,
+];

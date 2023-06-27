@@ -9,6 +9,7 @@ import * as comment from './comment';
 import * as log from './log';
 import * as observable from './observable';
 import * as page from './page';
+import * as query from './query';
 import * as task from './task';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -46,6 +47,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					break;
 				case 'page':
 					executionData = await page[theHiveNodeData.operation].execute.call(this, i);
+					break;
+				case 'query':
+					executionData = await query[theHiveNodeData.operation].execute.call(this, i);
 					break;
 				case 'task':
 					executionData = await task[theHiveNodeData.operation].execute.call(this, i);
