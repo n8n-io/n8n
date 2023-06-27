@@ -5,6 +5,7 @@ import type { FindOptionsWhere } from 'typeorm';
 import * as Db from '@/Db';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 export class ExportWorkflowsCommand extends BaseCommand {
 	static description = 'Export workflows';
@@ -14,6 +15,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 		'$ n8n export:workflow --id=5 --output=file.json',
 		'$ n8n export:workflow --all --output=backups/latest/',
 		'$ n8n export:workflow --backup --output=backups/latest/',
+		'$ n8n export:workflow --all --userId=ef4793f5-46fa-4ef7-ca81-01575a749621 --output=backups/latest.json'
 	];
 
 	static flags = {
@@ -27,6 +29,9 @@ export class ExportWorkflowsCommand extends BaseCommand {
 		}),
 		id: flags.string({
 			description: 'The ID of the workflow to export',
+		}),
+		userId: flags.string({
+			description: 'The ID of the user who owns workflows'
 		}),
 		output: flags.string({
 			char: 'o',
@@ -58,6 +63,10 @@ export class ExportWorkflowsCommand extends BaseCommand {
 
 		if (flags.all && flags.id) {
 			this.logger.info('You should either use "--all" or "--id" but never both!');
+			return;
+		}
+		if (flags.id && flags.userId) {
+			this.logger.info('You should either use "--id" or "--userId" but never both!');
 			return;
 		}
 
@@ -99,11 +108,29 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
-		if (flags.id) {
-			findQuery.id = flags.id;
-		}
+		const findQuery: FindOptionsWhere<WorkflowEntity>[] = [{}];
+		const findSharedWorkflowsQuery: FindOptionsWhere<SharedWorkflow> = {};
 
+		if (flags.id) {
+			findQuery.push({
+				id: flags.id
+			})
+		
+		}
+		if (flags.userId) {
+			findSharedWorkflowsQuery.userId = flags.userId;
+			const workflowsOfUser = await Db.collections.SharedWorkflow.findBy(findSharedWorkflowsQuery)
+			
+			if (workflowsOfUser.length === 0) {
+				this.logger.error('This user does not have any workflow');
+				return;
+			}
+		    workflowsOfUser.forEach(workflow => findQuery.push({
+				id: workflow.workflowId
+			}))
+			
+		}
+       
 		const workflows = await Db.collections.Workflow.find({
 			where: findQuery,
 			relations: ['tags'],

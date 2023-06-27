@@ -6,6 +6,7 @@ import { Credentials, UserSettings } from 'n8n-core';
 import * as Db from '@/Db';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
 import { BaseCommand } from '../BaseCommand';
+import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 
 export class ExportCredentialsCommand extends BaseCommand {
 	static description = 'Export credentials';
@@ -16,6 +17,7 @@ export class ExportCredentialsCommand extends BaseCommand {
 		'$ n8n export:credentials --all --output=backups/latest.json',
 		'$ n8n export:credentials --backup --output=backups/latest/',
 		'$ n8n export:credentials --all --decrypted --output=backups/decrypted.json',
+		'$ n8n export:credentials --all --userId=ef4793f5-46fa-4ef7-ca81-01575a749621 --output=backups/latest.json'
 	];
 
 	static flags = {
@@ -29,6 +31,9 @@ export class ExportCredentialsCommand extends BaseCommand {
 		}),
 		id: flags.string({
 			description: 'The ID of the credential to export',
+		}),
+		userId: flags.string({
+			description: 'The ID of the user who owns credentials'
 		}),
 		output: flags.string({
 			char: 'o',
@@ -64,6 +69,10 @@ export class ExportCredentialsCommand extends BaseCommand {
 
 		if (flags.all && flags.id) {
 			this.logger.info('You should either use "--all" or "--id" but never both!');
+			return;
+		}
+		if (flags.id && flags.userId) {
+			this.logger.info('You should either use "--id" or "--userId" but never both!');
 			return;
 		}
 
@@ -105,9 +114,27 @@ export class ExportCredentialsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<ICredentialsDb> = {};
+		const findQuery: FindOptionsWhere<ICredentialsDb>[] = [{}];
+        const findSharedCredentialsQuery: FindOptionsWhere<SharedCredentials> = {};
+
 		if (flags.id) {
-			findQuery.id = flags.id;
+			findQuery.push({
+				id: flags.id
+			})
+		}
+
+		if (flags.userId) {
+			findSharedCredentialsQuery.userId = flags.userId;
+			const credentialsOfUser = await Db.collections.SharedCredentials.findBy(findSharedCredentialsQuery)
+			
+			if (credentialsOfUser.length === 0) {
+				this.logger.error('This user does not have any credential!');
+				return;
+			}
+		    credentialsOfUser.forEach(credential => findQuery.push({
+				id: credential.credentialsId
+			}))
+			
 		}
 
 		const credentials: ICredentialsDb[] = await Db.collections.Credentials.findBy(findQuery);
