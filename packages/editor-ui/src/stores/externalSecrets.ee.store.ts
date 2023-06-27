@@ -4,11 +4,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as externalSecretsApi from '@/api/externalSecrets.ee';
-import {
-	connectProvider,
-	getExternalSecrets,
-	testExternalSecretsProviderConnection,
-} from '@/api/externalSecrets.ee';
+import { connectProvider } from '@/api/externalSecrets.ee';
 import type { ExternalSecretsProvider } from '@/Interface';
 
 export const useExternalSecretsStore = defineStore('externalSecrets', () => {
@@ -20,9 +16,8 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		secrets: {} as Record<string, string[]>,
 	});
 
-	const isEnterpriseExternalSecretsEnabled = computed(
-		() =>
-			settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets) || true,
+	const isEnterpriseExternalSecretsEnabled = computed(() =>
+		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets),
 	);
 
 	const secrets = computed(() => state.secrets);
