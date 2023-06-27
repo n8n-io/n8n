@@ -286,6 +286,7 @@ export class SourceControlService {
 		let conflict = false;
 		let status: SourceControlledFileStatus = 'unknown';
 		let type: SourceControlledFileType = 'file';
+		let updatedAt = '';
 
 		// initialize status from git status result
 		if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
@@ -309,9 +310,11 @@ export class SourceControlService {
 					});
 					if (existingWorkflow?.length > 0) {
 						name = existingWorkflow[0].name;
+						updatedAt = existingWorkflow[0].updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
+					// todo: once we have audit log, this deletion date could be looked up
 				}
 			} else {
 				const workflow = await this.sourceControlExportService.getWorkflowFromFile(fileName);
@@ -326,6 +329,13 @@ export class SourceControlService {
 				} else {
 					id = workflow.id;
 					name = workflow.name;
+				}
+				const existingWorkflow = await Db.collections.Workflow.find({
+					where: { id },
+				});
+				if (existingWorkflow?.length > 0) {
+					name = existingWorkflow[0].name;
+					updatedAt = existingWorkflow[0].updatedAt.toISOString();
 				}
 			}
 		}
@@ -342,6 +352,7 @@ export class SourceControlService {
 					});
 					if (existingCredential?.length > 0) {
 						name = existingCredential[0].name;
+						updatedAt = existingCredential[0].updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
@@ -359,6 +370,13 @@ export class SourceControlService {
 				} else {
 					id = credential.id;
 					name = credential.name;
+				}
+				const existingCredential = await Db.collections.Credentials.find({
+					where: { id },
+				});
+				if (existingCredential?.length > 0) {
+					name = existingCredential[0].name;
+					updatedAt = existingCredential[0].updatedAt.toISOString();
 				}
 			}
 		}
@@ -385,6 +403,7 @@ export class SourceControlService {
 			status,
 			location,
 			conflict,
+			updatedAt,
 		};
 	}
 
