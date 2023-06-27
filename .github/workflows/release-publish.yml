@@ -5,8 +5,7 @@ on:
     types:
       - closed
     branches:
-      - 'release/patch'
-      - 'release/minor'
+      - 'release/*'
 
 jobs:
   publish-release:
