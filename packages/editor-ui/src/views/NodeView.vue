@@ -836,6 +836,8 @@ export default defineComponent({
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
 
+			this.resetWorkspace();
+
 			this.workflowsStore.addWorkflow(workflow);
 			this.workflowsStore.setActive(workflow.active || false);
 			this.workflowsStore.setWorkflowId(workflow.id);
@@ -3697,12 +3699,19 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
+		this.canvasStore.isDemo = this.isDemo;
 		this.resetWorkspace();
+		this.setMousePositionBoundaryElement(this.$refs.nodeViewWrapper);
+		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
+		this.titleReset();
+
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		}
 		this.uiStore.addFirstStepOnLoad = false;
+		this.bindCanvasEvents();
+
 		document.addEventListener('keydown', this.keyDown);
 		document.addEventListener('keyup', this.keyUp);
 		window.addEventListener('pageshow', this.onPageShow);
@@ -3722,11 +3731,6 @@ export default defineComponent({
 		dataPinningEventBus.on('pin-data', this.addPinDataConnections);
 		dataPinningEventBus.on('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
-
-		this.canvasStore.isDemo = this.isDemo;
-		this.setMousePositionBoundaryElement(this.$refs.nodeViewWrapper);
-		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
-		this.titleReset();
 
 		this.startLoading();
 		const loadPromises = [
