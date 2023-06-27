@@ -114,7 +114,7 @@ export class ExportCredentialsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<ICredentialsDb>[] = [{}];
+		const findQuery: FindOptionsWhere<ICredentialsDb>[] = [];
         const findSharedCredentialsQuery: FindOptionsWhere<SharedCredentials> = {};
 
 		if (flags.id) {

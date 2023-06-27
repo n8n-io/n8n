@@ -108,15 +108,16 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: FindOptionsWhere<WorkflowEntity>[] = [{}];
+		const findQuery: FindOptionsWhere<WorkflowEntity>[] = [];
+		const fq: FindOptionsWhere<WorkflowEntity> = {};
 		const findSharedWorkflowsQuery: FindOptionsWhere<SharedWorkflow> = {};
 
 		if (flags.id) {
 			findQuery.push({
 				id: flags.id
 			})
-		
 		}
+
 		if (flags.userId) {
 			findSharedWorkflowsQuery.userId = flags.userId;
 			const workflowsOfUser = await Db.collections.SharedWorkflow.findBy(findSharedWorkflowsQuery)
