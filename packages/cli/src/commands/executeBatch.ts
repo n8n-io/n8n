@@ -778,8 +778,9 @@ export class ExecuteBatch extends BaseCommand {
 							}${workflowData.id}-snapshot.json`;
 							if (fs.existsSync(fileName)) {
 								const contents = fs.readFileSync(fileName, { encoding: 'utf-8' });
-
-								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
+								const expected = JSON.parse(contents);
+								const recieved = JSON.parse(serializedData);
+								const changes = diff(expected, recieved, { keysOnly: true });
 
 								if (changes !== undefined) {
 									// If we had only additions with no removals
