@@ -72,11 +72,12 @@ export default defineComponent({
 			return this.$route.params.name || this.workflowsStore.workflowId;
 		},
 		showWorkflowTabs() {
-			return (
-				this.$route.name === VIEWS.WORKFLOW ||
-				this.$route.name === VIEWS.EXECUTION_HOME ||
-				this.$route.name === VIEWS.EXECUTION_PREVIEW
-			);
+			return [
+				VIEWS.WORKFLOW,
+				VIEWS.NEW_WORKFLOW,
+				VIEWS.EXECUTION_HOME,
+				VIEWS.EXECUTION_PREVIEW,
+			].includes(this.$route.name);
 		},
 		activeExecution(): IExecutionsSummary {
 			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;

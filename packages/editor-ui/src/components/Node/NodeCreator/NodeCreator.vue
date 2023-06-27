@@ -164,12 +164,13 @@ const { nodeCreator } = toRefs(state);
 	bottom: 0;
 	left: $sidebar-width;
 	opacity: 0;
-	z-index: 1;
+	z-index: 3;
 	background: var(--color-background-dark);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
 
 	&.active {
+		pointer-events: auto;
 		opacity: 0.7;
 	}
 }
