@@ -31,7 +31,7 @@ import type { PropType } from 'vue';
 import type { ITemplatesCollection } from '@/Interface';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
-import VueAgile from 'vue-agile';
+import { VueAgile } from 'vue-agile';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 
