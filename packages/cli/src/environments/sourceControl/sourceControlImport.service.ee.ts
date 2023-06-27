@@ -274,20 +274,34 @@ export class SourceControlImportService {
 		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
 		const workflowRunner = Container.get(ActiveWorkflowRunner);
 
-		let ownerRecords: Record<string, string> = {};
+		// read owner file if it exists and map workflow ids to owner emails
+		// then find existing users with those emails or fallback to passed in userId
+		const ownerRecords: Record<string, string> = {};
 		const ownersFile = await glob(SOURCE_CONTROL_OWNERS_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
 		});
 		if (ownersFile.length > 0) {
-			LoggerProxy.debug(`Importing workflow owners from file ${ownersFile[0]}`);
-			ownerRecords = jsonParse<Record<string, string>>(
+			LoggerProxy.debug(`Reading workflow owners from file ${ownersFile[0]}`);
+			const ownerEmails = jsonParse<Record<string, string>>(
 				await fsReadFile(ownersFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: {} },
 			);
+			if (ownerEmails) {
+				const uniqueOwnerEmails = new Set(Object.values(ownerEmails));
+				const existingUsers = await Db.collections.User.find({
+					where: { email: In([...uniqueOwnerEmails]) },
+				});
+				Object.keys(ownerEmails).forEach((workflowId) => {
+					ownerRecords[workflowId] =
+						existingUsers.find((e) => e.email === ownerEmails[workflowId])?.id ?? userId;
+				});
+			}
 		}
 
-		let importWorkflowsResult = new Array<{ id: string; name: string }>();
+		console.log(ownerRecords);
+
+		let importWorkflowsResult = new Array<{ id: string; name: string } | undefined>();
 		await Db.transaction(async (transactionManager) => {
 			importWorkflowsResult = await Promise.all(
 				workflowFiles.map(async (file) => {
@@ -295,6 +309,9 @@ export class SourceControlImportService {
 					const importedWorkflow = jsonParse<IWorkflowToImport>(
 						await fsReadFile(file, { encoding: 'utf8' }),
 					);
+					if (!importedWorkflow?.id) {
+						return;
+					}
 					const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
 					if (existingWorkflow?.versionId === importedWorkflow.versionId) {
 						LoggerProxy.debug(
@@ -318,26 +335,30 @@ export class SourceControlImportService {
 					if (upsertResult?.identifiers?.length !== 1) {
 						throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
 					}
-					let workflowOwnerId = userId;
-					if (importedWorkflow.id && importedWorkflow.id in ownerRecords) {
-						const foundUser = await Db.collections.User.findOne({
-							where: { email: ownerRecords[importedWorkflow.id] },
-							select: ['id'],
-						});
-						if (foundUser) {
-							workflowOwnerId = foundUser.id;
-						}
-					}
-					await transactionManager.upsert(
-						SharedWorkflow,
-						{
+					const workflowOwnerId = ownerRecords[importedWorkflow.id] ?? userId;
+					// Update workflow owner to the user who exported the workflow
+					// or fallback to the user who is importing the workflow
+					const existingSharedWorkflow = await transactionManager.findOne(SharedWorkflow, {
+						where: { workflowId: importedWorkflow.id, roleId: ownerWorkflowRole.id },
+					});
+					if (existingSharedWorkflow) {
+						LoggerProxy.debug(`Updating owner for workflow id ${importedWorkflow.id}`);
+						existingSharedWorkflow.userId = workflowOwnerId;
+						await transactionManager.update(
+							SharedWorkflow,
+							{
+								workflowId: existingSharedWorkflow.workflowId,
+								roleId: existingSharedWorkflow.roleId,
+							},
+							existingSharedWorkflow,
+						);
+					} else {
+						await transactionManager.insert(SharedWorkflow, {
 							workflowId: importedWorkflow.id,
 							userId: workflowOwnerId,
 							roleId: ownerWorkflowRole.id,
-						},
-						['workflowId', 'userId'],
-					);
-
+						});
+					}
 					if (existingWorkflow?.active) {
 						try {
 							// remove active pre-import workflow
@@ -361,7 +382,10 @@ export class SourceControlImportService {
 				}),
 			);
 		});
-		return importWorkflowsResult;
+		return importWorkflowsResult.filter((e) => e !== undefined) as Array<{
+			id: string;
+			name: string;
+		}>;
 	}
 
 	async importFromWorkFolder(options: SourceControllPullOptions): Promise<ImportResult> {
