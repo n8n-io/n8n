@@ -252,6 +252,7 @@ export class SourceControlService {
 				...status.modified,
 			]);
 		}
+		mergedFileNames.add(this.sourceControlExportService.getOwnersPath());
 		const deletedFiles = new Set<string>(status.deleted);
 		deletedFiles.forEach((e) => mergedFileNames.delete(e));
 		await this.unstage();

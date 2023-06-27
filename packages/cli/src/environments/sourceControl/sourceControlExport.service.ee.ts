@@ -3,6 +3,7 @@ import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_OWNERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -48,6 +49,10 @@ export class SourceControlExportService {
 
 	getTagsPath(): string {
 		return path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+	}
+
+	getOwnersPath(): string {
+		return path.join(this.gitFolder, SOURCE_CONTROL_OWNERS_EXPORT_FILE);
 	}
 
 	getVariablesPath(): string {
@@ -185,6 +190,11 @@ export class SourceControlExportService {
 			const removedFiles = await this.rmDeletedWorkflowsFromExportFolder(sharedWorkflows);
 			// write the workflows to the export folder as json files
 			await this.writeExportableWorkflowsToExportFolder(sharedWorkflows);
+			// write list of owners to file
+			const ownersFileName = this.getOwnersPath();
+			const owners: Record<string, string> = {};
+			sharedWorkflows.forEach((e) => (owners[e.workflowId] = e.user.email));
+			await fsWriteFile(ownersFileName, JSON.stringify(owners, null, 2));
 			return {
 				count: sharedWorkflows.length,
 				folder: this.workflowExportFolder,

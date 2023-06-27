@@ -3,6 +3,7 @@ import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_OWNERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -273,6 +274,19 @@ export class SourceControlImportService {
 		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
 		const workflowRunner = Container.get(ActiveWorkflowRunner);
 
+		let ownerRecords: Record<string, string> = {};
+		const ownersFile = await glob(SOURCE_CONTROL_OWNERS_EXPORT_FILE, {
+			cwd: this.gitFolder,
+			absolute: true,
+		});
+		if (ownersFile.length > 0) {
+			LoggerProxy.debug(`Importing workflow owners from file ${ownersFile[0]}`);
+			ownerRecords = jsonParse<Record<string, string>>(
+				await fsReadFile(ownersFile[0], { encoding: 'utf8' }),
+				{ fallbackValue: {} },
+			);
+		}
+
 		let importWorkflowsResult = new Array<{ id: string; name: string }>();
 		await Db.transaction(async (transactionManager) => {
 			importWorkflowsResult = await Promise.all(
@@ -304,11 +318,21 @@ export class SourceControlImportService {
 					if (upsertResult?.identifiers?.length !== 1) {
 						throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
 					}
+					let workflowOwnerId = userId;
+					if (importedWorkflow.id && importedWorkflow.id in ownerRecords) {
+						const foundUser = await Db.collections.User.findOne({
+							where: { email: ownerRecords[importedWorkflow.id] },
+							select: ['id'],
+						});
+						if (foundUser) {
+							workflowOwnerId = foundUser.id;
+						}
+					}
 					await transactionManager.upsert(
 						SharedWorkflow,
 						{
 							workflowId: importedWorkflow.id,
-							userId,
+							userId: workflowOwnerId,
 							roleId: ownerWorkflowRole.id,
 						},
 						['workflowId', 'userId'],
