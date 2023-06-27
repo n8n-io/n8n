@@ -1,5 +1,4 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { warningTH5 } from '../common.description';
 
 import * as executeQuery from './executeQuery.operation';
 
@@ -20,14 +19,6 @@ export const description: INodeProperties[] = [
 				action: 'Execute a query',
 			},
 		],
-		displayOptions: {
-			show: {
-				resource: ['query'],
-			},
-		},
-	},
-	{
-		...warningTH5,
 		displayOptions: {
 			show: {
 				resource: ['query'],

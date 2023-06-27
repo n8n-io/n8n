@@ -53,11 +53,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const credentials = await this.getCredentials('theHiveApi');
-
 	const returnAll = this.getNodeParameter('returnAll', i);
-
-	const version = credentials.apiVersion;
 
 	const filters = this.getNodeParameter('filters', i, {});
 	const queryAttributs = prepareOptional(filters);
@@ -83,12 +79,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	let endpoint;
-
-	let method: IHttpRequestMethods;
-
-	let body: IDataObject = {};
-
 	let limit = undefined;
 
 	if (!returnAll) {
@@ -97,45 +87,27 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const qs: IDataObject = {};
 
-	if (version === 'v1') {
-		endpoint = '/v1/query';
+	const body = {
+		query: [
+			{
+				_name: 'listAlert',
+			},
+			{
+				_name: 'filter',
+				_and: _searchQuery._and,
+			},
+		],
+	};
 
-		method = 'POST';
+	prepareSortQuery(options.sort as string, body as BodyWithQuery);
 
-		body = {
-			query: [
-				{
-					_name: 'listAlert',
-				},
-				{
-					_name: 'filter',
-					_and: _searchQuery._and,
-				},
-			],
-		};
-
-		prepareSortQuery(options.sort as string, body as BodyWithQuery);
-
-		if (limit !== undefined) {
-			prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
-		}
-
-		qs.name = 'alerts';
-	} else {
-		method = 'POST';
-
-		endpoint = '/alert/_search';
-
-		if (limit !== undefined) {
-			qs.range = `0-${limit}`;
-		}
-
-		body.query = _searchQuery;
-
-		Object.assign(qs, prepareOptional(options));
+	if (limit !== undefined) {
+		prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 	}
 
-	responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
+	qs.name = 'alerts';
+
+	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

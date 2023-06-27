@@ -1,10 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type {
-	IDataObject,
-	IHttpRequestMethods,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { observableDataType, observableStatusSelector, tlpSelector } from '../common.description';
 import {
@@ -17,8 +12,9 @@ import {
 	prepareRangeQuery,
 	prepareSortQuery,
 } from '../../helpers/utils';
-import type { BodyWithQuery, IQueryObject } from '../../helpers/interfaces';
+
 import { theHiveApiRequest } from '../../transport';
+import type { IQueryObject } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -141,11 +137,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const credentials = await this.getCredentials('theHiveApi');
-
 	const returnAll = this.getNodeParameter('returnAll', i);
-
-	const version = credentials.apiVersion;
 
 	const queryAttributs = prepareOptional(this.getNodeParameter('filters', i, {}));
 
@@ -173,12 +165,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	let endpoint;
-
-	let method: IHttpRequestMethods;
-
-	let body: IDataObject = {};
-
 	const qs: IDataObject = {};
 
 	let limit = undefined;
@@ -187,45 +173,27 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		limit = this.getNodeParameter('limit', i);
 	}
 
-	if (version === 'v1') {
-		endpoint = '/v1/query';
+	const body = {
+		query: [
+			{
+				_name: 'listObservable',
+			},
+			{
+				_name: 'filter',
+				_and: _searchQuery._and,
+			},
+		],
+	};
 
-		method = 'POST';
+	prepareSortQuery(options.sort as string, body);
 
-		body = {
-			query: [
-				{
-					_name: 'listObservable',
-				},
-				{
-					_name: 'filter',
-					_and: _searchQuery._and,
-				},
-			],
-		};
-
-		prepareSortQuery(options.sort as string, body as BodyWithQuery);
-
-		if (limit !== undefined) {
-			prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
-		}
-
-		qs.name = 'observables';
-	} else {
-		method = 'POST';
-
-		endpoint = '/case/artifact/_search';
-
-		if (limit !== undefined) {
-			qs.range = `0-${limit}`;
-		}
-
-		body.query = _searchQuery;
-
-		Object.assign(qs, prepareOptional(options));
+	if (limit !== undefined) {
+		prepareRangeQuery(`0-${limit}`, body);
 	}
 
-	responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
+	qs.name = 'observables';
+
+	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

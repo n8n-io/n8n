@@ -10,7 +10,6 @@ import * as getAttachment from './getAttachment.operation';
 import * as getMany from './getMany.operation';
 import * as getTimeline from './getTimeline.operation';
 import * as update from './update.operation';
-import { warningTH5 } from '../common.description';
 
 export {
 	addAttachment,
@@ -88,15 +87,6 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['case'],
-			},
-		},
-	},
-	{
-		...warningTH5,
-		displayOptions: {
-			show: {
-				resource: ['case'],
-				operation: ['addAttachment', 'deleteAttachment', 'getAttachment', 'getTimeline'],
 			},
 		},
 	},

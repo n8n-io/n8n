@@ -46,21 +46,11 @@ export async function loadAnalyzers(this: ILoadOptionsFunctions): Promise<INodeP
 export async function loadCustomFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const credentials = await this.getCredentials('theHiveApi');
-	const version = credentials.apiVersion;
-	const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
-
-	const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint as string);
+	const requestResult = await theHiveApiRequest.call(this, 'GET', '/customField');
 
 	const returnData: INodePropertyOptions[] = [];
 
-	// Convert TheHive3 response to the same format as TheHive 4
-	const customFields =
-		version === 'v1'
-			? requestResult
-			: Object.keys(requestResult as IDataObject).map((key) => requestResult[key]);
-
-	for (const field of customFields) {
+	for (const field of requestResult) {
 		returnData.push({
 			name: `${field.name}: ${field.reference}`,
 			value: field.reference,
@@ -74,30 +64,14 @@ export async function loadCustomFields(
 export async function loadObservableTypes(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const version = (await this.getCredentials('theHiveApi')).apiVersion;
-	const endpoint = version === 'v1' ? '/observable/type?range=all' : '/list/list_artifactDataType';
+	const dataTypes = await theHiveApiRequest.call(this, 'GET', '/observable/type?range=all');
 
-	const dataTypes = await theHiveApiRequest.call(this, 'GET', endpoint as string);
-
-	let returnData: INodePropertyOptions[] = [];
-
-	if (version === 'v1') {
-		returnData = dataTypes.map((dataType: IDataObject) => {
-			return {
-				name: dataType.name as string,
-				value: dataType.name as string,
-			};
-		});
-	} else {
-		returnData = Object.keys(dataTypes as IDataObject).map((key) => {
-			const dataType = dataTypes[key] as string;
-
-			return {
-				name: dataType,
-				value: dataType,
-			};
-		});
-	}
+	const returnData: INodePropertyOptions[] = dataTypes.map((dataType: IDataObject) => {
+		return {
+			name: dataType.name as string,
+			value: dataType.name as string,
+		};
+	});
 
 	// Sort the array by option name
 	returnData.sort((a, b) => {

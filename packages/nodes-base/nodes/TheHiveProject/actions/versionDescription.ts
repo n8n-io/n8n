@@ -13,7 +13,7 @@ import * as page from './page';
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'TheHive 5',
 	name: 'theHiveProject',
-	icon: 'file:thehive.svg',
+	icon: 'file:thehiveproject.svg',
 	group: ['transform'],
 	subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
 	version: 1,

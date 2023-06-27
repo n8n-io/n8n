@@ -142,22 +142,22 @@ export function buildCustomFieldSearch(customFields: IDataObject): IDataObject[]
 	return searchQueries;
 }
 
-export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
+export function prepareSortQuery(sort: string, body: IDataObject) {
 	if (sort) {
 		const field = sort.substring(1);
 		const value = sort.charAt(0) === '+' ? 'asc' : 'desc';
 		const sortOption: IDataObject = {};
 		sortOption[field] = value;
-		body.query.push({
+		(body.query as IDataObject[]).push({
 			_name: 'sort',
 			_fields: [sortOption],
 		});
 	}
 }
 
-export function prepareRangeQuery(range: string, body: { query: IDataObject[] }) {
+export function prepareRangeQuery(range: string, body: IDataObject) {
 	if (range && range !== 'all') {
-		body.query.push({
+		(body.query as IDataObject[]).push({
 			_name: 'page',
 			from: parseInt(range.split('-')[0], 10),
 			to: parseInt(range.split('-')[1], 10),

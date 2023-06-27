@@ -36,19 +36,9 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const credentials = await this.getCredentials('theHiveApi');
-
 	const returnAll = this.getNodeParameter('returnAll', i);
 
-	const version = credentials.apiVersion;
-
 	const taskId = this.getNodeParameter('taskId', i) as string;
-
-	let endpoint;
-
-	let method: IHttpRequestMethods;
-
-	let body: IDataObject = {};
 
 	const qs: IDataObject = {};
 
@@ -58,41 +48,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		limit = this.getNodeParameter('limit', i);
 	}
 
-	if (version === 'v1') {
-		endpoint = '/v1/query';
+	const body = {
+		query: [
+			{
+				_name: 'getTask',
+				idOrName: taskId,
+			},
+			{
+				_name: 'logs',
+			},
+		],
+	};
 
-		method = 'POST';
-
-		body = {
-			query: [
-				{
-					_name: 'getTask',
-					idOrName: taskId,
-				},
-				{
-					_name: 'logs',
-				},
-			],
-		};
-
-		if (limit !== undefined) {
-			prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
-		}
-
-		qs.name = 'case-task-logs';
-	} else {
-		method = 'POST';
-
-		endpoint = '/case/task/log/_search';
-
-		if (limit !== undefined) {
-			qs.range = `0-${limit}`;
-		}
-
-		body.query = And(Parent('task', Id(taskId)));
+	if (limit !== undefined) {
+		prepareRangeQuery(`0-${limit}`, body);
 	}
 
-	responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
+	qs.name = 'case-task-logs';
+
+	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

@@ -75,20 +75,10 @@ export async function prepareCustomFields(
 		}
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
-		const credentials = await this.getCredentials('theHiveApi');
-		const version = credentials.apiVersion;
-		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
+		const requestResult = await theHiveApiRequest.call(this, 'GET', '/customField');
 
-		const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint as string);
-
-		// Convert TheHive3 response to the same format as TheHive 4
-		// [{name, reference, type}]
-		const hiveCustomFields =
-			version === 'v1'
-				? requestResult
-				: Object.keys(requestResult as IDataObject).map((key) => requestResult[key]);
 		// Build reference to type mapping object
-		const referenceTypeMapping = hiveCustomFields.reduce(
+		const referenceTypeMapping = requestResult.reduce(
 			(acc: IDataObject, curr: IDataObject) => ((acc[curr.reference as string] = curr.type), acc),
 			{},
 		);
@@ -100,7 +90,6 @@ export async function prepareCustomFields(
 				const fieldName = curr.field as string;
 
 				// Might be able to do some type conversions here if needed, TODO
-
 				const updatedField = `customFields.${fieldName}.${[referenceTypeMapping[fieldName]]}`;
 				acc[updatedField] = curr.value;
 				return acc;
