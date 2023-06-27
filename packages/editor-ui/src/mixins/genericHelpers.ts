@@ -17,7 +17,7 @@ export const genericHelpers = defineComponent({
 		};
 	},
 	computed: {
-		isReadOnly(): boolean {
+		isReadOnlyRoute(): boolean {
 			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOG_STREAMING_SETTINGS].includes(
 				this.$route.name as VIEWS,
 			);
@@ -50,7 +50,7 @@ export const genericHelpers = defineComponent({
 			return { date, time };
 		},
 		editAllowedCheck(): boolean {
-			if (this.isReadOnly) {
+			if (this.isReadOnlyRoute) {
 				this.showMessage({
 					// title: 'Workflow can not be changed!',
 					title: this.$locale.baseText('genericHelpers.showMessage.title'),
