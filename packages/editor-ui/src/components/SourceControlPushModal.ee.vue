@@ -205,7 +205,7 @@ async function commitAndPush() {
 					</n8n-link>
 				</n8n-text>
 
-				<div v-if="files.length > 0">
+				<div v-if="workflowFiles.length > 0">
 					<div class="mt-l mb-2xs">
 						<n8n-checkbox
 							:indeterminate="selectAllIndeterminate"
@@ -215,7 +215,7 @@ async function commitAndPush() {
 							<n8n-text bold tag="strong">
 								{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
 							</n8n-text>
-							<n8n-text tag="strong" v-show="stagedWorkflowFiles.length > 0">
+							<n8n-text tag="strong" v-show="workflowFiles.length > 0">
 								({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
 							</n8n-text>
 						</n8n-checkbox>
@@ -235,9 +235,9 @@ async function commitAndPush() {
 							/>
 							<n8n-text bold>
 								<span v-if="file.status === 'deleted'">
-									<span v-if="file.type === 'workflow'"> Workflow </span>
-									<span v-if="file.type === 'credential'"> Credential </span>
-									Id: {{ file.id }}
+									<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
+									<span v-if="file.type === 'credential'"> Deleted Credential: </span>
+									<strong>{{ file.id }}</strong>
 								</span>
 								<span v-else>
 									{{ file.name }}

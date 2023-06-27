@@ -49,6 +49,7 @@ export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
+export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',

@@ -312,13 +312,14 @@ export default defineComponent({
 				);
 			}
 
-			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
-				actions.push({
-					id: WORKFLOW_MENU_ACTIONS.PUSH,
-					label: this.$locale.baseText('menuActions.push'),
-					disabled: !this.onWorkflowPage || this.onExecutionsTab,
-				});
-			}
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.PUSH,
+				label: this.$locale.baseText('menuActions.push'),
+				disabled:
+					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+					!this.onWorkflowPage ||
+					this.onExecutionsTab,
+			});
 
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
