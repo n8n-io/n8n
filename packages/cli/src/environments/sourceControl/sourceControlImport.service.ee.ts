@@ -292,7 +292,9 @@ export class SourceControlImportService {
 
 		let importWorkflowsResult = new Array<{ id: string; name: string } | undefined>();
 
-		const allSharedWorkflows = await Db.collections.SharedWorkflow.find();
+		const allSharedWorkflows = await Db.collections.SharedWorkflow.find({
+			select: ['workflowId', 'roleId', 'userId'],
+		});
 
 		importWorkflowsResult = await Promise.all(
 			workflowFiles.map(async (file) => {

@@ -291,13 +291,17 @@ export class SourceControlService {
 		let updatedAt = '';
 
 		const allWorkflows: Map<string, WorkflowEntity> = new Map();
-		(await Db.collections.Workflow.find()).forEach((workflow) => {
-			allWorkflows.set(workflow.id, workflow);
-		});
+		(await Db.collections.Workflow.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
+			(workflow) => {
+				allWorkflows.set(workflow.id, workflow);
+			},
+		);
 		const allCredentials: Map<string, CredentialsEntity> = new Map();
-		(await Db.collections.Credentials.find()).forEach((credential) => {
-			allCredentials.set(credential.id, credential);
-		});
+		(await Db.collections.Credentials.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
+			(credential) => {
+				allCredentials.set(credential.id, credential);
+			},
+		);
 
 		// initialize status from git status result
 		if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
@@ -391,9 +395,15 @@ export class SourceControlService {
 		}
 
 		if (fileName.startsWith(SOURCE_CONTROL_TAGS_EXPORT_FILE)) {
+			const lastUpdatedTag = await Db.collections.Tag.find({
+				order: { updatedAt: 'DESC' },
+				take: 1,
+				select: ['updatedAt'],
+			});
 			id = 'tags';
 			name = 'tags';
 			type = 'tags';
+			updatedAt = lastUpdatedTag[0]?.updatedAt.toISOString();
 		}
 
 		if (!id) return;
