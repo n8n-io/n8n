@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "0.67.0",
+  "version": "0.69.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -49,6 +49,7 @@
     "@storybook/vue": "^7.0.7",
     "@storybook/vue-webpack5": "^7.0.7",
     "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3",
     "@testing-library/vue": "^5.8.3",
     "@types/markdown-it": "^12.2.3",
     "@types/markdown-it-emoji": "^2.0.2",

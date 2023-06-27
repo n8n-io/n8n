@@ -9,5 +9,5 @@ export async function getCurrentPlan(
 }
 
 export async function getCurrentUsage(context: IRestApiContext): Promise<InstanceUsage> {
-	return get(context.baseUrl, '/limits');
+	return get(context.baseUrl, '/cloud/limits');
 }

@@ -30,7 +30,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
-	VERSION_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/constants';
 import type {
 	CurlToJSONResponse,
@@ -42,7 +42,6 @@ import type {
 	UIState,
 	XYPosition,
 } from '@/Interface';
-import Vue from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
@@ -51,6 +50,7 @@ import { useSettingsStore } from './settings.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
+import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 
 export const useUIStore = defineStore(STORES.UI, {
@@ -133,7 +133,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				activeId: null,
 				showAuthSelector: false,
 			},
-			[VERSION_CONTROL_PUSH_MODAL_KEY]: {
+			[SOURCE_CONTROL_PUSH_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -332,36 +332,57 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
-		setMode(name: string, mode: string): void {
-			Vue.set(this.modals[name], 'mode', mode);
+		setMode(name: keyof Modals, mode: string): void {
+			this.modals[name] = {
+				...this.modals[name],
+				mode,
+			};
 		},
-		setActiveId(name: string, id: string): void {
-			Vue.set(this.modals[name], 'activeId', id);
+		setActiveId(name: keyof Modals, activeId: string): void {
+			this.modals[name] = {
+				...this.modals[name],
+				activeId,
+			};
 		},
-		setShowAuthSelector(name: string, show: boolean) {
-			Vue.set(this.modals[name], 'showAuthSelector', show);
+		setShowAuthSelector(name: keyof Modals, showAuthSelector: boolean) {
+			this.modals[name] = {
+				...this.modals[name],
+				showAuthSelector,
+			} as NewCredentialsModal;
 		},
-		setModalData(payload: { name: string; data: Record<string, unknown> }) {
-			Vue.set(this.modals[payload.name], 'data', payload.data);
+		setModalData(payload: { name: keyof Modals; data: Record<string, unknown> }) {
+			this.modals[payload.name] = {
+				...this.modals[payload.name],
+				data: payload.data,
+			};
 		},
-		openModal(name: string): void {
-			Vue.set(this.modals[name], 'open', true);
-			this.modalStack = [name].concat(this.modalStack);
+		openModal(name: keyof Modals): void {
+			this.modals[name] = {
+				...this.modals[name],
+				open: true,
+			};
+			this.modalStack = [name].concat(this.modalStack) as string[];
 		},
-		openModalWithData(payload: { name: string; data: Record<string, unknown> }): void {
+		openModalWithData(payload: { name: keyof Modals; data: Record<string, unknown> }): void {
 			this.setModalData(payload);
 			this.openModal(payload.name);
 		},
-		closeModal(name: string): void {
-			Vue.set(this.modals[name], 'open', false);
+		closeModal(name: keyof Modals): void {
+			this.modals[name] = {
+				...this.modals[name],
+				open: false,
+			};
 			this.modalStack = this.modalStack.filter((openModalName: string) => {
 				return name !== openModalName;
 			});
 		},
 		closeAllModals(): void {
-			Object.keys(this.modals).forEach((name: string) => {
+			Object.keys(this.modals).forEach((name) => {
 				if (this.modals[name].open) {
-					Vue.set(this.modals[name], 'open', false);
+					this.modals[name] = {
+						...this.modals[name],
+						open: false,
+					};
 				}
 			});
 			this.modalStack = [];
@@ -385,10 +406,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		setDraggableStickyPos(position: XYPosition): void {
-			Vue.set(this.draggable, 'stickyPosition', position);
+			this.draggable = {
+				...this.draggable,
+				stickyPosition: position,
+			};
 		},
 		setDraggableCanDrop(canDrop: boolean): void {
-			Vue.set(this.draggable, 'canDrop', canDrop);
+			this.draggable = {
+				...this.draggable,
+				canDrop,
+			};
 		},
 		openDeleteUserModal(id: string): void {
 			this.setActiveId(DELETE_USER_MODAL_KEY, id);
@@ -460,17 +487,23 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		resetSelectedNodes(): void {
-			Vue.set(this, 'selectedNodes', []);
+			this.selectedNodes = [];
 		},
 		addSidebarMenuItems(menuItems: IMenuItem[]) {
 			const updated = this.sidebarMenuItems.concat(menuItems);
-			Vue.set(this, 'sidebarMenuItems', updated);
+			this.sidebarMenuItems = updated;
 		},
 		setCurlCommand(payload: { name: string; command: string }): void {
-			Vue.set(this.modals[payload.name], 'curlCommand', payload.command);
+			this.modals[payload.name] = {
+				...this.modals[payload.name],
+				curlCommand: payload.command,
+			};
 		},
 		setHttpNodeParameters(payload: { name: string; parameters: string }): void {
-			Vue.set(this.modals[payload.name], 'httpNodeParameters', payload.parameters);
+			this.modals[payload.name] = {
+				...this.modals[payload.name],
+				httpNodeParameters: payload.parameters,
+			};
 		},
 		toggleSidebarMenuCollapse(): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;

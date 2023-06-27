@@ -25,7 +25,7 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
-import { keysToLowercase } from '../../../utils/utilities';
+import { keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -939,6 +939,13 @@ export class HttpRequestV3 implements INodeType {
 								'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 						},
 					],
+				},
+				{
+					displayName:
+						"You can view the raw requests this node makes in your browser's developer console",
+					name: 'infoMessage',
+					type: 'notice',
+					default: '',
 				},
 			],
 		};
