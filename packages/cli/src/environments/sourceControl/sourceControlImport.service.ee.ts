@@ -335,24 +335,13 @@ export class SourceControlImportService {
 					if (upsertResult?.identifiers?.length !== 1) {
 						throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
 					}
+					// Update workflow owner to the user who exported the workflow, if that user exists
+					// in the instance, and the workflow doesn't already have an owner
 					const workflowOwnerId = ownerRecords[importedWorkflow.id] ?? userId;
-					// Update workflow owner to the user who exported the workflow
-					// or fallback to the user who is importing the workflow
-					const existingSharedWorkflow = await transactionManager.findOne(SharedWorkflow, {
+					const existingSharedWorkflowOwner = await transactionManager.findOne(SharedWorkflow, {
 						where: { workflowId: importedWorkflow.id, roleId: ownerWorkflowRole.id },
 					});
-					if (existingSharedWorkflow) {
-						LoggerProxy.debug(`Updating owner for workflow id ${importedWorkflow.id}`);
-						existingSharedWorkflow.userId = workflowOwnerId;
-						await transactionManager.update(
-							SharedWorkflow,
-							{
-								workflowId: existingSharedWorkflow.workflowId,
-								roleId: existingSharedWorkflow.roleId,
-							},
-							existingSharedWorkflow,
-						);
-					} else {
+					if (!existingSharedWorkflowOwner) {
 						await transactionManager.insert(SharedWorkflow, {
 							workflowId: importedWorkflow.id,
 							userId: workflowOwnerId,
