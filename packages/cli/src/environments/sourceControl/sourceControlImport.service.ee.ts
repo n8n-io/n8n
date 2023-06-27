@@ -338,15 +338,40 @@ export class SourceControlImportService {
 					// Update workflow owner to the user who exported the workflow, if that user exists
 					// in the instance, and the workflow doesn't already have an owner
 					const workflowOwnerId = ownerRecords[importedWorkflow.id] ?? userId;
-					const existingSharedWorkflowOwner = await transactionManager.findOne(SharedWorkflow, {
-						where: { workflowId: importedWorkflow.id, roleId: ownerWorkflowRole.id },
-					});
-					if (!existingSharedWorkflowOwner) {
+					const existingSharedWorkflowOwnerByRoleId = await transactionManager.findOne(
+						SharedWorkflow,
+						{
+							where: { workflowId: importedWorkflow.id, roleId: ownerWorkflowRole.id },
+						},
+					);
+					const existingSharedWorkflowOwnerByUserId = await transactionManager.findOne(
+						SharedWorkflow,
+						{
+							where: { workflowId: importedWorkflow.id, userId: workflowOwnerId },
+						},
+					);
+					if (!existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
+						// no owner exists yet, so create one
 						await transactionManager.insert(SharedWorkflow, {
 							workflowId: importedWorkflow.id,
 							userId: workflowOwnerId,
 							roleId: ownerWorkflowRole.id,
 						});
+					} else if (existingSharedWorkflowOwnerByRoleId) {
+						// skip, because the workflow already has a global owner
+					} else if (existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
+						// if the worklflow has a non-global owner that is referenced by the owner file,
+						// and no existing global owner, update the owner to the user referenced in the owner file
+						await transactionManager.update(
+							SharedWorkflow,
+							{
+								workflowId: importedWorkflow.id,
+								userId: workflowOwnerId,
+							},
+							{
+								roleId: ownerWorkflowRole.id,
+							},
+						);
 					}
 					if (existingWorkflow?.active) {
 						try {
