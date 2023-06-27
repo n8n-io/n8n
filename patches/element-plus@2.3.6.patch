@@ -1,0 +1,33 @@
+diff --git a/es/components/button/index.mjs b/es/components/button/index.mjs
+index da11b9b6e31d5e57681ce705eda09dd5238ced4b..335ace1ee16ac76cdafaf12d2e597224480039e0 100644
+--- a/es/components/button/index.mjs
++++ b/es/components/button/index.mjs
+@@ -1,5 +1,5 @@
+ import '../../utils/index.mjs';
+-import Button from './src/button2.mjs';
++import Button from 'n8n-design-system/components/N8nButton/overrides/ElButton.ts';
+ import ButtonGroup from './src/button-group2.mjs';
+ export { buttonEmits, buttonNativeTypes, buttonProps, buttonTypes } from './src/button.mjs';
+ export { buttonGroupContextKey } from './src/constants.mjs';
+diff --git a/lib/components/button/index.js b/lib/components/button/index.js
+index 6aed7dd91c7270fc0e0ab98bfcaa4b5aa66a9dcf..69517bb81c4855f08db0f5427c7f1df66e98306c 100644
+--- a/lib/components/button/index.js
++++ b/lib/components/button/index.js
+@@ -3,13 +3,15 @@
+ Object.defineProperty(exports, '__esModule', { value: true });
+ 
+ require('../../utils/index.js');
+-var button$1 = require('./src/button2.js');
++var button$1 = require('n8n-design-system');
+ var buttonGroup = require('./src/button-group2.js');
+ var button = require('./src/button.js');
+ var constants = require('./src/constants.js');
+ var install = require('../../utils/vue/install.js');
+ 
+-const ElButton = install.withInstall(button$1["default"], {
++console.log(button$1);
++
++const ElButton = install.withInstall(button$1["default"]["N8nElButton"], {
+   ButtonGroup: buttonGroup["default"]
+ });
+ const ElButtonGroup = install.withNoopInstall(buttonGroup["default"]);

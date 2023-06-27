@@ -11,6 +11,7 @@ export default mergeConfig(
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
+				'n8n-design-system': resolve(__dirname, 'src'),
 			},
 		},
 		build: {

@@ -57,7 +57,7 @@ const alias = [
 		replacement: 'lodash-es/$1',
 	},
 	{
-		find: /element-plus\/(packages|lib)\/button$/,
+		find: /^element-plus\/(es|lib)\/components\/button\/src\/button2\.m?js$/,
 		replacement: resolve(
 			__dirname,
 			'..',
