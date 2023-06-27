@@ -32,6 +32,8 @@ import type {
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
+import type { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
+import type { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
@@ -288,6 +290,15 @@ export class SourceControlService {
 		let type: SourceControlledFileType = 'file';
 		let updatedAt = '';
 
+		const allWorkflows: Map<string, WorkflowEntity> = new Map();
+		(await Db.collections.Workflow.find()).forEach((workflow) => {
+			allWorkflows.set(workflow.id, workflow);
+		});
+		const allCredentials: Map<string, CredentialsEntity> = new Map();
+		(await Db.collections.Credentials.find()).forEach((credential) => {
+			allCredentials.set(credential.id, credential);
+		});
+
 		// initialize status from git status result
 		if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
 		else if (statusResult.conflicted.find((e) => e === fileName)) {
@@ -305,12 +316,10 @@ export class SourceControlService {
 					.replace(/[\/,\\]/, '')
 					.replace('.json', '');
 				if (location === 'remote') {
-					const existingWorkflow = await Db.collections.Workflow.find({
-						where: { id },
-					});
-					if (existingWorkflow?.length > 0) {
-						name = existingWorkflow[0].name;
-						updatedAt = existingWorkflow[0].updatedAt.toISOString();
+					const existingWorkflow = allWorkflows.get(id);
+					if (existingWorkflow) {
+						name = existingWorkflow.name;
+						updatedAt = existingWorkflow.updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
@@ -330,12 +339,10 @@ export class SourceControlService {
 					id = workflow.id;
 					name = workflow.name;
 				}
-				const existingWorkflow = await Db.collections.Workflow.find({
-					where: { id },
-				});
-				if (existingWorkflow?.length > 0) {
-					name = existingWorkflow[0].name;
-					updatedAt = existingWorkflow[0].updatedAt.toISOString();
+				const existingWorkflow = allWorkflows.get(id);
+				if (existingWorkflow) {
+					name = existingWorkflow.name;
+					updatedAt = existingWorkflow.updatedAt.toISOString();
 				}
 			}
 		}
@@ -347,12 +354,10 @@ export class SourceControlService {
 					.replace(/[\/,\\]/, '')
 					.replace('.json', '');
 				if (location === 'remote') {
-					const existingCredential = await Db.collections.Credentials.find({
-						where: { id },
-					});
-					if (existingCredential?.length > 0) {
-						name = existingCredential[0].name;
-						updatedAt = existingCredential[0].updatedAt.toISOString();
+					const existingCredential = allCredentials.get(id);
+					if (existingCredential) {
+						name = existingCredential.name;
+						updatedAt = existingCredential.updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
@@ -371,12 +376,10 @@ export class SourceControlService {
 					id = credential.id;
 					name = credential.name;
 				}
-				const existingCredential = await Db.collections.Credentials.find({
-					where: { id },
-				});
-				if (existingCredential?.length > 0) {
-					name = existingCredential[0].name;
-					updatedAt = existingCredential[0].updatedAt.toISOString();
+				const existingCredential = allCredentials.get(id);
+				if (existingCredential) {
+					name = existingCredential.name;
+					updatedAt = existingCredential.updatedAt.toISOString();
 				}
 			}
 		}

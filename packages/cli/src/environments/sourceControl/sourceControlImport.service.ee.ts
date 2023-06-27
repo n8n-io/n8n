@@ -299,8 +299,6 @@ export class SourceControlImportService {
 			}
 		}
 
-		console.log(ownerRecords);
-
 		let importWorkflowsResult = new Array<{ id: string; name: string } | undefined>();
 		await Db.transaction(async (transactionManager) => {
 			importWorkflowsResult = await Promise.all(
