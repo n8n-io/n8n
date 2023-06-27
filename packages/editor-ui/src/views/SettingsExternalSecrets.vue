@@ -5,7 +5,7 @@ import { useExternalSecretsStore } from '@/stores';
 import { onMounted } from 'vue';
 import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
 
-const { i18n } = useI18n();
+const { i18n: locale } = useI18n();
 const uiStore = useUIStore();
 const externalSecretsStore = useExternalSecretsStore();
 const message = useMessage();
@@ -23,18 +23,17 @@ function goToUpgrade() {
 
 <template>
 	<div class="pb-3xl">
-		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.externalSecrets.title') }}</n8n-heading>
-
-		<n8n-callout theme="secondary" class="mt-2xl mb-l">
-			{{ i18n.baseText('settings.externalSecrets.info') }}
-			<a href="https://docs.n8n.io/user-management/external-secrets/" target="_blank">
-				{{ i18n.baseText('settings.externalSecrets.info.link') }}
-			</a>
-		</n8n-callout>
+		<n8n-heading size="2xlarge">{{ locale.baseText('settings.externalSecrets.title') }}</n8n-heading>
 		<div
 			v-if="externalSecretsStore.isEnterpriseExternalSecretsEnabled"
 			data-test-id="sso-content-licensed"
 		>
+			<n8n-callout theme="secondary" class="mt-2xl mb-l">
+				{{ locale.baseText('settings.externalSecrets.info') }}
+				<a href="https://docs.n8n.io/user-management/external-secrets/" target="_blank">
+					{{ locale.baseText('settings.externalSecrets.info.link') }}
+				</a>
+			</n8n-callout>
 			<ExternalSecretsProviderCard
 				v-for="provider in externalSecretsStore.providers"
 				:key="provider.name"
@@ -43,13 +42,25 @@ function goToUpgrade() {
 		</div>
 		<n8n-action-box
 			v-else
+			class="mt-2xl mb-l"
 			data-test-id="external-secrets-content-unlicensed"
-			:description="i18n.baseText('settings.externalSecrets.actionBox.description')"
-			:buttonText="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
+			:buttonText="locale.baseText('settings.externalSecrets.actionBox.buttonText')"
 			@click="goToUpgrade"
 		>
 			<template #heading>
-				<span>{{ i18n.baseText('settings.externalSecrets.actionBox.title') }}</span>
+				<span>{{ locale.baseText('settings.externalSecrets.actionBox.title') }}</span>
+			</template>
+			<template #description>
+				<i18n path="settings.externalSecrets.actionBox.description">
+					<template #link>
+						<a
+							:href="locale.baseText('settings.externalSecrets.actionBox.description.link.url')"
+							target="_blank"
+						>
+							{{ locale.baseText('settings.externalSecrets.actionBox.description.link') }}
+						</a>
+					</template>
+				</i18n>
 			</template>
 		</n8n-action-box>
 	</div>
