@@ -33,6 +33,11 @@ const formatParams = (
 	);
 };
 
+const objectFromProps = (src: any, props: string[]) => {
+	const result = props.filter((p) => src.hasOwnProperty(p)).map((p) => [p, src[p]]);
+	return Object.fromEntries(result);
+};
+
 const idFn = (i: any) => i;
 
 const keyValueToObj = (arr: any[]) => {
@@ -51,12 +56,19 @@ export async function activityPresend(
 	opts: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const params = getAllParams(this);
+	const isCreateWithMember = params.operation === 'createWithMember';
+	const isCreateForMember = params.operation === 'createForMember';
+
+	if (isCreateWithMember) {
+		// Move following props into "member" subproperty
+		const memberProps = ['displayName', 'emails', 'joinedAt', 'username'];
+		params.member = objectFromProps(params, memberProps);
+		memberProps.forEach((p) => delete params[p]);
+	}
 	opts.body = formatParams(
 		params,
 		{
-			member: (v) =>
-				(params.operation === 'createWithMember' && v.itemChoice) ||
-				(params.operation === 'createForMember' && v),
+			member: (v) => (isCreateWithMember || isCreateForMember) && v,
 			type: idFn,
 			timestamp: idFn,
 			platform: idFn,
@@ -68,9 +80,9 @@ export async function activityPresend(
 		},
 		{
 			member: (v) =>
-				v.itemChoice
+				typeof v === 'object'
 					? formatParams(
-							v.itemChoice as Record<string, unknown>,
+							v as Record<string, unknown>,
 							{
 								username: (un) => un.itemChoice,
 								displayName: idFn,
