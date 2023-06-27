@@ -1,9 +1,24 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { BeforeInsert, Column, Entity, PrimaryColumn } from 'typeorm';
+import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class Variables {
-	@PrimaryGeneratedColumn()
-	id: number;
+	constructor(data?: Partial<Variables>) {
+		Object.assign(this, data);
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
+	@BeforeInsert()
+	nanoId() {
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
+	@PrimaryColumn('varchar')
+	id: string;
 
 	@Column('text')
 	key: string;

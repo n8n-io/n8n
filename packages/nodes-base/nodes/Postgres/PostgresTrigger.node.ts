@@ -21,8 +21,20 @@ export class PostgresTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to Postgres messages',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'Postgres Trigger',
+		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive:
+					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				active:
+					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+			},
+			activationHint:
+				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -34,19 +46,19 @@ export class PostgresTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Trigger Mode',
+				displayName: 'Listen For',
 				name: 'triggerMode',
 				type: 'options',
 				options: [
 					{
-						name: 'Listen and Create Trigger Rule',
+						name: 'Table Row Change Events',
 						value: 'createTrigger',
-						description: 'Create a trigger rule and listen to it',
+						description: 'Insert, update or delete',
 					},
 					{
-						name: 'Listen to Channel',
+						name: 'Advanced',
 						value: 'listenTrigger',
-						description: 'Receive real-time notifications from a channel',
+						description: 'Listen to existing Postgres channel',
 					},
 				],
 				default: 'createTrigger',
@@ -126,7 +138,7 @@ export class PostgresTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Events to Listen To',
+				displayName: 'Event to listen for',
 				name: 'firesOn',
 				type: 'options',
 				displayOptions: {

@@ -43,7 +43,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 			saml: false,
 			logStreaming: false,
 			variables: false,
-			versionControl: false,
+			sourceControl: false,
 			auditLogs: false,
 		},
 		executionMode: 'regular',

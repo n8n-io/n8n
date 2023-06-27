@@ -163,14 +163,14 @@ export interface IJsonSchema {
 	required: string[];
 }
 
-export class VersionControlPull {
+export class SourceControlPull {
 	force?: boolean;
 
 	variables?: { [key: string]: string };
 }
 
-export declare namespace PublicVersionControlRequest {
-	type Pull = AuthenticatedRequest<{}, {}, VersionControlPull, {}>;
+export declare namespace PublicSourceControlRequest {
+	type Pull = AuthenticatedRequest<{}, {}, SourceControlPull, {}>;
 }
 
 // ----------------------------------
