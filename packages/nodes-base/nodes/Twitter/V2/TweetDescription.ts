@@ -152,7 +152,7 @@ export const tweetFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Locations are not supported due to a limited Twitter V2 API.',
+		displayName: 'Locations are not supported due to Twitter V2 API limitations',
 		name: 'noticeLocation',
 		type: 'notice',
 		displayOptions: {
@@ -163,7 +163,7 @@ export const tweetFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Attachements are not supported due to a limited Twitter V2 API.',
+		displayName: 'Attachements are not supported due to Twitter V2 API limitations',
 		name: 'noticeAttachments',
 		type: 'notice',
 		displayOptions: {
