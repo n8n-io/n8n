@@ -151,6 +151,28 @@ export const tweetFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Locations are not supported due to a limited Twitter V2 API.',
+		name: 'noticeLocation',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				'/additionalFields.location': [''],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Attachements are not supported due to a limited Twitter V2 API.',
+		name: 'noticeAttachments',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				'/additionalFields.attachments': [''],
+			},
+		},
+		default: '',
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                tweet:delete                                */
