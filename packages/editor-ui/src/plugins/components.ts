@@ -1,5 +1,4 @@
 import type { Plugin } from 'vue';
-import VueAgile from 'vue-agile';
 
 import 'regenerator-runtime/runtime';
 
@@ -15,7 +14,6 @@ export const GlobalComponentsPlugin: Plugin<{}> = {
 
 		app.component('enterprise-edition', EnterpriseEdition);
 
-		app.use(VueAgile);
 		app.use(ElementPlus);
 		app.use(N8nPlugin);
 
