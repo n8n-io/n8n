@@ -1,17 +1,11 @@
 import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class ImpervaWAFApi implements ICredentialType {
-	name = 'impervaWAFApi';
+export class HybridAnalysisApi implements ICredentialType {
+	name = 'hybridAnalysisApi';
 
-	displayName = 'Imperva WAF API';
+	displayName = 'Hybrid Analysis API';
 
 	properties: INodeProperties[] = [
-		{
-			displayName: 'API ID',
-			name: 'apiID',
-			type: 'string',
-			default: '',
-		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
@@ -25,8 +19,7 @@ export class ImpervaWAFApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'x-API-Id': '={{$credentials.apiID}}',
-				'x-API-Key': '={{$credentials.apiKey}}',
+				'api-key': '={{$credentials.apiKey}}',
 			},
 		},
 	};
