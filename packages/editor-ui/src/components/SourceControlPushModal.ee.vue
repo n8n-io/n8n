@@ -189,6 +189,12 @@ function renderUpdatedAt(file: SourceControlAggregatedFile) {
 	});
 }
 
+async function onCommitKeyDownEnter() {
+	if (!isSubmitDisabled.value) {
+		await commitAndPush();
+	}
+}
+
 async function commitAndPush() {
 	const fileNames = files.value.filter((file) => staged.value[file.file]).map((file) => file.file);
 
@@ -303,6 +309,7 @@ async function commitAndPush() {
 						:placeholder="
 							i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 						"
+						@keydown.enter.native="onCommitKeyDownEnter"
 					/>
 				</div>
 				<div v-else-if="!loading">
