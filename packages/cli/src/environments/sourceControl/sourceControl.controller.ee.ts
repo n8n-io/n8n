@@ -13,6 +13,13 @@ import type { ImportResult } from './types/importResult';
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
+import Container from 'typedi';
+import { InternalHooks } from '../../InternalHooks';
+import {
+	getRepoType,
+	getTrackingInformationFromImportResult,
+	getTrackingInformationFromSourceControlledFiles,
+} from './sourceControlHelper.ee';
 
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
@@ -74,7 +81,14 @@ export class SourceControlController {
 				}
 			}
 			await this.sourceControlService.init();
-			return this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			await Container.get(InternalHooks).onSourceControlSettingsUpdated({
+				branch_name: resultingPreferences.branchName,
+				connected: resultingPreferences.connected,
+				read_only_instance: resultingPreferences.branchReadOnly,
+				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+			});
+			return resultingPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -113,7 +127,14 @@ export class SourceControlController {
 				);
 			}
 			await this.sourceControlService.init();
-			return this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			await Container.get(InternalHooks).onSourceControlSettingsUpdated({
+				branch_name: resultingPreferences.branchName,
+				connected: resultingPreferences.connected,
+				read_only_instance: resultingPreferences.branchReadOnly,
+				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+			});
+			return resultingPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -153,6 +174,9 @@ export class SourceControlController {
 			if ((result as PushResult).pushed) {
 				res.statusCode = 200;
 			} else {
+				await Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+					getTrackingInformationFromSourceControlledFiles(result as SourceControlledFile[]),
+				);
 				res.statusCode = 409;
 			}
 			return result;
@@ -175,8 +199,14 @@ export class SourceControlController {
 				importAfterPull: req.body.importAfterPull ?? true,
 			});
 			if ((result as ImportResult)?.workflows) {
+				await Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
+					getTrackingInformationFromImportResult(result as ImportResult),
+				);
 				res.statusCode = 200;
 			} else {
+				await Container.get(InternalHooks).onSourceControlUserStartedPullUI(
+					getTrackingInformationFromSourceControlledFiles(result as SourceControlledFile[]),
+				);
 				res.statusCode = 409;
 			}
 			return result;

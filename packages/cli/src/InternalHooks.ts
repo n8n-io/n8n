@@ -53,6 +53,14 @@ function userToPayload(user: User): {
 export class InternalHooks implements IInternalHooksClass {
 	private instanceId: string;
 
+	public get telemetryInstanceId(): string {
+		return this.instanceId;
+	}
+
+	public get telemetryInstance(): Telemetry {
+		return this.telemetry;
+	}
+
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
@@ -1035,5 +1043,72 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
 		return this.telemetry.track('User created variable', createData);
+	}
+
+	async onSourceCodePulse(data: {
+		instance_id: string;
+		plan_name_current: string;
+		usage: { active_workflows: number };
+		quota: { active_workflows: number };
+		source_control_set_up: boolean;
+		branch_name: string;
+		read_only_instance: boolean;
+		reservation_id: string;
+	}): Promise<void> {
+		return this.telemetry.track('Source code pulse', data);
+	}
+
+	async onSourceControlSettingsUpdated(data: {
+		branch_name: string;
+		read_only_instance: boolean;
+		repo_type: 'github' | 'gitlab' | 'other';
+		connected: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User updated source control settings', data);
+	}
+
+	async onSourceControlUserStartedPullUI(data: {
+		workflow_updates: number;
+		workflow_conflicts: number;
+		cred_conflicts: number;
+		variable_conflicts: number;
+	}): Promise<void> {
+		return this.telemetry.track('User started pull via UI', data);
+	}
+
+	async onSourceControlUserFinishedPullUI(data: {
+		workflow_updates: number;
+		workflow_conflicts: number;
+		cred_conflicts: number;
+		variable_conflicts: number;
+	}): Promise<void> {
+		return this.telemetry.track('User finished pull via UI', data);
+	}
+
+	async onSourceControlUserPulledAPI(data: {
+		workflow_updates: number;
+		workflow_conflicts: number;
+		cred_conflicts: number;
+		variable_conflicts: number;
+	}): Promise<void> {
+		return this.telemetry.track('User pulled via API', data);
+	}
+
+	async onSourceControlUserStartedPushUI(data: {
+		workflow_updates: number;
+		workflow_conflicts: number;
+		cred_conflicts: number;
+		variable_conflicts: number;
+	}): Promise<void> {
+		return this.telemetry.track('User started push via UI', data);
+	}
+
+	async onSourceControlUserFinishedPushUI(data: {
+		workflow_updates: number;
+		workflow_conflicts: number;
+		cred_conflicts: number;
+		variable_conflicts: number;
+	}): Promise<void> {
+		return this.telemetry.track('User finished push via UI', data);
 	}
 }

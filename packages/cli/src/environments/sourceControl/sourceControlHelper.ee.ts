@@ -6,6 +6,8 @@ import type { KeyPair } from './types/keyPair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { LoggerProxy } from 'n8n-workflow';
 import { SOURCE_CONTROL_GIT_KEY_COMMENT } from './constants';
+import type { SourceControlledFile } from './types/sourceControlledFile';
+import { ImportResult } from './types/importResult';
 
 export function sourceControlFoldersExistCheck(folders: string[]) {
 	// running these file access function synchronously to avoid race conditions
@@ -63,5 +65,34 @@ export function generateSshKeyPair(keyType: 'ed25519' | 'rsa' = 'ed25519') {
 	return {
 		privateKey: keyPair.privateKey,
 		publicKey: keyPair.publicKey,
+	};
+}
+
+export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
+	if (repoUrl.includes('github.com')) {
+		return 'github';
+	} else if (repoUrl.includes('gitlab.com')) {
+		return 'gitlab';
+	}
+	return 'other';
+}
+
+export function getTrackingInformationFromSourceControlledFiles(result: SourceControlledFile[]) {
+	return {
+		cred_conflicts: result.filter((file) => file.type === 'credential' && file.conflict).length,
+		variable_conflicts: result.filter((file) => file.type === 'variables' && file.conflict).length,
+		workflow_conflicts: result.filter((file) => file.type === 'workflow' && file.conflict).length,
+		workflow_updates: result.filter(
+			(file) => file.type === 'workflow' && file.status === 'modified',
+		).length,
+	};
+}
+
+export function getTrackingInformationFromImportResult(result: ImportResult) {
+	return {
+		cred_conflicts: result.credentials.length,
+		variable_conflicts: result.variables.imported.length,
+		workflow_conflicts: result.workflows.length,
+		workflow_updates: result.workflows.filter((wf) => wf.name !== 'skipped').length,
 	};
 }

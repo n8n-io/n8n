@@ -215,17 +215,26 @@ export class SourceControlService {
 
 	async pullWorkfolder(
 		options: SourceControllPullOptions,
-	): Promise<ImportResult | StatusResult | undefined> {
+	): Promise<ImportResult | SourceControlledFile[] | undefined> {
 		await this.resetWorkfolder({
 			importAfterPull: false,
 			userId: options.userId,
 			force: false,
 		});
-		await this.export(); // refresh workfolder
-		const status = await this.gitService.status();
+		// await this.export(); // refresh workfolder
+		// const status = await this.gitService.status();
 
-		if (status.modified.length > 0 && options.force !== true) {
-			return status;
+		// if (status.modified.length > 0 && options.force !== true) {
+		// 	return status;
+		// }
+
+		const diffResult = await this.getStatus();
+		const possibleConflicts = diffResult?.filter(
+			(file) => file.conflict || file.status === 'modified',
+		);
+		if (possibleConflicts?.length > 0 && options.force !== true) {
+			await this.unstage();
+			return diffResult;
 		}
 		await this.resetWorkfolder({ ...options, importAfterPull: false });
 		if (options.importAfterPull) {
