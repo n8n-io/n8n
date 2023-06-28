@@ -169,8 +169,9 @@ function renderUpdatedAt(file: SourceControlAggregatedFile) {
 		interpolate: {
 			date: dateformat(
 				file.updatedAt,
-				`d mmmm${file.updatedAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+				`d mmm${file.updatedAt.startsWith(currentYear) ? '' : ', yyyy'}`,
 			),
+			time: dateformat(file.updatedAt, 'HH:MM'),
 		},
 	});
 }

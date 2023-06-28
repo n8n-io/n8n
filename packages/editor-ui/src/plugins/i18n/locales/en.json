@@ -1404,7 +1404,7 @@
 	"settings.sourceControl.toast.disconnected.error": "Error disconnecting from Git",
 	"settings.sourceControl.loading.pull": "Pulling from remote",
 	"settings.sourceControl.loading.push": "Pushing to remote",
-	"settings.sourceControl.lastUpdated": "Last updated {date}",
+	"settings.sourceControl.lastUpdated": "Last updated {date} at {time}",
 	"settings.sourceControl.saved.title": "Settings successfully saved",
 	"settings.sourceControl.refreshBranches.tooltip": "Reload branches list",
 	"settings.sourceControl.refreshBranches.success": "Branches successfully refreshed",
