@@ -152,7 +152,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage, useLoadingService } from '@/composables';
+import { useTitleChange, useToast, useMessage } from '@/composables';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import {
 	useUIStore,
@@ -169,6 +169,7 @@ import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system';
 import { useCloudPlanStore } from '@/stores';
 import { nodeViewEventBus } from '@/event-bus';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -181,7 +182,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 
 export default defineComponent({
 	name: 'WorkflowDetails',
-	mixins: [workflowHelpers],
+	mixins: [workflowHelpers, genericHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
@@ -199,10 +200,7 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const loadingService = useLoadingService();
-
 		return {
-			loadingService,
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
@@ -531,7 +529,7 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.PUSH: {
-					this.loadingService.startLoading();
+					this.startLoading();
 					try {
 						await this.onSaveButtonClick();
 
@@ -548,8 +546,7 @@ export default defineComponent({
 					} catch (error) {
 						this.showError(error, this.$locale.baseText('error'));
 					} finally {
-						this.loadingService.stopLoading();
-						this.loadingService.setLoadingText(this.$locale.baseText('genericHelpers.loading'));
+						this.stopLoading();
 					}
 
 					break;

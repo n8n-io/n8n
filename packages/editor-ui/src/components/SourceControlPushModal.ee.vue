@@ -152,9 +152,11 @@ function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<s
 			stagedFiles[file.file] = true;
 		}
 
-		if (context.value === 'workflow' && file.type === 'workflow' && file.id === workflowId.value) {
-			stagedFiles[file.file] = true;
-		} else if (context.value === 'workflows' && file.type === 'workflow') {
+		if (context.value === 'workflow') {
+			if (file.type === 'workflow' && file.id === workflowId.value) {
+				stagedFiles[file.file] = true;
+			}
+		} else {
 			stagedFiles[file.file] = true;
 		}
 	});
@@ -185,6 +187,12 @@ function renderUpdatedAt(file: SourceControlAggregatedFile) {
 			time: dateformat(file.updatedAt, 'HH:MM'),
 		},
 	});
+}
+
+async function onCommitKeyDownEnter() {
+	if (!isSubmitDisabled.value) {
+		await commitAndPush();
+	}
 }
 
 async function commitAndPush() {
@@ -223,7 +231,7 @@ async function commitAndPush() {
 			<div :class="$style.container">
 				<n8n-text>
 					{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
-					<span v-if="context">
+					<span v-if="context === 'workflow'">
 						{{ i18n.baseText(`settings.sourceControl.modals.push.description.${context}`) }}
 					</span>
 					<n8n-link
@@ -301,6 +309,7 @@ async function commitAndPush() {
 						:placeholder="
 							i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 						"
+						@keydown.enter.native="onCommitKeyDownEnter"
 					/>
 				</div>
 				<div v-else-if="!loading">
