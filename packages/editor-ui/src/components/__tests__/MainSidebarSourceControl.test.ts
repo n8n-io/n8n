@@ -4,15 +4,16 @@ import userEvent from '@testing-library/user-event';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
-import { STORES } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, STORES } from '@/constants';
 import { i18nInstance } from '@/plugins/i18n';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { useUsersStore, useSourceControlStore } from '@/stores';
+import { useUsersStore, useSourceControlStore, useUIStore } from '@/stores';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
+let uiStore: ReturnType<typeof useUIStore>;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
 	return render(
@@ -42,6 +43,7 @@ describe('MainSidebarSourceControl', () => {
 		});
 
 		sourceControlStore = useSourceControlStore();
+		uiStore = useUIStore();
 		usersStore = useUsersStore();
 	});
 
@@ -89,13 +91,25 @@ describe('MainSidebarSourceControl', () => {
 		});
 
 		it('should show confirm if pull response http status code is 409', async () => {
+			const status = {};
 			vi.spyOn(sourceControlStore, 'pullWorkfolder').mockRejectedValueOnce({
-				response: { status: 409 },
+				response: { status: 409, data: { data: status } },
 			});
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+
 			const { getAllByRole, getByRole } = renderComponent({ props: { isCollapsed: false } });
 
 			await userEvent.click(getAllByRole('button')[0]);
-			await waitFor(() => expect(getByRole('dialog')).toBeInTheDocument());
+			await waitFor(() =>
+				expect(openModalSpy).toHaveBeenCalledWith(
+					expect.objectContaining({
+						name: SOURCE_CONTROL_PULL_MODAL_KEY,
+						data: expect.objectContaining({
+							status,
+						}),
+					}),
+				),
+			);
 		});
 	});
 });
