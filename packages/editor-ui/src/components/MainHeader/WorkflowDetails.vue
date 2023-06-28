@@ -133,6 +133,7 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -151,7 +152,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage } from '@/composables';
+import { useTitleChange, useToast, useMessage, useLoadingService } from '@/composables';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import {
 	useUIStore,
@@ -161,6 +162,7 @@ import {
 	useTagsStore,
 	useUsersStore,
 	useUsageStore,
+	useSourceControlStore,
 } from '@/stores';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
@@ -197,7 +199,10 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const loadingService = useLoadingService();
+
 		return {
+			loadingService,
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
@@ -211,6 +216,7 @@ export default defineComponent({
 			tagsEditBus: createEventBus(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			eventBus: createEventBus(),
 			EnterpriseEditionFeature,
 		};
 	},
@@ -224,6 +230,7 @@ export default defineComponent({
 			useWorkflowsStore,
 			useUsersStore,
 			useCloudPlanStore,
+			useSourceControlStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -304,6 +311,15 @@ export default defineComponent({
 					},
 				);
 			}
+
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.PUSH,
+				label: this.$locale.baseText('menuActions.push'),
+				disabled:
+					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+					!this.onWorkflowPage ||
+					this.onExecutionsTab,
+			});
 
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
@@ -512,6 +528,30 @@ export default defineComponent({
 				}
 				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
 					(this.$refs.importFile as HTMLInputElement).click();
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.PUSH: {
+					this.loadingService.startLoading();
+					try {
+						await this.onSaveButtonClick();
+
+						const status = await this.sourceControlStore.getAggregatedStatus();
+						const workflowStatus = status.filter(
+							(s) =>
+								(s.id === this.currentWorkflowId && s.type === 'workflow') || s.type !== 'workflow',
+						);
+
+						this.uiStore.openModalWithData({
+							name: SOURCE_CONTROL_PUSH_MODAL_KEY,
+							data: { eventBus: this.eventBus, status: workflowStatus },
+						});
+					} catch (error) {
+						this.showError(error, this.$locale.baseText('error'));
+					} finally {
+						this.loadingService.stopLoading();
+						this.loadingService.setLoadingText(this.$locale.baseText('genericHelpers.loading'));
+					}
+
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.SETTINGS: {
