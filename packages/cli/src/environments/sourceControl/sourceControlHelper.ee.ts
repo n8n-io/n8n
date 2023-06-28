@@ -81,7 +81,6 @@ export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
 export function getTrackingInformationFromSourceControlledFiles(result: SourceControlledFile[]) {
 	return {
 		cred_conflicts: result.filter((file) => file.type === 'credential' && file.conflict).length,
-		variable_conflicts: result.filter((file) => file.type === 'variables' && file.conflict).length,
 		workflow_conflicts: result.filter((file) => file.type === 'workflow' && file.conflict).length,
 		workflow_updates: result.filter(
 			(file) => file.type === 'workflow' && file.status === 'modified',
@@ -89,20 +88,52 @@ export function getTrackingInformationFromSourceControlledFiles(result: SourceCo
 	};
 }
 
-export function getTrackingInformationFromImportResult(result: ImportResult) {
+export function getTrackingInformationFromImportResult(result: ImportResult): {
+	workflow_updates: number;
+} {
 	return {
-		cred_conflicts: result.credentials.length,
-		variable_conflicts: result.variables.imported.length,
-		workflow_conflicts: result.workflows.length,
 		workflow_updates: result.workflows.filter((wf) => wf.name !== 'skipped').length,
 	};
 }
 
-export function getTrackingInformationFromPushResult(result: PushResult) {
+export function getTrackingInformationFromPrePushResult(result: SourceControlledFile[]): {
+	workflows_eligible: number;
+	workflows_eligible_with_conflicts: number;
+	creds_eligible: number;
+	creds_eligible_with_conflicts: number;
+	variables_eligible: number;
+} {
 	return {
-		cred_conflicts: 0,
-		variable_conflicts: 0,
-		workflow_conflicts: 0,
-		workflow_updates: 0,
+		workflows_eligible: result.filter((file) => file.type === 'workflow').length,
+		workflows_eligible_with_conflicts: result.filter(
+			(file) => file.type === 'workflow' && file.conflict,
+		).length,
+		creds_eligible: result.filter((file) => file.type === 'credential').length,
+		creds_eligible_with_conflicts: result.filter(
+			(file) => file.type === 'credential' && file.conflict,
+		).length,
+		variables_eligible: result.filter((file) => file.type === 'variables').length,
+	};
+}
+
+export function getTrackingInformationFromPostPushResult(result: {
+	pushResult: PushResult;
+	diffResult: SourceControlledFile[] | undefined;
+}): {
+	workflows_eligible: number;
+	workflows_pushed: number;
+	creds_pushed: number;
+	variables_pushed: number;
+} {
+	return {
+		workflows_pushed: result.pushResult.pushed.filter((file) => file.local.includes('workflow/'))
+			.length,
+		workflows_eligible: result.diffResult?.filter((file) => file.type === 'workflow').length ?? 0,
+		creds_pushed: result.pushResult.pushed.filter((file) =>
+			file.local.includes('credential_stubs/'),
+		).length,
+		variables_pushed: result.pushResult.pushed.filter((file) =>
+			file.local.includes('variable_stubs'),
+		).length,
 	};
 }

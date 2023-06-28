@@ -192,12 +192,16 @@ export class SourceControlService {
 
 	async pushWorkfolder(
 		options: SourceControlPushWorkFolder,
-	): Promise<PushResult | SourceControlledFile[]> {
+	): Promise<
+		| { pushResult: PushResult; diffResult: SourceControlledFile[] | undefined }
+		| SourceControlledFile[]
+	> {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
+		let diffResult: SourceControlledFile[] | undefined;
 		if (!options.skipDiff) {
-			const diffResult = await this.getStatus();
+			diffResult = await this.getStatus();
 			const possibleConflicts = diffResult?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0 && options.force !== true) {
 				await this.unstage();
@@ -207,10 +211,14 @@ export class SourceControlService {
 		await this.unstage();
 		await this.stage(options);
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
-		return this.gitService.push({
+		const pushResult = await this.gitService.push({
 			branch: this.sourceControlPreferencesService.getBranchName(),
 			force: options.force ?? false,
 		});
+		return {
+			pushResult,
+			diffResult,
+		};
 	}
 
 	async pullWorkfolder(

@@ -18,7 +18,8 @@ import { InternalHooks } from '../../InternalHooks';
 import {
 	getRepoType,
 	getTrackingInformationFromImportResult,
-	getTrackingInformationFromPushResult,
+	getTrackingInformationFromPrePushResult,
+	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromSourceControlledFiles,
 } from './sourceControlHelper.ee';
 
@@ -166,20 +167,23 @@ export class SourceControlController {
 	async pushWorkfolder(
 		req: SourceControlRequest.PushWorkFolder,
 		res: express.Response,
-	): Promise<PushResult | SourceControlledFile[]> {
+	): Promise<
+		| { pushResult: PushResult; diffResult: SourceControlledFile[] | undefined }
+		| SourceControlledFile[]
+	> {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 		try {
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
-			if ((result as PushResult).pushed) {
+			if ('pushResult' in result) {
 				await Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
-					getTrackingInformationFromPushResult(result as PushResult),
+					getTrackingInformationFromPostPushResult(result),
 				);
 				res.statusCode = 200;
 			} else {
 				await Container.get(InternalHooks).onSourceControlUserStartedPushUI(
-					getTrackingInformationFromSourceControlledFiles(result as SourceControlledFile[]),
+					getTrackingInformationFromPrePushResult(result),
 				);
 				res.statusCode = 409;
 			}

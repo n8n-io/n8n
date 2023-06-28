@@ -1071,44 +1071,36 @@ export class InternalHooks implements IInternalHooksClass {
 		workflow_updates: number;
 		workflow_conflicts: number;
 		cred_conflicts: number;
-		variable_conflicts: number;
 	}): Promise<void> {
 		return this.telemetry.track('User started pull via UI', data);
 	}
 
-	async onSourceControlUserFinishedPullUI(data: {
-		workflow_updates: number;
-		workflow_conflicts: number;
-		cred_conflicts: number;
-		variable_conflicts: number;
-	}): Promise<void> {
+	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
 		return this.telemetry.track('User finished pull via UI', data);
 	}
 
-	async onSourceControlUserPulledAPI(data: {
-		workflow_updates: number;
-		workflow_conflicts: number;
-		cred_conflicts: number;
-		variable_conflicts: number;
-	}): Promise<void> {
+	async onSourceControlUserPulledAPI(data: { workflow_updates: number }): Promise<void> {
 		return this.telemetry.track('User pulled via API', data);
 	}
 
 	async onSourceControlUserStartedPushUI(data: {
-		workflow_updates: number;
-		workflow_conflicts: number;
-		cred_conflicts: number;
-		variable_conflicts: number;
+		workflows_eligible: number;
+		workflows_eligible_with_conflicts: number;
+		creds_eligible: number;
+		creds_eligible_with_conflicts: number;
+		variables_eligible: number;
 	}): Promise<void> {
+		console.log('User started push via UI', data);
 		return this.telemetry.track('User started push via UI', data);
 	}
 
 	async onSourceControlUserFinishedPushUI(data: {
-		workflow_updates: number;
-		workflow_conflicts: number;
-		cred_conflicts: number;
-		variable_conflicts: number;
+		workflows_eligible: number;
+		workflows_pushed: number;
+		creds_pushed: number;
+		variables_pushed: number;
 	}): Promise<void> {
+		console.log('User finished push via UI', data);
 		return this.telemetry.track('User finished push via UI', data);
 	}
 }
