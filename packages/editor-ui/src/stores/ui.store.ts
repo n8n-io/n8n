@@ -52,6 +52,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { getStyleTokenValue } from '@/utils';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -330,6 +331,15 @@ export const useUIStore = defineStore(STORES.UI, {
 
 				return linkUrl;
 			};
+		},
+		headerHeight() {
+			return Number(getStyleTokenValue('--header-height'));
+		},
+		bannersHeight() {
+			if (!this.showBanners) {
+				return 0;
+			}
+			return document.getElementById('banners')?.clientHeight ?? 0;
 		},
 	},
 	actions: {
