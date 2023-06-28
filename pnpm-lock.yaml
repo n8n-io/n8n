@@ -1142,8 +1142,8 @@ importers:
         specifier: ^1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
       pyodide:
-        specifier: ^0.22.1
-        version: 0.22.1
+        specifier: ^0.23.3
+        version: 0.23.3
       redis:
         specifier: ^3.1.1
         version: 3.1.2
@@ -18656,8 +18656,8 @@ packages:
     resolution: {integrity: sha512-t+x1zEHDjBwkDGY5v5ApnZ/utcd4XYDiJsaQQoptTXgUXX95sDg1elCdJghzicm7n2mbCBJ3uYWr6M22SO19rg==}
     dev: true
 
-  /pyodide@0.22.1:
-    resolution: {integrity: sha512-6+PkFLTC+kcBKtFQxYBxR44J5IBxLm8UGkobLgZv1SxzV9qOU2rb0YYf0qDtlnfDiN/IQd2uckf+D8Zwe88Mqg==}
+  /pyodide@0.23.3:
+    resolution: {integrity: sha512-t95Nu73ENjwoRhThmxvZIHMD7GXTJ3uOt/E0sJ1TxjBvoU/qPys4SV08FtZBMEnpMRKFzE4uecvx2c0qybSZhw==}
     dependencies:
       base-64: 1.0.0
       node-fetch: 2.6.8
