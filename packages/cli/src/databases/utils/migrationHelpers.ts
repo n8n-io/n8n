@@ -5,7 +5,7 @@ import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
 import { inTest } from '@/constants';
-import type { Migration } from '@db/types';
+import type { Migration, MigrationContext } from '@db/types';
 
 const logger = getLogger();
 
@@ -74,16 +74,23 @@ export const wrapMigration = (migration: Migration) => {
 			: '';
 
 	const migrationName = migration.name;
-	const context = { tablePrefix, dbType, dbName, migrationName, schemaPrefix };
+	const context: Omit<MigrationContext, 'queryRunner'> = {
+		tablePrefix,
+		dbType,
+		dbName,
+		migrationName,
+		schemaPrefix,
+		logger,
+	};
 
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {
-		up: async (queryRunner: QueryRunner) => {
+		async up(queryRunner: QueryRunner) {
 			logMigrationStart(migrationName);
 			await up.call(this, { queryRunner, ...context });
 			logMigrationEnd(migrationName);
 		},
-		down: async (queryRunner: QueryRunner) => {
+		async down(queryRunner: QueryRunner) {
 			await down?.call(this, { queryRunner, ...context });
 		},
 	});

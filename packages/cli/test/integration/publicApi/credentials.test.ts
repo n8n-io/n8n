@@ -77,7 +77,6 @@ describe('POST /credentials', () => {
 		const response = await authOwnerAgent.post('/credentials').send(payload);
 
 		expect(response.statusCode).toBe(200);
-
 		const { id, name, type } = response.body;
 
 		expect(name).toBe(payload.name);

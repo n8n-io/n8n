@@ -20,6 +20,7 @@ packages/**/.turbo
 cypress/videos/*
 cypress/screenshots/*
 *.swp
+CHANGELOG-*.md
 .env
 .env.local.with.aws
 dump.rdb

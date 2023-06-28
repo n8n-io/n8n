@@ -29,7 +29,7 @@ describe('CodeFlow', () => {
 			expect(githubAuth.code.getUri()).toEqual(
 				`${config.authorizationUri}?client_id=abc&` +
 					`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
-					'response_type=code&state=&scope=notifications',
+					'response_type=code&scope=notifications',
 			);
 		});
 
@@ -46,7 +46,7 @@ describe('CodeFlow', () => {
 				expect(authWithoutScopes.code.getUri()).toEqual(
 					`${config.authorizationUri}?client_id=abc&` +
 						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
-						'response_type=code&state=',
+						'response_type=code',
 				);
 			});
 		});
@@ -64,7 +64,7 @@ describe('CodeFlow', () => {
 			expect(authWithEmptyScopes.code.getUri()).toEqual(
 				`${config.authorizationUri}?client_id=abc&` +
 					`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
-					'response_type=code&state=&scope=',
+					'response_type=code&scope=',
 			);
 		});
 
@@ -81,7 +81,7 @@ describe('CodeFlow', () => {
 			expect(authWithEmptyScopes.code.getUri()).toEqual(
 				`${config.authorizationUri}?client_id=abc&` +
 					`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
-					'response_type=code&state=&scope=',
+					'response_type=code&scope=',
 			);
 		});
 
@@ -99,7 +99,7 @@ describe('CodeFlow', () => {
 				expect(authWithParams.code.getUri()).toEqual(
 					`${config.authorizationUri}?bar=qux&client_id=abc&` +
 						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
-						'response_type=code&state=&scope=notifications',
+						'response_type=code&scope=notifications',
 				);
 			});
 		});
