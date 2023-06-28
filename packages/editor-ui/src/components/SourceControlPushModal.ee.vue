@@ -63,9 +63,13 @@ const sortedFiles = computed(() => {
 			}
 		}
 
-		console.log(a, b);
+		if (a.status === 'deleted') {
+			return -1;
+		} else if (b.status === 'deleted') {
+			return 1;
+		}
 
-		return a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0;
+		return a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0;
 	});
 });
 
