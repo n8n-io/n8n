@@ -210,6 +210,14 @@ export class SourceControlService {
 		}
 		await this.unstage();
 		await this.stage(options);
+		if (options.fileNames && diffResult) {
+			const pushedFiles = Array.from(options.fileNames);
+			for (let i = 0; i < diffResult.length; i++) {
+				if (pushedFiles.includes(diffResult[i].file)) {
+					diffResult[i].pushed = true;
+				}
+			}
+		}
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
 		const pushResult = await this.gitService.push({
 			branch: this.sourceControlPreferencesService.getBranchName(),

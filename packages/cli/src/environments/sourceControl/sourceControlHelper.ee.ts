@@ -126,8 +126,8 @@ export function getTrackingInformationFromPostPushResult(result: {
 	variables_pushed: number;
 } {
 	return {
-		workflows_pushed: result.pushResult.pushed.filter((file) => file.local.includes('workflow/'))
-			.length,
+		workflows_pushed:
+			result.diffResult?.filter((file) => file.type === 'workflow' && file.pushed).length ?? 0,
 		workflows_eligible: result.diffResult?.filter((file) => file.type === 'workflow').length ?? 0,
 		creds_pushed: result.pushResult.pushed.filter((file) =>
 			file.local.includes('credential_stubs/'),

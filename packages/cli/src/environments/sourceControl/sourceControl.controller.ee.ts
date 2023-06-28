@@ -244,7 +244,11 @@ export class SourceControlController {
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getStatus() {
 		try {
-			return await this.sourceControlService.getStatus();
+			const result = await this.sourceControlService.getStatus();
+			await Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+				getTrackingInformationFromPrePushResult(result),
+			);
+			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

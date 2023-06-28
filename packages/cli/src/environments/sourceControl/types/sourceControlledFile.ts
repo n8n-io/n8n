@@ -17,4 +17,5 @@ export type SourceControlledFile = {
 	location: SourceControlledFileLocation;
 	conflict: boolean;
 	updatedAt: string;
+	pushed?: boolean;
 };

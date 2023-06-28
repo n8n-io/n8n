@@ -10,7 +10,8 @@ import { getLogger } from '@/Logger';
 import { License } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
+import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -105,11 +106,18 @@ export class Telemetry {
 
 		this.executionCountsBuffer = {};
 
+		const sourceControlPreferences = Container.get(
+			SourceControlPreferencesService,
+		).getPreferences();
+
 		// License info
 		const pulsePacket = {
 			plan_name_current: this.license.getPlanName(),
 			quota: this.license.getTriggerLimit(),
 			usage: await LicenseService.getActiveTriggerCount(),
+			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
+			branchName: sourceControlPreferences.branchName,
+			read_only_instance: sourceControlPreferences.branchReadOnly,
 		};
 		allPromises.push(this.track('pulse', pulsePacket));
 		return Promise.all(allPromises);

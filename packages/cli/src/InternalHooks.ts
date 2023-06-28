@@ -1045,19 +1045,6 @@ export class InternalHooks implements IInternalHooksClass {
 		return this.telemetry.track('User created variable', createData);
 	}
 
-	async onSourceCodePulse(data: {
-		instance_id: string;
-		plan_name_current: string;
-		usage: { active_workflows: number };
-		quota: { active_workflows: number };
-		source_control_set_up: boolean;
-		branch_name: string;
-		read_only_instance: boolean;
-		reservation_id: string;
-	}): Promise<void> {
-		return this.telemetry.track('Source code pulse', data);
-	}
-
 	async onSourceControlSettingsUpdated(data: {
 		branch_name: string;
 		read_only_instance: boolean;
@@ -1090,7 +1077,6 @@ export class InternalHooks implements IInternalHooksClass {
 		creds_eligible_with_conflicts: number;
 		variables_eligible: number;
 	}): Promise<void> {
-		console.log('User started push via UI', data);
 		return this.telemetry.track('User started push via UI', data);
 	}
 
@@ -1100,7 +1086,6 @@ export class InternalHooks implements IInternalHooksClass {
 		creds_pushed: number;
 		variables_pushed: number;
 	}): Promise<void> {
-		console.log('User finished push via UI', data);
 		return this.telemetry.track('User finished push via UI', data);
 	}
 }
