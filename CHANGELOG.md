@@ -1,3 +1,32 @@
+# [0.235.0](https://github.com/n8n-io/n8n/compare/n8n@0.234.0...n8n@0.235.0) (2023-06-28)
+
+
+### Bug Fixes
+
+* **core:** Add empty credential value marker to show empty pw field ([#6532](https://github.com/n8n-io/n8n/issues/6532)) ([9294e2d](https://github.com/n8n-io/n8n/commit/9294e2da3c7c99c2099f5865e610fa7217bf06be))
+* **core:** All migrations should run in a transaction ([#6519](https://github.com/n8n-io/n8n/issues/6519)) ([e152cfe](https://github.com/n8n-io/n8n/commit/e152cfe27cf3396f4b278614f1d46d9dd723f36e))
+* **core:** Rename to credential_stubs and variable_stubs.json ([#6528](https://github.com/n8n-io/n8n/issues/6528)) ([b06462f](https://github.com/n8n-io/n8n/commit/b06462f4415bd1143a00b4a66e6e626da8c52196))
+* **Edit Image Node:** Fix transparent operation ([#6513](https://github.com/n8n-io/n8n/issues/6513)) ([4a4bcbc](https://github.com/n8n-io/n8n/commit/4a4bcbca298bf90c54d3597103e6a231855abbd2))
+* **editor:** Add default author name and email to source control settings ([#6543](https://github.com/n8n-io/n8n/issues/6543)) ([e1a02c7](https://github.com/n8n-io/n8n/commit/e1a02c76257de30e08878279dea33d7854d46938))
+* **editor:** Change default branchColor and remove label ([#6541](https://github.com/n8n-io/n8n/issues/6541)) ([186271e](https://github.com/n8n-io/n8n/commit/186271e939bca19ec9c94d9455e9430d8b8cf9d7))
+* **Google Drive Node:** URL parsing ([#6527](https://github.com/n8n-io/n8n/issues/6527)) ([d9ed0b3](https://github.com/n8n-io/n8n/commit/d9ed0b31b538320a67ee4e5c0cae34656c9f4334))
+* **Google Sheets Node:** Incorrect read of 0 and false ([#6525](https://github.com/n8n-io/n8n/issues/6525)) ([806d134](https://github.com/n8n-io/n8n/commit/806d13460240abe94843e569b1820cd8d0d8edd1))
+* **Merge Node:** Enrich input 2 fix ([#6526](https://github.com/n8n-io/n8n/issues/6526)) ([c82c7f1](https://github.com/n8n-io/n8n/commit/c82c7f19128df3a11d6d0f18e8d8dab57e6a3b8f))
+* **Notion Node:** Version fix ([#6531](https://github.com/n8n-io/n8n/issues/6531)) ([38dc784](https://github.com/n8n-io/n8n/commit/38dc784d2eed25aae777c5c3c3fda1a35e20bd24))
+* **Sendy Node:** Fix issue with brand id not being sent ([#6530](https://github.com/n8n-io/n8n/issues/6530)) ([2e8dfb8](https://github.com/n8n-io/n8n/commit/2e8dfb86d4636781b319d6190e8be12e7661ee16))
+
+
+### Features
+
+* Add missing input panels to some trigger nodes ([#6518](https://github.com/n8n-io/n8n/issues/6518)) ([fdf8a42](https://github.com/n8n-io/n8n/commit/fdf8a428ed38bb3ceb2bc0e50b002b34843d8fc4))
+* **editor:** Prevent saving of workflow when canvas is loading ([#6497](https://github.com/n8n-io/n8n/issues/6497)) ([f89ef83](https://github.com/n8n-io/n8n/commit/f89ef83c766fafb1d0497ed91a74b93e8d2af1ec))
+* **editor:** SQL editor overhaul ([#6282](https://github.com/n8n-io/n8n/issues/6282)) ([beedfb6](https://github.com/n8n-io/n8n/commit/beedfb609ccde2ef202e08566580a2e1a6b6eafa))
+* **Google Drive Node:** Overhaul ([#5941](https://github.com/n8n-io/n8n/issues/5941)) ([d70a1cb](https://github.com/n8n-io/n8n/commit/d70a1cb0c82ee0a4b92776684c6c9079020d028f))
+* **HTTP Request Node:** Notice about dev console ([#6516](https://github.com/n8n-io/n8n/issues/6516)) ([d431117](https://github.com/n8n-io/n8n/commit/d431117c9e5db9ff0ec6a1e7371bbf58698957c9))
+* **Matrix Node:** Allow setting filename if the binary data has none ([#6536](https://github.com/n8n-io/n8n/issues/6536)) ([8b76e98](https://github.com/n8n-io/n8n/commit/8b76e980852062b192a95593035697c43d6f808e))
+
+
+
 # [0.234.0](https://github.com/n8n-io/n8n/compare/n8n@0.233.0...n8n@0.234.0) (2023-06-22)
 
 
