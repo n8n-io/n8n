@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
+import { caseRLC } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -21,11 +22,7 @@ const properties: INodeProperties[] = [
 		default: 'case',
 	},
 	{
-		displayName: 'Case ID',
-		name: 'caseId',
-		type: 'string',
-		default: '',
-		required: true,
+		...caseRLC,
 		displayOptions: {
 			show: {
 				location: ['case'],
@@ -59,8 +56,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let endpoint;
 
 	if (location === 'case') {
-		const id = this.getNodeParameter('id', i) as string;
-		endpoint = `/v1/case/${id}/page/${pageId}`;
+		const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
+		endpoint = `/v1/case/${caseId}/page/${pageId}`;
 	} else {
 		endpoint = `/v1/page/${pageId}`;
 	}

@@ -1,7 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { theHiveApiRequest } from '../transport';
 
-async function search(
+async function listResource(
 	this: ILoadOptionsFunctions,
 	resource: string,
 	filterField: string,
@@ -62,7 +62,7 @@ export async function caseSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return search.call(this, 'listCase', 'title', 'title', 'cases', filter, paginationToken);
+	return listResource.call(this, 'listCase', 'title', 'title', 'cases', filter, paginationToken);
 }
 
 export async function alertSearch(
@@ -70,5 +70,5 @@ export async function alertSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return search.call(this, 'listAlert', 'title', 'title', 'alerts', filter, paginationToken);
+	return listResource.call(this, 'listAlert', 'title', 'title', 'alerts', filter, paginationToken);
 }

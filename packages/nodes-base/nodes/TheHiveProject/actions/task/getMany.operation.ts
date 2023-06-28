@@ -1,18 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { returnAllAndLimit } from '../common.description';
+import { caseRLC, returnAllAndLimit } from '../common.description';
 import { prepareRangeQuery, prepareSortQuery } from '../../helpers/utils';
 import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Case ID',
-		name: 'caseId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
+	caseRLC,
 	...returnAllAndLimit,
 	{
 		displayName: 'Options',
@@ -46,7 +40,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let responseData: IDataObject | IDataObject[] = [];
 
 	const returnAll = this.getNodeParameter('returnAll', i);
-	const caseId = this.getNodeParameter('caseId', i) as string;
+	const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
 	const options = this.getNodeParameter('options', i);
 
 	const qs: IDataObject = {};
