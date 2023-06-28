@@ -9,7 +9,6 @@ import { i18nInstance } from '@/plugins/i18n';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { useUsersStore, useSourceControlStore, useUIStore } from '@/stores';
-import { createEventBus } from 'n8n-design-system/utils';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
