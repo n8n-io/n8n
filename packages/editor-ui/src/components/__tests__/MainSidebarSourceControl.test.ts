@@ -66,7 +66,7 @@ describe('MainSidebarSourceControl', () => {
 				authorEmail: '',
 				repositoryUrl: '',
 				branchReadOnly: false,
-				branchColor: '#F4A6DC',
+				branchColor: '#5296D6',
 				connected: true,
 				publicKey: '',
 			});
