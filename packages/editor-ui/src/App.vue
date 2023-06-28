@@ -10,21 +10,22 @@
 			}"
 		>
 			<div v-if="showBanners" id="banners" :class="$style.banners">
-				<n8n-callout theme="warning" icon="info-circle" override-icon :class="$style['v1-banner']">
-					<span v-html="'Here be Banners. '"></span>
-					<a>
-						<span v-html="'Learn more'"></span>
-					</a>
-					<template #trailingContent>
-						<n8n-icon size="small" icon="xmark" :class="$style.xmark" />
-					</template>
+				<n8n-callout
+					theme="warning"
+					icon="info-circle"
+					:roundCorners="false"
+					:class="$style['v1-banner']"
+				>
+					<span v-html="'Your trial is over. Upgrade now to keep automating.'"></span>
 				</n8n-callout>
-				<n8n-callout theme="danger" icon="info-circle" override-icon :class="$style['v1-banner']">
-					<span v-html="'Here be Banners. '"></span>
-					<a>
-						<span v-html="'Learn more'"></span>
-					</a>
-				</n8n-callout>
+				<!-- <n8n-callout
+					theme="info"
+					icon="info-circle"
+					:roundCorners="false"
+					:class="$style['v1-banner']"
+				>
+					<span v-html="'6 days left in your n8n trial'"></span>
+				</n8n-callout> -->
 			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>

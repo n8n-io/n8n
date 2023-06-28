@@ -50,6 +50,10 @@ export default defineComponent({
 		slim: {
 			type: Boolean,
 		},
+		roundCorners: {
+			type: Boolean,
+			default: true,
+		},
 	},
 	computed: {
 		classes(): string[] {
@@ -58,6 +62,7 @@ export default defineComponent({
 				this.$style.callout,
 				this.$style[this.theme],
 				this.slim ? this.$style.slim : '',
+				this.roundCorners ? this.$style.round : '',
 			];
 		},
 		getIcon(): string {
@@ -78,7 +83,6 @@ export default defineComponent({
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) var(--border-style-base);
-	border-radius: var(--border-radius-base);
 	align-items: center;
 	line-height: var(--font-line-height-loose);
 
@@ -86,6 +90,10 @@ export default defineComponent({
 		line-height: var(--font-line-height-loose);
 		padding: var(--spacing-3xs) var(--spacing-2xs);
 	}
+}
+
+.round {
+	border-radius: var(--border-radius-base);
 }
 
 .messageSection {
