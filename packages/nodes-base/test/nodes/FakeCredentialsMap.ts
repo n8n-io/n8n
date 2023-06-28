@@ -26,4 +26,23 @@ export const FAKE_CREDENTIALS_DATA = {
 		accessKeyId: 'key',
 		secretAccessKey: 'secret',
 	},
+	twitterOAuth2Api: {
+		grantType: 'pkce',
+		authUrl: 'https://twitter.com/i/oauth2/authorize',
+		accessTokenUrl: 'https://api.twitter.com/2/oauth2/token',
+		clientId: 'CLIENTID',
+		clientSecret: 'CLIENTSECRET',
+		scope:
+			'tweet.read users.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access like.read like.write dm.write dm.read list.read list.write',
+		authQueryParameters: '',
+		authentication: 'header',
+		oauthTokenData: {
+			token_type: 'bearer',
+			expires_in: 7200,
+			access_token: 'ACCESSTOKEN',
+			scope:
+				'tweet.moderate.write follows.read offline.access list.write dm.read list.read tweet.write like.write like.read users.read dm.write tweet.read follows.write',
+			refresh_token: 'REFRESHTOKEN',
+		},
+	},
 } as const;

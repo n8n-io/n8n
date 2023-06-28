@@ -11,7 +11,7 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
+import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service.ee';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -154,6 +154,7 @@ export = {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
+			updateData.id = id;
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 

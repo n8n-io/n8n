@@ -12,6 +12,7 @@ import { Container } from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { RoleRepository } from '@db/repositories';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -29,7 +30,7 @@ const enabledFeatures = {
 	[LICENSE_FEATURES.SAML]: false,
 	[LICENSE_FEATURES.LOG_STREAMING]: false,
 	[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
-	[LICENSE_FEATURES.VERSION_CONTROL]: false,
+	[LICENSE_FEATURES.SOURCE_CONTROL]: false,
 };
 
 type Feature = keyof typeof enabledFeatures;
@@ -108,10 +109,18 @@ const resetLogStreaming = async () => {
 	}
 };
 
+const removeActiveWorkflows = async () => {
+	const workflowRunner = Container.get(ActiveWorkflowRunner);
+
+	workflowRunner.removeAllQueuedWorkflowActivations();
+	await workflowRunner.removeAll();
+};
+
 export const e2eController = Router();
 
 e2eController.post('/db/reset', async (req, res) => {
 	await resetLogStreaming();
+	await removeActiveWorkflows();
 	await truncateAll();
 	await setupUserManagement();
 

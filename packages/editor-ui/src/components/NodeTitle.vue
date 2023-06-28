@@ -41,9 +41,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 export default defineComponent({
 	name: 'NodeTitle',
+	components: {
+		NodeIcon,
+	},
 	props: {
 		value: {
 			type: String,

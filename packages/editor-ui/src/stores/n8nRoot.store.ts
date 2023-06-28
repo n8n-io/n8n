@@ -2,7 +2,6 @@ import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/con
 import type { IRestApiContext, RootState } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useNodeTypesStore } from './nodeTypes.store';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
@@ -76,44 +75,44 @@ export const useRootStore = defineStore(STORES.ROOT, {
 	actions: {
 		setUrlBaseWebhook(urlBaseWebhook: string): void {
 			const url = urlBaseWebhook.endsWith('/') ? urlBaseWebhook : `${urlBaseWebhook}/`;
-			Vue.set(this, 'urlBaseWebhook', url);
+			this.urlBaseWebhook = url;
 		},
 		setUrlBaseEditor(urlBaseEditor: string): void {
 			const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
-			Vue.set(this, 'urlBaseEditor', url);
+			this.urlBaseEditor = url;
 		},
 		setEndpointWebhook(endpointWebhook: string): void {
-			Vue.set(this, 'endpointWebhook', endpointWebhook);
+			this.endpointWebhook = endpointWebhook;
 		},
 		setEndpointWebhookTest(endpointWebhookTest: string): void {
-			Vue.set(this, 'endpointWebhookTest', endpointWebhookTest);
+			this.endpointWebhookTest = endpointWebhookTest;
 		},
 		setTimezone(timezone: string): void {
-			Vue.set(this, 'timezone', timezone);
+			this.timezone = timezone;
 		},
 		setExecutionTimeout(executionTimeout: number): void {
-			Vue.set(this, 'executionTimeout', executionTimeout);
+			this.executionTimeout = executionTimeout;
 		},
 		setMaxExecutionTimeout(maxExecutionTimeout: number): void {
-			Vue.set(this, 'maxExecutionTimeout', maxExecutionTimeout);
+			this.maxExecutionTimeout = maxExecutionTimeout;
 		},
 		setVersionCli(version: string): void {
-			Vue.set(this, 'versionCli', version);
+			this.versionCli = version;
 		},
 		setInstanceId(instanceId: string): void {
-			Vue.set(this, 'instanceId', instanceId);
+			this.instanceId = instanceId;
 		},
 		setOauthCallbackUrls(urls: IDataObject): void {
-			Vue.set(this, 'oauthCallbackUrls', urls);
+			this.oauthCallbackUrls = urls;
 		},
 		setN8nMetadata(metadata: IDataObject): void {
-			Vue.set(this, 'n8nMetadata', metadata);
+			this.n8nMetadata = metadata as RootState['n8nMetadata'];
 		},
 		setDefaultLocale(locale: string): void {
-			Vue.set(this, 'defaultLocale', locale);
+			this.defaultLocale = locale;
 		},
 		setIsNpmAvailable(isNpmAvailable: boolean): void {
-			Vue.set(this, 'isNpmAvailable', isNpmAvailable);
+			this.isNpmAvailable = isNpmAvailable;
 		},
 	},
 });
