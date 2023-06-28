@@ -14,6 +14,7 @@ import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { WorkflowEntityWithVersion } from '@db/entities/WorkflowEntityWithVersion';
 import { RoleRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -22,10 +23,12 @@ import type { WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { In } from 'typeorm';
+import {isSharingEnabled, whereClause} from '@/UserManagement/UserManagementHelper';
+import {FindManyOptions, In} from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import {FindOneOptions} from "typeorm/find-options/FindOneOptions";
+import pick from 'lodash/pick';
 
 export const workflowsController = express.Router();
 
@@ -192,7 +195,6 @@ workflowsController.get(
 	'/:id(\\d+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
-
 		let relations = ['workflow', 'workflow.tags', 'role'];
 
 		if (config.getEnv('workflowTagsDisabled')) {
@@ -223,6 +225,77 @@ workflowsController.get(
 	}),
 );
 
+/**
+ * GET /workflows/:id/versions
+ */
+workflowsController.get(
+	'/:id(\\d+)/versions',
+	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
+		const { id: workflowId } = req.params;
+
+		LoggerProxy.debug(`workflowId "${workflowId}`);
+
+		const options: FindManyOptions<WorkflowEntityWithVersion> = {
+			select: ['id', 'name', 'active', 'createdAt', 'updatedAt', 'versionId'],
+			order: { updatedAt: 'DESC' },
+			where: {
+				id: workflowId,
+			},
+		};
+
+		return Db.collections.WorkflowVersions.find(options);
+	}),
+);
+
+workflowsController.get(
+	'/version/:id',
+	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
+		const { id: vid } = req.params;
+
+		LoggerProxy.debug(`versionId "${vid}`);
+
+		const options: FindOneOptions<WorkflowEntityWithVersion> = {
+			// select: ['id', 'name', 'active', 'createdAt', 'updatedAt', 'versionId'],
+			// order: { updatedAt: 'DESC' },
+			where: { versionId: vid },
+		};
+
+		return Db.collections.WorkflowVersions.findOne(options);
+	}),
+);
+
+workflowsController.patch(
+	'/version/:id',
+	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
+		const { id: vid } = req.params;
+
+		const options: FindOneOptions<WorkflowEntityWithVersion> = {
+			// select: ['id', 'name', 'active', 'createdAt', 'updatedAt', 'versionId'],
+			// order: { updatedAt: 'DESC' },
+			where: { versionId: vid },
+		};
+
+		const current = await Db.collections.WorkflowVersions.findOne(options);
+
+		if (current && current.id) {
+			await Db.collections.Workflow.update(
+				current.id as string,
+				pick(current, [
+					'name',
+					'active',
+					'nodes',
+					'connections',
+					'settings',
+					'staticData',
+					'pinData',
+					'versionId',
+				]),
+			);
+		}
+		
+		return current;
+	}),
+);
 // Updates an existing workflow
 /**
  * PATCH /workflows/:id

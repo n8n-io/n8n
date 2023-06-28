@@ -18,6 +18,7 @@ import { WorkflowEntity } from './WorkflowEntity';
 import { WorkflowTagMapping } from './WorkflowTagMapping';
 import { WorkflowStatistics } from './WorkflowStatistics';
 import { ExecutionMetadata } from './ExecutionMetadata';
+import {WorkflowEntityWithVersion} from "@db/entities/WorkflowEntityWithVersion";
 
 export const entities = {
 	AuthIdentity,
@@ -36,6 +37,7 @@ export const entities = {
 	Variables,
 	WebhookEntity,
 	WorkflowEntity,
+	WorkflowEntityWithVersion,
 	WorkflowTagMapping,
 	WorkflowStatistics,
 	ExecutionMetadata,

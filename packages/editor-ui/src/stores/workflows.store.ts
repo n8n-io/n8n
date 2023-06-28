@@ -392,6 +392,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflow;
 		},
 
+		async fetchWorkflowVersions(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/workflows/${id}/versions`);
+		},
+
+		async fetchWorkflowVersion(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/workflows/version/${id}`);
+		},
+
+		async restoreVersion(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'PATCH', `/workflows/version/${id}`);
+		},
+
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
 			const workflowsEEStore = useWorkflowsEEStore();
 

@@ -57,6 +57,7 @@ import type {
 	VariablesRepository,
 	WebhookRepository,
 	WorkflowRepository,
+	WorkflowVersionsRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
@@ -102,6 +103,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Variables: VariablesRepository;
 	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
+	WorkflowVersions: WorkflowVersionsRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }
@@ -140,6 +142,10 @@ export interface IWorkflowToImport extends IWorkflowBase {
 }
 
 export interface IWorkflowResponse extends IWorkflowBase {
+	id: string;
+}
+
+export interface IWorkflowVersionsRepository extends IWorkflowBase {
 	id: string;
 }
 
