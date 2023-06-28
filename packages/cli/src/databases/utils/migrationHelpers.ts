@@ -5,7 +5,7 @@ import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
 import { inTest } from '@/constants';
-import type { Migration } from '@db/types';
+import type { Migration, MigrationContext } from '@db/types';
 
 const logger = getLogger();
 
@@ -68,7 +68,13 @@ export const wrapMigration = (migration: Migration) => {
 	const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
 	const tablePrefix = config.getEnv('database.tablePrefix');
 	const migrationName = migration.name;
-	const context = { tablePrefix, dbType, dbName, migrationName };
+	const context: Omit<MigrationContext, 'queryRunner'> = {
+		tablePrefix,
+		dbType,
+		dbName,
+		migrationName,
+		logger,
+	};
 
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {
