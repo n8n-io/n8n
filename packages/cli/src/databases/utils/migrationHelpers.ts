@@ -106,13 +106,13 @@ export const wrapMigration = (migration: Migration) => {
 				)) as Array<{ rows: number }>;
 
 				const averageExecutionSize = dbFileSize / counting[0].rows;
-				const nubmerOfExecutionsToKeep = Math.floor(
+				const numberOfExecutionsToKeep = Math.floor(
 					DESIRED_DATABASE_FILE_SIZE / averageExecutionSize,
 				);
 
 				const query = `
 					SELECT id FROM "${tablePrefix}execution_entity"
-					ORDER BY id DESC limit ${nubmerOfExecutionsToKeep}, 1;
+					ORDER BY id DESC limit ${numberOfExecutionsToKeep}, 1;
 				`;
 
 				const idToKeep = (await queryRunner.query(query)) as Array<{ id: number }>;
