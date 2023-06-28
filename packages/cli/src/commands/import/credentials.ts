@@ -4,7 +4,6 @@ import fs from 'fs';
 import glob from 'fast-glob';
 import { Container } from 'typedi';
 import type { EntityManager } from 'typeorm';
-import config from '@/config';
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -168,12 +167,6 @@ export class ImportCredentialsCommand extends BaseCommand {
 			},
 			['credentialsId', 'userId'],
 		);
-		if (config.getEnv('database.type') === 'postgresdb') {
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			await this.transactionManager.query(
-				`SELECT setval('${tablePrefix}credentials_entity_id_seq', (SELECT MAX(id) from ${tablePrefix}credentials_entity))`,
-			);
-		}
 	}
 
 	private async getOwner() {

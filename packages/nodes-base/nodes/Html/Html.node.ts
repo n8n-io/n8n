@@ -8,7 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { placeholder } from './placeholder';
-import { getResolvables, getValue } from './utils';
+import { getValue } from './utils';
+import { getResolvables } from '@utils/utilities';
 import type { IValueData } from './types';
 
 export class Html implements INodeType {

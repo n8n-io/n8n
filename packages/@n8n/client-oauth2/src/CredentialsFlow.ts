@@ -1,7 +1,7 @@
 import type { ClientOAuth2, ClientOAuth2Options } from './ClientOAuth2';
 import type { ClientOAuth2Token, ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { DEFAULT_HEADERS } from './constants';
-import { auth, expects, getRequestOptions, sanitizeScope } from './utils';
+import { auth, expects, getRequestOptions } from './utils';
 
 interface CredentialsFlowBody {
 	grant_type: 'client_credentials';
@@ -28,7 +28,7 @@ export class CredentialsFlow {
 		};
 
 		if (options.scopes !== undefined) {
-			body.scope = sanitizeScope(options.scopes);
+			body.scope = options.scopes.join(options.scopesSeparator ?? ' ');
 		}
 
 		const requestOptions = getRequestOptions(
