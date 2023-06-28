@@ -54,6 +54,13 @@ const workflowId = computed(() => {
 });
 
 const sortedFiles = computed(() => {
+	const statusPriority = {
+		deleted: 1,
+		modified: 2,
+		renamed: 3,
+		created: 4,
+	};
+
 	return [...files.value].sort((a, b) => {
 		if (context.value === 'workflow') {
 			if (a.id === workflowId.value) {
@@ -63,9 +70,9 @@ const sortedFiles = computed(() => {
 			}
 		}
 
-		if (a.status === 'deleted') {
+		if (statusPriority[a.status] < statusPriority[b.status]) {
 			return -1;
-		} else if (b.status === 'deleted') {
+		} else if (statusPriority[a.status] > statusPriority[b.status]) {
 			return 1;
 		}
 
