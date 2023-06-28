@@ -7,7 +7,8 @@ import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { LoggerProxy } from 'n8n-workflow';
 import { SOURCE_CONTROL_GIT_KEY_COMMENT } from './constants';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import { ImportResult } from './types/importResult';
+import type { ImportResult } from './types/importResult';
+import type { PushResult } from 'simple-git';
 
 export function sourceControlFoldersExistCheck(folders: string[]) {
 	// running these file access function synchronously to avoid race conditions
@@ -94,5 +95,14 @@ export function getTrackingInformationFromImportResult(result: ImportResult) {
 		variable_conflicts: result.variables.imported.length,
 		workflow_conflicts: result.workflows.length,
 		workflow_updates: result.workflows.filter((wf) => wf.name !== 'skipped').length,
+	};
+}
+
+export function getTrackingInformationFromPushResult(result: PushResult) {
+	return {
+		cred_conflicts: 0,
+		variable_conflicts: 0,
+		workflow_conflicts: 0,
+		workflow_updates: 0,
 	};
 }

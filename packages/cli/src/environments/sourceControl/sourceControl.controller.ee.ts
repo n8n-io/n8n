@@ -18,6 +18,7 @@ import { InternalHooks } from '../../InternalHooks';
 import {
 	getRepoType,
 	getTrackingInformationFromImportResult,
+	getTrackingInformationFromPushResult,
 	getTrackingInformationFromSourceControlledFiles,
 } from './sourceControlHelper.ee';
 
@@ -172,6 +173,9 @@ export class SourceControlController {
 		try {
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
 			if ((result as PushResult).pushed) {
+				await Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
+					getTrackingInformationFromPushResult(result as PushResult),
+				);
 				res.statusCode = 200;
 			} else {
 				await Container.get(InternalHooks).onSourceControlUserStartedPushUI(
