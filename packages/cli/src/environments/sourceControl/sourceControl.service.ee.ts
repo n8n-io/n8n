@@ -32,6 +32,8 @@ import type {
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
+import type { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
+import type { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
@@ -252,6 +254,7 @@ export class SourceControlService {
 				...status.modified,
 			]);
 		}
+		mergedFileNames.add(this.sourceControlExportService.getOwnersPath());
 		const deletedFiles = new Set<string>(status.deleted);
 		deletedFiles.forEach((e) => mergedFileNames.delete(e));
 		await this.unstage();
@@ -285,6 +288,20 @@ export class SourceControlService {
 		let conflict = false;
 		let status: SourceControlledFileStatus = 'unknown';
 		let type: SourceControlledFileType = 'file';
+		let updatedAt = '';
+
+		const allWorkflows: Map<string, WorkflowEntity> = new Map();
+		(await Db.collections.Workflow.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
+			(workflow) => {
+				allWorkflows.set(workflow.id, workflow);
+			},
+		);
+		const allCredentials: Map<string, CredentialsEntity> = new Map();
+		(await Db.collections.Credentials.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
+			(credential) => {
+				allCredentials.set(credential.id, credential);
+			},
+		);
 
 		// initialize status from git status result
 		if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
@@ -303,14 +320,14 @@ export class SourceControlService {
 					.replace(/[\/,\\]/, '')
 					.replace('.json', '');
 				if (location === 'remote') {
-					const existingWorkflow = await Db.collections.Workflow.find({
-						where: { id },
-					});
-					if (existingWorkflow?.length > 0) {
-						name = existingWorkflow[0].name;
+					const existingWorkflow = allWorkflows.get(id);
+					if (existingWorkflow) {
+						name = existingWorkflow.name;
+						updatedAt = existingWorkflow.updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
+					// todo: once we have audit log, this deletion date could be looked up
 				}
 			} else {
 				const workflow = await this.sourceControlExportService.getWorkflowFromFile(fileName);
@@ -326,6 +343,11 @@ export class SourceControlService {
 					id = workflow.id;
 					name = workflow.name;
 				}
+				const existingWorkflow = allWorkflows.get(id);
+				if (existingWorkflow) {
+					name = existingWorkflow.name;
+					updatedAt = existingWorkflow.updatedAt.toISOString();
+				}
 			}
 		}
 		if (fileName.startsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
@@ -336,11 +358,10 @@ export class SourceControlService {
 					.replace(/[\/,\\]/, '')
 					.replace('.json', '');
 				if (location === 'remote') {
-					const existingCredential = await Db.collections.Credentials.find({
-						where: { id },
-					});
-					if (existingCredential?.length > 0) {
-						name = existingCredential[0].name;
+					const existingCredential = allCredentials.get(id);
+					if (existingCredential) {
+						name = existingCredential.name;
+						updatedAt = existingCredential.updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
@@ -359,6 +380,11 @@ export class SourceControlService {
 					id = credential.id;
 					name = credential.name;
 				}
+				const existingCredential = allCredentials.get(id);
+				if (existingCredential) {
+					name = existingCredential.name;
+					updatedAt = existingCredential.updatedAt.toISOString();
+				}
 			}
 		}
 
@@ -369,9 +395,15 @@ export class SourceControlService {
 		}
 
 		if (fileName.startsWith(SOURCE_CONTROL_TAGS_EXPORT_FILE)) {
+			const lastUpdatedTag = await Db.collections.Tag.find({
+				order: { updatedAt: 'DESC' },
+				take: 1,
+				select: ['updatedAt'],
+			});
 			id = 'tags';
 			name = 'tags';
 			type = 'tags';
+			updatedAt = lastUpdatedTag[0]?.updatedAt.toISOString();
 		}
 
 		if (!id) return;
@@ -384,6 +416,7 @@ export class SourceControlService {
 			status,
 			location,
 			conflict,
+			updatedAt,
 		};
 	}
 
