@@ -1441,7 +1441,7 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
-export type VersionControlPreferences = {
+export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
 	authorName: string;
@@ -1454,7 +1454,7 @@ export type VersionControlPreferences = {
 	currentBranch?: string;
 };
 
-export interface VersionControlStatus {
+export interface SourceControlStatus {
 	ahead: number;
 	behind: number;
 	conflicted: string[];
@@ -1474,7 +1474,7 @@ export interface VersionControlStatus {
 	tracking: null;
 }
 
-export interface VersionControlAggregatedFile {
+export interface SourceControlAggregatedFile {
 	conflict: boolean;
 	file: string;
 	id: string;
@@ -1482,6 +1482,7 @@ export interface VersionControlAggregatedFile {
 	name: string;
 	status: string;
 	type: string;
+	updatedAt?: string;
 }
 
 export declare namespace Cloud {

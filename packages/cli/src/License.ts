@@ -129,8 +129,8 @@ export class License {
 		return true;
 	}
 
-	isVersionControlLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	isSourceControlLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
 	}
 
 	isAPIDisabled() {
@@ -184,6 +184,10 @@ export class License {
 
 	getVariablesLimit(): number {
 		return (this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1) as number;
+	}
+
+	getUsersLimit(): number {
+		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) as number;
 	}
 
 	getPlanName(): string {

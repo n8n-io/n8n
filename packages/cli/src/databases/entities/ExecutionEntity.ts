@@ -1,11 +1,20 @@
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-import { Column, Entity, Generated, Index, OneToMany, PrimaryColumn } from 'typeorm';
-import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
-import { IWorkflowDb } from '@/Interfaces';
-import type { IExecutionFlattedDb } from '@/Interfaces';
+import {
+	Column,
+	Entity,
+	Generated,
+	Index,
+	ManyToOne,
+	OneToMany,
+	OneToOne,
+	PrimaryColumn,
+	Relation,
+} from 'typeorm';
+import { datetimeColumnType } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
+import type { ExecutionData } from './ExecutionData';
 import type { ExecutionMetadata } from './ExecutionMetadata';
-import { IsOptional } from 'class-validator';
+import { WorkflowEntity } from './WorkflowEntity';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -13,13 +22,10 @@ import { IsOptional } from 'class-validator';
 @Index(['finished', 'id'])
 @Index(['workflowId', 'finished', 'id'])
 @Index(['workflowId', 'waitTill', 'id'])
-export class ExecutionEntity implements IExecutionFlattedDb {
+export class ExecutionEntity {
 	@Generated()
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;
-
-	@Column('text')
-	data: string;
 
 	@Column()
 	finished: boolean;
@@ -43,10 +49,7 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column({ type: datetimeColumnType, nullable: true })
 	stoppedAt: Date;
 
-	@Column(jsonColumnType)
-	workflowData: IWorkflowDb;
-
-	@Column({ nullable: true, transformer: idStringifier })
+	@Column({ nullable: true })
 	workflowId: string;
 
 	@Column({ type: datetimeColumnType, nullable: true })
@@ -54,4 +57,10 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
+
+	@OneToOne('ExecutionData', 'execution')
+	executionData: Relation<ExecutionData>;
+
+	@ManyToOne('WorkflowEntity')
+	workflow: WorkflowEntity;
 }

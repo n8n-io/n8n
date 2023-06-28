@@ -29,6 +29,7 @@ import {
 	AuthProviderSyncHistoryRepository,
 	CredentialsRepository,
 	EventDestinationsRepository,
+	ExecutionDataRepository,
 	ExecutionMetadataRepository,
 	ExecutionRepository,
 	InstalledNodesRepository,
@@ -180,6 +181,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	collections.Credentials = Container.get(CredentialsRepository);
 	collections.EventDestinations = Container.get(EventDestinationsRepository);
 	collections.Execution = Container.get(ExecutionRepository);
+	collections.ExecutionData = Container.get(ExecutionDataRepository);
 	collections.ExecutionMetadata = Container.get(ExecutionMetadataRepository);
 	collections.InstalledNodes = Container.get(InstalledNodesRepository);
 	collections.InstalledPackages = Container.get(InstalledPackagesRepository);

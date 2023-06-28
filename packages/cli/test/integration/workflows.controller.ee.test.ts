@@ -586,7 +586,6 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 				},
 			],
 		});
-
 		expect(response.statusCode).toBe(400);
 	});
 
