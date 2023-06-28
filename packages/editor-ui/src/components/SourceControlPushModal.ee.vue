@@ -9,6 +9,7 @@ import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router/composables';
+import dateformat from 'dateformat';
 
 const props = defineProps({
 	data: {
@@ -62,7 +63,9 @@ const sortedFiles = computed(() => {
 			}
 		}
 
-		return 0;
+		console.log(a, b);
+
+		return a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0;
 	});
 });
 
@@ -159,6 +162,19 @@ function close() {
 	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
 }
 
+function renderUpdatedAt(file: SourceControlAggregatedFile) {
+	const currentYear = new Date().getFullYear();
+
+	return i18n.baseText('settings.sourceControl.lastUpdated', {
+		interpolate: {
+			date: dateformat(
+				file.updatedAt,
+				`d mmmm${file.updatedAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+			),
+		},
+	});
+}
+
 async function commitAndPush() {
 	const fileNames = files.value.filter((file) => staged.value[file.file]).map((file) => file.file);
 
@@ -233,16 +249,26 @@ async function commitAndPush() {
 								:class="$style.listItemCheckbox"
 								@input="setStagedStatus(file, !staged[file.file])"
 							/>
-							<n8n-text bold>
-								<span v-if="file.status === 'deleted'">
+							<div>
+								<n8n-text v-if="file.status === 'deleted'" color="text-light">
 									<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
 									<span v-if="file.type === 'credential'"> Deleted Credential: </span>
 									<strong>{{ file.id }}</strong>
-								</span>
-								<span v-else>
+								</n8n-text>
+								<n8n-text bold v-else>
 									{{ file.name }}
-								</span>
-							</n8n-text>
+								</n8n-text>
+								<div v-if="file.updatedAt">
+									<n8n-text color="text-light" size="small">
+										{{ renderUpdatedAt(file) }}
+									</n8n-text>
+								</div>
+								<div v-if="file.conflict">
+									<n8n-text color="danger" size="small">
+										{{ i18n.baseText('settings.sourceControl.modals.push.overrideVersionInGit') }}
+									</n8n-text>
+								</div>
+							</div>
 							<div :class="$style.listItemStatus">
 								<n8n-badge class="mr-2xs" v-if="workflowId === file.id && file.type === 'workflow'">
 									Current workflow
