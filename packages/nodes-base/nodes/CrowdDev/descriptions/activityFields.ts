@@ -48,69 +48,57 @@ const activityOperations: INodeProperties = {
 	],
 };
 
-const memberField: INodeProperties = {
-	displayName: 'Member',
-	name: 'member',
-	description: 'A member of your community',
-	type: 'fixedCollection',
-	required: true,
-	default: {},
-	options: [
-		{
-			displayName: 'Item Choice',
-			name: 'itemChoice',
-			values: [
-				{
-					displayName: 'Username',
-					name: 'username',
-					type: 'fixedCollection',
-					typeOptions: {
-						multipleValues: true,
-					},
-					required: true,
-					default: {},
-					options: [
-						{
-							displayName: 'Item Choice',
-							name: 'itemChoice',
-							values: [
-								{
-									displayName: 'Key',
-									name: 'key',
-									type: 'string',
-									required: true,
-									default: '',
-								},
-								{
-									displayName: 'Value',
-									name: 'value',
-									type: 'string',
-									required: true,
-									default: '',
-								},
-							],
-						},
-					],
-				},
-				{
-					displayName: 'displayName',
-					name: 'displayName',
-					description: 'UI friendly name of the member',
-					type: 'string',
-					default: '',
-				},
-				emailsField,
-				{
-					displayName: 'Joined At',
-					name: 'joinedAt',
-					description: 'Date of joining the community',
-					type: 'dateTime',
-					default: '',
-				},
-			],
+const createWithMemberFields: INodeProperties[] = [
+	{
+		displayName: 'Username',
+		name: 'username',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
 		},
-	],
-};
+		required: true,
+		default: {},
+		options: [
+			{
+				displayName: 'Item Choice',
+				name: 'itemChoice',
+				values: [
+					{
+						displayName: 'Platform',
+						description: 'Platform name (e.g twitter, github, etc)',
+						name: 'key',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'Username',
+						description: 'Username at the specified Platform',
+						name: 'value',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'displayName',
+		name: 'displayName',
+		description: 'UI friendly name of the member',
+		type: 'string',
+		default: '',
+	},
+	emailsField,
+	{
+		displayName: 'Joined At',
+		name: 'joinedAt',
+		description: 'Date of joining the community',
+		type: 'dateTime',
+		default: '',
+	},
+];
 
 const memberIdField: INodeProperties = {
 	displayName: 'Member',
@@ -189,7 +177,7 @@ const additionalOptions: INodeProperties[] = [
 ];
 
 const activityFields: INodeProperties[] = [
-	Object.assign({}, memberField, displayFor.createWithMember),
+	...createWithMemberFields.map(mapWith(displayFor.createWithMember)),
 	Object.assign({}, memberIdField, displayFor.createForMember),
 	...createCommonFields.map(mapWith(displayFor.resource)),
 	Object.assign({}, getAdditionalOptions(additionalOptions), displayFor.resource),
