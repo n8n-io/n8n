@@ -18,9 +18,8 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
-import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
-import { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 
 @Service()
 export class SourceControlExportService {
