@@ -37,6 +37,10 @@ const modifiedWorkflowFiles = computed(() => {
 	return workflowFiles.value.filter((file) => file.status === 'modified');
 });
 
+const deletedWorkflowFiles = computed(() => {
+	return workflowFiles.value.filter((file) => file.status === 'deleted');
+});
+
 function close() {
 	uiStore.closeModal(SOURCE_CONTROL_PULL_MODAL_KEY);
 }
@@ -48,7 +52,11 @@ async function pullWorkfolder() {
 	try {
 		await sourceControlStore.pullWorkfolder(true);
 		toast.showMessage({
-			message: i18n.baseText('settings.sourceControl.pull.success.description'),
+			message: `${i18n.baseText('settings.sourceControl.pull.success.description')}${
+				deletedWorkflowFiles.value.length > 0
+					? `. ${i18n.baseText('settings.sourceControl.pull.success.description.deleted')}`
+					: ''
+			}`,
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
 			type: 'success',
 		});
@@ -57,12 +65,6 @@ async function pullWorkfolder() {
 	} finally {
 		loadingService.stopLoading();
 	}
-}
-
-function openWorkflow(id: string) {
-	const routeData = router.resolve({ name: VIEWS.WORKFLOW, params: { id } });
-
-	window.open(routeData.href, '_blank');
 }
 </script>
 
@@ -85,8 +87,14 @@ function openWorkflow(id: string) {
 					</n8n-text>
 					<ul :class="$style.filesList">
 						<li v-for="file in modifiedWorkflowFiles" :key="file.id">
-							<n8n-link theme="text" @click="openWorkflow(file.id)">
+							<n8n-link
+								:class="$style.fileLink"
+								theme="text"
+								new-window
+								:to="`/workflow/${file.id}`"
+							>
 								{{ file.name }}
+								<n8n-icon icon="external-link-alt" />
 							</n8n-link>
 						</li>
 					</ul>
@@ -119,6 +127,17 @@ function openWorkflow(id: string) {
 
 	li {
 		margin-top: var(--spacing-3xs);
+	}
+}
+
+.fileLink {
+	svg {
+		display: none;
+		margin-left: var(--spacing-4xs);
+	}
+
+	&:hover svg {
+		display: inline-flex;
 	}
 }
 
