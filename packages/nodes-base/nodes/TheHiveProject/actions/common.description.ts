@@ -141,7 +141,7 @@ export const responderSelector: INodeProperties = {
 	required: true,
 	default: '',
 	typeOptions: {
-		loadOptionsDependsOn: ['id'],
+		loadOptionsDependsOn: ['id', 'id.value'],
 		loadOptionsMethod: 'loadResponders',
 	},
 	displayOptions: {

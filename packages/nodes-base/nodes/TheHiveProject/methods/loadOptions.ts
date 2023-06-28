@@ -1,16 +1,24 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-
 import { theHiveApiRequest } from '../transport';
-
 import { mapResource } from '../helpers/utils';
 
 export async function loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	// request the analyzers from instance
-	const resource = mapResource(this.getNodeParameter('resource') as string);
-	const resourceId = this.getNodeParameter('id');
-	const endpoint = `/connector/cortex/responder/${resource}/${resourceId}`;
+	const resource = this.getNodeParameter('resource') as string;
+	const theHiveResource = mapResource(resource);
 
-	const responders = await theHiveApiRequest.call(this, 'GET', endpoint);
+	let resourceId = '';
+	if (['case', 'alert'].includes(resource)) {
+		resourceId = this.getNodeParameter('id', '', { extractValue: true }) as string;
+	} else {
+		resourceId = this.getNodeParameter('id') as string;
+	}
+
+	const responders = await theHiveApiRequest.call(
+		this,
+		'GET',
+		`/connector/cortex/responder/${theHiveResource}/${resourceId}`,
+	);
 
 	const returnData: INodePropertyOptions[] = [];
 
@@ -91,7 +99,7 @@ export async function getCaseAttachments(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const caseId = this.getNodeParameter('id') as string;
+	const caseId = this.getNodeParameter('caseId', '', { extractValue: true }) as string;
 
 	const body = {
 		query: [

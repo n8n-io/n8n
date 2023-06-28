@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import {
+	alertRLC,
 	alertStatusSelector,
 	customFieldsCollection,
 	observableDataType,
@@ -11,14 +12,7 @@ import {
 import { prepareCustomFields, theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Alert ID',
-		name: 'id',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'Title of the alert',
-	},
+	alertRLC,
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
@@ -165,7 +159,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const alertId = this.getNodeParameter('id', i) as string;
+	const alertId = this.getNodeParameter('alertId', i, '', { extractValue: true }) as string;
 	const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 	const updateFields = this.getNodeParameter('updateFields', i);
@@ -189,13 +183,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 			for (const artifactvalue of artifactValues) {
 				const element: IDataObject = {};
-
 				element.message = artifactvalue.message as string;
-
 				element.tags = (artifactvalue.tags as string).split(',');
-
 				element.dataType = artifactvalue.dataType as string;
-
 				element.data = artifactvalue.data as string;
 
 				if (artifactvalue.dataType === 'file') {

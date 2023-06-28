@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import {
+	caseRLC,
 	caseStatusSelector,
 	customFieldsCollection,
 	severitySelector,
@@ -11,14 +12,7 @@ import { prepareCustomFields, theHiveApiRequest } from '../../transport';
 import { prepareOptional } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Case ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'ID of the case',
-	},
+	caseRLC,
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
@@ -194,7 +188,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const id = this.getNodeParameter('id', i) as string;
+	const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
 	const updateFields = this.getNodeParameter('updateFields', i, {});
 	const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
@@ -205,7 +199,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...prepareOptional(updateFields),
 	};
 
-	responseData = await theHiveApiRequest.call(this, 'PATCH', `/case/${id}`, body);
+	responseData = await theHiveApiRequest.call(this, 'PATCH', `/case/${caseId}`, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

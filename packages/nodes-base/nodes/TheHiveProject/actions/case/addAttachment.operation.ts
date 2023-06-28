@@ -2,16 +2,10 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
+import { caseRLC } from '../common.description';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Case ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'ID of the case',
-	},
+	caseRLC,
 	{
 		displayName: 'Input Data Field Names',
 		name: 'inputDataFiels',
@@ -53,7 +47,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const caseId = this.getNodeParameter('id', i) as string;
+	const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
 	const canRename = this.getNodeParameter('options.canRename', i, false) as boolean;
 	const inputDataFields = (this.getNodeParameter('inputDataFiels', i, '') as string)
 		.split(',')

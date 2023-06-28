@@ -1,20 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { responderSelector } from '../common.description';
+import { caseRLC, responderSelector } from '../common.description';
 import { theHiveApiRequest } from '../../transport';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Case ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'ID of the case',
-	},
-	responderSelector,
-];
+const properties: INodeProperties[] = [{ ...caseRLC, name: 'id' }, responderSelector];
 
 const displayOptions = {
 	show: {
@@ -28,7 +18,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const caseId = this.getNodeParameter('id', i);
+	const caseId = this.getNodeParameter('id', i, '', { extractValue: true }) as string;
 	const responderId = this.getNodeParameter('responder', i) as string;
 	let body: IDataObject;
 	let response;
