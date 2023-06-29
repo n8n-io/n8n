@@ -18,6 +18,7 @@
 			:expressionEvaluated="expressionValueComputed"
 			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
+			:event-bus="internalEventBus"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
@@ -61,8 +62,8 @@ import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
-
-type ParamRef = InstanceType<typeof ParameterInput>;
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'parameter-input-wrapper',
@@ -71,8 +72,16 @@ export default defineComponent({
 		ParameterInput,
 		InputHint,
 	},
+	data() {
+		return {
+			internalEventBus: createEventBus(),
+		};
+	},
 	mounted() {
-		this.$on('optionSelected', this.optionSelected);
+		this.eventBus.on('optionSelected', this.optionSelected);
+	},
+	beforeDestroy() {
+		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 	props: {
 		isReadOnly: {
@@ -123,6 +132,10 @@ export default defineComponent({
 			default: () => ({
 				size: 'small',
 			}),
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
 		},
 	},
 	computed: {
@@ -217,9 +230,7 @@ export default defineComponent({
 			this.$emit('drop', data);
 		},
 		optionSelected(command: string) {
-			const paramRef = this.$refs.param as ParamRef | undefined;
-
-			paramRef?.$emit('optionSelected', command);
+			this.internalEventBus.emit('optionSelected', command);
 		},
 		onValueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);

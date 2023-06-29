@@ -131,14 +131,14 @@ export class PasswordResetController {
 
 		const baseUrl = getInstanceBaseUrl();
 		const { id, firstName, lastName } = user;
-		const url = UserService.generatePasswordResetUrl(user);
+		const url = await UserService.generatePasswordResetUrl(user);
 
 		try {
 			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
-				passwordResetUrl: url.toString(),
+				passwordResetUrl: url,
 				domain: baseUrl,
 			});
 		} catch (error) {

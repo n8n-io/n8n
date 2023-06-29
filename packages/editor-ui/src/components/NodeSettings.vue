@@ -158,7 +158,7 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type {
 	INodeTypeDescription,
@@ -529,41 +529,54 @@ export default defineComponent({
 				// Data is on top level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
-					Vue.delete(this.nodeValues, lastNamePart);
+					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = this.nodeValues;
+					this.nodeValues = remainingNodeValues;
 				} else {
 					// Value should be set
-					// @ts-ignore
-					Vue.set(this.nodeValues, lastNamePart, value);
+					this.nodeValues = {
+						...this.nodeValues,
+						[lastNamePart as string]: value,
+					};
 				}
 			} else {
 				// Data is on lower level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
 					let tempValue = get(this.nodeValues, nameParts.join('.')) as
 						| INodeParameters
 						| INodeParameters[];
-					Vue.delete(tempValue as object, lastNamePart as string);
+
+					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
+					tempValue = remainingNodeValues;
 
 					if (isArray === true && (tempValue as INodeParameters[]).length === 0) {
 						// If a value from an array got delete and no values are left
 						// delete also the parent
 						lastNamePart = nameParts.pop();
 						tempValue = get(this.nodeValues, nameParts.join('.')) as INodeParameters;
-						Vue.delete(tempValue as object, lastNamePart as string);
+						const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
+							tempValue;
+						tempValue = remainingArrayNodeValues;
 					}
 				} else {
 					// Value should be set
 					if (typeof value === 'object') {
-						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
+						set(
+							get(this.nodeValues, nameParts.join('.')) as Record<string, unknown>,
+							lastNamePart as string,
+							deepCopy(value),
+						);
 					} else {
-						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);
+						set(
+							get(this.nodeValues, nameParts.join('.')) as Record<string, unknown>,
+							lastNamePart as string,
+							value,
+						);
 					}
 				}
 			}
+
+			this.nodeValues = { ...this.nodeValues };
 		},
 		credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 			// Update the values on the node
@@ -660,7 +673,7 @@ export default defineComponent({
 
 						if (Array.isArray(data)) {
 							data.splice(parseInt(index, 10), 1);
-							Vue.set(nodeParameters as object, path, data);
+							set(nodeParameters as object, path, data);
 						}
 					} else {
 						if (newValue === undefined) {
@@ -744,7 +757,7 @@ export default defineComponent({
 
 					if (Array.isArray(data)) {
 						data.splice(parseInt(index, 10), 1);
-						Vue.set(nodeParameters as object, path, data);
+						set(nodeParameters as object, path, data);
 					}
 				} else {
 					if (newValue === undefined) {
@@ -791,7 +804,10 @@ export default defineComponent({
 				// A property on the node itself changed
 
 				// Update data in settings
-				Vue.set(this.nodeValues, parameterData.name, newValue);
+				this.nodeValues = {
+					...this.nodeValues,
+					[parameterData.name]: newValue,
+				};
 
 				// Update data in vuex
 				const updateInformation = {
@@ -818,58 +834,91 @@ export default defineComponent({
 				const foundNodeSettings = [];
 				if (this.node.color) {
 					foundNodeSettings.push('color');
-					Vue.set(this.nodeValues, 'color', this.node.color);
+					this.nodeValues = {
+						...this.nodeValues,
+						color: this.node.color,
+					};
 				}
 
 				if (this.node.notes) {
 					foundNodeSettings.push('notes');
-					Vue.set(this.nodeValues, 'notes', this.node.notes);
+					this.nodeValues = {
+						...this.nodeValues,
+						notes: this.node.notes,
+					};
 				}
 
 				if (this.node.alwaysOutputData) {
 					foundNodeSettings.push('alwaysOutputData');
-					Vue.set(this.nodeValues, 'alwaysOutputData', this.node.alwaysOutputData);
+					this.nodeValues = {
+						...this.nodeValues,
+						alwaysOutputData: this.node.alwaysOutputData,
+					};
 				}
 
 				if (this.node.executeOnce) {
 					foundNodeSettings.push('executeOnce');
-					Vue.set(this.nodeValues, 'executeOnce', this.node.executeOnce);
+					this.nodeValues = {
+						...this.nodeValues,
+						executeOnce: this.node.executeOnce,
+					};
 				}
 
 				if (this.node.continueOnFail) {
 					foundNodeSettings.push('continueOnFail');
-					Vue.set(this.nodeValues, 'continueOnFail', this.node.continueOnFail);
+					this.nodeValues = {
+						...this.nodeValues,
+						continueOnFail: this.node.continueOnFail,
+					};
 				}
 
 				if (this.node.notesInFlow) {
 					foundNodeSettings.push('notesInFlow');
-					Vue.set(this.nodeValues, 'notesInFlow', this.node.notesInFlow);
+					this.nodeValues = {
+						...this.nodeValues,
+						notesInFlow: this.node.notesInFlow,
+					};
 				}
 
 				if (this.node.retryOnFail) {
 					foundNodeSettings.push('retryOnFail');
-					Vue.set(this.nodeValues, 'retryOnFail', this.node.retryOnFail);
+					this.nodeValues = {
+						...this.nodeValues,
+						retryOnFail: this.node.retryOnFail,
+					};
 				}
 
 				if (this.node.maxTries) {
 					foundNodeSettings.push('maxTries');
-					Vue.set(this.nodeValues, 'maxTries', this.node.maxTries);
+					this.nodeValues = {
+						...this.nodeValues,
+						maxTries: this.node.maxTries,
+					};
 				}
 
 				if (this.node.waitBetweenTries) {
 					foundNodeSettings.push('waitBetweenTries');
-					Vue.set(this.nodeValues, 'waitBetweenTries', this.node.waitBetweenTries);
+					this.nodeValues = {
+						...this.nodeValues,
+						waitBetweenTries: this.node.waitBetweenTries,
+					};
 				}
 
 				// Set default node settings
 				for (const nodeSetting of this.nodeSettings) {
 					if (!foundNodeSettings.includes(nodeSetting.name)) {
 						// Set default value
-						Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
+						this.nodeValues = {
+							...this.nodeValues,
+							[nodeSetting.name]: nodeSetting.default,
+						};
 					}
 				}
 
-				Vue.set(this.nodeValues, 'parameters', deepCopy(this.node.parameters));
+				this.nodeValues = {
+					...this.nodeValues,
+					parameters: deepCopy(this.node.parameters),
+				};
 			} else {
 				this.nodeValid = false;
 			}
@@ -926,6 +975,8 @@ export default defineComponent({
 
 <style lang="scss">
 .node-settings {
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 	background-color: var(--color-background-xlight);
 	height: 100%;
@@ -958,7 +1009,6 @@ export default defineComponent({
 	}
 
 	.node-parameters-wrapper {
-		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
 	}

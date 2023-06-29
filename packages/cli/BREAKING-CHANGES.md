@@ -2,11 +2,25 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.234.0
+
+### What changed?
+
+This release introduces two irreversible changes:
+
+* The n8n database will use strings instead of numeric values to identify workflows and credentials
+* Execution data is split into a separate database table
+
+### When is action necessary?
+
+It will not be possible to read a n8n@0.234.0 database with older versions of n8n, so we recommend that you take a full backup before migrating.
+
 ## 0.232.0
 
 ### What changed?
 
 Due to Node.js/OpenSSL upgrade, the following crypto algorithms are not supported anymore.
+
 - RSA-MD4
 - RSA-MDC2
 - md4
@@ -17,6 +31,18 @@ Due to Node.js/OpenSSL upgrade, the following crypto algorithms are not supporte
 ### When is action necessary?
 
 If you're using any of the above mentioned crypto algorithms in Crypto node in any of your workflows, then please update the algorithm property in the node to one of the supported values.
+
+### What changed?
+
+The `LoneScale List` node has been renamed to `LoneScale`.
+
+### When is action necessary?
+
+If you have used the `LoneScale List` node in any of your workflows.
+
+### How to upgrade:
+
+Update any workflows using `LoneScale List` to use the updated node.
 
 ## 0.226.0
 
