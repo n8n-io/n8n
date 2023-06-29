@@ -243,7 +243,7 @@ export class SourceControlService {
 
 		const diffResult = await this.getStatus();
 		const possibleConflicts = diffResult?.filter(
-			(file) => file.conflict || file.status === 'modified',
+			(file) => (file.conflict || file.status === 'modified') && file.type !== 'credential',
 		);
 		if (possibleConflicts?.length > 0 && options.force !== true) {
 			await this.unstage();
