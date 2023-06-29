@@ -57,9 +57,7 @@ export class SourceControlPreferencesService {
 		return (
 			this.isSourceControlLicensedAndEnabled() &&
 			this.getPreferences().repositoryUrl &&
-			this.getPreferences().branchName &&
-			this.getPreferences().authorEmail &&
-			this.getPreferences().authorName
+			this.getPreferences().branchName
 		);
 	}
 

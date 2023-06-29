@@ -24,8 +24,6 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	const preferences = reactive<SourceControlPreferences>({
 		branchName: '',
 		branches: [],
-		authorName: defaultAuthor.value.name,
-		authorEmail: defaultAuthor.value.email,
 		repositoryUrl: '',
 		branchReadOnly: false,
 		branchColor: '#5296D6',

@@ -64,8 +64,6 @@ describe('MainSidebarSourceControl', () => {
 			vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 				branchName: 'main',
 				branches: [],
-				authorName: '',
-				authorEmail: '',
 				repositoryUrl: '',
 				branchReadOnly: false,
 				branchColor: '#5296D6',

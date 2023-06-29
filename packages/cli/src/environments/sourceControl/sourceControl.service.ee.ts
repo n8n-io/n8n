@@ -5,6 +5,8 @@ import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_SSH_FOLDER,
@@ -34,6 +36,7 @@ import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
 import type { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 import type { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
+import { User } from '../../databases/entities/User';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
@@ -83,12 +86,12 @@ export class SourceControlService {
 		}
 	}
 
-	async initializeRepository(preferences: SourceControlPreferences) {
+	async initializeRepository(preferences: SourceControlPreferences, user: User) {
 		if (!this.gitService.git) {
 			await this.init();
 		}
 		LoggerProxy.debug('Initializing repository...');
-		await this.gitService.initRepository(preferences);
+		await this.gitService.initRepository(preferences, user);
 		let getBranchesResult;
 		try {
 			getBranchesResult = await this.getBranches();
@@ -237,12 +240,6 @@ export class SourceControlService {
 			userId: options.userId,
 			force: false,
 		});
-		// await this.export(); // refresh workfolder
-		// const status = await this.gitService.status();
-
-		// if (status.modified.length > 0 && options.force !== true) {
-		// 	return status;
-		// }
 
 		const diffResult = await this.getStatus();
 		const possibleConflicts = diffResult?.filter(
@@ -478,5 +475,12 @@ export class SourceControlService {
 			}
 		});
 		return sourceControlledFiles;
+	}
+
+	async setGitUserDetails(
+		name = SOURCE_CONTROL_DEFAULT_NAME,
+		email = SOURCE_CONTROL_DEFAULT_EMAIL,
+	): Promise<void> {
+		this.gitService.setGitUserDetails(name, email);
 	}
 }

@@ -5,14 +5,14 @@ import {
 } from './middleware/sourceControlEnabledMiddleware.ee';
 import { SourceControlService } from './sourceControl.service.ee';
 import { SourceControlRequest } from './types/requests';
+import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
+import type { SourceControlledFile } from './types/sourceControlledFile';
+import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { PullResult, PushResult, StatusResult } from 'simple-git';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
-import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
-import type { SourceControlledFile } from './types/sourceControlledFile';
-import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import Container from 'typedi';
 import { InternalHooks } from '../../InternalHooks';
 import {
@@ -63,14 +63,17 @@ export class SourceControlController {
 			);
 			if (sanitizedPreferences.initRepo === true) {
 				try {
-					await this.sourceControlService.initializeRepository({
-						...updatedPreferences,
-						branchName:
-							updatedPreferences.branchName === ''
-								? SOURCE_CONTROL_DEFAULT_BRANCH
-								: updatedPreferences.branchName,
-						initRepo: true,
-					});
+					await this.sourceControlService.initializeRepository(
+						{
+							...updatedPreferences,
+							branchName:
+								updatedPreferences.branchName === ''
+									? SOURCE_CONTROL_DEFAULT_BRANCH
+									: updatedPreferences.branchName,
+							initRepo: true,
+						},
+						req.user,
+					);
 					if (this.sourceControlPreferencesService.getPreferences().branchName !== '') {
 						await this.sourceControlPreferencesService.setPreferences({
 							connected: true,
@@ -106,8 +109,6 @@ export class SourceControlController {
 				connected: undefined,
 				publicKey: undefined,
 				repositoryUrl: undefined,
-				authorName: undefined,
-				authorEmail: undefined,
 			};
 			const currentPreferences = this.sourceControlPreferencesService.getPreferences();
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
@@ -175,6 +176,10 @@ export class SourceControlController {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 		try {
+			await this.sourceControlService.setGitUserDetails(
+				`${req.user.firstName} ${req.user.lastName}`,
+				req.user.email,
+			);
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
 			if ('pushResult' in result) {
 				await Container.get(InternalHooks).onSourceControlUserFinishedPushUI(

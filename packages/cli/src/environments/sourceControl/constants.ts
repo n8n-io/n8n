@@ -14,3 +14,5 @@ export const SOURCE_CONTROL_API_ROOT = 'source-control';
 export const SOURCE_CONTROL_README = `
 # n8n Source Control
 `;
+export const SOURCE_CONTROL_DEFAULT_NAME = 'n8n user';
+export const SOURCE_CONTROL_DEFAULT_EMAIL = 'n8n@example.com';
