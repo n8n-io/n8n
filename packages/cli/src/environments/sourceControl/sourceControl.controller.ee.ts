@@ -17,7 +17,6 @@ import Container from 'typedi';
 import { InternalHooks } from '../../InternalHooks';
 import {
 	getRepoType,
-	getTrackingInformationFromImportResult,
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromSourceControlledFiles,
@@ -181,18 +180,21 @@ export class SourceControlController {
 				req.user.email,
 			);
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
-			if ('pushResult' in result) {
+			if ('pushResult' in result && result.pushResult) {
 				await Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
-					getTrackingInformationFromPostPushResult(result),
+					getTrackingInformationFromPostPushResult({
+						diffResult: result.diffResult,
+						pushResult: result.pushResult,
+					}),
 				);
 				res.statusCode = 200;
 			} else {
 				await Container.get(InternalHooks).onSourceControlUserStartedPushUI(
-					getTrackingInformationFromPrePushResult(result),
+					getTrackingInformationFromPrePushResult(result.diffResult),
 				);
 				res.statusCode = 409;
 			}
-			return result;
+			return result.diffResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -211,18 +213,20 @@ export class SourceControlController {
 				userId: req.user.id,
 				importAfterPull: req.body.importAfterPull ?? true,
 			});
-			if ((result as ImportResult)?.workflows) {
+			if (result.status === 200) {
 				await Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
-					getTrackingInformationFromImportResult(result as ImportResult),
+					getTrackingInformationFromSourceControlledFiles(result.diffResult),
+					// todo: remove if not needed
+					// getTrackingInformationFromImportResult(result as ImportResult),
 				);
 				res.statusCode = 200;
 			} else {
 				await Container.get(InternalHooks).onSourceControlUserStartedPullUI(
-					getTrackingInformationFromSourceControlledFiles(result as SourceControlledFile[]),
+					getTrackingInformationFromSourceControlledFiles(result.diffResult),
 				);
 				res.statusCode = 409;
 			}
-			return result;
+			return result.diffResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

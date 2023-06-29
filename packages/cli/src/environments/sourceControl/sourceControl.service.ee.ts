@@ -193,22 +193,25 @@ export class SourceControlService {
 		return;
 	}
 
-	async pushWorkfolder(
-		options: SourceControlPushWorkFolder,
-	): Promise<
-		| { pushResult: PushResult; diffResult: SourceControlledFile[] | undefined }
-		| SourceControlledFile[]
-	> {
+	async pushWorkfolder(options: SourceControlPushWorkFolder): Promise<{
+		status: number;
+		pushResult: PushResult | undefined;
+		diffResult: SourceControlledFile[];
+	}> {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
-		let diffResult: SourceControlledFile[] | undefined;
+		let diffResult: SourceControlledFile[] = [];
 		if (!options.skipDiff) {
 			diffResult = await this.getStatus();
 			const possibleConflicts = diffResult?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0 && options.force !== true) {
 				await this.unstage();
-				return diffResult;
+				return {
+					status: 409,
+					pushResult: undefined,
+					diffResult,
+				};
 			}
 		}
 		await this.unstage();
@@ -227,6 +230,7 @@ export class SourceControlService {
 			force: options.force ?? false,
 		});
 		return {
+			status: 200,
 			pushResult,
 			diffResult,
 		};
@@ -234,7 +238,7 @@ export class SourceControlService {
 
 	async pullWorkfolder(
 		options: SourceControllPullOptions,
-	): Promise<ImportResult | SourceControlledFile[] | undefined> {
+	): Promise<{ status: number; diffResult: SourceControlledFile[] }> {
 		await this.resetWorkfolder({
 			importAfterPull: false,
 			userId: options.userId,
@@ -247,13 +251,19 @@ export class SourceControlService {
 		);
 		if (possibleConflicts?.length > 0 && options.force !== true) {
 			await this.unstage();
-			return diffResult;
+			return {
+				status: 409,
+				diffResult,
+			};
 		}
 		await this.resetWorkfolder({ ...options, importAfterPull: false });
 		if (options.importAfterPull) {
-			return this.import(options);
+			await this.import(options);
 		}
-		return;
+		return {
+			status: 200,
+			diffResult,
+		};
 	}
 
 	async stage(
