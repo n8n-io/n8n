@@ -60,6 +60,7 @@ import type {
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
+	WorkflowWithVersionRepository,
 } from '@db/repositories';
 
 export interface IActivationError {
@@ -104,6 +105,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Variables: VariablesRepository;
 	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
+	WorkflowWithVersion: WorkflowWithVersionRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }

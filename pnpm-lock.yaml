@@ -880,7 +880,7 @@ importers:
         version: 1.0.1
       pinia:
         specifier: ^2.0.22
-        version: 2.0.23(typescript@5.1.3)(vue@2.7.14)
+        version: 2.0.23(vue@2.7.14)
       prettier:
         specifier: ^2.8.3
         version: 2.8.3
@@ -908,6 +908,9 @@ importers:
       vue-infinite-loading:
         specifier: ^2.4.5
         version: 2.4.5(vue@2.7.14)
+      vue-json-compare:
+        specifier: ^3.0.0
+        version: 3.0.0
       vue-json-pretty:
         specifier: 1.9.3
         version: 1.9.3
@@ -4760,6 +4763,19 @@ packages:
       - '@lezer/common'
     dev: false
 
+  /@codemirror/lang-sql@6.4.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+    resolution: {integrity: sha512-PFB56L+A0WGY35uRya+Trt5g19V9k2V9X3c55xoFW4RgiATr/yLqWsbbnEsdxuMn5tLpuikp7Kmj9smRsqBXAg==}
+    dependencies:
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/language': 6.2.1
+      '@codemirror/state': 6.1.4
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/view'
+      - '@lezer/common'
+    dev: false
+
   /@codemirror/language@6.2.1:
     resolution: {integrity: sha512-MC3svxuvIj0MRpFlGHxLS6vPyIdbTr2KKPEW46kCoCXw2ktb4NTkpkPBI/lSP/FoNXLCBJ0mrnUi1OoZxtpW1Q==}
     dependencies:
@@ -6213,7 +6229,7 @@ packages:
     peerDependencies:
       pinia: '>=2.0.19'
     dependencies:
-      pinia: 2.0.23(typescript@5.1.3)(vue@2.7.14)
+      pinia: 2.0.23(vue@2.7.14)
       vue-demi: 0.13.11(vue@2.7.14)
     transitivePeerDependencies:
       - '@vue/composition-api'
@@ -8697,6 +8713,7 @@ packages:
 
   /@types/uuid@8.3.4:
     resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
+    dev: true
 
   /@types/uuid@9.0.0:
     resolution: {integrity: sha512-kr90f+ERiQtKWMz5rP32ltJ/BtULDI5RVO0uavn1HQUOwjx0R1h0rnDYNL0CepF1zL5bSY6FISAfd9tOdDhU5Q==}
@@ -9569,7 +9586,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -10176,7 +10193,7 @@ packages:
   /axios@0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2
     transitivePeerDependencies:
       - debug
     dev: false
@@ -12167,6 +12184,17 @@ packages:
     dependencies:
       ms: 2.1.2
 
+  /debug@4.3.4:
+    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+    dependencies:
+      ms: 2.1.2
+
   /debug@4.3.4(supports-color@8.1.1):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
@@ -13997,6 +14025,16 @@ packages:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
     dev: false
 
+  /follow-redirects@1.15.2:
+    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+    dev: false
+
   /follow-redirects@1.15.2(debug@3.2.7):
     resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
     engines: {node: '>=4.0'}
@@ -15049,7 +15087,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -19127,7 +19165,6 @@ packages:
         optional: true
     dependencies:
       '@vue/devtools-api': 6.4.5
-      typescript: 5.1.3
       vue: 2.7.14
       vue-demi: 0.13.11(vue@2.7.14)
 
@@ -22526,6 +22563,7 @@ packages:
     resolution: {integrity: sha512-XH627E9vkeqhlZFQuL+UsyAXEnibT0kWR2FWONlr4sTjvxyJYnyefgrkyECLzM5NenmKzRAy2rR/OlYLA1HkZw==}
     engines: {node: '>=14.17'}
     hasBin: true
+    dev: true
 
   /uc.micro@1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}
@@ -23234,6 +23272,12 @@ packages:
     resolution: {integrity: sha512-xhq95Mxun060bRnsOoLE2Be6BR7jYwuC89kDe18+GmCLVrRA/dU0jrGb12Xu6NjmKs+iTW0AA6saSEmEW4cR7g==}
     peerDependencies:
       vue: ^2.6.10
+    dependencies:
+      vue: 2.7.14
+    dev: false
+
+  /vue-json-compare@3.0.0:
+    resolution: {integrity: sha512-35FgCFV+hWw3UBUJqleEpl6iT07JKt2QHzZqFKLZ6QsPHjq2UsxdEFbgpU0qZ1yrZVjxpF0u6PXhqK5eO/5tNQ==}
     dependencies:
       vue: 2.7.14
     dev: false

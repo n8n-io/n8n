@@ -18,3 +18,4 @@ export { WebhookRepository } from './webhook.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowStatisticsRepository } from './workflowStatistics.repository';
 export { WorkflowTagMappingRepository } from './workflowTagMapping.repository';
+export { WorkflowWithVersionRepository } from './workflowWithVersion.repository';

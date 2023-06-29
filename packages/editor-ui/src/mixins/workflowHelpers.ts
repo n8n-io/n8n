@@ -1006,5 +1006,8 @@ export const workflowHelpers = defineComponent({
 				);
 			});
 		},
+		async getWorkflowWithVersion(id: string) {
+			const data: IWorkflowDb = await this.workflowsStore.fetchWorkflowWithVersion(id);
+		},
 	},
 });
