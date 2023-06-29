@@ -81,8 +81,6 @@ import {
 	NodeSSLError,
 } from 'n8n-workflow';
 
-import merge from 'lodash.merge';
-import pick from 'lodash.pick';
 import { Agent } from 'https';
 import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
@@ -96,6 +94,8 @@ import type {
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import crypto, { createHmac } from 'crypto';
 import get from 'lodash/get';
+import merge from 'lodash/merge';
+import pick from 'lodash/pick';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
