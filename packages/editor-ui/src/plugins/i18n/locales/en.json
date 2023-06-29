@@ -103,7 +103,7 @@
 	"auth.signup.setupYourAccountError": "Problem setting up your account",
 	"auth.signup.tokenValidationError": "Issue validating invite token",
 	"banners.v1.message": "n8n has been updated to version 1, introducing some breaking changes. Please consult the <a target=\"_blank\" href=\"https://docs.n8n.io/1-0-migration-checklist\">migration guide</a> for more information.",
-	"banners.v1.action": "Confirm",
+	"banners.v1.action": "Don't show again",
 	"banners.v1.iconTitle": "Dismiss v1 banner",
 	"binaryDataDisplay.backToList": "Back to list",
 	"binaryDataDisplay.backToOverviewPage": "Back to overview page",
