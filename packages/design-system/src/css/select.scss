@@ -165,4 +165,9 @@
 			height: 42px;
 		}
 	}
+	&--default {
+		.el-tag {
+			padding: 2px 12px;
+		}
+	}
 }

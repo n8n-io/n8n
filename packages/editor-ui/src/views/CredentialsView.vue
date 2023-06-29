@@ -24,6 +24,7 @@
 				/>
 				<n8n-select
 					:modelValue="filters.type"
+					size="medium"
 					multiple
 					filterable
 					ref="typeInput"

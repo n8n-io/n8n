@@ -253,8 +253,9 @@ export default defineComponent({
 .tags-container {
 	$--max-input-height: 60px;
 
-	:deep(.el-select) {
-		.el-select__tags {
+	.el-select-tags-wrapper {
+		color: red !important;
+		.el-tag {
 			max-height: $--max-input-height;
 			overflow-y: scroll;
 			overflow-x: hidden;

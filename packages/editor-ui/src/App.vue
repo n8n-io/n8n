@@ -16,11 +16,11 @@
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<keep-alive include="NodeView" :max="1">
-					<main>
-						<router-view />
-					</main>
-				</keep-alive>
+				<router-view v-slot="{ Component }">
+					<keep-alive include="NodeView" :max="1">
+						<component :is="Component" />
+					</keep-alive>
+				</router-view>
 			</div>
 			<Modals />
 			<Telemetry />

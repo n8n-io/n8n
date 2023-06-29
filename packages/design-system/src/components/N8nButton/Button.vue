@@ -1,7 +1,7 @@
 <template>
 	<button
 		:class="classes"
-		:disabled="disabled || loading"
+		:disabled="isDisabled"
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
 		aria-live="polite"
@@ -17,93 +17,81 @@
 	</button>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
+import { useCssModule, computed, useAttrs } from 'vue';
 
-export default defineComponent({
-	name: 'n8n-button',
-	props: {
-		label: {
-			type: String,
-			default: '',
-		},
-		type: {
-			type: String,
-			default: 'primary',
-			validator: (value: string): boolean =>
-				['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'].includes(value),
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean =>
-				['xmini', 'mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		outline: {
-			type: Boolean,
-			default: false,
-		},
-		text: {
-			type: Boolean,
-			default: false,
-		},
-		icon: {
-			type: [String, Array],
-		},
-		block: {
-			type: Boolean,
-			default: false,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
-		float: {
-			type: String,
-			validator: (value: string): boolean => ['left', 'right'].includes(value),
-		},
-		square: {
-			type: Boolean,
-			default: false,
-		},
+const $style = useCssModule();
+const $attrs = useAttrs();
+
+const props = defineProps({
+	label: {
+		type: String,
+		default: '',
 	},
-	components: {
-		N8nSpinner,
-		N8nIcon,
+	type: {
+		type: String,
+		default: 'primary',
 	},
-	computed: {
-		ariaBusy(): 'true' | undefined {
-			return this.loading ? 'true' : undefined;
-		},
-		ariaDisabled(): 'true' | undefined {
-			return this.disabled ? 'true' : undefined;
-		},
-		classes(): string {
-			return (
-				`button ${this.$style.button} ${this.$style[this.type]}` +
-				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
-				`${this.outline ? ` ${this.$style.outline}` : ''}` +
-				`${this.loading ? ` ${this.$style.loading}` : ''}` +
-				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
-				`${this.text ? ` ${this.$style.text}` : ''}` +
-				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
-				`${this.block ? ` ${this.$style.block}` : ''}` +
-				`${this.active ? ` ${this.$style.active}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style.withIcon}` : ''}` +
-				`${this.square ? ` ${this.$style.square}` : ''}`
-			);
-		},
+	size: {
+		type: String,
+		default: 'medium',
 	},
+	loading: {
+		type: Boolean,
+		default: false,
+	},
+	disabled: {
+		type: Boolean,
+		default: false,
+	},
+	outline: {
+		type: Boolean,
+		default: false,
+	},
+	text: {
+		type: Boolean,
+		default: false,
+	},
+	icon: {
+		type: [String, Array],
+	},
+	block: {
+		type: Boolean,
+		default: false,
+	},
+	active: {
+		type: Boolean,
+		default: false,
+	},
+	float: {
+		type: String,
+	},
+	square: {
+		type: Boolean,
+		default: false,
+	},
+});
+
+const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
+const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
+const isDisabled = computed(() => props.disabled || props.loading);
+
+const classes = computed(() => {
+	return (
+		`button ${$style.button} ${$style[props.type]}` +
+		`${props.size ? ` ${$style[props.size]}` : ''}` +
+		`${props.outline ? ` ${$style.outline}` : ''}` +
+		`${props.loading ? ` ${$style.loading}` : ''}` +
+		`${props.float ? ` ${$style[`float-${props.float}`]}` : ''}` +
+		`${props.text ? ` ${$style.text}` : ''}` +
+		`${props.disabled ? ` ${$style.disabled}` : ''}` +
+		`${props.block ? ` ${$style.block}` : ''}` +
+		`${props.active ? ` ${$style.active}` : ''}` +
+		`${props.icon || props.loading ? ` ${$style.withIcon}` : ''}` +
+		`${props.square ? ` ${$style.square}` : ''}`
+	);
 });
 </script>
 
@@ -178,7 +166,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  * Colors
  */
 
-.secondary {
+.secondary,
+.btn--cancel {
 	--button-color: var(--color-primary);
 	--button-border-color: var(--color-primary);
 	--button-background-color: var(--color-background-xlight);
