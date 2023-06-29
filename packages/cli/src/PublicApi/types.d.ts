@@ -46,7 +46,7 @@ export declare namespace ExecutionRequest {
 		{},
 		{},
 		{
-			status?: ExecutionStatus;
+			status?: ExecutionStatus | ExecutionStatus[];
 			limit?: number;
 			cursor?: string;
 			offset?: number;

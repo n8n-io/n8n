@@ -7,6 +7,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 let app: Application;
 let owner: User;
@@ -94,7 +95,7 @@ describe('GET /executions/:id', () => {
 	test('owner should be able to get an execution owned by him', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
 
@@ -125,7 +126,7 @@ describe('GET /executions/:id', () => {
 
 	test('owner should be able to read executions of other users', async () => {
 		const workflow = await testDb.createWorkflow({}, user1);
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
 
@@ -134,7 +135,7 @@ describe('GET /executions/:id', () => {
 
 	test('member should be able to fetch his own executions', async () => {
 		const workflow = await testDb.createWorkflow({}, user1);
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authUser1Agent.get(`/executions/${execution.id}`);
 
@@ -144,7 +145,7 @@ describe('GET /executions/:id', () => {
 	test('member should not get an execution of another user without the workflow being shared', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authUser1Agent.get(`/executions/${execution.id}`);
 
@@ -154,7 +155,7 @@ describe('GET /executions/:id', () => {
 	test('member should be able to fetch executions of workflows shared with him', async () => {
 		const workflow = await testDb.createWorkflow({}, user1);
 
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		await testDb.shareWorkflowWithUsers(workflow, [user2]);
 
@@ -171,7 +172,7 @@ describe('DELETE /executions/:id', () => {
 
 	test('should delete an execution', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
 
@@ -206,54 +207,16 @@ describe('GET /executions', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions', 'abcXYZ'));
 
-	test('should retrieve all successful executions', async () => {
-		const workflow = await testDb.createWorkflow({}, owner);
-
-		const successfulExecution = await testDb.createSuccessfulExecution(workflow);
-
-		await testDb.createErrorExecution(workflow);
-
-		const response = await authOwnerAgent.get('/executions').query({
-			status: 'success',
-		});
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(1);
-		expect(response.body.nextCursor).toBe(null);
-
-		const {
-			id,
-			finished,
-			mode,
-			retryOf,
-			retrySuccessId,
-			startedAt,
-			stoppedAt,
-			workflowId,
-			waitTill,
-		} = response.body.data[0];
-
-		expect(id).toBeDefined();
-		expect(finished).toBe(true);
-		expect(mode).toEqual(successfulExecution.mode);
-		expect(retrySuccessId).toBeNull();
-		expect(retryOf).toBeNull();
-		expect(startedAt).not.toBeNull();
-		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(successfulExecution.workflowId);
-		expect(waitTill).toBeNull();
-	});
-
 	// failing on Postgres and MySQL - ref: https://github.com/n8n-io/n8n/pull/3834
 	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test.skip('should paginate two executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		const firstSuccessfulExecution = await testDb.createSuccessfulExecution(workflow);
+		const firstSuccessfulExecution = await testDb.createTestExecution(workflow, 'error');
 
-		const secondSuccessfulExecution = await testDb.createSuccessfulExecution(workflow);
+		const secondSuccessfulExecution = await testDb.createTestExecution(workflow, 'success');
 
-		await testDb.createErrorExecution(workflow);
+		await testDb.createTestExecution(workflow, 'error');
 
 		const firstExecutionResponse = await authOwnerAgent.get('/executions').query({
 			status: 'success',
@@ -302,21 +265,49 @@ describe('GET /executions', () => {
 		}
 	});
 
-	test('should retrieve all error executions', async () => {
+	test.each([
+		['canceled', false],
+		['crashed', false],
+		['error', false],
+		['failed', false],
+		['new', false],
+		['running', false],
+		['success', true],
+		['unknown', false],
+		['waiting', false],
+	])('should retrieve all executions of status %p', async (filterStatus, shouldBeFinished) => {
 		const workflow = await testDb.createWorkflow({}, owner);
+		const all_status = [
+			'canceled',
+			'crashed',
+			'error',
+			'failed',
+			'new',
+			'running',
+			'success',
+			'unknown',
+			'waiting',
+		];
 
-		await testDb.createSuccessfulExecution(workflow);
-
-		const errorExecution = await testDb.createErrorExecution(workflow);
+		const executions = new Map<string, ExecutionEntity>();
+		all_status.forEach(async (currStatus) => {
+			const out = await testDb.createTestExecution(workflow, currStatus);
+			executions.set(currStatus, out);
+		});
+		expect(true).toBe(true);
 
 		const response = await authOwnerAgent.get('/executions').query({
-			status: 'error',
+			status: filterStatus,
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(1);
 		expect(response.body.nextCursor).toBe(null);
-
+		if (filterStatus === 'error') {
+			// Check for breaking change
+			expect(response.body.data.length).toBe(3);
+		} else {
+			expect(response.body.data.length).toBe(1);
+		}
 		const {
 			id,
 			finished,
@@ -330,54 +321,90 @@ describe('GET /executions', () => {
 		} = response.body.data[0];
 
 		expect(id).toBeDefined();
-		expect(finished).toBe(false);
-		expect(mode).toEqual(errorExecution.mode);
+		expect(finished).toBe(shouldBeFinished);
+		expect(mode).toEqual(executions.get(filterStatus).mode);
 		expect(retrySuccessId).toBeNull();
 		expect(retryOf).toBeNull();
 		expect(startedAt).not.toBeNull();
 		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(errorExecution.workflowId);
-		expect(waitTill).toBeNull();
+		expect(workflowId).toBe(executions.get(filterStatus).workflowId);
+		if (filterStatus === 'waiting') {
+			expect(new Date(waitTill).getTime()).toBeGreaterThan(Date.now() - 1000);
+		} else {
+			expect(waitTill).toBeNull();
+		}
 	});
 
-	test('should return all waiting executions', async () => {
+	test.each([
+		[['running', 'error']],
+		[['canceled', 'crashed']],
+		[['failed', 'success', 'unknown']],
+		[['waiting']],
+	])('should retrieve all executions of any status of %p', async (filterStatusList) => {
 		const workflow = await testDb.createWorkflow({}, owner);
+		const allStatus = [
+			'canceled',
+			'crashed',
+			'error',
+			'failed',
+			'new',
+			'running',
+			'success',
+			'unknown',
+			'waiting',
+		];
 
-		await testDb.createSuccessfulExecution(workflow);
-
-		await testDb.createErrorExecution(workflow);
-
-		const waitingExecution = await testDb.createWaitingExecution(workflow);
+		const executions = new Map<string, ExecutionEntity>();
+		allStatus.forEach(async (currStatus) => {
+			const out = await testDb.createTestExecution(workflow, currStatus);
+			executions.set(currStatus, out);
+		});
+		expect(true).toBe(true);
 
 		const response = await authOwnerAgent.get('/executions').query({
-			status: 'waiting',
+			status: filterStatusList,
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(1);
+		if (filterStatusList.includes('error')) {
+			// Check for breaking change
+			expect(response.body.data.length).toBe(filterStatusList.length + 2);
+		} else {
+			expect(response.body.data.length).toBe(filterStatusList.length);
+		}
+		for (let execution of response.body.data) {
+			const {
+				id,
+				finished,
+				mode,
+				retryOf,
+				retrySuccessId,
+				startedAt,
+				stoppedAt,
+				workflowId,
+				waitTill,
+			} = execution;
+
+			let expectedWorkflowIds = filterStatusList.map((currStatus) => {
+				return executions.get(currStatus)?.workflowId;
+			});
+			expect(id).toBeDefined();
+			expect(retrySuccessId).toBeNull();
+			expect(retryOf).toBeNull();
+			expect(startedAt).not.toBeNull();
+			expect(stoppedAt).not.toBeNull();
+			expect(expectedWorkflowIds).toContain(workflowId);
+		}
+	});
+
+	test('should retrieve all executions regardless of status', async () => {
+		const workflow = await testDb.createWorkflow({}, owner);
+		await testDb.createManyExecutions(2, workflow, 'success', testDb.createTestExecution);
+		await testDb.createManyExecutions(3, workflow, 'error', testDb.createTestExecution);
+		const response = await authOwnerAgent.get('/executions').query({});
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(5);
 		expect(response.body.nextCursor).toBe(null);
-
-		const {
-			id,
-			finished,
-			mode,
-			retryOf,
-			retrySuccessId,
-			startedAt,
-			stoppedAt,
-			workflowId,
-			waitTill,
-		} = response.body.data[0];
-
-		expect(id).toBeDefined();
-		expect(finished).toBe(false);
-		expect(mode).toEqual(waitingExecution.mode);
-		expect(retrySuccessId).toBeNull();
-		expect(retryOf).toBeNull();
-		expect(startedAt).not.toBeNull();
-		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(waitingExecution.workflowId);
-		expect(new Date(waitTill).getTime()).toBeGreaterThan(Date.now() - 1000);
 	});
 
 	test('should retrieve all executions of specific workflow', async () => {
@@ -386,9 +413,10 @@ describe('GET /executions', () => {
 		const savedExecutions = await testDb.createManyExecutions(
 			2,
 			workflow,
-			testDb.createSuccessfulExecution,
+			'success',
+			testDb.createTestExecution,
 		);
-		await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(2, workflow2, 'success', testDb.createTestExecution);
 
 		const response = await authOwnerAgent.get('/executions').query({
 			workflowId: workflow.id,
@@ -429,16 +457,36 @@ describe('GET /executions', () => {
 			{},
 			user1,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser1, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser1, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const [firstWorkflowForUser2, secondWorkflowForUser2] = await testDb.createManyWorkflows(
 			2,
 			{},
 			user2,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const response = await authOwnerAgent.get('/executions');
 
@@ -453,16 +501,36 @@ describe('GET /executions', () => {
 			{},
 			user1,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser1, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser1, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const [firstWorkflowForUser2, secondWorkflowForUser2] = await testDb.createManyWorkflows(
 			2,
 			{},
 			user2,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const response = await authUser1Agent.get('/executions');
 
@@ -477,16 +545,36 @@ describe('GET /executions', () => {
 			{},
 			user1,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser1, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser1, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const [firstWorkflowForUser2, secondWorkflowForUser2] = await testDb.createManyWorkflows(
 			2,
 			{},
 			user2,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		await testDb.shareWorkflowWithUsers(firstWorkflowForUser2, [user1]);
 

@@ -1,4 +1,5 @@
 import { UserSettings } from 'n8n-core';
+import type { ExecutionStatus } from 'n8n-workflow';
 import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
@@ -321,9 +322,10 @@ export const getLdapIdentities = async () =>
 export async function createManyExecutions(
 	amount: number,
 	workflow: WorkflowEntity,
-	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
+	status: ExecutionStatus,
+	callback: (workflow: WorkflowEntity, status: ExecutionStatus) => Promise<ExecutionEntity>,
 ) {
-	const executionsRequests = [...Array(amount)].map(async (_) => callback(workflow));
+	const executionsRequests = [...Array(amount)].map(async (_) => callback(workflow, status));
 	return Promise.all(executionsRequests);
 }
 
@@ -355,25 +357,22 @@ async function createExecution(
 	return execution;
 }
 
-/**
- * Store a successful execution in the DB and assign it to a workflow.
- */
-export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true, status: 'success' }, workflow);
-}
+// Test functions to create an execution of each status.
+// Each execution is stored in the DB and assigned to a workflow
 
-/**
- * Store an error execution in the DB and assign it to a workflow.
+/*
+ * Create dummy execution for testing purposes.
+ * The execution is stored in the DB and assigned to a workflow,
+ * And is given a status to test filtering
  */
-export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
-}
 
-/**
- * Store a waiting execution in the DB and assign it to a workflow.
- */
-export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
+export async function createTestExecution(workflow: WorkflowEntity, status: ExecutionStatus) {
+	if (status === 'success') {
+		return createExecution({ finished: true, stoppedAt: new Date(), status }, workflow);
+	} else if (status === 'waiting') {
+		return createExecution({ finished: false, waitTill: new Date(), status }, workflow);
+	}
+	return createExecution({ finished: false, status }, workflow);
 }
 
 // ----------------------------------

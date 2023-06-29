@@ -7,17 +7,23 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 import { ExecutionRepository } from '@/databases/repositories';
 
-function getStatusCondition(status: ExecutionStatus) {
+function getStatusCondition(status: ExecutionStatus | ExecutionStatus[]) {
 	const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
-
-	if (status === 'success') {
-		condition.status = 'success';
-	} else if (status === 'waiting') {
-		condition.status = 'waiting';
-	} else if (status === 'error') {
-		condition.status = In(['error', 'crashed', 'failed']);
+	if (typeof status === 'string') {
+		status = [status];
 	}
-
+	// Prevent breaking change
+	const output = new Set<string>();
+	for (const currFilter of status) {
+		if (currFilter === 'error') {
+			output.add('error');
+			output.add('crashed');
+			output.add('failed');
+		} else {
+			output.add(currFilter);
+		}
+	}
+	condition.status = In(Array.from(output));
 	return condition;
 }
 
@@ -26,7 +32,7 @@ export async function getExecutions(params: {
 	includeData?: boolean;
 	lastId?: string;
 	workflowIds?: string[];
-	status?: ExecutionStatus;
+	status?: ExecutionStatus | ExecutionStatus[];
 	excludedExecutionsIds?: string[];
 }): Promise<IExecutionBase[]> {
 	let where: FindOptionsWhere<IExecutionFlattedDb> = {};
@@ -79,10 +85,11 @@ export async function getExecutionsCount(data: {
 	limit: number;
 	lastId?: string;
 	workflowIds?: string[];
-	status?: ExecutionStatus;
+	status?: ExecutionStatus | ExecutionStatus[];
 	excludedWorkflowIds?: string[];
 }): Promise<number> {
 	// TODO: Consider moving this to the repository as well
+
 	const executions = await Db.collections.Execution.count({
 		where: {
 			...(data.lastId && { id: LessThan(data.lastId) }),

@@ -12,8 +12,14 @@ get:
       description: Status to filter the executions by.
       required: false
       schema:
-        type: string
-        enum: ['error', 'success', 'waiting']
+        oneOf:
+          - type: string
+            enum: ['canceled', 'crashed', 'error', 'failed', 'new', 'running', 'success', 'unknown', 'waiting']
+          - type: array
+            minItems: 1
+            items:
+              type: string
+              enum: ['canceled', 'crashed', 'error', 'failed', 'new', 'running', 'success', 'unknown', 'waiting']
     - name: workflowId
       in: query
       description: Workflow to filter the executions by.
