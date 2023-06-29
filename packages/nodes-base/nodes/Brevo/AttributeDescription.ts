@@ -4,7 +4,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { SendInBlueNode } from './GenericFunctions';
+import { BrevoNode } from './GenericFunctions';
 
 export const attributeOperations: INodeProperties[] = [
 	{
@@ -43,7 +43,7 @@ export const attributeOperations: INodeProperties[] = [
 								requestOptions: IHttpRequestOptions,
 							): Promise<IHttpRequestOptions> {
 								const selectedCategory = this.getNodeParameter('attributeCategory') as string;
-								const override = SendInBlueNode.INTERCEPTORS.get(selectedCategory);
+								const override = BrevoNode.INTERCEPTORS.get(selectedCategory);
 								if (override) {
 									override.call(this, requestOptions.body! as JsonObject);
 								}
