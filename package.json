@@ -34,8 +34,8 @@
     "test:e2e:all": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.363.0",
     "@elastic/elasticsearch": "^8.8.0",
-    "aws-sdk": "^2.1394.0",
     "n8n": "workspace:*"
   },
   "devDependencies": {
