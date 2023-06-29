@@ -221,6 +221,14 @@ export class MicrosoftToDo implements INodeType {
 							};
 						}
 
+						if (body.reminderDateTime) {
+							body.reminderDateTime = {
+								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								timeZone: timezone,
+							};
+							body.isReminderOn = true;
+						}
+
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',

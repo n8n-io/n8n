@@ -36,8 +36,10 @@ export class WorkflowsPage extends BasePage {
 			cy.visit(this.url);
 			this.getters.workflowCardActions(name).click();
 			this.getters.workflowDeleteButton().click();
+			cy.intercept('DELETE', '/rest/workflows/*').as('deleteWorkflow');
 
 			cy.get('button').contains('delete').click();
+			cy.wait('@deleteWorkflow');
 		},
 	};
 }

@@ -412,7 +412,8 @@ export default defineComponent({
 			return (
 				!!this.credentialTypeName &&
 				(((this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')) &&
-					this.credentialData.grantType === 'authorizationCode') ||
+					(this.credentialData.grantType === 'authorizationCode' ||
+						this.credentialData.grantType === 'pkce')) ||
 					this.credentialTypeName === 'oAuth1Api' ||
 					this.parentTypes.includes('oAuth1Api'))
 			);

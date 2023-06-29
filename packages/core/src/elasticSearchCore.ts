@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LoggerProxy as Logger } from 'n8n-workflow';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Client } from '@elastic/elasticsearch';
@@ -13,6 +14,7 @@ export class ElasticSearchCoreClient {
 	}
 
 	addDocument = async (executionId: string, data: any) => {
+		this.cleanLargeValues(data);
 		const document = {
 			index: this.index,
 			id: executionId,
@@ -45,6 +47,25 @@ export class ElasticSearchCoreClient {
 					apiKey,
 				},
 			});
+		}
+	};
+
+	cleanLargeValues = (obj: any): void => {
+		// Making sure we're not pushing to elastic large strings or images
+		// If we found a large value then we just remove it from the global json
+		const MAXIMUM_STRING_LENGTH = 1024;
+		if (typeof obj === 'object' && obj !== null) {
+			for (const key in obj) {
+				if (
+					typeof obj[key] === 'string' &&
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+					(obj[key].length > MAXIMUM_STRING_LENGTH || obj[key].startsWith('data:image'))
+				) {
+					delete obj[key];
+				} else {
+					this.cleanLargeValues(obj[key]);
+				}
+			}
 		}
 	};
 }
