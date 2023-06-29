@@ -105,8 +105,11 @@ export function mapResource(resource: string): string {
 	}
 }
 
-export function splitTags(tags: string): string[] {
-	return tags.split(',').filter((tag) => tag !== ' ' && tag);
+export function splitTags<T>(tags: T) {
+	if (typeof tags === 'string') {
+		return tags.split(',').filter((tag) => tag !== ' ' && tag);
+	}
+	return tags;
 }
 
 export function prepareOptional(optionals: IDataObject): IDataObject {
@@ -162,5 +165,36 @@ export function prepareRangeQuery(range: string, body: IDataObject) {
 			from: parseInt(range.split('-')[0], 10),
 			to: parseInt(range.split('-')[1], 10),
 		});
+	}
+}
+
+export function convertCustomFieldUiToObject(customFieldsUi: IDataObject) {
+	if (Object.values(customFieldsUi).length) {
+		if (customFieldsUi.jsonInput === true) {
+			if (typeof customFieldsUi.json === 'string') {
+				let parsedFields = jsonParse<IDataObject>(customFieldsUi.json);
+				if (!Array.isArray(parsedFields) && parsedFields.customFields) {
+					parsedFields = parsedFields.customFields as IDataObject;
+				}
+				return parsedFields;
+			}
+		} else {
+			const values = (customFieldsUi.customFields as IDataObject).values as IDataObject;
+			if (values.fields) {
+				const customFields: IDataObject = {};
+
+				const fields = (values.fields as IDataObject).values as IDataObject[];
+				if (fields.length) {
+					for (const field of fields) {
+						const fieldName = field.field as string;
+						const fieldValue = field.value as string;
+
+						customFields[fieldName] = fieldValue;
+					}
+				}
+
+				return customFields;
+			}
+		}
 	}
 }

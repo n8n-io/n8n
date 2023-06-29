@@ -45,7 +45,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		qs.similarity = true;
 	}
 
-	responseData = await theHiveApiRequest.call(this, 'GET', `/alert/${alertId}`, {}, qs);
+	responseData = await theHiveApiRequest.call(this, 'GET', `/v1/alert/${alertId}`, {}, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

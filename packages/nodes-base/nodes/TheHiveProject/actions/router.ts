@@ -31,7 +31,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		try {
 			switch (theHiveNodeData.resource) {
 				case 'alert':
-					executionData = await alert[theHiveNodeData.operation].execute.call(this, i);
+					executionData = await alert[theHiveNodeData.operation].execute.call(this, i, items[i]);
 					break;
 				case 'case':
 					executionData = await case_[theHiveNodeData.operation].execute.call(this, i);
