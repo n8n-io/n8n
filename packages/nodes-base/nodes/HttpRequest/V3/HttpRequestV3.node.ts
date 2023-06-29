@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IRequestOptionsSimplified,
 	JsonObject,
 } from 'n8n-workflow';
 
@@ -969,6 +970,7 @@ export class HttpRequestV3 implements INodeType {
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
+		let httpCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
 		let nodeCredentialType;
@@ -991,6 +993,10 @@ export class HttpRequestV3 implements INodeType {
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpCustomAuth') {
+				try {
+					httpCustomAuth = await this.getCredentials('httpCustomAuth');
 				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
@@ -1344,6 +1350,24 @@ export class HttpRequestV3 implements INodeType {
 					sendImmediately: false,
 				};
 				authDataKeys.auth = ['pass'];
+			}
+			if (httpCustomAuth !== undefined) {
+				const customAuth = jsonParse<IRequestOptionsSimplified>(
+					(httpCustomAuth.json as string) || '{}',
+					{ errorMessage: 'Invalid Custom Auth JSON' },
+				);
+				if (customAuth.headers) {
+					requestOptions.headers = { ...requestOptions.headers, ...customAuth.headers };
+					authDataKeys.headers = Object.keys(customAuth.headers);
+				}
+				if (customAuth.body) {
+					requestOptions.body = { ...requestOptions.body, ...customAuth.body };
+					authDataKeys.body = Object.keys(customAuth.body);
+				}
+				if (customAuth.qs) {
+					requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
+					authDataKeys.qs = Object.keys(customAuth.qs);
+				}
 			}
 
 			if (requestOptions.headers!.accept === undefined) {
