@@ -10,12 +10,10 @@ import { ExecutionRepository } from '@/databases/repositories';
 function getStatusCondition(status: ExecutionStatus) {
 	const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
-	if (status === 'success') {
-		condition.status = 'success';
-	} else if (status === 'waiting') {
-		condition.status = 'waiting';
-	} else if (status === 'error') {
+	if (status === 'error') {
 		condition.status = In(['error', 'crashed', 'failed']);
+	} else {
+		condition.status = status;
 	}
 
 	return condition;

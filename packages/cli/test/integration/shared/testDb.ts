@@ -34,6 +34,7 @@ import type {
 } from './types';
 import type { ExecutionData } from '@/databases/entities/ExecutionData';
 import { generateNanoId } from '@/databases/utils/generators';
+import type { ExecutionStatus } from 'n8n-workflow';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -321,9 +322,10 @@ export const getLdapIdentities = async () =>
 export async function createManyExecutions(
 	amount: number,
 	workflow: WorkflowEntity,
-	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
+	status: ExecutionStatus,
+	callback: (workflow: WorkflowEntity, status: ExecutionStatus) => Promise<ExecutionEntity>,
 ) {
-	const executionsRequests = [...Array(amount)].map(async (_) => callback(workflow));
+	const executionsRequests = [...Array(amount)].map(async (_) => callback(workflow, status));
 	return Promise.all(executionsRequests);
 }
 
@@ -358,22 +360,13 @@ async function createExecution(
 /**
  * Store a successful execution in the DB and assign it to a workflow.
  */
-export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true, status: 'success' }, workflow);
-}
-
-/**
- * Store an error execution in the DB and assign it to a workflow.
- */
-export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
-}
-
-/**
- * Store a waiting execution in the DB and assign it to a workflow.
- */
-export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
+export async function createTestExecution(workflow: WorkflowEntity, status: ExecutionStatus) {
+	if (status === 'success') {
+		return createExecution({ finished: true, stoppedAt: new Date(), status }, workflow);
+	} else if (status === 'waiting') {
+		return createExecution({ finished: false, waitTill: new Date(), status }, workflow);
+	}
+	return createExecution({ finished: false, status }, workflow);
 }
 
 // ----------------------------------

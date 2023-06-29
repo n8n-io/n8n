@@ -94,7 +94,7 @@ describe('GET /executions/:id', () => {
 	test('owner should be able to get an execution owned by him', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
 
@@ -125,7 +125,7 @@ describe('GET /executions/:id', () => {
 
 	test('owner should be able to read executions of other users', async () => {
 		const workflow = await testDb.createWorkflow({}, user1);
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
 
@@ -134,7 +134,7 @@ describe('GET /executions/:id', () => {
 
 	test('member should be able to fetch his own executions', async () => {
 		const workflow = await testDb.createWorkflow({}, user1);
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authUser1Agent.get(`/executions/${execution.id}`);
 
@@ -144,7 +144,7 @@ describe('GET /executions/:id', () => {
 	test('member should not get an execution of another user without the workflow being shared', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authUser1Agent.get(`/executions/${execution.id}`);
 
@@ -154,7 +154,7 @@ describe('GET /executions/:id', () => {
 	test('member should be able to fetch executions of workflows shared with him', async () => {
 		const workflow = await testDb.createWorkflow({}, user1);
 
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		await testDb.shareWorkflowWithUsers(workflow, [user2]);
 
@@ -171,7 +171,7 @@ describe('DELETE /executions/:id', () => {
 
 	test('should delete an execution', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
-		const execution = await testDb.createSuccessfulExecution(workflow);
+		const execution = await testDb.createTestExecution(workflow, 'success');
 
 		const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
 
@@ -209,9 +209,9 @@ describe('GET /executions', () => {
 	test('should retrieve all successful executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		const successfulExecution = await testDb.createSuccessfulExecution(workflow);
+		const successfulExecution = await testDb.createTestExecution(workflow, 'success');
 
-		await testDb.createErrorExecution(workflow);
+		await testDb.createTestExecution(workflow, 'error');
 
 		const response = await authOwnerAgent.get('/executions').query({
 			status: 'success',
@@ -249,11 +249,11 @@ describe('GET /executions', () => {
 	test.skip('should paginate two executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		const firstSuccessfulExecution = await testDb.createSuccessfulExecution(workflow);
+		const firstSuccessfulExecution = await testDb.createTestExecution(workflow, 'success');
 
-		const secondSuccessfulExecution = await testDb.createSuccessfulExecution(workflow);
+		const secondSuccessfulExecution = await testDb.createTestExecution(workflow, 'success');
 
-		await testDb.createErrorExecution(workflow);
+		await testDb.createTestExecution(workflow, 'error');
 
 		const firstExecutionResponse = await authOwnerAgent.get('/executions').query({
 			status: 'success',
@@ -305,9 +305,9 @@ describe('GET /executions', () => {
 	test('should retrieve all error executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		await testDb.createSuccessfulExecution(workflow);
+		await testDb.createTestExecution(workflow, 'success');
 
-		const errorExecution = await testDb.createErrorExecution(workflow);
+		const errorExecution = await testDb.createTestExecution(workflow, 'error');
 
 		const response = await authOwnerAgent.get('/executions').query({
 			status: 'error',
@@ -343,11 +343,11 @@ describe('GET /executions', () => {
 	test('should return all waiting executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
-		await testDb.createSuccessfulExecution(workflow);
+		await testDb.createTestExecution(workflow, 'success');
 
-		await testDb.createErrorExecution(workflow);
+		await testDb.createTestExecution(workflow, 'error');
 
-		const waitingExecution = await testDb.createWaitingExecution(workflow);
+		const waitingExecution = await testDb.createTestExecution(workflow, 'waiting');
 
 		const response = await authOwnerAgent.get('/executions').query({
 			status: 'waiting',
@@ -386,9 +386,10 @@ describe('GET /executions', () => {
 		const savedExecutions = await testDb.createManyExecutions(
 			2,
 			workflow,
-			testDb.createSuccessfulExecution,
+			'success',
+			testDb.createTestExecution,
 		);
-		await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(2, workflow2, 'success', testDb.createTestExecution);
 
 		const response = await authOwnerAgent.get('/executions').query({
 			workflowId: workflow.id,
@@ -429,16 +430,36 @@ describe('GET /executions', () => {
 			{},
 			user1,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser1, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser1, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const [firstWorkflowForUser2, secondWorkflowForUser2] = await testDb.createManyWorkflows(
 			2,
 			{},
 			user2,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const response = await authOwnerAgent.get('/executions');
 
@@ -453,16 +474,36 @@ describe('GET /executions', () => {
 			{},
 			user1,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser1, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser1, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const [firstWorkflowForUser2, secondWorkflowForUser2] = await testDb.createManyWorkflows(
 			2,
 			{},
 			user2,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const response = await authUser1Agent.get('/executions');
 
@@ -477,16 +518,36 @@ describe('GET /executions', () => {
 			{},
 			user1,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser1, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser1, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser1,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		const [firstWorkflowForUser2, secondWorkflowForUser2] = await testDb.createManyWorkflows(
 			2,
 			{},
 			user2,
 		);
-		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
-		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
+		await testDb.createManyExecutions(
+			2,
+			firstWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
+		await testDb.createManyExecutions(
+			2,
+			secondWorkflowForUser2,
+			'success',
+			testDb.createTestExecution,
+		);
 
 		await testDb.shareWorkflowWithUsers(firstWorkflowForUser2, [user1]);
 

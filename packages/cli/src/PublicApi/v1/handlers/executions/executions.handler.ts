@@ -8,7 +8,6 @@ import {
 	deleteExecution,
 	getExecutionsCount,
 } from './executions.service';
-import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
@@ -95,18 +94,12 @@ export = {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
-			// get running workflows so we exclude them from the result
-			const runningExecutionsIds = Container.get(ActiveExecutions)
-				.getActiveExecutions()
-				.map(({ id }) => id);
-
 			const filters = {
 				status,
 				limit,
 				lastId,
 				includeData,
 				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
-				excludedExecutionsIds: runningExecutionsIds,
 			};
 
 			const executions = await getExecutions(filters);
