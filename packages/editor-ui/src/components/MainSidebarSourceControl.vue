@@ -33,6 +33,7 @@ const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' 
 
 async function pushWorkfolder() {
 	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 	try {
 		const status = await sourceControlStore.getAggregatedStatus();
 
@@ -53,13 +54,27 @@ async function pullWorkfolder() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
 
 	try {
-		await sourceControlStore.pullWorkfolder(false);
+		const response = await sourceControlStore.pullWorkfolder(false);
 
 		toast.showMessage({
-			message: i18n.baseText('settings.sourceControl.pull.success.description'),
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
 			type: 'success',
 		});
+
+		const incompleteFileTypes = ['variables', 'credential'];
+		const hasVariablesOrCredentials = (response.status || []).some((file) => {
+			return incompleteFileTypes.includes(file.type);
+		});
+
+		if (hasVariablesOrCredentials) {
+			toast.showMessage({
+				message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+				title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+				type: 'info',
+				duration: 0,
+				showClose: true,
+			});
+		}
 	} catch (error) {
 		const errorResponse = error.response;
 

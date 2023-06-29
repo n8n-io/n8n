@@ -13,13 +13,11 @@ const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
-const sourceControlDocsSetupUrl = computed(() =>
-	locale.baseText('settings.sourceControl.docs.setup.url'),
-);
 const isConnected = ref(false);
 
 const onConnect = async () => {
 	loadingService.startLoading();
+	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
 		await sourceControlStore.savePreferences({
 			repositoryUrl: sourceControlStore.preferences.repositoryUrl,
@@ -169,7 +167,7 @@ const refreshBranches = async () => {
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
 				<i18n path="settings.sourceControl.description">
 					<template #link>
-						<a :href="sourceControlDocsSetupUrl" target="_blank">
+						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
 							{{ locale.baseText('settings.sourceControl.description.link') }}
 						</a>
 					</template>
@@ -228,9 +226,11 @@ const refreshBranches = async () => {
 				<n8n-notice type="info" class="mt-s">
 					<i18n path="settings.sourceControl.sshKeyDescription">
 						<template #link>
-							<a :href="sourceControlDocsSetupUrl" target="_blank">{{
-								locale.baseText('settings.sourceControl.sshKeyDescriptionLink')
-							}}</a>
+							<a
+								:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
+								target="_blank"
+								>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
+							>
 						</template>
 					</i18n>
 				</n8n-notice>
@@ -288,14 +288,9 @@ const refreshBranches = async () => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n path="settings.sourceControl.readonly">
+						<i18n path="settings.sourceControl.protected">
 							<template #bold>
-								<strong>{{ locale.baseText('settings.sourceControl.readonly.bold') }}</strong>
-							</template>
-							<template #link>
-								<a :href="sourceControlDocsSetupUrl" target="_blank">
-									{{ locale.baseText('settings.sourceControl.readonly.link') }}
-								</a>
+								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
 							</template>
 						</i18n>
 					</n8n-checkbox>

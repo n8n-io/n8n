@@ -37,9 +37,14 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		commitMessage: 'commit message',
 	});
 
-	const pushWorkfolder = async (data: { commitMessage: string; fileNames?: string[] }) => {
+	const pushWorkfolder = async (data: {
+		commitMessage: string;
+		fileNames?: string[];
+		force: boolean;
+	}) => {
 		state.commitMessage = data.commitMessage;
 		await vcApi.pushWorkfolder(rootStore.getRestApiContext, {
+			force: data.force,
 			message: data.commitMessage,
 			...(data.fileNames ? { fileNames: data.fileNames } : {}),
 		});

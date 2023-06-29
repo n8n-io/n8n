@@ -17,7 +17,7 @@ const props = defineProps({
 	},
 });
 
-const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
+const incompleteFileTypes = ['variables', 'credential'];
 
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
@@ -52,14 +52,23 @@ async function pullWorkfolder() {
 	try {
 		await sourceControlStore.pullWorkfolder(true);
 		toast.showMessage({
-			message: `${i18n.baseText('settings.sourceControl.pull.success.description')}${
-				deletedWorkflowFiles.value.length > 0
-					? `. ${i18n.baseText('settings.sourceControl.pull.success.description.deleted')}`
-					: ''
-			}`,
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
 			type: 'success',
 		});
+
+		const hasVariablesOrCredentials = files.value.some((file) => {
+			return incompleteFileTypes.includes(file.type);
+		});
+
+		if (hasVariablesOrCredentials) {
+			toast.showMessage({
+				message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+				title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+				type: 'info',
+				duration: 0,
+				showClose: true,
+			});
+		}
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
@@ -87,12 +96,7 @@ async function pullWorkfolder() {
 					</n8n-text>
 					<ul :class="$style.filesList">
 						<li v-for="file in modifiedWorkflowFiles" :key="file.id">
-							<n8n-link
-								:class="$style.fileLink"
-								theme="text"
-								new-window
-								:to="`/workflow/${file.id}`"
-							>
+							<n8n-link :class="$style.fileLink" new-window :to="`/workflow/${file.id}`">
 								{{ file.name }}
 								<n8n-icon icon="external-link-alt" />
 							</n8n-link>
