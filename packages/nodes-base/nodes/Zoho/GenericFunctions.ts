@@ -9,8 +9,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import flow from 'lodash.flow';
-import sortBy from 'lodash.sortby';
+import flow from 'lodash/flow';
+import sortBy from 'lodash/sortBy';
 
 import type {
 	AllFields,

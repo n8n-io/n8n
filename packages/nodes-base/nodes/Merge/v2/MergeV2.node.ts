@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 
-import merge from 'lodash.merge';
+import merge from 'lodash/merge';
 
 import type {
 	IExecuteFunctions,
@@ -541,14 +541,18 @@ export class MergeV2 implements INodeType {
 
 					const mergedEntries = mergeMatched(matches.matched, clashResolveOptions, joinMode);
 
-					if (clashResolveOptions.resolveClash === 'addSuffix') {
-						const suffix = joinMode === 'enrichInput1' ? '1' : '2';
-						returnData.push(
-							...mergedEntries,
-							...addSuffixToEntriesKeys(matches.unmatched1, suffix),
-						);
+					if (joinMode === 'enrichInput1') {
+						if (clashResolveOptions.resolveClash === 'addSuffix') {
+							returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, '1'));
+						} else {
+							returnData.push(...mergedEntries, ...matches.unmatched1);
+						}
 					} else {
-						returnData.push(...mergedEntries, ...matches.unmatched1);
+						if (clashResolveOptions.resolveClash === 'addSuffix') {
+							returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched2, '2'));
+						} else {
+							returnData.push(...mergedEntries, ...matches.unmatched2);
+						}
 					}
 				}
 			}

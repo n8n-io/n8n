@@ -22,7 +22,7 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, USER_ACTIVATION_SURVEY_MODAL, STORES } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
 	ICredentialsResponse,
 	IInviteResponse,
@@ -35,7 +35,6 @@ import type {
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
@@ -133,17 +132,29 @@ export const useUsersStore = defineStore(STORES.USERS, {
 					isPendingUser: isPendingUser(updatedUser),
 					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
 				};
-				Vue.set(this.users, user.id, user);
+
+				this.users = {
+					...this.users,
+					[user.id]: user,
+				};
 			});
 		},
 		deleteUserById(userId: string): void {
-			Vue.delete(this.users, userId);
+			const { [userId]: _, ...users } = this.users;
+			this.users = users;
 		},
 		setPersonalizationAnswers(answers: IPersonalizationLatestVersion): void {
 			if (!this.currentUser) {
 				return;
 			}
-			Vue.set(this.currentUser, 'personalizationAnswers', answers);
+
+			this.users = {
+				...this.users,
+				[this.currentUser.id]: {
+					...this.currentUser,
+					personalizationAnswers: answers,
+				},
+			};
 		},
 		async loginWithCookie(): Promise<void> {
 			const rootStore = useRootStore();
@@ -319,16 +330,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
 				const uiStore = useUIStore();
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
-			}
-		},
-		async showUserActivationSurveyModal() {
-			const settingsStore = useSettingsStore();
-			if (settingsStore.isUserActivationSurveyEnabled) {
-				const currentUser = this.currentUser;
-				if (currentUser?.settings?.showUserActivationSurvey) {
-					const uiStore = useUIStore();
-					uiStore.openModal(USER_ACTIVATION_SURVEY_MODAL);
-				}
 			}
 		},
 		async skipOwnerSetup(): Promise<void> {

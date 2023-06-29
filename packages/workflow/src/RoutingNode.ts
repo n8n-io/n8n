@@ -9,9 +9,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
-import get from 'lodash.get';
-import merge from 'lodash.merge';
-import set from 'lodash.set';
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import set from 'lodash/set';
 
 import type {
 	ICredentialDataDecryptedObject,

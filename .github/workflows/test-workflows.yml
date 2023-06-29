@@ -25,7 +25,7 @@ jobs:
 
       - uses: pnpm/action-setup@v2.2.4
         with:
-          version: 8.1.0
+          version: 8.6.1
 
       - uses: actions/setup-node@v3
         with:
