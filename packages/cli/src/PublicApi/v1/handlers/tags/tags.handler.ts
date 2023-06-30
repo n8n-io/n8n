@@ -17,7 +17,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
 import { Container } from 'typedi';
-import type { FindManyOptions } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { QueryFailedError } from 'typeorm';
 
 export = {
@@ -33,20 +33,22 @@ export = {
 
 			await validateEntity(newTag);
 
-			let tag;
-			try {
-				tag = await createTag(newTag);
-			} catch (error) {
-				if (error instanceof QueryFailedError && error.message.includes("SQLITE_CONSTRAINT")) {
-					return res.status(409).json({ message: 'Tag already exists' });
-				} else {
-					throw error;
-				}
+			const where: FindOptionsWhere<TagEntity> = {
+				...(newTag.name !== undefined && { name: newTag.name })
+			};
+			const query: FindManyOptions<TagEntity> = {
+				where,
+			};
+
+			let tags = await getTags(query);
+			if (tags.length > 0) {
+				return res.status(409).json({ message: 'Tag already exists' });
 			}
+			let createdTag = await createTag(newTag);
+			
+			await Container.get(ExternalHooks).run('tag.afterCreate', [createdTag]);
 
-			await Container.get(ExternalHooks).run('tag.afterCreate', [tag]);
-
-			return res.status(201).json(tag);
+			return res.status(201).json(createdTag);
 		},
 	],
 	updateTag: [
@@ -69,15 +71,18 @@ export = {
 
 			await validateEntity(newTag);
 
-			try {
-				await updateTag(id, newTag);
-			} catch (error) {
-				if (error instanceof QueryFailedError && error.message.includes("SQLITE_CONSTRAINT")) {
-					return res.status(409).json({ message: 'Tag already exists' });
-				} else {
-					throw error;
-				}
+			const where: FindOptionsWhere<TagEntity> = {
+				...(newTag.name !== undefined && { name: newTag.name })
+			};
+			const query: FindManyOptions<TagEntity> = {
+				where,
+			};
+
+			let tags = await getTags(query);
+			if (tags.length > 0) {
+				return res.status(409).json({ message: 'Tag already exists' });
 			}
+			await updateTag(id, newTag);
 
 			await Container.get(ExternalHooks).run('tag.afterUpdate', [tag]);
 
