@@ -9,6 +9,7 @@ import {
 	UnprocessableRequestError,
 } from '@/ResponseHelper';
 import {
+	compareHash,
 	getInstanceBaseUrl,
 	hashPassword,
 	validatePassword,
@@ -25,6 +26,7 @@ import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
 import { UserService } from '../user/user.service';
+import { compare } from 'bcryptjs';
 
 @RestController()
 export class PasswordResetController {
@@ -184,13 +186,28 @@ export class PasswordResetController {
 
 		const user = await this.userRepository.findOneBy({
 			id,
-			resetPasswordToken,
 			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
 		});
 
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				{
+					userId: id,
+					resetPasswordToken,
+				},
+			);
+			throw new NotFoundError('');
+		}
+
+		const validResetPasswordToken = await compareHash(
+			resetPasswordToken,
+			user?.resetPasswordToken as string,
+		);
+
+		if (!validResetPasswordToken) {
+			this.logger.debug(
+				'Request to resolve password token failed because reset password token provided does not match the hash',
 				{
 					userId: id,
 					resetPasswordToken,
@@ -228,7 +245,6 @@ export class PasswordResetController {
 		const user = await this.userRepository.findOne({
 			where: {
 				id: userId,
-				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
 			},
 			relations: ['authIdentities'],
@@ -239,6 +255,21 @@ export class PasswordResetController {
 				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
 				{
 					userId,
+					resetPasswordToken,
+				},
+			);
+			throw new NotFoundError('');
+		}
+
+		const validResetPasswordToken = await compareHash(
+			resetPasswordToken,
+			user?.resetPasswordToken as string,
+		);
+
+		if (!validResetPasswordToken) {
+			this.logger.debug(
+				'Request to resolve password token failed because reset password token provided does not match the hash',
+				{
 					resetPasswordToken,
 				},
 			);

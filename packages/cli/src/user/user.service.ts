@@ -4,8 +4,7 @@ import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
-import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
-
+import { getInstanceBaseUrl, hashPassword } from '@/UserManagement/UserManagementHelper';
 export class UserService {
 	static async get(where: FindOptionsWhere<User>): Promise<User | null> {
 		return Db.collections.User.findOne({
@@ -29,7 +28,12 @@ export class UserService {
 		user.resetPasswordToken = uuid();
 		const { id, resetPasswordToken } = user;
 		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
-		await Db.collections.User.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
+		const hashedResetPasswordToken = await hashPassword(resetPasswordToken);
+
+		await Db.collections.User.update(id, {
+			resetPasswordToken: hashedResetPasswordToken,
+			resetPasswordTokenExpiration,
+		});
 
 		const baseUrl = getInstanceBaseUrl();
 		const url = new URL(`${baseUrl}/change-password`);

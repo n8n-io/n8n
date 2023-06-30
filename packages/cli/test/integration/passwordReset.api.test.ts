@@ -16,6 +16,7 @@ import {
 import * as testDb from './shared/testDb';
 import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
+import { hashPassword } from '@/UserManagement/UserManagementHelper';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
@@ -147,8 +148,10 @@ describe('GET /resolve-password-token', () => {
 		const resetPasswordToken = uuid();
 		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
 
+		const hashedResetPasswordToken = await hashPassword(resetPasswordToken);
+
 		await Db.collections.User.update(owner.id, {
-			resetPasswordToken,
+			resetPasswordToken: hashedResetPasswordToken,
 			resetPasswordTokenExpiration,
 		});
 
@@ -201,8 +204,10 @@ describe('POST /change-password', () => {
 	test('should succeed with valid inputs', async () => {
 		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
 
+		const hashedResetPasswordToken = await hashPassword(resetPasswordToken);
+
 		await Db.collections.User.update(owner.id, {
-			resetPasswordToken,
+			resetPasswordToken: hashedResetPasswordToken,
 			resetPasswordTokenExpiration,
 		});
 
