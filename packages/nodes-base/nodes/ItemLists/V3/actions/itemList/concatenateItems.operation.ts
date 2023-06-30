@@ -1,0 +1,257 @@
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Aggregate',
+		name: 'aggregate',
+		type: 'options',
+		default: 'aggregateIndividualFields',
+		options: [
+			{
+				name: 'Individual Fields',
+				value: 'aggregateIndividualFields',
+			},
+			{
+				name: 'All Item Data (Into a Single List)',
+				value: 'aggregateAllItemData',
+			},
+		],
+	},
+	{
+		displayName: 'Fields To Aggregate',
+		name: 'fieldsToAggregate',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Field To Aggregate',
+		default: { fieldToAggregate: [{ fieldToAggregate: '', renameField: false }] },
+		displayOptions: {
+			show: {
+				aggregate: ['aggregateIndividualFields'],
+			},
+		},
+		options: [
+			{
+				displayName: '',
+				name: 'fieldToAggregate',
+				values: [
+					{
+						displayName: 'Input Field Name',
+						name: 'fieldToAggregate',
+						type: 'string',
+						default: '',
+						description: 'The name of a field in the input items to aggregate together',
+						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+						placeholder: 'e.g. id',
+						hint: ' Enter the field name as text',
+						requiresDataPath: 'single',
+					},
+					{
+						displayName: 'Rename Field',
+						name: 'renameField',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to give the field a different name in the output',
+					},
+					{
+						displayName: 'Output Field Name',
+						name: 'outputFieldName',
+						displayOptions: {
+							show: {
+								renameField: [true],
+							},
+						},
+						type: 'string',
+						default: '',
+						description:
+							'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
+						requiresDataPath: 'single',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Put Output in Field',
+		name: 'destinationFieldName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				aggregate: ['aggregateAllItemData'],
+			},
+		},
+		default: 'data',
+		description: 'The name of the output field to put the data in',
+	},
+	{
+		displayName: 'Include',
+		name: 'include',
+		type: 'options',
+		default: 'allFields',
+		options: [
+			{
+				name: 'All Fields',
+				value: 'allFields',
+			},
+			{
+				name: 'Specified Fields',
+				value: 'specifiedFields',
+			},
+			{
+				name: 'All Fields Except',
+				value: 'allFieldsExcept',
+			},
+		],
+		displayOptions: {
+			show: {
+				aggregate: ['aggregateAllItemData'],
+			},
+		},
+	},
+	{
+		displayName: 'Fields To Exclude',
+		name: 'fieldsToExclude',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Field To Exclude',
+		default: {},
+		options: [
+			{
+				displayName: '',
+				name: 'fields',
+				values: [
+					{
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'string',
+						default: '',
+						description: 'A field in the input to exclude from the object in output array',
+						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+						placeholder: 'e.g. id',
+						hint: ' Enter the field name as text',
+						requiresDataPath: 'single',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				aggregate: ['aggregateAllItemData'],
+				include: ['allFieldsExcept'],
+			},
+		},
+	},
+	{
+		displayName: 'Fields To Include',
+		name: 'fieldsToInclude',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		placeholder: 'Add Field To Include',
+		default: {},
+		options: [
+			{
+				displayName: '',
+				name: 'fields',
+				values: [
+					{
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'string',
+						default: '',
+						description: 'Specify fields that will be included in output array',
+						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+						placeholder: 'e.g. id',
+						hint: ' Enter the field name as text',
+						requiresDataPath: 'single',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				aggregate: ['aggregateAllItemData'],
+				include: ['specifiedFields'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			hide: {
+				aggregate: ['aggregateAllItemData'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Disable Dot Notation',
+				name: 'disableDotNotation',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to disallow referencing child fields using `parent.child` in the field name',
+			},
+			{
+				displayName: 'Merge Lists',
+				name: 'mergeLists',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
+			},
+			{
+				displayName: 'Keep Missing And Null Values',
+				name: 'keepMissing',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to add a null entry to the aggregated list when there is a missing or null value',
+			},
+		],
+	},
+];
+
+const displayOptions = {
+	show: {
+		resource: ['itemList'],
+		operation: ['concatenateItems'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+export async function execute(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const returnData: INodeExecutionData[] = [];
+
+	for (let i = 0; i < items.length; i++) {
+		try {
+			const data: IDataObject[] = [];
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(data), {
+				itemData: { item: i },
+			});
+
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ json: { error: error.message } });
+				continue;
+			}
+			throw error;
+		}
+	}
+
+	return returnData;
+}
