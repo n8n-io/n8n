@@ -329,7 +329,7 @@ export const schema = {
 		// Deletes the oldest entries first
 		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB',
+			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
 			format: Number,
 			default: 1000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
