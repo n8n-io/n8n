@@ -6,7 +6,7 @@
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
-		:item-size="77"
+		:type-props="{ itemSize: 77 }"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
@@ -44,41 +44,28 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { ICredentialsResponse, ICredentialTypeMap, IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import { defineComponent } from 'vue';
 
-import SettingsView from './SettingsView.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
-import { ICredentialType } from 'n8n-workflow';
-import TemplateCard from '@/components/TemplateCard.vue';
-import { debounceHelper } from '@/mixins/debounce';
-import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
-import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
+import type { ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
-import Vue from 'vue';
+import type Vue from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
-export default mixins(showMessage, debounceHelper).extend({
-	name: 'SettingsPersonalView',
+export default defineComponent({
+	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		CredentialCard,
-		ResourceOwnershipSelect,
-		ResourceFiltersDropdown,
 	},
 	data() {
 		return {
@@ -88,10 +75,17 @@ export default mixins(showMessage, debounceHelper).extend({
 				sharedWith: '',
 				type: '',
 			},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useUsersStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useUsersStore,
+			useSourceControlStore,
+		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
 		},
@@ -122,7 +116,7 @@ export default mixins(showMessage, debounceHelper).extend({
 
 			await Promise.all(loadPromises);
 
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
+			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
 		onFilter(
 			resource: ICredentialsResponse,
@@ -154,6 +148,18 @@ export default mixins(showMessage, debounceHelper).extend({
 		'filters.type'() {
 			this.sendFiltersTelemetry('type');
 		},
+	},
+	mounted() {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 });
 </script>

@@ -5,7 +5,7 @@ import { googleApiRequest } from './GenericFunctions';
 
 import { utils as xlsxUtils } from 'xlsx';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 export interface ISheetOptions {
 	scope: string[];

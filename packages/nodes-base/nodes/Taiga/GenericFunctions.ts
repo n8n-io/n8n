@@ -115,7 +115,8 @@ export async function taigaApiRequestAllItems(
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		uri = responseData.headers['x-pagination-next'];
-		if (query.limit && returnData.length >= query.limit) {
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
 	} while (

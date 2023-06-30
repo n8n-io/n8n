@@ -332,6 +332,21 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Notification Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['post'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		description:
+			'Fallback text to display in slack notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
+	},
+	{
 		displayName: 'This is a legacy Slack feature. Slack advises to instead use Blocks.',
 		name: 'noticeAttachments',
 		type: 'notice',

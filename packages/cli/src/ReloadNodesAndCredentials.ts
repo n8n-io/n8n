@@ -11,7 +11,7 @@ export const reloadNodesAndCredentials = async (
 	push: Push,
 ) => {
 	// eslint-disable-next-line import/no-extraneous-dependencies
-	const { default: debounce } = await import('lodash.debounce');
+	const { default: debounce } = await import('lodash/debounce');
 	// eslint-disable-next-line import/no-extraneous-dependencies
 	const { watch } = await import('chokidar');
 

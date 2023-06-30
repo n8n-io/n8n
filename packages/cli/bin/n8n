@@ -21,10 +21,10 @@ if (process.argv.length === 2) {
 const nodeVersion = process.versions.node;
 const nodeVersionMajor = require('semver').major(nodeVersion);
 
-if (![14, 16, 18].includes(nodeVersionMajor)) {
+if (![16, 18].includes(nodeVersionMajor)) {
 	console.log(`
 	Your Node.js version (${nodeVersion}) is currently not supported by n8n.
-	Please use Node.js v14, v16 (recommended), or v18 instead!
+	Please use Node.js v16 (recommended), or v18 instead!
 	`);
 	process.exit(1);
 }

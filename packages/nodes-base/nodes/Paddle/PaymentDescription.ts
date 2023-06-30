@@ -184,7 +184,7 @@ export const paymentFields: INodeProperties[] = [
 		name: 'paymentId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getpayment',
+			loadOptionsMethod: 'getPayments',
 		},
 		default: '',
 		required: true,

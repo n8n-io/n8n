@@ -22,14 +22,15 @@ const config = {
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
+	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: true,
 	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
 	collectCoverageFrom: ['src/**/*.ts'],
+	testTimeout: 10_000,
 };
 
 if (process.env.CI === 'true') {
-	config.maxWorkers = 2;
-	config.workerIdleMemoryLimit = 2048;
+	config.workerIdleMemoryLimit = 1024;
 	config.coverageReporters = ['cobertura'];
 }
 

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import { getMappedResult, getMappedExpression } from '../mappingUtils';
 
 const RLC_PARAM: INodeProperties = {
@@ -207,7 +207,7 @@ describe('Mapping Utils', () => {
 				path: ['sample', 'path'],
 			};
 			const result = getMappedExpression(input);
-			expect(result).toBe('{{ $node.nodeName.json.sample.path }}');
+			expect(result).toBe("{{ $('nodeName').item.json.sample.path }}");
 		});
 
 		it('should generate a mapped expression with mixed array path', () => {
@@ -217,7 +217,7 @@ describe('Mapping Utils', () => {
 				path: ['sample', 0, 'path'],
 			};
 			const result = getMappedExpression(input);
-			expect(result).toBe('{{ $node.nodeName.json.sample[0].path }}');
+			expect(result).toBe("{{ $('nodeName').item.json.sample[0].path }}");
 		});
 
 		it('should generate a mapped expression with special characters in array path', () => {
@@ -228,7 +228,30 @@ describe('Mapping Utils', () => {
 			};
 			const result = getMappedExpression(input);
 			expect(result).toBe(
-				'{{ $node.nodeName.json.sample["path with-space"]["path-with-hyphen"] }}',
+				"{{ $('nodeName').item.json.sample['path with-space']['path-with-hyphen'] }}",
+			);
+		});
+
+		it('should handle paths with special characters', () => {
+			const input = {
+				nodeName: 'nodeName',
+				distanceFromActive: 2,
+				path: [
+					'sample',
+					'"Execute"',
+					'`Execute`',
+					"'Execute'",
+					'[Execute]',
+					'{Execute}',
+					'execute?',
+					'test,',
+					'test:',
+					'path.',
+				],
+			};
+			const result = getMappedExpression(input);
+			expect(result).toBe(
+				"{{ $('nodeName').item.json.sample['\"Execute\"']['`Execute`']['\\'Execute\\'']['[Execute]']['{Execute}']['execute?']['test,']['test:']['path.'] }}",
 			);
 		});
 
@@ -239,7 +262,7 @@ describe('Mapping Utils', () => {
 				path: ['propertyName', 'capitalizedName', 'hyphen-prop'],
 			};
 			const result = getMappedExpression(input);
-			expect(result).toBe('{{ $json.propertyName.capitalizedName["hyphen-prop"] }}');
+			expect(result).toBe("{{ $json.propertyName.capitalizedName['hyphen-prop'] }}");
 		});
 
 		it('should generate a mapped expression with a complex path', () => {
@@ -250,7 +273,7 @@ describe('Mapping Utils', () => {
 			};
 			const result = getMappedExpression(input);
 			expect(result).toBe(
-				'{{ $json.propertyName.capitalizedName.stringVal["some-value"].capitalizedProp }}',
+				"{{ $json.propertyName.capitalizedName.stringVal['some-value'].capitalizedProp }}",
 			);
 		});
 	});

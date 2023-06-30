@@ -1,3 +1,4 @@
+import type { Migration } from '@db/types';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -34,8 +35,13 @@ import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-Pu
 import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-UpdateRunningExecutionStatus';
+import { CreateExecutionMetadataTable1679416281779 } from './1679416281779-CreateExecutionMetadataTable';
+import { CreateVariables1677501636753 } from './1677501636753-CreateVariables';
+import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
+import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-MigrateIntegerKeysToString';
+import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
 
-export const mysqlMigrations = [
+export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
 	WebhookModel1592447867632,
 	CreateIndexStoppedAt1594902918301,
@@ -72,4 +78,9 @@ export const mysqlMigrations = [
 	AddStatusToExecutions1674138566000,
 	MigrateExecutionStatus1676996103000,
 	UpdateRunningExecutionStatus1677236788851,
+	CreateExecutionMetadataTable1679416281779,
+	CreateVariables1677501636753,
+	AddUserActivatedProperty1681134145996,
+	MigrateIntegerKeysToString1690000000001,
+	SeparateExecutionData1690000000030,
 ];

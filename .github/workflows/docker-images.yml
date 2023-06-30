@@ -49,6 +49,4 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}${{ matrix.docker-context }}
-            ${{ secrets.DOCKER_USERNAME }}/n8n:latest${{ matrix.docker-context }}
             ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.vars.outputs.tag }}${{ matrix.docker-context }}
-            ghcr.io/${{ github.repository_owner }}/n8n:latest${{ matrix.docker-context }}

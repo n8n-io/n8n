@@ -1,42 +1,37 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class UniqueWorkflowNames1620826335440 implements MigrationInterface {
-	name = 'UniqueWorkflowNames1620826335440';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		const workflowNames = await queryRunner.query(`
-				SELECT name
-				FROM ${tablePrefix}workflow_entity
-			`);
+export class UniqueWorkflowNames1620826335440 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const workflowNames = (await queryRunner.query(`
+			SELECT name
+			FROM ${tablePrefix}workflow_entity
+		`)) as Array<{ name: string }>;
 
 		for (const { name } of workflowNames) {
 			const [duplicatesQuery, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
-				`
-					SELECT id, name
+				` SELECT id, name
 					FROM ${tablePrefix}workflow_entity
 					WHERE name = :name
-					ORDER BY createdAt ASC
-				`,
+					ORDER BY createdAt ASC`,
 				{ name },
 				{},
 			);
 
-			const duplicates = await queryRunner.query(duplicatesQuery, parameters);
+			const duplicates = (await queryRunner.query(duplicatesQuery, parameters)) as Array<{
+				id: number;
+				name: string;
+			}>;
 
 			if (duplicates.length > 1) {
 				await Promise.all(
-					duplicates.map(({ id, name }: { id: number; name: string }, index: number) => {
-						if (index === 0) return Promise.resolve();
+					// eslint-disable-next-line @typescript-eslint/no-shadow
+					duplicates.map(async ({ id, name }, index: number) => {
+						if (index === 0) return;
 						const [updateQuery, updateParams] =
 							queryRunner.connection.driver.escapeQueryWithParameters(
-								`
-							UPDATE ${tablePrefix}workflow_entity
-							SET name = :name
-							WHERE id = '${id}'
-						`,
+								`UPDATE ${tablePrefix}workflow_entity
+								 SET name = :name
+								 WHERE id = '${id}'`,
 								{ name: `${name} ${index + 1}` },
 								{},
 							);
@@ -56,9 +51,7 @@ export class UniqueWorkflowNames1620826335440 implements MigrationInterface {
 		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'ALTER TABLE `' +
 				tablePrefix +

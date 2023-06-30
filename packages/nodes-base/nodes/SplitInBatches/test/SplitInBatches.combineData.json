@@ -26,7 +26,7 @@
 			},
 			"name": "SplitInBatches1",
 			"type": "n8n-nodes-base.splitInBatches",
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"position": [1340, 400],
 			"id": "02d51797-ae62-4fd6-b703-426a4b3fb951"
 		},

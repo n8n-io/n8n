@@ -3,14 +3,14 @@ export interface IHourlyRateDto {
 	currency: string;
 }
 
-enum MembershipStatusEnum {
+const enum MembershipStatusEnum {
 	PENDING = 'PENDING',
 	ACTIVE = 'ACTIVE',
 	DECLINED = 'DECLINED',
 	INACTIVE = 'INACTIVE',
 }
 
-enum TaskStatusEnum {
+const enum TaskStatusEnum {
 	ACTIVE = 'ACTIVE',
 	DONE = 'DONE',
 }

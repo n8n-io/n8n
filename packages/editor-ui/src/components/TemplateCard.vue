@@ -45,13 +45,15 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes, abbreviateNumber } from '@/utils';
 import NodeList from './NodeList.vue';
+import TimeAgo from '@/components/TimeAgo.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateCard',
+	mixins: [genericHelpers],
 	props: {
 		lastItem: {
 			type: Boolean,
@@ -72,6 +74,7 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
+		TimeAgo,
 		NodeList,
 	},
 	data() {

@@ -1,86 +1,31 @@
-// @ts-nocheck
-
-import Vue from 'vue';
-import Fragment from 'vue-fragment';
+import type { PluginObject } from 'vue';
 import VueAgile from 'vue-agile';
 
 import 'regenerator-runtime/runtime';
 
 import ElementUI from 'element-ui';
-import { Loading, MessageBox, Message, Notification } from 'element-ui';
-import { designSystemComponents } from 'n8n-design-system';
-import { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import { Loading, MessageBox, Notification } from 'element-ui';
+import { N8nPlugin } from 'n8n-design-system';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import { useMessage } from '@/composables/useMessage';
 
-Vue.use(Fragment.Plugin);
-Vue.use(VueAgile);
+export const GlobalComponentsPlugin: PluginObject<{}> = {
+	install(app) {
+		const messageService = useMessage();
 
-Vue.use(ElementUI);
-Vue.use(designSystemComponents);
+		app.component('enterprise-edition', EnterpriseEdition);
 
-Vue.component('enterprise-edition', EnterpriseEdition);
+		app.use(VueAgile);
+		app.use(ElementUI);
+		app.use(N8nPlugin);
+		app.use(Loading.directive);
 
-Vue.use(Loading.directive);
-
-Vue.prototype.$loading = Loading.service;
-Vue.prototype.$msgbox = MessageBox;
-
-Vue.prototype.$alert = async (
-	message: string,
-	configOrTitle: string | ElMessageBoxOptions | undefined,
-	config: ElMessageBoxOptions | undefined,
-) => {
-	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
-	temp = {
-		...temp,
-		cancelButtonClass: 'btn--cancel',
-		confirmButtonClass: 'btn--confirm',
-	};
-
-	if (typeof configOrTitle === 'string') {
-		return await MessageBox.alert(message, configOrTitle, temp);
-	}
-	return await MessageBox.alert(message, temp);
+		app.prototype.$loading = Loading.service;
+		app.prototype.$msgbox = MessageBox;
+		app.prototype.$alert = messageService.alert;
+		app.prototype.$confirm = messageService.confirm;
+		app.prototype.$prompt = messageService.prompt;
+		app.prototype.$message = messageService.message;
+		app.prototype.$notify = Notification;
+	},
 };
-
-Vue.prototype.$confirm = async (
-	message: string,
-	configOrTitle: string | ElMessageBoxOptions | undefined,
-	config: ElMessageBoxOptions | undefined,
-) => {
-	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
-	temp = {
-		...temp,
-		cancelButtonClass: 'btn--cancel',
-		confirmButtonClass: 'btn--confirm',
-		distinguishCancelAndClose: true,
-		showClose: config.showClose || false,
-		closeOnClickModal: false,
-	};
-
-	if (typeof configOrTitle === 'string') {
-		return await MessageBox.confirm(message, configOrTitle, temp);
-	}
-	return await MessageBox.confirm(message, temp);
-};
-
-Vue.prototype.$prompt = async (
-	message: string,
-	configOrTitle: string | ElMessageBoxOptions | undefined,
-	config: ElMessageBoxOptions | undefined,
-) => {
-	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
-	temp = {
-		...temp,
-		cancelButtonClass: 'btn--cancel',
-		confirmButtonClass: 'btn--confirm',
-	};
-
-	if (typeof configOrTitle === 'string') {
-		return await MessageBox.prompt(message, configOrTitle, temp);
-	}
-	return await MessageBox.prompt(message, temp);
-};
-
-Vue.prototype.$notify = Notification;
-Vue.prototype.$message = Message;

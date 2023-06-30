@@ -111,7 +111,7 @@ export class Shopify implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available products to display them to user so that he can
+			// Get all the available products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -133,7 +133,7 @@ export class Shopify implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available locations to display them to user so that he can
+			// Get all the available locations to display them to user so that they can
 			// select them easily
 			async getLocations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
