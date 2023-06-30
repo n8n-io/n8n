@@ -1385,6 +1385,8 @@
 	"settings.sourceControl.pull.oneLastStep.title": "One last step",
 	"settings.sourceControl.pull.oneLastStep.description": "You have new creds/vars. Fill them out to make sure your workflows function properly",
 	"settings.sourceControl.pull.success.title": "Pulled successfully",
+	"settings.sourceControl.pull.upToDate.title": "Already up to date",
+	"settings.sourceControl.pull.upToDate.description": "No updates to pull from Git",
 	"settings.sourceControl.modals.pull.title": "Override local changes?",
 	"settings.sourceControl.modals.pull.description": "These local workflows will be overridden by remote changes. To keep the local version, push it before doing the pull.",
 	"settings.sourceControl.modals.pull.workflowsWithChanges": "Workflows with conflicting changes:",

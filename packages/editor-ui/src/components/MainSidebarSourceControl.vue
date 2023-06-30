@@ -55,27 +55,36 @@ async function pullWorkfolder() {
 
 	try {
 		const status = await sourceControlStore.pullWorkfolder(false);
-		const incompleteFileTypes = ['variables', 'credential'];
-		const hasVariablesOrCredentials = (status || []).some((file) => {
-			return incompleteFileTypes.includes(file.type);
-		});
 
-		toast.showMessage({
-			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			type: 'success',
-		});
-
-		if (hasVariablesOrCredentials) {
-			nextTick(() => {
-				toast.showMessage({
-					message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
-					title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
-					type: 'info',
-					duration: 0,
-					showClose: true,
-					offset: 0,
-				});
+		if (status.length === 0) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
+				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
+				type: 'success',
 			});
+		} else {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.success.title'),
+				type: 'success',
+			});
+
+			const incompleteFileTypes = ['variables', 'credential'];
+			const hasVariablesOrCredentials = (status || []).some((file) => {
+				return incompleteFileTypes.includes(file.type);
+			});
+
+			if (hasVariablesOrCredentials) {
+				nextTick(() => {
+					toast.showMessage({
+						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+						type: 'info',
+						duration: 0,
+						showClose: true,
+						offset: 0,
+					});
+				});
+			}
 		}
 	} catch (error) {
 		const errorResponse = error.response;
