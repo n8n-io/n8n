@@ -54,6 +54,7 @@
 					:actions="actions"
 					theme="dark"
 					@action="onAction"
+					@click.stop
 					data-test-id="workflow-card-actions"
 				/>
 			</div>
