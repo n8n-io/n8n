@@ -8,7 +8,7 @@ import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores';
 import { useRoute, useRouter } from 'vue-router/composables';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 const props = defineProps({
 	data: {
@@ -51,22 +51,26 @@ async function pullWorkfolder() {
 
 	try {
 		await sourceControlStore.pullWorkfolder(true);
-		toast.showMessage({
-			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			type: 'success',
-		});
 
 		const hasVariablesOrCredentials = files.value.some((file) => {
 			return incompleteFileTypes.includes(file.type);
 		});
 
+		toast.showMessage({
+			title: i18n.baseText('settings.sourceControl.pull.success.title'),
+			type: 'success',
+		});
+
 		if (hasVariablesOrCredentials) {
-			toast.showMessage({
-				message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
-				title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
-				type: 'info',
-				duration: 0,
-				showClose: true,
+			nextTick(() => {
+				toast.showMessage({
+					message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+					title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+					type: 'info',
+					duration: 0,
+					showClose: true,
+					offset: 0,
+				});
 			});
 		}
 	} catch (error) {

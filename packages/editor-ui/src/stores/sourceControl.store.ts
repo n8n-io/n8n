@@ -51,7 +51,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const pullWorkfolder = async (force: boolean) => {
-		await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
+		return vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
 	};
 
 	const setPreferences = (data: Partial<SourceControlPreferences>) => {

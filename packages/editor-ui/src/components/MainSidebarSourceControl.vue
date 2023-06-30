@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router/composables';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
@@ -54,25 +54,27 @@ async function pullWorkfolder() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
 
 	try {
-		const response = await sourceControlStore.pullWorkfolder(false);
+		const status = await sourceControlStore.pullWorkfolder(false);
+		const incompleteFileTypes = ['variables', 'credential'];
+		const hasVariablesOrCredentials = (status || []).some((file) => {
+			return incompleteFileTypes.includes(file.type);
+		});
 
 		toast.showMessage({
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
 			type: 'success',
 		});
 
-		const incompleteFileTypes = ['variables', 'credential'];
-		const hasVariablesOrCredentials = (response.status || []).some((file) => {
-			return incompleteFileTypes.includes(file.type);
-		});
-
 		if (hasVariablesOrCredentials) {
-			toast.showMessage({
-				message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
-				title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
-				type: 'info',
-				duration: 0,
-				showClose: true,
+			nextTick(() => {
+				toast.showMessage({
+					message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+					title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+					type: 'info',
+					duration: 0,
+					showClose: true,
+					offset: 0,
+				});
 			});
 		}
 	} catch (error) {
