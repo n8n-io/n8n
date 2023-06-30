@@ -37,7 +37,7 @@ workflowsWithVersionController.get(
  * GET /workflows-with-version/:id
  */
 workflowsWithVersionController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowWithVersionRequest.Get) => {
 		const { id } = req.params;
 		const { versionId } = req.query;
