@@ -72,6 +72,7 @@
     "vue-agile": "^2.0.0",
     "vue-i18n": "^8.26.7",
     "vue-infinite-loading": "^2.4.5",
+    "vue-json-compare": "^3.0.0",
     "vue-json-pretty": "1.9.3",
     "vue-router": "^3.6.5",
     "vue2-teleport": "^1.0.1",

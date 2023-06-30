@@ -19,6 +19,10 @@
 			<AskAiModal />
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_WITH_VERSION_MODAL_KEY">
+			<WorkflowWithVersionModalKey />
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
 			<CredentialsSelectModal />
 		</ModalRoot>
@@ -151,12 +155,15 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	ASK_AI_MODAL_KEY,
+	WORKFLOW_WITH_VERSION_MODAL_KEY,
+	VERSION_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
 import AskAiModal from './AskAiModal.vue';
+import WorkflowWithVersionModalKey from './WorkflowWithVersion.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from './ChangePasswordModal.vue';
@@ -186,6 +193,7 @@ export default defineComponent({
 	components: {
 		AboutModal,
 		AskAiModal,
+		WorkflowWithVersionModalKey,
 		ActivationModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
@@ -218,6 +226,7 @@ export default defineComponent({
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
 		ASK_AI_MODAL_KEY,
+		WORKFLOW_WITH_VERSION_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,

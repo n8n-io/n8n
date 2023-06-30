@@ -45,6 +45,7 @@ import {
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
+	WorkflowWithVersionRepository,
 } from '@db/repositories';
 import { parsePostgresUrl } from './ParserHelper';
 
@@ -196,6 +197,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
+	collections.WorkflowWithVersion = Container.get(WorkflowWithVersionRepository);
 }
 
 export async function migrate() {
@@ -219,7 +221,7 @@ function isPostgresRunningLocally(): Boolean {
 	if (postgresConfig != null) {
 		host = postgresConfig.host;
 	} else {
-		host = config.getEnv('database.postgresdb.host')
+		host = config.getEnv('database.postgresdb.host');
 	}
-	return (host === ('localhost' || '127.0.0.1'));
+	return host === ('localhost' || '127.0.0.1');
 }

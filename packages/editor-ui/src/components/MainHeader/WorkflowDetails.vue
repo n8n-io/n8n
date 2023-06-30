@@ -138,6 +138,7 @@ import {
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_WITH_VERSION_MODAL_KEY,
 } from '@/constants';
 
 import ShortenName from '@/components/ShortenName.vue';
@@ -298,18 +299,11 @@ export default defineComponent({
 					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
 				});
 
-				actions.push(
-					{
-						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-						label: this.$locale.baseText('menuActions.importFromUrl'),
-						disabled: !this.onWorkflowPage || this.onExecutionsTab,
-					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-						label: this.$locale.baseText('menuActions.importFromFile'),
-						disabled: !this.onWorkflowPage || this.onExecutionsTab,
-					},
-				);
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+					label: this.$locale.baseText('menuActions.importFromUrl'),
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
+				});
 			}
 
 			actions.push({
@@ -334,6 +328,14 @@ export default defineComponent({
 					disabled: !this.onWorkflowPage || this.isNewWorkflow,
 					customClass: this.$style.deleteItem,
 					divided: true,
+				});
+			}
+
+			if (!this.readOnly) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS,
+					label: this.$locale.baseText('menuActions.viewWorkflowVersions'),
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
 				});
 			}
 
@@ -594,6 +596,12 @@ export default defineComponent({
 					});
 
 					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					break;
+				}
+
+				case WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS: {
+					// const workflowData = await this.getWorkflowWithVersion(this.currentWorkflowId);
+					this.uiStore.openModal(WORKFLOW_WITH_VERSION_MODAL_KEY);
 					break;
 				}
 				default:

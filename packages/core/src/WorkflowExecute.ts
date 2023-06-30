@@ -41,7 +41,7 @@ import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import { ElasticSearchCoreClient } from './elasticSearchCore';
-import { S3 } from 'aws-sdk';
+import { S3Client, PutObjectCommand, PutObjectCommandInput } from '@aws-sdk/client-s3';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -1371,7 +1371,7 @@ export class WorkflowExecute {
 		await client.addDocument(executionId, fullRunData.data.resultData.runData);
 	}
 
-	private storeFullDataInS3(
+	private async storeFullDataInS3(
 		executionId: string,
 		executionError: ExecutionError | undefined,
 		fullRunData: IRun,
@@ -1406,10 +1406,12 @@ export class WorkflowExecute {
 			return;
 		}
 
-		const s3: S3 = new S3({
-			accessKeyId,
-			secretAccessKey,
+		const s3: S3Client = new S3Client({
 			region,
+			credentials: {
+				accessKeyId,
+				secretAccessKey,
+			},
 		});
 
 		// get today's date and format it as YYYY-MM-DD
@@ -1421,22 +1423,21 @@ export class WorkflowExecute {
 
 		const pathAndKey = `${formattedDate}/${status}/${executionId}`;
 
-		const awsParams: S3.PutObjectRequest = {
+		const uploadParams: PutObjectCommandInput = {
 			Bucket: bucket,
 			Key: pathAndKey,
 			Body: JSON.stringify(fullRunData),
 		};
 
-		s3.putObject(awsParams, function (error, data) {
-			if (error) {
-				Logger.error(
-					`AWS S3: Could not insert execution ${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
-				);
-			} else {
-				Logger.debug(
-					`AWS S3: Added Execution:${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
-				);
-			}
-		});
+		try {
+			await s3.send(new PutObjectCommand(uploadParams));
+			Logger.debug(
+				`AWS S3: Added Execution:${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+			);
+		} catch {
+			Logger.error(
+				`AWS S3: Could not insert execution ${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+			);
+		}
 	}
 }
