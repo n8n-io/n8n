@@ -46,6 +46,7 @@
 							v-for="item in getCredentialOptions(
 								getAllRelatedCredentialTypes(credentialTypeDescription),
 							)"
+							:data-test-id="`node-credentials-select-item-${item.id}`"
 							:key="item.id"
 							:label="item.name"
 							:value="item.id"
@@ -56,6 +57,7 @@
 							</div>
 						</n8n-option>
 						<n8n-option
+							data-test-id="node-credentials-select-item-new"
 							:key="NEW_CREDENTIALS_TEXT"
 							:value="NEW_CREDENTIALS_TEXT"
 							:label="NEW_CREDENTIALS_TEXT"

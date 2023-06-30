@@ -79,6 +79,7 @@
 								<n8n-select v-model="sortBy" size="medium" data-test-id="resources-list-sort">
 									<n8n-option
 										v-for="sortOption in sortOptions"
+										data-test-id="resources-list-sort-item"
 										:key="sortOption"
 										:value="sortOption"
 										:label="$locale.baseText(`${resourceKey}.sort.${sortOption}`)"
