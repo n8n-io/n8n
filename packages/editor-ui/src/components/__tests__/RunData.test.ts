@@ -73,13 +73,12 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 					},
 				},
 				mixins: [externalHooks, genericHelpers, nodeHelpers, pinData],
+				global: {
+					plugins: [PiniaVuePlugin, TelemetryPlugin],
+				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(TelemetryPlugin);
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('RunData', () => {

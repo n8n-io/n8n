@@ -23,12 +23,12 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 			{
 				pinia,
 				i18n,
+				global: {
+					plugins: [PiniaVuePlugin],
+				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('SettingsPersonalView', () => {

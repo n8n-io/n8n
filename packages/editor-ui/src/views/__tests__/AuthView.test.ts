@@ -15,12 +15,12 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 						template: '<div data-test-id="sso-login"></div>',
 					},
 				},
+				global: {
+					plugins: [PiniaVuePlugin],
+				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('AuthView', () => {

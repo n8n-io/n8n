@@ -84,7 +84,7 @@
     "@sentry/vite-plugin": "^0.4.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/user-event": "^14.4.3",
-    "@testing-library/vue": "^6.6.1",
+    "@testing-library/vue": "^7.0.0",
     "@types/canvas-confetti": "^1.6.0",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",

@@ -1,14 +1,14 @@
-import Vue from 'vue';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render, screen, cleanup } from '@testing-library/vue';
 import RunDataJson from '@/components/RunDataJson.vue';
 
-Vue.use(PiniaVuePlugin);
-
 describe('RunDataJson.vue', () => {
 	const DEFAULT_SETUP = {
 		pinia: createTestingPinia(),
+		global: {
+			plugins: [PiniaVuePlugin],
+		},
 		props: {
 			mappingEnabled: true,
 			editMode: { enabled: false },
@@ -54,9 +54,7 @@ describe('RunDataJson.vue', () => {
 	beforeEach(cleanup);
 
 	it('renders json values properly', () => {
-		const { container } = render(RunDataJson, DEFAULT_SETUP, (vue) => {
-			vue.use(PiniaVuePlugin);
-		});
+		const { container } = render(RunDataJson, DEFAULT_SETUP);
 		expect(container).toMatchSnapshot();
 
 		expect(screen.getByText('123')).toBeInTheDocument();

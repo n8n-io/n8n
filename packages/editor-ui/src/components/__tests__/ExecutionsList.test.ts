@@ -70,7 +70,7 @@ const renderOptions = {
 			},
 		},
 	}),
-	propsData: {
+	props: {
 		autoRefreshEnabled: false,
 	},
 	i18n: i18nInstance,

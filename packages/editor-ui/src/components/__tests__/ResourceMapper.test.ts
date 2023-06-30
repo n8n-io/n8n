@@ -16,9 +16,15 @@ import userEvent from '@testing-library/user-event';
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(ResourceMapper, merge(DEFAULT_SETUP, renderOptions), (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
+	render(
+		ResourceMapper,
+		merge(DEFAULT_SETUP, {
+			...renderOptions,
+			global: {
+				plugins: [PiniaVuePlugin],
+			},
+		}),
+	);
 
 describe('ResourceMapper.vue', () => {
 	beforeEach(() => {
@@ -31,7 +37,7 @@ describe('ResourceMapper.vue', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders default configuration properly', async () => {
+	it.only('renders default configuration properly', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();

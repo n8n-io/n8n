@@ -6,6 +6,9 @@ import { STORES } from '@/constants';
 
 describe('RunDataJsonSchema.vue', () => {
 	const renderOptions = {
+		global: {
+			plugins: [PiniaVuePlugin],
+		},
 		pinia: createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -45,9 +48,7 @@ describe('RunDataJsonSchema.vue', () => {
 	beforeEach(cleanup);
 
 	it('renders schema for empty data', () => {
-		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
-			vue.use(PiniaVuePlugin);
-		});
+		const { container } = render(RunDataJsonSchema, renderOptions);
 		expect(container).toMatchSnapshot();
 	});
 
@@ -56,9 +57,7 @@ describe('RunDataJsonSchema.vue', () => {
 			{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] },
 			{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] },
 		];
-		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
-			vue.use(PiniaVuePlugin);
-		});
+		const { container } = render(RunDataJsonSchema, renderOptions);
 		expect(container).toMatchSnapshot();
 	});
 
@@ -75,9 +74,7 @@ describe('RunDataJsonSchema.vue', () => {
 				],
 			},
 		];
-		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
-			vue.use(PiniaVuePlugin);
-		});
+		const { container } = render(RunDataJsonSchema, renderOptions);
 		expect(container).toMatchSnapshot();
 	});
 });

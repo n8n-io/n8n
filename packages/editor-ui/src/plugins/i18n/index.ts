@@ -594,8 +594,9 @@ export function addHeaders(headers: INodeTranslationHeaders, language: string) {
 export const i18n: I18nClass = new I18nClass();
 
 export const I18nPlugin: Plugin<{}> = {
-	async install(app) {
-		await locale.use('en');
+	install(app) {
+		console.log('DEBUG: installing i18n plugin');
+		locale.use();
 
 		locale.i18n((key: string, options?: { interpolate: Record<string, unknown> }) =>
 			i18nInstance.global.t(key, options?.interpolate || {}),

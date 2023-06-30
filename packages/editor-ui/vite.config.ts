@@ -64,6 +64,12 @@ const alias = [
 			'design-system/src/components/N8nButton/overrides/ElButton.ts',
 		),
 	},
+	// Make sure correct version of vue-test-utils is used
+	// TODO: Remove once https://github.com/testing-library/vue-testing-library/issues/279 is fixed
+	{
+		find: '@vue/test-utils',
+		replacement: resolve(__dirname, '../../node_modules/@vue/test-utils/dist/vue-test-utils.cjs.js'),
+	},
 ];
 
 const plugins = [vue()];

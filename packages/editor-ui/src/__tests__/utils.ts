@@ -23,8 +23,11 @@ export const retry = async (assertion: () => any, { interval = 20, timeout = 100
 
 type RenderParams = Parameters<typeof render>;
 export const renderComponent = (Component: RenderParams[0], renderOptions: RenderParams[1] = {}) =>
-	render(Component, renderOptions, (vue) => {
-		vue.use(PiniaVuePlugin);
+	render(Component, {
+		...renderOptions,
+		global: {
+			plugins: [PiniaVuePlugin],
+		},
 	});
 
 export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));

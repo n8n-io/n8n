@@ -20,12 +20,12 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 			{
 				pinia,
 				i18n: i18nInstance,
+				global: {
+					plugins: [PiniaVuePlugin],
+				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('SettingsSourceControl', () => {
@@ -49,6 +49,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render paywall state when there is no license', () => {
+		const settingsStore = useSettingsStore();
 		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(false);
 
 		const { getByTestId, queryByTestId } = renderComponent();
@@ -58,6 +59,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render licensed content', () => {
+		const settingsStore = useSettingsStore();
 		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
 
 		const { getByTestId, queryByTestId } = renderComponent();
@@ -68,6 +70,7 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render user flow happy path', async () => {
+		const settingsStore = useSettingsStore();
 		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
 

@@ -26,6 +26,9 @@ const DEFAULT_SETUP = {
 			},
 		},
 	}),
+	global: {
+		plugins: [PiniaVuePlugin],
+	},
 	props: {
 		dialect: 'PostgreSQL',
 		isReadOnly: false,
@@ -33,9 +36,7 @@ const DEFAULT_SETUP = {
 };
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(SqlEditor, { ...DEFAULT_SETUP, ...renderOptions }, (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
+	render(SqlEditor, { ...DEFAULT_SETUP, ...renderOptions });
 
 describe('SQL Editor Preview Tests', () => {
 	beforeEach(() => {

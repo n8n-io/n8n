@@ -2,9 +2,11 @@ import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, computed } from 'vue';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
-import { PiniaVuePlugin, createPinia } from 'pinia';
+import { PiniaVuePlugin, createPinia, setActivePinia } from 'pinia';
 
 const eventHookSpy = vi.fn();
+let pinia: ReturnType<typeof createPinia>;
+
 describe('useKeyboardNavigation', () => {
 	const TestComponent = defineComponent({
 		setup() {
@@ -38,9 +40,17 @@ describe('useKeyboardNavigation', () => {
 		},
 	});
 
+	beforeEach(() => {
+		pinia = createPinia();
+		setActivePinia(pinia);
+	});
+
 	const renderTestComponent = () => {
-		return render(TestComponent, { pinia: createPinia() }, (vue) => {
-			vue.use(PiniaVuePlugin);
+		return render(TestComponent, {
+			pinia,
+			global: {
+				plugins: [PiniaVuePlugin],
+			},
 		});
 	};
 

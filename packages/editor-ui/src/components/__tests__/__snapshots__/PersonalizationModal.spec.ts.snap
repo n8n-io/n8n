@@ -1,4 +1,4 @@
-// Vitest Snapshot v1
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`PersonalizationModal.vue > should render correctly 1`] = `
 "<transition-stub name=\\"dialog-fade\\" data-test-id=\\"personalization-form\\" class=\\"dialog-wrapper\\" style=\\"z-index: 2001;\\">

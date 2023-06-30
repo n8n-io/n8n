@@ -15,17 +15,14 @@ let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
-	return render(
-		MainSidebarSourceControl,
-		{
-			pinia,
-			i18n: i18nInstance,
-			...renderOptions,
+	return render(MainSidebarSourceControl, {
+		pinia,
+		i18n: i18nInstance,
+		...renderOptions,
+		global: {
+			plugins: [PiniaVuePlugin],
 		},
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
-	);
+	});
 };
 
 describe('MainSidebarSourceControl', () => {

@@ -1,5 +1,4 @@
-import { PiniaVuePlugin } from 'pinia';
-import { createLocalVue, mount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { PERSONALIZATION_MODAL_KEY } from '@/constants';
@@ -22,8 +21,8 @@ describe('PersonalizationModal.vue', () => {
 			},
 		},
 	});
-	const localVue = createLocalVue();
-	localVue.use(PiniaVuePlugin);
+	// const localVue = createLocalVue();
+	// localVue.use(PiniaVuePlugin);
 
 	it('should render correctly', async () => {
 		const wrapper = mount(PersonalizationModal, {

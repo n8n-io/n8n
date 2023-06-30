@@ -30,12 +30,12 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 			{
 				pinia,
 				i18n: i18nInstance,
+				global: {
+					plugins: [PiniaVuePlugin],
+				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('SamlOnboarding', () => {

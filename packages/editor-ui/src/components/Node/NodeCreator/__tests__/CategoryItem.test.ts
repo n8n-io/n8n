@@ -3,29 +3,29 @@ import CategoryItem from '../ItemTypes/CategoryItem.vue';
 
 describe('CategoryItem', () => {
 	it('should allow expand and collapse', async () => {
-		const { container, updateProps } = render(CategoryItem, { props: { name: 'Category Test' } });
+		const { container, rerender } = render(CategoryItem, { props: { name: 'Category Test' } });
 
 		expect(container.querySelector('[data-icon="chevron-down"]')).toBeInTheDocument();
-		await updateProps({ expanded: false });
+		await rerender({ expanded: false });
 		expect(container.querySelector('[data-icon="chevron-down"]')).not.toBeInTheDocument();
 		expect(container.querySelector('[data-icon="chevron-up"]')).toBeInTheDocument();
 	});
 
 	it('should show count', async () => {
-		const { updateProps } = render(CategoryItem, { props: { name: 'Category Test', count: 10 } });
+		const { rerender } = render(CategoryItem, { props: { name: 'Category Test', count: 10 } });
 
 		expect(screen.getByText('Category Test (10)')).toBeInTheDocument();
-		await updateProps({ count: 0 });
+		await rerender({ count: 0 });
 		expect(screen.getByText('Category Test')).toBeInTheDocument();
 	});
 
 	it('should show trigger icon', async () => {
-		const { updateProps, container } = render(CategoryItem, {
+		const { rerender, container } = render(CategoryItem, {
 			props: { name: 'Category Test', isTrigger: true },
 		});
 
 		expect(container.querySelector('[data-icon="bolt"]')).toBeInTheDocument();
-		await updateProps({ isTrigger: false });
+		await rerender({ isTrigger: false });
 		expect(container.querySelector('[data-icon="bolt"]')).not.toBeInTheDocument();
 	});
 });

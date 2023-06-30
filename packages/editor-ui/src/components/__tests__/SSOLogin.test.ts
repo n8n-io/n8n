@@ -22,12 +22,12 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 						template: '<button data-test-id="sso-button"></button>',
 					},
 				},
+				global: {
+					plugins: [PiniaVuePlugin],
+				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('SSOLogin', () => {
