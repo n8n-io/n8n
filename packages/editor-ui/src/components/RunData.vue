@@ -7,7 +7,7 @@
 			:class="$style.pinnedDataCallout"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs" v-if="!isReadOnly">
+			<span class="ml-4xs" v-if="!isReadOnlyRoute">
 				<n8n-link
 					theme="secondary"
 					size="small"
@@ -59,7 +59,7 @@
 					data-test-id="ndv-run-data-display-mode"
 				/>
 				<n8n-icon-button
-					v-if="canPinData && !isReadOnly"
+					v-if="canPinData && !isReadOnlyRoute"
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
@@ -99,7 +99,9 @@
 						type="tertiary"
 						:active="hasPinData"
 						icon="thumbtack"
-						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
+						:disabled="
+							editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnlyRoute
+						"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 						data-test-id="ndv-pin-data"
 					/>
@@ -917,7 +919,7 @@ export default defineComponent({
 			if (
 				value &&
 				value.length > 0 &&
-				!this.isReadOnly &&
+				!this.isReadOnlyRoute &&
 				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
 			) {
 				this.pinDataDiscoveryComplete();
@@ -1066,14 +1068,14 @@ export default defineComponent({
 				return;
 			}
 
-			if (!this.isValidPinDataSize(this.inputData)) {
+			if (!this.isValidPinDataSize(this.rawInputData)) {
 				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 				return;
 			}
 
 			this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
+			this.workflowsStore.pinData({ node: this.node, data: this.rawInputData });
 
 			if (this.maxRunIndex > 0) {
 				this.showToast({

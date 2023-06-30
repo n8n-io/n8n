@@ -7,7 +7,7 @@ import type {
 	INodeCredentialTestResult,
 	INodeProperties,
 } from 'n8n-workflow';
-import { deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
@@ -300,7 +300,11 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData') {
-				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
 				continue;
 			}
 			const prop = properties.find((v) => v.name === dataKey);
@@ -308,8 +312,11 @@ export class CredentialsService {
 				continue;
 			}
 			if (prop.typeOptions?.password) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
 			}
 		}
 
@@ -321,7 +328,7 @@ export class CredentialsService {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (value === CREDENTIAL_BLANKING_VALUE) {
+			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (

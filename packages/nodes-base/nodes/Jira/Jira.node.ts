@@ -1,5 +1,5 @@
 import type { Readable } from 'stream';
-import mergeWith from 'lodash.mergewith';
+import mergeWith from 'lodash/mergeWith';
 
 import type {
 	IBinaryKeyData,

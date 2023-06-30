@@ -27,6 +27,7 @@ import { useToast } from '@/composables';
 import type { IWorkflowDb } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { useWorkflowsStore } from '@/stores';
 
 export default defineComponent({
 	name: 'WorkflowPreview',
@@ -73,7 +74,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useRootStore),
+		...mapStores(useRootStore, useWorkflowsStore),
 		showPreview(): boolean {
 			return (
 				!this.loading &&
@@ -134,6 +135,16 @@ export default defineComponent({
 						}),
 						'*',
 					);
+
+					if (this.workflowsStore.activeWorkflowExecution) {
+						iframeRef.contentWindow.postMessage(
+							JSON.stringify({
+								command: 'setActiveExecution',
+								execution: this.workflowsStore.activeWorkflowExecution,
+							}),
+							'*',
+						);
+					}
 				}
 			} catch (error) {
 				this.showError(

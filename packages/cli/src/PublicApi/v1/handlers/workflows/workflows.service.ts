@@ -1,6 +1,6 @@
 import type { FindManyOptions, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
-import intersection from 'lodash.intersection';
+import intersection from 'lodash/intersection';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -9,7 +9,7 @@ import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
-import { isInstanceOwner } from '../users/users.service';
+import { isInstanceOwner } from '../users/users.service.ee';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
 import { START_NODES } from '@/constants';

@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 import { microsoftApiRequest } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 

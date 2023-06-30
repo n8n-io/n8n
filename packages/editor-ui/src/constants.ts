@@ -47,9 +47,9 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const USER_ACTIVATION_SURVEY_MODAL = 'userActivationSurvey';
 
-export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
+export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
+export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -82,7 +82,6 @@ export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integr
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
-export const MAIN_REPOSITORY_URL = 'https://github.com/n8n-io/n8n';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -377,7 +376,8 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
-	VERSION_CONTROL = 'VersionControl',
+	SOURCE_CONTROL = 'SourceControl',
+	AUDIT_LOGS = 'AuditLogs',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -430,6 +430,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
+	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 }
@@ -444,7 +445,8 @@ export const enum EnterpriseEditionFeature {
 	LogStreaming = 'logStreaming',
 	Variables = 'variables',
 	Saml = 'saml',
-	VersionControl = 'versionControl',
+	SourceControl = 'sourceControl',
+	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -520,12 +522,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const AUTO_INSERT_ACTION_EXPERIMENT = {
-	name: '003_auto_insert_action',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const TEMPLATE_EXPERIMENT = {
 	name: '002_remove_templates',
 	control: 'control',
@@ -538,11 +534,7 @@ export const ONBOARDING_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [
-	TEMPLATE_EXPERIMENT.name,
-	AUTO_INSERT_ACTION_EXPERIMENT.name,
-	ONBOARDING_EXPERIMENT.name,
-];
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 
@@ -561,8 +553,6 @@ export const ALLOWED_HTML_TAGS = [
 	'details',
 	'summary',
 ];
-
-export const GITHUB_STARS_BANNER_SHOW_UNTIL_DATE = new Date('2023-06-01');
 
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
 	? 'https://stage-app.n8n.cloud/account/change-plan'

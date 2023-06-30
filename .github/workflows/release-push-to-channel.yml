@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
       - run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           npm dist-tag add n8n@${{ github.event.inputs.version }} ${{ github.event.inputs.release-channel }}

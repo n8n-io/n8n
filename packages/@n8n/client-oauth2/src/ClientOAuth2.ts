@@ -10,28 +10,28 @@ import type { ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { ClientOAuth2Token } from './ClientOAuth2Token';
 import { CodeFlow } from './CodeFlow';
 import { CredentialsFlow } from './CredentialsFlow';
-import type { Headers, Query } from './types';
+import type { Headers } from './types';
 
 export interface ClientOAuth2RequestObject {
 	url: string;
 	method: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 	body?: Record<string, any>;
-	query?: Query;
+	query?: qs.ParsedUrlQuery;
 	headers?: Headers;
 }
 
 export interface ClientOAuth2Options {
 	clientId: string;
-	clientSecret: string;
+	clientSecret?: string;
 	accessTokenUri: string;
 	authorizationUri?: string;
 	redirectUri?: string;
 	scopes?: string[];
+	scopesSeparator?: ',' | ' ';
 	authorizationGrants?: string[];
 	state?: string;
 	body?: Record<string, any>;
-	query?: Query;
-	headers?: Headers;
+	query?: qs.ParsedUrlQuery;
 }
 
 class ResponseError extends Error {

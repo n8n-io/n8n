@@ -91,10 +91,6 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
-		<ModalRoot :name="USER_ACTIVATION_SURVEY_MODAL">
-			<WorkflowSuccessModal />
-		</ModalRoot>
-
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -116,9 +112,15 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="VERSION_CONTROL_PUSH_MODAL_KEY">
+		<ModalRoot :name="SOURCE_CONTROL_PUSH_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<VersionControlPushModal :modalName="modalName" :data="data" />
+				<SourceControlPushModal :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_PULL_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlPullModal :modalName="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>
@@ -149,8 +151,8 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	ASK_AI_MODAL_KEY,
-	USER_ACTIVATION_SURVEY_MODAL,
-	VERSION_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -175,9 +177,9 @@ import ExecutionsModal from './ExecutionsModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import WorkflowSuccessModal from './UserActivationSurveyModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
-import VersionControlPushModal from '@/components/VersionControlPushModal.ee.vue';
+import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
+import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -205,8 +207,8 @@ export default defineComponent({
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
-		WorkflowSuccessModal,
-		VersionControlPushModal,
+		SourceControlPushModal,
+		SourceControlPullModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -231,8 +233,8 @@ export default defineComponent({
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
-		USER_ACTIVATION_SURVEY_MODAL,
-		VERSION_CONTROL_PUSH_MODAL_KEY,
+		SOURCE_CONTROL_PUSH_MODAL_KEY,
+		SOURCE_CONTROL_PULL_MODAL_KEY,
 	}),
 });
 </script>

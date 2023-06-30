@@ -16,7 +16,7 @@ import type {
 
 import type { OptionsWithUri } from 'request';
 
-import omit from 'lodash.omit';
+import { omit } from 'lodash';
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
