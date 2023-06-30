@@ -4,9 +4,9 @@ required:
   - name
 properties:
   id:
-    type: number
+    type: string
     readOnly: true
-    example: 12
+    example: 2tUt1wbLX592XDdX
   name:
     type: string
     example: Production

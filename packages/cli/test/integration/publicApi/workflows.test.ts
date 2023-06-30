@@ -1027,10 +1027,10 @@ describe('PUT /workflows/:id/tags', () => {
 	
 		const payload = [
 			{
-				id: parseInt(tags[0].id)
+				id: tags[0].id
 			},
 			{
-				id: parseInt(tags[1].id)
+				id: tags[1].id
 			}
 		]
 	
@@ -1117,10 +1117,10 @@ describe('PUT /workflows/:id/tags', () => {
 		
 		const payload = [
 			{
-				id: parseInt(newTags[0].id)
+				id: newTags[0].id
 			},
 			{
-				id: parseInt(newTags[1].id)
+				id: newTags[1].id
 			}
 		]
 	
@@ -1206,10 +1206,10 @@ describe('PUT /workflows/:id/tags', () => {
 	
 		const payload = [
 			{
-				id: parseInt(oldTags[0].id)
+				id: oldTags[0].id
 			},
 			{
-				id: parseInt(oldTags[1].id) + 1
+				id: "TagDoesNotExist"
 			}
 		]
 	

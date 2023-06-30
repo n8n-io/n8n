@@ -144,17 +144,17 @@ describe('GET /tags', () => {
 		}
 	
 		// check that we really received a different result
-		expect(Number(response.body.data[0].id)).toBeLessThan(Number(response2.body.data[0].id));
+		expect(response.body.data[0].id).not.toBe(response2.body.data[0].id);
 	});
 });
 
 describe('GET /tags/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/tags/2', null));
+	test('should fail due to missing API Key', testWithAPIKey('get', '/tags/gZqmqiGAuo1dHT7q', null));
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/tags/2', 'abcXYZ'));
+	test('should fail due to invalid API Key', testWithAPIKey('get', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'));
 
 	test('should fail due to non-existing tag', async () => {
-		const response = await authOwnerAgent.get(`/tags/2`);
+		const response = await authOwnerAgent.get(`/tags/gZqmqiGAuo1dHT7q`);
 	
 		expect(response.statusCode).toBe(404);
 	});
@@ -178,12 +178,12 @@ describe('GET /tags/:id', () => {
 });
 
 describe('DELETE /tags/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('delete', '/tags/2', null));
+	test('should fail due to missing API Key', testWithAPIKey('delete', '/tags/gZqmqiGAuo1dHT7q', null));
 
-	test('should fail due to invalid API Key', testWithAPIKey('delete', '/tags/2', 'abcXYZ'));
+	test('should fail due to invalid API Key', testWithAPIKey('delete', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'));
 
 	test('should fail due to non-existing tag', async () => {
-		const response = await authOwnerAgent.delete(`/tags/2`);
+		const response = await authOwnerAgent.delete(`/tags/gZqmqiGAuo1dHT7q`);
 	
 		expect(response.statusCode).toBe(404);
 	});
@@ -294,12 +294,12 @@ describe('POST /tags', () => {
 });
 
 describe('PUT /tags/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/tags/2', null));
+	test('should fail due to missing API Key', testWithAPIKey('put', '/tags/gZqmqiGAuo1dHT7q', null));
 
-	test('should fail due to invalid API Key', testWithAPIKey('put', '/tags/2', 'abcXYZ'));
+	test('should fail due to invalid API Key', testWithAPIKey('put', '/tags/gZqmqiGAuo1dHT7q', 'abcXYZ'));
 
 	test('should fail due to non-existing tag', async () => {
-		const response = await authOwnerAgent.put(`/tags/1`).send({
+		const response = await authOwnerAgent.put(`/tags/gZqmqiGAuo1dHT7q`).send({
 			name: 'testing',
 		});
 	
@@ -307,7 +307,7 @@ describe('PUT /tags/:id', () => {
 	});
 	
 	test('should fail due to invalid body', async () => {
-		const response = await authOwnerAgent.put(`/tags/1`).send({});
+		const response = await authOwnerAgent.put(`/tags/gZqmqiGAuo1dHT7q`).send({});
 	
 		expect(response.statusCode).toBe(400);
 	});

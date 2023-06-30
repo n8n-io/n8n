@@ -6,5 +6,5 @@ items:
     - id
   properties:
     id:
-      type: number
-      example: 12
+      type: string
+      example: 2tUt1wbLX592XDdX
