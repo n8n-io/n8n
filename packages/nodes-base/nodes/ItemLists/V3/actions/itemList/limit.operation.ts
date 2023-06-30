@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions, wrapData } from '@utils/utilities';
+import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -45,24 +45,18 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData = items;
+	const maxItems = this.getNodeParameter('maxItems', 0) as number;
+	const keep = this.getNodeParameter('keep', 0) as string;
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const data: IDataObject[] = [];
-			const executionData = this.helpers.constructExecutionMetaData(wrapData(data), {
-				itemData: { item: i },
-			});
-
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
-				continue;
-			}
-			throw error;
-		}
+	if (maxItems > items.length) {
+		return returnData;
 	}
 
+	if (keep === 'firstItems') {
+		returnData = items.slice(0, maxItems);
+	} else {
+		returnData = items.slice(items.length - maxItems, items.length);
+	}
 	return returnData;
 }

@@ -1,6 +1,12 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions, wrapData } from '@utils/utilities';
+import { NodeOperationError } from 'n8n-workflow';
+
+import { updateDisplayOptions } from '@utils/utilities';
+
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
+import set from 'lodash/set';
 
 const properties: INodeProperties[] = [
 	{
@@ -236,21 +242,149 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const data: IDataObject[] = [];
-			const executionData = this.helpers.constructExecutionMetaData(wrapData(data), {
-				itemData: { item: i },
-			});
+	const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
-			returnData.push(...executionData);
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
-				continue;
-			}
-			throw error;
+	if (aggregate === 'aggregateIndividualFields') {
+		const disableDotNotation = this.getNodeParameter(
+			'options.disableDotNotation',
+			0,
+			false,
+		) as boolean;
+		const mergeLists = this.getNodeParameter('options.mergeLists', 0, false) as boolean;
+		const fieldsToAggregate = this.getNodeParameter(
+			'fieldsToAggregate.fieldToAggregate',
+			0,
+			[],
+		) as [{ fieldToAggregate: string; renameField: boolean; outputFieldName: string }];
+		const keepMissing = this.getNodeParameter('options.keepMissing', 0, false) as boolean;
+
+		if (!fieldsToAggregate.length) {
+			throw new NodeOperationError(this.getNode(), 'No fields specified', {
+				description: 'Please add a field to aggregate',
+			});
 		}
+
+		const newItem: INodeExecutionData = {
+			json: {},
+			pairedItem: Array.from({ length }, (_, i) => i).map((index) => {
+				return {
+					item: index,
+				};
+			}),
+		};
+
+		const values: { [key: string]: any } = {};
+		const outputFields: string[] = [];
+
+		for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
+			const field = renameField ? outputFieldName : fieldToAggregate;
+
+			if (outputFields.includes(field)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The '${field}' output field is used more than once`,
+					{ description: 'Please make sure each output field name is unique' },
+				);
+			} else {
+				outputFields.push(field);
+			}
+
+			const getFieldToAggregate = () =>
+				!disableDotNotation && fieldToAggregate.includes('.')
+					? fieldToAggregate.split('.').pop()
+					: fieldToAggregate;
+
+			const _outputFieldName = outputFieldName
+				? outputFieldName
+				: (getFieldToAggregate() as string);
+
+			if (fieldToAggregate !== '') {
+				values[_outputFieldName] = [];
+				for (let i = 0; i < items.length; i++) {
+					if (!disableDotNotation) {
+						let value = get(items[i].json, fieldToAggregate);
+
+						if (!keepMissing) {
+							if (Array.isArray(value)) {
+								value = value.filter((entry) => entry !== null);
+							} else if (value === null || value === undefined) {
+								continue;
+							}
+						}
+
+						if (Array.isArray(value) && mergeLists) {
+							values[_outputFieldName].push(...value);
+						} else {
+							values[_outputFieldName].push(value);
+						}
+					} else {
+						let value = items[i].json[fieldToAggregate];
+
+						if (!keepMissing) {
+							if (Array.isArray(value)) {
+								value = value.filter((entry) => entry !== null);
+							} else if (value === null || value === undefined) {
+								continue;
+							}
+						}
+
+						if (Array.isArray(value) && mergeLists) {
+							values[_outputFieldName].push(...value);
+						} else {
+							values[_outputFieldName].push(value);
+						}
+					}
+				}
+			}
+		}
+
+		for (const key of Object.keys(values)) {
+			if (!disableDotNotation) {
+				set(newItem.json, key, values[key]);
+			} else {
+				newItem.json[key] = values[key];
+			}
+		}
+
+		returnData.push(newItem);
+	} else {
+		let newItems: IDataObject[] = items.map((item) => item.json);
+		const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
+		const fieldsToExclude = (
+			this.getNodeParameter('fieldsToExclude.fields', 0, []) as IDataObject[]
+		).map((entry) => entry.fieldName);
+		const fieldsToInclude = (
+			this.getNodeParameter('fieldsToInclude.fields', 0, []) as IDataObject[]
+		).map((entry) => entry.fieldName);
+
+		if (fieldsToExclude.length || fieldsToInclude.length) {
+			newItems = newItems.reduce((acc, item) => {
+				const newItem: IDataObject = {};
+				let outputFields = Object.keys(item);
+
+				if (fieldsToExclude.length) {
+					outputFields = outputFields.filter((key) => !fieldsToExclude.includes(key));
+				}
+				if (fieldsToInclude.length) {
+					outputFields = outputFields.filter((key) =>
+						fieldsToInclude.length ? fieldsToInclude.includes(key) : true,
+					);
+				}
+
+				outputFields.forEach((key) => {
+					newItem[key] = item[key];
+				});
+
+				if (isEmpty(newItem)) {
+					return acc;
+				}
+				return acc.concat([newItem]);
+			}, [] as IDataObject[]);
+		}
+
+		const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
+
+		returnData.push(output);
 	}
 
 	return returnData;

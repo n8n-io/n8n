@@ -7,6 +7,8 @@ import * as sort from './sort.operation';
 import * as splitOutItems from './splitOutItems.operation';
 import * as summarize from './summarize.operation';
 
+export { concatenateItems, limit, removeDuplicates, sort, splitOutItems, summarize };
+
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Operation',
