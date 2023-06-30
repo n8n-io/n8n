@@ -491,6 +491,6 @@ export class SourceControlService {
 		name = SOURCE_CONTROL_DEFAULT_NAME,
 		email = SOURCE_CONTROL_DEFAULT_EMAIL,
 	): Promise<void> {
-		this.gitService.setGitUserDetails(name, email);
+		await this.gitService.setGitUserDetails(name, email);
 	}
 }
