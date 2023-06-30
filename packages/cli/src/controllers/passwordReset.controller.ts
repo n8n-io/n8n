@@ -26,7 +26,6 @@ import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
 import { UserService } from '../user/user.service';
-import { compare } from 'bcryptjs';
 
 @RestController()
 export class PasswordResetController {
