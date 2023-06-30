@@ -69,7 +69,6 @@
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
     "uuid": "^8.3.2",
-    "v-click-outside": "^3.1.2",
     "v3-infinite-loading": "^1.2.2",
     "vue": "^3.3.4",
     "vue-agile": "^2.0.0",
