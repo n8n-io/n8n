@@ -8,6 +8,9 @@ import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import set from 'lodash/set';
 
+import { prepareFieldsArray } from '../../helpers/utils';
+import { disableDotNotationBoolean } from '../common.descriptions';
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Aggregate',
@@ -120,31 +123,10 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields To Exclude',
 		name: 'fieldsToExclude',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		placeholder: 'Add Field To Exclude',
-		default: {},
-		options: [
-			{
-				displayName: '',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'string',
-						default: '',
-						description: 'A field in the input to exclude from the object in output array',
-						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
-						requiresDataPath: 'single',
-					},
-				],
-			},
-		],
+		type: 'string',
+		placeholder: 'e.g. email, name',
+		default: '',
+		requiresDataPath: 'multiple',
 		displayOptions: {
 			show: {
 				aggregate: ['aggregateAllItemData'],
@@ -155,31 +137,10 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields To Include',
 		name: 'fieldsToInclude',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		placeholder: 'Add Field To Include',
-		default: {},
-		options: [
-			{
-				displayName: '',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'string',
-						default: '',
-						description: 'Specify fields that will be included in output array',
-						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
-						requiresDataPath: 'single',
-					},
-				],
-			},
-		],
+		type: 'string',
+		placeholder: 'e.g. email, name',
+		default: '',
+		requiresDataPath: 'multiple',
 		displayOptions: {
 			show: {
 				aggregate: ['aggregateAllItemData'],
@@ -199,14 +160,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Disable Dot Notation',
-				name: 'disableDotNotation',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to disallow referencing child fields using `parent.child` in the field name',
-			},
+			disableDotNotationBoolean,
 			{
 				displayName: 'Merge Lists',
 				name: 'mergeLists',
@@ -266,7 +220,7 @@ export async function execute(
 
 		const newItem: INodeExecutionData = {
 			json: {},
-			pairedItem: Array.from({ length }, (_, i) => i).map((index) => {
+			pairedItem: Array.from({ length: items.length }, (_, i) => i).map((index) => {
 				return {
 					item: index,
 				};
@@ -350,12 +304,16 @@ export async function execute(
 	} else {
 		let newItems: IDataObject[] = items.map((item) => item.json);
 		const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
-		const fieldsToExclude = (
-			this.getNodeParameter('fieldsToExclude.fields', 0, []) as IDataObject[]
-		).map((entry) => entry.fieldName);
-		const fieldsToInclude = (
-			this.getNodeParameter('fieldsToInclude.fields', 0, []) as IDataObject[]
-		).map((entry) => entry.fieldName);
+
+		const fieldsToExclude = prepareFieldsArray(
+			this.getNodeParameter('fieldsToExclude', 0, '') as string,
+			'Fields To Exclude',
+		);
+
+		const fieldsToInclude = prepareFieldsArray(
+			this.getNodeParameter('fieldsToInclude', 0, '') as string,
+			'Fields To Include',
+		);
 
 		if (fieldsToExclude.length || fieldsToInclude.length) {
 			newItems = newItems.reduce((acc, item) => {

@@ -10,6 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import get from 'lodash/get';
+import { disableDotNotationBoolean } from '../common.descriptions';
 
 type AggregationType =
 	| 'append'
@@ -266,14 +267,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
-			{
-				displayName: 'Disable Dot Notation',
-				name: 'disableDotNotation',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to disallow referencing child fields using `parent.child` in the field name',
-			},
+			disableDotNotationBoolean,
 			{
 				displayName: 'Output Format',
 				name: 'outputFormat',

@@ -9,7 +9,8 @@ import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 import pick from 'lodash/pick';
 
-import { compareItems, flattenKeys } from '../../helpers/utils';
+import { compareItems, flattenKeys, prepareFieldsArray } from '../../helpers/utils';
+import { disableDotNotationBoolean } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -36,70 +37,30 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields To Exclude',
 		name: 'fieldsToExclude',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		placeholder: 'Add Field To Exclude',
-		default: {},
+		type: 'string',
+		placeholder: 'e.g. email, name',
+		requiresDataPath: 'multiple',
+		description: 'Fields in the input to exclude from the comparison',
+		default: '',
 		displayOptions: {
 			show: {
 				compare: ['allFieldsExcept'],
 			},
 		},
-		options: [
-			{
-				displayName: '',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'string',
-						default: '',
-						description: 'A field in the input to exclude from the comparison',
-						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
-						requiresDataPath: 'single',
-					},
-				],
-			},
-		],
 	},
 	{
 		displayName: 'Fields To Compare',
 		name: 'fieldsToCompare',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		placeholder: 'Add Field To Compare',
-		default: {},
+		type: 'string',
+		placeholder: 'e.g. email, name',
+		requiresDataPath: 'multiple',
+		description: 'Fields in the input to add to the comparison',
+		default: '',
 		displayOptions: {
 			show: {
 				compare: ['selectedFields'],
 			},
 		},
-		options: [
-			{
-				displayName: '',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'string',
-						default: '',
-						description: 'A field in the input to add to the comparison',
-						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
-						requiresDataPath: 'single',
-					},
-				],
-			},
-		],
 	},
 	{
 		displayName: 'Options',
@@ -113,14 +74,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Disable Dot Notation',
-				name: 'disableDotNotation',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to disallow referencing child fields using `parent.child` in the field name',
-			},
+			disableDotNotationBoolean,
 			{
 				displayName: 'Remove Other Fields',
 				name: 'removeOtherFields',
@@ -169,9 +123,11 @@ export async function execute(
 	}
 
 	if (compare === 'allFieldsExcept') {
-		const fieldsToExclude = (
-			this.getNodeParameter('fieldsToExclude.fields', 0, []) as [{ fieldName: string }]
-		).map((field) => field.fieldName);
+		const fieldsToExclude = prepareFieldsArray(
+			this.getNodeParameter('fieldsToExclude', 0, '') as string,
+			'Fields To Exclude',
+		);
+
 		if (!fieldsToExclude.length) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -184,9 +140,10 @@ export async function execute(
 		keys = keys.filter((key) => !fieldsToExclude.includes(key));
 	}
 	if (compare === 'selectedFields') {
-		const fieldsToCompare = (
-			this.getNodeParameter('fieldsToCompare.fields', 0, []) as [{ fieldName: string }]
-		).map((field) => field.fieldName);
+		const fieldsToCompare = prepareFieldsArray(
+			this.getNodeParameter('fieldsToCompare', 0, '') as string,
+			'Fields To Compare',
+		);
 		if (!fieldsToCompare.length) {
 			throw new NodeOperationError(
 				this.getNode(),

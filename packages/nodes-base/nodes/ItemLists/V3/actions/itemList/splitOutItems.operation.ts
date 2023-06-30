@@ -6,6 +6,8 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import get from 'lodash/get';
 import unset from 'lodash/unset';
+import { disableDotNotationBoolean } from '../common.descriptions';
+import { prepareFieldsArray } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -41,36 +43,16 @@ const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields To Include',
 		name: 'fieldsToInclude',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		placeholder: 'Add Field To Include',
-		default: {},
+		type: 'string',
+		placeholder: 'e.g. email, name',
+		requiresDataPath: 'multiple',
+		description: 'Fields in the input items to aggregate together',
+		default: '',
 		displayOptions: {
 			show: {
 				include: ['selectedOtherFields'],
 			},
 		},
-		options: [
-			{
-				displayName: '',
-				name: 'fields',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'string',
-						default: '',
-						description: 'A field in the input items to aggregate together',
-						// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-						placeholder: 'e.g. id',
-						hint: ' Enter the field name as text',
-						requiresDataPath: 'single',
-					},
-				],
-			},
-		],
 	},
 	{
 		displayName: 'Options',
@@ -79,14 +61,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
-			{
-				displayName: 'Disable Dot Notation',
-				name: 'disableDotNotation',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to disallow referencing child fields using `parent.child` in the field name',
-			},
+			disableDotNotationBoolean,
 			{
 				displayName: 'Destination Field Name',
 				name: 'destinationFieldName',
@@ -208,9 +183,10 @@ export async function execute(
 			}
 
 			if (include === 'selectedOtherFields') {
-				const fieldsToInclude = (
-					this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]
-				).map((field) => field.fieldName);
+				const fieldsToInclude = prepareFieldsArray(
+					this.getNodeParameter('fieldsToInclude', i, '') as string,
+					'Fields To Include',
+				);
 
 				if (!fieldsToInclude.length) {
 					throw new NodeOperationError(this.getNode(), 'No fields specified', {

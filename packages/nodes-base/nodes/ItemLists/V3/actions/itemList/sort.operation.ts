@@ -12,6 +12,7 @@ import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 
 import { shuffleArray } from '../../helpers/utils';
+import { disableDotNotationBoolean } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -130,16 +131,7 @@ return 0;`,
 				type: ['simple'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Disable Dot Notation',
-				name: 'disableDotNotation',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to disallow referencing child fields using `parent.child` in the field name',
-			},
-		],
+		options: [disableDotNotationBoolean],
 	},
 ];
 
