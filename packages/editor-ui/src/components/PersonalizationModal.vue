@@ -623,7 +623,7 @@ export default defineComponent({
 			this.formBus.emit('submit');
 		},
 		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
-			this.$data.isSaving = true;
+			this.isSaving = true;
 
 			try {
 				const survey: Record<string, GenericValue> = {
@@ -646,7 +646,7 @@ export default defineComponent({
 				this.showError(e, 'Error while submitting results');
 			}
 
-			this.$data.isSaving = false;
+			this.isSaving = false;
 			this.closeDialog();
 		},
 		async fetchOnboardingPrompt() {

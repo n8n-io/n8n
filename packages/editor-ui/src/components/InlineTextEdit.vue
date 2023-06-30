@@ -75,7 +75,7 @@ export default defineComponent({
 				return;
 			}
 
-			this.$data.newValue = this.modelValue;
+			this.newValue = this.modelValue;
 			this.$emit('toggle');
 		},
 		onBlur() {
@@ -83,10 +83,10 @@ export default defineComponent({
 				return;
 			}
 
-			if (!this.$data.escPressed) {
+			if (!this.escPressed) {
 				this.submit();
 			}
-			this.$data.escPressed = false;
+			this.escPressed = false;
 		},
 		submit() {
 			if (this.disabled) {
@@ -94,14 +94,14 @@ export default defineComponent({
 			}
 
 			const onSubmit = (updated: boolean) => {
-				this.$data.disabled = false;
+				this.disabled = false;
 
 				if (!updated) {
-					this.$data.inputBus.emit('focus');
+					this.inputBus.emit('focus');
 				}
 			};
 
-			this.$data.disabled = true;
+			this.disabled = true;
 			this.$emit('submit', this.newValue, onSubmit);
 		},
 		onEscape() {
@@ -109,7 +109,7 @@ export default defineComponent({
 				return;
 			}
 
-			this.$data.escPressed = true;
+			this.escPressed = true;
 			this.$emit('toggle');
 		},
 	},

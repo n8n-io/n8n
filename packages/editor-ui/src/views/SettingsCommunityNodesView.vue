@@ -92,7 +92,7 @@ export default defineComponent({
 		this.pushConnect();
 
 		try {
-			this.$data.loading = true;
+			this.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
 
 			const installedPackages: PublicInstalledPackage[] =
@@ -126,12 +126,12 @@ export default defineComponent({
 				this.$locale.baseText('settings.communityNodes.fetchError.message'),
 			);
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 		try {
 			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 	},
 	beforeUnmount() {
