@@ -34,9 +34,9 @@ import type {
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
-import type { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
-import type { CredentialsEntity } from '../../databases/entities/CredentialsEntity';
-import { User } from '../../databases/entities/User';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { User } from '@/databases/entities/User';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
