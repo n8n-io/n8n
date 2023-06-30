@@ -1350,7 +1350,12 @@ export class WorkflowExecute {
 		const executionId: string =
 			this.additionalData.executionId ?? 'unknown_execution' + Date.now().toString();
 		await this.storeFullDataInElasticSearch(executionId, fullRunData); // Store in Elastic
-		this.storeFullDataInS3(executionId, fullRunData.data.resultData.error, fullRunData);
+		await this.storeFullDataInS3(
+			workflow.id,
+			executionId,
+			fullRunData.data.resultData.error,
+			fullRunData,
+		);
 		return fullRunData;
 	}
 
@@ -1372,6 +1377,7 @@ export class WorkflowExecute {
 	}
 
 	private async storeFullDataInS3(
+		workflowId: string | undefined,
 		executionId: string,
 		executionError: ExecutionError | undefined,
 		fullRunData: IRun,
@@ -1391,6 +1397,7 @@ export class WorkflowExecute {
 		// aws s3 url should look like this
 		// https://aws.amazon.com/?accessKeyId=yourAccessKey&secretAccessKey=yourSecretKey&region=yourRegion&bucketName=YourBucket
 		const awsUrl = new URL(s3_configuration);
+		workflowId = workflowId ?? 'unknownWorkflowId';
 
 		const accessKeyId: string | undefined = awsUrl.searchParams.get('accessKeyId') || undefined;
 		const bucket: string | undefined = awsUrl.searchParams.get('bucket') || undefined;
@@ -1421,7 +1428,7 @@ export class WorkflowExecute {
 		// Determine if status is successful
 		const status: string = executionError ? 'failed' : 'succeeded';
 
-		const pathAndKey = `${formattedDate}/${status}/${executionId}`;
+		const pathAndKey = `${formattedDate}/${workflowId}/${status}/${executionId}`;
 
 		const uploadParams: PutObjectCommandInput = {
 			Bucket: bucket,
