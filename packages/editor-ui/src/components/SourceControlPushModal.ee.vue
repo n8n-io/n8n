@@ -236,7 +236,7 @@ async function commitAndPush() {
 					<div v-if="workflowFiles.length > 0">
 						<n8n-text>
 							{{ locale.baseText('settings.sourceControl.modals.push.description') }}
-							<n8n-link :to="locale.baseText('settings.sourceControl.docs.using.url')">
+							<n8n-link :to="locale.baseText('settings.sourceControl.docs.using.pushPull.url')">
 								{{ locale.baseText('settings.sourceControl.modals.push.description.learnMore') }}
 							</n8n-link>
 						</n8n-text>

@@ -92,6 +92,9 @@ async function pullWorkfolder() {
 			<div :class="$style.container">
 				<n8n-text>
 					{{ i18n.baseText('settings.sourceControl.modals.pull.description') }}
+					<n8n-link :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
+						{{ i18n.baseText('settings.sourceControl.modals.pull.description.learnMore') }}
+					</n8n-link>
 				</n8n-text>
 
 				<div v-if="modifiedWorkflowFiles.length > 0" class="mt-l">
