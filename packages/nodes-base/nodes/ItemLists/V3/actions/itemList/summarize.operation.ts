@@ -44,7 +44,7 @@ const AggregationDisplayNames = {
 	sum: 'sum_',
 };
 
-const NUMERICAL_AGGREGATIONS = ['average', 'max', 'min', 'sum'];
+const NUMERICAL_AGGREGATIONS = ['average', 'sum'];
 
 type SummarizeOptions = {
 	disableDotNotation?: boolean;
@@ -124,7 +124,7 @@ export const properties: INodeProperties[] = [
 						hint: ' Enter the field name as text',
 						displayOptions: {
 							hide: {
-								aggregation: [...NUMERICAL_AGGREGATIONS, 'countUnique', 'count'],
+								aggregation: [...NUMERICAL_AGGREGATIONS, 'countUnique', 'count', 'max', 'min'],
 							},
 						},
 						requiresDataPath: 'single',
@@ -156,7 +156,7 @@ export const properties: INodeProperties[] = [
 						hint: ' Enter the field name as text',
 						displayOptions: {
 							show: {
-								aggregation: ['countUnique', 'count'],
+								aggregation: ['countUnique', 'count', 'max', 'min'],
 							},
 						},
 						requiresDataPath: 'single',
@@ -413,18 +413,29 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 			return data.reduce((acc, item) => {
 				return acc + (getValue(item, field) as number);
 			}, 0);
+		//comparison operations
 		case 'min':
-			return Math.min(
-				...(data.map((item) => {
-					return getValue(item, field);
-				}) as number[]),
-			);
+			let min;
+			for (const item of data) {
+				const value = getValue(item, field);
+				if (value !== undefined && value !== null && value !== '') {
+					if (min === undefined || value < min) {
+						min = value;
+					}
+				}
+			}
+			return min !== undefined ? min : null;
 		case 'max':
-			return Math.max(
-				...(data.map((item) => {
-					return getValue(item, field);
-				}) as number[]),
-			);
+			let max;
+			for (const item of data) {
+				const value = getValue(item, field);
+				if (value !== undefined && value !== null && value !== '') {
+					if (max === undefined || value > max) {
+						max = value;
+					}
+				}
+			}
+			return max !== undefined ? max : null;
 
 		//count operations
 		case 'countUnique':
