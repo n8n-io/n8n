@@ -167,7 +167,7 @@
 	}
 	&--default {
 		.el-tag {
-			padding: 2px 12px;
+			padding: var(--spacing-5xs) var(--spacing-xs);
 		}
 	}
 }

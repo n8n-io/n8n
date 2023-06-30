@@ -70,8 +70,8 @@
 		color: $custom-dialog-text-color;
 	}
 	.el-message-box-icon {
-		width: 24px;
-		height: 24px;
+		width: var(--spacing-l);
+		height: var(--spacing-l);
 		&--warning {
 			color: var(--color-warning);
 		}
