@@ -165,4 +165,9 @@
 			height: 42px;
 		}
 	}
+	&--default {
+		.el-tag {
+			padding: var(--spacing-5xs) var(--spacing-xs);
+		}
+	}
 }

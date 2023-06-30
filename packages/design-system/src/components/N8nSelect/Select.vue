@@ -93,6 +93,10 @@ export default defineComponent({
 	},
 	computed: {
 		computedSize(): string | undefined {
+			if (this.size === 'medium') {
+				return 'default';
+			}
+
 			if (this.size === 'xlarge') {
 				return undefined;
 			}

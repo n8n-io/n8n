@@ -200,7 +200,7 @@ export default defineComponent({
 
 <style lang="scss">
 .dialog-wrapper {
-	.el-dialog {
+	&.el-dialog {
 		display: flex;
 		flex-direction: column;
 		max-width: var(--dialog-max-width, 80%);

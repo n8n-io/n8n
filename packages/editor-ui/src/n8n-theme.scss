@@ -69,6 +69,13 @@
 	.el-message-box__title {
 		color: $custom-dialog-text-color;
 	}
+	.el-message-box-icon {
+		width: var(--spacing-l);
+		height: var(--spacing-l);
+		&--warning {
+			color: var(--color-warning);
+		}
+	}
 }
 
 // Notification Message
