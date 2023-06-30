@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,6 +15,8 @@ import { userActivityFields, userActivityOperations } from './UserActivityDescri
 import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
 import moment from 'moment-timezone';
 import type { IData } from './Interfaces';
+
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
@@ -37,6 +38,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Resource',
 			name: 'resource',
@@ -80,7 +82,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the dimensions to display them to user so that he can
+			// Get all the dimensions to display them to user so that they can
 			// select them easily
 			async getDimensions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -120,7 +122,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the views to display them to user so that he can
+			// Get all the views to display them to user so that they can
 			// select them easily
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -245,6 +247,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 						if (simple) {
 							responseData = simplify(responseData);
 						} else if (returnAll && responseData.length > 1) {
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							responseData = merge(responseData);
 						}
 					}
@@ -284,7 +287,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

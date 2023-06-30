@@ -1,3 +1,5 @@
+import type { NodeCreatorOpenSource } from './Interface';
+
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
@@ -24,6 +26,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
+export const ASK_AI_MODAL_KEY = 'askAi';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -44,6 +47,9 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
+
+export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
+export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -83,6 +89,7 @@ export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
+export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
 export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
@@ -147,27 +154,25 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
 // Node creator
-export const CORE_NODES_CATEGORY = 'Core Nodes';
-export const COMMUNICATION_CATEGORY = 'Communication';
-export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
-export const RECOMMENDED_CATEGORY = 'Recommended';
-export const SUBCATEGORY_DESCRIPTIONS: {
-	[category: string]: { [subcategory: string]: string };
-} = {
-	'Core Nodes': {
-		// this - all subkeys are set from codex
-		Flow: 'Branches, core triggers, merge data',
-		Files: 'Work with CSV, XML, text, images etc.',
-		'Data Transformation': 'Manipulate data fields, run code',
-		Helpers: 'HTTP Requests (API calls), date and time, scrape HTML',
-	},
+export const NODE_CREATOR_OPEN_SOURCES: Record<
+	Uppercase<NodeCreatorOpenSource>,
+	NodeCreatorOpenSource
+> = {
+	NO_TRIGGER_EXECUTION_TOOLTIP: 'no_trigger_execution_tooltip',
+	PLUS_ENDPOINT: 'plus_endpoint',
+	TRIGGER_PLACEHOLDER_BUTTON: 'trigger_placeholder_button',
+	ADD_NODE_BUTTON: 'add_node_button',
+	TAB: 'tab',
+	NODE_CONNECTION_ACTION: 'node_connection_action',
+	NODE_CONNECTION_DROP: 'node_connection_drop',
+	'': '',
 };
-export const REGULAR_NODE_FILTER = 'Regular';
-export const TRIGGER_NODE_FILTER = 'Trigger';
-export const ALL_NODE_FILTER = 'All';
+export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+export const DEFAULT_SUBCATEGORY = '*';
+export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
+export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
-export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
-export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
@@ -175,6 +180,7 @@ export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
+export const ASK_AI_WAITLIST_URL = 'https://n8n-community.typeform.com/to/odKU4oDR';
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
@@ -299,16 +305,18 @@ export const ROLE_OTHER = 'other';
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CLOSE = 'close';
-export const MODAL_CONFIRMED = 'confirmed';
+export const MODAL_CONFIRM = 'confirm';
 
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
-export const LOCAL_STORAGE_MAPPING_FLAG = 'N8N_MAPPING_ONBOARDED';
+export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
+export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
+export const LOCAL_STORAGE_EXPERIMENT_OVERRIDES = 'N8N_EXPERIMENT_OVERRIDES';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -333,14 +341,9 @@ export const HIRING_BANNER = `
 Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_source=n8n_user&utm_medium=console_output
 `;
 
-export const NODE_TYPE_COUNT_MAPPER = {
-	[REGULAR_NODE_FILTER]: ['regularCount'],
-	[TRIGGER_NODE_FILTER]: ['triggerCount'],
-	[ALL_NODE_FILTER]: ['triggerCount', 'regularCount'],
-};
 export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.respondToWebhook'];
 
-export enum VIEWS {
+export const enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
@@ -349,6 +352,7 @@ export enum VIEWS {
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
+	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
@@ -370,9 +374,13 @@ export enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
+	SSO_SETTINGS = 'SSoSettings',
+	SAML_ONBOARDING = 'SamlOnboarding',
+	SOURCE_CONTROL = 'SourceControl',
+	AUDIT_LOGS = 'AuditLogs',
 }
 
-export enum FAKE_DOOR_FEATURES {
+export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
 	SSO = 'sso',
@@ -410,17 +418,19 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
+	'$vars',
 	'$workflow',
 ];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
 
-export enum WORKFLOW_MENU_ACTIONS {
+export const enum WORKFLOW_MENU_ACTIONS {
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
+	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 }
@@ -428,14 +438,19 @@ export enum WORKFLOW_MENU_ACTIONS {
 /**
  * Enterprise edition
  */
-export enum EnterpriseEditionFeature {
+export const enum EnterpriseEditionFeature {
+	AdvancedExecutionFilters = 'advancedExecutionFilters',
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
+	Variables = 'variables',
+	Saml = 'saml',
+	SourceControl = 'sourceControl',
+	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
-export enum MAIN_HEADER_TABS {
+export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
@@ -473,7 +488,7 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export enum STORES {
+export const enum STORES {
 	COMMUNITY_NODES = 'communityNodes',
 	ROOT = 'root',
 	SETTINGS = 'settings',
@@ -492,7 +507,7 @@ export enum STORES {
 	HISTORY = 'history',
 }
 
-export enum SignInType {
+export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
 }
@@ -507,17 +522,44 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const ASSUMPTION_EXPERIMENT = {
-	name: 'adore-assumption-tests-1',
-	control: 'control',
-	demo: 'assumption-demo',
-	video: 'assumption-video',
-};
-
-export const ONBOARDING_EXPERIMENT = {
-	name: 'checklist_001',
+export const TEMPLATE_EXPERIMENT = {
+	name: '002_remove_templates',
 	control: 'control',
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const ONBOARDING_EXPERIMENT = {
+	name: '004_checklist',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+
+export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
+
+export const ALLOWED_HTML_ATTRIBUTES = ['href', 'name', 'target', 'title', 'class', 'id', 'style'];
+
+export const ALLOWED_HTML_TAGS = [
+	'p',
+	'strong',
+	'b',
+	'code',
+	'a',
+	'br',
+	'i',
+	'em',
+	'small',
+	'details',
+	'summary',
+];
+
+export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
+	? 'https://stage-app.n8n.cloud/account/change-plan'
+	: 'https://app.n8n.cloud/account/change-plan';
+
+export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
+
+export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
+
+export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;

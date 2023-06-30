@@ -7,7 +7,11 @@
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 			:data-test-id="`user-list-item-${user.email}`"
 		>
-			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
+			<n8n-user-info
+				v-bind="user"
+				:isCurrentUser="currentUserId === user.id"
+				:isSamlLoginEnabled="isSamlLoginEnabled"
+			/>
 			<div :class="$style.badgeContainer">
 				<n8n-badge v-if="user.isOwner" theme="tertiary" bold>
 					{{ t('nds.auth.roles.owner') }}
@@ -32,16 +36,17 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction } from '../../types';
+import type { IUser, UserAction } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-users-list',
+	mixins: [Locale],
 	components: {
 		N8nActionToggle,
 		N8nBadge,
@@ -63,8 +68,12 @@ export default mixins(Locale).extend({
 			type: String,
 		},
 		actions: {
-			type: Array as PropType<IUserListAction[]>,
+			type: Array as PropType<UserAction[]>,
 			default: () => [],
+		},
+		isSamlLoginEnabled: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	computed: {
@@ -107,7 +116,7 @@ export default mixins(Locale).extend({
 		},
 	},
 	methods: {
-		getActions(user: IUser): IUserListAction[] {
+		getActions(user: IUser): UserAction[] {
 			if (user.isOwner) {
 				return [];
 			}

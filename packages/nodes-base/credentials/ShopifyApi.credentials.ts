@@ -1,4 +1,4 @@
-import { BINARY_ENCODING } from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,

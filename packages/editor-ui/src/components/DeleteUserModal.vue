@@ -70,20 +70,19 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-import { showMessage } from '@/mixins/showMessage';
-import Modal from './Modal.vue';
-import Vue from 'vue';
-import { IUser } from '../Interface';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
+import Modal from '@/components/Modal.vue';
+import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	name: 'DeleteUserModal',
 	components: {
 		Modal,
 	},
-	name: 'DeleteUserModal',
 	props: {
 		modalName: {
 			type: String,
@@ -92,9 +91,14 @@ export default mixins(showMessage).extend({
 			type: String,
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			loading: false,
 			operation: '',
 			deleteConfirmText: '',
@@ -169,15 +173,15 @@ export default mixins(showMessage).extend({
 					}
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.userDeleted'),
 					message,
 				});
 
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.users.userDeletedError'));
+				this.showError(error, this.$locale.baseText('settings.users.userDeletedError'));
 			}
 			this.loading = false;
 		},

@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -364,7 +363,7 @@ export class ApiTemplateIo implements INodeType {
 					try {
 						responseData = await apiTemplateIoApiRequest.call(this, 'GET', '/account-information');
 
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
@@ -437,11 +436,11 @@ export class ApiTemplateIo implements INodeType {
 
 						if (download) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
-							const data = await downloadImage.call(this, responseData.download_url);
+							const data = await downloadImage.call(this, responseData.download_url as string);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
-								data,
-								options.fileName || fileName,
+								data as Buffer,
+								(options.fileName as string) || (fileName as string),
 							);
 							responseData = {
 								json: responseData,
@@ -450,7 +449,7 @@ export class ApiTemplateIo implements INodeType {
 								},
 							};
 						}
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
@@ -517,15 +516,21 @@ export class ApiTemplateIo implements INodeType {
 							}
 						}
 
-						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, data);
+						responseData = await apiTemplateIoApiRequest.call(
+							this,
+							'POST',
+							'/create',
+							qs,
+							data as IDataObject,
+						);
 
 						if (download) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
-							const imageData = await downloadImage.call(this, responseData.download_url);
+							const imageData = await downloadImage.call(this, responseData.download_url as string);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
-								imageData,
-								options.fileName || fileName,
+								imageData as Buffer,
+								(options.fileName || fileName) as string,
 							);
 							responseData = {
 								json: responseData,
@@ -534,7 +539,7 @@ export class ApiTemplateIo implements INodeType {
 								},
 							};
 						}
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });

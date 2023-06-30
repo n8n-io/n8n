@@ -507,3 +507,4 @@ After changing the dynamic text file:
 If a `headerText` section was changed, re-run `pnpm build:translations` in `/nodes-base`.
 
 > **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://localhost:8080`.
+

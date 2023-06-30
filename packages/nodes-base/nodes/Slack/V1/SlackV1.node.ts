@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -22,6 +21,8 @@ import { userFields, userOperations } from './UserDescription';
 import { userProfileFields, userProfileOperations } from './UserProfileDescription';
 import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
 import type { IAttachment } from './MessageInterface';
+
+import { oldVersionNotice } from '@utils/descriptions';
 
 import moment from 'moment';
 
@@ -98,6 +99,7 @@ export class SlackV1 implements INodeType {
 				},
 			],
 			properties: [
+				oldVersionNotice,
 				{
 					displayName: 'Authentication',
 					name: 'authentication',
@@ -179,7 +181,7 @@ export class SlackV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -205,7 +207,7 @@ export class SlackV1 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -239,7 +241,7 @@ export class SlackV1 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the team fields to display them to user so that he can
+			// Get all the team fields to display them to user so that they can
 			// select them easily
 			async getTeamFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -490,7 +492,7 @@ export class SlackV1 implements INodeType {
 									{},
 									{ user: member },
 								);
-								data.push(user);
+								data.push(user as IDataObject);
 							}
 							responseData = data;
 						}
@@ -1076,7 +1078,6 @@ export class SlackV1 implements INodeType {
 					//https://api.slack.com/methods/files.upload
 					if (operation === 'upload') {
 						const options = this.getNodeParameter('options', i);
-						const binaryData = this.getNodeParameter('binaryData', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
 							body.channels = (options.channelIds as string[]).join(',');
@@ -1093,31 +1094,18 @@ export class SlackV1 implements INodeType {
 						if (options.title) {
 							body.title = options.title as string;
 						}
-						if (binaryData) {
+						if (this.getNodeParameter('binaryData', i)) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							if (
-								items[i].binary === undefined ||
-								//@ts-ignore
-								items[i].binary[binaryPropertyName] === undefined
-							) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 								i,
 								binaryPropertyName,
 							);
 							body.file = {
-								//@ts-ignore
 								value: binaryDataBuffer,
 								options: {
-									//@ts-ignore
-									filename: items[i].binary[binaryPropertyName].fileName,
-									//@ts-ignore
-									contentType: items[i].binary[binaryPropertyName].mimeType,
+									filename: binaryData.fileName,
+									contentType: binaryData.mimeType,
 								},
 							};
 							responseData = await slackApiRequest.call(
@@ -1380,7 +1368,7 @@ export class SlackV1 implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

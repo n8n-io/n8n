@@ -1,8 +1,14 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type { OptionsWithUri } from 'request';
 
-import type { IBinaryKeyData, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
+import type {
+	IBinaryKeyData,
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	IPollFunctions,
+} from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 interface IAttachment {
@@ -82,7 +88,9 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		version === 1 ? returnData.push(...responseData) : returnData.push(...responseData.list);
+		version === 1
+			? returnData.push(...(responseData as IDataObject[]))
+			: returnData.push(...(responseData.list as IDataObject[]));
 
 		query.offset += query.limit;
 	} while (version === 1 ? responseData.length !== 0 : responseData.pageInfo.isLastPage !== true);
@@ -105,7 +113,7 @@ export async function downloadRecordAttachments(
 				for (const [index, attachment] of jsonParse<IAttachment[]>(
 					record[fieldName] as string,
 				).entries()) {
-					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
+					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
 						json: false,
 						encoding: null,
 					});

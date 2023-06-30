@@ -1,9 +1,13 @@
-import type { IDataObject, IPollFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IPollFunctions,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { apiRequest } from '../transport';
 import { utils as xlsxUtils } from 'xlsx';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -532,9 +536,15 @@ export class GoogleSheet {
 					columnNames.indexOf(name),
 				);
 
+				let updateValue = item[name] as string;
+				if (typeof updateValue === 'object') {
+					try {
+						updateValue = JSON.stringify(updateValue);
+					} catch (error) {}
+				}
 				updateData.push({
 					range: `${decodedRange.name}!${columnToUpdate}${updateRowIndex}`,
-					values: [[item[name] as string]],
+					values: [[updateValue]],
 				});
 			}
 		}

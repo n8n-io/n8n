@@ -1,6 +1,9 @@
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
@@ -59,7 +62,7 @@ export async function lemlistApiRequestAllItems(
 
 	do {
 		responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-		returnData.push(...responseData);
+		returnData.push(...(responseData as IDataObject[]));
 		qs.offset += qs.limit;
 	} while (responseData.length !== 0);
 	return returnData;

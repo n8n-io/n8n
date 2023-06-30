@@ -1,11 +1,13 @@
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 
@@ -51,7 +53,6 @@ export class OnfleetTrigger implements INodeType {
 		properties: [eventDisplay, eventNameField],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -101,7 +102,7 @@ export class OnfleetTrigger implements INodeType {
 					const webhook = await onfleetApiRequest.call(this, 'POST', path, body);
 
 					if (webhook.id === undefined) {
-						throw new NodeApiError(this.getNode(), webhook, {
+						throw new NodeApiError(this.getNode(), webhook as JsonObject, {
 							message: 'Onfleet webhook creation response did not contain the expected data',
 						});
 					}

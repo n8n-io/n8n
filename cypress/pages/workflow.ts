@@ -44,7 +44,7 @@ export class WorkflowPage extends BasePage {
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
-		expressionModalInput: () => cy.getByTestId('expression-modal-input'),
+		expressionModalInput: () => cy.getByTestId('expression-modal-input').find('[role=textbox]'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
@@ -84,7 +84,7 @@ export class WorkflowPage extends BasePage {
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 		nodeView: () => cy.getByTestId('node-view'),
-		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 		zoomInButton: () => cy.getByTestId('zoom-in-button'),
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
@@ -106,6 +106,8 @@ export class WorkflowPage extends BasePage {
 			cy.get(
 				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
 			),
+		addStickyButton: () => cy.getByTestId('add-sticky-button'),
+		stickies: () => cy.getByTestId('sticky'),
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 	};
 	actions = {
@@ -138,7 +140,8 @@ export class WorkflowPage extends BasePage {
 					if(action) {
 						cy.contains(action).click()
 					} else {
-						cy.getByTestId('item-iterator-item').eq(1).click()
+						// Select the first action
+						cy.get('[data-keyboard-nav-type="action"]').eq(0).click()
 					}
 				}
 			})
@@ -167,12 +170,18 @@ export class WorkflowPage extends BasePage {
 			this.getters.shareButton().click();
 		},
 		saveWorkflowOnButtonClick: () => {
+			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
 			this.getters.saveButton().should('contain', 'Saved');
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
-			cy.get('body').type('{meta}', { release: false }).type('s');
+			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
+			cy.get('body').type(META_KEY, { release: false }).type('s');
+		},
+		deleteNode: (name: string) => {
+			this.getters.canvasNodeByName(name).first().click();
+			cy.get('body').type('{del}');
 		},
 		setWorkflowName: (name: string) => {
 			this.getters.workflowNameInput().should('be.disabled');
@@ -181,8 +190,10 @@ export class WorkflowPage extends BasePage {
 			this.getters.workflowNameInput().clear().type(name).type('{enter}');
 		},
 		activateWorkflow: () => {
+			cy.intercept('PATCH', '/rest/workflows/*').as('activateWorkflow');
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
 			this.getters.activatorSwitch().click();
+			cy.wait('@activateWorkflow');
 			cy.get('body').type('{esc}');
 		},
 		renameWorkflow: (newName: string) => {
@@ -230,14 +241,15 @@ export class WorkflowPage extends BasePage {
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
 		},
-		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string, action?: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters
 				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
 				.find('.add')
 				.first()
 				.click({ force: true });
-			this.actions.addNodeToCanvas(newNodeName, false);
+
+			this.actions.addNodeToCanvas(newNodeName, false, false, action);
 		},
 		deleteNodeBetweenNodes: (
 			sourceNodeName: string,
@@ -251,15 +263,41 @@ export class WorkflowPage extends BasePage {
 				.first()
 				.click({ force: true });
 		},
+		addSticky: () => {
+			this.getters.nodeCreatorPlusButton().realHover();
+			this.getters.addStickyButton().click();
+		},
+		deleteSticky: () => {
+			this.getters.stickies().eq(0)
+				.realHover()
+				.find('[data-test-id="delete-sticky"]')
+				.click();
+		},
+		editSticky: (content: string) => {
+			this.getters.stickies()
+				.dblclick()
+				.find('textarea')
+				.clear()
+				.type(content)
+				.type('{esc}');
+		},
 		turnOnManualExecutionSaving: () => {
 			this.getters.workflowMenu().click();
 			this.getters.workflowMenuItemSettings().click();
+			cy.get('.el-loading-mask').should('not.be.visible');
 			this.getters
 				.workflowSettingsSaveManualExecutionsSelect()
 				.find('li:contains("Yes")')
 				.click({ force: true });
+
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
 			this.getters.workflowSettingsSaveButton().click();
 			this.getters.successToast().should('exist');
+
+			this.getters.workflowMenu().click();
+			this.getters.workflowMenuItemSettings().click();
+			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
+			this.getters.workflowSettingsSaveButton().click();
 		},
 	};
 }

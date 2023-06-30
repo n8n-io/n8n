@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -605,7 +605,7 @@ export class Disqus implements INodeType {
 						try {
 							const responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData.response),
+								this.helpers.returnJsonArray(responseData.response as IDataObject[]),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);

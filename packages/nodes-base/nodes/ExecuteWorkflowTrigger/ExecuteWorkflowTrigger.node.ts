@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -8,7 +12,8 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		icon: 'fa:sign-out-alt',
 		group: ['trigger'],
 		version: 1,
-		description: 'Runs the flow when called by the Execute Workflow node from a different workflow',
+		description:
+			'Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.',
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
@@ -25,6 +30,21 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				name: 'notice',
 				type: 'notice',
 				default: '',
+			},
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'hidden',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Workflow Call',
+						value: 'worklfow_call',
+						description: 'When called by another workflow using Execute Workflow Trigger',
+						action: 'When Called by Another Workflow',
+					},
+				],
+				default: 'worklfow_call',
 			},
 		],
 	};

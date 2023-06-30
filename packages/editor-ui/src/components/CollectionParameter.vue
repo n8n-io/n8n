@@ -46,21 +46,23 @@
 </template>
 
 <script lang="ts">
-import { INodeUi, IUpdateInformation } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { Component } from 'vue';
+import { mapStores } from 'pinia';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import { deepCopy, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
-import { Component } from 'vue';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 
-export default mixins(nodeHelpers).extend({
+export default defineComponent({
 	name: 'CollectionParameter',
+	mixins: [nodeHelpers],
 	props: [
 		'hideDelete', // boolean
 		'nodeValues', // NodeParameters
@@ -70,7 +72,7 @@ export default mixins(nodeHelpers).extend({
 		'isReadOnly', // boolean
 	],
 	components: {
-		ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList: async () => import('./ParameterInputList.vue') as Promise<Component>,
 	},
 	data() {
 		return {

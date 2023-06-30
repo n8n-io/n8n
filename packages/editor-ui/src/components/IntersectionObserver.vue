@@ -5,25 +5,41 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'IntersectionObserver',
-	props: ['threshold', 'enabled'],
+	props: {
+		threshold: {
+			type: Number,
+			default: 0,
+		},
+		enabled: {
+			type: Boolean,
+			default: false,
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
+	},
 	data() {
 		return {
 			observer: null,
 		};
 	},
 	mounted() {
-		if (!this.$props.enabled) {
+		if (!this.enabled) {
 			return;
 		}
 
 		const options = {
 			root: this.$refs.root as Element,
 			rootMargin: '0px',
-			threshold: this.$props.threshold,
+			threshold: this.threshold,
 		};
 
 		const observer = new IntersectionObserver((entries) => {
@@ -35,18 +51,18 @@ export default Vue.extend({
 			});
 		}, options);
 
-		this.$data.observer = observer;
+		this.observer = observer;
 
-		this.$on('observe', (observed: Element) => {
+		this.eventBus.on('observe', (observed: Element) => {
 			observer.observe(observed);
 		});
 
-		this.$on('unobserve', (observed: Element) => {
+		this.eventBus.on('unobserve', (observed: Element) => {
 			observer.unobserve(observed);
 		});
 	},
 	beforeDestroy() {
-		if (this.$props.enabled) {
+		if (this.enabled) {
 			this.$data.observer.disconnect();
 		}
 	},

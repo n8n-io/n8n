@@ -134,63 +134,58 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 		const execsAdded: { [key: string]: number } = {};
 
-		const proms = metaFileNames.reduce(
-			(prev, curr) => {
-				const [prefix, executionId, ts] = curr.split('_');
+		const promises = metaFileNames.reduce<Array<Promise<void>>>((prev, curr) => {
+			const [prefix, executionId, ts] = curr.split('_');
 
-				if (prefix !== filePrefix) {
+			if (prefix !== filePrefix) {
+				return prev;
+			}
+
+			const execTimestamp = parseInt(ts, 10);
+
+			if (execTimestamp < currentTimeValue) {
+				if (execsAdded[executionId]) {
+					// do not delete data, only meta file
+					prev.push(this.deleteMetaFileByPath(path.join(metaPath, curr)));
 					return prev;
 				}
 
-				const execTimestamp = parseInt(ts, 10);
+				execsAdded[executionId] = 1;
+				prev.push(
+					this.deleteBinaryDataByExecutionId(executionId).then(async () =>
+						this.deleteMetaFileByPath(path.join(metaPath, curr)),
+					),
+				);
+			}
 
-				if (execTimestamp < currentTimeValue) {
-					if (execsAdded[executionId]) {
-						// do not delete data, only meta file
-						prev.push(this.deleteMetaFileByPath(path.join(metaPath, curr)));
-						return prev;
-					}
+			return prev;
+		}, []);
 
-					execsAdded[executionId] = 1;
-					prev.push(
-						this.deleteBinaryDataByExecutionId(executionId).then(async () =>
-							this.deleteMetaFileByPath(path.join(metaPath, curr)),
-						),
-					);
-				}
-
-				return prev;
-			},
-			[Promise.resolve()],
-		);
-
-		return Promise.all(proms).then(() => {});
+		await Promise.all(promises);
 	}
 
 	async duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string> {
 		const newBinaryDataId = this.generateFileName(prefix);
 
-		return fs
-			.copyFile(this.resolveStoragePath(binaryDataId), this.resolveStoragePath(newBinaryDataId))
-			.then(() => newBinaryDataId);
+		await fs.copyFile(
+			this.resolveStoragePath(binaryDataId),
+			this.resolveStoragePath(newBinaryDataId),
+		);
+		return newBinaryDataId;
 	}
 
 	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
 		const regex = new RegExp(`${executionId}_*`);
 		const filenames = await fs.readdir(this.storagePath);
 
-		const proms = filenames.reduce(
-			(allProms, filename) => {
-				if (regex.test(filename)) {
-					allProms.push(fs.rm(this.resolveStoragePath(filename)));
-				}
+		const promises = filenames.reduce<Array<Promise<void>>>((allProms, filename) => {
+			if (regex.test(filename)) {
+				allProms.push(fs.rm(this.resolveStoragePath(filename)));
+			}
+			return allProms;
+		}, []);
 
-				return allProms;
-			},
-			[Promise.resolve()],
-		);
-
-		return Promise.all(proms).then(async () => Promise.resolve());
+		await Promise.all(promises);
 	}
 
 	async deleteBinaryDataByIdentifier(identifier: string): Promise<void> {
@@ -198,20 +193,17 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 	}
 
 	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
-		return fs.readdir(this.getBinaryDataPersistMetaPath()).then(async (metafiles) => {
-			const proms = metafiles.reduce(
-				(prev, curr) => {
-					if (curr.startsWith(`${PREFIX_PERSISTED_METAFILE}_${executionId}_`)) {
-						prev.push(fs.rm(path.join(this.getBinaryDataPersistMetaPath(), curr)));
-						return prev;
-					}
-
+		return fs.readdir(this.getBinaryDataPersistMetaPath()).then(async (metaFiles) => {
+			const promises = metaFiles.reduce<Array<Promise<void>>>((prev, curr) => {
+				if (curr.startsWith(`${PREFIX_PERSISTED_METAFILE}_${executionId}_`)) {
+					prev.push(fs.rm(path.join(this.getBinaryDataPersistMetaPath(), curr)));
 					return prev;
-				},
-				[Promise.resolve()],
-			);
+				}
 
-			return Promise.all(proms).then(() => {});
+				return prev;
+			}, []);
+
+			await Promise.all(promises);
 		});
 	}
 
@@ -227,8 +219,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return path.join(this.storagePath, 'persistMeta');
 	}
 
-	private async deleteMetaFileByPath(metafilePath: string): Promise<void> {
-		return fs.rm(metafilePath);
+	private async deleteMetaFileByPath(metaFilePath: string): Promise<void> {
+		return fs.rm(metaFilePath);
 	}
 
 	private async deleteFromLocalStorage(identifier: string) {

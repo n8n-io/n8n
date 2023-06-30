@@ -1,14 +1,13 @@
 import type { Readable } from 'stream';
-import type { IExecuteFunctions } from 'n8n-core';
-import { BINARY_ENCODING } from 'n8n-core';
 
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
 
@@ -1579,6 +1578,7 @@ export class Telegram implements INodeType {
 									'sendMessage',
 									'sendPhoto',
 									'sendVideo',
+									'sendDocument',
 								],
 							},
 						},
@@ -2024,7 +2024,11 @@ export class Telegram implements INodeType {
 						);
 
 						const fileName = filePath.split('/').pop();
-						const data = await this.helpers.prepareBinaryData(file.body, fileName);
+
+						const data = await this.helpers.prepareBinaryData(
+							file.body as Buffer,
+							fileName as string,
+						);
 
 						returnData.push({
 							json: responseData,
@@ -2035,7 +2039,7 @@ export class Telegram implements INodeType {
 					}
 				} else if (resource === 'chat' && operation === 'administrators') {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData.result),
+						this.helpers.returnJsonArray(responseData.result as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -2043,7 +2047,7 @@ export class Telegram implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

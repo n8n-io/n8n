@@ -3,7 +3,6 @@ import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
 import { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
-import { idStringifier } from '../utils/transformers';
 
 @Entity()
 export class SharedCredentials extends AbstractEntity {
@@ -22,6 +21,6 @@ export class SharedCredentials extends AbstractEntity {
 	@ManyToOne('CredentialsEntity', 'shared')
 	credentials: CredentialsEntity;
 
-	@PrimaryColumn({ transformer: idStringifier })
+	@PrimaryColumn()
 	credentialsId: string;
 }

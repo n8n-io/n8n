@@ -42,38 +42,57 @@ function round(value: number, extraArgs: number[]) {
 
 ceil.doc = {
 	name: 'ceil',
-	description: 'Rounds up a number to a whole number',
+	description: 'Rounds up a number to a whole number.',
 	returnType: 'number',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-ceil',
 };
 
 floor.doc = {
 	name: 'floor',
-	description: 'Rounds down a number to a whole number',
+	description: 'Rounds down a number to a whole number.',
 	returnType: 'number',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-floor',
 };
 
 isEven.doc = {
 	name: 'isEven',
 	description: 'Returns true if the number is even. Only works on whole numbers.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-isEven',
 };
 
 isOdd.doc = {
 	name: 'isOdd',
 	description: 'Returns true if the number is odd. Only works on whole numbers.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-isOdd',
 };
-
-// @TODO_NEXT_PHASE: Surface extensions below which take args
 
 format.doc = {
 	name: 'format',
+	description:
+		'Returns a formatted string of a number based on the given `LanguageCode` and `FormatOptions`. When no arguments are given, transforms the number in a like format `1.234`.',
 	returnType: 'string',
+	args: [
+		{ name: 'locales?', type: 'LanguageCode' },
+		{ name: 'options?', type: 'FormatOptions' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-format',
 };
 
 round.doc = {
 	name: 'round',
+	description:
+		'Returns the value of a number rounded to the nearest whole number. Defaults to 0 decimal places if no argument is given.',
 	returnType: 'number',
+	args: [{ name: 'decimalPlaces?', type: 'number' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-round',
 };
 
 export const numberExtensions: ExtensionMap = {

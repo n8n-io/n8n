@@ -1,8 +1,8 @@
 import { parse as urlParse } from 'url';
 
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -105,12 +105,12 @@ export class MauticTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the events to display them to user so that he can
+			// Get all the events to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { triggers } = await mauticApiRequest.call(this, 'GET', '/hooks/triggers');
-				for (const [key, value] of Object.entries(triggers)) {
+				for (const [key, value] of Object.entries(triggers as IDataObject)) {
 					const eventId = key;
 					const eventName = (value as IDataObject).label as string;
 					const eventDecription = (value as IDataObject).description as string;
@@ -125,7 +125,6 @@ export class MauticTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -175,7 +174,7 @@ export class MauticTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

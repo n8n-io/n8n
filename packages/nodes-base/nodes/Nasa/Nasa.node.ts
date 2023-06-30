@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -1045,7 +1044,7 @@ export class Nasa implements INodeType {
 				}
 
 				if (resource === 'asteroidNeoFeed') {
-					const date = Object.keys(responseData)[0];
+					const date = Object.keys(responseData as IDataObject)[0];
 					responseData = responseData[date];
 				}
 
@@ -1065,7 +1064,7 @@ export class Nasa implements INodeType {
 
 					items[i] = newItem;
 
-					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data as Buffer);
 				}
 
 				if (resource === 'astronomyPictureOfTheDay') {
@@ -1080,7 +1079,7 @@ export class Nasa implements INodeType {
 							endpoint,
 							qs,
 							{ encoding: null },
-							responseData.hdurl,
+							responseData.hdurl as string,
 						);
 
 						const filename = (responseData.hdurl as string).split('/');
@@ -1099,14 +1098,14 @@ export class Nasa implements INodeType {
 						items[i] = newItem;
 
 						items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-							data,
+							data as Buffer,
 							filename[filename.length - 1],
 						);
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

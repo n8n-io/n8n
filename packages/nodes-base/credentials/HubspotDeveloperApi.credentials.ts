@@ -58,6 +58,7 @@ export class HubspotDeveloperApi implements ICredentialType {
 			displayName: 'Developer API Key',
 			name: 'apiKey',
 			type: 'string',
+			required: true,
 			typeOptions: { password: true },
 			default: '',
 		},

@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -23,8 +22,8 @@ import {
 
 import { lemlistApiRequest, lemlistApiRequestAllItems } from './GenericFunctions';
 
-import isEmpty from 'lodash.isempty';
-import omit from 'lodash.omit';
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
 
 export class Lemlist implements INodeType {
 	description: INodeTypeDescription = {
@@ -301,7 +300,7 @@ export class Lemlist implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 

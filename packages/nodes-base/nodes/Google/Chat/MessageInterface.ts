@@ -31,7 +31,7 @@ export interface IUser {
 	type?: Type;
 	isAnonymous?: boolean;
 }
-enum Type {
+const enum Type {
 	'TYPE_UNSPECIFIED',
 	'HUMAN',
 	'BOT',

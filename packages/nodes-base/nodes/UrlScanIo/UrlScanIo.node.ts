@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -125,13 +124,13 @@ export class UrlScanIo implements INodeType {
 						}
 
 						responseData = await urlScanIoApiRequest.call(this, 'POST', '/scan', body);
-						responseData = normalizeId(responseData);
+						responseData = normalizeId(responseData as IDataObject);
 					}
 				}
 
 				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+					? returnData.push(...(responseData as IDataObject[]))
+					: returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

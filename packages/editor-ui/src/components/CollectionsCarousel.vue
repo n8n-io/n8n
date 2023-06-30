@@ -26,17 +26,20 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
-import { ITemplatesCollection } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { ITemplatesCollection } from '@/Interface';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(genericHelpers).extend({
+type SliderRef = InstanceType<typeof VueAgile>;
+
+export default defineComponent({
 	name: 'CollectionsCarousel',
+	mixins: [genericHelpers],
 	props: {
 		collections: {
 			type: Array as PropType<ITemplatesCollection[]>,
@@ -60,7 +63,7 @@ export default mixins(genericHelpers).extend({
 	components: {
 		Card,
 		CollectionCard,
-		VueAgile,
+		agile: VueAgile,
 	},
 	data() {
 		return {
@@ -97,22 +100,23 @@ export default mixins(genericHelpers).extend({
 	},
 	mounted() {
 		this.$nextTick(() => {
-			const slider = this.$refs.slider;
-			if (!slider) {
+			const sliderRef = this.$refs.slider as SliderRef | undefined;
+			if (!sliderRef) {
 				return;
 			}
-			// @ts-ignore
-			this.listElement = slider.$el.querySelector('.agile__list');
+
+			this.listElement = sliderRef.$el.querySelector('.agile__list');
 			if (this.listElement) {
 				this.listElement.addEventListener('scroll', this.updateCarouselScroll);
 			}
 		});
 	},
 	beforeDestroy() {
-		if (this.$refs.slider) {
-			// @ts-ignore
-			this.$refs.slider.destroy();
+		const sliderRef = this.$refs.slider as SliderRef | undefined;
+		if (sliderRef) {
+			sliderRef.destroy();
 		}
+
 		window.removeEventListener('scroll', this.updateCarouselScroll);
 	},
 });

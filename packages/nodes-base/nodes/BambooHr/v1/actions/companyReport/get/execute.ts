@@ -1,6 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -26,7 +24,7 @@ export async function get(this: IExecuteFunctions, index: number) {
 			{},
 			{ resolveWithFullResponse: true },
 		);
-		return this.helpers.returnJsonArray(responseData.body);
+		return this.helpers.returnJsonArray(responseData.body as IDataObject);
 	}
 
 	const output: string = this.getNodeParameter('output', index) as string;
@@ -40,7 +38,7 @@ export async function get(this: IExecuteFunctions, index: number) {
 	mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
 	const contentDisposition = response.headers['content-disposition'];
 	const fileNameRegex = /(?<=filename=").*\b/;
-	const match = fileNameRegex.exec(contentDisposition);
+	const match = fileNameRegex.exec(contentDisposition as string);
 	let fileName = '';
 
 	// file name was found

@@ -18,11 +18,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-button',
 	props: {
 		label: {
@@ -38,7 +38,7 @@ export default Vue.extend({
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
+				['xmini', 'mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		loading: {
 			type: Boolean,
@@ -81,11 +81,11 @@ export default Vue.extend({
 		N8nIcon,
 	},
 	computed: {
-		ariaBusy(): string {
-			return this.loading ? 'true' : 'false';
+		ariaBusy(): 'true' | undefined {
+			return this.loading ? 'true' : undefined;
 		},
-		ariaDisabled(): string {
-			return this.disabled ? 'true' : 'false';
+		ariaDisabled(): 'true' | undefined {
+			return this.disabled ? 'true' : undefined;
 		},
 		classes(): string {
 			return (
@@ -98,7 +98,7 @@ export default Vue.extend({
 				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
 				`${this.block ? ` ${this.$style.block}` : ''}` +
 				`${this.active ? ` ${this.$style.active}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
+				`${this.icon || this.loading ? ` ${this.$style.withIcon}` : ''}` +
 				`${this.square ? ` ${this.$style.square}` : ''}`
 			);
 		},
@@ -194,7 +194,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .tertiary {
-	font-weight: var(--font-weight-regular) !important;
+	font-weight: var(--font-weight-bold) !important;
 
 	--button-background-color: var(--color-background-xlight);
 	--button-color: var(--color-text-dark);
@@ -277,6 +277,17 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 /**
  * Sizes
  */
+
+.xmini {
+	--button-padding-vertical: var(--spacing-4xs);
+	--button-padding-horizontal: var(--spacing-3xs);
+	--button-font-size: var(--font-size-3xs);
+
+	&.square {
+		height: 22px;
+		width: 22px;
+	}
+}
 
 .mini {
 	--button-padding-vertical: var(--spacing-4xs);
@@ -453,9 +464,16 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-active-background-color: transparent;
 }
 
+.withIcon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+}
+
 .icon {
 	display: inline-flex;
 	justify-content: center;
+	align-items: center;
 
 	svg {
 		display: block;

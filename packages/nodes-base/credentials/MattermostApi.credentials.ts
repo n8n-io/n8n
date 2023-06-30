@@ -26,6 +26,13 @@ export class MattermostApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -39,8 +46,9 @@ export class MattermostApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}/api/v4',
+			baseURL: '={{$credentials.baseUrl.replace(/\\/$/, "")}}/api/v4',
 			url: '/users',
+			skipSslCertificateValidation: '={{$credentials?.allowUnauthorizedCerts}}',
 		},
 	};
 }

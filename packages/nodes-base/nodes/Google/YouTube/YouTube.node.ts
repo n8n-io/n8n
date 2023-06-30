@@ -1,14 +1,13 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import { BINARY_ENCODING } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
@@ -97,7 +96,7 @@ export class YouTube implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the languages to display them to user so that he can
+			// Get all the languages to display them to user so that they can
 			// select them easily
 			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -117,7 +116,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the countries codes to display them to user so that he can
+			// Get all the countries codes to display them to user so that they can
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -131,7 +130,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the video categories to display them to user so that he can
+			// Get all the video categories to display them to user so that they can
 			// select them easily
 			async getVideoCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('regionCode') as string;
@@ -158,7 +157,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the playlists to display them to user so that he can
+			// Get all the playlists to display them to user so that they can
 			// select them easily
 			async getPlaylists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -387,35 +386,12 @@ export class YouTube implements INodeType {
 					if (operation === 'uploadBanner') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
-
-						let mimeType;
-
-						// Is binary file to upload
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						if (item.binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryProperty}"`,
-								{ itemIndex: i },
-							);
-						}
-
-						if (item.binary[binaryProperty].mimeType) {
-							mimeType = item.binary[binaryProperty].mimeType;
-						}
-
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 						const body = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 						const requestOptions = {
 							headers: {
-								'Content-Type': mimeType,
+								...(binaryData.mimeType ? { 'Content-Type': binaryData.mimeType } : {}),
 							},
 							json: false,
 						};
@@ -430,7 +406,7 @@ export class YouTube implements INodeType {
 							requestOptions,
 						);
 
-						const { url } = JSON.parse(response);
+						const { url } = JSON.parse(response as string);
 
 						qs.part = 'brandingSettings';
 
@@ -854,38 +830,18 @@ export class YouTube implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
-						// Is binary file to upload
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const binaryData = item.binary[binaryProperty];
-						if (binaryData === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryProperty}"`,
-								{ itemIndex: i },
-							);
-						}
+						const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
 
 						let mimeType: string;
 						let contentLength: number;
 						let fileContent: Buffer | Readable;
-
-						if (binaryData.mimeType) {
-							mimeType = binaryData.mimeType;
-						}
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
 							fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 							contentLength = metadata.fileSize;
-							mimeType = binaryData.mimeType;
+							mimeType = metadata.mimeType ?? binaryData.mimeType;
 						} else {
 							fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
 							contentLength = fileContent.length;
@@ -1105,7 +1061,7 @@ export class YouTube implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

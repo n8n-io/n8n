@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -55,7 +54,7 @@ export class GoogleTasks implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tasklists to display them to user so that he can select them easily
+			// Get all the tasklists to display them to user so that they can select them easily
 
 			async getTasks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -254,7 +253,7 @@ export class GoogleTasks implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

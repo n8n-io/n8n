@@ -1,12 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -120,7 +120,7 @@ export class Zendesk implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -141,7 +141,7 @@ export class Zendesk implements INodeType {
 					'/ticket_fields',
 				);
 				for (const field of fields) {
-					if (customFields.includes(field.type)) {
+					if (customFields.includes(field.type as string)) {
 						const fieldName = field.title;
 						const fieldId = field.id;
 						returnData.push({
@@ -152,7 +152,7 @@ export class Zendesk implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -167,7 +167,7 @@ export class Zendesk implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -183,7 +183,7 @@ export class Zendesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the locales to display them to user so that he can
+			// Get all the locales to display them to user so that they can
 			// select them easily
 			async getLocales(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -199,7 +199,7 @@ export class Zendesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the user fields to display them to user so that he can
+			// Get all the user fields to display them to user so that they can
 			// select them easily
 			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -319,7 +319,7 @@ export class Zendesk implements INodeType {
 								body.recipient = additionalFields.recipient as string;
 							}
 							if (additionalFields.group) {
-								body.group = additionalFields.group as string;
+								body.group_id = additionalFields.group as number;
 							}
 							if (additionalFields.tags) {
 								body.tags = additionalFields.tags as string[];
@@ -371,7 +371,7 @@ export class Zendesk implements INodeType {
 								body.recipient = updateFields.recipient as string;
 							}
 							if (updateFields.group) {
-								body.group = updateFields.group as string;
+								body.group_id = updateFields.group as number;
 							}
 							if (updateFields.tags) {
 								body.tags = updateFields.tags as string[];
@@ -477,7 +477,7 @@ export class Zendesk implements INodeType {
 							);
 							responseData = responseData.ticket;
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -787,7 +787,7 @@ export class Zendesk implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

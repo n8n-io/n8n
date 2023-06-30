@@ -1,26 +1,34 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
+export const removeTrailingSlash = (url: string) => {
+	if (url.endsWith('/')) {
+		return url.slice(0, -1);
+	}
+	return url;
+};
 
 export async function strapiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('strapiApi');
+
+	const url = removeTrailingSlash(credentials.url as string);
 
 	try {
 		const options: OptionsWithUri = {
@@ -28,10 +36,7 @@ export async function strapiApiRequest(
 			method,
 			body,
 			qs,
-			uri:
-				uri || credentials.apiVersion === 'v4'
-					? `${credentials.url}/api${resource}`
-					: `${credentials.url}${resource}`,
+			uri: uri || credentials.apiVersion === 'v4' ? `${url}/api${resource}` : `${url}${resource}`,
 			json: true,
 			qsStringifyOptions: {
 				arrayFormat: 'indice',
@@ -44,10 +49,9 @@ export async function strapiApiRequest(
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -55,6 +59,9 @@ export async function getToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 ): Promise<any> {
 	const credentials = await this.getCredentials('strapiApi');
+
+	const url = removeTrailingSlash(credentials.url as string);
+
 	let options = {} as OptionsWithUri;
 	options = {
 		headers: {
@@ -65,10 +72,7 @@ export async function getToken(
 			identifier: credentials.email,
 			password: credentials.password,
 		},
-		uri:
-			credentials.apiVersion === 'v4'
-				? `${credentials.url}/api/auth/local`
-				: `${credentials.url}/auth/local`,
+		uri: credentials.apiVersion === 'v4' ? `${url}/api/auth/local` : `${url}/auth/local`,
 		json: true,
 	};
 	return this.helpers.request(options);
@@ -78,11 +82,10 @@ export async function strapiApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 	const { apiVersion } = await this.getCredentials('strapiApi');
 
@@ -101,7 +104,7 @@ export async function strapiApiRequestAllItems(
 				headers,
 			));
 			query['pagination[page]'] += query['pagination[pageSize]'];
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	} else {
 		query._limit = 20;
@@ -117,7 +120,7 @@ export async function strapiApiRequestAllItems(
 				headers,
 			);
 			query._start += query._limit;
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	}
 	return returnData;

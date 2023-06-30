@@ -1,8 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -279,39 +277,31 @@ export class Signl4 implements INodeType {
 
 						// Attachments
 						const attachments = additionalFields.attachmentsUi as IDataObject;
-						if (attachments) {
-							if (attachments.attachmentsBinary && items[i].binary) {
-								const propertyName = (attachments.attachmentsBinary as IDataObject)
-									.property as string;
+						if (attachments?.attachmentsBinary) {
+							const propertyName = (attachments.attachmentsBinary as IDataObject)
+								.property as string;
 
-								const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
+							const binaryData = this.helpers.assertBinaryData(i, propertyName);
 
-								if (binaryProperty) {
-									const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
+							if (binaryData) {
+								const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
 
-									if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
-										throw new NodeOperationError(
-											this.getNode(),
-											`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`,
-											{ itemIndex: i },
-										);
-									}
-
-									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
-									data.attachment = {
-										value: binaryDataBuffer,
-										options: {
-											filename: binaryProperty.fileName,
-											contentType: binaryProperty.mimeType,
-										},
-									};
-								} else {
+								if (!supportedFileExtension.includes(binaryData.fileExtension as string)) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary property ${propertyName} does not exist on input`,
+										`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`,
 										{ itemIndex: i },
 									);
 								}
+
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
+								data.attachment = {
+									value: binaryDataBuffer,
+									options: {
+										filename: binaryData.fileName,
+										contentType: binaryData.mimeType,
+									},
+								};
 							}
 						}
 

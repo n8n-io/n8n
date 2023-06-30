@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -12,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../../utils/utilities';
+import { chunk, flatten, getResolvables } from '@utils/utilities';
 
 import mssql from 'mssql';
 
@@ -91,6 +90,11 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
+				typeOptions: {
+					editor: 'sqlEditor',
+					sqlDialect: 'MSSQL',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -235,6 +239,8 @@ export class MicrosoftSql implements INodeType {
 						options: {
 							encrypt: credentials.tls as boolean,
 							enableArithAbort: false,
+							tdsVersion: credentials.tdsVersion as string,
+							trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 						},
 					};
 					const pool = new mssql.ConnectionPool(config);
@@ -269,6 +275,7 @@ export class MicrosoftSql implements INodeType {
 				encrypt: credentials.tls as boolean,
 				enableArithAbort: false,
 				tdsVersion: credentials.tdsVersion as string,
+				trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 			},
 		};
 
@@ -287,7 +294,11 @@ export class MicrosoftSql implements INodeType {
 				//         executeQuery
 				// ----------------------------------
 
-				const rawQuery = this.getNodeParameter('query', 0) as string;
+				let rawQuery = this.getNodeParameter('query', 0) as string;
+
+				for (const resolvable of getResolvables(rawQuery)) {
+					rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
+				}
 
 				const queryResult = await pool.request().query(rawQuery);
 
@@ -395,7 +406,7 @@ export class MicrosoftSql implements INodeType {
 									.request()
 									.query(
 										`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
-											deleteValues,
+											deleteValues as IDataObject[],
 											deleteKey,
 										)};`,
 									);

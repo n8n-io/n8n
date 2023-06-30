@@ -1,12 +1,23 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, RequestHandler } from 'express';
+import type { RoleNames, RoleScopes } from '@db/entities/Role';
 
-export type Method = 'get' | 'post' | 'patch' | 'delete';
+export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
+
+export type AuthRole = [RoleScopes, RoleNames] | 'any' | 'none';
+export type AuthRoleMetadata = Record<string, AuthRole>;
+
+export interface MiddlewareMetadata {
+	handlerName: string;
+}
 
 export interface RouteMetadata {
 	method: Method;
 	path: string;
 	handlerName: string;
+	middlewares: RequestHandler[];
 }
 
-type RequestHandler = (req?: Request, res?: Response) => Promise<unknown>;
-export type Controller = Record<RouteMetadata['handlerName'], RequestHandler>;
+export type Controller = Record<
+	RouteMetadata['handlerName'],
+	(req?: Request, res?: Response) => Promise<unknown>
+>;

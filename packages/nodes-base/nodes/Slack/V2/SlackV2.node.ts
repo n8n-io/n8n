@@ -1,8 +1,8 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
+import type { Readable } from 'stream';
 
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeListSearchItems,
@@ -15,7 +15,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
@@ -194,7 +194,7 @@ export class SlackV2 implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -220,7 +220,7 @@ export class SlackV2 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -254,7 +254,7 @@ export class SlackV2 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getChannelsName(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -287,7 +287,7 @@ export class SlackV2 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the team fields to display them to user so that he can
+			// Get all the team fields to display them to user so that they can
 			// select them easily
 			async getTeamFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -587,7 +587,7 @@ export class SlackV2 implements INodeType {
 									{},
 									{ user: member },
 								);
-								data.push(user);
+								data.push(user as IDataObject);
 							}
 							responseData = data;
 						}
@@ -756,18 +756,25 @@ export class SlackV2 implements INodeType {
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
 								  }) as string);
-						// @ts-ignore
-						if (select === 'user' && this.getNodeParameter('user', i).mode === 'username') {
+
+						if (
+							select === 'user' &&
+							(this.getNodeParameter('user', i) as IDataObject).mode === 'username'
+						) {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let content: IDataObject = {};
+						const text = this.getNodeParameter('text', i, '') as string;
 						switch (messageType) {
 							case 'text':
-								content = { text: this.getNodeParameter('text', i) as string };
+								content = { text };
 								break;
 							case 'block':
 								content = JSON.parse(this.getNodeParameter('blocksUi', i) as string);
+								if (text) {
+									content.text = text;
+								}
 								break;
 							case 'attachment':
 								content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
@@ -803,8 +810,8 @@ export class SlackV2 implements INodeType {
 								action = 'postEphemeral';
 							}
 						}
-						//@ts-ignore
-						const replyValues = otherOptions.thread_ts?.replyValues as IDataObject;
+
+						const replyValues = (otherOptions.thread_ts as IDataObject)?.replyValues as IDataObject;
 						Object.assign(body, replyValues);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
@@ -879,8 +886,11 @@ export class SlackV2 implements INodeType {
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
 								  }) as string);
-						// @ts-ignore
-						if (select === 'user' && this.getNodeParameter('user', i).mode === 'username') {
+
+						if (
+							select === 'user' &&
+							(this.getNodeParameter('user', i) as IDataObject).mode === 'username'
+						) {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
 						const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
@@ -1042,7 +1052,6 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/files.upload
 					if (operation === 'upload') {
 						const options = this.getNodeParameter('options', i);
-						const binaryData = this.getNodeParameter('binaryData', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
 							body.channels = (options.channelIds as string[]).join(',');
@@ -1059,31 +1068,21 @@ export class SlackV2 implements INodeType {
 						if (options.title) {
 							body.title = options.title as string;
 						}
-						if (binaryData) {
+						if (this.getNodeParameter('binaryData', i)) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							if (
-								items[i].binary === undefined ||
-								//@ts-ignore
-								items[i].binary[binaryPropertyName] === undefined
-							) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+
+							let uploadData: Buffer | Readable;
+							if (binaryData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryData.id);
+							} else {
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
-							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-								i,
-								binaryPropertyName,
-							);
 							body.file = {
-								//@ts-ignore
-								value: binaryDataBuffer,
+								value: uploadData,
 								options: {
-									//@ts-ignore
-									filename: items[i].binary[binaryPropertyName].fileName,
-									//@ts-ignore
-									contentType: items[i].binary[binaryPropertyName].mimeType,
+									filename: binaryData.fileName,
+									contentType: binaryData.mimeType,
 								},
 							};
 							responseData = await slackApiRequest.call(
@@ -1193,8 +1192,7 @@ export class SlackV2 implements INodeType {
 						const body: IDataObject = {};
 						let status;
 						if (options.status) {
-							// @ts-ignore
-							status = options.status?.set_status[0] as IDataObject;
+							status = ((options.status as IDataObject)?.set_status as IDataObject[])[0];
 							if (status.status_expiration === undefined) {
 								status.status_expiration = 0;
 							} else {
@@ -1210,15 +1208,16 @@ export class SlackV2 implements INodeType {
 							const customFields = (options.customFieldUi as IDataObject)
 								.customFieldValues as IDataObject[];
 
-							options.fields = {};
+							const fields: IDataObject = {};
 
 							for (const customField of customFields) {
-								//@ts-ignore
-								options.fields[customField.id] = {
+								fields[customField.id as string] = {
 									value: customField.value,
 									alt: customField.alt,
 								};
 							}
+
+							options.fields = fields;
 						}
 						Object.assign(body, options);
 						responseData = await slackApiRequest.call(
@@ -1325,7 +1324,7 @@ export class SlackV2 implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

@@ -11,6 +11,7 @@ import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelp
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { RoleRepository } from '@db/repositories';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
@@ -85,7 +86,7 @@ EEWorkflowController.put(
 );
 
 EEWorkflowController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
@@ -162,10 +163,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneByOrFail({
-				name: 'owner',
-				scope: 'workflow',
-			});
+			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -206,10 +204,7 @@ EEWorkflowController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
 		const [workflows, workflowOwnerRole] = await Promise.all([
 			EEWorkflows.getMany(req.user, req.query.filter),
-			Db.collections.Role.findOneOrFail({
-				select: ['id'],
-				where: { name: 'owner', scope: 'workflow' },
-			}),
+			Container.get(RoleRepository).findWorkflowOwnerRoleOrFail(),
 		]);
 
 		return workflows.map((workflow) => {
@@ -220,7 +215,7 @@ EEWorkflowController.get(
 );
 
 EEWorkflowController.patch(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
@@ -252,7 +247,7 @@ EEWorkflowController.post(
 		const workflow = new WorkflowEntity();
 		Object.assign(workflow, req.body.workflowData);
 
-		if (workflow.id !== undefined) {
+		if (req.body.workflowData.id !== undefined) {
 			const safeWorkflow = await EEWorkflows.preventTampering(workflow, workflow.id, req.user);
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}

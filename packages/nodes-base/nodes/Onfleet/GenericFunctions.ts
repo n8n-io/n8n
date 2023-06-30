@@ -41,7 +41,6 @@ export async function onfleetApiRequest(
 		json: true,
 	};
 	try {
-		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -64,7 +63,7 @@ export async function onfleetApiRequestAllItems(
 	do {
 		responseData = await onfleetApiRequest.call(this, method, endpoint, body, query);
 		query.lastId = responseData.lastId;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.lastId !== undefined);
 
 	return returnData;

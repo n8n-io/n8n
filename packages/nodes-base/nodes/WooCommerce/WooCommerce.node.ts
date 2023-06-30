@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -82,7 +82,7 @@ export class WooCommerce implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available categories to display them to user so that he can
+			// Get all the available categories to display them to user so that they can
 			// select them easily
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -102,7 +102,7 @@ export class WooCommerce implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -419,7 +419,6 @@ export class WooCommerce implements INodeType {
 						body.line_items = lineItems;
 						setMetadata(lineItems);
 						toSnakeCase(lineItems);
-						//@ts-ignore
 					}
 					const metadata = (this.getNodeParameter('metadataUi', i) as IDataObject)
 						.metadataValues as IDataObject[];
@@ -579,7 +578,7 @@ export class WooCommerce implements INodeType {
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

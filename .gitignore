@@ -3,6 +3,7 @@ node_modules
 .tmp
 tmp
 dist
+coverage
 npm-debug.log*
 yarn.lock
 google-generated-credentials.json
@@ -19,3 +20,4 @@ packages/**/.turbo
 cypress/videos/*
 cypress/screenshots/*
 *.swp
+CHANGELOG-*.md

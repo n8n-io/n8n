@@ -1,6 +1,5 @@
-import type { IPollFunctions } from 'n8n-core';
-
 import type {
+	IPollFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,7 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -196,7 +194,7 @@ export class GmailTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -248,7 +246,7 @@ export class GmailTrigger implements INodeType {
 				delete filters.receivedAfter;
 			}
 
-			Object.assign(qs, prepareQuery.call(this, filters), options);
+			Object.assign(qs, prepareQuery.call(this, filters, 0), options);
 
 			responseData = await googleApiRequest.call(
 				this,
@@ -294,7 +292,9 @@ export class GmailTrigger implements INodeType {
 			}
 
 			if (simple) {
-				responseData = this.helpers.returnJsonArray(await simplifyOutput.call(this, responseData));
+				responseData = this.helpers.returnJsonArray(
+					await simplifyOutput.call(this, responseData as IDataObject[]),
+				);
 			}
 		} catch (error) {
 			if (this.getMode() === 'manual' || !webhookData.lastTimeChecked) {
@@ -302,7 +302,7 @@ export class GmailTrigger implements INodeType {
 			}
 			const workflow = this.getWorkflow();
 			const node = this.getNode();
-			Logger.error(
+			this.logger.error(
 				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${error.description}'`,
 				{
 					node: node.name,

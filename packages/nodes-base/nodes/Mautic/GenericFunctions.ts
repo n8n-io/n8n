@@ -1,11 +1,11 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 
@@ -52,7 +52,7 @@ export async function mauticApiRequest(
 
 		if (returnData.errors) {
 			// They seem to to sometimes return 200 status but still error.
-			throw new NodeApiError(this.getNode(), returnData);
+			throw new NodeApiError(this.getNode(), returnData as JsonObject);
 		}
 
 		return returnData;
@@ -82,13 +82,13 @@ export async function mauticApiRequestAllItems(
 
 	do {
 		responseData = await mauticApiRequest.call(this, method, endpoint, body, query);
-		const values = Object.values(responseData[propertyName]);
+		const values = Object.values(responseData[propertyName] as IDataObject[]);
 		//@ts-ignore
 		returnData.push.apply(returnData, values);
 		query.start += query.limit;
 	} while (
 		responseData.total !== undefined &&
-		returnData.length - parseInt(responseData.total, 10) < 0
+		returnData.length - parseInt(responseData.total as string, 10) < 0
 	);
 
 	return returnData;

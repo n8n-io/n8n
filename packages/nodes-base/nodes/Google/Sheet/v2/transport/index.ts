@@ -1,74 +1,14 @@
 import type { OptionsWithUri } from 'request';
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { ICredentialTestFunctions, IDataObject, IPollFunctions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IPollFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import moment from 'moment-timezone';
-import jwt from 'jsonwebtoken';
-
-export interface IGoogleAuthCredentials {
-	delegatedEmail?: string;
-	email: string;
-	inpersonate: boolean;
-	privateKey: string;
-}
-
-export async function getAccessToken(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| ICredentialTestFunctions
-		| IPollFunctions,
-	credentials: IGoogleAuthCredentials,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const scopes = [
-		'https://www.googleapis.com/auth/drive.file',
-		'https://www.googleapis.com/auth/spreadsheets',
-		'https://www.googleapis.com/auth/drive.metadata',
-	];
-
-	const now = moment().unix();
-
-	credentials.email = credentials.email.trim();
-	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email,
-			sub: credentials.delegatedEmail || credentials.email,
-			scope: scopes.join(' '),
-			aud: 'https://oauth2.googleapis.com/token',
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	return this.helpers.request(options);
-}
+import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function apiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -107,10 +47,7 @@ export async function apiRequest(
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const { access_token } = await getAccessToken.call(
-				this,
-				credentials as unknown as IGoogleAuthCredentials,
-			);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'sheetV2');
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 
@@ -126,13 +63,13 @@ export async function apiRequest(
 		}
 
 		if (error.message.includes('PERMISSION_DENIED')) {
-			const message = 'Missing permissions for Google Sheet';
-			const description =
-				"Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)";
-			throw new NodeApiError(this.getNode(), error, { message, description });
+			const message = `Missing permissions for Google Sheet, ${error.message}}`;
+			const details = error.description ? ` Details of the error: ${error.description}.` : '';
+			const description = `Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)${details}`;
+			throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -153,7 +90,7 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

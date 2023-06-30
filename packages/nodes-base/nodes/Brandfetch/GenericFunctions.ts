@@ -1,13 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function brandfetchApiRequest(
@@ -39,7 +39,7 @@ export async function brandfetchApiRequest(
 			delete options.headers;
 		}
 
-		if (!Object.keys(body).length) {
+		if (!Object.keys(body as IDataObject).length) {
 			delete options.body;
 		}
 		if (!Object.keys(qs).length) {
@@ -49,11 +49,11 @@ export async function brandfetchApiRequest(
 		const response = await this.helpers.request(options);
 
 		if (response.statusCode && response.statusCode !== 200) {
-			throw new NodeApiError(this.getNode(), response);
+			throw new NodeApiError(this.getNode(), response as JsonObject);
 		}
 
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

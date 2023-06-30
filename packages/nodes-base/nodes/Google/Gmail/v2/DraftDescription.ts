@@ -144,6 +144,14 @@ export const draftFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Send Replies To',
+				name: 'replyTo',
+				type: 'string',
+				placeholder: 'reply@example.com',
+				default: '',
+				description: 'The email address that the reply message is sent to',
+			},
+			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				placeholder: 'Add Attachment',
