@@ -86,7 +86,7 @@ export class SourceControlController {
 			}
 			await this.sourceControlService.init();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
-			await Container.get(InternalHooks).onSourceControlSettingsUpdated({
+			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
 				branch_name: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				read_only_instance: resultingPreferences.branchReadOnly,
@@ -130,7 +130,7 @@ export class SourceControlController {
 			}
 			await this.sourceControlService.init();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
-			await Container.get(InternalHooks).onSourceControlSettingsUpdated({
+			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
 				branch_name: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				read_only_instance: resultingPreferences.branchReadOnly,
@@ -181,7 +181,7 @@ export class SourceControlController {
 			);
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
 			if ('pushResult' in result && result.pushResult) {
-				await Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
+				void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
 					getTrackingInformationFromPostPushResult({
 						diffResult: result.diffResult,
 						pushResult: result.pushResult,
@@ -189,7 +189,7 @@ export class SourceControlController {
 				);
 				res.statusCode = 200;
 			} else {
-				await Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+				void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
 					getTrackingInformationFromPrePushResult(result.diffResult),
 				);
 				res.statusCode = 409;
@@ -214,14 +214,14 @@ export class SourceControlController {
 				importAfterPull: req.body.importAfterPull ?? true,
 			});
 			if (result.status === 200) {
-				await Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
+				void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
 					getTrackingInformationFromSourceControlledFiles(result.diffResult),
 					// todo: remove if not needed
 					// getTrackingInformationFromImportResult(result as ImportResult),
 				);
 				res.statusCode = 200;
 			} else {
-				await Container.get(InternalHooks).onSourceControlUserStartedPullUI(
+				void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
 					getTrackingInformationFromSourceControlledFiles(result.diffResult),
 				);
 				res.statusCode = 409;
@@ -254,7 +254,7 @@ export class SourceControlController {
 	async getStatus() {
 		try {
 			const result = await this.sourceControlService.getStatus();
-			await Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
 				getTrackingInformationFromPrePushResult(result),
 			);
 			return result;

@@ -40,7 +40,7 @@ export = {
 				});
 
 				if (result.status === 200) {
-					await Container.get(InternalHooks).onSourceControlUserPulledAPI({
+					void Container.get(InternalHooks).onSourceControlUserPulledAPI({
 						...getTrackingInformationFromSourceControlledFiles(result.diffResult),
 						forced: req.body.force ?? false,
 					});
