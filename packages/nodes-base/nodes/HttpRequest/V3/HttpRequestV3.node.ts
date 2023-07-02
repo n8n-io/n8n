@@ -928,7 +928,7 @@ export class HttpRequestV3 implements INodeType {
 								multipleValues: false,
 							},
 							default: {
-								response: {},
+								pagination: {},
 							},
 							options: [
 								{
@@ -936,22 +936,72 @@ export class HttpRequestV3 implements INodeType {
 									name: 'pagination',
 									values: [
 										{
-											displayName: 'Body Parameters',
-											name: 'bodyParameters',
+											displayName: 'Pagination Mode',
+											name: 'paginationMode',
+											type: 'options',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											options: [
+												{
+													name: 'Off',
+													value: 'off',
+												},
+												{
+													name: 'Update a Parameter in Each Request',
+													value: 'updateAParameterInEachRequest',
+												},
+												{
+													name: 'Response Contains Next URL',
+													value: 'responseContainsNextURL',
+												},
+											],
+											default: 'updateAParameterInEachRequest',
+											description: 'If pagination should be used',
+										},
+										{
+											displayName:
+												'Use the variables $response.body, $response.header and $response.statusCode to access the data of the previous response (e.g. {{$reponse.body.nextCursor}}). <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+											name: 'webhookNotice',
+											displayOptions: {
+												hide: {
+													paginationMode: ['off'],
+												},
+											},
+											type: 'notice',
+											default: '',
+										},
+										{
+											displayName: 'Next URL',
+											name: 'nextURL',
+											type: 'string',
+											displayOptions: {
+												show: {
+													paginationMode: ['responseContainsNextURL'],
+												},
+											},
+											default: '',
+											description:
+												'Should evaluate to true when pagination is complete. More info.',
+										},
+										{
+											displayName: 'Parameters',
+											name: 'parameters',
 											type: 'fixedCollection',
 											displayOptions: {
 												show: {
-													'/sendBody': [true],
-													'/contentType': ['json'],
+													paginationMode: ['updateAParameterInEachRequest'],
 												},
 											},
 											typeOptions: {
 												multipleValues: true,
+												noExpression: true,
 											},
-											placeholder: 'Add Body Parameter',
+											placeholder: 'Add Parameter',
 											default: {
 												parameters: [
 													{
+														type: 'query',
 														name: '',
 														value: '',
 													},
@@ -963,77 +1013,129 @@ export class HttpRequestV3 implements INodeType {
 													displayName: 'Parameter',
 													values: [
 														{
+															displayName: 'Type',
+															name: 'type',
+															type: 'options',
+															options: [
+																{
+																	name: 'Body',
+																	value: 'body',
+																},
+																{
+																	name: 'Header',
+																	value: 'headers',
+																},
+																{
+																	name: 'Query',
+																	value: 'qs',
+																},
+															],
+															default: 'query',
+															description: 'Where the parameter should be set',
+														},
+														{
 															displayName: 'Name',
 															name: 'name',
 															type: 'string',
 															default: '',
-															description:
-																'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 														},
 														{
 															displayName: 'Value',
 															name: 'value',
 															type: 'string',
 															default: '',
-															description: 'Value of the field to set',
 														},
 													],
 												},
 											],
 										},
 										{
-											displayName: 'Continue',
-											name: 'continue',
-											type: 'string',
-											default: '',
-											description: 'Whether another paginated request should be made',
+											displayName: 'Pagination Complete When',
+											name: 'paginationCompleteWhen',
+											type: 'options',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											displayOptions: {
+												hide: {
+													paginationMode: ['off'],
+												},
+											},
+											options: [
+												{
+													name: 'Response Is Empty',
+													value: 'responseIsEmpty',
+												},
+												{
+													name: 'Receive Specific Status Code(s)',
+													value: 'receiveSpecificStatusCodes',
+												},
+												{
+													name: 'Other',
+													value: 'other',
+												},
+											],
+											default: 'responseIsEmpty',
+											description: 'When should no further requests be made?',
 										},
 										{
-											displayName: 'Max Requests',
+											displayName: 'Status Code(s) when Complete',
+											name: 'statusCodesWhenComplete',
+											type: 'string',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											displayOptions: {
+												show: {
+													paginationCompleteWhen: ['receiveSpecificStatusCodes'],
+												},
+											},
+											default: '',
+											description: 'Accepts comma-separated values',
+										},
+										{
+											displayName: 'Complete Expression',
+											name: 'completeExpression',
+											type: 'string',
+											displayOptions: {
+												show: {
+													paginationCompleteWhen: ['other'],
+												},
+											},
+											default: '',
+											description:
+												'Should evaluate to true when pagination is complete. More info.',
+										},
+										{
+											displayName: 'Limit Pages Fetched',
+											name: 'limitPagesFetched',
+											type: 'boolean',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											displayOptions: {
+												hide: {
+													paginationMode: ['off'],
+												},
+											},
+											default: false,
+											noDataExpression: true,
+											description: 'Whether the number of requests should be limited',
+										},
+										{
+											displayName: 'Max Pages',
 											name: 'maxRequests',
 											type: 'number',
-											default: 100,
-											description: 'Max. amount of request to be made.',
-										},
-										{
-											displayName: 'Query Parameters',
-											name: 'queryParameters',
-											type: 'fixedCollection',
 											typeOptions: {
-												multipleValues: true,
+												noDataExpression: true,
 											},
-											placeholder: 'Add Query Parameter',
-											default: {
-												parameters: [
-													{
-														name: '',
-														value: '',
-													},
-												],
-											},
-											options: [
-												{
-													name: 'parameters',
-													displayName: 'Parameter',
-													values: [
-														{
-															displayName: 'Name',
-															name: 'name',
-															type: 'string',
-															default: '',
-															description:
-																'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-														},
-														{
-															displayName: 'Value',
-															name: 'value',
-															type: 'string',
-															default: '',
-															description: 'Value of the field to set',
-														},
-													],
+											displayOptions: {
+												show: {
+													limitPagesFetched: [true],
 												},
-											],
+											},
+											default: 100,
+											description: 'Maximum amount of request to be make',
 										},
 									],
 								},
@@ -1141,19 +1243,23 @@ export class HttpRequestV3 implements INodeType {
 		let autoDetectResponseFormat = false;
 
 		// Can not be defined on a per item level
-		const pagination = this.getNodeParameter('options.pagination', 0, null, {
+		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
 			rawValue: true,
 		}) as {
-			pagination: {
-				continue: string;
-				maxRequests: number;
-				bodyParameters: {
-					parameters: Array<{ name: string; value: string }>;
-				};
-				queryParameters: {
-					parameters: Array<{ name: string; value: string }>;
-				};
+			paginationMode: 'off' | 'updateAParameterInEachRequest' | 'responseContainsNextURL';
+			nextURL?: string;
+			parameters: {
+				parameters: Array<{
+					type: 'body' | 'headers' | 'qs';
+					name: string;
+					value: string;
+				}>;
 			};
+			paginationCompleteWhen: 'responseIsEmpty' | 'receiveSpecificStatusCodes' | 'other';
+			statusCodesWhenComplete: string;
+			completeExpression: string;
+			limitPagesFetched: boolean;
+			maxRequests: number;
 		};
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -1498,23 +1604,47 @@ export class HttpRequestV3 implements INodeType {
 				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
 			} catch (e) {}
 
-			if (pagination) {
+			if (pagination && pagination.paginationMode !== 'off') {
+				let continueExpression = '={{false}}';
+				if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
+					// Split out comma separated list of status codes into array
+					const statusCodesWhenCompleted = pagination.statusCodesWhenComplete
+						.split(',')
+						.map((item) => parseInt(item.trim()));
+
+					continueExpression = `={{ !${JSON.stringify(
+						statusCodesWhenCompleted,
+					)}.includes($response.statusCode) }}`;
+				} else if (pagination.paginationCompleteWhen === 'responseIsEmpty') {
+					continueExpression = '={{ $response.body.length }}';
+				} else {
+					// Other
+					if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
+						throw new NodeOperationError(this.getNode(), 'Invalid or empty Complete Expression');
+					}
+					continueExpression = `={{!${pagination.completeExpression.slice(3)}`;
+				}
+
 				const paginationData: PaginationOptions = {
-					continue: pagination.pagination.continue,
-					maxRequests: pagination.pagination.maxRequests,
+					continue: continueExpression,
 					request: {},
 				};
 
-				// TODO: Add also body and header paramters!
-				// Add all query parameters
-				if (pagination.pagination.queryParameters?.parameters.length) {
-					paginationData.request.qs = pagination.pagination.queryParameters?.parameters.reduce(
-						(acc: IDataObject, cur: { name: string; value: string }) => {
-							acc[cur.name] = cur.value;
-							return acc;
-						},
-						{},
-					);
+				if (pagination.paginationMode === 'updateAParameterInEachRequest') {
+					// Itterate over all parameters and add them to the request
+					paginationData.request = {};
+					pagination.parameters.parameters.forEach((parameter) => {
+						if (!paginationData.request[parameter.type]) {
+							paginationData.request[parameter.type] = {};
+						}
+						paginationData.request[parameter.type]![parameter.name] = parameter.value;
+					});
+				} else if (pagination.paginationMode === 'responseContainsNextURL') {
+					paginationData.request.url = pagination.nextURL;
+				}
+
+				if (pagination.limitPagesFetched) {
+					paginationData.maxRequests = pagination.maxRequests;
 				}
 
 				const requestPromise = this.helpers.requestWithAuthenticationPaginated.call(
@@ -1614,14 +1744,17 @@ export class HttpRequestV3 implements INodeType {
 							false,
 						) as boolean;
 
-						const data = await this.helpers
-							.binaryToBuffer(response.body as Buffer | Readable)
-							.then((body) => body.toString());
-						response.body = jsonParse(data, {
-							...(neverError
-								? { fallbackValue: {} }
-								: { errorMessage: 'Invalid JSON in response body' }),
-						});
+						// TODO: Also check if we really want to do that
+						if (response.body!.constructor.name === 'IncomingMessage') {
+							const data = await this.helpers
+								.binaryToBuffer(response.body as Buffer | Readable)
+								.then((body) => body.toString());
+							response.body = jsonParse(data, {
+								...(neverError
+									? { fallbackValue: {} }
+									: { errorMessage: 'Invalid JSON in response body' }),
+							});
+						}
 					} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 						responseFormat = 'file';
 					} else {

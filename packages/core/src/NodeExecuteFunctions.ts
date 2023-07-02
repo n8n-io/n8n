@@ -79,6 +79,7 @@ import {
 	ExpressionError,
 	validateFieldType,
 	NodeSSLError,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -2287,7 +2288,28 @@ const getRequestHelperFunctions = (
 					tempResponseData = await this.helpers.request(tempRequestOptions);
 				}
 
-				additionalKeys.$response = tempResponseData;
+				// Give only access to certain keys
+				const newResponse: IN8nHttpFullResponse = {
+					body: {},
+					headers: {},
+					statusCode: 0,
+				};
+
+				for (const key of Object.keys(newResponse)) {
+					// TODO: Do that properly
+					// @ts-ignore
+					newResponse[key] = tempResponseData[key];
+				}
+
+				const data = await this.helpers
+					.binaryToBuffer(newResponse.body as Buffer | Readable)
+					.then((body) => body.toString());
+				// TODO: Clean up, current always assumes it is parsable
+				newResponse.body = jsonParse(data);
+				// TODO: Check what really to do here
+				tempResponseData.body = newResponse.body;
+
+				additionalKeys.$response = newResponse;
 
 				responseData.push(tempResponseData);
 
