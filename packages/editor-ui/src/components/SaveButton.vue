@@ -46,6 +46,8 @@ export default defineComponent({
 		saveButtonLabel() {
 			return this.isSaving
 				? this.$locale.baseText('saveButton.saving')
+				: this.$route.params.versionid
+				? this.$locale.baseText('saveButton.switch')
 				: this.$locale.baseText('saveButton.save');
 		},
 	},

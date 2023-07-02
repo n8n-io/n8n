@@ -394,7 +394,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async fetchWorkflowVersions(id: string): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/workflows/${id}/versions`);
+			const workflows = await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/workflows/${id}/versions`,
+			);
+			this.setWorkflowsByVersions(workflows);
+			return workflows;
 		},
 
 		async fetchWorkflowVersion(id: string): Promise<IWorkflowDb> {
@@ -521,7 +527,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return acc;
 			}, {});
 		},
+		setWorkflowsByVersions(workflows: IWorkflowDb[]): void {
+			this.workflowsById = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowDb) => {
+				if (workflow.versionId) {
+					acc[workflow.versionId] = workflow;
+				}
 
+				return acc;
+			}, {});
+			console.log(this.workflowsById);
+		},
 		async deleteWorkflow(id: string): Promise<void> {
 			const rootStore = useRootStore();
 			await makeRestApiRequest(rootStore.getRestApiContext, 'DELETE', `/workflows/${id}`);

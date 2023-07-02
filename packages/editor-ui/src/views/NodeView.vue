@@ -1494,7 +1494,24 @@ export default defineComponent({
 				return this.importWorkflowData(workflowData!, 'paste', false);
 			}
 		},
-
+		async getWorkflowDataFromVersion(version: string): Promise<IWorkflowDataUpdate | undefined> {
+			let workflowData: IWorkflowDataUpdate;
+			this.startLoading();
+			try {
+				workflowData = await this.workflowsStore.fetchWorkflowVersion(version);
+				console.log(workflowData);
+			} catch (error) {
+				this.stopLoading();
+				this.showError(
+					error,
+					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
+				);
+				return;
+			}
+			this.stopLoading();
+			// fetchWorkflowVersion
+			return workflowData;
+		},
 		// Returns the workflow data from a given URL. If no data gets found or
 		// data is invalid it returns undefined and displays an error message by itself.
 		async getWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {
@@ -3898,6 +3915,16 @@ export default defineComponent({
 						},
 					});
 				}, promptTimeout);
+			}
+		}
+
+		if (this.$route.params.versionid) {
+			const workflowData = await this.getWorkflowDataFromVersion(
+				this.$route.params.versionid as string,
+			);
+			await this.workflowsStore.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+			if (workflowData !== undefined) {
+				await this.importWorkflowData(workflowData, 'url');
 			}
 		}
 	},

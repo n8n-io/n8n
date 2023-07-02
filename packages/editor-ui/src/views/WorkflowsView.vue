@@ -25,14 +25,14 @@
 		</template>
 		<template v-if="!readOnlyEnv" #empty>
 			<div class="text-center mt-s">
-				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
+				<n8n-heading tag="h2" size="xlarge" class="mb-2xs" >
 					{{
-						$locale.baseText(
-							currentUser.firstName
-								? 'workflows.empty.heading'
-								: 'workflows.empty.heading.userNotSetup',
-							{ interpolate: { name: currentUser.firstName } },
-						)
+					$locale.baseText(
+					currentUser.firstName
+					? 'workflows.empty.heading'
+					: 'workflows.empty.heading.userNotSetup',
+					{ interpolate: { name: currentUser.firstName } },
+					)
 					}}
 				</n8n-heading>
 				<n8n-text size="large" color="text-base">
@@ -54,7 +54,7 @@
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
-			<div class="mb-s" v-if="settingsStore.areTagsEnabled">
+			<div class="mb-s" v-if="settingsStore.areTagsEnabled ">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.tags')"
 					:bold="false"
@@ -149,6 +149,9 @@ const WorkflowsView = defineComponent({
 		allWorkflows(): IWorkflowDb[] {
 			return this.workflowsStore.allWorkflows;
 		},
+		isVersionFlow(): boolean {
+			return this.$route.params.workflowIdWithVersions !== undefined;
+		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
@@ -182,12 +185,20 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		async initialize() {
-			await Promise.all([
-				this.usersStore.fetchUsers(),
-				this.workflowsStore.fetchAllWorkflows(),
-				this.workflowsStore.fetchActiveWorkflows(),
-				this.credentialsStore.fetchAllCredentials(),
-			]);
+			if (this.$route.params.workflowIdWithVersions){
+				await Promise.all([
+					this.usersStore.fetchUsers(),
+					this.workflowsStore.fetchWorkflowVersions(this.$route.params.workflowIdWithVersions),
+					this.credentialsStore.fetchAllCredentials(),
+				]);
+			}else{
+				await Promise.all([
+					this.usersStore.fetchUsers(),
+					this.workflowsStore.fetchAllWorkflows(),
+					this.workflowsStore.fetchActiveWorkflows(),
+					this.credentialsStore.fetchAllCredentials(),
+				]);
+			}
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -228,7 +239,6 @@ const WorkflowsView = defineComponent({
 	},
 	mounted() {
 		void this.usersStore.showPersonalizationSurvey();
-
 		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
 			if (name === 'pullWorkfolder' && after) {
 				after(() => {

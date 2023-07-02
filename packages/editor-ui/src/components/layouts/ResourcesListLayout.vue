@@ -3,11 +3,13 @@
 		<template #aside v-if="showAside">
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(`${resourceKey}.heading`) }}
+					{{
+						$locale.baseText(isVersionFlow ? 'workflows.item.versions' : `${resourceKey}.heading`)
+					}}
 				</n8n-heading>
 			</div>
 
-			<div class="mt-xs mb-l">
+			<div class="mt-xs mb-l" v-if="!isVersionFlow">
 				<slot name="add-button">
 					<n8n-button
 						size="large"
@@ -21,7 +23,10 @@
 				</slot>
 			</div>
 
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
+			<enterprise-edition
+				:features="[EnterpriseEditionFeature.Sharing]"
+				v-if="shareable && !isVersionFlow"
+			>
 				<resource-ownership-select
 					v-model="isOwnerSubview"
 					:my-resources-label="$locale.baseText(`${resourceKey}.menu.my`)"
@@ -370,6 +375,15 @@ export default defineComponent({
 						return this.sortFns[this.sortBy] ? this.sortFns[this.sortBy](a, b) : 0;
 				}
 			});
+		},
+		isVersionFlow(): boolean {
+			if (this.$route.params.workflowIdWithVersions !== undefined) {
+				return true;
+			}
+			if (this.$route.params.versionid !== undefined) {
+				return true;
+			}
+			return false;
 		},
 		resourcesNotOwned(): IResource[] {
 			return (this.resources as IResource[]).filter((resource) => {

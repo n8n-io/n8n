@@ -119,8 +119,8 @@ export default defineComponent({
 		}));
 
 		const itemsStyles = computed(() => {
-			const offset = itemPositionCache.value[props.items[startIndex.value][props.itemKey]];
-
+			//const offset = itemPositionCache.value[props.items[startIndex.value][props.itemKey]];
+			const offset = 0;
 			return {
 				transform: `translateY(${offset}px)`,
 			};

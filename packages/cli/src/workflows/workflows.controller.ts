@@ -292,7 +292,7 @@ workflowsController.patch(
 				]),
 			);
 		}
-		
+
 		return current;
 	}),
 );

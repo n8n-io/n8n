@@ -24,6 +24,7 @@
 					v-show="data"
 				>
 					<n8n-tags
+						v-if="!isVersionFlow"
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
@@ -35,14 +36,28 @@
 			</n8n-text>
 		</div>
 		<template #append>
+			<div :class="$style.button">
+				<n8n-button
+					v-if="isVersionFlow"
+					size="large"
+					:label="$locale.baseText('saveButton.switch')"
+					@click="switchVersion"
+				/>
+			</div>
 			<div :class="$style.cardActions">
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
+					<n8n-badge
+						v-if="workflowPermissions.isOwner && !isVersionFlow"
+						class="mr-xs"
+						theme="tertiary"
+						bold
+					>
 						{{ $locale.baseText('workflows.item.owner') }}
 					</n8n-badge>
 				</enterprise-edition>
 
 				<workflow-activator
+					v-if="!isVersionFlow"
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
@@ -51,6 +66,7 @@
 				/>
 
 				<n8n-action-toggle
+					v-if="!isVersionFlow"
 					:actions="actions"
 					theme="dark"
 					@action="onAction"
@@ -89,6 +105,7 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
 	DUPLICATE: 'duplicate',
+	VERSIONS: 'versions',
 	DELETE: 'delete',
 };
 
@@ -148,6 +165,10 @@ export default defineComponent({
 					label: this.$locale.baseText('workflows.item.share'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
 				},
+				{
+					label: this.$locale.baseText('workflows.item.versions'),
+					value: WORKFLOW_LIST_ITEM_ACTIONS.VERSIONS,
+				},
 			];
 
 			if (!this.readOnly) {
@@ -158,6 +179,9 @@ export default defineComponent({
 			}
 
 			return actions;
+		},
+		isVersionFlow(): boolean {
+			return this.$route.params.workflowIdWithVersions !== undefined;
 		},
 		formattedCreatedAtDate(): string {
 			const currentYear = new Date().getFullYear();
@@ -186,10 +210,31 @@ export default defineComponent({
 				}
 			}
 
-			await this.$router.push({
-				name: VIEWS.WORKFLOW,
-				params: { name: this.data.id },
-			});
+			if (this.$route.params.workflowIdWithVersions) {
+				window.open('/workflow/version/' + this.data.versionId, '_self');
+			} else {
+				await this.$router.push({
+					name: VIEWS.WORKFLOW,
+					params: { name: this.data.id },
+				});
+			}
+		},
+		async switchVersion(event: PointerEvent) {
+			event.stopPropagation();
+			console.log(this.data);
+			console.log(this.data.versionId);
+			if (this.data.versionId) {
+				try {
+					const versionData = await this.workflowsStore.restoreVersion(this.data.versionId);
+					await this.$router.push({
+						name: VIEWS.WORKFLOW,
+						params: { name: versionData.id },
+					});
+				} catch (error) {
+					this.showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
+					return;
+				}
+			}
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			event.stopPropagation();
@@ -202,6 +247,8 @@ export default defineComponent({
 		async onAction(action: string) {
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {
 				await this.onClick();
+			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.VERSIONS) {
+				window.open('/workflow/' + this.data.id + '/versions', '_self');
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE) {
 				this.uiStore.openModalWithData({
 					name: DUPLICATE_MODAL_KEY,

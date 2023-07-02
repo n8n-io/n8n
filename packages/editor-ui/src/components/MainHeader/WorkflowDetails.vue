@@ -25,7 +25,7 @@
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
+		<span v-if="settingsStore.areTagsEnabled && !isVersionFlow" class="tags" data-test-id="workflow-tags-container">
 			<div v-if="isTagsEditEnabled && !readOnly">
 				<TagsDropdown
 					:createEnabled="true"
@@ -60,9 +60,9 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
+					<WorkflowActivator v-if="!isVersionFlow" :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<enterprise-edition v-if="!isVersionFlow" :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-button
 						type="secondary"
 						class="mr-2xs"
@@ -104,7 +104,7 @@
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<div :class="$style.workflowMenuContainer">
+				<div :class="$style.workflowMenuContainer" v-if="!isVersionFlow">
 					<input
 						:class="$style.hiddenInput"
 						type="file"
@@ -264,6 +264,15 @@ export default defineComponent({
 				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
 			);
 		},
+		isVersionFlow(): boolean {
+			if (this.$route.params.workflowIdWithVersions !== undefined){
+				return true;
+			}
+			if (this.$route.params.versionid !== undefined){
+				return true;
+			}
+			return false;
+		},
 		onExecutionsTab(): boolean {
 			return [
 				VIEWS.EXECUTION_HOME.toString(),
@@ -282,6 +291,13 @@ export default defineComponent({
 					disabled: !this.onWorkflowPage,
 				},
 			];
+			if(this.$route.params.name){
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.VERSIONS,
+					label: this.$locale.baseText('workflows.item.versions'),
+					disabled: this.isNewWorkflow,
+				});
+			}
 
 			if (!this.readOnly) {
 				actions.unshift({
@@ -325,18 +341,25 @@ export default defineComponent({
 	},
 	methods: {
 		async onSaveButtonClick() {
-			let currentId = undefined;
-			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				currentId = this.currentWorkflowId;
-			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
-				currentId = this.$route.params.name;
+			if (this.$route.params.versionid) {
+				const versionData = await this.workflowsStore.restoreVersion(this.$route.params.versionid);
+				await this.$router.push({
+					name: VIEWS.WORKFLOW,
+					params: { name: versionData.id }});
+			} else {
+				let currentId = undefined;
+				if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+					currentId = this.currentWorkflowId;
+				} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+					currentId = this.$route.params.name;
+				}
+				const saved = await this.saveCurrentWorkflow({
+					id: currentId,
+					name: this.workflowName,
+					tags: this.currentWorkflowTagIds,
+				});
+				if (saved) await this.settingsStore.fetchPromptsData();
 			}
-			const saved = await this.saveCurrentWorkflow({
-				id: currentId,
-				name: this.workflowName,
-				tags: this.currentWorkflowTagIds,
-			});
-			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 		onShareButtonClick() {
 			this.uiStore.openModalWithData({
@@ -455,6 +478,10 @@ export default defineComponent({
 		},
 		async onWorkflowMenuSelect(action: string): Promise<void> {
 			switch (action) {
+				case WORKFLOW_MENU_ACTIONS.VERSIONS: {
+					window.open('/workflow/' + this.$route.params.name + '/versions', '_self');
+					break;
+				}
 				case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
 					this.uiStore.openModalWithData({
 						name: DUPLICATE_MODAL_KEY,

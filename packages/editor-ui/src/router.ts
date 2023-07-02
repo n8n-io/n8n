@@ -237,7 +237,39 @@ export const routes = [
 		},
 	},
 	{
+		path: '/workflow/:workflowIdWithVersions/versions',
+		name: VIEWS.WORKFLOWS,
+		components: {
+			default: WorkflowsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
 		path: '/workflow/new',
+		name: VIEWS.NEW_WORKFLOW,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflow/version/:versionid',
 		name: VIEWS.NEW_WORKFLOW,
 		components: {
 			default: NodeView,
