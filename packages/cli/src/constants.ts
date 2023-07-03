@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
-import { major } from 'semver';
 import type { n8n } from 'n8n-core';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -30,7 +29,6 @@ export function getN8nPackageJson() {
 export const START_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
 
 export const N8N_VERSION = getN8nPackageJson().version;
-export const IS_V1_RELEASE = major(N8N_VERSION) > 0;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -88,6 +86,3 @@ export const enum LICENSE_QUOTAS {
 }
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
-
-export const USER_MANAGEMENT_DOCS_URL =
-	'https://docs.n8n.io/hosting/authentication/user-management-self-hosted';

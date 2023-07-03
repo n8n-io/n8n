@@ -46,10 +46,3 @@ interface INodeSpecialCase {
 	capResults?: number;
 	keepOnlyProperties?: string[];
 }
-
-declare module 'json-diff' {
-	interface IDiffOptions {
-		keysOnly?: boolean;
-	}
-	export function diff(obj1: unknown, obj2: unknown, diffOptions: IDiffOptions): string;
-}

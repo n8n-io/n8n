@@ -169,19 +169,3 @@ describe('POST /owner/setup', () => {
 		);
 	});
 });
-
-describe('POST /owner/skip-setup', () => {
-	test('should persist skipping setup to the DB', async () => {
-		const response = await authOwnerShellAgent.post('/owner/skip-setup').send();
-
-		expect(response.statusCode).toBe(200);
-
-		const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
-		expect(skipConfig).toBe(true);
-
-		const { value } = await Db.collections.Settings.findOneByOrFail({
-			key: 'userManagement.skipInstanceOwnerSetup',
-		});
-		expect(value).toBe('true');
-	});
-});

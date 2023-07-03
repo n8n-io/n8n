@@ -14,10 +14,6 @@ const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 	});

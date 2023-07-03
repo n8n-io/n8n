@@ -60,7 +60,6 @@ beforeEach(async () => {
 
 	jest.mock('@/config');
 
-	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', 'smtp');
 	config.set('userManagement.emails.smtp.host', '');
@@ -377,15 +376,6 @@ describe('POST /users', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data[0].user.inviteAcceptUrl).toBeDefined();
-	});
-
-	test('should fail if user management is disabled', async () => {
-		config.set('userManagement.disabled', true);
-		config.set('userManagement.isInstanceOwnerSetUp', false);
-
-		const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
-
-		expect(response.statusCode).toBe(400);
 	});
 
 	test('should email invites and create user shells but ignore existing', async () => {
