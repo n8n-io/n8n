@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddUserSettings1652367743993 implements MigrationInterface {
-	name = 'AddUserSettings1652367743993';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+export class AddUserSettings1652367743993 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" ADD COLUMN settings json`);
 
 		await queryRunner.query(
@@ -14,8 +9,7 @@ export class AddUserSettings1652367743993 implements MigrationInterface {
 		);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" DROP COLUMN settings`);
 	}
 }

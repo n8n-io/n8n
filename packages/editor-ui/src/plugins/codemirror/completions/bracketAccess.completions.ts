@@ -32,7 +32,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 
 	try {
 		resolved = resolveParameter(`={{ ${base} }}`);
-	} catch (_) {
+	} catch {
 		return null;
 	}
 

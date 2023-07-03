@@ -1,14 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { listFields, listOperations } from './ListDescription';
 
@@ -588,22 +586,13 @@ export class SendGrid implements INodeType {
 							const binaryProperties = attachments.split(',').map((p) => p.trim());
 
 							for (const property of binaryProperties) {
-								if (!items[i].binary?.hasOwnProperty(property)) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`The binary property ${property} does not exist`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryProperty = items[i].binary![property];
-
+								const binaryData = this.helpers.assertBinaryData(i, property);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
 
 								attachmentsToSend.push({
 									content: dataBuffer.toString('base64'),
-									filename: binaryProperty.fileName || 'unknown',
-									type: binaryProperty.mimeType,
+									filename: binaryData.fileName || 'unknown',
+									type: binaryData.mimeType,
 								});
 							}
 

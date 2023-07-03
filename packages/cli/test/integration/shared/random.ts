@@ -18,6 +18,8 @@ export function randomApiKey() {
 
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
 
+export const randomInteger = (max = 1000) => Math.floor(Math.random() * max);
+
 export const randomDigit = () => Math.floor(Math.random() * 10);
 
 export const randomPositiveDigit = (): number => {

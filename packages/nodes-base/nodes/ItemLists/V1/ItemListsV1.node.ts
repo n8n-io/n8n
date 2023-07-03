@@ -1,9 +1,9 @@
 import type { NodeVMOptions } from 'vm2';
 import { NodeVM } from 'vm2';
-import type { IExecuteFunctions } from 'n8n-core';
 
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeType,
@@ -12,16 +12,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash.get';
-import isEmpty from 'lodash.isempty';
-import isEqual from 'lodash.isequal';
-import isObject from 'lodash.isobject';
-import lt from 'lodash.lt';
-import merge from 'lodash.merge';
-import pick from 'lodash.pick';
-import reduce from 'lodash.reduce';
-import set from 'lodash.set';
-import unset from 'lodash.unset';
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
+import isObject from 'lodash/isObject';
+import lt from 'lodash/lt';
+import merge from 'lodash/merge';
+import pick from 'lodash/pick';
+import reduce from 'lodash/reduce';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 const compareItems = (
 	obj: INodeExecutionData,

@@ -1,10 +1,10 @@
-import type { IExecuteFunctions, IPollFunctions } from 'n8n-core';
-
 import type { OptionsWithUri } from 'request';
 
 import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
+	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
@@ -58,8 +58,8 @@ export async function apiRequest(
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-
-	return this.helpers.requestWithAuthentication.call(this, 'airtableApi', options);
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**

@@ -59,11 +59,49 @@ describe('components', () => {
 		});
 
 		describe('overrides', () => {
-			it('should render correctly', () => {
+			it('should use default (`primary`) type when no type is given', () => {
+				const wrapper = render(ElButton, {
+					props: {
+						icon: 'plus-circle',
+					},
+					slots,
+					stubs,
+				});
+
+				expect(wrapper.html()).toMatchSnapshot();
+			});
+
+			it('should use given (`secondary`) type', () => {
 				const wrapper = render(ElButton, {
 					props: {
 						icon: 'plus-circle',
 						type: 'secondary',
+					},
+					slots,
+					stubs,
+				});
+
+				expect(wrapper.html()).toMatchSnapshot();
+			});
+
+			it('should render as `secondary` when `text` is given as type', () => {
+				const wrapper = render(ElButton, {
+					props: {
+						icon: 'plus-circle',
+						type: 'text',
+					},
+					slots,
+					stubs,
+				});
+
+				expect(wrapper.html()).toMatchSnapshot();
+			});
+
+			it('should render as `tertiary` when `info` is given as type', () => {
+				const wrapper = render(ElButton, {
+					props: {
+						icon: 'plus-circle',
+						type: 'info',
 					},
 					slots,
 					stubs,

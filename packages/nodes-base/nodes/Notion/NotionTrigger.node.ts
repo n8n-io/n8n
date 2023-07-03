@@ -1,6 +1,5 @@
-import type { IPollFunctions } from 'n8n-core';
-
 import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -23,7 +22,7 @@ export class NotionTrigger implements INodeType {
 		description: 'Starts the workflow when Notion events occur',
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
-			name: 'Notion Trigger (Beta)',
+			name: 'Notion Trigger',
 		},
 		credentials: [
 			{

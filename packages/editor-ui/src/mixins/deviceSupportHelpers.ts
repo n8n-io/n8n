@@ -1,6 +1,6 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export const deviceSupportHelpers = Vue.extend({
+export const deviceSupportHelpers = defineComponent({
 	data() {
 		return {
 			// @ts-ignore msMaxTouchPoints is deprecated but must fix tablet bugs before fixing this.. otherwise breaks touchscreen computers
@@ -19,7 +19,7 @@ export const deviceSupportHelpers = Vue.extend({
 	},
 	methods: {
 		isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
-			if (this.isTouchDevice === true) {
+			if (this.isTouchDevice === true && e instanceof MouseEvent) {
 				return true;
 			}
 			if (this.isMacOs) {

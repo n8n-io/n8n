@@ -11,4 +11,5 @@ module.exports = {
 		'^@/(.*)$': '<rootDir>/src/$1',
 		'^@db/(.*)$': '<rootDir>/src/databases/$1',
 	},
+	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
 };

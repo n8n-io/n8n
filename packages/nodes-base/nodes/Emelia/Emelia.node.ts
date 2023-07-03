@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -14,7 +13,7 @@ import { campaignFields, campaignOperations } from './CampaignDescription';
 
 import { contactListFields, contactListOperations } from './ContactListDescription';
 
-import isEmpty from 'lodash.isempty';
+import isEmpty from 'lodash/isEmpty';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {

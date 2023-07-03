@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -120,7 +119,7 @@ export class MondayCom implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available boards to display them to user so that he can
+			// Get all the available boards to display them to user so that they can
 			// select them easily
 			async getBoards(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -153,7 +152,7 @@ export class MondayCom implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available columns to display them to user so that he can
+			// Get all the available columns to display them to user so that they can
 			// select them easily
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -188,7 +187,7 @@ export class MondayCom implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

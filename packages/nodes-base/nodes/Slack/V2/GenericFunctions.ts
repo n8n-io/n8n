@@ -1,10 +1,15 @@
 import type { OptionsWithUri } from 'request';
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject, IOAuth2Options } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IOAuth2Options,
+} from 'n8n-workflow';
 
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,

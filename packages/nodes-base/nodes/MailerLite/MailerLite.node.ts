@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -55,7 +54,7 @@ export class MailerLite implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that he can
+			// Get all the available custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

@@ -4,7 +4,6 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Inline expression editor', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
@@ -17,6 +16,7 @@ describe('Inline expression editor', () => {
 	});
 
 	it('should resolve primitive resolvables', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters.inlineExpressionEditorInput().type('1 + 2');
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^3$/);
@@ -35,6 +35,7 @@ describe('Inline expression editor', () => {
 	});
 
 	it('should resolve object resolvables', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters
 			.inlineExpressionEditorInput()
@@ -67,6 +68,6 @@ describe('Inline expression editor', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
-		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^getAll$/);
+		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
 	});
 });

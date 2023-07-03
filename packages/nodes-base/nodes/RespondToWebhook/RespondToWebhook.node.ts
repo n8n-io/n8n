@@ -1,14 +1,14 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
+import type { Readable } from 'stream';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -202,7 +202,7 @@ export class RespondToWebhook implements INodeType {
 			}
 		}
 
-		let responseBody: IN8nHttpResponse;
+		let responseBody: IN8nHttpResponse | Readable;
 		if (respondWith === 'json') {
 			const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
 			if (responseBodyParameter) {
@@ -215,7 +215,7 @@ export class RespondToWebhook implements INodeType {
 		} else if (respondWith === 'text') {
 			responseBody = this.getNodeParameter('responseBody', 0) as string;
 		} else if (respondWith === 'binary') {
-			const item = this.getInputData()[0];
+			const item = items[0];
 
 			if (item.binary === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No binary data exists on the first item!');
@@ -235,23 +235,17 @@ export class RespondToWebhook implements INodeType {
 				responseBinaryPropertyName = binaryKeys[0];
 			}
 
-			const binaryData = item.binary[responseBinaryPropertyName];
-			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-				0,
-				responseBinaryPropertyName,
-			);
-
-			if (binaryData === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Item has no binary property called "${responseBinaryPropertyName}"`,
-				);
+			const binaryData = this.helpers.assertBinaryData(0, responseBinaryPropertyName);
+			if (binaryData.id) {
+				responseBody = { binaryData };
+			} else {
+				responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
+				headers['content-length'] = (responseBody as Buffer).length;
 			}
 
 			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
-			responseBody = binaryDataBuffer;
 		} else if (respondWith !== 'noData') {
 			throw new NodeOperationError(
 				this.getNode(),

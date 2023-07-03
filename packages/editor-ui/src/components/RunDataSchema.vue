@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { INodeUi, Schema } from '@/Interface';
+import { merge } from 'lodash-es';
+import type { INodeUi, Schema } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
-import { useNDVStore } from '@/stores/ndv';
-import { useWebhooksStore } from '@/stores/webhooks';
-import { runExternalHook } from '@/mixins/externalHooks';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { telemetry } from '@/plugins/telemetry';
-import { IDataObject } from 'n8n-workflow';
-import { getSchema, isEmpty, mergeDeep } from '@/utils';
+import type { IDataObject } from 'n8n-workflow';
+import { getSchema, isEmpty, runExternalHook } from '@/utils';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
 
@@ -18,6 +18,7 @@ type Props = {
 	distanceFromActive: number;
 	runIndex: number;
 	totalRuns: number;
+	paneType: 'input' | 'output';
 	node: INodeUi | null;
 };
 
@@ -31,7 +32,7 @@ const webhooksStore = useWebhooksStore();
 
 const schema = computed<Schema>(() => {
 	const [head, ...tail] = props.data;
-	return getSchema(mergeDeep([head, ...tail, head]));
+	return getSchema(merge({}, head, ...tail, head));
 });
 
 const isDataEmpty = computed(() => {
@@ -63,7 +64,7 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
+		void runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
@@ -92,6 +93,7 @@ const onDragEnd = (el: HTMLElement) => {
 						:schema="schema"
 						:level="0"
 						:parent="null"
+						:paneType="paneType"
 						:subKey="`${schema.type}-0-0`"
 						:mappingEnabled="mappingEnabled"
 						:draggingPath="draggingPath"

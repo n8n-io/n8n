@@ -1,10 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { BINARY_ENCODING } from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 
 export async function freshdeskApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,

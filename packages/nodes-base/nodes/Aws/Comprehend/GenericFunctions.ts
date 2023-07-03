@@ -5,9 +5,8 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IHttpRequestOptions } from 'n8n-workflow';
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,

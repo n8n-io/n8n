@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -265,20 +264,8 @@ export class NocoDB implements INodeType {
 							if (!field.binaryData) {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
-								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
 								const binaryPropertyName = field.binaryProperty;
-								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryPropertyName}"`,
-										{ itemIndex: i },
-									);
-								}
-								const binaryData = items[i].binary![binaryPropertyName];
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
@@ -341,17 +328,24 @@ export class NocoDB implements INodeType {
 
 			if (operation === 'delete') {
 				requestMethod = 'DELETE';
+				let primaryKey = 'id';
+
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
 				} else if (version === 2) {
 					endPoint = `/api/v1/db/data/bulk/noco/${projectId}/${table}`;
+
+					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
+					if (primaryKey === 'custom') {
+						primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
+					}
 				}
 
 				const body: IDataObject[] = [];
 
 				for (let i = 0; i < items.length; i++) {
 					const id = this.getNodeParameter('id', i) as string;
-					body.push({ id });
+					body.push({ [primaryKey]: id });
 				}
 
 				try {
@@ -545,18 +539,25 @@ export class NocoDB implements INodeType {
 
 			if (operation === 'update') {
 				requestMethod = 'PATCH';
+				let primaryKey = 'id';
 
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
 					requestMethod = 'PUT';
 				} else if (version === 2) {
 					endPoint = `/api/v1/db/data/bulk/noco/${projectId}/${table}`;
+
+					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
+					if (primaryKey === 'custom') {
+						primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
+					}
 				}
+
 				const body: IDataObject[] = [];
 
 				for (let i = 0; i < items.length; i++) {
 					const id = this.getNodeParameter('id', i) as string;
-					const newItem: IDataObject = { id };
+					const newItem: IDataObject = { [primaryKey]: id };
 					const dataToSend = this.getNodeParameter('dataToSend', i) as
 						| 'defineBelow'
 						| 'autoMapInputData';
@@ -581,20 +582,8 @@ export class NocoDB implements INodeType {
 							if (!field.binaryData) {
 								newItem[field.fieldName] = field.fieldValue;
 							} else if (field.binaryProperty) {
-								if (!items[i].binary) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
 								const binaryPropertyName = field.binaryProperty;
-								if (binaryPropertyName && !items[i].binary![binaryPropertyName]) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryPropertyName}"`,
-										{ itemIndex: i },
-									);
-								}
-								const binaryData = items[i].binary![binaryPropertyName];
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {

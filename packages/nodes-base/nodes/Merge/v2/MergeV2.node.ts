@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
 
-import merge from 'lodash.merge';
+import merge from 'lodash/merge';
 
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -35,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	icon: 'fa:code-branch',
 	group: ['transform'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["mode"]}}',
 	description: 'Merges data of multiple streams once data from both is available',
 	defaults: {
@@ -450,20 +450,28 @@ export class MergeV2 implements INodeType {
 				options.joinMode = joinMode;
 				options.outputDataFrom = outputDataFrom;
 
-				const input1 = checkInput(
-					this.getInputData(0),
-					matchFields.map((pair) => pair.field1),
-					options.disableDotNotation || false,
-					'Input 1',
-				);
-				if (!input1) return [returnData];
+				const nodeVersion = this.getNode().typeVersion;
 
-				const input2 = checkInput(
-					this.getInputData(1),
-					matchFields.map((pair) => pair.field2),
-					options.disableDotNotation || false,
-					'Input 2',
-				);
+				let input1 = this.getInputData(0);
+				let input2 = this.getInputData(1);
+				if (nodeVersion < 2.1) {
+					input1 = checkInput(
+						this.getInputData(0),
+						matchFields.map((pair) => pair.field1),
+						options.disableDotNotation || false,
+						'Input 1',
+					);
+					if (!input1) return [returnData];
+
+					input2 = checkInput(
+						this.getInputData(1),
+						matchFields.map((pair) => pair.field2),
+						options.disableDotNotation || false,
+						'Input 2',
+					);
+				} else {
+					if (!input1) return [returnData];
+				}
 
 				if (!input2 || !matchFields.length) {
 					if (
@@ -533,14 +541,18 @@ export class MergeV2 implements INodeType {
 
 					const mergedEntries = mergeMatched(matches.matched, clashResolveOptions, joinMode);
 
-					if (clashResolveOptions.resolveClash === 'addSuffix') {
-						const suffix = joinMode === 'enrichInput1' ? '1' : '2';
-						returnData.push(
-							...mergedEntries,
-							...addSuffixToEntriesKeys(matches.unmatched1, suffix),
-						);
+					if (joinMode === 'enrichInput1') {
+						if (clashResolveOptions.resolveClash === 'addSuffix') {
+							returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, '1'));
+						} else {
+							returnData.push(...mergedEntries, ...matches.unmatched1);
+						}
 					} else {
-						returnData.push(...mergedEntries, ...matches.unmatched1);
+						if (clashResolveOptions.resolveClash === 'addSuffix') {
+							returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched2, '2'));
+						} else {
+							returnData.push(...mergedEntries, ...matches.unmatched2);
+						}
 					}
 				}
 			}

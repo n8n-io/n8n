@@ -11,13 +11,11 @@ const ndv = new NDV();
 
 describe('Undo/Redo', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		cy.waitForLoad();
 	});
 
 	it('should undo/redo adding nodes', () => {

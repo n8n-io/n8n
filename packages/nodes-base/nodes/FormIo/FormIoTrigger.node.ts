@@ -1,7 +1,7 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -121,7 +121,6 @@ export class FormIoTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

@@ -52,7 +52,6 @@ const users = [
 
 describe('Sharing', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setupOwner(instanceOwner);
 	});
 
@@ -80,8 +79,7 @@ describe('Sharing', () => {
 		credentialsModal.actions.save();
 		credentialsModal.actions.close();
 
-		cy.visit(workflowsPage.url);
-		workflowsPage.getters.newWorkflowButtonCard().click();
+		workflowPage.actions.visit();
 		workflowPage.actions.setWorkflowName('Workflow W1');
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.actions.addNodeToCanvas('Notion', true, true);
@@ -162,7 +160,15 @@ describe('Sharing', () => {
 
 		cy.waitForLoad();
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard('Workflow W2').click();
+		workflowsPage.getters.workflowCard('Workflow W2').click('top');
 		workflowPage.actions.executeWorkflow();
+	});
+
+	it('should automatically test C2 when opened by U2 sharee', () => {
+		cy.signin(users[0]);
+
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.credentialCard('Credential C2').click();
+		credentialsModal.getters.testSuccessTag().should('be.visible');
 	});
 });

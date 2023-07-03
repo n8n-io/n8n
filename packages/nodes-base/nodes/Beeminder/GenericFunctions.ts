@@ -1,8 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 

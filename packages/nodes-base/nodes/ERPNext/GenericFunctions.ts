@@ -1,15 +1,19 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Return the base API URL based on the user's environment.
  */
 const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
-	environment === 'cloudHosted' ? `https://${subdomain}.erpnext.com` : domain;
+	environment === 'cloudHosted' ? `https://${subdomain}.${domain}` : domain;
 
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,

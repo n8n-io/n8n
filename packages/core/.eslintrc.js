@@ -11,8 +11,6 @@ module.exports = {
 	ignorePatterns: ['bin/*.js'],
 
 	rules: {
-		'@typescript-eslint/consistent-type-imports': 'error',
-
 		// TODO: Remove this
 		'import/order': 'off',
 		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],

@@ -1,17 +1,18 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	INodeProperties,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import upperFirst from 'lodash.upperfirst';
+import upperFirst from 'lodash/upperFirst';
 
 import { createHash } from 'crypto';
 
@@ -135,9 +136,9 @@ function removeEmptyProperties(rest: { [key: string]: any }) {
 		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
-export function getAttachemnts(attachements: IDataObject[]) {
+export function getAttachments(attachments: IDataObject[]) {
 	const _attachments: IDataObject[] = [];
-	for (const attachment of attachements) {
+	for (const attachment of attachments) {
 		const body: IDataObject[] = [];
 		const actions: IDataObject[] = [];
 		for (const element of ((attachment?.elementsUi as IDataObject)

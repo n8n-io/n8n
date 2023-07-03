@@ -1,11 +1,16 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, IHookFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import * as nacl_factory from 'js-nacl';
 

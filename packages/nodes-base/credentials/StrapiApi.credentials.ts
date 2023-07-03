@@ -9,6 +9,12 @@ export class StrapiApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Make sure you are using a user account not an admin account',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Email',
 			name: 'email',
 			type: 'string',

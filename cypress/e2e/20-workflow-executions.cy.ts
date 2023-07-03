@@ -7,19 +7,23 @@ const executionsTab = new WorkflowExecutionsTab();
 // Test suite for executions tab
 describe('Current Workflow Executions', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
 		createMockExecutions();
 	});
 
 	it('should render executions tab correctly', () => {
-		cy.waitForLoad();
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait(['@getExecutions', '@getCurrentExecutions']);
+
 		executionsTab.getters.executionListItems().should('have.length', 11);
 		executionsTab.getters.successfulExecutionListItems().should('have.length', 9);
 		executionsTab.getters.failedExecutionListItems().should('have.length', 2);
@@ -40,6 +44,4 @@ const createMockExecutions = () => {
 	// Then add some more successful ones
 	executionsTab.actions.toggleNodeEnabled('Error');
 	executionsTab.actions.createManualExecutions(4);
-	executionsTab.actions.switchToExecutionsTab();
-	cy.waitForLoad();
 };

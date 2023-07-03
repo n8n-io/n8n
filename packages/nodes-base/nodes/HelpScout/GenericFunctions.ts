@@ -1,16 +1,16 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 export async function helpscoutApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
@@ -64,7 +64,8 @@ export async function helpscoutApiRequestAllItems(
 		responseData = await helpscoutApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = get(responseData, '_links.next.href');
 		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData._links?.next?.href !== undefined);

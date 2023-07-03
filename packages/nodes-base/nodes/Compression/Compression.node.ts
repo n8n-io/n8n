@@ -1,12 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IBinaryKeyData,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import * as fflate from 'fflate';
 
@@ -54,7 +52,7 @@ export class Compression implements INodeType {
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}}',
 		version: 1,
-		description: 'Compress and uncompress files',
+		description: 'Compress and decompress files',
 		defaults: {
 			name: 'Compression',
 			color: '#408000',
@@ -158,7 +156,7 @@ export class Compression implements INodeType {
 						outputFormat: ['gzip'],
 					},
 				},
-				description: 'Prefix use for all gzip compresed files',
+				description: 'Prefix use for all gzip compressed files',
 			},
 			{
 				displayName: 'Output Prefix',
@@ -196,28 +194,14 @@ export class Compression implements INodeType {
 					let zipIndex = 0;
 
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-								{ itemIndex: i },
-							);
-						}
-
-						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-						if (binaryData.fileExtension === 'zip') {
+						if (binaryData.fileExtension?.toLowerCase() === 'zip') {
 							const files = await unzip(binaryDataBuffer);
 
 							for (const key of Object.keys(files)) {
-								// when files are compresed using MACOSX for some reason they are duplicated under __MACOSX
+								// when files are compressed using MACOSX for some reason they are duplicated under __MACOSX
 								if (key.includes('__MACOSX')) {
 									continue;
 								}
@@ -229,7 +213,7 @@ export class Compression implements INodeType {
 
 								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 							}
-						} else if (binaryData.fileExtension === 'gz') {
+						} else if (binaryData.fileExtension?.toLowerCase() === 'gz') {
 							const file = await gunzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];
@@ -267,21 +251,7 @@ export class Compression implements INodeType {
 					const binaryObject: IBinaryKeyData = {};
 
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-								{ itemIndex: i },
-							);
-						}
-
-						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (outputFormat === 'zip') {

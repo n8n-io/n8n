@@ -1,7 +1,7 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -49,13 +49,13 @@ export class MailchimpTrigger implements INodeType {
 			{
 				name: 'setup',
 				httpMethod: 'GET',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
@@ -163,7 +163,7 @@ export class MailchimpTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -183,7 +183,6 @@ export class MailchimpTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

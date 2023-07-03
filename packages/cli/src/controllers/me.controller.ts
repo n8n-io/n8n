@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
-import { Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
 import {
 	compareHash,
 	hashPassword,
@@ -8,13 +8,18 @@ import {
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { BadRequestError } from '@/ResponseHelper';
-import type { User } from '@db/entities/User';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
+import type { User } from '@db/entities/User';
+import type { UserRepository } from '@db/repositories';
 import { Response } from 'express';
-import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
-import { AuthenticatedRequest, MeRequest, UserUpdatePayload } from '@/requests';
+import {
+	AuthenticatedRequest,
+	MeRequest,
+	UserSettingsUpdatePayload,
+	UserUpdatePayload,
+} from '@/requests';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -22,7 +27,10 @@ import type {
 	IInternalHooksClass,
 } from '@/Interfaces';
 import { randomBytes } from 'crypto';
+import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import { UserService } from '@/user/user.service';
 
+@Authorized()
 @RestController('/me')
 export class MeController {
 	private readonly logger: ILogger;
@@ -31,7 +39,7 @@ export class MeController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	constructor({
 		logger,
@@ -51,7 +59,7 @@ export class MeController {
 	}
 
 	/**
-	 * Update the logged-in user's settings, except password.
+	 * Update the logged-in user's properties, except password.
 	 */
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
@@ -76,6 +84,20 @@ export class MeController {
 		}
 
 		await validateEntity(payload);
+
+		// If SAML is enabled, we don't allow the user to change their email address
+		if (isSamlLicensedAndEnabled()) {
+			if (email !== currentEmail) {
+				this.logger.debug(
+					'Request to update user failed because SAML user may not change their email',
+					{
+						userId,
+						payload,
+					},
+				);
+				throw new BadRequestError('SAML user may not change their email');
+			}
+		}
 
 		await this.userRepository.update(userId, payload);
 		const user = await this.userRepository.findOneOrFail({
@@ -104,6 +126,16 @@ export class MeController {
 	@Patch('/password')
 	async updatePassword(req: MeRequest.Password, res: Response) {
 		const { currentPassword, newPassword } = req.body;
+
+		// If SAML is enabled, we don't allow the user to change their email address
+		if (isSamlLicensedAndEnabled()) {
+			this.logger.debug('Attempted to change password for user, while SAML is enabled', {
+				userId: req.user?.id,
+			});
+			throw new BadRequestError(
+				'With SAML enabled, users need to use their SAML provider to change passwords',
+			);
+		}
 
 		if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
 			throw new BadRequestError('Invalid payload.');
@@ -208,5 +240,23 @@ export class MeController {
 		});
 
 		return { success: true };
+	}
+
+	/**
+	 * Update the logged-in user's settings.
+	 */
+	@Patch('/settings')
+	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const { id } = req.user;
+
+		await UserService.updateUserSettings(id, payload);
+
+		const user = await this.userRepository.findOneOrFail({
+			select: ['settings'],
+			where: { id },
+		});
+
+		return user.settings;
 	}
 }

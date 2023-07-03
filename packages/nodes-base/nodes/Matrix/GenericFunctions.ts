@@ -1,9 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { v4 as uuid } from 'uuid';
 
@@ -185,30 +189,22 @@ export async function handleMatrixCall(
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
+			const additionalFields = this.getNodeParameter('additionalFields', index);
 
 			let body;
 			const qs: IDataObject = {};
 			const headers: IDataObject = {};
 
-			if (
-				item.binary === undefined ||
-				//@ts-ignore
-				item.binary[binaryPropertyName] === undefined
-			) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Item has no binary property called "${binaryPropertyName}"`,
-				);
+			const { fileName, mimeType } = this.helpers.assertBinaryData(index, binaryPropertyName);
+			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
+
+			if (additionalFields.fileName) {
+				qs.filename = additionalFields.fileName as string;
+			} else {
+				qs.filename = fileName;
 			}
 
-			// @ts-ignore
-			qs.filename = item.binary[binaryPropertyName].fileName;
-			//@ts-ignore
-			const filename = item.binary[binaryPropertyName].fileName;
-
-			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
-			//@ts-ignore
-			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
+			headers['Content-Type'] = mimeType;
 			headers.accept = 'application/json,text/*;q=0.99';
 
 			const uploadRequestResult = await matrixApiRequest.call(
@@ -226,7 +222,7 @@ export async function handleMatrixCall(
 
 			body = {
 				msgtype: `m.${mediaType}`,
-				body: filename,
+				body: qs.filename,
 				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid();
