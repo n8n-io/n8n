@@ -30,11 +30,13 @@ const airtableReadOnlyFields = [
 	'lookup',
 	'rollup',
 	'externalSyncSource',
+	'multipleLookupValues',
+	'multipleRecordLinks',
 ];
 
 const airtableTypesMap: TypesMap = {
 	string: ['singleLineText', 'multilineText', 'richText', 'email', 'phoneNumber', 'url'],
-	number: ['rating', 'percent', 'number', 'duration'],
+	number: ['rating', 'percent', 'number', 'duration', 'currency'],
 	boolean: ['checkbox'],
 	dateTime: ['dateTime', 'date'],
 	time: [],

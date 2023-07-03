@@ -46,6 +46,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				);
 		}
 	} catch (error) {
+		if (
+			error.description &&
+			(error.description as string).includes('cannot accept the provided value')
+		) {
+			error.description = `${error.description}. Consider using 'Typecast' option`;
+		}
 		throw error;
 	}
 
