@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
+import type { IWorkflowBase, JsonObject, ExecutionStatus, IExecutionsSummary } from 'n8n-workflow';
 import { LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
 import { In } from 'typeorm';
@@ -139,9 +139,14 @@ export class ExecutionsService {
 			};
 		}
 
-		const limit = req.query.limit
+		let limit = req.query.limit
 			? parseInt(req.query.limit, 10)
 			: GenericHelpers.DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
+
+		if (filter?.advancedSearch) {
+			// Fetch all executions if the advanced filter flag is on
+			limit = GenericHelpers.ADVANCED_SEARCH_EXECUTIONS_GET_ALL_LIMIT;
+		}
 
 		const executingWorkflowIds: string[] = [];
 
@@ -175,9 +180,17 @@ export class ExecutionsService {
 				firstId: req.query.firstId,
 			},
 		);
+
+		let filteredExecutions: IExecutionsSummary[] | undefined;
+		if (filter?.advancedSearch) {
+			const searchResults = await this.searchExecutionsInElastic(filter?.advancedSearch);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			filteredExecutions = formattedExecutions.filter((obj) => searchResults.includes(obj.id));
+		}
+
 		return {
 			count,
-			results: formattedExecutions,
+			results: filteredExecutions ?? formattedExecutions,
 			estimated,
 		};
 	}
@@ -362,5 +375,11 @@ export class ExecutionsService {
 			deleteBefore,
 			ids,
 		});
+	}
+
+	static async searchExecutionsInElastic(advancedSearchValue: string) {
+		const client = new ElasticSearchClient();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return (await client.searchDocuments(advancedSearchValue)) || [];
 	}
 }
