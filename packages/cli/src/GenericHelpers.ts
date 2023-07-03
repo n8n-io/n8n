@@ -200,3 +200,4 @@ export async function createErrorExecution(
 }
 
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;
+export const ADVANCED_SEARCH_EXECUTIONS_GET_ALL_LIMIT = 20;
