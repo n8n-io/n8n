@@ -216,8 +216,6 @@ export class SourceControlController {
 			if (result.status === 200) {
 				void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
 					getTrackingInformationFromSourceControlledFiles(result.diffResult),
-					// todo: remove if not needed
-					// getTrackingInformationFromImportResult(result as ImportResult),
 				);
 				res.statusCode = 200;
 			} else {

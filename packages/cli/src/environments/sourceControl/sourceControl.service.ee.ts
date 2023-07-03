@@ -117,6 +117,7 @@ export class SourceControlService {
 						force: true,
 					});
 					getBranchesResult = await this.getBranches();
+					await this.gitService.setBranch(preferences.branchName);
 				} catch (fileError) {
 					LoggerProxy.error(`Failed to create initial commit: ${(fileError as Error).message}`);
 				}
@@ -247,7 +248,10 @@ export class SourceControlService {
 
 		const diffResult = await this.getStatus();
 		const possibleConflicts = diffResult?.filter(
-			(file) => (file.conflict || file.status === 'modified') && file.type !== 'credential',
+			(file) =>
+				(file.conflict || file.status === 'modified') &&
+				file.type !== 'credential' &&
+				file.type !== 'variables',
 		);
 		if (possibleConflicts?.length > 0 && options.force !== true) {
 			await this.unstage();
@@ -465,9 +469,12 @@ export class SourceControlService {
 		await this.stage({});
 		await this.gitService.fetch();
 		const sourceControlledFiles: SourceControlledFile[] = [];
-		const diffRemote = await this.gitService.diffRemote();
-		const diffLocal = await this.gitService.diffLocal();
-		const status = await this.gitService.status();
+		const [diffRemote, diffLocal, status] = await Promise.all([
+			this.gitService.diffRemote(),
+			this.gitService.diffLocal(),
+			this.gitService.status(),
+		]);
+		console.log(diffRemote, diffLocal, status);
 		await Promise.all([
 			...(diffRemote?.files.map(async (e) => {
 				const resolvedFile = await this.fileNameToSourceControlledFile(e.file, 'remote', status);
