@@ -5,17 +5,18 @@ import { contactFields, contactOperations } from './ContactDescription';
 import { emailFields, emailOperations } from './EmailDescription';
 import { senderFields, senderOperations } from './SenderDescrition';
 
-export class SendInBlue implements INodeType {
+export class Brevo implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'SendInBlue',
+		displayName: 'Brevo',
+		// keep sendinblue name for backward compatibility
 		name: 'sendInBlue',
-		icon: 'file:sendinblue.svg',
+		icon: 'file:brevo.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Sendinblue API',
+		description: 'Consume Brevo API',
 		defaults: {
-			name: 'SendInBlue',
+			name: 'Brevo',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -26,7 +27,7 @@ export class SendInBlue implements INodeType {
 			},
 		],
 		requestDefaults: {
-			baseURL: 'https://api.sendinblue.com',
+			baseURL: 'https://api.brevo.com',
 		},
 		properties: [
 			{

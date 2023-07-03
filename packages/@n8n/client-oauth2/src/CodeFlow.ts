@@ -57,7 +57,6 @@ export class CodeFlow {
 		opts?: Partial<ClientOAuth2Options>,
 	): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
-
 		expects(options, 'clientId', 'accessTokenUri');
 
 		const url = uri instanceof URL ? uri : new URL(uri, DEFAULT_URL_BASE);

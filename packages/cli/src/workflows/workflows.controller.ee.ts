@@ -87,6 +87,7 @@ EEWorkflowController.put(
 
 EEWorkflowController.get(
 	'/:id(\\w+)',
+	(req, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
