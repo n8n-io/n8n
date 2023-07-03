@@ -10,7 +10,7 @@ describe('components', () => {
 
 		it('should render correctly', () => {
 			const wrapper = render(N8nDatatable, {
-				propsData: {
+				props: {
 					columns,
 					rows,
 					rowsPerPage,
@@ -28,7 +28,7 @@ describe('components', () => {
 
 		it('should add column classes', () => {
 			const wrapper = render(N8nDatatable, {
-				propsData: {
+				props: {
 					columns: columns.map((column) => ({ ...column, classes: ['example'] })),
 					rows,
 					rowsPerPage,
@@ -43,7 +43,7 @@ describe('components', () => {
 
 		it('should render row slot', () => {
 			const wrapper = render(N8nDatatable, {
-				propsData: {
+				props: {
 					columns,
 					rows,
 					rowsPerPage,
