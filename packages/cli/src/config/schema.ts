@@ -331,7 +331,7 @@ export const schema = {
 		pruneDataMaxCount: {
 			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
 			format: Number,
-			default: 1000,
+			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
 	},
