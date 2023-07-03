@@ -3,6 +3,9 @@ import type { RedisOptions } from 'ioredis';
 import config from '@/config';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
+export const EVENT_BUS_REDIS_STREAM = 'n8n:eventstream';
+export const COMMAND_REDIS_STREAM = 'n8n:commandstream';
+export const WORKER_RESPONSE_REDIS_STREAM = 'n8n:workerstream';
 export const EVENT_BUS_REDIS_CHANNEL = 'n8n.events';
 export const COMMAND_REDIS_CHANNEL = 'n8n.commands';
 export const WORKER_RESPONSE_REDIS_CHANNEL = 'n8n.worker-response';

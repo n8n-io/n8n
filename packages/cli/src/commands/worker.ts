@@ -32,6 +32,7 @@ import type { RedisServiceCommandObject } from '../services/RedisServiceCommands
 import { RedisServiceSubscriber } from '../services/RedisServiceSubscriber';
 import { eventBus } from '../eventbus';
 import * as os from 'os';
+import { RedisServiceProducer } from '../services/RedisServiceProducer';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -261,6 +262,16 @@ export class Worker extends BaseCommand {
 	async initRedis() {
 		const redisPublisher = Container.get(RedisServicePublisher);
 		const redisSubscriber = Container.get(RedisServiceSubscriber);
+		const redisProducer = Container.get(RedisServiceProducer);
+		await redisProducer.init(this.workerId);
+		await redisProducer.addToEventStream(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+				payload: {
+					workerId: this.workerId,
+				},
+			}),
+		);
 		await redisPublisher.init();
 		await redisPublisher.publishToEventLog(
 			new EventMessageGeneric({
