@@ -37,8 +37,8 @@ export class WorkflowPage extends BasePage {
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
-		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
-		errorToast: () => cy.get('.el-notification .el-icon-error'),
+		successToast: () => cy.get('.el-notification .el-notification--success').parent(),
+		errorToast: () => cy.get('.el-notification .el-notification--error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -94,6 +94,7 @@ export class WorkflowPage extends BasePage {
 		stopExecutionButton: () => cy.getByTestId('stop-execution-button'),
 		stopExecutionWaitingForWebhookButton: () => cy.getByTestId('stop-execution-waiting-for-webhook-button'),
 		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
+		nodeCredentialsCreateOption: () => cy.getByTestId('node-credentials-select-item-new'),
 		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
 		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
 		ndvParameters: () => cy.getByTestId('parameter-item'),

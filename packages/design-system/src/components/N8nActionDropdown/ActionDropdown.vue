@@ -6,7 +6,7 @@
 			@command="onSelect"
 			ref="elementDropdown"
 		>
-			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
+			<div :class="$style.activator" @click.stop.prevent @blur="onButtonBlur">
 				<n8n-icon :icon="activatorIcon" />
 			</div>
 			<template #dropdown>
