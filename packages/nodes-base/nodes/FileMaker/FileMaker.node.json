@@ -1,6 +1,6 @@
 {
 	"node": "n8n-nodes-base.filemaker",
-	"nodeVersion": "1.0",
+	"nodeVersion": "1.1",
 	"codexVersion": "1.0",
 	"categories": ["Development", "Data & Storage"],
 	"resources": {
