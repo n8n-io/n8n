@@ -9,6 +9,8 @@ import { BINARY_ENCODING } from 'n8n-workflow';
 import { writeFile as fsWriteFile } from 'fs/promises';
 import type { Readable } from 'stream';
 
+import { checkFilePathAccess } from '@utils/utilities';
+
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Write Binary File',
@@ -73,6 +75,8 @@ export class WriteBinaryFile implements INodeType {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
+				checkFilePathAccess(fileName);
+
 				const options = this.getNodeParameter('options', 0, {});
 
 				const flag = options.append ? 'a' : 'w';

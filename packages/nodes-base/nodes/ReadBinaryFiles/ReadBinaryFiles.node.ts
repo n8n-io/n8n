@@ -4,7 +4,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import glob from 'fast-glob';
+
+import { checkFilePathAccess } from '@utils/utilities';
 
 export class ReadBinaryFiles implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,6 +52,8 @@ export class ReadBinaryFiles implements INodeType {
 
 		const items: INodeExecutionData[] = [];
 		for (const filePath of files) {
+			checkFilePathAccess(filePath);
+
 			const stream = await this.helpers.createReadStream(filePath);
 			items.push({
 				binary: {

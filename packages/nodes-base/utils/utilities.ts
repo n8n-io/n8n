@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
+import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 
 import { isEqual, isNull, merge } from 'lodash';
 
@@ -233,4 +234,71 @@ export function getResolvables(expression: string) {
 	}
 
 	return resolvables;
+}
+
+export function checkFilePathAccess(filePath: string): void {
+	const restrictFileAccessTo = process.env.N8N_RESTRICT_FILE_ACCESS_TO;
+
+	if (restrictFileAccessTo) {
+		const allowedPaths = restrictFileAccessTo
+			.split(';')
+			.map((path) => path.trim())
+			.filter((path) => path);
+
+		for (const path of allowedPaths) {
+			if (filePath.startsWith(path)) {
+				return;
+			}
+		}
+
+		throw new Error(
+			`Access to file "${filePath}" is not allowed. Allowed paths: ${allowedPaths.join(', ')}`,
+		);
+	}
+
+	const blockAccessToN8nFiles = process.env.N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES !== 'false';
+
+	if (blockAccessToN8nFiles) {
+		const restrictedPaths: string[] = [];
+
+		const userFolder = UserSettings.getUserHome();
+
+		if (userFolder) {
+			restrictedPaths.push(`${userFolder}/.n8n/`);
+		}
+
+		const {
+			N8N_CONFIG_FILES,
+			N8N_BINARY_DATA_STORAGE_PATH,
+			N8N_UM_EMAIL_TEMPLATES_INVITE,
+			N8N_UM_EMAIL_TEMPLATES_PWRESET,
+		} = process.env;
+
+		if (N8N_CONFIG_FILES) {
+			restrictedPaths.push(...N8N_CONFIG_FILES.split(','));
+		}
+
+		if (process.env[CUSTOM_EXTENSION_ENV]) {
+			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+			restrictedPaths.push(...customExtensionFolders);
+		}
+
+		if (N8N_BINARY_DATA_STORAGE_PATH) {
+			restrictedPaths.push(N8N_BINARY_DATA_STORAGE_PATH);
+		}
+
+		if (N8N_UM_EMAIL_TEMPLATES_INVITE) {
+			restrictedPaths.push(N8N_UM_EMAIL_TEMPLATES_INVITE);
+		}
+
+		if (N8N_UM_EMAIL_TEMPLATES_PWRESET) {
+			restrictedPaths.push(N8N_UM_EMAIL_TEMPLATES_PWRESET);
+		}
+
+		for (const path of restrictedPaths) {
+			if (filePath.startsWith(path)) {
+				throw new Error(`Access to file "${filePath}" is not allowed.`);
+			}
+		}
+	}
 }
