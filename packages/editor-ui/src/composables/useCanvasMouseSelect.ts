@@ -184,9 +184,7 @@ export default function useCanvasMouseSelect() {
 		const relativeX = mouseX - mousePositionBoundaryElementRect.value?.left ?? 0;
 		const relativeY = mouseY - mousePositionBoundaryElementRect.value?.top ?? 0;
 		const nodeViewScale = canvasStore.nodeViewScale;
-		const nodeViewOffsetPosition = uiStore.nodeViewOffsetPosition;
-
-		return getRelativePosition(relativeX, relativeY, nodeViewScale, nodeViewOffsetPosition);
+		return getRelativePosition(relativeX, relativeY, nodeViewScale, uiStore.nodeViewOffsetPosition);
 	}
 
 	function nodeDeselected(node: INodeUi) {

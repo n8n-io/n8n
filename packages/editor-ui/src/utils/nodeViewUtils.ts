@@ -680,13 +680,9 @@ const getContentDimensions = (): { editorWidth: number; editorHeight: number } =
 	};
 };
 
-export const getZoomToFit = (
-	nodes: INodeUi[],
-	addFooterPadding = true,
-): { offset: XYPosition; zoomLevel: number } => {
+export const getZoomToFit = (nodes: INodeUi[]): { offset: XYPosition; zoomLevel: number } => {
 	const { minX, minY, maxX, maxY } = getWorkflowCorners(nodes);
 	const { editorWidth, editorHeight } = getContentDimensions();
-	const footerHeight = addFooterPadding ? 200 : 100;
 
 	const PADDING = NODE_SIZE * 4;
 
@@ -702,7 +698,7 @@ export const getZoomToFit = (
 	xOffset += (editorWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
 	let yOffset = minY * -1 * zoomLevel; // find top right corner
-	yOffset += (editorHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
+	yOffset += (editorHeight - (maxY - minY) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,

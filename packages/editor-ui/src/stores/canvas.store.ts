@@ -129,7 +129,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			// some unknown workflow executions
 			return;
 		}
-		const { zoomLevel, offset } = getZoomToFit(nodes, !isDemo.value);
+		const { zoomLevel, offset } = getZoomToFit(nodes);
 		setZoomLevel(zoomLevel, offset);
 	};
 
