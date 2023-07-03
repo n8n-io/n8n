@@ -14,8 +14,15 @@ import type {
 } from 'simple-git';
 import { simpleGit } from 'simple-git';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
-import { SOURCE_CONTROL_DEFAULT_BRANCH, SOURCE_CONTROL_ORIGIN } from './constants';
+import {
+	SOURCE_CONTROL_DEFAULT_BRANCH,
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
+	SOURCE_CONTROL_ORIGIN,
+} from './constants';
 import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
+import type { User } from '../../databases/entities/User';
+import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
 
 @Service()
 export class SourceControlGitService {
@@ -92,7 +99,8 @@ export class SourceControlGitService {
 		}
 		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
 			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
-				await this.initRepository(sourceControlPreferences);
+				const user = await getInstanceOwner();
+				await this.initRepository(sourceControlPreferences, user);
 			}
 		}
 	}
@@ -139,8 +147,9 @@ export class SourceControlGitService {
 	async initRepository(
 		sourceControlPreferences: Pick<
 			SourceControlPreferences,
-			'repositoryUrl' | 'authorEmail' | 'authorName' | 'branchName' | 'initRepo'
+			'repositoryUrl' | 'branchName' | 'initRepo'
 		>,
+		user: User,
 	): Promise<void> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
@@ -161,8 +170,10 @@ export class SourceControlGitService {
 				throw error;
 			}
 		}
-		await this.git.addConfig('user.email', sourceControlPreferences.authorEmail);
-		await this.git.addConfig('user.name', sourceControlPreferences.authorName);
+		await this.setGitUserDetails(
+			`${user.firstName} ${user.lastName}` ?? SOURCE_CONTROL_DEFAULT_NAME,
+			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
+		);
 		if (sourceControlPreferences.initRepo) {
 			try {
 				const branches = await this.getBranches();
@@ -173,6 +184,14 @@ export class SourceControlGitService {
 				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
 			}
 		}
+	}
+
+	async setGitUserDetails(name: string, email: string): Promise<void> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		await this.git.addConfig('user.email', name);
+		await this.git.addConfig('user.name', email);
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {

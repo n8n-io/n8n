@@ -219,7 +219,7 @@ export const handleLdapInit = async (): Promise<void> => {
 	try {
 		await setGlobalLdapConfigVariables(ldapConfig);
 	} catch (error) {
-		Logger.error(
+		Logger.warn(
 			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			error,

@@ -1442,8 +1442,6 @@ export type SamlPreferencesExtractedData = {
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
-	authorName: string;
-	authorEmail: string;
 	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
@@ -1480,6 +1478,7 @@ export interface SourceControlAggregatedFile {
 	name: string;
 	status: string;
 	type: string;
+	updatedAt?: string;
 }
 
 export declare namespace Cloud {

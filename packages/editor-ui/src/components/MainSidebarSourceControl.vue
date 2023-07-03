@@ -1,14 +1,18 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router/composables';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore, useSourceControlStore } from '@/stores';
-import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 
 const props = defineProps<{
 	isCollapsed: boolean;
 }>();
+
+const responseStatuses = {
+	CONFLICT: 409,
+};
 
 const router = useRouter();
 const loadingService = useLoadingService();
@@ -29,6 +33,7 @@ const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' 
 
 async function pushWorkfolder() {
 	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 	try {
 		const status = await sourceControlStore.getAggregatedStatus();
 
@@ -47,28 +52,48 @@ async function pushWorkfolder() {
 async function pullWorkfolder() {
 	loadingService.startLoading();
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
+
 	try {
-		await sourceControlStore.pullWorkfolder(false);
+		const status = await sourceControlStore.pullWorkfolder(false);
+
+		if (status.length === 0) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
+				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
+				type: 'success',
+			});
+		} else {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.success.title'),
+				type: 'success',
+			});
+
+			const incompleteFileTypes = ['variables', 'credential'];
+			const hasVariablesOrCredentials = (status || []).some((file) => {
+				return incompleteFileTypes.includes(file.type);
+			});
+
+			if (hasVariablesOrCredentials) {
+				nextTick(() => {
+					toast.showMessage({
+						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+						type: 'info',
+						duration: 0,
+						showClose: true,
+						offset: 0,
+					});
+				});
+			}
+		}
 	} catch (error) {
 		const errorResponse = error.response;
 
-		if (errorResponse?.status === 409) {
-			const confirm = await message.confirm(
-				i18n.baseText('settings.sourceControl.modals.pull.description'),
-				i18n.baseText('settings.sourceControl.modals.pull.title'),
-				{
-					confirmButtonText: i18n.baseText('settings.sourceControl.modals.pull.buttons.save'),
-					cancelButtonText: i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel'),
-				},
-			);
-
-			try {
-				if (confirm === 'confirm') {
-					await sourceControlStore.pullWorkfolder(true);
-				}
-			} catch (error) {
-				toast.showError(error, 'Error');
-			}
+		if (errorResponse?.status === responseStatuses.CONFLICT) {
+			uiStore.openModalWithData({
+				name: SOURCE_CONTROL_PULL_MODAL_KEY,
+				data: { eventBus, status: errorResponse.data.data },
+			});
 		} else {
 			toast.showError(error, 'Error');
 		}

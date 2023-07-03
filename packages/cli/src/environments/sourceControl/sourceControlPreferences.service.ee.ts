@@ -53,6 +53,14 @@ export class SourceControlPreferencesService {
 		);
 	}
 
+	public isSourceControlSetup() {
+		return (
+			this.isSourceControlLicensedAndEnabled() &&
+			this.getPreferences().repositoryUrl &&
+			this.getPreferences().branchName
+		);
+	}
+
 	getPublicKey(): string {
 		try {
 			return fsReadFileSync(this.sshKeyName + '.pub', { encoding: 'utf8' });

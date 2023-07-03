@@ -5,6 +5,8 @@ import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_SSH_FOLDER,
@@ -32,6 +34,9 @@ import type {
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { User } from '@/databases/entities/User';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
@@ -81,12 +86,12 @@ export class SourceControlService {
 		}
 	}
 
-	async initializeRepository(preferences: SourceControlPreferences) {
+	async initializeRepository(preferences: SourceControlPreferences, user: User) {
 		if (!this.gitService.git) {
 			await this.init();
 		}
 		LoggerProxy.debug('Initializing repository...');
-		await this.gitService.initRepository(preferences);
+		await this.gitService.initRepository(preferences, user);
 		let getBranchesResult;
 		try {
 			getBranchesResult = await this.getBranches();
@@ -188,48 +193,77 @@ export class SourceControlService {
 		return;
 	}
 
-	async pushWorkfolder(
-		options: SourceControlPushWorkFolder,
-	): Promise<PushResult | SourceControlledFile[]> {
+	async pushWorkfolder(options: SourceControlPushWorkFolder): Promise<{
+		status: number;
+		pushResult: PushResult | undefined;
+		diffResult: SourceControlledFile[];
+	}> {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
+		let diffResult: SourceControlledFile[] = [];
 		if (!options.skipDiff) {
-			const diffResult = await this.getStatus();
+			diffResult = await this.getStatus();
 			const possibleConflicts = diffResult?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0 && options.force !== true) {
 				await this.unstage();
-				return diffResult;
+				return {
+					status: 409,
+					pushResult: undefined,
+					diffResult,
+				};
 			}
 		}
 		await this.unstage();
 		await this.stage(options);
+		if (options.fileNames && diffResult) {
+			const pushedFiles = Array.from(options.fileNames);
+			for (let i = 0; i < diffResult.length; i++) {
+				if (pushedFiles.includes(diffResult[i].file)) {
+					diffResult[i].pushed = true;
+				}
+			}
+		}
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
-		return this.gitService.push({
+		const pushResult = await this.gitService.push({
 			branch: this.sourceControlPreferencesService.getBranchName(),
 			force: options.force ?? false,
 		});
+		return {
+			status: 200,
+			pushResult,
+			diffResult,
+		};
 	}
 
 	async pullWorkfolder(
 		options: SourceControllPullOptions,
-	): Promise<ImportResult | StatusResult | undefined> {
+	): Promise<{ status: number; diffResult: SourceControlledFile[] }> {
 		await this.resetWorkfolder({
 			importAfterPull: false,
 			userId: options.userId,
 			force: false,
 		});
-		await this.export(); // refresh workfolder
-		const status = await this.gitService.status();
 
-		if (status.modified.length > 0 && options.force !== true) {
-			return status;
+		const diffResult = await this.getStatus();
+		const possibleConflicts = diffResult?.filter(
+			(file) => (file.conflict || file.status === 'modified') && file.type !== 'credential',
+		);
+		if (possibleConflicts?.length > 0 && options.force !== true) {
+			await this.unstage();
+			return {
+				status: 409,
+				diffResult,
+			};
 		}
 		await this.resetWorkfolder({ ...options, importAfterPull: false });
 		if (options.importAfterPull) {
-			return this.import(options);
+			await this.import(options);
 		}
-		return;
+		return {
+			status: 200,
+			diffResult,
+		};
 	}
 
 	async stage(
@@ -252,6 +286,7 @@ export class SourceControlService {
 				...status.modified,
 			]);
 		}
+		mergedFileNames.add(this.sourceControlExportService.getOwnersPath());
 		const deletedFiles = new Set<string>(status.deleted);
 		deletedFiles.forEach((e) => mergedFileNames.delete(e));
 		await this.unstage();
@@ -285,6 +320,20 @@ export class SourceControlService {
 		let conflict = false;
 		let status: SourceControlledFileStatus = 'unknown';
 		let type: SourceControlledFileType = 'file';
+		let updatedAt = '';
+
+		const allWorkflows: Map<string, WorkflowEntity> = new Map();
+		(await Db.collections.Workflow.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
+			(workflow) => {
+				allWorkflows.set(workflow.id, workflow);
+			},
+		);
+		const allCredentials: Map<string, CredentialsEntity> = new Map();
+		(await Db.collections.Credentials.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
+			(credential) => {
+				allCredentials.set(credential.id, credential);
+			},
+		);
 
 		// initialize status from git status result
 		if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
@@ -294,6 +343,14 @@ export class SourceControlService {
 		} else if (statusResult.created.find((e) => e === fileName)) status = 'created';
 		else if (statusResult.deleted.find((e) => e === fileName)) status = 'deleted';
 		else if (statusResult.modified.find((e) => e === fileName)) status = 'modified';
+		else if (statusResult.ignored?.find((e) => e === fileName)) status = 'ignored';
+		else if (statusResult.renamed.find((e) => e.to === fileName)) status = 'renamed';
+		else if (statusResult.staged.find((e) => e === fileName)) status = 'staged';
+		else {
+			LoggerProxy.debug(
+				`Unknown status for file ${fileName} in status result ${JSON.stringify(statusResult)}`,
+			);
+		}
 
 		if (fileName.startsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
 			type = 'workflow';
@@ -303,14 +360,14 @@ export class SourceControlService {
 					.replace(/[\/,\\]/, '')
 					.replace('.json', '');
 				if (location === 'remote') {
-					const existingWorkflow = await Db.collections.Workflow.find({
-						where: { id },
-					});
-					if (existingWorkflow?.length > 0) {
-						name = existingWorkflow[0].name;
+					const existingWorkflow = allWorkflows.get(id);
+					if (existingWorkflow) {
+						name = existingWorkflow.name;
+						updatedAt = existingWorkflow.updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
+					// todo: once we have audit log, this deletion date could be looked up
 				}
 			} else {
 				const workflow = await this.sourceControlExportService.getWorkflowFromFile(fileName);
@@ -326,6 +383,11 @@ export class SourceControlService {
 					id = workflow.id;
 					name = workflow.name;
 				}
+				const existingWorkflow = allWorkflows.get(id);
+				if (existingWorkflow) {
+					name = existingWorkflow.name;
+					updatedAt = existingWorkflow.updatedAt.toISOString();
+				}
 			}
 		}
 		if (fileName.startsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
@@ -336,11 +398,10 @@ export class SourceControlService {
 					.replace(/[\/,\\]/, '')
 					.replace('.json', '');
 				if (location === 'remote') {
-					const existingCredential = await Db.collections.Credentials.find({
-						where: { id },
-					});
-					if (existingCredential?.length > 0) {
-						name = existingCredential[0].name;
+					const existingCredential = allCredentials.get(id);
+					if (existingCredential) {
+						name = existingCredential.name;
+						updatedAt = existingCredential.updatedAt.toISOString();
 					}
 				} else {
 					name = '(deleted)';
@@ -359,6 +420,11 @@ export class SourceControlService {
 					id = credential.id;
 					name = credential.name;
 				}
+				const existingCredential = allCredentials.get(id);
+				if (existingCredential) {
+					name = existingCredential.name;
+					updatedAt = existingCredential.updatedAt.toISOString();
+				}
 			}
 		}
 
@@ -369,9 +435,15 @@ export class SourceControlService {
 		}
 
 		if (fileName.startsWith(SOURCE_CONTROL_TAGS_EXPORT_FILE)) {
+			const lastUpdatedTag = await Db.collections.Tag.find({
+				order: { updatedAt: 'DESC' },
+				take: 1,
+				select: ['updatedAt'],
+			});
 			id = 'tags';
 			name = 'tags';
 			type = 'tags';
+			updatedAt = lastUpdatedTag[0]?.updatedAt.toISOString();
 		}
 
 		if (!id) return;
@@ -384,6 +456,7 @@ export class SourceControlService {
 			status,
 			location,
 			conflict,
+			updatedAt,
 		};
 	}
 
@@ -420,5 +493,12 @@ export class SourceControlService {
 			}
 		});
 		return sourceControlledFiles;
+	}
+
+	async setGitUserDetails(
+		name = SOURCE_CONTROL_DEFAULT_NAME,
+		email = SOURCE_CONTROL_DEFAULT_EMAIL,
+	): Promise<void> {
+		await this.gitService.setGitUserDetails(name, email);
 	}
 }

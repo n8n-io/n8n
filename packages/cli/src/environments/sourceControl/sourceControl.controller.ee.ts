@@ -5,14 +5,22 @@ import {
 } from './middleware/sourceControlEnabledMiddleware.ee';
 import { SourceControlService } from './sourceControl.service.ee';
 import { SourceControlRequest } from './types/requests';
+import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
+import type { SourceControlledFile } from './types/sourceControlledFile';
+import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { PullResult, PushResult, StatusResult } from 'simple-git';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
-import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
-import type { SourceControlledFile } from './types/sourceControlledFile';
-import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
+import Container from 'typedi';
+import { InternalHooks } from '../../InternalHooks';
+import {
+	getRepoType,
+	getTrackingInformationFromPrePushResult,
+	getTrackingInformationFromPostPushResult,
+	getTrackingInformationFromSourceControlledFiles,
+} from './sourceControlHelper.ee';
 
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
@@ -54,14 +62,17 @@ export class SourceControlController {
 			);
 			if (sanitizedPreferences.initRepo === true) {
 				try {
-					await this.sourceControlService.initializeRepository({
-						...updatedPreferences,
-						branchName:
-							updatedPreferences.branchName === ''
-								? SOURCE_CONTROL_DEFAULT_BRANCH
-								: updatedPreferences.branchName,
-						initRepo: true,
-					});
+					await this.sourceControlService.initializeRepository(
+						{
+							...updatedPreferences,
+							branchName:
+								updatedPreferences.branchName === ''
+									? SOURCE_CONTROL_DEFAULT_BRANCH
+									: updatedPreferences.branchName,
+							initRepo: true,
+						},
+						req.user,
+					);
 					if (this.sourceControlPreferencesService.getPreferences().branchName !== '') {
 						await this.sourceControlPreferencesService.setPreferences({
 							connected: true,
@@ -74,7 +85,14 @@ export class SourceControlController {
 				}
 			}
 			await this.sourceControlService.init();
-			return this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
+				branch_name: resultingPreferences.branchName,
+				connected: resultingPreferences.connected,
+				read_only_instance: resultingPreferences.branchReadOnly,
+				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+			});
+			return resultingPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -90,8 +108,6 @@ export class SourceControlController {
 				connected: undefined,
 				publicKey: undefined,
 				repositoryUrl: undefined,
-				authorName: undefined,
-				authorEmail: undefined,
 			};
 			const currentPreferences = this.sourceControlPreferencesService.getPreferences();
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
@@ -113,7 +129,14 @@ export class SourceControlController {
 				);
 			}
 			await this.sourceControlService.init();
-			return this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
+				branch_name: resultingPreferences.branchName,
+				connected: resultingPreferences.connected,
+				read_only_instance: resultingPreferences.branchReadOnly,
+				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+			});
+			return resultingPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -144,18 +167,34 @@ export class SourceControlController {
 	async pushWorkfolder(
 		req: SourceControlRequest.PushWorkFolder,
 		res: express.Response,
-	): Promise<PushResult | SourceControlledFile[]> {
+	): Promise<
+		| { pushResult: PushResult; diffResult: SourceControlledFile[] | undefined }
+		| SourceControlledFile[]
+	> {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 		try {
+			await this.sourceControlService.setGitUserDetails(
+				`${req.user.firstName} ${req.user.lastName}`,
+				req.user.email,
+			);
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
-			if ((result as PushResult).pushed) {
+			if ('pushResult' in result && result.pushResult) {
+				void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
+					getTrackingInformationFromPostPushResult({
+						diffResult: result.diffResult,
+						pushResult: result.pushResult,
+					}),
+				);
 				res.statusCode = 200;
 			} else {
+				void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+					getTrackingInformationFromPrePushResult(result.diffResult),
+				);
 				res.statusCode = 409;
 			}
-			return result;
+			return result.diffResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -174,12 +213,20 @@ export class SourceControlController {
 				userId: req.user.id,
 				importAfterPull: req.body.importAfterPull ?? true,
 			});
-			if ((result as ImportResult)?.workflows) {
+			if (result.status === 200) {
+				void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
+					getTrackingInformationFromSourceControlledFiles(result.diffResult),
+					// todo: remove if not needed
+					// getTrackingInformationFromImportResult(result as ImportResult),
+				);
 				res.statusCode = 200;
 			} else {
+				void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
+					getTrackingInformationFromSourceControlledFiles(result.diffResult),
+				);
 				res.statusCode = 409;
 			}
-			return result;
+			return result.diffResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -206,7 +253,11 @@ export class SourceControlController {
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getStatus() {
 		try {
-			return await this.sourceControlService.getStatus();
+			const result = await this.sourceControlService.getStatus();
+			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+				getTrackingInformationFromPrePushResult(result),
+			);
+			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

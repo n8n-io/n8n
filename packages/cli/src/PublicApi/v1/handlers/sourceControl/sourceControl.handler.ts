@@ -6,7 +6,11 @@ import type { ImportResult } from '@/environments/sourceControl/types/importResu
 import Container from 'typedi';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
-import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
+import {
+	getTrackingInformationFromSourceControlledFiles,
+	isSourceControlLicensed,
+} from '@/environments/sourceControl/sourceControlHelper.ee';
+import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	pull: [
@@ -34,10 +38,15 @@ export = {
 					userId: req.user.id,
 					importAfterPull: true,
 				});
-				if ((result as ImportResult)?.workflows) {
-					return res.status(200).send(result as ImportResult);
+
+				if (result.status === 200) {
+					void Container.get(InternalHooks).onSourceControlUserPulledAPI({
+						...getTrackingInformationFromSourceControlledFiles(result.diffResult),
+						forced: req.body.force ?? false,
+					});
+					return res.status(200).send(result.diffResult);
 				} else {
-					return res.status(409).send(result);
+					return res.status(409).send(result.diffResult);
 				}
 			} catch (error) {
 				return res.status(400).send((error as { message: string }).message);
