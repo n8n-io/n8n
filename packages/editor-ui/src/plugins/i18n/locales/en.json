@@ -1389,7 +1389,7 @@
 	"settings.sourceControl.pull.upToDate.description": "No updates to pull from Git",
 	"settings.sourceControl.modals.pull.title": "Override local changes?",
 	"settings.sourceControl.modals.pull.description": "These local workflows will be overridden by remote changes. To keep the local version, push it before doing the pull.",
-	"settings.sourceControl.modals.pull.description.learnMore": "Learn more",
+	"settings.sourceControl.modals.pull.description.learnMore": "More info",
 	"settings.sourceControl.modals.pull.workflowsWithChanges": "Workflows with conflicting changes:",
 	"settings.sourceControl.modals.pull.buttons.cancel": "@:_reusableBaseText.cancel",
 	"settings.sourceControl.modals.pull.buttons.save": "Pull and override",
