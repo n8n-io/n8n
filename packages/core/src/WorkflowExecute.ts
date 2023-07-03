@@ -1432,7 +1432,7 @@ export class WorkflowExecute {
 								if (Array.isArray(requiredInputs)) {
 									// Specific inputs are required (array of input indexes)
 									let inputDataMissing = false;
-									for (const requiredInput of requiredInputs as number[]) {
+									for (const requiredInput of requiredInputs) {
 										if (!inputsWithData.includes(requiredInput)) {
 											inputDataMissing = true;
 											break;
