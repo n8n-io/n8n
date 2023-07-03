@@ -5,12 +5,13 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class SendInBlueApi implements ICredentialType {
+export class BrevoApi implements ICredentialType {
+	// keep sendinblue name for backward compatibility
 	name = 'sendInBlueApi';
 
-	displayName = 'SendInBlue';
+	displayName = 'Brevo';
 
-	documentationUrl = 'sendinblue';
+	documentationUrl = 'brevo';
 
 	properties: INodeProperties[] = [
 		{
@@ -33,7 +34,7 @@ export class SendInBlueApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.sendinblue.com/v3',
+			baseURL: 'https://api.brevo.com/v3',
 			url: '/account',
 		},
 	};
