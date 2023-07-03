@@ -251,7 +251,7 @@ export class SourceControlGitService {
 		const currentBranch = await this.getCurrentBranch();
 		const target = options?.target ?? currentBranch.remote;
 		const dots = options?.dots ?? '...';
-		return this.git.diffSummary([dots + target]);
+		return this.git.diffSummary([dots + target, '--ignore-all-space']);
 	}
 
 	async diffRemote(): Promise<DiffResult | undefined> {
@@ -261,7 +261,7 @@ export class SourceControlGitService {
 		const currentBranch = await this.getCurrentBranch();
 		if (currentBranch.remote) {
 			const target = currentBranch.remote;
-			return this.git.diffSummary(['...' + target]);
+			return this.git.diffSummary(['...' + target, '--ignore-all-space']);
 		}
 		return;
 	}
@@ -273,7 +273,7 @@ export class SourceControlGitService {
 		const currentBranch = await this.getCurrentBranch();
 		if (currentBranch.remote) {
 			const target = currentBranch.current;
-			return this.git.diffSummary([target]);
+			return this.git.diffSummary([target, '--ignore-all-space']);
 		}
 		return;
 	}
