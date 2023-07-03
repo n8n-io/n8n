@@ -1,10 +1,11 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { flowApiRequest } from './GenericFunctions';
@@ -127,7 +128,7 @@ export class FlowTrigger implements INodeType {
 				const credentials = await this.getCredentials('flowApi');
 
 				let resourceIds, body, responseData;
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
 				const endpoint = '/integration_webhooks';

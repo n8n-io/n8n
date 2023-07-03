@@ -1,10 +1,11 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { calendlyApiRequest, getAuthenticationType } from './GenericFunctions';
@@ -147,7 +148,7 @@ export class CalendlyTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const events = this.getNodeParameter('events') as string;
 				const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
 

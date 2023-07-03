@@ -1,12 +1,13 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { clickupApiRequest } from './GenericFunctions';
@@ -280,7 +281,7 @@ export class ClickUpTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const filters = this.getNodeParameter('filters') as IDataObject;
 				const teamId = this.getNodeParameter('team') as string;

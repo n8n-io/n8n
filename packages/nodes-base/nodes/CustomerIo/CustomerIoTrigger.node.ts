@@ -1,10 +1,11 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { customerIoApiRequest, eventExists } from './GenericFunctions';
@@ -255,7 +256,7 @@ export class CustomerIoTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const events = this.getNodeParameter('events', []) as string[];
 
 				const endpoint = '/reporting_webhooks';

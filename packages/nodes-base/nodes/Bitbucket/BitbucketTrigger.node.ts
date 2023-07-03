@@ -1,17 +1,18 @@
 import type { OptionsWithUri } from 'request';
 
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { bitbucketApiRequest, bitbucketApiRequestAllItems } from './GenericFunctions';
@@ -274,7 +275,7 @@ export class BitbucketTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
 				const resource = this.getNodeParameter('resource', 0);

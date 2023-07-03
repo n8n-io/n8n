@@ -1,12 +1,13 @@
-import type {
-	IDataObject,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookFunctions,
-	IWebhookResponseData,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type IHookFunctions,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { emeliaApiRequest, emeliaApiTest, emeliaGraphqlRequest } from './GenericFunctions';

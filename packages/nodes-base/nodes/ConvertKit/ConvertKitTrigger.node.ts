@@ -1,12 +1,13 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { convertKitApiRequest } from './GenericFunctions';
@@ -252,7 +253,7 @@ export class ConvertKitTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
 					throw new NodeOperationError(
@@ -272,7 +273,7 @@ export class ConvertKitTrigger implements INodeType {
 				}
 
 				const body: IDataObject = {
-					target_url: webhookUrl as string,
+					target_url: webhookUrl,
 					event: {
 						name: event,
 					},

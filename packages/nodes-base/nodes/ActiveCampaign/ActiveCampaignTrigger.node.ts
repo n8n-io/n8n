@@ -1,12 +1,13 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
