@@ -27,6 +27,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 // modals
 export const ABOUT_MODAL_KEY = 'about';
 export const ASK_AI_MODAL_KEY = 'askAi';
+export const WORKFLOW_WITH_VERSION_MODAL_KEY = 'workflowWithVersion';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -48,7 +49,8 @@ export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfir
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
-export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
+export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
+export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -375,7 +377,7 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
-	VERSION_CONTROL = 'VersionControl',
+	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
 }
 
@@ -429,8 +431,10 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
+	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
+	VIEW_WORKFLOW_VERSIONS = 'view-workflow-versions',
 }
 
 /**
@@ -443,7 +447,7 @@ export const enum EnterpriseEditionFeature {
 	LogStreaming = 'logStreaming',
 	Variables = 'variables',
 	Saml = 'saml',
-	VersionControl = 'versionControl',
+	SourceControl = 'sourceControl',
 	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
@@ -520,12 +524,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const AUTO_INSERT_ACTION_EXPERIMENT = {
-	name: '003_auto_insert_action',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const TEMPLATE_EXPERIMENT = {
 	name: '002_remove_templates',
 	control: 'control',
@@ -538,11 +536,7 @@ export const ONBOARDING_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [
-	TEMPLATE_EXPERIMENT.name,
-	AUTO_INSERT_ACTION_EXPERIMENT.name,
-	ONBOARDING_EXPERIMENT.name,
-];
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 

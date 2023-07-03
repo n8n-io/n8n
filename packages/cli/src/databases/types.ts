@@ -18,7 +18,6 @@ type MigrationFn = (ctx: MigrationContext) => Promise<void>;
 export interface ReversibleMigration {
 	up: MigrationFn;
 	down: MigrationFn;
-	transaction?: false;
 }
 
 export interface IrreversibleMigration {

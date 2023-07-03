@@ -426,3 +426,12 @@ export declare namespace VariablesRequest {
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
 	type Delete = Get;
 }
+
+// ----------------------------------
+//           /variables
+// ----------------------------------
+//
+export declare namespace WorkflowWithVersionRequest {
+	type GetAll = AuthenticatedRequest;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { versionId?: string }>;
+}

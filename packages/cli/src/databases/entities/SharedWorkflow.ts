@@ -3,7 +3,6 @@ import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
 import { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
-import { idStringifier } from '../utils/transformers';
 
 @Entity()
 export class SharedWorkflow extends AbstractEntity {
@@ -22,6 +21,6 @@ export class SharedWorkflow extends AbstractEntity {
 	@ManyToOne('WorkflowEntity', 'shared')
 	workflow: WorkflowEntity;
 
-	@PrimaryColumn({ transformer: idStringifier })
+	@PrimaryColumn()
 	workflowId: string;
 }

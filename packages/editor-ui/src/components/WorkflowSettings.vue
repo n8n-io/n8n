@@ -366,7 +366,7 @@ import {
 	useRootStore,
 	useWorkflowsEEStore,
 	useUsersStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores';
 import { createEventBus } from 'n8n-design-system';
 
@@ -439,7 +439,7 @@ export default defineComponent({
 			useSettingsStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
@@ -464,7 +464,7 @@ export default defineComponent({
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
 		readOnlyEnv(): boolean {
-			return this.versionControlStore.preferences.branchReadOnly;
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	async mounted() {

@@ -19,6 +19,10 @@
 			<AskAiModal />
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_WITH_VERSION_MODAL_KEY">
+			<WorkflowWithVersionModalKey />
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
 			<CredentialsSelectModal />
 		</ModalRoot>
@@ -112,9 +116,15 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="VERSION_CONTROL_PUSH_MODAL_KEY">
+		<ModalRoot :name="SOURCE_CONTROL_PUSH_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<VersionControlPushModal :modalName="modalName" :data="data" />
+				<SourceControlPushModal :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_PULL_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlPullModal :modalName="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>
@@ -145,11 +155,15 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	ASK_AI_MODAL_KEY,
+	WORKFLOW_WITH_VERSION_MODAL_KEY,
 	VERSION_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
 import AskAiModal from './AskAiModal.vue';
+import WorkflowWithVersionModalKey from './WorkflowWithVersion.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from './ChangePasswordModal.vue';
@@ -171,13 +185,15 @@ import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
-import VersionControlPushModal from '@/components/VersionControlPushModal.ee.vue';
+import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
+import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
 
 export default defineComponent({
 	name: 'Modals',
 	components: {
 		AboutModal,
 		AskAiModal,
+		WorkflowWithVersionModalKey,
 		ActivationModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
@@ -199,7 +215,8 @@ export default defineComponent({
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
-		VersionControlPushModal,
+		SourceControlPushModal,
+		SourceControlPullModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -209,6 +226,7 @@ export default defineComponent({
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
 		ASK_AI_MODAL_KEY,
+		WORKFLOW_WITH_VERSION_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
@@ -224,7 +242,8 @@ export default defineComponent({
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
-		VERSION_CONTROL_PUSH_MODAL_KEY,
+		SOURCE_CONTROL_PUSH_MODAL_KEY,
+		SOURCE_CONTROL_PULL_MODAL_KEY,
 	}),
 });
 </script>

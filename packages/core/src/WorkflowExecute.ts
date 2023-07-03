@@ -20,6 +20,7 @@ import type {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
+	IPairedItemData,
 	IPinData,
 	IRun,
 	IRunData,
@@ -40,7 +41,7 @@ import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import { ElasticSearchCoreClient } from './elasticSearchCore';
-import { S3 } from 'aws-sdk';
+import { S3Client, PutObjectCommand, PutObjectCommandInput } from '@aws-sdk/client-s3';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -973,32 +974,35 @@ export class WorkflowExecute {
 								workflowId: workflow.id,
 							});
 
-							if (nodeSuccessData) {
-								// Check if the output data contains pairedItem data
+							if (nodeSuccessData?.length) {
+								// Check if the output data contains pairedItem data and if not try
+								// to automatically fix it
+
+								const isSingleInputAndOutput =
+									executionData.data.main.length === 1 && executionData.data.main[0]?.length === 1;
+
+								const isSameNumberOfItems =
+									nodeSuccessData.length === 1 &&
+									executionData.data.main.length === 1 &&
+									executionData.data.main[0]?.length === nodeSuccessData[0].length;
+
 								checkOutputData: for (const outputData of nodeSuccessData) {
 									if (outputData === null) {
 										continue;
 									}
 									for (const [index, item] of outputData.entries()) {
-										if (!item.pairedItem) {
+										if (item.pairedItem === undefined) {
 											// The pairedItem data is missing, so check if it can get automatically fixed
-											if (
-												executionData.data.main.length === 1 &&
-												executionData.data.main[0]?.length === 1
-											) {
+											if (isSingleInputAndOutput) {
 												// The node has one input and one incoming item, so we know
 												// that all items must originate from that single
 												item.pairedItem = {
 													item: 0,
 												};
-											} else if (
-												nodeSuccessData.length === 1 &&
-												executionData.data.main.length === 1 &&
-												executionData.data.main[0]?.length === nodeSuccessData[0].length
-											) {
-												// The node has one input and one output. The number of items on both is
-												// identical so we can make the reasonable assumption that each of the input
-												// items is the origin of the corresponding output items
+											} else if (isSameNumberOfItems) {
+												// The number of oncoming and outcoming items is identical so we can
+												// make the reasonable assumption that each of the input items
+												// is the origin of the corresponding output items
 												item.pairedItem = {
 													item: index,
 												};
@@ -1020,10 +1024,26 @@ export class WorkflowExecute {
 
 							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
 								if (executionData.node.alwaysOutputData === true) {
+									const pairedItem: IPairedItemData[] = [];
+
+									// Get pairedItem from all input items
+									executionData.data.main.forEach((inputData, inputIndex) => {
+										if (!inputData) {
+											return;
+										}
+										inputData.forEach((item, itemIndex) => {
+											pairedItem.push({
+												item: itemIndex,
+												input: inputIndex,
+											});
+										});
+									});
+
 									nodeSuccessData = nodeSuccessData || [];
 									nodeSuccessData[0] = [
 										{
 											json: {},
+											pairedItem,
 										},
 									];
 								}
@@ -1330,7 +1350,12 @@ export class WorkflowExecute {
 		const executionId: string =
 			this.additionalData.executionId ?? 'unknown_execution' + Date.now().toString();
 		await this.storeFullDataInElasticSearch(executionId, fullRunData); // Store in Elastic
-		this.storeFullDataInS3(executionId, fullRunData.data.resultData.error, fullRunData);
+		await this.storeFullDataInS3(
+			workflow.id,
+			executionId,
+			fullRunData.data.resultData.error,
+			fullRunData,
+		);
 		return fullRunData;
 	}
 
@@ -1351,7 +1376,8 @@ export class WorkflowExecute {
 		await client.addDocument(executionId, fullRunData.data.resultData.runData);
 	}
 
-	private storeFullDataInS3(
+	private async storeFullDataInS3(
+		workflowId: string | undefined,
 		executionId: string,
 		executionError: ExecutionError | undefined,
 		fullRunData: IRun,
@@ -1371,6 +1397,7 @@ export class WorkflowExecute {
 		// aws s3 url should look like this
 		// https://aws.amazon.com/?accessKeyId=yourAccessKey&secretAccessKey=yourSecretKey&region=yourRegion&bucketName=YourBucket
 		const awsUrl = new URL(s3_configuration);
+		workflowId = workflowId ?? 'unknownWorkflowId';
 
 		const accessKeyId: string | undefined = awsUrl.searchParams.get('accessKeyId') || undefined;
 		const bucket: string | undefined = awsUrl.searchParams.get('bucket') || undefined;
@@ -1386,10 +1413,12 @@ export class WorkflowExecute {
 			return;
 		}
 
-		const s3: S3 = new S3({
-			accessKeyId,
-			secretAccessKey,
+		const s3: S3Client = new S3Client({
 			region,
+			credentials: {
+				accessKeyId,
+				secretAccessKey,
+			},
 		});
 
 		// get today's date and format it as YYYY-MM-DD
@@ -1399,24 +1428,23 @@ export class WorkflowExecute {
 		// Determine if status is successful
 		const status: string = executionError ? 'failed' : 'succeeded';
 
-		const pathAndKey = `${formattedDate}/${status}/${executionId}`;
+		const pathAndKey = `${formattedDate}/${workflowId}/${status}/${executionId}`;
 
-		const awsParams: S3.PutObjectRequest = {
+		const uploadParams: PutObjectCommandInput = {
 			Bucket: bucket,
 			Key: pathAndKey,
 			Body: JSON.stringify(fullRunData),
 		};
 
-		s3.putObject(awsParams, function (error, data) {
-			if (error) {
-				Logger.error(
-					`AWS S3: Could not insert execution ${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
-				);
-			} else {
-				Logger.debug(
-					`AWS S3: Added Execution:${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
-				);
-			}
-		});
+		try {
+			await s3.send(new PutObjectCommand(uploadParams));
+			Logger.debug(
+				`AWS S3: Added Execution:${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+			);
+		} catch {
+			Logger.error(
+				`AWS S3: Could not insert execution ${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+			);
+		}
 	}
 }

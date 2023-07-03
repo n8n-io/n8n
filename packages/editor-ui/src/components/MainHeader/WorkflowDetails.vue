@@ -133,10 +133,12 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_WITH_VERSION_MODAL_KEY,
 } from '@/constants';
 
 import ShortenName from '@/components/ShortenName.vue';
@@ -151,7 +153,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage } from '@/composables';
+import { useTitleChange, useToast, useMessage, useLoadingService } from '@/composables';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import {
 	useUIStore,
@@ -161,11 +163,13 @@ import {
 	useTagsStore,
 	useUsersStore,
 	useUsageStore,
+	useSourceControlStore,
 } from '@/stores';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system';
 import { useCloudPlanStore } from '@/stores';
+import { nodeViewEventBus } from '@/event-bus';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -196,7 +200,10 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const loadingService = useLoadingService();
+
 		return {
+			loadingService,
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
@@ -210,6 +217,7 @@ export default defineComponent({
 			tagsEditBus: createEventBus(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			eventBus: createEventBus(),
 			EnterpriseEditionFeature,
 		};
 	},
@@ -223,6 +231,7 @@ export default defineComponent({
 			useWorkflowsStore,
 			useUsersStore,
 			useCloudPlanStore,
+			useSourceControlStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -290,19 +299,21 @@ export default defineComponent({
 					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
 				});
 
-				actions.push(
-					{
-						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-						label: this.$locale.baseText('menuActions.importFromUrl'),
-						disabled: !this.onWorkflowPage || this.onExecutionsTab,
-					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-						label: this.$locale.baseText('menuActions.importFromFile'),
-						disabled: !this.onWorkflowPage || this.onExecutionsTab,
-					},
-				);
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+					label: this.$locale.baseText('menuActions.importFromUrl'),
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
+				});
 			}
+
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.PUSH,
+				label: this.$locale.baseText('menuActions.push'),
+				disabled:
+					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+					!this.onWorkflowPage ||
+					this.onExecutionsTab,
+			});
 
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
@@ -317,6 +328,14 @@ export default defineComponent({
 					disabled: !this.onWorkflowPage || this.isNewWorkflow,
 					customClass: this.$style.deleteItem,
 					divided: true,
+				});
+			}
+
+			if (!this.readOnly) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS,
+					label: this.$locale.baseText('menuActions.viewWorkflowVersions'),
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
 				});
 			}
 
@@ -445,7 +464,7 @@ export default defineComponent({
 					return;
 				}
 
-				this.$root.$emit('importWorkflowData', { data: workflowData });
+				nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
 			};
 
 			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
@@ -505,12 +524,36 @@ export default defineComponent({
 							},
 						)) as MessageBoxInputData;
 
-						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
+						nodeViewEventBus.emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
 					(this.$refs.importFile as HTMLInputElement).click();
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.PUSH: {
+					this.loadingService.startLoading();
+					try {
+						await this.onSaveButtonClick();
+
+						const status = await this.sourceControlStore.getAggregatedStatus();
+						const workflowStatus = status.filter(
+							(s) =>
+								(s.id === this.currentWorkflowId && s.type === 'workflow') || s.type !== 'workflow',
+						);
+
+						this.uiStore.openModalWithData({
+							name: SOURCE_CONTROL_PUSH_MODAL_KEY,
+							data: { eventBus: this.eventBus, status: workflowStatus },
+						});
+					} catch (error) {
+						this.showError(error, this.$locale.baseText('error'));
+					} finally {
+						this.loadingService.stopLoading();
+						this.loadingService.setLoadingText(this.$locale.baseText('genericHelpers.loading'));
+					}
+
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.SETTINGS: {
@@ -553,6 +596,12 @@ export default defineComponent({
 					});
 
 					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					break;
+				}
+
+				case WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS: {
+					// const workflowData = await this.getWorkflowWithVersion(this.currentWorkflowId);
+					this.uiStore.openModal(WORKFLOW_WITH_VERSION_MODAL_KEY);
 					break;
 				}
 				default:

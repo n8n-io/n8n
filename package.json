@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.233.0",
+  "version": "0.234.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -34,8 +34,8 @@
     "test:e2e:all": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.363.0",
     "@elastic/elasticsearch": "^8.8.0",
-    "aws-sdk": "^2.1394.0",
     "n8n": "workspace:*"
   },
   "devDependencies": {
@@ -96,7 +96,9 @@
     "patchedDependencies": {
       "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",
-      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch"
+      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch",
+      "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch",
+      "typeorm@0.3.12": "patches/typeorm@0.3.12.patch"
     }
   }
 }
