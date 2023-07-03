@@ -343,6 +343,14 @@ export class SourceControlService {
 		} else if (statusResult.created.find((e) => e === fileName)) status = 'created';
 		else if (statusResult.deleted.find((e) => e === fileName)) status = 'deleted';
 		else if (statusResult.modified.find((e) => e === fileName)) status = 'modified';
+		else if (statusResult.ignored?.find((e) => e === fileName)) status = 'ignored';
+		else if (statusResult.renamed.find((e) => e.to === fileName)) status = 'renamed';
+		else if (statusResult.staged.find((e) => e === fileName)) status = 'staged';
+		else {
+			LoggerProxy.debug(
+				`Unknown status for file ${fileName} in status result ${JSON.stringify(statusResult)}`,
+			);
+		}
 
 		if (fileName.startsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
 			type = 'workflow';
