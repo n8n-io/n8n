@@ -354,7 +354,6 @@ export const predefinedNodesTypes: INodeTypeData = {
 				icon: 'fa:clone',
 				group: ['transform'],
 				version: [1, 2],
-				forceInputNodeExecution: '={{ $version === 1 }}',
 				requiredInputs: '={{ $version === 2 ? 1 : undefined }}',
 				description: 'Merges data of multiple streams once data of both is available',
 				defaults: {
@@ -748,7 +747,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 	{
 		description:
-			'should run complicated multi node workflow where multiple Merge-Node have missing data and complex dependency structure (Old Merge-Node behavior - forceInputNodeExecution=true)',
+			'should run complicated multi node workflow where multiple Merge-Node have missing data and complex dependency structure',
 		input: {
 			workflowData: {
 				nodes: [
@@ -800,7 +799,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						name: 'IF3',
 						type: 'n8n-nodes-base.if',
 						typeVersion: 1,
-						position: [620, 400],
+						position: [620, 1100],
 					},
 					{
 						parameters: {},
@@ -1100,11 +1099,11 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 			nodeExecutionOrder: [
 				'Start',
 				'Set1',
-				'IF3',
-				'IF4',
 				'IF1',
 				'IF2',
+				'IF3',
 				'Merge2',
+				'IF4',
 				'Merge1',
 				'Merge4',
 				'Merge3',
@@ -1146,588 +1145,6 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 							test: 'a',
 						},
 						{},
-						{
-							test: 'a',
-						},
-					],
-				],
-			},
-		},
-	},
-	{
-		description:
-			'should run keep on executing even if data from input 1 is missing (New Merge-Node behavior - No force execution)',
-		input: {
-			workflowData: {
-				nodes: [
-					{
-						parameters: {},
-						id: '9c0cb647-5d60-40dc-b791-4946ee260a5d',
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						position: [180, 240],
-					},
-					{
-						parameters: {
-							values: {
-								string: [
-									{
-										name: 'test',
-										value: 'a',
-									},
-								],
-							},
-							options: {},
-						},
-						id: '2bed3b26-0907-465b-a416-9dc993c2e302',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [400, 240],
-					},
-					{
-						parameters: {
-							conditions: {
-								string: [
-									{
-										value1: '={{ $json["test"] }}',
-										value2: 'b',
-									},
-								],
-							},
-						},
-						id: 'eca22a12-fb0c-4a4f-ab97-74544c178714',
-						name: 'IF',
-						type: 'n8n-nodes-base.if',
-						typeVersion: 1,
-						position: [620, 240],
-					},
-					{
-						parameters: {},
-						id: '8d63caea-8d89-450e-87ae-6097b9821a70',
-						name: 'NoOp',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						position: [860, 160],
-					},
-					{
-						parameters: {},
-						id: 'bd0e79e4-7b7a-4016-ace3-6f54f46b41c3',
-						name: 'NoOp1',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						position: [860, 300],
-					},
-					{
-						parameters: {},
-						id: '975966f6-8e59-41d8-a69e-7223476a7c50',
-						name: 'Merge',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [1140, 220],
-					},
-				],
-				connections: {
-					Start: {
-						main: [
-							[
-								{
-									node: 'Set',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					Set: {
-						main: [
-							[
-								{
-									node: 'IF',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					IF: {
-						main: [
-							[
-								{
-									node: 'NoOp',
-									type: 'main',
-									index: 0,
-								},
-							],
-							[
-								{
-									node: 'NoOp1',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					NoOp: {
-						main: [
-							[
-								{
-									node: 'Merge',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					NoOp1: {
-						main: [
-							[
-								{
-									node: 'Merge',
-									type: 'main',
-									index: 1,
-								},
-							],
-						],
-					},
-				},
-			},
-		},
-		output: {
-			nodeExecutionOrder: ['Start', 'Set', 'IF', 'NoOp1', 'Merge'],
-			nodeData: {
-				Merge: [
-					[
-						{
-							test: 'a',
-						},
-					],
-				],
-			},
-		},
-	},
-	{
-		description:
-			'should run complicated multi node workflow where multiple Merge-Node have missing data and complex dependency structure (New Merge-Node behavior - forceInputNodeExecution=false)',
-		input: {
-			workflowData: {
-				nodes: [
-					{
-						parameters: {
-							conditions: {
-								string: [
-									{
-										value1: '={{ $json["test"] }}',
-										value2: 'b',
-									},
-								],
-							},
-						},
-						id: '21593a8c-07c1-435b-93a6-75317ee3bf67',
-						name: 'IF4',
-						type: 'n8n-nodes-base.if',
-						typeVersion: 1,
-						position: [880, 1240],
-					},
-					{
-						parameters: {},
-						id: 'a9af6b9f-011c-4b34-a367-0cfa5ad4c865',
-						name: 'NoOp2',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						position: [1320, 1060],
-					},
-					{
-						parameters: {},
-						id: '429d1a51-65f0-4701-af76-b73611774952',
-						name: 'Merge3',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [1100, 1060],
-					},
-					{
-						parameters: {
-							conditions: {
-								string: [
-									{
-										value1: '={{ $json["test"] }}',
-										value2: 'b',
-									},
-								],
-							},
-						},
-						id: 'ed08db0f-f747-4f87-af62-051fc53f955c',
-						name: 'IF3',
-						type: 'n8n-nodes-base.if',
-						typeVersion: 1,
-						position: [620, 1060],
-					},
-					{
-						parameters: {},
-						id: 'e80d2aac-cbd4-4e7c-9817-83db52a617d4',
-						name: 'Merge2',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [940, 900],
-					},
-					{
-						parameters: {
-							conditions: {
-								string: [
-									{
-										value1: '={{ $json["test"] }}',
-										value2: 'a',
-									},
-								],
-							},
-						},
-						id: '766dad6b-4326-41b5-a02a-0b3b7d879eb4',
-						name: 'IF2',
-						type: 'n8n-nodes-base.if',
-						typeVersion: 1,
-						position: [620, 900],
-					},
-					{
-						parameters: {},
-						id: '0c0cd5bb-eb44-48fe-b66a-54a3c541ea57',
-						name: 'Merge7',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [2180, 1180],
-					},
-					{
-						parameters: {},
-						id: '863a00e5-7be4-43f3-97da-07cf552d7c0e',
-						name: 'Merge6',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [1840, 1200],
-					},
-					{
-						parameters: {},
-						id: '8855d0ca-1deb-4ad8-958b-2379d3a87160',
-						name: 'Merge5',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [1600, 1040],
-					},
-					{
-						parameters: {},
-						id: 'ea37e388-c77a-4a2f-a527-4585f24371d5',
-						name: 'Merge4',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [1180, 880],
-					},
-					{
-						parameters: {},
-						id: 'e3c814e9-9a92-4e12-96d5-85634fe76dc9',
-						name: 'Merge1',
-						type: 'n8n-nodes-base.merge',
-						typeVersion: 2,
-						position: [940, 720],
-					},
-					{
-						parameters: {
-							conditions: {
-								string: [
-									{
-										value1: '={{ $json["test"] }}',
-										value2: 'b',
-									},
-								],
-							},
-						},
-						id: 'a21a3932-8a3f-464f-8393-309d3233433a',
-						name: 'IF1',
-						type: 'n8n-nodes-base.if',
-						typeVersion: 1,
-						position: [620, 720],
-					},
-					{
-						parameters: {
-							values: {
-								string: [
-									{
-										name: 'test',
-										value: 'a',
-									},
-								],
-							},
-							options: {},
-						},
-						id: '12d33a38-baeb-41de-aea0-d8a7477f5aa6',
-						name: 'Set1',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [400, 720],
-					},
-					{
-						parameters: {},
-						id: '41589b0b-0521-41ae-b0c6-80a016af803e',
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						position: [160, 240],
-					},
-				],
-				connections: {
-					IF4: {
-						main: [
-							[
-								{
-									node: 'Merge3',
-									type: 'main',
-									index: 1,
-								},
-							],
-							[
-								{
-									node: 'Merge6',
-									type: 'main',
-									index: 1,
-								},
-							],
-						],
-					},
-					NoOp2: {
-						main: [
-							[
-								{
-									node: 'Merge5',
-									type: 'main',
-									index: 1,
-								},
-							],
-						],
-					},
-					Merge3: {
-						main: [
-							[
-								{
-									node: 'NoOp2',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					IF3: {
-						main: [
-							[
-								{
-									node: 'Merge3',
-									type: 'main',
-									index: 0,
-								},
-							],
-							[
-								{
-									node: 'IF4',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					Merge2: {
-						main: [
-							[
-								{
-									node: 'Merge4',
-									type: 'main',
-									index: 1,
-								},
-							],
-						],
-					},
-					IF2: {
-						main: [
-							[
-								{
-									node: 'Merge2',
-									type: 'main',
-									index: 0,
-								},
-							],
-							[
-								{
-									node: 'Merge2',
-									type: 'main',
-									index: 1,
-								},
-							],
-						],
-					},
-					Merge6: {
-						main: [
-							[
-								{
-									node: 'Merge7',
-									type: 'main',
-									index: 1,
-								},
-							],
-						],
-					},
-					Merge5: {
-						main: [
-							[
-								{
-									node: 'Merge6',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					Merge4: {
-						main: [
-							[
-								{
-									node: 'Merge5',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					Merge1: {
-						main: [
-							[
-								{
-									node: 'Merge4',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					IF1: {
-						main: [
-							[
-								{
-									node: 'Merge1',
-									type: 'main',
-									index: 0,
-								},
-							],
-							[
-								{
-									node: 'Merge1',
-									type: 'main',
-									index: 1,
-								},
-							],
-						],
-					},
-					Set1: {
-						main: [
-							[
-								{
-									node: 'IF1',
-									type: 'main',
-									index: 0,
-								},
-								{
-									node: 'IF2',
-									type: 'main',
-									index: 0,
-								},
-								{
-									node: 'IF3',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-					Start: {
-						main: [
-							[
-								{
-									node: 'Set1',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-				},
-			},
-		},
-		output: {
-			nodeExecutionOrder: [
-				'Start',
-				'Set1',
-				'IF1',
-				'IF2',
-				'IF3',
-				'IF4',
-				'Merge1',
-				'Merge2',
-				'Merge4',
-				'Merge5',
-				'Merge6',
-				'Merge7',
-			],
-			nodeData: {
-				Merge1: [
-					[
-						{
-							test: 'a',
-						},
-					],
-				],
-				Merge2: [
-					[
-						{
-							test: 'a',
-						},
-					],
-				],
-				Merge4: [
-					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
-					],
-				],
-				Merge5: [
-					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
-					],
-				],
-				Merge6: [
-					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
-					],
-				],
-				Merge7: [
-					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
 						{
 							test: 'a',
 						},
@@ -1956,18 +1373,18 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 			nodeExecutionOrder: [
 				'Start',
 				'Set1',
-				'IF1',
-				'Set1',
-				'IF1',
-				'Set1',
-				'IF1',
 				'Set',
+				'IF1',
 				'IF',
-				'Merge1',
+				'Set1',
 				'Set',
+				'Merge1',
+				'IF1',
 				'IF',
-				'Merge1',
+				'Set1',
 				'Set',
+				'Merge1',
+				'IF1',
 				'IF',
 				'Merge',
 				'Merge2',
@@ -2148,7 +1565,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 		},
 	},
 	{
-		description: 'should run node twice when it has two input connections',
+		description: 'should run node twice when it has two input connections3',
 		input: {
 			// Leave the workflowData in regular JSON to be able to easily
 			// copy it from/in the UI
@@ -2241,12 +1658,12 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 				Set2: [
 					[
 						{
-							value1: 1,
 							value2: 2,
 						},
 					],
 					[
 						{
+							value1: 1,
 							value2: 2,
 						},
 					],
@@ -2501,10 +1918,10 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 			nodeExecutionOrder: [
 				'Start',
 				'Set1',
-				'Set3',
-				'Set4',
 				'Set2',
+				'Set3',
 				'Merge1',
+				'Set4',
 				'Merge2',
 				'Merge3',
 				'Merge4',
@@ -3406,7 +2823,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 		},
 	},
 	{
-		description: 'should execute nodes in the correct order, the most top-left one first',
+		description: 'should execute nodes in the correct order, breath-first & order of connection',
 		input: {
 			workflowData: {
 				nodes: [
@@ -3594,7 +3011,7 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'cf72f99c-612f-4b76-bc8e-d77612e4faa9',
 						name: 'Merge',
 						type: 'n8n-nodes-base.merge',
-						typeVersion: 2.1,
+						typeVersion: 2,
 						position: [1300, 220],
 					},
 					{
@@ -3905,28 +3322,28 @@ export const legacyWorkflowExecuteTests: WorkflowTestData[] = [
 			nodeExecutionOrder: [
 				'Start',
 				'Set',
+				'Wait',
+				'Wait1',
 				'Wait6',
 				'Wait7',
-				'Wait',
+				'Wait8',
+				'Wait9',
 				'Wait2',
+				'Wait4',
+				'Wait13',
+				'Wait3',
 				'Merge',
+				'Wait5',
+				'Wait10',
+				'Wait11',
 				'Wait14',
+				'Wait12',
 				'IF',
+				'IF1',
 				'Wait15',
 				'Wait16',
-				'IF1',
-				'Wait18',
 				'Wait17',
-				'Wait3',
-				'Wait10',
-				'Wait12',
-				'Wait11',
-				'Wait9',
-				'Wait13',
-				'Wait8',
-				'Wait1',
-				'Wait4',
-				'Wait5',
+				'Wait18',
 			],
 			nodeData: {},
 		},
@@ -4373,7 +3790,8 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 		},
 	},
 	{
-		description: 'should execute nodes in the correct order, the most top-left one first',
+		description:
+			'should execute nodes in the correct order, depth-first & the most top-left one first',
 		input: {
 			workflowData: {
 				nodes: [
@@ -4561,7 +3979,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						id: 'cf72f99c-612f-4b76-bc8e-d77612e4faa9',
 						name: 'Merge',
 						type: 'n8n-nodes-base.merge',
-						typeVersion: 2.1,
+						typeVersion: 2,
 						position: [1300, 220],
 					},
 					{
@@ -4896,6 +4314,937 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 				'Wait5',
 			],
 			nodeData: {},
+		},
+	},
+	{
+		description: 'should simply execute the next multi-input-node (totally ignoring the runIndex)',
+		input: {
+			workflowData: {
+				nodes: [
+					{
+						parameters: {
+							values: {
+								number: [
+									{
+										name: 'counter',
+										value: '={{ ($input.first().json.counter || 0) + 1 }}',
+									},
+								],
+							},
+							options: {},
+						},
+						id: '18191406-b56b-4388-9d4b-ff5b22fdc02c',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 2,
+						position: [640, 660],
+					},
+					{
+						parameters: {
+							conditions: {
+								number: [
+									{
+										value1: '={{ $json.counter }}',
+										value2: 3,
+									},
+								],
+							},
+						},
+						id: '0c6f239b-f9f5-4a20-b554-c69e7bc692b1',
+						name: 'IF',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [900, 660],
+					},
+					{
+						parameters: {},
+						id: '463194c3-4fcb-4da4-bba0-bc58462ac59a',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1180, 760],
+					},
+					{
+						parameters: {
+							values: {
+								number: [
+									{
+										name: 'counter',
+										value: '={{ ($input.first().json.counter || 0) + 1 }}',
+									},
+								],
+							},
+							options: {},
+						},
+						id: '8b5177c1-34ab-468f-8cb1-ff1d253562dc',
+						name: 'Set1',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 2,
+						position: [640, 320],
+					},
+					{
+						parameters: {
+							conditions: {
+								number: [
+									{
+										value1: '={{ $json.counter }}',
+										value2: 3,
+									},
+								],
+							},
+						},
+						id: '455663ab-bc3b-4674-9769-7428c85918c3',
+						name: 'IF1',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [860, 320],
+					},
+					{
+						parameters: {},
+						id: 'ffc0d327-5cbc-4cf3-8fb0-77c087b391c1',
+						name: 'Merge1',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1180, 420],
+					},
+					{
+						parameters: {},
+						id: '9a5b13a4-eba1-4a18-a4c6-36bedb07d975',
+						name: 'Merge2',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1500, 600],
+					},
+					{
+						parameters: {},
+						id: '89a78e50-2ec6-48bf-be5f-3838600cd08a',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						position: [-20, 700],
+					},
+				],
+				connections: {
+					Set: {
+						main: [
+							[
+								{
+									node: 'IF',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					IF: {
+						main: [
+							[
+								{
+									node: 'Set',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Merge1',
+									type: 'main',
+									index: 1,
+								},
+							],
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Merge: {
+						main: [
+							[
+								{
+									node: 'Merge2',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					Set1: {
+						main: [
+							[
+								{
+									node: 'IF1',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					IF1: {
+						main: [
+							[
+								{
+									node: 'Set1',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Merge1',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Merge1: {
+						main: [
+							[
+								{
+									node: 'Merge2',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Start: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 1,
+								},
+								{
+									node: 'Set1',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'Set',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			},
+		},
+		output: {
+			nodeExecutionOrder: [
+				'Start',
+				'Set1',
+				'IF1',
+				'Set1',
+				'IF1',
+				'Set1',
+				'IF1',
+				'Set',
+				'IF',
+				'Merge1',
+				'Set',
+				'IF',
+				'Merge1',
+				'Set',
+				'IF',
+				'Merge',
+				'Merge2',
+				'Merge2',
+			],
+			nodeData: {
+				Start: [[{}]],
+				Set1: [
+					[
+						{
+							counter: 1,
+						},
+					],
+					[
+						{
+							counter: 2,
+						},
+					],
+					[
+						{
+							counter: 3,
+						},
+					],
+				],
+				Set: [
+					[
+						{
+							counter: 1,
+						},
+					],
+					[
+						{
+							counter: 2,
+						},
+					],
+					[
+						{
+							counter: 3,
+						},
+					],
+				],
+				IF1: [
+					[
+						{
+							counter: 1,
+						},
+					],
+					[
+						{
+							counter: 2,
+						},
+					],
+					[],
+				],
+				IF: [
+					[
+						{
+							counter: 1,
+						},
+					],
+					[
+						{
+							counter: 2,
+						},
+					],
+					[],
+				],
+				Merge1: [
+					[
+						{
+							counter: 1,
+						},
+						{
+							counter: 1,
+						},
+					],
+					[
+						{
+							counter: 2,
+						},
+						{
+							counter: 2,
+						},
+					],
+				],
+				Merge: [
+					[
+						{
+							counter: 3,
+						},
+						{},
+					],
+				],
+				Merge2: [
+					[
+						{
+							counter: 1,
+						},
+						{
+							counter: 1,
+						},
+						{
+							counter: 3,
+						},
+						{},
+					],
+					[
+						{
+							counter: 2,
+						},
+						{
+							counter: 2,
+						},
+					],
+				],
+			},
+		},
+	},
+	{
+		description: 'should run keep on executing even if data from input 1 is missing',
+		input: {
+			workflowData: {
+				nodes: [
+					{
+						parameters: {},
+						id: '9c0cb647-5d60-40dc-b791-4946ee260a5d',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						position: [180, 240],
+					},
+					{
+						parameters: {
+							values: {
+								string: [
+									{
+										name: 'test',
+										value: 'a',
+									},
+								],
+							},
+							options: {},
+						},
+						id: '2bed3b26-0907-465b-a416-9dc993c2e302',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [400, 240],
+					},
+					{
+						parameters: {
+							conditions: {
+								string: [
+									{
+										value1: '={{ $json["test"] }}',
+										value2: 'b',
+									},
+								],
+							},
+						},
+						id: 'eca22a12-fb0c-4a4f-ab97-74544c178714',
+						name: 'IF',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [620, 240],
+					},
+					{
+						parameters: {},
+						id: '8d63caea-8d89-450e-87ae-6097b9821a70',
+						name: 'NoOp',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [860, 160],
+					},
+					{
+						parameters: {},
+						id: 'bd0e79e4-7b7a-4016-ace3-6f54f46b41c3',
+						name: 'NoOp1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [860, 300],
+					},
+					{
+						parameters: {},
+						id: '975966f6-8e59-41d8-a69e-7223476a7c50',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1140, 220],
+					},
+				],
+				connections: {
+					Start: {
+						main: [
+							[
+								{
+									node: 'Set',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Set: {
+						main: [
+							[
+								{
+									node: 'IF',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					IF: {
+						main: [
+							[
+								{
+									node: 'NoOp',
+									type: 'main',
+									index: 0,
+								},
+							],
+							[
+								{
+									node: 'NoOp1',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					NoOp: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					NoOp1: {
+						main: [
+							[
+								{
+									node: 'Merge',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+				},
+			},
+		},
+		output: {
+			nodeExecutionOrder: ['Start', 'Set', 'IF', 'NoOp1', 'Merge'],
+			nodeData: {
+				Merge: [
+					[
+						{
+							test: 'a',
+						},
+					],
+				],
+			},
+		},
+	},
+	{
+		description:
+			'should run complicated multi node workflow where multiple Merge-Node have missing data and complex dependency structure',
+		input: {
+			workflowData: {
+				nodes: [
+					{
+						parameters: {
+							conditions: {
+								string: [
+									{
+										value1: '={{ $json["test"] }}',
+										value2: 'b',
+									},
+								],
+							},
+						},
+						id: '21593a8c-07c1-435b-93a6-75317ee3bf67',
+						name: 'IF4',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [880, 1240],
+					},
+					{
+						parameters: {},
+						id: 'a9af6b9f-011c-4b34-a367-0cfa5ad4c865',
+						name: 'NoOp2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [1320, 1060],
+					},
+					{
+						parameters: {},
+						id: '429d1a51-65f0-4701-af76-b73611774952',
+						name: 'Merge3',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1100, 1060],
+					},
+					{
+						parameters: {
+							conditions: {
+								string: [
+									{
+										value1: '={{ $json["test"] }}',
+										value2: 'b',
+									},
+								],
+							},
+						},
+						id: 'ed08db0f-f747-4f87-af62-051fc53f955c',
+						name: 'IF3',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [620, 1060],
+					},
+					{
+						parameters: {},
+						id: 'e80d2aac-cbd4-4e7c-9817-83db52a617d4',
+						name: 'Merge2',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [940, 900],
+					},
+					{
+						parameters: {
+							conditions: {
+								string: [
+									{
+										value1: '={{ $json["test"] }}',
+										value2: 'a',
+									},
+								],
+							},
+						},
+						id: '766dad6b-4326-41b5-a02a-0b3b7d879eb4',
+						name: 'IF2',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [620, 900],
+					},
+					{
+						parameters: {},
+						id: '0c0cd5bb-eb44-48fe-b66a-54a3c541ea57',
+						name: 'Merge7',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [2180, 1180],
+					},
+					{
+						parameters: {},
+						id: '863a00e5-7be4-43f3-97da-07cf552d7c0e',
+						name: 'Merge6',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1840, 1200],
+					},
+					{
+						parameters: {},
+						id: '8855d0ca-1deb-4ad8-958b-2379d3a87160',
+						name: 'Merge5',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1600, 1040],
+					},
+					{
+						parameters: {},
+						id: 'ea37e388-c77a-4a2f-a527-4585f24371d5',
+						name: 'Merge4',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [1180, 880],
+					},
+					{
+						parameters: {},
+						id: 'e3c814e9-9a92-4e12-96d5-85634fe76dc9',
+						name: 'Merge1',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 2,
+						position: [940, 720],
+					},
+					{
+						parameters: {
+							conditions: {
+								string: [
+									{
+										value1: '={{ $json["test"] }}',
+										value2: 'b',
+									},
+								],
+							},
+						},
+						id: 'a21a3932-8a3f-464f-8393-309d3233433a',
+						name: 'IF1',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 1,
+						position: [620, 720],
+					},
+					{
+						parameters: {
+							values: {
+								string: [
+									{
+										name: 'test',
+										value: 'a',
+									},
+								],
+							},
+							options: {},
+						},
+						id: '12d33a38-baeb-41de-aea0-d8a7477f5aa6',
+						name: 'Set1',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [400, 720],
+					},
+					{
+						parameters: {},
+						id: '41589b0b-0521-41ae-b0c6-80a016af803e',
+						name: 'Start',
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						position: [160, 240],
+					},
+				],
+				connections: {
+					IF4: {
+						main: [
+							[
+								{
+									node: 'Merge3',
+									type: 'main',
+									index: 1,
+								},
+							],
+							[
+								{
+									node: 'Merge6',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					NoOp2: {
+						main: [
+							[
+								{
+									node: 'Merge5',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					Merge3: {
+						main: [
+							[
+								{
+									node: 'NoOp2',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					IF3: {
+						main: [
+							[
+								{
+									node: 'Merge3',
+									type: 'main',
+									index: 0,
+								},
+							],
+							[
+								{
+									node: 'IF4',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Merge2: {
+						main: [
+							[
+								{
+									node: 'Merge4',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					IF2: {
+						main: [
+							[
+								{
+									node: 'Merge2',
+									type: 'main',
+									index: 0,
+								},
+							],
+							[
+								{
+									node: 'Merge2',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					Merge6: {
+						main: [
+							[
+								{
+									node: 'Merge7',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					Merge5: {
+						main: [
+							[
+								{
+									node: 'Merge6',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Merge4: {
+						main: [
+							[
+								{
+									node: 'Merge5',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Merge1: {
+						main: [
+							[
+								{
+									node: 'Merge4',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					IF1: {
+						main: [
+							[
+								{
+									node: 'Merge1',
+									type: 'main',
+									index: 0,
+								},
+							],
+							[
+								{
+									node: 'Merge1',
+									type: 'main',
+									index: 1,
+								},
+							],
+						],
+					},
+					Set1: {
+						main: [
+							[
+								{
+									node: 'IF1',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'IF2',
+									type: 'main',
+									index: 0,
+								},
+								{
+									node: 'IF3',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+					Start: {
+						main: [
+							[
+								{
+									node: 'Set1',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
+				},
+			},
+		},
+		output: {
+			nodeExecutionOrder: [
+				'Start',
+				'Set1',
+				'IF1',
+				'IF2',
+				'IF3',
+				'IF4',
+				'Merge1',
+				'Merge2',
+				'Merge4',
+				'Merge5',
+				'Merge6',
+				'Merge7',
+			],
+			nodeData: {
+				Merge1: [
+					[
+						{
+							test: 'a',
+						},
+					],
+				],
+				Merge2: [
+					[
+						{
+							test: 'a',
+						},
+					],
+				],
+				Merge4: [
+					[
+						{
+							test: 'a',
+						},
+						{
+							test: 'a',
+						},
+					],
+				],
+				Merge5: [
+					[
+						{
+							test: 'a',
+						},
+						{
+							test: 'a',
+						},
+					],
+				],
+				Merge6: [
+					[
+						{
+							test: 'a',
+						},
+						{
+							test: 'a',
+						},
+						{
+							test: 'a',
+						},
+					],
+				],
+				Merge7: [
+					[
+						{
+							test: 'a',
+						},
+						{
+							test: 'a',
+						},
+						{
+							test: 'a',
+						},
+					],
+				],
+			},
 		},
 	},
 ];

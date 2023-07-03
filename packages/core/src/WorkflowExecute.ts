@@ -143,24 +143,8 @@ export class WorkflowExecute {
 		return this.processRunExecutionData(workflow);
 	}
 
-	forceInputNodeExecution(workflow: Workflow, node: INode): boolean {
-		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-		// Check if the incoming nodes should be forced to execute
-		let forceInputNodeExecution = nodeType.description.forceInputNodeExecution;
-		if (forceInputNodeExecution !== undefined) {
-			if (typeof forceInputNodeExecution === 'string') {
-				forceInputNodeExecution = !!workflow.expression.getSimpleParameterValue(
-					node,
-					forceInputNodeExecution,
-					this.mode,
-					this.additionalData.timezone,
-					{ $version: node.typeVersion },
-				);
-			}
-			return forceInputNodeExecution;
-		}
-		return false;
+	forceInputNodeExecution(workflow: Workflow): boolean {
+		return workflow.settings.executionOrder !== 'v1';
 	}
 
 	/**
@@ -555,8 +539,7 @@ export class WorkflowExecute {
 				// are already on the list to be processed.
 				// If that is not the case add it.
 
-				const node = workflow.getNode(connectionData.node);
-				const forceInputNodeExecution = this.forceInputNodeExecution(workflow, node!);
+				const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
 
 				for (
 					let inputIndex = 0;
@@ -775,6 +758,7 @@ export class WorkflowExecute {
 		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
+		const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
 
 		this.status = 'running';
 
@@ -938,8 +922,6 @@ export class WorkflowExecute {
 						continue;
 					}
 
-					const node = workflow.getNode(executionNode.name);
-
 					// Check if all the data which is needed to run the node is available
 					if (workflow.connectionsByDestinationNode.hasOwnProperty(executionNode.name)) {
 						// Check if the node has incoming connections
@@ -972,7 +954,7 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
-								if (this.forceInputNodeExecution(workflow, node!)) {
+								if (forceInputNodeExecution) {
 									// Check if it has the data for all the inputs
 									// The most nodes just have one but merge node for example has two and data
 									// of both inputs has to be available to be able to process the node.
@@ -1296,12 +1278,6 @@ export class WorkflowExecute {
 										);
 									}
 
-									const connectionDestinationNode = workflow.getNode(connectionData.node);
-									const forceInputNodeExecution = this.forceInputNodeExecution(
-										workflow,
-										connectionDestinationNode!,
-									);
-
 									if (
 										nodeSuccessData![outputIndex] &&
 										(nodeSuccessData![outputIndex].length !== 0 ||
@@ -1396,7 +1372,10 @@ export class WorkflowExecute {
 							);
 
 							// Check if the node is only allowed execute if all inputs received data
-							let requiredInputs = nodeType.description.requiredInputs;
+							let requiredInputs =
+								workflow.settings.executionOrder === 'v1'
+									? nodeType.description.requiredInputs
+									: undefined;
 							if (requiredInputs !== undefined) {
 								if (typeof requiredInputs === 'string') {
 									requiredInputs = workflow.expression.getSimpleParameterValue(
@@ -1453,7 +1432,7 @@ export class WorkflowExecute {
 								if (Array.isArray(requiredInputs)) {
 									// Specific inputs are required (array of input indexes)
 									let inputDataMissing = false;
-									for (const requiredInput of requiredInputs) {
+									for (const requiredInput of requiredInputs as number[]) {
 										if (!inputsWithData.includes(requiredInput)) {
 											inputDataMissing = true;
 											break;

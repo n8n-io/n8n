@@ -2366,7 +2366,9 @@
 		}
 	},
 	"active": false,
-	"settings": {},
+	"settings": {
+		"executionOrder": "v1"
+	},
 	"versionId": "6b37555c-fd78-4135-9c59-4912a71e18db",
 	"id": "1107",
 	"meta": {

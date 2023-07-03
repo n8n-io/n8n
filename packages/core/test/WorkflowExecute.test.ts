@@ -151,6 +151,7 @@ describe('WorkflowExecute', () => {
 					connections: testData.input.workflowData.connections,
 					active: false,
 					nodeTypes,
+					settings: testData.input.workflowData.settings,
 				});
 
 				const waitPromise = await createDeferredPromise<IRun>();
