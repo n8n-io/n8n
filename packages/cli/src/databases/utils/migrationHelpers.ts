@@ -96,11 +96,13 @@ export const wrapMigration = (migration: Migration) => {
 				dbType === 'sqlite' &&
 				process.env.MIGRATIONS_PRUNING_ENABLED === 'true'
 			) {
-				console.time('pruningData');
 				const dbFileSize = getSqliteDbFileSize();
 				if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
+					console.log(`DB Size not large enough: ${dbFileSize}`);
 					return;
 				}
+
+				console.time('pruningData');
 				const counting = (await queryRunner.query(
 					`select count(id) as rows from "${tablePrefix}execution_entity";`,
 				)) as Array<{ rows: number }>;
