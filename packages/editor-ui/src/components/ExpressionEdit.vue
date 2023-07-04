@@ -37,6 +37,7 @@
 								<span>
 									{{ $locale.baseText('expressionEdit.isJavaScript') }}
 								</span>
+								{{ ' ' }}
 								<n8n-link size="medium" :to="expressionsDocsUrl">
 									{{ $locale.baseText('expressionEdit.learnMore') }}
 								</n8n-link>

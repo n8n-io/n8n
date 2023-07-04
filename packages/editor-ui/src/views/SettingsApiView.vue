@@ -52,6 +52,7 @@
 						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
 					}}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-link :to="apiDocsURL" :newWindow="true" size="small">
 					{{
 						$locale.baseText(

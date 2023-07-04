@@ -189,7 +189,7 @@ const refreshBranches = async () => {
 			data-test-id="source-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
-				<i18n-t keypath="settings.sourceControl.description">
+				<i18n-t keypath="settings.sourceControl.description" tag="span">
 					<template #link>
 						<a :href="sourceControlDocsSetupUrl" target="_blank">
 							{{ locale.baseText('settings.sourceControl.description.link') }}
@@ -278,7 +278,7 @@ const refreshBranches = async () => {
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n-t keypath="settings.sourceControl.sshKeyDescription">
+					<i18n-t keypath="settings.sourceControl.sshKeyDescription" tag="span">
 						<template #link>
 							<a :href="sourceControlDocsSetupUrl" target="_blank">{{
 								locale.baseText('settings.sourceControl.sshKeyDescriptionLink')
@@ -340,7 +340,7 @@ const refreshBranches = async () => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n-t keypath="settings.sourceControl.readonly">
+						<i18n-t keypath="settings.sourceControl.readonly" tag="span">
 							<template #bold>
 								<strong>{{ locale.baseText('settings.sourceControl.readonly.bold') }}</strong>
 							</template>

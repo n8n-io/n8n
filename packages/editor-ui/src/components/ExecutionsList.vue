@@ -95,6 +95,7 @@
 								</span>
 								<i18n-t
 									v-if="!isWaitTillIndefinite(execution)"
+									tag="span"
 									:keypath="getStatusTextTranslationPath(execution)"
 								>
 									<template #status>

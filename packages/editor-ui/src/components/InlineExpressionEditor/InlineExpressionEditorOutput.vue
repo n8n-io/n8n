@@ -14,6 +14,7 @@
 			<n8n-text size="small" compact>
 				{{ $locale.baseText('parameterInput.isJavaScript') }}
 			</n8n-text>
+			{{ ' ' }}
 			<n8n-link
 				:class="$style['learn-more']"
 				size="small"

@@ -14,6 +14,7 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
 					</n8n-text>
+					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
 						{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
 					</n8n-link>

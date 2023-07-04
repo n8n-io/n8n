@@ -103,6 +103,10 @@
 		padding-top: 10px;
 		text-align: right;
 		box-sizing: border-box;
+
+		.button + .button {
+			margin-left: var(--spacing-2xs);
+		}
 	}
 
 	// 内容居中布局
