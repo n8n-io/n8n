@@ -447,8 +447,8 @@ export default defineComponent({
 			saveExecutionProgressOptions: [] as Array<{ key: string | boolean; value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean; value: string }>,
 			executionOrderOptions: [
-				{ key: 'legacy', value: 'Legacy' },
-				{ key: 'v1', value: 'Left to Right, Top to Bottom' },
+				{ key: 'legacy', value: 'v0 (legacy)' },
+				{ key: 'v1', value: 'v1 (recommended)' },
 			] as Array<{ key: string; value: string }>,
 			timezones: [] as Array<{ key: string; value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
