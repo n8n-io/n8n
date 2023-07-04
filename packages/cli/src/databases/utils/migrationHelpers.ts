@@ -1,11 +1,11 @@
 import { readFileSync, rmSync, statSync } from 'fs';
+import path from 'path';
 import { UserSettings } from 'n8n-core';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
 import { inTest } from '@/constants';
 import type { Migration, MigrationContext } from '@db/types';
-import path from 'path';
 
 const logger = getLogger();
 
@@ -50,28 +50,23 @@ export function loadSurveyFromDisk(): string | null {
 	}
 }
 
-let logFinishTimeout: NodeJS.Timeout;
+let runningMigrations = false;
 
-function logMigrationStart(migrationName: string, disableLogging = inTest): void {
-	if (disableLogging) return;
+function logMigrationStart(migrationName: string): void {
+	if (inTest) return;
 
-	if (!logFinishTimeout) {
+	if (!runningMigrations) {
 		logger.warn('Migrations in progress, please do NOT stop the process.');
+		runningMigrations = true;
 	}
 
 	logger.debug(`Starting migration ${migrationName}`);
-
-	clearTimeout(logFinishTimeout);
 }
 
-function logMigrationEnd(migrationName: string, disableLogging = inTest): void {
-	if (disableLogging) return;
+function logMigrationEnd(migrationName: string): void {
+	if (inTest) return;
 
 	logger.debug(`Finished migration ${migrationName}`);
-
-	logFinishTimeout = setTimeout(() => {
-		logger.warn('Migrations finished.');
-	}, 100);
 }
 
 export const wrapMigration = (migration: Migration) => {
