@@ -56,6 +56,7 @@ workflowsController.post(
 		Object.assign(newWorkflow, req.body);
 
 		newWorkflow.versionId = uuid();
+		newWorkflow.settings = { ...newWorkflow.settings, executionOrder: 'v1' };
 
 		await validateEntity(newWorkflow);
 
@@ -140,7 +141,7 @@ workflowsController.get(
 			!req.user.settings?.isOnboarded &&
 			(await isBelowOnboardingThreshold(req.user));
 
-		return { name, onboardingFlowEnabled };
+		return { name, onboardingFlowEnabled, settings: { executionOrder: 'v1' } };
 	}),
 );
 

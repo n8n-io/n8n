@@ -7,6 +7,7 @@ export async function getNewWorkflow(context: IRestApiContext, name?: string) {
 	return {
 		name: response.name,
 		onboardingFlowEnabled: response.onboardingFlowEnabled === true,
+		settings: response.defaultSettings,
 	};
 }
 
