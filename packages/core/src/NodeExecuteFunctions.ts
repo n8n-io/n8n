@@ -114,7 +114,7 @@ import type {
 import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import { Readable } from 'stream';
-import { access as fsAccess } from 'fs/promises';
+import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
@@ -129,6 +129,7 @@ import {
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getUserN8nFolderPath } from './UserSettings';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2251,6 +2252,18 @@ const getRequestHelperFunctions = (
 	},
 });
 
+const restrictedPaths = (process.env.RESTRICT_FILE_ACCESS_TO ?? '')
+	.split(';')
+	.map((path) => path.trim())
+	.filter((path) => path)
+	.concat(getUserN8nFolderPath());
+// TODO: add other folders here
+
+const isFilePathBlocked = (filePath: string) => {
+	const absolutePath = path.resolve(filePath);
+	return restrictedPaths.some((dir) => !path.relative(dir, absolutePath).includes('..'));
+};
+
 const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(filePath) {
 		try {
@@ -2258,11 +2271,25 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 		} catch (error) {
 			throw error.code === 'ENOENT'
 				? new NodeOperationError(node, error, {
-						message: `The file "${String(filePath)}" could not be accessed.`,
+						message: `The file "${filePath}" could not be accessed.`,
+						severity: 'warning',
 				  })
 				: error;
 		}
+		if (isFilePathBlocked(filePath)) {
+			throw new NodeOperationError(node, `The file "${String(filePath)}" could not be accessed.`, {
+				severity: 'warning',
+			});
+		}
 		return createReadStream(filePath);
+	},
+	async writeContentToFile(filePath, content, flag) {
+		if (isFilePathBlocked(filePath)) {
+			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
+				severity: 'warning',
+			});
+		}
+		return fsWriteFile(filePath, content, { encoding: 'binary', flag });
 	},
 });
 

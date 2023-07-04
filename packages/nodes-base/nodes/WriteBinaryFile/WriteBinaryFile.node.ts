@@ -6,10 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
-import { writeFile as fsWriteFile } from 'fs/promises';
 import type { Readable } from 'stream';
 
-import { checkFilePathAccess } from '@utils/utilities';
 import { allowedPathsNotice } from '@utils/descriptions';
 
 export class WriteBinaryFile implements INodeType {
@@ -77,8 +75,6 @@ export class WriteBinaryFile implements INodeType {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
-				checkFilePathAccess(fileName);
-
 				const options = this.getNodeParameter('options', 0, {});
 
 				const flag = options.append ? 'a' : 'w';
@@ -103,7 +99,7 @@ export class WriteBinaryFile implements INodeType {
 				}
 
 				// Write the file to disk
-				await fsWriteFile(fileName, fileContent, { encoding: 'binary', flag });
+				await this.helpers.writeContentToFile(fileName, fileContent, flag);
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old

@@ -7,7 +7,6 @@ import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
-import type { PathLike } from 'fs';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -670,7 +669,8 @@ interface JsonHelperFunctions {
 }
 
 export interface FileSystemHelperFunctions {
-	createReadStream(path: PathLike): Promise<Readable>;
+	createReadStream(path: string): Promise<Readable>;
+	writeContentToFile(path: string, content: Buffer | Readable, flag: 'a' | 'w'): Promise<void>;
 }
 
 export interface BinaryHelperFunctions {
