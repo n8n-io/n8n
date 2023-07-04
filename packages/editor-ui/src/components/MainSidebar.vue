@@ -171,11 +171,7 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return (
-				this.settingsStore.isUserManagementEnabled &&
-				this.usersStore.canUserAccessSidebarUserInfo &&
-				this.usersStore.currentUser !== null
-			);
+			return this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;

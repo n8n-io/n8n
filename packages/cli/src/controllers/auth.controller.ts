@@ -1,11 +1,7 @@
 import validator from 'validator';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import {
-	sanitizeUser,
-	withFeatureFlags,
-	isUserManagementEnabled,
-} from '@/UserManagement/UserManagementHelper';
+import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
@@ -160,8 +156,11 @@ export class AuthController {
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
-		const license = Container.get(License);
-		const isWithinUsersQuota = license.isWithinUsersLimitQuota();
+		const isWithinUsersQuota = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersQuota) {
+			throw new AuthError('Maximum number of users reached');
+		}
 
 		if (!inviterId || !inviteeId) {
 			this.logger.debug(
@@ -169,18 +168,6 @@ export class AuthController {
 				{ inviterId, inviteeId },
 			);
 			throw new BadRequestError('Invalid payload');
-		}
-
-		if (!isUserManagementEnabled()) {
-			this.logger.debug(
-				'Request to resolve signup token failed because user management is disabled',
-				{ inviterId, inviteeId },
-			);
-			throw new BadRequestError('User management is disabled');
-		}
-
-		if (!isWithinUsersQuota) {
-			throw new AuthError('Maximum number of users reached');
 		}
 
 		// Postgres validates UUID format

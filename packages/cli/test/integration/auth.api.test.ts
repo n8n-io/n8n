@@ -88,7 +88,7 @@ describe('POST /login', () => {
 	});
 
 	test('should throw AuthError for non-owner if not within users limit quota', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimitQuota').mockReturnValueOnce(false);
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
 		const member = await testDb.createUserShell(globalMemberRole);
 		try {
 			await authAgent(member).get('/login');
@@ -98,7 +98,7 @@ describe('POST /login', () => {
 	});
 
 	test('should not throw AuthError for owner if not within users limit quota', async () => {
-		jest.spyOn(Container.get(License), 'isWithinUsersLimitQuota').mockReturnValueOnce(false);
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
 		const ownerUser = await testDb.createUser({
 			password: randomValidPassword(),
 			globalRole: globalOwnerRole,

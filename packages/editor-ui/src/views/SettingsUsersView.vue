@@ -9,11 +9,7 @@
 					</template>
 					<div>
 						<n8n-button
-							:disabled="
-								!settingsStore.isUserManagementEnabled ||
-								ssoStore.isSamlLoginEnabled ||
-								!settingsStore.isWithinUserQuota
-							"
+							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isWithinUserQuota"
 							:label="$locale.baseText('settings.users.invite')"
 							@click="onInvite"
 							size="large"
@@ -34,10 +30,7 @@
 				@click="redirectToSetup"
 			/>
 		</div>
-		<div
-			v-else-if="!settingsStore.isUserManagementEnabled || !settingsStore.isWithinUserQuota"
-			:class="$style.setupInfoContainer"
-		>
+		<div v-else-if="!settingsStore.isWithinUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
@@ -58,7 +51,10 @@
 		-->
 		<div
 			:class="$style.usersContainer"
-			v-if="settingsStore.isWithinUserQuota || usersStore.allUsers.length > 1"
+			v-if="
+				!usersStore.showUMSetupWarning &&
+				(settingsStore.isWithinUserQuota || usersStore.allUsers.length > 1)
+			"
 		>
 			<n8n-users-list
 				:actions="usersListActions"
@@ -114,16 +110,13 @@ export default defineComponent({
 					label: this.$locale.baseText('settings.users.actions.copyInviteLink'),
 					value: 'copyInviteLink',
 					guard: (user) =>
-						this.settingsStore.isWithinUserQuota &&
-						this.settingsStore.isUserManagementEnabled &&
-						!user.firstName &&
-						!!user.inviteAcceptUrl,
+						this.settingsStore.isWithinUserQuota && !user.firstName && !!user.inviteAcceptUrl,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.reinvite'),
 					value: 'reinvite',
 					guard: (user) =>
-						this.settingsStore.isUserManagementEnabled &&
+						this.settingsStore.isWithinUserQuota &&
 						!user.firstName &&
 						this.settingsStore.isSmtpSetup,
 				},
@@ -134,8 +127,7 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
 					value: 'copyPasswordResetLink',
-					guard: () =>
-						this.settingsStore.isUserManagementEnabled && this.settingsStore.isWithinUserQuota,
+					guard: () => this.settingsStore.isWithinUserQuota,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),

@@ -49,6 +49,7 @@ export const RESPONSE_ERROR_MESSAGES = {
 	PACKAGE_DOES_NOT_CONTAIN_NODES: 'The specified package does not contain any nodes',
 	PACKAGE_LOADING_FAILED: 'The specified package could not be loaded',
 	DISK_IS_FULL: 'There appears to be insufficient disk space',
+	USERS_QUOTA_REACHED: 'Maximum number of users reached',
 };
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';

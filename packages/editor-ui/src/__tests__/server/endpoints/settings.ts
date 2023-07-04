@@ -56,7 +56,6 @@ const defaultSettings: IN8nUISettings = {
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
 	userManagement: {
-		enabled: true,
 		showSetupOnFirstLoad: true,
 		smtpSetup: true,
 		authenticationMethod: 'email',

@@ -105,7 +105,6 @@ import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
 	isSharingEnabled,
-	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
@@ -262,8 +261,7 @@ export class Server extends AbstractServer {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				enabled: isUserManagementEnabled(),
-				quota: -1,
+				quota: Container.get(License).getUsersLimit(),
 				showSetupOnFirstLoad:
 					config.getEnv('userManagement.disabled') === false &&
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -387,7 +385,7 @@ export class Server extends AbstractServer {
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binaryDataConfig.mode,
-			n8n_multi_user_allowed: isUserManagementEnabled(),
+			n8n_multi_user_allowed: true,
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
@@ -414,11 +412,9 @@ export class Server extends AbstractServer {
 	 * Returns the current settings for the frontend
 	 */
 	getSettingsForFrontend(): IN8nUISettings {
-		const license = Container.get(License);
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
-			enabled: isUserManagementEnabled(),
-			quota: license.getUsersLimit(),
+			quota: Container.get(License).getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.disabled') === false &&
@@ -582,7 +578,7 @@ export class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
-		setupPushHandler(restEndpoint, app, isUserManagementEnabled());
+		setupPushHandler(restEndpoint, app);
 
 		// Make sure that Vue history mode works properly
 		this.app.use(

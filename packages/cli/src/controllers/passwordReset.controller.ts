@@ -23,8 +23,11 @@ import { PasswordResetRequest } from '@/requests';
 import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
-import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
-import { UserService } from '../user/user.service';
+import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { UserService } from '@/user/user.service';
+import { License } from '@/License';
+import { Container } from 'typedi';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 @RestController()
 export class PasswordResetController {
@@ -103,6 +106,9 @@ export class PasswordResetController {
 			relations: ['authIdentities', 'globalRole'],
 		});
 
+		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+			throw new BadRequestError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
 			!(user?.globalRole.name === 'owner' || user?.settings?.allowSSOManualLogin === true)
@@ -116,7 +122,6 @@ export class PasswordResetController {
 		}
 
 		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
-
 		if (!user?.password || (ldapIdentity && user.disabled)) {
 			this.logger.debug(
 				'Request to send password reset email failed because no user was found for the provided email',
@@ -187,7 +192,9 @@ export class PasswordResetController {
 			resetPasswordToken,
 			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
 		});
-
+		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+			throw new BadRequestError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',

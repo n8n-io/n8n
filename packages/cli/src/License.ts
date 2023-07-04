@@ -12,6 +12,14 @@ import {
 } from './constants';
 import { Service } from 'typedi';
 
+type FeatureReturnType = Partial<{
+	planName: string;
+	licenseCount: number;
+	[LICENSE_QUOTAS.USERS_LIMIT]: number;
+	[LICENSE_QUOTAS.VARIABLES_LIMIT]: number;
+	[LICENSE_QUOTAS.TRIGGER_LIMIT]: number;
+}>;
+
 @Service()
 export class License {
 	private logger: ILogger;
@@ -141,16 +149,8 @@ export class License {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
 
-	getFeatureValue(
-		feature: (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS],
-	): number | undefined;
-	getFeatureValue(feature: 'planName'): string | undefined;
-	getFeatureValue(feature: string): undefined | boolean | number | string;
-	getFeatureValue(feature: string): undefined | boolean | number | string {
-		if (!this.manager) {
-			return undefined;
-		}
-		return this.manager.getFeatureValue(feature);
+	getFeatureValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
+		return this.manager?.getFeatureValue(feature) as FeatureReturnType[T];
 	}
 
 	getManagementJwt(): string {
@@ -180,9 +180,7 @@ export class License {
 
 	// Helper functions for computed data
 	getUsersLimit(): number {
-		const limit = this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT);
-
-		return limit ?? -1;
+		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) ?? -1;
 	}
 
 	getTriggerLimit(): number {
@@ -205,12 +203,8 @@ export class License {
 		return this.manager.toString();
 	}
 
-	isWithinUsersLimitQuota(): boolean {
-		// If users limit is -1 -> no limit
-		if (this.getUsersLimit() === -1) {
-			return true;
-		}
-
-		return false;
+	isWithinUsersLimit(): boolean {
+		// -1 -> no limit
+		return this.getUsersLimit() === -1;
 	}
 }

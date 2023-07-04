@@ -10,7 +10,6 @@ import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, EDITOR_UI_DIST_DIR } from '@/constants';
 import { issueCookie, resolveJwtContent } from '@/auth/jwt';
-import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import type { UserRepository } from '@db/repositories';
 import { canSkipAuth } from '@/decorators/registerController';
 
@@ -101,8 +100,8 @@ export const setupAuthMiddlewares = (
 			return next();
 		}
 
-		// skip authentication if user management is disabled
-		if (!isUserManagementEnabled()) {
+		// skip authentication if owner is not set-up
+		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			req.user = await userRepository.findOneOrFail({
 				relations: ['globalRole'],
 				where: {},

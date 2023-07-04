@@ -37,7 +37,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
-			enabled: false,
 			quota: -1,
 			showSetupOnFirstLoad: false,
 			smtpSetup: false,
@@ -71,9 +70,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		versionCli(): string {
 			return this.settings.versionCli;
-		},
-		isUserManagementEnabled(): boolean {
-			return this.userManagement.enabled;
 		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
