@@ -88,7 +88,7 @@ export class SourceControlPreferencesService {
 	 */
 	async generateAndSaveKeyPair(): Promise<SourceControlPreferences> {
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
-		const keyPair = generateSshKeyPair('ed25519');
+		const keyPair = await generateSshKeyPair('ed25519');
 		if (keyPair.publicKey && keyPair.privateKey) {
 			try {
 				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {

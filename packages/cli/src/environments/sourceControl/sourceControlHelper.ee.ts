@@ -1,7 +1,6 @@
 import Container from 'typedi';
 import { License } from '../../License';
 import { generateKeyPairSync } from 'crypto';
-import sshpk from 'sshpk';
 import type { KeyPair } from './types/keyPair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { LoggerProxy } from 'n8n-workflow';
@@ -29,7 +28,8 @@ export function isSourceControlLicensed() {
 	return license.isSourceControlLicensed();
 }
 
-export function generateSshKeyPair(keyType: 'ed25519' | 'rsa' = 'ed25519') {
+export async function generateSshKeyPair(keyType: 'ed25519' | 'rsa' = 'ed25519') {
+	const sshpk = await import('sshpk');
 	const keyPair: KeyPair = {
 		publicKey: '',
 		privateKey: '',

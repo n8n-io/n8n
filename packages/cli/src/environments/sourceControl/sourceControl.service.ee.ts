@@ -61,6 +61,12 @@ export class SourceControlService {
 		this.gitService.resetService();
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();
+		if (this.sourceControlPreferencesService.isSourceControlLicensedAndEnabled()) {
+			await this.initGitService();
+		}
+	}
+
+	private async initGitService(): Promise<void> {
 		await this.gitService.initService({
 			sourceControlPreferences: this.sourceControlPreferencesService.getPreferences(),
 			gitFolder: this.gitFolder,
@@ -88,7 +94,7 @@ export class SourceControlService {
 
 	async initializeRepository(preferences: SourceControlPreferences, user: User) {
 		if (!this.gitService.git) {
-			await this.init();
+			await this.initGitService();
 		}
 		LoggerProxy.debug('Initializing repository...');
 		await this.gitService.initRepository(preferences, user);
@@ -131,7 +137,7 @@ export class SourceControlService {
 		return getBranchesResult;
 	}
 
-	async export() {
+	private async export() {
 		const result: {
 			tags: ExportResult | undefined;
 			credentials: ExportResult | undefined;
@@ -156,7 +162,7 @@ export class SourceControlService {
 		return result;
 	}
 
-	async import(options: SourceControllPullOptions): Promise<ImportResult | undefined> {
+	private async import(options: SourceControllPullOptions): Promise<ImportResult | undefined> {
 		try {
 			return await this.sourceControlImportService.importFromWorkFolder(options);
 		} catch (error) {
@@ -166,11 +172,17 @@ export class SourceControlService {
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {
 		// fetch first to get include remote changes
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		await this.gitService.fetch();
 		return this.gitService.getBranches();
 	}
 
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		await this.sourceControlPreferencesService.setPreferences({
 			branchName: branch,
 			connected: branch?.length > 0,
@@ -181,6 +193,9 @@ export class SourceControlService {
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
 	async resetWorkfolder(options: SourceControllPullOptions): Promise<ImportResult | undefined> {
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		const currentBranch = await this.gitService.getCurrentBranch();
 		await this.sourceControlExportService.cleanWorkFolder();
 		await this.gitService.resetBranch({
@@ -199,6 +214,9 @@ export class SourceControlService {
 		pushResult: PushResult | undefined;
 		diffResult: SourceControlledFile[];
 	}> {
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
@@ -240,6 +258,9 @@ export class SourceControlService {
 	async pullWorkfolder(
 		options: SourceControllPullOptions,
 	): Promise<{ status: number; diffResult: SourceControlledFile[] }> {
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		await this.resetWorkfolder({
 			importAfterPull: false,
 			userId: options.userId,
@@ -270,7 +291,7 @@ export class SourceControlService {
 		};
 	}
 
-	async stage(
+	private async stage(
 		options: Pick<SourceControlPushWorkFolder, 'fileNames' | 'credentialIds' | 'workflowIds'>,
 	): Promise<{ staged: string[] } | string> {
 		const { fileNames, credentialIds, workflowIds } = options;
@@ -302,7 +323,7 @@ export class SourceControlService {
 		return stageResult;
 	}
 
-	async unstage(): Promise<StatusResult | string> {
+	private async unstage(): Promise<StatusResult | string> {
 		const stageResult = await this.gitService.resetBranch();
 		if (!stageResult) {
 			return this.gitService.status();
@@ -311,6 +332,9 @@ export class SourceControlService {
 	}
 
 	async status(): Promise<StatusResult> {
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		return this.gitService.status();
 	}
 
@@ -465,6 +489,9 @@ export class SourceControlService {
 	}
 
 	async getStatus(): Promise<SourceControlledFile[]> {
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		await this.export();
 		await this.stage({});
 		await this.gitService.fetch();
@@ -506,6 +533,9 @@ export class SourceControlService {
 		name = SOURCE_CONTROL_DEFAULT_NAME,
 		email = SOURCE_CONTROL_DEFAULT_EMAIL,
 	): Promise<void> {
+		if (!this.gitService.git) {
+			await this.initGitService();
+		}
 		await this.gitService.setGitUserDetails(name, email);
 	}
 }
