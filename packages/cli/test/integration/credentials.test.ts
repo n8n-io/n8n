@@ -45,6 +45,8 @@ beforeAll(async () => {
 	authAgent = utils.createAuthAgent(app);
 	authOwnerAgent = authAgent(owner);
 	authMemberAgent = authAgent(member);
+
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 beforeEach(async () => {

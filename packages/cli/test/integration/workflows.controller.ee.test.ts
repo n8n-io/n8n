@@ -14,6 +14,7 @@ import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
 import { License } from '@/License';
 import { getSharedWorkflowIds } from '../../src/WorkflowHelpers';
+import config from '@/config';
 
 let owner: User;
 let member: User;
@@ -45,6 +46,7 @@ beforeAll(async () => {
 	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
 	await utils.initNodeTypes();
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 beforeEach(async () => {
