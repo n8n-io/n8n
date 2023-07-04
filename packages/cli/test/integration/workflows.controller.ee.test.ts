@@ -196,6 +196,23 @@ describe('GET /workflows', () => {
 	});
 });
 
+describe('GET /workflows/new', () => {
+	[true, false].forEach((sharingEnabled) => {
+		test(`should return an auto-incremented name, even when sharing is ${
+			sharingEnabled ? 'enabled' : 'disabled'
+		}`, async () => {
+			sharingSpy.mockReturnValueOnce(sharingEnabled);
+
+			await createWorkflow({ name: 'My workflow' }, owner);
+			await createWorkflow({ name: 'My workflow 7' }, owner);
+
+			const response = await authOwnerAgent.get('/workflows/new');
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.name).toEqual('My workflow 8');
+		});
+	});
+});
+
 describe('GET /workflows/:id', () => {
 	test('GET should fail with invalid id due to route rule', async () => {
 		const response = await authOwnerAgent.get('/workflows/potatoes');
