@@ -12,7 +12,7 @@
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
-			:class="{ [$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }"
+			:class="$style.executionDetails"
 			v-if="activeExecution"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
@@ -156,9 +156,6 @@ export default defineComponent({
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
-		sidebarCollapsed(): boolean {
-			return this.uiStore.sidebarMenuCollapsed;
-		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
 		},
@@ -218,10 +215,6 @@ export default defineComponent({
 
 	& * {
 		pointer-events: all;
-	}
-
-	&.sidebarCollapsed {
-		width: calc(100% - 375px);
 	}
 }
 
