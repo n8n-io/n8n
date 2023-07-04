@@ -474,7 +474,7 @@ export class SourceControlService {
 			this.gitService.diffLocal(),
 			this.gitService.status(),
 		]);
-		console.log(diffRemote, diffLocal, status);
+		// console.log(diffRemote, diffLocal, status);
 		await Promise.all([
 			...(diffRemote?.files.map(async (e) => {
 				const resolvedFile = await this.fileNameToSourceControlledFile(e.file, 'remote', status);

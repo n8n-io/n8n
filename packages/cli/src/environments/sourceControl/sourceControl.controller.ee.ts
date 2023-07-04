@@ -182,10 +182,7 @@ export class SourceControlController {
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
 			if ('pushResult' in result && result.pushResult) {
 				void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
-					getTrackingInformationFromPostPushResult({
-						diffResult: result.diffResult,
-						pushResult: result.pushResult,
-					}),
+					getTrackingInformationFromPostPushResult(result.diffResult),
 				);
 				res.statusCode = 200;
 			} else {

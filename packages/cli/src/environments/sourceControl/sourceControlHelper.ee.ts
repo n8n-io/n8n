@@ -116,10 +116,9 @@ export function getTrackingInformationFromPrePushResult(result: SourceControlled
 	};
 }
 
-export function getTrackingInformationFromPostPushResult(result: {
-	pushResult: PushResult;
-	diffResult: SourceControlledFile[] | undefined;
-}): {
+export function getTrackingInformationFromPostPushResult(
+	result: SourceControlledFile[] | undefined,
+): {
 	workflows_eligible: number;
 	workflows_pushed: number;
 	creds_pushed: number;
@@ -127,13 +126,11 @@ export function getTrackingInformationFromPostPushResult(result: {
 } {
 	return {
 		workflows_pushed:
-			result.diffResult?.filter((file) => file.type === 'workflow' && file.pushed).length ?? 0,
-		workflows_eligible: result.diffResult?.filter((file) => file.type === 'workflow').length ?? 0,
-		creds_pushed: result.pushResult.pushed.filter((file) =>
-			file.local.includes('credential_stubs/'),
-		).length,
-		variables_pushed: result.pushResult.pushed.filter((file) =>
-			file.local.includes('variable_stubs'),
-		).length,
+			result?.filter((file) => file.pushed && file.type === 'workflow' && file.pushed).length ?? 0,
+		workflows_eligible: result?.filter((file) => file.type === 'workflow').length ?? 0,
+		creds_pushed:
+			result?.filter((file) => file.pushed && file.file.startsWith('credential_stubs')).length ?? 0,
+		variables_pushed:
+			result?.filter((file) => file.pushed && file.file.startsWith('variable_stubs')).length ?? 0,
 	};
 }

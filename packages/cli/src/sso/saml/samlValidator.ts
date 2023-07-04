@@ -56,7 +56,14 @@ export async function validateMetadata(metadata: string): Promise<boolean> {
 			return true;
 		} else {
 			LoggerProxy.warn('SAML Validate Metadata: Invalid metadata');
-			LoggerProxy.warn(validationResult.errors.join('\n'));
+			LoggerProxy.debug(
+				validationResult.errors
+					.map(
+						(e) =>
+							`${e.loc ? e.loc.fileName + ':' + e.loc.lineNumber.toString() : ''} ${e.message}`,
+					)
+					.join('\n'),
+			);
 		}
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
