@@ -9,7 +9,7 @@
 				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
-			<div v-if="showBanners" id="banners" :class="$style.banners">
+			<div id="banners" :class="$style.banners">
 				<banner-stack />
 			</div>
 			<div id="header" :class="$style.header">
@@ -90,9 +90,6 @@ export default defineComponent({
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
-		},
-		showBanners(): boolean {
-			return this.uiStore.showBanners;
 		},
 	},
 	data() {

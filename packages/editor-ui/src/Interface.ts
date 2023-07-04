@@ -1,4 +1,4 @@
-import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { BANNERS, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IMenuItem } from 'n8n-design-system';
 import type {
@@ -1067,8 +1067,9 @@ export interface UIState {
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
-	showBanners: boolean;
+	banners: { [key in BANNERS]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
 }
+
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;

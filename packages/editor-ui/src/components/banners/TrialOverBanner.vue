@@ -1,14 +1,11 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-
-function dismiss() {
-	console.log('dismissed');
-}
+import { BANNERS } from '@/constants';
 </script>
 
 <template>
-	<base-banner customIcon="info-circle" theme="warning" @close="dismiss">
+	<base-banner customIcon="info-circle" theme="warning" :name="BANNERS.TRIAL_OVER">
 		<template #mainContent>
 			<span>{{ locale.baseText('banners.trialOver.message') }}</span>
 		</template>

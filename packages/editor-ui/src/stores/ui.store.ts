@@ -32,6 +32,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 } from '@/constants';
+import type { BANNERS } from '@/constants';
 import type {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
@@ -181,7 +182,11 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
-		showBanners: true,
+		banners: {
+			V1: { dismissed: false },
+			TRIAL: { dismissed: false },
+			TRIAL_OVER: { dismissed: false },
+		},
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
@@ -539,6 +544,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			} else {
 				location.href = this.upgradeLinkUrl(source, utm_campaign);
 			}
+		},
+		dismissBanner(name: BANNERS, type: 'temporary' | 'permanent' = 'temporary'): void {
+			this.banners[name].dismissed = true;
+			this.banners[name].type = type;
 		},
 	},
 });

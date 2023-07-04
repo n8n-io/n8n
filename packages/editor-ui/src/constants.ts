@@ -561,3 +561,9 @@ export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
 export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
+
+export const enum BANNERS {
+	V1 = 'V1',
+	TRIAL_OVER = 'TRIAL_OVER',
+	TRIAL = 'TRIAL',
+}

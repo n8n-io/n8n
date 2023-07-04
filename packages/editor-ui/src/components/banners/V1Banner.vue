@@ -2,16 +2,20 @@
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUsersStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { BANNERS } from '@/constants';
+
+const uiStore = useUIStore();
 
 const { isInstanceOwner } = useUsersStore();
 
 function dismiss() {
-	console.log('dismissed');
+	uiStore.dismissBanner(BANNERS.V1);
 }
 </script>
 
 <template>
-	<base-banner customIcon="info-circle" theme="warning" @close="dismiss">
+	<base-banner customIcon="info-circle" theme="warning" :name="BANNERS.V1">
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
 			<a v-if="isInstanceOwner" @click="dismiss">

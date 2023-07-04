@@ -1,9 +1,15 @@
 <script lang="ts" setup>
+import { useUIStore } from '@/stores/ui.store';
+import type { BANNERS } from '@/constants';
+
 interface Props {
+	name: BANNERS;
 	theme?: string;
 	customIcon?: string;
 	dismissible?: boolean;
 }
+
+const uiStore = useUIStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	theme: 'info',
@@ -13,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits(['close']);
 
 function onCloseClick() {
+	uiStore.dismissBanner(props.name);
 	emit('close');
 }
 </script>

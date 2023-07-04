@@ -2,12 +2,20 @@
 import TrialOverBanner from '@/components/banners/TrialOverBanner.vue';
 import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { BANNERS } from '@/constants';
+
+const uiStore = useUIStore();
+
+function shouldShowBanner(bannerName: BANNERS) {
+	return uiStore.banners[bannerName].dismissed === false;
+}
 </script>
 
 <template>
 	<div data-test-id="banner-stack">
-		<trial-over-banner />
-		<trial-banner />
-		<v1-banner />
+		<trial-over-banner v-if="shouldShowBanner(BANNERS.TRIAL_OVER)" />
+		<trial-banner v-if="shouldShowBanner(BANNERS.TRIAL)" />
+		<v1-banner v-if="shouldShowBanner(BANNERS.V1)" />
 	</div>
 </template>
