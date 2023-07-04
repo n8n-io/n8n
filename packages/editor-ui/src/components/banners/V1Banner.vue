@@ -1,0 +1,22 @@
+<script lang="ts" setup>
+import BaseBanner from '@/components/banners/BaseBanner.vue';
+import { i18n as locale } from '@/plugins/i18n';
+import { useUsersStore } from '@/stores';
+
+const { isInstanceOwner } = useUsersStore();
+
+function dismiss() {
+	console.log('dismissed');
+}
+</script>
+
+<template>
+	<base-banner customIcon="info-circle" theme="warning" @close="dismiss">
+		<template #mainContent>
+			<span v-html="locale.baseText('banners.v1.message')"></span>
+			<a v-if="isInstanceOwner" @click="dismiss">
+				<span v-html="locale.baseText('generic.confirm')"></span>
+			</a>
+		</template>
+	</base-banner>
+</template>

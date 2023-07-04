@@ -10,22 +10,7 @@
 			}"
 		>
 			<div v-if="showBanners" id="banners" :class="$style.banners">
-				<n8n-callout
-					theme="warning"
-					icon="info-circle"
-					:roundCorners="false"
-					:class="$style['v1-banner']"
-				>
-					<span v-html="'Your trial is over. Upgrade now to keep automating.'"></span>
-				</n8n-callout>
-				<!-- <n8n-callout
-					theme="info"
-					icon="info-circle"
-					:roundCorners="false"
-					:class="$style['v1-banner']"
-				>
-					<span v-html="'6 days left in your n8n trial'"></span>
-				</n8n-callout> -->
+				<banner-stack />
 			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
@@ -48,6 +33,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
+import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -75,6 +61,7 @@ import { useExternalHooks } from '@/composables';
 export default defineComponent({
 	name: 'App',
 	components: {
+		BannerStack,
 		LoadingView,
 		Telemetry,
 		Modals,

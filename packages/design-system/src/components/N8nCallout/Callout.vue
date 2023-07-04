@@ -42,7 +42,6 @@ export default defineComponent({
 		},
 		icon: {
 			type: String,
-			default: 'info-circle',
 		},
 		iconless: {
 			type: Boolean,
@@ -66,11 +65,14 @@ export default defineComponent({
 			];
 		},
 		getIcon(): string {
+			if (this.icon) {
+				return this.icon;
+			}
 			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
 				return CALLOUT_DEFAULT_ICONS[this.theme];
 			}
 
-			return this.icon;
+			return CALLOUT_DEFAULT_ICONS.info;
 		},
 	},
 });
