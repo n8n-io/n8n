@@ -5,8 +5,6 @@ import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
-	pruneBeforeRunning = true;
-
 	transaction = false as const;
 
 	async up(context: MigrationContext) {

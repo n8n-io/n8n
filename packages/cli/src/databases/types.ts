@@ -17,7 +17,6 @@ export type MigrationFn = (ctx: MigrationContext) => Promise<void>;
 export interface BaseMigration {
 	up: MigrationFn;
 	down?: MigrationFn | never;
-	pruneBeforeRunning?: boolean;
 	transaction?: false;
 }
 
