@@ -4,7 +4,7 @@
 			:placement="placement"
 			:size="size"
 			trigger="click"
-			@click.native.stop
+			@click.stop
 			@command="onCommand"
 			@visible-change="onVisibleChange"
 		>

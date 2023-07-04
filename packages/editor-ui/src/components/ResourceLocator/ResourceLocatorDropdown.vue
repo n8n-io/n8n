@@ -261,7 +261,7 @@ export default defineComponent({
 			}, 0);
 		},
 		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
 		},
 	},
 });

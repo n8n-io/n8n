@@ -349,7 +349,9 @@ export default defineComponent({
 		async startAutoRefreshInterval() {
 			if (this.autoRefresh) {
 				await this.loadAutoRefresh();
-				this.autoRefreshTimeout = setTimeout(() => this.startAutoRefreshInterval(), 4000);
+				this.autoRefreshTimeout = setTimeout(() => {
+					void this.startAutoRefreshInterval();
+				}, 4000);
 			}
 		},
 		stopAutoRefreshInterval() {
@@ -363,13 +365,13 @@ export default defineComponent({
 			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
 
 			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
-			this.startAutoRefreshInterval();
+			void this.startAutoRefreshInterval();
 		},
 		onDocumentVisibilityChange() {
 			if (document.visibilityState === 'hidden') {
-				this.stopAutoRefreshInterval();
+				void this.stopAutoRefreshInterval();
 			} else {
-				this.startAutoRefreshInterval();
+				void this.startAutoRefreshInterval();
 			}
 		},
 		async loadAutoRefresh(): Promise<void> {
@@ -449,7 +451,7 @@ export default defineComponent({
 				return [];
 			}
 			try {
-				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
+				return this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
 			} catch (error) {
 				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 					this.showMessage(

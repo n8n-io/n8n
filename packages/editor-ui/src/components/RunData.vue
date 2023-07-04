@@ -449,11 +449,11 @@
 			<el-pagination
 				background
 				:hide-on-single-page="true"
-				:current-page.sync="currentPage"
+				:current-page="currentPage"
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				@current-change="onCurrentPageChange"
+				@update:current-page="onCurrentPageChange"
 				:total="dataCount"
 			>
 			</el-pagination>
@@ -1134,7 +1134,8 @@ export default defineComponent({
 		unlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onCurrentPageChange() {
+		onCurrentPageChange(value) {
+			this.currentPage = value;
 			this.$telemetry.track('User changed ndv page', {
 				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,

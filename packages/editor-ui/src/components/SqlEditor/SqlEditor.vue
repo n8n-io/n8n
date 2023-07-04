@@ -24,8 +24,8 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	MSSQL,
 	MySQL,

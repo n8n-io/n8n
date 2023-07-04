@@ -115,7 +115,7 @@
 
 <script lang="ts">
 import { defineAsyncComponent, defineComponent } from 'vue';
-import type { Component, PropType } from 'vue';
+import type { PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {

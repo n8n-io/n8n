@@ -23,7 +23,7 @@
 				v-touch:end="touchEnd"
 			>
 				<n8n-sticky
-					:content.sync="node.parameters.content"
+					:content="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
@@ -190,6 +190,7 @@ export default defineComponent({
 			}
 		},
 		onInputChange(content: string) {
+			this.node.parameters.content = content;
 			this.setParameters({ content });
 		},
 		onResizeStart() {

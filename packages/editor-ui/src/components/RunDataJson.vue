@@ -26,10 +26,11 @@
 				:data="jsonData"
 				:deep="10"
 				:showLength="true"
-				:selected-value.sync="selectedJsonPath"
+				:selectedValue="selectedJsonPath"
 				rootPath=""
 				selectableType="single"
 				class="json-data"
+				@update:selectedValue="selectedJsonPath = $event"
 			>
 				<template #renderNodeKey="{ node }">
 					<span

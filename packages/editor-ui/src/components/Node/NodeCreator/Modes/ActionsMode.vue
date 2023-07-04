@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, onMounted, defineComponent, h } from 'vue';
-import type { VNode, PropType } from 'vue';
+import type { PropType } from 'vue';
 import type {
 	INodeCreateElement,
 	ActionTypeDescription,

@@ -418,7 +418,7 @@ export default defineComponent({
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(this.ndvStore.setNDVSessionId, 0);
+				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
 				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
