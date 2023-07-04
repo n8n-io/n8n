@@ -334,7 +334,8 @@ export const customFieldsCollection: INodeProperties = {
 };
 
 export const observableDataType: INodeProperties = {
-	displayName: 'Data Type Name or ID',
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+	displayName: 'Data Type',
 	name: 'dataType',
 	type: 'options',
 	default: '',

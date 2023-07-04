@@ -6,6 +6,8 @@ import { customFieldsCollection2, observableDataType } from '../common.descripti
 import { theHiveApiRequest } from '../../transport';
 import { convertCustomFieldUiToObject, splitTags } from '../../helpers/utils';
 
+import FormData from 'form-data';
+
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields',
@@ -26,18 +28,18 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Artifacts',
-		name: 'artifactUi',
+		displayName: 'Observables',
+		name: 'observableUi',
 		type: 'fixedCollection',
-		placeholder: 'Add Artifact',
+		placeholder: 'Add Observable',
 		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
 		options: [
 			{
-				displayName: 'Artifact',
-				name: 'artifactValues',
+				displayName: 'Values',
+				name: 'values',
 				values: [
 					observableDataType,
 					{
@@ -69,7 +71,7 @@ const properties: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Case Tags',
+						displayName: 'Tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
@@ -77,7 +79,6 @@ const properties: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'Artifact attributes',
 	},
 	customFieldsCollection2,
 ];
@@ -117,25 +118,38 @@ export async function execute(
 	const customFieldsUi = this.getNodeParameter('customFieldsUi.values', i, {}) as IDataObject;
 	body.customFields = convertCustomFieldUiToObject(customFieldsUi);
 
-	const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
-	if (artifactUi) {
-		const artifactValues = artifactUi.artifactValues as IDataObject[];
+	let multiPartRequest = false;
+	const formData = new FormData();
 
-		if (artifactValues) {
+	const observableUi = this.getNodeParameter('observableUi', i) as IDataObject;
+	if (observableUi) {
+		const values = observableUi.values as IDataObject[];
+
+		if (values) {
 			const observables = [];
 
-			for (const artifactvalue of artifactValues) {
+			for (const value of values) {
 				const observable: IDataObject = {};
 
-				observable.dataType = artifactvalue.dataType as string;
-				observable.data = artifactvalue.data as string;
-				observable.message = artifactvalue.message as string;
-				observable.tags = splitTags(artifactvalue.tags as string);
+				observable.dataType = value.dataType as string;
+				observable.message = value.message as string;
+				observable.tags = splitTags(value.tags as string);
 
-				if (artifactvalue.dataType === 'file') {
-					const binaryPropertyName = artifactvalue.binaryProperty as string;
+				if (value.dataType === 'file') {
+					multiPartRequest = true;
+
+					const attachmentIndex = `attachment${i}`;
+					observable.attachment = attachmentIndex;
+
+					const binaryPropertyName = value.binaryProperty as string;
 					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-					observable.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
+
+					formData.append(attachmentIndex, binaryData.data, {
+						filename: binaryData.fileName,
+						contentType: binaryData.mimeType,
+					});
+				} else {
+					observable.data = value.data as string;
 				}
 
 				observables.push(observable);
@@ -144,7 +158,25 @@ export async function execute(
 		}
 	}
 
-	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/alert' as string, body);
+	if (multiPartRequest) {
+		formData.append('_json', JSON.stringify(body));
+		responseData = await theHiveApiRequest.call(
+			this,
+			'POST',
+			'/v1/alert',
+			undefined,
+			undefined,
+			undefined,
+			{
+				Headers: {
+					'Content-Type': 'multipart/form-data',
+				},
+				formData,
+			},
+		);
+	} else {
+		responseData = await theHiveApiRequest.call(this, 'POST', '/v1/alert' as string, body);
+	}
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },
