@@ -1,0 +1,31 @@
+diff --git a/migration/MigrationExecutor.js b/migration/MigrationExecutor.js
+index 5d37b9cf9ca2505242f05160f05ff683e00c1e5d..4a768819f86b8f176bd3b826a649afe54ab39598 100644
+--- a/migration/MigrationExecutor.js
++++ b/migration/MigrationExecutor.js
+@@ -216,15 +216,17 @@ class MigrationExecutor {
+                     // nothing else needs to be done, continue to next migration
+                     continue;
+                 }
++                await queryRunner.beforeMigration();
+                 if (migration.transaction && !queryRunner.isTransactionActive) {
+                     await queryRunner.startTransaction();
+                     transactionStartedByUs = true;
+                 }
+                 await migration
+                     .instance.up(queryRunner)
+-                    .catch((error) => {
++                    .catch(async (error) => {
+                     // informative log about migration failure
+                     this.connection.logger.logMigration(`Migration "${migration.name}" failed, error: ${error === null || error === void 0 ? void 0 : error.message}`);
++                    await queryRunner.afterMigration(queryRunner);
+                     throw error;
+                 })
+                     .then(async () => {
+@@ -233,6 +235,7 @@ class MigrationExecutor {
+                     // commit transaction if we started it
+                     if (migration.transaction && transactionStartedByUs)
+                         await queryRunner.commitTransaction();
++                    await queryRunner.afterMigration(queryRunner);
+                 })
+                     .then(() => {
+                     // informative log about migration success

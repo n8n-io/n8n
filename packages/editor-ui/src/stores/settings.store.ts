@@ -26,7 +26,6 @@ import type {
 	WorkflowSettings,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useRootStore } from './n8nRoot.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
@@ -220,13 +219,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
 		stopShowingSetupPage(): void {
-			Vue.set(this.userManagement, 'showSetupOnFirstLoad', false);
+			this.userManagement.showSetupOnFirstLoad = false;
 		},
 		disableTemplates(): void {
-			Vue.set(this.settings.templates, 'enabled', false);
+			this.settings = {
+				...this.settings,
+				templates: {
+					...this.settings.templates,
+					enabled: false,
+				},
+			};
 		},
 		setPromptsData(promptsData: IN8nPrompts): void {
-			Vue.set(this, 'promptsData', promptsData);
+			this.promptsData = promptsData;
 		},
 		setAllowedModules(allowedModules: { builtIn?: string[]; external?: string[] }): void {
 			this.settings.allowedModules = allowedModules;
@@ -315,13 +320,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
-			Vue.set(this, 'saveDataErrorExecution', newValue);
+			this.saveDataErrorExecution = newValue;
 		},
 		setSaveDataSuccessExecution(newValue: string) {
-			Vue.set(this, 'saveDataSuccessExecution', newValue);
+			this.saveDataSuccessExecution = newValue;
 		},
 		setSaveManualExecutions(saveManualExecutions: boolean) {
-			Vue.set(this, 'saveManualExecutions', saveManualExecutions);
+			this.saveManualExecutions = saveManualExecutions;
 		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();

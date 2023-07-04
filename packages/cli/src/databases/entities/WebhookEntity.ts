@@ -1,11 +1,9 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
-import { idStringifier } from '../utils/transformers';
-
 @Entity()
 @Index(['webhookId', 'method', 'pathLength'])
 export class WebhookEntity {
-	@Column({ transformer: idStringifier })
+	@Column()
 	workflowId: string;
 
 	@PrimaryColumn()

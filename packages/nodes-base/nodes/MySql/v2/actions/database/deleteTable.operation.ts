@@ -9,7 +9,7 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { addWhereClauses } from '../../helpers/utils';
 

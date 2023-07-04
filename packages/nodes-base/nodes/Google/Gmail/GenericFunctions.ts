@@ -17,13 +17,14 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { DateTime } from 'luxon';
 
-import isEmpty from 'lodash.isempty';
+import isEmpty from 'lodash/isEmpty';
 
 export interface IEmail {
 	from?: string;
 	to?: string;
 	cc?: string;
 	bcc?: string;
+	replyTo?: string;
 	inReplyTo?: string;
 	reference?: string;
 	subject: string;
@@ -222,6 +223,7 @@ export async function encodeEmail(email: IEmail) {
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,
+		replyTo: email.replyTo,
 		inReplyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,
@@ -509,7 +511,7 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 	return result;
 }
 
-export async function replayToEmail(
+export async function replyToEmail(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	gmailId: string,

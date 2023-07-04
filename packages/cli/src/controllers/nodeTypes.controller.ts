@@ -1,5 +1,5 @@
 import { readFile } from 'fs/promises';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import { Request } from 'express';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { Authorized, Post, RestController } from '@/decorators';
