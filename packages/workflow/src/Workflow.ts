@@ -49,6 +49,7 @@ import type {
 	IRunNodeResponse,
 	NodeParameterValueType,
 } from './Interfaces';
+import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
@@ -1137,14 +1138,14 @@ export class Workflow {
 			throw new Error(`The node "${node.name}" does not have any webhooks defined.`);
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteWebhookFunctions(
+		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
 			this,
 			node,
 			additionalData,
 			mode,
 			webhookData,
 		);
-		return nodeType.webhook.call(thisArgs);
+		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
 	}
 
 	/**
@@ -1255,7 +1256,7 @@ export class Workflow {
 				return { data: [promiseResults] };
 			}
 		} else if (nodeType.execute) {
-			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(
+			const context = nodeExecuteFunctions.getExecuteFunctions(
 				this,
 				runExecutionData,
 				runIndex,
@@ -1266,7 +1267,11 @@ export class Workflow {
 				executionData,
 				mode,
 			);
-			return { data: await nodeType.execute.call(thisArgs) };
+			const data =
+				nodeType instanceof Node
+					? await nodeType.execute(context)
+					: await nodeType.execute.call(context);
+			return { data };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function

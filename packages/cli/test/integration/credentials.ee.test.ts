@@ -100,8 +100,12 @@ describe('GET /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
-
-		const [ownerCredential, memberCredential] = response.body.data as CredentialWithSharings[];
+		const ownerCredential = response.body.data.find(
+			(e: CredentialWithSharings) => e.ownedBy?.id === owner.id,
+		);
+		const memberCredential = response.body.data.find(
+			(e: CredentialWithSharings) => e.ownedBy?.id === member1.id,
+		);
 
 		validateMainCredentialData(ownerCredential);
 		expect(ownerCredential.data).toBeUndefined();
