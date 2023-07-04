@@ -73,6 +73,37 @@ const runDisablingForeignKeys = async (
 	await queryRunner.query('PRAGMA foreign_keys=ON');
 };
 
+export const copyTable = async (
+	{ tablePrefix, queryRunner }: Pick<MigrationContext, 'queryRunner' | 'tablePrefix'>,
+	fromTable: string,
+	toTable: string,
+	fromFields: string[] = [],
+	toFields: string[] = [],
+	batchSize = 10,
+) => {
+	const driver = queryRunner.connection.driver;
+	fromTable = driver.escape(`${tablePrefix}${fromTable}`);
+	toTable = driver.escape(`${tablePrefix}${toTable}`);
+	const fromFieldsStr = fromFields.length
+		? fromFields.map((f) => driver.escape(f)).join(', ')
+		: '*';
+	const toFieldsStr = toFields.length
+		? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
+		: '';
+
+	const total = await queryRunner
+		.query(`SELECT COUNT(*) as count from ${fromTable}`)
+		.then((rows: Array<{ count: number }>) => rows[0].count);
+
+	let migrated = 0;
+	while (migrated < total) {
+		await queryRunner.query(
+			`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${migrated}, ${batchSize}`,
+		);
+		migrated += batchSize;
+	}
+};
+
 export const wrapMigration = (migration: Migration) => {
 	const dbType = config.getEnv('database.type');
 	const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);

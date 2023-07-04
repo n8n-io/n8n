@@ -3,6 +3,7 @@ import path from 'path';
 import { UserSettings } from 'n8n-core';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
+import { copyTable } from '@/databases/utils/migrationHelpers';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	transaction = false as const;
@@ -117,9 +118,7 @@ export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigr
 				"data" text NOT NULL, "status" varchar,
 				FOREIGN KEY("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE
 			);`);
-		await queryRunner.query(
-			`INSERT INTO "${tablePrefix}TMP_execution_entity" SELECT * FROM "${tablePrefix}execution_entity";`,
-		);
+		await copyTable({ tablePrefix, queryRunner }, 'execution_entity', 'TMP_execution_entity');
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_entity";`);
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_execution_entity" RENAME TO "${tablePrefix}execution_entity";`,
@@ -216,18 +215,12 @@ const pruneExecutionsData = async ({ queryRunner, tablePrefix }: MigrationContex
 		const averageExecutionSize = dbFileSize / counting[0].rows;
 		const numberOfExecutionsToKeep = Math.floor(DESIRED_DATABASE_FILE_SIZE / averageExecutionSize);
 
-		const query = `
-		SELECT id FROM "${tablePrefix}execution_entity"
-		ORDER BY id DESC limit ${numberOfExecutionsToKeep}, 1;
-	`;
+		const query = `SELECT id FROM "${tablePrefix}execution_entity" ORDER BY id DESC limit ${numberOfExecutionsToKeep}, 1`;
+		const idToKeep = await queryRunner
+			.query(query)
+			.then((rows: Array<{ id: number }>) => rows[0].id);
 
-		const idToKeep = (await queryRunner.query(query)) as Array<{ id: number }>;
-
-		const removalQuery = `
-		DELETE FROM "${tablePrefix}execution_entity"
-		WHERE id < ${idToKeep[0].id} and status IN ('success');
-	`;
-
+		const removalQuery = `DELETE FROM "${tablePrefix}execution_entity" WHERE id < ${idToKeep} and status IN ('success')`;
 		await queryRunner.query(removalQuery);
 		console.timeEnd('pruningData');
 	} else {
