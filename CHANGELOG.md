@@ -1,3 +1,732 @@
+# [0.234.0](https://github.com/n8n-io/n8n/compare/n8n@0.233.0...n8n@0.234.0) (2023-06-22)
+
+
+### Bug Fixes
+
+* **core:** Fix OAuth2 callback for `grantType=clientCredentials` ([#6500](https://github.com/n8n-io/n8n/issues/6500)) ([25b9216](https://github.com/n8n-io/n8n/commit/25b92169aefc47dc028a11dc008abb4a36d037d3))
+* **core:** Fix pairedItem for alwaysOutputData & multi identical resolve ([#6405](https://github.com/n8n-io/n8n/issues/6405)) ([4b0e0b7](https://github.com/n8n-io/n8n/commit/4b0e0b797071cb20bd2b042eb0d8591fe801ae76))
+* **core:** Fix the url sent in the password-reset emails ([#6466](https://github.com/n8n-io/n8n/issues/6466)) ([9978e27](https://github.com/n8n-io/n8n/commit/9978e2760bc0b8f8c7e5c1ef6610670611d8efe9))
+* **core:** Improve the error returned to users on SSL issues ([#6494](https://github.com/n8n-io/n8n/issues/6494)) ([1b084bc](https://github.com/n8n-io/n8n/commit/1b084bc56b90a25b399c084b69efdb48ff01dfb5))
+* **core:** Use correct scopes-separator when generating authorization urls ([#6502](https://github.com/n8n-io/n8n/issues/6502)) ([5bf83f8](https://github.com/n8n-io/n8n/commit/5bf83f8bf6889e0154000ad774f292e98b87729d))
+* **editor:** Fix DNV header disappearing when scrolling the code editor content ([#6459](https://github.com/n8n-io/n8n/issues/6459)) ([ad9fd12](https://github.com/n8n-io/n8n/commit/ad9fd12615a7050c6fec0caf041e49c972693d1f))
+* **editor:** Fix resource mapper dropdown width and disabled styling ([#6493](https://github.com/n8n-io/n8n/issues/6493)) ([da330f0](https://github.com/n8n-io/n8n/commit/da330f0648b85c39e89ca2eeaba94f9b2c3a1b13))
+* **editor:** Remove `$if`, `$min` and `$max` from code node autocomplete ([#6460](https://github.com/n8n-io/n8n/issues/6460)) ([16f707d](https://github.com/n8n-io/n8n/commit/16f707d5c479c72f87c129ec870fd00c329a9ade))
+* **editor:** Show confirm on pull only when http response status is 409 ([#6451](https://github.com/n8n-io/n8n/issues/6451)) ([5819be5](https://github.com/n8n-io/n8n/commit/5819be5ced53adc643b2bb18dbd1be0096a05395))
+* **editor:** Show execution error as message ([#6431](https://github.com/n8n-io/n8n/issues/6431)) ([d3b78e2](https://github.com/n8n-io/n8n/commit/d3b78e291ece5355b0829c935a3142b6078287c9))
+* **editor:** Update data pinning tooltip to match current behaviour ([#6436](https://github.com/n8n-io/n8n/issues/6436)) ([ee10ac8](https://github.com/n8n-io/n8n/commit/ee10ac8da9ad6533995361f51cab97da35501855))
+* **editor:** Update git repo URL validation to prevent using https protocol ([#6475](https://github.com/n8n-io/n8n/issues/6475)) ([8b50625](https://github.com/n8n-io/n8n/commit/8b50625fb15fc86840485e167627a2ab1802d512))
+* **editor:** Update version control docs links ([#6440](https://github.com/n8n-io/n8n/issues/6440)) ([da105f4](https://github.com/n8n-io/n8n/commit/da105f468bd69b3d572f422d7270204e5823200e))
+* **Google Sheets Node:** Return empty response if no rows updated ([#6407](https://github.com/n8n-io/n8n/issues/6407)) ([32fb419](https://github.com/n8n-io/n8n/commit/32fb4190111c60c8bd05d47d5bace2f9043d1f06))
+* **HTML Node:** Prevent XSS in execution-data preview ([#6432](https://github.com/n8n-io/n8n/issues/6432)) ([16e0df5](https://github.com/n8n-io/n8n/commit/16e0df553c4e068768bf7dd7bbac1d7c2b88fec2))
+* **HTTP Request Node:** "Ignore SSL issues" should also ignore legacy renegotiation issues ([#6492](https://github.com/n8n-io/n8n/issues/6492)) ([7a95e08](https://github.com/n8n-io/n8n/commit/7a95e08bfd04cd53a9d531fdb715f289bfdd64b6))
+* **LinkedIn Node:** Remove unsupported description from image posts ([#6446](https://github.com/n8n-io/n8n/issues/6446)) ([529f0e4](https://github.com/n8n-io/n8n/commit/529f0e499670450f8cb0dda539176d1b07c39190))
+* Make MySQL migration for nano id change compatible with version 5.7 ([#6498](https://github.com/n8n-io/n8n/issues/6498)) ([044c710](https://github.com/n8n-io/n8n/commit/044c710a8ecca3d705ebfb53cef204482428fbec))
+* **Split In Batches Node:** Add "done" context to allow simple reset ([#6437](https://github.com/n8n-io/n8n/issues/6437)) ([ffd13f4](https://github.com/n8n-io/n8n/commit/ffd13f4541794832792ecf33e24d5dc4960ff005))
+* **Zendesk Node:** Fix issue with group assignment not working ([#6501](https://github.com/n8n-io/n8n/issues/6501)) ([772ed7f](https://github.com/n8n-io/n8n/commit/772ed7ff10f6071816ad8cb4543ae9bcaf3813d3))
+* **Zulip Node:** Remove trailing slash from the url ([#6427](https://github.com/n8n-io/n8n/issues/6427)) ([cc1b249](https://github.com/n8n-io/n8n/commit/cc1b249d58618c11bb22ae4458aaf22ef77e6493))
+
+
+### Features
+
+* Add support for large files with declarative nodes ([#6461](https://github.com/n8n-io/n8n/issues/6461)) ([e0f109f](https://github.com/n8n-io/n8n/commit/e0f109fa7ee3b1502d68f648504e12a61bff7c93))
+* **AwsS3 Node:** Small overhaul of the node with multipart uploading ([#6017](https://github.com/n8n-io/n8n/issues/6017)) ([109442f](https://github.com/n8n-io/n8n/commit/109442f38f9868d51d85ba4f88d185910f4f2688))
+* **core:** Add GET /users endpoints to public API ([#6360](https://github.com/n8n-io/n8n/issues/6360)) ([6ab3502](https://github.com/n8n-io/n8n/commit/6ab350209d0fa7ee37c9e4425d987517aeba3d98))
+* **core:** Add PKCE for OAuth2 ([#6324](https://github.com/n8n-io/n8n/issues/6324)) ([fc7261a](https://github.com/n8n-io/n8n/commit/fc7261aca6485141fca95b6eccffe1f1a9a8c0c4))
+* **DebugHelper Node:** Fix and include in main app ([#6406](https://github.com/n8n-io/n8n/issues/6406)) ([18f5884](https://github.com/n8n-io/n8n/commit/18f588444f7f126ec1c4867d2ac1f2d3cbc99b88))
+* **Gmail Node:** Add reply to email ([#6453](https://github.com/n8n-io/n8n/issues/6453)) ([fddc69e](https://github.com/n8n-io/n8n/commit/fddc69ee2c2324aff783172c959af9e40ad89696))
+* **Item Lists Node:** Improvements ([#6190](https://github.com/n8n-io/n8n/issues/6190)) ([1dbca44](https://github.com/n8n-io/n8n/commit/1dbca4402579ce1e323ab30c5caebef247a19c8d))
+* Migrate integer primary keys to nanoids ([#6345](https://github.com/n8n-io/n8n/issues/6345)) ([c3ba012](https://github.com/n8n-io/n8n/commit/c3ba0123ad0913140707dbf56fafa1d4dd0f3de3)), closes [#6323](https://github.com/n8n-io/n8n/issues/6323)
+* **Stripe Trigger Node:** Add action required trigger for payment intents ([#6490](https://github.com/n8n-io/n8n/issues/6490)) ([f2154fb](https://github.com/n8n-io/n8n/commit/f2154fba60cbbaa9b6c9e72523801573fe3b6baf))
+* **Webhook Node:** Stream binary response in `lastNode.firstEntryBinary` mode ([#6463](https://github.com/n8n-io/n8n/issues/6463)) ([6ccab3e](https://github.com/n8n-io/n8n/commit/6ccab3eaaa883e17d00607e180e14edf9ce33688))
+
+
+
+# [0.233.0](https://github.com/n8n-io/n8n/compare/n8n@0.232.0...n8n@0.233.0) (2023-06-14)
+
+
+### Bug Fixes
+
+* **core:** Allow all executions to be stopped ([#6386](https://github.com/n8n-io/n8n/issues/6386)) ([cc44af9](https://github.com/n8n-io/n8n/commit/cc44af9243457a5dfa904c205ad5428f793104b4))
+* **core:** Prevent arbitrary code execution via expressions ([#6420](https://github.com/n8n-io/n8n/issues/6420)) ([da7ae2b](https://github.com/n8n-io/n8n/commit/da7ae2beef0375aa914aee251aeff5f7ff334b34))
+* **editor:** Hide version control main menu component if no feature flag ([#6419](https://github.com/n8n-io/n8n/issues/6419)) ([75c0ab0](https://github.com/n8n-io/n8n/commit/75c0ab03f8379bb5426cef87045b67b458c97d70))
+* **LinkedIn Node:** Fix issue with posting as user or organization ([#6414](https://github.com/n8n-io/n8n/issues/6414)) ([d041602](https://github.com/n8n-io/n8n/commit/d041602754a694e67e81c1bbff87c13bf91bdd5d))
+* **Schedule Trigger Node:** Follow the correct Unix cron format for month and days of the week ([#6401](https://github.com/n8n-io/n8n/issues/6401)) ([2aef9de](https://github.com/n8n-io/n8n/commit/2aef9de14830c56199fd19bc09382424c55a2b9b))
+
+
+
+# [0.232.0](https://github.com/n8n-io/n8n/compare/n8n@0.231.0...n8n@0.232.0) (2023-06-07)
+
+
+### Bug Fixes
+
+* **core:** RMC boolean value fix ([#6397](https://github.com/n8n-io/n8n/issues/6397)) ([28bb797](https://github.com/n8n-io/n8n/commit/28bb797bb0ea59b66a7641fc116f47c25564c21a))
+* **Date & Time Node:** Reset responseData at end of loop ([#6385](https://github.com/n8n-io/n8n/issues/6385)) ([eaa8648](https://github.com/n8n-io/n8n/commit/eaa8648f2bf61074eae6dcd7355f8f107a31388e))
+* **editor:** Add button to refresh branches ([#6387](https://github.com/n8n-io/n8n/issues/6387)) ([ce57816](https://github.com/n8n-io/n8n/commit/ce578162f4e44a6cc1774ab217967110b254ab3f))
+* **editor:** Add secondary icon to menu items ([#6351](https://github.com/n8n-io/n8n/issues/6351)) ([3dd2601](https://github.com/n8n-io/n8n/commit/3dd260168eb627fd7fbed740bc97fa7f6289628f))
+* **editor:** Add Set up version control CTA ([#6356](https://github.com/n8n-io/n8n/issues/6356)) ([e72521d](https://github.com/n8n-io/n8n/commit/e72521d5ec7a5e57dc311defb70f1fe19054b0f0))
+* **editor:** Adding branch color ([#6380](https://github.com/n8n-io/n8n/issues/6380)) ([dba3f44](https://github.com/n8n-io/n8n/commit/dba3f44bc00de68113cc98db9afc6267f56ec04c))
+* **editor:** Fix an issue with connections breaking during renaming ([#6358](https://github.com/n8n-io/n8n/issues/6358)) ([0f2bc6b](https://github.com/n8n-io/n8n/commit/0f2bc6b73711597fdf008ee54665d9bed82a1a9e))
+* **editor:** Fix hard-coded parameter names for code editors ([#6372](https://github.com/n8n-io/n8n/issues/6372)) ([f61b776](https://github.com/n8n-io/n8n/commit/f61b776beac961fa58c6c69371c69ae1e74ef83e))
+* **editor:** Fix typing `$` in inline expression field reloading node parameters form ([#6374](https://github.com/n8n-io/n8n/issues/6374)) ([4c0d4eb](https://github.com/n8n-io/n8n/commit/4c0d4ebd9917e52512e85a5cad2c93b554e0e212))
+* **editor:** Pin all data regardless of pagination ([#6346](https://github.com/n8n-io/n8n/issues/6346)) ([f88029f](https://github.com/n8n-io/n8n/commit/f88029f308356c1c8271d7345ecbbd6e91c41b3d))
+* **editor:** Remove explicit parameter name scanning for code editors ([#6390](https://github.com/n8n-io/n8n/issues/6390)) ([97295f6](https://github.com/n8n-io/n8n/commit/97295f67f0f8509ac6ba0d4ce38ce12582dff074))
+* **editor:** Remove root level tag selector from css module to avoid making it a global style ([#6392](https://github.com/n8n-io/n8n/issues/6392)) ([cc37f21](https://github.com/n8n-io/n8n/commit/cc37f21aa27f3536f2043b5ff5da944388ac5504))
+* **editor:** Update version control setup CTA tooltip ([#6393](https://github.com/n8n-io/n8n/issues/6393)) ([385b3e8](https://github.com/n8n-io/n8n/commit/385b3e871a9307c36428f8239a5db318d71948c1))
+* Improve executions list polling performance ([#6355](https://github.com/n8n-io/n8n/issues/6355)) ([b5cabfe](https://github.com/n8n-io/n8n/commit/b5cabfef54e186f59580112a90566099bb79305e))
+* **Ldap Node:** Add DN field to update operation ([#6371](https://github.com/n8n-io/n8n/issues/6371)) ([9396e7e](https://github.com/n8n-io/n8n/commit/9396e7eb585ab9d6fda742b0d234c4262570af93))
+* Show actual execution data for production executions even if pin data exists ([#6302](https://github.com/n8n-io/n8n/issues/6302)) ([4eb8437](https://github.com/n8n-io/n8n/commit/4eb8437196a298a64f039aff51ba030dc21abb08))
+
+
+### Features
+
+* **Crypto Node:** Add support for hash and hmac on binary data ([#6359](https://github.com/n8n-io/n8n/issues/6359)) ([406a405](https://github.com/n8n-io/n8n/commit/406a405dd153833057286a27d04278ef71ceef3d))
+* **editor:** Make WF name a link on /executions ([#6354](https://github.com/n8n-io/n8n/issues/6354)) ([6ddf161](https://github.com/n8n-io/n8n/commit/6ddf16128b4ab47db716eeab89f7526558073f56))
+* New trigger PostgreSQL  ([#5495](https://github.com/n8n-io/n8n/issues/5495)) ([4488f93](https://github.com/n8n-io/n8n/commit/4488f93c39b0ec0b4a0eff98391b46db6a2eed78))
+* Version control mvp ([#6271](https://github.com/n8n-io/n8n/issues/6271)) ([1b32141](https://github.com/n8n-io/n8n/commit/1b321416c0ba5371e0016398ae660ce298b8cdd6))
+
+
+# [0.231.0](https://github.com/n8n-io/n8n/compare/n8n@0.230.0...n8n@0.231.0) (2023-05-31)
+
+
+### Bug Fixes
+
+* **Code Node:** Fix `item` and `items` alias regression ([#6331](https://github.com/n8n-io/n8n/issues/6331)) ([54e3838](https://github.com/n8n-io/n8n/commit/54e3838daed1f0931a04ba76cfd1ea7519c0e382))
+* **Code Node:** Update vm2 to address CVE-2023-32313 ([#6318](https://github.com/n8n-io/n8n/issues/6318)) ([bcbec52](https://github.com/n8n-io/n8n/commit/bcbec52552d52b0509659cab13112e1377a256b3))
+* **core:** Optimize getSharedWorkflowIds query ([#6314](https://github.com/n8n-io/n8n/issues/6314)) ([0631f69](https://github.com/n8n-io/n8n/commit/0631f69d98e5420faebba1a54d9ad47a2664d110))
+* **core:** Prevent prototype pollution on injectable services ([#6309](https://github.com/n8n-io/n8n/issues/6309)) ([d94c20a](https://github.com/n8n-io/n8n/commit/d94c20ada543767f700475b40ef7174c433c26c5))
+* **editor:** Fix locale plularisation if count is 0 ([#6312](https://github.com/n8n-io/n8n/issues/6312)) ([0d88bd7](https://github.com/n8n-io/n8n/commit/0d88bd7c1ae95cf077c2fa231d942204ff3b8f68))
+* **editor:** Fix Luxon date parsing of ExecutionsUsage component ([#6333](https://github.com/n8n-io/n8n/issues/6333)) ([8f0ff46](https://github.com/n8n-io/n8n/commit/8f0ff460b11999f4d78f8313910358aa87311713))
+* **editor:** Update SSO settings styles ([#6342](https://github.com/n8n-io/n8n/issues/6342)) ([5ae1124](https://github.com/n8n-io/n8n/commit/5ae1124106e7597d0943c371eae6aba6c105fd6b))
+* **Execute Command Node:** Block executions when `command` is empty ([#6308](https://github.com/n8n-io/n8n/issues/6308)) ([011d577](https://github.com/n8n-io/n8n/commit/011d5778b15232cff94a321dfee18c3d7489f93d))
+* Show `Ask AI` only on Code Node ([#6336](https://github.com/n8n-io/n8n/issues/6336)) ([da856d1](https://github.com/n8n-io/n8n/commit/da856d1c6593b43e1ce8d1becb1464c19c908e78))
+
+
+### Features
+
+* Add manual login option and password reset link for SSO ([#6328](https://github.com/n8n-io/n8n/issues/6328)) ([77e3f15](https://github.com/n8n-io/n8n/commit/77e3f1551dd7473a69f8833be5678d98964142e1))
+* **core:** Add metadata (customdata) to event log ([#6334](https://github.com/n8n-io/n8n/issues/6334)) ([792b1c1](https://github.com/n8n-io/n8n/commit/792b1c1ffb0eb279bc3451787891ca3835f59d9f))
+* **editor:** Implement Resource Mapper component ([#6207](https://github.com/n8n-io/n8n/issues/6207)) ([04cfa54](https://github.com/n8n-io/n8n/commit/04cfa548af3c7a25f1f0a36ddfb1de6a9e3f2169)), closes [#5752](https://github.com/n8n-io/n8n/issues/5752) [#5814](https://github.com/n8n-io/n8n/issues/5814)
+
+
+
+# [0.230.0](https://github.com/n8n-io/n8n/compare/n8n@0.229.0...n8n@0.230.0) (2023-05-24)
+
+
+### Bug Fixes
+
+* **core:** Optimize SharedWorkflow queries ([#6297](https://github.com/n8n-io/n8n/issues/6297)) ([ed7f3b8](https://github.com/n8n-io/n8n/commit/ed7f3b845fe9a7aa0f6e1ff57ae9197057cd8aa1))
+* **core:** Prevent app crashes because of unhandled promises in poll and trigger nodes ([#6278](https://github.com/n8n-io/n8n/issues/6278)) ([3750605](https://github.com/n8n-io/n8n/commit/37506050c3f49cececa9da3cf7d420b367f2e055))
+* **editor:** Fix canvas loading when page gets restored from bfcache ([#6304](https://github.com/n8n-io/n8n/issues/6304)) ([11477f0](https://github.com/n8n-io/n8n/commit/11477f0a20f82b02d763dbf53e29083dd1e95e87))
+* **editor:** Fix design system button with icon vertical alignment ([#6284](https://github.com/n8n-io/n8n/issues/6284)) ([fc580f7](https://github.com/n8n-io/n8n/commit/fc580f7ee80b48a62fc2bebaec9902cd15944ad7))
+* **editor:** Fix inverted checks on modal confirmation results ([#6285](https://github.com/n8n-io/n8n/issues/6285)) ([5d2f474](https://github.com/n8n-io/n8n/commit/5d2f4746ea5da977a6532db90c624ded1520ec3e))
+* **ERPNext Node:** Fix issue with credential test and add frappe cloud url ([#6283](https://github.com/n8n-io/n8n/issues/6283)) ([2a2b645](https://github.com/n8n-io/n8n/commit/2a2b6452dc326d8979bed0cf47fc54becd746619))
+* **Google Calendar Node:** All day option fix ([#6274](https://github.com/n8n-io/n8n/issues/6274)) ([5bef91e](https://github.com/n8n-io/n8n/commit/5bef91e3c84a15a30a893ce3b321b7a8ea926963))
+* Initialize license in queue mode correctly ([#6301](https://github.com/n8n-io/n8n/issues/6301)) ([42c79cd](https://github.com/n8n-io/n8n/commit/42c79cd6f1e495e60a9f038403d9a8a761318f52))
+* **OpenAI Node:** Descriptive errors ([#6270](https://github.com/n8n-io/n8n/issues/6270)) ([8fdfa3b](https://github.com/n8n-io/n8n/commit/8fdfa3b6b83c6a008d1be778dadcc2172e8a708d))
+* Prevent removing manual executions when setting says to save ([#6300](https://github.com/n8n-io/n8n/issues/6300)) ([55b755c](https://github.com/n8n-io/n8n/commit/55b755cb44a3bf9fc9d41af37b7818d3626baf0d))
+* **SSH Node:** Private key field as password and credential test ([#6298](https://github.com/n8n-io/n8n/issues/6298)) ([d5c7e6f](https://github.com/n8n-io/n8n/commit/d5c7e6f2cff63337948122a11c3707316c937b9f))
+* **SSH Node:** Replace ~ with /home/username ([#6269](https://github.com/n8n-io/n8n/issues/6269)) ([4219490](https://github.com/n8n-io/n8n/commit/421949067b47a25e859fbd45364ba657e7286599))
+* **Strapi Node:** Strapi credentials notice ([#6289](https://github.com/n8n-io/n8n/issues/6289)) ([bbe6d4c](https://github.com/n8n-io/n8n/commit/bbe6d4c4dbda0b2cba447cf1b0aa4a7f808096fb))
+* **Strava Trigger Node:** Fix issue with delete events failing to display data ([#6277](https://github.com/n8n-io/n8n/issues/6277)) ([8a8fed0](https://github.com/n8n-io/n8n/commit/8a8fed08407f20791ae01ab83e1ce3d99715dc5c))
+* **Wekan Node:** Handle response correctly ([#6296](https://github.com/n8n-io/n8n/issues/6296)) ([4d9c8b0](https://github.com/n8n-io/n8n/commit/4d9c8b07a93ea4f2e5ad913358bafb682f6f5506))
+
+
+### Features
+
+* Add SSO SAML metadataUrl support and various improvements ([#6139](https://github.com/n8n-io/n8n/issues/6139)) ([e3a53fd](https://github.com/n8n-io/n8n/commit/e3a53fd19d8c258a08baab9c090968104327a13b))
+* **core:** Remove all floating promises. Enforce `@typescript-eslint/no-floating-promises` ([#6281](https://github.com/n8n-io/n8n/issues/6281)) ([e046f65](https://github.com/n8n-io/n8n/commit/e046f656fefe951af71ab031a440729a5eb1c7cb))
+* **core:** Replace client-oauth2 with an in-repo package ([#6266](https://github.com/n8n-io/n8n/issues/6266)) ([a1b1f24](https://github.com/n8n-io/n8n/commit/a1b1f24ddfd4da36f8dd04e34e2675a3993755ca))
+* **Execution Data Node:** New node ([#6247](https://github.com/n8n-io/n8n/issues/6247)) ([3f7c4f0](https://github.com/n8n-io/n8n/commit/3f7c4f0ad485a0a4049f371723b01847077f7ccd))
+* **Gotify Node:** Add support for self signed certificates ([#6053](https://github.com/n8n-io/n8n/issues/6053)) ([401cffd](https://github.com/n8n-io/n8n/commit/401cffde57aa153bc2d1589bc8d11d7951f2ade1))
+* **Ldap Node:** Add LDAP node ([#4783](https://github.com/n8n-io/n8n/issues/4783)) ([ec393bc](https://github.com/n8n-io/n8n/commit/ec393bc041e9e7590e7b0a2821976f104f5c23bb))
+* **LoneScale Node:** Add LoneScale node and Trigger node ([#5146](https://github.com/n8n-io/n8n/issues/5146)) ([4b85433](https://github.com/n8n-io/n8n/commit/4b854333d49c661fe11f19a176a147dbf28e697f))
+* **RabbitMQ Node:** Add mode for acknowledging and deleting from queue later in workflow ([#6225](https://github.com/n8n-io/n8n/issues/6225)) ([f5950b2](https://github.com/n8n-io/n8n/commit/f5950b201c6ff412b9a304052f05eb2c3b8a7c51))
+* **Send Email Node:** Add content-id for email attachments ([#3632](https://github.com/n8n-io/n8n/issues/3632)) ([8fe8aad](https://github.com/n8n-io/n8n/commit/8fe8aad6a77bbec7a26c87f8bad9593852e8d464))
+* **SSH Node:** Credentials test ([#6279](https://github.com/n8n-io/n8n/issues/6279)) ([3569d53](https://github.com/n8n-io/n8n/commit/3569d53917b41b758a96293a2b33a06cbf2c0a70))
+
+
+
+# [0.229.0](https://github.com/n8n-io/n8n/compare/n8n@0.228.0...n8n@0.229.0) (2023-05-17)
+
+
+### Bug Fixes
+
+* **Code Node:** Restore help text ([#6231](https://github.com/n8n-io/n8n/issues/6231)) ([e72d564](https://github.com/n8n-io/n8n/commit/e72d564bf84460ce085f022f186e8101524f2e7b))
+* **core:** Make sure that special polling parameters are available on community nodes as well ([#6230](https://github.com/n8n-io/n8n/issues/6230)) ([9db49d0](https://github.com/n8n-io/n8n/commit/9db49d0c18f007b974594b918728e430ec510f54))
+* Remove workflow execution credential error message when instance owner ([#6116](https://github.com/n8n-io/n8n/issues/6116)) ([e81a964](https://github.com/n8n-io/n8n/commit/e81a96483af6e0d0a3cf62481f5e9a37d6a62b6e))
+
+
+### Features
+
+* **core:** Reduce the number of events sent to Sentry ([#6235](https://github.com/n8n-io/n8n/issues/6235)) ([a4c0cc9](https://github.com/n8n-io/n8n/commit/a4c0cc9b5c56639067918f1bad1baf4eb201e48b))
+* **core:** Return OAuth2 error body if available ([#5794](https://github.com/n8n-io/n8n/issues/5794)) ([79d0a0f](https://github.com/n8n-io/n8n/commit/79d0a0f2470905f98b71fb5c8ca007244004f99a))
+* **editor:** Add cloud ExecutionsUsage and API blocking using licenses ([#6159](https://github.com/n8n-io/n8n/issues/6159)) ([cd7c312](https://github.com/n8n-io/n8n/commit/cd7c312fbd172b5d3c8bbeaf775f7b5bb4611aa5)), closes [#6187](https://github.com/n8n-io/n8n/issues/6187)
+* **editor:** Add color picker design system component ([#6179](https://github.com/n8n-io/n8n/issues/6179)) ([823e885](https://github.com/n8n-io/n8n/commit/823e88500c35508d6322242bca5749d711fb2b31))
+* **editor:** Drop support for legacy browsers that do not have native ESM support ([#6239](https://github.com/n8n-io/n8n/issues/6239)) ([9182d15](https://github.com/n8n-io/n8n/commit/9182d1558a1f98e0ea1b9fbaddabf7c8b4836e94))
+* **editor:** Updating node reference pattern in expression editor ([#6228](https://github.com/n8n-io/n8n/issues/6228)) ([13bcec1](https://github.com/n8n-io/n8n/commit/13bcec1661e1da736ff9c93869bc49a3038bdf1b))
+* **editor:** Version Control settings update (WIP) ([#6233](https://github.com/n8n-io/n8n/issues/6233)) ([0666377](https://github.com/n8n-io/n8n/commit/0666377ef8074ad093391d41e08e194704a25dbd))
+* **Google Ads Node:** Update to support v13 ([#6212](https://github.com/n8n-io/n8n/issues/6212)) ([bd1bffc](https://github.com/n8n-io/n8n/commit/bd1bffcd536eedde8582a354c11349dbddd2b9a2))
+* **Respond to Webhook Node:** Move from Binary Buffer to Binary streaming ([#5613](https://github.com/n8n-io/n8n/issues/5613)) ([8ae2d80](https://github.com/n8n-io/n8n/commit/8ae2d801d8e2c881fcff5f7cf4fcb699c10b2be2))
+
+
+
+# [0.228.0](https://github.com/n8n-io/n8n/compare/n8n@0.227.0...n8n@0.228.0) (2023-05-11)
+
+
+### Bug Fixes
+
+* **AWS Rekognition Node:** Fix all different action type ([#6136](https://github.com/n8n-io/n8n/issues/6136)) ([22b82a4](https://github.com/n8n-io/n8n/commit/22b82a43a24bb8415eb8f4a941b05647ef8904c2))
+* **core:** Ensure DB repositories are initialized before the DB migrations are run  ([#6220](https://github.com/n8n-io/n8n/issues/6220)) ([500c0eb](https://github.com/n8n-io/n8n/commit/500c0ebce34dc2d21a531176dee965a70abec5f8))
+* **core:** Move nodeExecute InternalHook calls to hookFunctionsSave ([#6193](https://github.com/n8n-io/n8n/issues/6193)) ([f00b2ae](https://github.com/n8n-io/n8n/commit/f00b2ae3eaa225e483abc8defdc58d27b7d2c5e8))
+* Correctly save executions that failed when polling as error instead of new ([#6192](https://github.com/n8n-io/n8n/issues/6192)) ([06948b5](https://github.com/n8n-io/n8n/commit/06948b5ba5775b4f03d1ce46d57a461014317d51))
+* **editor:** Add loading skeletons to Executions list page ([#6184](https://github.com/n8n-io/n8n/issues/6184)) ([eae3a55](https://github.com/n8n-io/n8n/commit/eae3a55cc6b87bc8998d18d3d32d0d03013996b1))
+* **editor:** Display SSO entry in Settings on Cloud ([#6181](https://github.com/n8n-io/n8n/issues/6181)) ([b0a1899](https://github.com/n8n-io/n8n/commit/b0a1899e7141e5726d4fcbca6bba47e8e4b5cef7))
+* **editor:** Fix polling trigger check for `runData` ([#6130](https://github.com/n8n-io/n8n/issues/6130)) ([80831cd](https://github.com/n8n-io/n8n/commit/80831cd7c60f77557c37317600690a289d966448))
+* **editor:** Fix viewing and downloading of binary data ([#6218](https://github.com/n8n-io/n8n/issues/6218)) ([b9779c3](https://github.com/n8n-io/n8n/commit/b9779c32936c8b5e2385226ecab1025ff88d7044))
+* **editor:** Flag issues only on workflow activation ([#6127](https://github.com/n8n-io/n8n/issues/6127)) ([1b49c17](https://github.com/n8n-io/n8n/commit/1b49c17f38e97547430c407e21284b0c508469fa))
+* **editor:** Remove duplicate mapping of `item.json` key in data pinning ([#6135](https://github.com/n8n-io/n8n/issues/6135)) ([91fee0c](https://github.com/n8n-io/n8n/commit/91fee0ca667f233c0bde0dc6089bbed7d7db5b5f))
+* **editor:** Show the correct actions count in the nodes list ([#6183](https://github.com/n8n-io/n8n/issues/6183)) ([751e132](https://github.com/n8n-io/n8n/commit/751e132968470144cfca1c1b7ca22caf2c4c1de4))
+* **editor:** Update and add design system checkbox component to Editor ([#6178](https://github.com/n8n-io/n8n/issues/6178)) ([13c143e](https://github.com/n8n-io/n8n/commit/13c143eb6df41457fbd361674f2063b983a0e077))
+* **editor:** Update and fix storybook (was failing to run in local dev mode) ([#6180](https://github.com/n8n-io/n8n/issues/6180)) ([1e6a75f](https://github.com/n8n-io/n8n/commit/1e6a75f3416cdfcce1299dc9d242e23d0ea97ad3))
+* **FTP Node:** Use filename instead of remote filepath for downloaded binary data ([#6170](https://github.com/n8n-io/n8n/issues/6170)) ([be08933](https://github.com/n8n-io/n8n/commit/be089331b372e029ab5516b91e63a2d5d9033719))
+* **Google Sheets Node:** Upgrade xlsx to address CVE-2023-30533 ([#6172](https://github.com/n8n-io/n8n/issues/6172)) ([45dc985](https://github.com/n8n-io/n8n/commit/45dc985af742b049dc5673cf972da704d1f1f220))
+* **HTTP Request Node:** Correctly doesn't redirect on non GET method ([#6132](https://github.com/n8n-io/n8n/issues/6132)) ([3f5c606](https://github.com/n8n-io/n8n/commit/3f5c6062542f3b2b8a02cf0820e03da3f01d8bf2))
+* **MySQL Node:** Node should return date types as strings ([#6169](https://github.com/n8n-io/n8n/issues/6169)) ([5d77ec7](https://github.com/n8n-io/n8n/commit/5d77ec76e3c47fe9f9d7f31fe6c03827685ec576))
+* **Postgres Node:** Always return TIMESTAMP and TIMESTAMPZ as ISO string ([#6145](https://github.com/n8n-io/n8n/issues/6145)) ([0eb4d9f](https://github.com/n8n-io/n8n/commit/0eb4d9fc16aad1d1a350ba074c4b86712fbd90a1))
+* Prevent overflow when rendering expression hints ([#6214](https://github.com/n8n-io/n8n/issues/6214)) ([c717771](https://github.com/n8n-io/n8n/commit/c7177719e5f60813f4d15f7f97f1b4f253e29b07))
+* Prevent unnecessary error messages also for data loaded flag ([#6201](https://github.com/n8n-io/n8n/issues/6201)) ([d5e62ff](https://github.com/n8n-io/n8n/commit/d5e62ff096ddefd52dae742166fe92ceef17ded6))
+
+
+### Features
+
+* **Airtable Node:** Access token support ([#6160](https://github.com/n8n-io/n8n/issues/6160)) ([f9fd820](https://github.com/n8n-io/n8n/commit/f9fd82040ac09914a03e5b9f8f84fce5f6a99835))
+* **Code Node:** Add Python support ([#4295](https://github.com/n8n-io/n8n/issues/4295)) ([35c8510](https://github.com/n8n-io/n8n/commit/35c8510ab6d607fe59056a4aa1d8d148e194d12c))
+* **core:** Improve health check ([#6205](https://github.com/n8n-io/n8n/issues/6205)) ([9e7b9fb](https://github.com/n8n-io/n8n/commit/9e7b9fb443046c73135efb70d0d1894207125f66))
+* Create NPM node ([#6177](https://github.com/n8n-io/n8n/issues/6177)) ([f3bc6f1](https://github.com/n8n-io/n8n/commit/f3bc6f19b68f6bd4bd99614f60bd6833bd15813f))
+* **Date & Time Node:** Overhaul of the node ([#5904](https://github.com/n8n-io/n8n/issues/5904)) ([7d1d1f7](https://github.com/n8n-io/n8n/commit/7d1d1f7872163cecb468c317670da2d8b89a7651))
+* **HubSpot Node:** Overhaul the HubSpot Node ([#4337](https://github.com/n8n-io/n8n/issues/4337)) ([2913e67](https://github.com/n8n-io/n8n/commit/2913e676e639757cdf1a513ad35a7df0e494fa6f))
+* **JotForm Trigger Node:** Add support for hipaa-api.jotform.com ([#6171](https://github.com/n8n-io/n8n/issues/6171)) ([3074f42](https://github.com/n8n-io/n8n/commit/3074f42b3b98cf0dbdc13ad7b927d6b7fc726fab))
+* **Kafka Trigger Node:** Add non-parallel execution ([#6175](https://github.com/n8n-io/n8n/issues/6175)) ([814ea51](https://github.com/n8n-io/n8n/commit/814ea5185ce82e0a7687b41161602b45f92bee93))
+
+
+
+# [0.227.0](https://github.com/n8n-io/n8n/compare/n8n@0.226.0...n8n@0.227.0) (2023-05-03)
+
+
+### Bug Fixes
+
+* **AWS S3 Node:** Fix File upload, and add node tests ([#6153](https://github.com/n8n-io/n8n/issues/6153)) ([deb4c04](https://github.com/n8n-io/n8n/commit/deb4c04f346f8e5985b5f6c3f3a3e929fde13e5b))
+* **Compression Node:** Fix issue with decompression failing with uppercase extensions ([#6098](https://github.com/n8n-io/n8n/issues/6098)) ([aa59329](https://github.com/n8n-io/n8n/commit/aa593298365eabd6eb1dda9fe3f06e7eae7c5ea9))
+* **core:** Account for nodes with renamable content ([#6109](https://github.com/n8n-io/n8n/issues/6109)) ([c99f158](https://github.com/n8n-io/n8n/commit/c99f158120b3c1ffca1718be337afc73d6ec9e65))
+* **core:** Assign Unknown Error only if message or description not present in error ([8aedc03](https://github.com/n8n-io/n8n/commit/8aedc03ddad3f83ffd2569be5b61710f27d2f672))
+* **core:** Avoid using `Object.keys` on Buffer and other non-plain objects ([#6131](https://github.com/n8n-io/n8n/issues/6131)) ([a3aba83](https://github.com/n8n-io/n8n/commit/a3aba835a15a8a32acc1e1ff0b972007df2b2b34))
+* **core:** Better error message in Webhook node when using the POST method ([a0dd17e](https://github.com/n8n-io/n8n/commit/a0dd17e1151e668b95dc57367a0b100d00913ea3))
+* **core:** Better errors for common status codes fix ([700cc39](https://github.com/n8n-io/n8n/commit/700cc39cbc7da3c70513ff586dc97319456308ae))
+* **core:** Fix `hasOwnProperty` on augmented objects ([#6124](https://github.com/n8n-io/n8n/issues/6124)) ([206b6b9](https://github.com/n8n-io/n8n/commit/206b6b90b860ceaab58b9bdd5ff20ffc741c13fa))
+* **core:** Fix bug running addUserActivatedColumn migration on MariaDB ([#6157](https://github.com/n8n-io/n8n/issues/6157)) ([570790e](https://github.com/n8n-io/n8n/commit/570790ed0c9521e09b6414bc1da2c596f17ff072))
+* **core:** Fix canceled execution status ([#6142](https://github.com/n8n-io/n8n/issues/6142)) ([839a56a](https://github.com/n8n-io/n8n/commit/839a56a682674baf44d5beececdbe677d18c0d89))
+* **core:** Improve saml endpoints and audit events ([#6107](https://github.com/n8n-io/n8n/issues/6107)) ([c0b1cdd](https://github.com/n8n-io/n8n/commit/c0b1cddc91fe199377c301f02f230827f231ba73))
+* **core:** Remove SAML config metadataUrl if XML metadata is set directly ([#6143](https://github.com/n8n-io/n8n/issues/6143)) ([25fe14b](https://github.com/n8n-io/n8n/commit/25fe14be56482477c00a360914730b25c9028443))
+* **core:** Skip auth for controllers/routes that don't use the `Authorized` decorator, or use `Authorized('none')` ([#6106](https://github.com/n8n-io/n8n/issues/6106)) ([59aee22](https://github.com/n8n-io/n8n/commit/59aee2270bdc0c8360aa534237b7f6015d382346))
+* Correctly allow sharees to test credential when opening the modal ([#6111](https://github.com/n8n-io/n8n/issues/6111)) ([2e73f4a](https://github.com/n8n-io/n8n/commit/2e73f4abd04ba7ab929b0fce57bf12651a0a2e49))
+* **Date & Time Node:** Numbers conversions fix ([14f7114](https://github.com/n8n-io/n8n/commit/14f71146e21026721fc9d5883bb9d73d38afcf8c))
+* **editor:** Change execution list tab loader design ([#6120](https://github.com/n8n-io/n8n/issues/6120)) ([188ef04](https://github.com/n8n-io/n8n/commit/188ef042cd58b9194dadef4cc68deb3510688c26))
+* **editor:** Disable changing of email and pw when SAML login enabled ([#6104](https://github.com/n8n-io/n8n/issues/6104)) ([3e9ecd9](https://github.com/n8n-io/n8n/commit/3e9ecd939742df8d8ced9179aaa26b081139befa))
+* **editor:** Fix `Show details` summary ([#6113](https://github.com/n8n-io/n8n/issues/6113)) ([90a62cc](https://github.com/n8n-io/n8n/commit/90a62ccfb5b4a959d72336d284ad4ac3b17af582))
+* **editor:** Fix copy selection behavior ([#6112](https://github.com/n8n-io/n8n/issues/6112)) ([1607aeb](https://github.com/n8n-io/n8n/commit/1607aeb9f94700793d58604ea4f89c5555d43981))
+* **editor:** Fix cropped off completions docstrings ([#6129](https://github.com/n8n-io/n8n/issues/6129)) ([85e8145](https://github.com/n8n-io/n8n/commit/85e8145439f89e76fe5fe3a659430c03738d6e2b))
+* **editor:** Fix focus jumping when using chrome autofill ([#6140](https://github.com/n8n-io/n8n/issues/6140)) ([c63181b](https://github.com/n8n-io/n8n/commit/c63181b3171040c3dd3051c2a1358aea0af6bae0))
+* **editor:** Fix missing `Stop Listening` button ([#6125](https://github.com/n8n-io/n8n/issues/6125)) ([20a72bb](https://github.com/n8n-io/n8n/commit/20a72bb28b981e9c8d12dd6398d843b39d80daac))
+* **editor:** Fix quote handling on dollar-sign variable completions ([#6128](https://github.com/n8n-io/n8n/issues/6128)) ([51f5990](https://github.com/n8n-io/n8n/commit/51f59905591fa492017fc3ced46601eeca5fb057))
+* **editor:** Fix sidebar button styling ([#6138](https://github.com/n8n-io/n8n/issues/6138)) ([a72a511](https://github.com/n8n-io/n8n/commit/a72a5112f34a0d8ab248f687c74b758c8db6729c))
+* **editor:** Fix unique names for node duplication ([#6134](https://github.com/n8n-io/n8n/issues/6134)) ([71ae6c6](https://github.com/n8n-io/n8n/commit/71ae6c66ef32ba86edf0bb9cdb9f24a6d40ee80c))
+* **editor:** Fix unscrollable node settings ([#6133](https://github.com/n8n-io/n8n/issues/6133)) ([c8ff368](https://github.com/n8n-io/n8n/commit/c8ff368fc7be58e7c42746f7e7a4c5f6a4149d3e))
+* **editor:** Loading state for executions tab ([#6100](https://github.com/n8n-io/n8n/issues/6100)) ([4cbb05b](https://github.com/n8n-io/n8n/commit/4cbb05b0017ffd77eca51fc5b9c5c4868515a60d))
+* **editor:** Remove pagination from binary data output ([#6093](https://github.com/n8n-io/n8n/issues/6093)) ([c6e665a](https://github.com/n8n-io/n8n/commit/c6e665a975958c433d7991c057a3e4be644daff1))
+* **editor:** Restrict `[empty]` in parameter input hint to zero-length string ([#6003](https://github.com/n8n-io/n8n/issues/6003)) ([8862e1e](https://github.com/n8n-io/n8n/commit/8862e1e7df0be62ab3746b70e613ffd2ab26bc4a))
+* **editor:** Show error in RLC if credentials are not set ([#6108](https://github.com/n8n-io/n8n/issues/6108)) ([2c240a0](https://github.com/n8n-io/n8n/commit/2c240a0e4ecd9157dca612d98a8a7c68a65a9909))
+* **HTTP Request Node:** Add description for 'Specify Body' option ([#6114](https://github.com/n8n-io/n8n/issues/6114)) ([af097ae](https://github.com/n8n-io/n8n/commit/af097ae22c7e87918ada2527c6a2fe62cb8f318a))
+* **HTTP Request Node:** Always lowercase headers ([983e6e1](https://github.com/n8n-io/n8n/commit/983e6e124eb9557eec55c5f2e2b834a926243955))
+* **Mattermost Node:** Fix base url trailing slash error ([#6097](https://github.com/n8n-io/n8n/issues/6097)) ([25a386d](https://github.com/n8n-io/n8n/commit/25a386dd70df516090e622d921a79456fc7d16e3))
+* **Merge Node:** Do not error if expected key is missing ([d219af7](https://github.com/n8n-io/n8n/commit/d219af75cf37c603c34b1ca5851cafd4a490889c))
+* Prevent displaying an endless timer in the execution list for finished executions ([#6137](https://github.com/n8n-io/n8n/issues/6137)) ([701105e](https://github.com/n8n-io/n8n/commit/701105edcf5284f276fe146d8267e1a5560ab186))
+* Prevent invocations of 'GET /rest/license' from returning an error when ephemeral licenses are used ([#6154](https://github.com/n8n-io/n8n/issues/6154)) ([a3d26ef](https://github.com/n8n-io/n8n/commit/a3d26eff79013642865fa59078732526850b96a6))
+* **Slack Node:** Restore ability to send text in addition of blocks or attachments ([8669f95](https://github.com/n8n-io/n8n/commit/8669f95736797da4f3efd33468cdeac5d28667b0))
+
+
+### Features
+
+* **core:** Add notice to alert users a new version is available ([cb497fb](https://github.com/n8n-io/n8n/commit/cb497fbbecdba670d5121fa2c6eaf7c66d8a8a38))
+* **editor:** Add support for `loadOptionsDependsOn` to RLC ([#6101](https://github.com/n8n-io/n8n/issues/6101)) ([b17d5f9](https://github.com/n8n-io/n8n/commit/b17d5f9aa086bf408e8450244460ada57de0d7c3))
+* **editor:** Add version controls settings (WIP) ([#6036](https://github.com/n8n-io/n8n/issues/6036)) ([0c9ce3a](https://github.com/n8n-io/n8n/commit/0c9ce3a2ec9487b4eb9130651927e91dcd0f85af))
+* **Item Lists Node:** Split out items work on objects as well as arrays ([c65ac03](https://github.com/n8n-io/n8n/commit/c65ac0336821868c289adc55abab40017b1856da))
+* **Microsoft Excel 365 Node:** Overhaul ([5364a2d](https://github.com/n8n-io/n8n/commit/5364a2dff32e05147b8e9dd392038eb36791e5dc))
+
+
+
+## [0.226.2](https://github.com/n8n-io/n8n/compare/n8n@0.226.1...n8n@0.226.2) (2023-05-03)
+
+
+### Bug Fixes
+
+* **core:** Fix bug running addUserActivatedColumn migration on MariaDB ([#6157](https://github.com/n8n-io/n8n/issues/6157)) ([aa8e96d](https://github.com/n8n-io/n8n/commit/aa8e96dd6b19f105a957da71a5c4d7ab5caecc01))
+
+
+
+## [0.226.1](https://github.com/n8n-io/n8n/compare/n8n@0.226.0...n8n@0.226.1) (2023-05-02)
+
+
+### Bug Fixes
+
+* **Compression Node:** Fix issue with decompression failing with uppercase extensions ([#6098](https://github.com/n8n-io/n8n/issues/6098)) ([7136500](https://github.com/n8n-io/n8n/commit/71365002daa71c5fa5e68a5bb373ee200a05b7b9))
+* **core:** Account for nodes with renamable content ([#6109](https://github.com/n8n-io/n8n/issues/6109)) ([b561d46](https://github.com/n8n-io/n8n/commit/b561d463265831f3cd370ec99982847f2bddca41))
+* **core:** Fix `hasOwnProperty` on augmented objects ([#6124](https://github.com/n8n-io/n8n/issues/6124)) ([2f015c0](https://github.com/n8n-io/n8n/commit/2f015c0f153785384b009e71bf4994e18b5d06b8))
+* **core:** Fix canceled execution status ([#6142](https://github.com/n8n-io/n8n/issues/6142)) ([1796101](https://github.com/n8n-io/n8n/commit/1796101fed03d04906f2341a0488b60b7b5bf71c))
+* **core:** Skip auth for controllers/routes that don't use the `Authorized` decorator, or use `Authorized('none')` ([#6106](https://github.com/n8n-io/n8n/issues/6106)) ([9d44991](https://github.com/n8n-io/n8n/commit/9d44991b2a8c9384e2bf32204ac47a4ecb0131be))
+* Correctly allow sharees to test credential when opening the modal ([#6111](https://github.com/n8n-io/n8n/issues/6111)) ([240bb47](https://github.com/n8n-io/n8n/commit/240bb47e8e2cd99c56b8837079073bbf2bf5f687))
+* **Date & Time Node:** Numbers conversions fix ([e11e7cd](https://github.com/n8n-io/n8n/commit/e11e7cd603a145c83c36f6a6deb821a56ccabd6f))
+* **editor:** Change execution list tab loader design ([#6120](https://github.com/n8n-io/n8n/issues/6120)) ([ffc033f](https://github.com/n8n-io/n8n/commit/ffc033ff8ff391be09da8dbd62f8eb06a94f6cb0))
+* **editor:** Fix `Show details` summary ([#6113](https://github.com/n8n-io/n8n/issues/6113)) ([e12bafb](https://github.com/n8n-io/n8n/commit/e12bafb9473393dd9e139d0e0a4a21241b417645))
+* **editor:** Fix copy selection behavior ([#6112](https://github.com/n8n-io/n8n/issues/6112)) ([0efd94a](https://github.com/n8n-io/n8n/commit/0efd94a875fe9e3cac5da3421effcf6c8f6eaae8))
+* **editor:** Fix cropped off completions docstrings ([#6129](https://github.com/n8n-io/n8n/issues/6129)) ([06594cc](https://github.com/n8n-io/n8n/commit/06594cc36f1a0d4069e556d6dbb4e268a78301c6))
+* **editor:** Fix missing `Stop Listening` button ([#6125](https://github.com/n8n-io/n8n/issues/6125)) ([dcbd2d2](https://github.com/n8n-io/n8n/commit/dcbd2d2bc1c59ca8bbe6a802a2a8f482b3d20d74))
+* **editor:** Fix quote handling on dollar-sign variable completions ([#6128](https://github.com/n8n-io/n8n/issues/6128)) ([c23ad35](https://github.com/n8n-io/n8n/commit/c23ad3502d0a8c4bcbd60cce2fc13a91981fb119))
+* **editor:** Fix sidebar button styling ([#6138](https://github.com/n8n-io/n8n/issues/6138)) ([d3f4bc1](https://github.com/n8n-io/n8n/commit/d3f4bc1859104f11d2cf38ef3f3405d62c88bc6d))
+* **editor:** Fix unique names for node duplication ([#6134](https://github.com/n8n-io/n8n/issues/6134)) ([48a4068](https://github.com/n8n-io/n8n/commit/48a4068d7ec1ddf5d5a4d10620dce1c89cb8fa34))
+* **editor:** Fix unscrollable node settings ([#6133](https://github.com/n8n-io/n8n/issues/6133)) ([f762f16](https://github.com/n8n-io/n8n/commit/f762f16afb7b9ea54e29950c06133a292dc87b3f))
+* **editor:** Loading state for executions tab ([#6100](https://github.com/n8n-io/n8n/issues/6100)) ([2e12c50](https://github.com/n8n-io/n8n/commit/2e12c50477014c57fa665ba36f48ff658cf7ee94))
+* **editor:** Remove pagination from binary data output ([#6093](https://github.com/n8n-io/n8n/issues/6093)) ([7b7d9de](https://github.com/n8n-io/n8n/commit/7b7d9de7586905b2740541e7f0289bc78f8f2ad7))
+* **editor:** Show error in RLC if credentials are not set ([#6108](https://github.com/n8n-io/n8n/issues/6108)) ([5bf3400](https://github.com/n8n-io/n8n/commit/5bf3400ca7ffa04bb51214bc539435b847614cbb))
+* **HTTP Request Node:** Add description for 'Specify Body' option ([#6114](https://github.com/n8n-io/n8n/issues/6114)) ([69b6ba8](https://github.com/n8n-io/n8n/commit/69b6ba85202c5a28052a56c041b880bfa9fcf0a0))
+* **HTTP Request Node:** Always lowercase headers ([31c56a1](https://github.com/n8n-io/n8n/commit/31c56a12f273d5569ed3ac4d72cf74c90cc24b31))
+* **Mattermost Node:** Fix base url trailing slash error ([#6097](https://github.com/n8n-io/n8n/issues/6097)) ([788fda1](https://github.com/n8n-io/n8n/commit/788fda1b7dbf29d7a7e614a959ac3630b2a6559f))
+* **Merge Node:** Do not error if expected key is missing ([8b59564](https://github.com/n8n-io/n8n/commit/8b59564776ebaf2c54b9e2dae5b77109895da883))
+* Prevent displaying an endless timer in the execution list for finished executions ([#6137](https://github.com/n8n-io/n8n/issues/6137)) ([2672896](https://github.com/n8n-io/n8n/commit/2672896c8e2de7d1f92899a392a3f2b3f60aaef3))
+* **Slack Node:** Restore ability to send text in addition of blocks or attachments ([625d672](https://github.com/n8n-io/n8n/commit/625d6729b4158fbc811941ce45819f32372e6265))
+
+
+
+# [0.226.0](https://github.com/n8n-io/n8n/compare/n8n@0.225.0...n8n@0.226.0) (2023-04-26)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-30547 ([#6039](https://github.com/n8n-io/n8n/issues/6039)) ([8268f23](https://github.com/n8n-io/n8n/commit/8268f235abf5277480c215ea953fc3db1c275c95))
+* **core:** Improve domain and url matching for extractDomain and extractUrl ([#6010](https://github.com/n8n-io/n8n/issues/6010)) ([33fb732](https://github.com/n8n-io/n8n/commit/33fb73217dca68244c93296f1a4be96cc83e4480))
+* **core:** Serialize dates and regexps when reading from augmented objects ([#6086](https://github.com/n8n-io/n8n/issues/6086)) ([a4eb46a](https://github.com/n8n-io/n8n/commit/a4eb46acc178533e3c63fedcf0d884a5b66bae28))
+* **core:** Skip license activation when instance was already activated ([#6064](https://github.com/n8n-io/n8n/issues/6064)) ([eaf7090](https://github.com/n8n-io/n8n/commit/eaf70909197ed511efe9add956eb5e4f78b27e20))
+* **editor:** Clean up demo and template callouts from workflows page ([#6023](https://github.com/n8n-io/n8n/issues/6023)) ([4ee5083](https://github.com/n8n-io/n8n/commit/4ee508385ab5ac379925b315006a2d9389183751))
+* **editor:** Fix memory leak in Node Detail View by correctly unsubscribing from event buses ([#6021](https://github.com/n8n-io/n8n/issues/6021)) ([0970ec0](https://github.com/n8n-io/n8n/commit/0970ec066d8f80082f49f0b0f8987b95392102bf))
+* **editor:** Fix typo in SSO upgrade link ([#6031](https://github.com/n8n-io/n8n/issues/6031)) ([9b59f1d](https://github.com/n8n-io/n8n/commit/9b59f1df9c358d3677b4cbc3e80a73af03b7981d))
+* **editor:** Resolve expressions for grandparent nodes ([#5859](https://github.com/n8n-io/n8n/issues/5859)) ([a19d444](https://github.com/n8n-io/n8n/commit/a19d4447ac38e40d1fd1da83beb6c20fb7b2d0ed))
+* **editor:** SettingsSidebar should disconnect from push when navigating away ([#6025](https://github.com/n8n-io/n8n/issues/6025)) ([41660d9](https://github.com/n8n-io/n8n/commit/41660d9e281432b87d875c98992bfaf54d25b37f))
+* **editor:** Update LDAP and Log streaming paywalls ([#6069](https://github.com/n8n-io/n8n/issues/6069)) ([8a3b3e5](https://github.com/n8n-io/n8n/commit/8a3b3e53e1ac0a2a1864b42b24ab46f25253a9d3))
+* **editor:** Update SSO upgrade link ([#6016](https://github.com/n8n-io/n8n/issues/6016)) ([953198e](https://github.com/n8n-io/n8n/commit/953198e092a44029805ff85e4607355444ea8b2c))
+* **Notion Node:** Update credential test to not require user permissions ([#6022](https://github.com/n8n-io/n8n/issues/6022)) ([a68330f](https://github.com/n8n-io/n8n/commit/a68330ff66744551270f40399a6fd7fe330e6f27))
+
+
+### Features
+
+* **core:** Add license:info command ([#6047](https://github.com/n8n-io/n8n/issues/6047)) ([ab12d3e](https://github.com/n8n-io/n8n/commit/ab12d3e3278745b290de82c16f358841b20850b4))
+* **core:** Add SSH key generation ([#6006](https://github.com/n8n-io/n8n/issues/6006)) ([71ed1f4](https://github.com/n8n-io/n8n/commit/71ed1f410c5a80f35ecaf913a5522b7788998695))
+* **core:** Add support for digestAuth to httpRequest and declarative style ([#5676](https://github.com/n8n-io/n8n/issues/5676)) ([62f993c](https://github.com/n8n-io/n8n/commit/62f993c84f6ecf2f4d0431d505ba18a0253bd244))
+* **core:** Manage version control settings ([#6079](https://github.com/n8n-io/n8n/issues/6079)) ([f3b4701](https://github.com/n8n-io/n8n/commit/f3b470186360dc3c3a3df599f0a9740183e86696))
+* **core:** Upgrade google-timezones-json to use the correct timezone for Sao Paulo ([#6042](https://github.com/n8n-io/n8n/issues/6042)) ([b8cb5d7](https://github.com/n8n-io/n8n/commit/b8cb5d7f0b11fb138d5c4714bcc9e1d9b6366d76)), closes [#2647](https://github.com/n8n-io/n8n/issues/2647)
+* **editor:** Add disable template experiment ([#5963](https://github.com/n8n-io/n8n/issues/5963)) ([a74284b](https://github.com/n8n-io/n8n/commit/a74284bac387338e870dc81ac33748af55521274))
+* **editor:** Add SQL editor support ([#5517](https://github.com/n8n-io/n8n/issues/5517)) ([70aaf24](https://github.com/n8n-io/n8n/commit/70aaf2478461d9ceea98bc91dc935493fd6dbe24))
+* **editor:** Enhance Node Creator actions view ([#5954](https://github.com/n8n-io/n8n/issues/5954)) ([390841b](https://github.com/n8n-io/n8n/commit/390841bbf0fdd4d536101593711a6658ea2784e4))
+* **editor:** Version control (WIP) ([#6013](https://github.com/n8n-io/n8n/issues/6013)) ([0e0a064](https://github.com/n8n-io/n8n/commit/0e0a064fa7ae54a8a6b695bd4bb19da71334fea0))
+* **editor:** Version control paywall (WIP) ([#6030](https://github.com/n8n-io/n8n/issues/6030)) ([ef79b03](https://github.com/n8n-io/n8n/commit/ef79b03f38460a20658c62fd35dbcaf6d266582f))
+* **Google BigQuery Node:** Node improvements ([#4877](https://github.com/n8n-io/n8n/issues/4877)) ([9817a15](https://github.com/n8n-io/n8n/commit/9817a15da4c80425fb77273ed7c9acbe020f0f48))
+
+
+
+## [0.225.2](https://github.com/n8n-io/n8n/compare/n8n@0.225.1...n8n@0.225.2) (2023-04-25)
+
+
+### Bug Fixes
+
+* **core:** Upgrade google-timezones-json to use the correct timezone for Sao Paulo ([#6042](https://github.com/n8n-io/n8n/issues/6042)) ([f93fd5a](https://github.com/n8n-io/n8n/commit/f93fd5aba2583e1c62efe8dcb423559413cf9c6a)), closes [#2647](https://github.com/n8n-io/n8n/issues/2647)
+* **Code Node:** Update vm2 to address CVE-2023-30547 ([#6039](https://github.com/n8n-io/n8n/issues/6039)) ([f1ca4e2](https://github.com/n8n-io/n8n/commit/f1ca4e232865a0ee6ac178b11515de115b0bfd09))
+
+
+
+# [0.224.4](https://github.com/n8n-io/n8n/compare/n8n@0.224.2...n8n@0.224.4) (2023-04-24)
+
+
+### Bug Fixes
+
+* **core:** Upgrade google-timezones-json to use the correct timezone for Sao Paulo ([#6042](https://github.com/n8n-io/n8n/issues/6042)) ([c23a592](https://github.com/n8n-io/n8n/commit/c23a5923f8df787758f756c529518c9e8b93b96e)), closes [#2647](https://github.com/n8n-io/n8n/issues/2647)
+* **Code Node:** Update vm2 to address CVE-2023-30547 ([#6039](https://github.com/n8n-io/n8n/issues/6039)) ([6cd15bd](https://github.com/n8n-io/n8n/commit/6cd15bd889b6eec3b050cfe3c3b190707a09e898))
+
+
+
+## [0.225.1](https://github.com/n8n-io/n8n/compare/n8n@0.225.0...n8n@0.225.1) (2023-04-20)
+
+
+### Bug Fixes
+
+* **editor:** Clean up demo and template callouts from workflows page ([#6023](https://github.com/n8n-io/n8n/issues/6023)) ([6ec1c45](https://github.com/n8n-io/n8n/commit/6ec1c45355807e62f31a707bada823cdc73bc719))
+* **editor:** Fix memory leak in Node Detail View by correctly unsubscribing from event buses ([#6021](https://github.com/n8n-io/n8n/issues/6021)) ([1b9e047](https://github.com/n8n-io/n8n/commit/1b9e047ef5745f479e6693dca9696efbec32a7a6))
+* **editor:** SettingsSidebar should disconnect from push when navigating away ([#6025](https://github.com/n8n-io/n8n/issues/6025)) ([e9f8cfe](https://github.com/n8n-io/n8n/commit/e9f8cfe82182ee0d7c8c2394551791793cc71f47))
+* **Notion Node:** Update credential test to not require user permissions ([#6022](https://github.com/n8n-io/n8n/issues/6022)) ([6d02ae5](https://github.com/n8n-io/n8n/commit/6d02ae53cf1ec616abd47e434018bdf5e998f916))
+
+
+
+## [0.224.2](https://github.com/n8n-io/n8n/compare/n8n@0.224.1...n8n@0.224.2) (2023-04-20)
+
+
+### Bug Fixes
+
+* **core:** Fix paired item returning wrong data ([#5898](https://github.com/n8n-io/n8n/issues/5898)) ([2a45441](https://github.com/n8n-io/n8n/commit/2a45441d8aa1e9069af09eb28b9b26b0c4abf96e))
+* **core:** Make `getExecutionId` available on all nodes types ([#5990](https://github.com/n8n-io/n8n/issues/5990)) ([8373aab](https://github.com/n8n-io/n8n/commit/8373aab1fffc6f15e2a79462c97cd52cff277784))
+* **editor:** Fix memory leak in Node Detail View by correctly unsubscribing from event buses ([#6021](https://github.com/n8n-io/n8n/issues/6021)) ([d8fce5b](https://github.com/n8n-io/n8n/commit/d8fce5b1cbcded5dcb652b1b5bf252555343d4b1))
+* **editor:** Fix moving canvas on middle click preventing lasso selection ([#5996](https://github.com/n8n-io/n8n/issues/5996)) ([a7a5778](https://github.com/n8n-io/n8n/commit/a7a57782bbaadad342f592331b7b9d49aa0e62de))
+* **editor:** SettingsSidebar should disconnect from push when navigating away ([#6025](https://github.com/n8n-io/n8n/issues/6025)) ([b475c8f](https://github.com/n8n-io/n8n/commit/b475c8f26aea9c108a8ea29826619925516c372f))
+* **Google Sheets Trigger Node:** Return actual error message ([5e59141](https://github.com/n8n-io/n8n/commit/5e59141ec60566dbacea246402e57b13328a94b3))
+* **HTTP Request Node:** Fix itemIndex in HTTP Request errors ([#5991](https://github.com/n8n-io/n8n/issues/5991)) ([4a521a4](https://github.com/n8n-io/n8n/commit/4a521a416e3fb85ba58d4ca4ad420b485c220d96))
+* **Notion Node:** Update credential test to not require user permissions ([#6022](https://github.com/n8n-io/n8n/issues/6022)) ([14c9b5e](https://github.com/n8n-io/n8n/commit/14c9b5e6295a59b5ddbde0e07ba94250b50bcedf))
+
+
+
+# [0.225.0](https://github.com/n8n-io/n8n/compare/n8n@0.224.0...n8n@0.225.0) (2023-04-19)
+
+
+### Bug Fixes
+
+* **core:** Fix broken API permissions in public API ([#5978](https://github.com/n8n-io/n8n/issues/5978)) ([49d838f](https://github.com/n8n-io/n8n/commit/49d838f628a124f3497165437a384e78d8a8ff63))
+* **core:** Fix paired item returning wrong data ([#5898](https://github.com/n8n-io/n8n/issues/5898)) ([b13b7d7](https://github.com/n8n-io/n8n/commit/b13b7d73e7857fe9a264d9400adfa337907f659a))
+* **core:** Improve SAML connection test result views ([#5981](https://github.com/n8n-io/n8n/issues/5981)) ([4c994fa](https://github.com/n8n-io/n8n/commit/4c994faec1ed6173d99f5b01efd9678e54e7eb49))
+* **core:** Make `getExecutionId` available on all nodes types ([#5990](https://github.com/n8n-io/n8n/issues/5990)) ([c42820e](https://github.com/n8n-io/n8n/commit/c42820e82efe7365b5d7344bb3f474ba420ea7c9))
+* **core:** Skip SAML onboarding for users with first- and lastname ([#5966](https://github.com/n8n-io/n8n/issues/5966)) ([8474cd3](https://github.com/n8n-io/n8n/commit/8474cd386ddfca9e9078b45af65af9299d63eb85))
+* **editor:** Add padding to prepend input ([#5874](https://github.com/n8n-io/n8n/issues/5874)) ([cd89489](https://github.com/n8n-io/n8n/commit/cd894893aafe1fc25e0e556a9651ab458b50ae99))
+* **editor:** Cleanup demo/video experiment ([#5974](https://github.com/n8n-io/n8n/issues/5974)) ([c171365](https://github.com/n8n-io/n8n/commit/c171365d2a613ea1fb9b08c22c54be29d1c8ade7))
+* **editor:** Enterprise features missing with UM ([#5995](https://github.com/n8n-io/n8n/issues/5995)) ([f9a810a](https://github.com/n8n-io/n8n/commit/f9a810aaf7fd56beba1342016a96922e8b332951))
+* **editor:** Fix moving canvas on middle click preventing lasso selection ([#5996](https://github.com/n8n-io/n8n/issues/5996)) ([3c2a569](https://github.com/n8n-io/n8n/commit/3c2a56928b46425822795cf1594133a538f47c21))
+* **editor:** Make sure to redirect to blank canvas after personalisation modal ([#5980](https://github.com/n8n-io/n8n/issues/5980)) ([7c474d3](https://github.com/n8n-io/n8n/commit/7c474d3c92ecca8e44e8eea76ada69aa7e8f5987))
+* **editor:** Only treat as CTRL pressed by default on touch devices for MouseEvent ([#5968](https://github.com/n8n-io/n8n/issues/5968)) ([536d810](https://github.com/n8n-io/n8n/commit/536d8109b02d1a0f771055c36ff0f45dae08281e))
+* **editor:** Fix n8n-checkbox alignment ([#6004](https://github.com/n8n-io/n8n/issues/6004)) ([f544826](https://github.com/n8n-io/n8n/commit/f5448269ee9277f19b0943035d23ad0df1dcde67))
+* **Code Node:** Handle user code returning `null` and `undefined` ([#5989](https://github.com/n8n-io/n8n/issues/5989)) ([a3664de](https://github.com/n8n-io/n8n/commit/a3664de3556f9f8159ed310a289ec12a4cd2c5c5))
+* **Github Trigger Node:** Remove content_reference event ([#5830](https://github.com/n8n-io/n8n/issues/5830)) ([d288a91](https://github.com/n8n-io/n8n/commit/d288a918f17dad2d0e32cf2d66f94037c77679b3))
+* **Google Sheets Trigger Node:** Return actual error message ([ba5b4eb](https://github.com/n8n-io/n8n/commit/ba5b4eb42fa1b609ddbe726d3e8655c1f9d28a2e))
+* **HTTP Request Node:** Fix itemIndex in HTTP Request errors ([#5991](https://github.com/n8n-io/n8n/issues/5991)) ([b351c62](https://github.com/n8n-io/n8n/commit/b351c6265938a908f90237c834012cc19cf70dc3))
+* **NocoDB Node:** Fix for updating or deleting rows with not default primary keys ([ee7f863](https://github.com/n8n-io/n8n/commit/ee7f86394eaf7aceee5521a4178c80a3c05cc27d))
+* **OpenAI Node:** Update models to only show those supported ([#5805](https://github.com/n8n-io/n8n/issues/5805)) ([29959be](https://github.com/n8n-io/n8n/commit/29959be6883d48c0385f333b3d9798a8c7c91c43))
+* **OpenAI Node:** Update OpenAI Text Moderate input placeholder text ([#5823](https://github.com/n8n-io/n8n/issues/5823)) ([6b9909b](https://github.com/n8n-io/n8n/commit/6b9909bd80f4b04ec877fe7ee9b8a2619392d220))
+
+
+### Features
+
+* **core:** Add variables feature ([#5602](https://github.com/n8n-io/n8n/issues/5602)) ([1bb9871](https://github.com/n8n-io/n8n/commit/1bb987140af8e835770a0ca45403e274a793f22c))
+* **core:** Add versionControl feature flag ([#6000](https://github.com/n8n-io/n8n/issues/6000)) ([33299ca](https://github.com/n8n-io/n8n/commit/33299ca61aaec94714431a58286da4bb2cf829c1))
+* **core:** Support for google service account in HTTP node ([0b48088](https://github.com/n8n-io/n8n/commit/0b48088296a7f826be3664f10c847b9dca753732))
+* **editor:** Add Ask AI preview ([#5916](https://github.com/n8n-io/n8n/issues/5916)) ([f8f8374](https://github.com/n8n-io/n8n/commit/f8f8374506c3d0c2ad7cea73bb461b3f64a81be1))
+* **GitLab Node:** Add Additional parameters for File List ([#5621](https://github.com/n8n-io/n8n/issues/5621)) ([3810039](https://github.com/n8n-io/n8n/commit/3810039da032ecbd038255316b3d8fa5ce5ef2df))
+* **MySQL Node:** Overhaul ([0a53c95](https://github.com/n8n-io/n8n/commit/0a53c957c4d69270e10058cdd384e47c8e3c987e))
+
+
+
+## [0.224.1](https://github.com/n8n-io/n8n/compare/n8n@0.224.0...n8n@0.224.1) (2023-04-14)
+
+
+### Bug Fixes
+
+* **core:** Fix broken API permissions in public API ([#5978](https://github.com/n8n-io/n8n/issues/5978)) ([b76ab31](https://github.com/n8n-io/n8n/commit/b76ab318f8919138391850738de99e592aa020a7))
+* **editor:** Only treat as CTRL pressed by default on touch devices for MouseEvent ([#5968](https://github.com/n8n-io/n8n/issues/5968)) ([471be3b](https://github.com/n8n-io/n8n/commit/471be3b4a89e9967524a5d06212153bbf2b56537))
+
+
+
+# [0.224.0](https://github.com/n8n-io/n8n/compare/n8n@0.223.0...n8n@0.224.0) (2023-04-12)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-29017 ([#5947](https://github.com/n8n-io/n8n/issues/5947)) ([f0eba0a](https://github.com/n8n-io/n8n/commit/f0eba0a2f3be584363163abe2e30e8a57c9632f9))
+* **core:** App should not crash with a custom rest endpoint ([#5911](https://github.com/n8n-io/n8n/issues/5911)) ([2881ee9](https://github.com/n8n-io/n8n/commit/2881ee9ecc0e3258cf025ad7f1f571be4f21d320)), closes [#5880](https://github.com/n8n-io/n8n/issues/5880)
+* **core:** Do not execute `workflowExecuteBefore` hook when resuming executions from a waiting state ([#5727](https://github.com/n8n-io/n8n/issues/5727)) ([6689451](https://github.com/n8n-io/n8n/commit/6689451e8c939bb2714c42ada83acdc0a9af62b7))
+* **core:** Fix issue where sub workflows would display as running forever after failure to start ([#5905](https://github.com/n8n-io/n8n/issues/5905)) ([3e382ef](https://github.com/n8n-io/n8n/commit/3e382ef85e966419dc71744b772d80c648583c5c))
+* **core:** Update xml2js to address CVE-2023-0842 ([#5948](https://github.com/n8n-io/n8n/issues/5948)) ([3085ed9](https://github.com/n8n-io/n8n/commit/3085ed9beee603cdb496fc7fb39357f15e0710d0))
+* **editor:** Drop mergeDeep in favor of lodash merge ([#5943](https://github.com/n8n-io/n8n/issues/5943)) ([0570514](https://github.com/n8n-io/n8n/commit/0570514b789c9fa020e96533b7c65bf45614c4d0))
+* **HTTP Request Node:** Show detailed error message in the UI again ([#5959](https://github.com/n8n-io/n8n/issues/5959)) ([e79679c](https://github.com/n8n-io/n8n/commit/e79679c023d127458227d904dbdb4824a755b956))
+
+
+### Features
+
+* Create TOTP node ([#5901](https://github.com/n8n-io/n8n/issues/5901)) ([6cf74e4](https://github.com/n8n-io/n8n/commit/6cf74e412a87ccb255efea950cb458712554391d))
+* **editor:** Add user activation survey ([#5677](https://github.com/n8n-io/n8n/issues/5677)) ([725393d](https://github.com/n8n-io/n8n/commit/725393dae625285ed91a7e4662eec1a425cf53f1))
+* **editor:** SAML login disables Invite button ([#5922](https://github.com/n8n-io/n8n/issues/5922)) ([3fdc441](https://github.com/n8n-io/n8n/commit/3fdc4413c20f1fd345a5864d9a237b30e20813f0))
+* **editor:** SAML paywall state ([#5906](https://github.com/n8n-io/n8n/issues/5906)) ([d40e86a](https://github.com/n8n-io/n8n/commit/d40e86aabc8c66a17b04cfe669ac27b4b281762a))
+
+
+
+## [0.222.2](https://github.com/n8n-io/n8n/compare/n8n@0.222.1...n8n@0.222.2) (2023-04-11)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-29017 ([#5947](https://github.com/n8n-io/n8n/issues/5947)) ([fc1fb28](https://github.com/n8n-io/n8n/commit/fc1fb2863f6df697ca4a098054f9638cf2bc97bc))
+* **core:** Update xml2js to address CVE-2023-0842 ([#5948](https://github.com/n8n-io/n8n/issues/5948)) ([e903d61](https://github.com/n8n-io/n8n/commit/e903d6107112fca64b54dec76019720c9df6a66a))
+
+
+
+## [0.221.3](https://github.com/n8n-io/n8n/compare/n8n@0.221.2...n8n@0.221.3) (2023-04-11)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-29017 ([#5947](https://github.com/n8n-io/n8n/issues/5947)) ([4127e3f](https://github.com/n8n-io/n8n/commit/4127e3ff9d1d1ef8b76c557bf3b4799ab7aba7f7))
+* **core:** Update xml2js to address CVE-2023-0842 ([#5948](https://github.com/n8n-io/n8n/issues/5948)) ([cf7a4b6](https://github.com/n8n-io/n8n/commit/cf7a4b65d3d828fbacd027de9c2bf2481883efa7))
+
+
+
+# [0.223.0](https://github.com/n8n-io/n8n/compare/n8n@0.222.1...n8n@0.223.0) (2023-04-05)
+
+
+### Bug Fixes
+
+* Add droppable state for booleans when mapping ([#5838](https://github.com/n8n-io/n8n/issues/5838)) ([e3884ce](https://github.com/n8n-io/n8n/commit/e3884ce378e488905735fbfdb986aa26f1cf952b))
+* **AWS SNS Node:** Fix an issue with messages failing to send if they contain certain characters ([#5807](https://github.com/n8n-io/n8n/issues/5807)) ([32c4eef](https://github.com/n8n-io/n8n/commit/32c4eef574a14ed599554382496a99a8240be74b))
+* **Compare Datasets Node:** Fuzzy compare not comparing keys missing in one of inputs ([d1945d9](https://github.com/n8n-io/n8n/commit/d1945d9b72fc11e7201e22a7ae0399acf2ffd5f1))
+* **Compare Datasets Node:** Support for dot notation in skip fields ([83e25c0](https://github.com/n8n-io/n8n/commit/83e25c066a845fc95c3474ae93f36993ca7ce699))
+* **core:** `augmentObject` should clone Buffer/Uint8Array instead of wrapping them in a proxy ([#5902](https://github.com/n8n-io/n8n/issues/5902)) ([a721734](https://github.com/n8n-io/n8n/commit/a72173414d9d31ab1824f87713709818955b8956))
+* **core:** `augmentObject` should use existing property descriptors whenever possible ([#5872](https://github.com/n8n-io/n8n/issues/5872)) ([6a1b7c3](https://github.com/n8n-io/n8n/commit/6a1b7c306bc9b7c469c5299af6beaf5af568b6b6))
+* **core:** Deactivate active workflows during import ([#5840](https://github.com/n8n-io/n8n/issues/5840)) ([fa5bc81](https://github.com/n8n-io/n8n/commit/fa5bc814b04273cff817d4a94b1d1ec6685807e0))
+* **core:** Do not mark duplicates as circular references in `jsonStringify` ([#5789](https://github.com/n8n-io/n8n/issues/5789)) ([18efaf3](https://github.com/n8n-io/n8n/commit/18efaf397a6bab8bd5dba881bbdfeceef8dbafb0))
+* **core:** Do not user `util.types.isProxy` for tracking of augmented objects ([#5836](https://github.com/n8n-io/n8n/issues/5836)) ([aacbb54](https://github.com/n8n-io/n8n/commit/aacbb54bef0743a1c5c5e2467dd7e00e50e325de))
+* **core:** Fix curl import error when no data ([085660d](https://github.com/n8n-io/n8n/commit/085660d7d7faf475b695724cabb6387c46adcc5f))
+* **core:** Fix the issue of nodes not loading when run via npx ([#5888](https://github.com/n8n-io/n8n/issues/5888)) ([e47190b](https://github.com/n8n-io/n8n/commit/e47190b5607dfd1284a1d2c3b8f678e8032627de))
+* **core:** Handle Date and RegExp correctly in jsonStringify ([#5812](https://github.com/n8n-io/n8n/issues/5812)) ([4f91525](https://github.com/n8n-io/n8n/commit/4f91525022716e7c1745185fae6fc2582a4252fb))
+* **core:** Handle Date and RegExp objects in AugmentObject ([#5809](https://github.com/n8n-io/n8n/issues/5809)) ([6c35ffa](https://github.com/n8n-io/n8n/commit/6c35ffa82c45434dadee0354b75a901d3f3d6e98))
+* **core:** Improve axios error handling in nodes ([#5891](https://github.com/n8n-io/n8n/issues/5891)) ([a260c05](https://github.com/n8n-io/n8n/commit/a260c05fa859c0bdd90f9abdecac59fd35978c55))
+* **core:** Password reset should pass in the correct values to external hooks ([#5842](https://github.com/n8n-io/n8n/issues/5842)) ([5bcab8f](https://github.com/n8n-io/n8n/commit/5bcab8fcbea546cd57ef728131f9e16cc57e675d))
+* **core:** Prevent augmentObject from creating infinitely deep proxies ([#5893](https://github.com/n8n-io/n8n/issues/5893)) ([31cd04c](https://github.com/n8n-io/n8n/commit/31cd04c4769b92c7f19ae8babf5df2deddef1fb3)), closes [#5848](https://github.com/n8n-io/n8n/issues/5848)
+* **core:** Service account private key as a password field ([739b9b0](https://github.com/n8n-io/n8n/commit/739b9b07f0e364f98d3c2d0ce8911cd4f53e8455))
+* **core:** Update lock file ([#5801](https://github.com/n8n-io/n8n/issues/5801)) ([06d7a46](https://github.com/n8n-io/n8n/commit/06d7a46bdcd2173835ede762aff3c37b21f0a530))
+* **core:** Use table-prefixes in queries in import commands ([#5887](https://github.com/n8n-io/n8n/issues/5887)) ([ddbfcc7](https://github.com/n8n-io/n8n/commit/ddbfcc7d93cc3645fc3bb0f0de059ac76adaa475))
+* **core:** Waiting workflows not stopping ([#5811](https://github.com/n8n-io/n8n/issues/5811)) ([744c3fd](https://github.com/n8n-io/n8n/commit/744c3fd21130b6ee3c722df3fab096b169fd0ff8))
+* **Date & Time Node:** Add info box at top of date and time explaining expressions ([b7a20dd](https://github.com/n8n-io/n8n/commit/b7a20dd3a2e69a8e4e8ba76c63a6b1f4c26b6a87))
+* **Date & Time Node:** Convert luxon DateTime object to ISO ([7710652](https://github.com/n8n-io/n8n/commit/77106520c8942c746bb1ddffcddcde68a7059805))
+* **editor:** Add $if, $min, $max to root expression autocomplete ([#5858](https://github.com/n8n-io/n8n/issues/5858)) ([a13866e](https://github.com/n8n-io/n8n/commit/a13866e233430ec6aa9fcaa5f3861b3a4470b458))
+* **editor:** Curb overeager item access linting ([#5865](https://github.com/n8n-io/n8n/issues/5865)) ([3ae6933](https://github.com/n8n-io/n8n/commit/3ae69337eeb1f8a4d698f2099bb190c49cc5f8fd))
+* **editor:** Disable Grammarly in expression editors ([#5826](https://github.com/n8n-io/n8n/issues/5826)) ([ddc8f30](https://github.com/n8n-io/n8n/commit/ddc8f30e6d410f7453395f17754b8ee9a546d9b7))
+* **editor:** Disable password reset on desktop with no user management ([#5853](https://github.com/n8n-io/n8n/issues/5853)) ([96533a9](https://github.com/n8n-io/n8n/commit/96533a995c1e7ac653d3f135f954619b098bb609))
+* **editor:** Fix connection lost hover text not showing ([#5828](https://github.com/n8n-io/n8n/issues/5828)) ([b69129b](https://github.com/n8n-io/n8n/commit/b69129bd78689bd56c3a9b07c2e30f58735347d1))
+* **editor:** Fix focused state in Code node editor ([#5869](https://github.com/n8n-io/n8n/issues/5869)) ([48446f5](https://github.com/n8n-io/n8n/commit/48446f5d674c335716c86e30079eb35c75e32b66))
+* **editor:** Fix issue preventing execution preview loading when in an iframe ([#5817](https://github.com/n8n-io/n8n/issues/5817)) ([d86e693](https://github.com/n8n-io/n8n/commit/d86e693019db1fa034d43f8e7e18df09f785b2e1))
+* **editor:** Fix loading executions in long execution list ([#5843](https://github.com/n8n-io/n8n/issues/5843)) ([5c9343c](https://github.com/n8n-io/n8n/commit/5c9343c7c0febdeb3dfa449d6b18d744d909724a))
+* **editor:** Fix mapping with special characters ([#5837](https://github.com/n8n-io/n8n/issues/5837)) ([f8f584c](https://github.com/n8n-io/n8n/commit/f8f584c136da8ad8b17f82f6f4e95f0d69014b40))
+* **editor:** Prevent error from showing-up when duplicating unsaved workflow ([#5833](https://github.com/n8n-io/n8n/issues/5833)) ([0b0024d](https://github.com/n8n-io/n8n/commit/0b0024d7222ac1f6f7872b26eceefab93a17ef22))
+* **editor:** Prevent NDV schema view pagination ([#5844](https://github.com/n8n-io/n8n/issues/5844)) ([1eba478](https://github.com/n8n-io/n8n/commit/1eba4788f26d0f5472fa4156b317d8b14d19b927))
+* **editor:** Show correct status on canceled executions ([#5813](https://github.com/n8n-io/n8n/issues/5813)) ([d0788ee](https://github.com/n8n-io/n8n/commit/d0788ee8e150167a65561552494046d8e506f93c))
+* **editor:** Support backspacing with modifier key ([#5845](https://github.com/n8n-io/n8n/issues/5845)) ([11692c5](https://github.com/n8n-io/n8n/commit/11692c55f381f17a7a137262d85dfd6c7fda7ad5))
+* **Gmail Node:** Gmail luxon object support, fix for timestamp ([2b9ca0d](https://github.com/n8n-io/n8n/commit/2b9ca0d240b403a5f12b115956bbc11672f3a04a))
+* **Google Sheets Node:** Fix insertOrUpdate cell update with object ([0625e2e](https://github.com/n8n-io/n8n/commit/0625e2e6bc67092848f719f8fede87af0f3df891))
+* **HTML Extract Node:** Support for dot notation in JSON property ([0da3b96](https://github.com/n8n-io/n8n/commit/0da3b96cfc943bf8036a48df946873fb32f3f5d9))
+* **HTTP Request Node:** Detect mime-type from streaming responses ([#5896](https://github.com/n8n-io/n8n/issues/5896)) ([69efde7](https://github.com/n8n-io/n8n/commit/69efde7a094b0bf3e3ca04b456ba3a792838a0b9))
+* **HTTP Request Node:** Fix AWS credentials to stop removing url params for STS ([#5790](https://github.com/n8n-io/n8n/issues/5790)) ([a1306c6](https://github.com/n8n-io/n8n/commit/a1306c690398828ed9acb72af0161c4ff827b217))
+* **HTTP Request Node:** Refresh token properly on never fail option ([#5861](https://github.com/n8n-io/n8n/issues/5861)) ([33c67f4](https://github.com/n8n-io/n8n/commit/33c67f45ba959b90c8bebbe0b27b2a7c4152a116))
+* **HTTP Request Node:** Support for dot notation in JSON body ([b29cf9a](https://github.com/n8n-io/n8n/commit/b29cf9a2492a444cb1dd72e74c9ed1d8722bbc5a))
+* **HubSpot Trigger Node:** Developer API key is required for webhooks ([e11a30a](https://github.com/n8n-io/n8n/commit/e11a30a640700d2bc53919422cb8ddbf66aafddd))
+* **LinkedIn Node:** Update the version of the API ([#5720](https://github.com/n8n-io/n8n/issues/5720)) ([18d2e7c](https://github.com/n8n-io/n8n/commit/18d2e7cd57745f0969b0df383572b3874fe65f2c))
+* **Redis Node:** Fix issue with hash set not working as expected ([#5832](https://github.com/n8n-io/n8n/issues/5832)) ([db25441](https://github.com/n8n-io/n8n/commit/db2544146f646ec9a2c38787bc94eafc1edb1228))
+* **Set Node:** Convert string to number ([b408550](https://github.com/n8n-io/n8n/commit/b408550e9f486351198f0ce5c10895c42df45835))
+
+
+### Features
+
+* **core:** Convert eventBus controller to decorator style and improve permissions ([#5779](https://github.com/n8n-io/n8n/issues/5779)) ([f15f4bd](https://github.com/n8n-io/n8n/commit/f15f4bdcf204fa43a652022babf03e577602b2b5))
+* **core:** Prevent non owners password reset when saml is enabled ([#5788](https://github.com/n8n-io/n8n/issues/5788)) ([2216455](https://github.com/n8n-io/n8n/commit/221645576087e4cd828b34ea33e874e1bff5f34a))
+* **core:** Read ephemeral license from environment and clean up ee flags ([#5808](https://github.com/n8n-io/n8n/issues/5808)) ([83aef17](https://github.com/n8n-io/n8n/commit/83aef1712070c29fea5d0522c95b1208af4cd2e4))
+* **editor:** Allow `tab` to accept completion ([#5855](https://github.com/n8n-io/n8n/issues/5855)) ([1b8c35a](https://github.com/n8n-io/n8n/commit/1b8c35ab87ce7ea24d00d13faddba9daf9f2ab39))
+* **editor:** Enable saving workflow when node details view is open ([#5856](https://github.com/n8n-io/n8n/issues/5856)) ([0a59002](https://github.com/n8n-io/n8n/commit/0a59002ef878ff8836d3ca63956f7a444d329d0b))
+* **editor:** SSO onboarding ([#5756](https://github.com/n8n-io/n8n/issues/5756)) ([04f8600](https://github.com/n8n-io/n8n/commit/04f8600bbd220204b5e5a90f22c3dc9c137afb54))
+* **editor:** SSO setup ([#5736](https://github.com/n8n-io/n8n/issues/5736)) ([f4e5949](https://github.com/n8n-io/n8n/commit/f4e59499fc0168295c5df20b1525c7ecea4ea15b)), closes [#5899](https://github.com/n8n-io/n8n/issues/5899)
+* **Filter Node:** Show discarded items ([f7f9d91](https://github.com/n8n-io/n8n/commit/f7f9d915b174d5c17efa918032741d4fa6da85e9))
+* **HTTP Request Node:** Follow redirects by default ([#5895](https://github.com/n8n-io/n8n/issues/5895)) ([f7e610b](https://github.com/n8n-io/n8n/commit/f7e610b15c4699880edffd7f10f223e820052784))
+* **Postgres Node:** Overhaul node ([07dc0e4](https://github.com/n8n-io/n8n/commit/07dc0e4b4075f1fac98d5685a99a38187bca741b))
+* **ServiceNow Node:** Add support for work notes when updating an incident ([#5791](https://github.com/n8n-io/n8n/issues/5791)) ([1409f5d](https://github.com/n8n-io/n8n/commit/1409f5d65262b9783e690408f5dabd074c709f22))
+* **SSH Node:** Hide the private key within the ssh credential ([#5871](https://github.com/n8n-io/n8n/issues/5871)) ([d877361](https://github.com/n8n-io/n8n/commit/d87736103d09042d2f74e74b57be429f2ca3550d))
+
+
+
+## [0.222.1](https://github.com/n8n-io/n8n/compare/n8n@0.222.0...n8n@0.222.1) (2023-04-04)
+
+
+### Bug Fixes
+
+* **AWS SNS Node:** Fix an issue with messages failing to send if they contain certain characters ([#5807](https://github.com/n8n-io/n8n/issues/5807)) ([f0954b9](https://github.com/n8n-io/n8n/commit/f0954b94e164f0ff3e809849731137cf479670a4))
+* **core:** `augmentObject` should clone Buffer/Uint8Array instead of wrapping them in a proxy ([#5902](https://github.com/n8n-io/n8n/issues/5902)) ([a877b02](https://github.com/n8n-io/n8n/commit/a877b025b8c93a31822e7ccb5b935dca00595439))
+* **core:** `augmentObject` should use existing property descriptors whenever possible ([#5872](https://github.com/n8n-io/n8n/issues/5872)) ([b1ee8f4](https://github.com/n8n-io/n8n/commit/b1ee8f4d991ffc5017894f588e9bd21f652f23c6))
+* **core:** Fix the issue of nodes not loading when run via npx ([#5888](https://github.com/n8n-io/n8n/issues/5888)) ([163446c](https://github.com/n8n-io/n8n/commit/163446c674d07c060eaa0d7ec54a087a4cb671d5))
+* **core:** Improve axios error handling in nodes ([#5891](https://github.com/n8n-io/n8n/issues/5891)) ([f0a51a0](https://github.com/n8n-io/n8n/commit/f0a51a0b7671945b84e18774483dc7079f559845))
+* **core:** Password reset should pass in the correct values to external hooks ([#5842](https://github.com/n8n-io/n8n/issues/5842)) ([3bf267c](https://github.com/n8n-io/n8n/commit/3bf267c14757fa67dcfa0edf0b4db74ab1b7415c))
+* **core:** Prevent augmentObject from creating infinitely deep proxies ([#5893](https://github.com/n8n-io/n8n/issues/5893)) ([6906b00](https://github.com/n8n-io/n8n/commit/6906b00b0e734dbe59d1a3a91f07ec1007166b72)), closes [#5848](https://github.com/n8n-io/n8n/issues/5848)
+* **core:** Use table-prefixes in queries in import commands ([#5887](https://github.com/n8n-io/n8n/issues/5887)) ([de58fb9](https://github.com/n8n-io/n8n/commit/de58fb9860d37a39a1e8963e304b8fc87f234bf6))
+* **editor:** Fix focused state in Code node editor ([#5869](https://github.com/n8n-io/n8n/issues/5869)) ([3be37e2](https://github.com/n8n-io/n8n/commit/3be37e25a52983b43b4eed3847922e99f2bf07bc))
+* **editor:** Fix loading executions in long execution list ([#5843](https://github.com/n8n-io/n8n/issues/5843)) ([d5d9f58](https://github.com/n8n-io/n8n/commit/d5d9f58f1777040c63a2a0aa3c0d7bf632dc7b26))
+* **editor:** Show correct status on canceled executions ([#5813](https://github.com/n8n-io/n8n/issues/5813)) ([00181cd](https://github.com/n8n-io/n8n/commit/00181cd803f5a0cca50b5fc1ab84d0a26dd618ae))
+* **Gmail Node:** Gmail luxon object support, fix for timestamp ([695fabb](https://github.com/n8n-io/n8n/commit/695fabb28465d01caa85aefb1e873f88720ce304))
+* **HTTP Request Node:** Detect mime-type from streaming responses ([#5896](https://github.com/n8n-io/n8n/issues/5896)) ([0be1292](https://github.com/n8n-io/n8n/commit/0be129254e96c822dceddbfffaf36e0e6b2ef5e8))
+* **HubSpot Trigger Node:** Developer API key is required for webhooks ([918c79c](https://github.com/n8n-io/n8n/commit/918c79c137f781764f11ad3a33ead337efce681a))
+* **Set Node:** Convert string to number ([72eea0d](https://github.com/n8n-io/n8n/commit/72eea0dfb9e679bde95996d99684e23d081db5a7))
+
+
+
+# [0.222.0](https://github.com/n8n-io/n8n/compare/n8n@0.221.2...n8n@0.222.0) (2023-03-30)
+
+
+### Bug Fixes
+
+* **core:** Assign properties.success earlier to set executionStatus correctly ([#5773](https://github.com/n8n-io/n8n/issues/5773)) ([d33a1ac](https://github.com/n8n-io/n8n/commit/d33a1ac1e9a13985ff84f9271f75ebf368339b6d))
+* **core:** Do not mark duplicates as circular references in `jsonStringify` ([#5789](https://github.com/n8n-io/n8n/issues/5789)) ([f5183c6](https://github.com/n8n-io/n8n/commit/f5183c640109fb4c9552d6b2786f8ebc0e35ca4c))
+* **core:** Do not user `util.types.isProxy` for tracking of augmented objects ([#5836](https://github.com/n8n-io/n8n/issues/5836)) ([3e413f2](https://github.com/n8n-io/n8n/commit/3e413f2f80d6fa349dc6f6ea1b49027ae163df80))
+* **core:** Ensure that all non-lazy-loaded community nodes get post-processed correctly ([#5782](https://github.com/n8n-io/n8n/issues/5782)) ([30aeeb7](https://github.com/n8n-io/n8n/commit/30aeeb70b43ff3916ad79abbe49512a27e50d01d))
+* **core:** Force-upgrade `decode-uri-component` to address CVE-2022-38900 ([#5734](https://github.com/n8n-io/n8n/issues/5734)) ([8dd7f6e](https://github.com/n8n-io/n8n/commit/8dd7f6e1d4ac29b450a0af17d545ffd17038b005))
+* **core:** Force-upgrade `http-cache-semantics` to address CVE-2022-25881 ([#5733](https://github.com/n8n-io/n8n/issues/5733)) ([f7401fb](https://github.com/n8n-io/n8n/commit/f7401fb6133b9bf18f3825304c478d767e69fe27))
+* **core:** Handle Date and RegExp correctly in jsonStringify ([#5812](https://github.com/n8n-io/n8n/issues/5812)) ([753cfb8](https://github.com/n8n-io/n8n/commit/753cfb8b08ff68cc30e6e30959fd0900a44dae21))
+* **core:** Handle Date and RegExp objects in AugmentObject ([#5809](https://github.com/n8n-io/n8n/issues/5809)) ([e6d4e72](https://github.com/n8n-io/n8n/commit/e6d4e729a063cdbbf648c2815c3e55ddddef2b58))
+* **core:** Improve axios error handling in nodes ([#5699](https://github.com/n8n-io/n8n/issues/5699)) ([33d9784](https://github.com/n8n-io/n8n/commit/33d97843194c1cddfd27356c279c0f7a8c2674d3))
+* **core:** Improve community nodes loading ([#5608](https://github.com/n8n-io/n8n/issues/5608)) ([161de11](https://github.com/n8n-io/n8n/commit/161de110cedf2d5d8bc345349d4364ea202e2abd))
+* **core:** Initialize queue in the webhook server as well ([#5766](https://github.com/n8n-io/n8n/issues/5766)) ([e67ad29](https://github.com/n8n-io/n8n/commit/e67ad2962589b445592641a588024c02b4d99d3f))
+* **core:** Persist CurrentAuthenticationMethod setting change ([#5762](https://github.com/n8n-io/n8n/issues/5762)) ([4498c60](https://github.com/n8n-io/n8n/commit/4498c6013dc5b4646b1e3fdba3adef42bfc87952))
+* **core:** Remove circular refs from Code and push msg ([#5741](https://github.com/n8n-io/n8n/issues/5741)) ([b6d8a0f](https://github.com/n8n-io/n8n/commit/b6d8a0f98526bfc98a3d9a722dafce4a53e715ec))
+* **core:** Require Auth on icons and nodes/credentials types static files ([#5745](https://github.com/n8n-io/n8n/issues/5745)) ([5dda3f2](https://github.com/n8n-io/n8n/commit/5dda3f2c61b107ec24557c4bf7de284234e406ab))
+* **core:** Return SAML service provider urls with config ([#5759](https://github.com/n8n-io/n8n/issues/5759)) ([ac18c0b](https://github.com/n8n-io/n8n/commit/ac18c0b9ebb3a5a736fa72985ce5ae2cdab3b270))
+* **core:** Service account private key as a password field ([2b28470](https://github.com/n8n-io/n8n/commit/2b28470fb98a5810ce0d20fe995e2864230005d3))
+* **core:** Upgrade `luxon` to address CVE-2023-22467 ([#5731](https://github.com/n8n-io/n8n/issues/5731)) ([469ce32](https://github.com/n8n-io/n8n/commit/469ce32957ac5e4d342db17a2f680ca65c21d44f))
+* **core:** Upgrade `simple-git` to address CVE-2022-25912 ([#5730](https://github.com/n8n-io/n8n/issues/5730)) ([4a4e2be](https://github.com/n8n-io/n8n/commit/4a4e2be96c0ce096d100e08823aa6b256719c267))
+* **core:** Upgrade `sqlite3` to address CVE-2022-43441 ([#5732](https://github.com/n8n-io/n8n/issues/5732)) ([fd81c74](https://github.com/n8n-io/n8n/commit/fd81c742519882b04f98d25ca41b3fac16dbea8b))
+* **core:** Upgrade convict to address CVE-2023-0163 ([#5729](https://github.com/n8n-io/n8n/issues/5729)) ([564bc03](https://github.com/n8n-io/n8n/commit/564bc03d3fab59e4fe7fa904d5deeeb16da85af9))
+* **core:** Waiting workflows not stopping ([#5811](https://github.com/n8n-io/n8n/issues/5811)) ([8f50bb6](https://github.com/n8n-io/n8n/commit/8f50bb6ed13688d8a81a171c1f1fb9e85847f138))
+* **editor:** Fix connection lost hover text not showing ([#5828](https://github.com/n8n-io/n8n/issues/5828)) ([a2f4a05](https://github.com/n8n-io/n8n/commit/a2f4a05af7f20e007ef16357d71af6a0dbade55c))
+* **editor:** Fix issue preventing execution preview loading when in an iframe ([#5817](https://github.com/n8n-io/n8n/issues/5817)) ([d19a973](https://github.com/n8n-io/n8n/commit/d19a9732b7da188017e2141b3deed7ea004c04a6))
+* **editor:** Use credentials when fetching node and credential types ([#5760](https://github.com/n8n-io/n8n/issues/5760)) ([d3a34ab](https://github.com/n8n-io/n8n/commit/d3a34ab71bd7fc494fb90cda1aa9827a55c5ed69))
+* **Google Sheets Node:** Fix insertOrUpdate cell update with object ([1797cda](https://github.com/n8n-io/n8n/commit/1797cdab5b9e7f23c9f62ce7c6c34c1c2c26b07e))
+* **HTTP Request Node:** Add streaming to binary response  ([#5701](https://github.com/n8n-io/n8n/issues/5701)) ([199a91b](https://github.com/n8n-io/n8n/commit/199a91b3981d40b7181f00702c938b9fa58d1ece)), closes [#5663](https://github.com/n8n-io/n8n/issues/5663)
+* **HTTP Request Node:** Fix AWS credentials to automatically deconstruct the url ([#5751](https://github.com/n8n-io/n8n/issues/5751)) ([d30b892](https://github.com/n8n-io/n8n/commit/d30b89239587562974cc87ae2e29fe57acddf79e))
+* **HTTP Request Node:** Fix AWS credentials to stop removing url params for STS ([#5790](https://github.com/n8n-io/n8n/issues/5790)) ([2c25959](https://github.com/n8n-io/n8n/commit/2c25959e595a48d9ae55c462bd47e014d8c43598))
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([135b0d3](https://github.com/n8n-io/n8n/commit/135b0d3e27705b07fb1e9c39a47ac4b70c1bc25d))
+* Update Posthog no-capture ([#5693](https://github.com/n8n-io/n8n/issues/5693)) ([a732374](https://github.com/n8n-io/n8n/commit/a732374f24354e0c1f36247f4476e743b0fc78e5))
+
+
+### Features
+
+* Add test overrides ([#5642](https://github.com/n8n-io/n8n/issues/5642)) ([696e43a](https://github.com/n8n-io/n8n/commit/696e43a919334d982188cc1f86d3e1b76da6a362))
+* **core:** Improve ldap/saml toggle and tests ([#5771](https://github.com/n8n-io/n8n/issues/5771)) ([47ee357](https://github.com/n8n-io/n8n/commit/47ee357059bb6d87607165d3c24ce0c99cf8bfc9))
+* **core:** Limit user invites when SAML is enabled ([#5761](https://github.com/n8n-io/n8n/issues/5761)) ([57748b7](https://github.com/n8n-io/n8n/commit/57748b71e5cd1399ccaedb9a115b821b34cf55e5))
+* **core:** Make OAuth2 error handling consistent with success handling ([#5555](https://github.com/n8n-io/n8n/issues/5555)) ([40aacf9](https://github.com/n8n-io/n8n/commit/40aacf9279c00c4e3c27669fc38a0ca196a788a4))
+* **editor:** Fix ResourceLocator dropdown style ([#5714](https://github.com/n8n-io/n8n/issues/5714)) ([02810a9](https://github.com/n8n-io/n8n/commit/02810a9ba3e792a2ec8966a2ca3bf7394740bf24))
+* Execution custom data saving and filtering ([#5496](https://github.com/n8n-io/n8n/issues/5496)) ([d78a41d](https://github.com/n8n-io/n8n/commit/d78a41db5420ff6711c30899aa2d71a85049374c)), closes [#5739](https://github.com/n8n-io/n8n/issues/5739)
+* **Filter Node:** New node ([cc9fe7b](https://github.com/n8n-io/n8n/commit/cc9fe7b91ffc4ea72c25e1242e0e477112cb283e))
+
+
+
+## [0.221.2](https://github.com/n8n-io/n8n/compare/n8n@0.221.1...n8n@0.221.2) (2023-03-24)
+
+
+### Bug Fixes
+
+* **core:** Assign properties.success earlier to set executionStatus correctly ([6c7772a](https://github.com/n8n-io/n8n/commit/6c7772a0b3276ffe9e5ab8029e17a0ed743ee5a7))
+
+
+
+## [0.221.1](https://github.com/n8n-io/n8n/compare/n8n@0.221.0...n8n@0.221.1) (2023-03-23)
+
+
+### Bug Fixes
+
+* **core:** Initialize queue in the webhook server as well ([163859b](https://github.com/n8n-io/n8n/commit/163859b87a19f3795e2689ce8eba2e2ce6766684))
+
+
+
+# [0.221.0](https://github.com/n8n-io/n8n/compare/n8n@0.220.0...n8n@0.221.0) (2023-03-23)
+
+
+### Bug Fixes
+
+* **core:** Fix calling error workflows in main mode recovery ([#5698](https://github.com/n8n-io/n8n/issues/5698)) ([e0ea97a](https://github.com/n8n-io/n8n/commit/e0ea97af8d7aaa014680f5f9d5702d1cafd49757))
+* **core:** Fix telemetry execution status for manual workflows executions ([#5712](https://github.com/n8n-io/n8n/issues/5712)) ([a28396e](https://github.com/n8n-io/n8n/commit/a28396ee91bfbccc6596812606c237a8e2c34088))
+* **core:** Return saml attributes after connection test ([#5717](https://github.com/n8n-io/n8n/issues/5717)) ([be172cb](https://github.com/n8n-io/n8n/commit/be172cb720c8a44ebd1f0b86dddab321e1e3c9fd))
+* **editor:** Disable tooltip for display modes that don't support mapping ([#5715](https://github.com/n8n-io/n8n/issues/5715)) ([fb8755e](https://github.com/n8n-io/n8n/commit/fb8755ea3c720c98f002a6756c39b8fed11482c0))
+* **editor:** Fix execution list item selection ([#5606](https://github.com/n8n-io/n8n/issues/5606)) ([7a352ef](https://github.com/n8n-io/n8n/commit/7a352efff944c52062412e53ea2c1a034a25f908))
+* **editor:** Fix for large notifications being cut off ([#5705](https://github.com/n8n-io/n8n/issues/5705)) ([c07f838](https://github.com/n8n-io/n8n/commit/c07f838ce60dc33261fe3e1b5e7dd6fe05f1d63b))
+* **editor:** Fix redo in code and expression editor ([#5708](https://github.com/n8n-io/n8n/issues/5708)) ([cd7a55b](https://github.com/n8n-io/n8n/commit/cd7a55ba5aeb83d1e540a65b5c6b2c74fd742461))
+* **editor:** Fix the canvas node distance when automatically injecting manual trigger ([#5716](https://github.com/n8n-io/n8n/issues/5716)) ([cb2ba97](https://github.com/n8n-io/n8n/commit/cb2ba97f3837b572e237da1256b9f2ee376767a9))
+* **HTTP Request Node:** Fix AWS credentials to automatically deconstruct the url ([#5751](https://github.com/n8n-io/n8n/issues/5751)) ([4ac944a](https://github.com/n8n-io/n8n/commit/4ac944af3028b70ae600000300c16de77c1af1d5))
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([cefec77](https://github.com/n8n-io/n8n/commit/cefec7739b6da820d64f9476476e1901d4f386bf))
+
+
+### Features
+
+* **core:** Augment data instead of copying it ([#5487](https://github.com/n8n-io/n8n/issues/5487)) ([0876c38](https://github.com/n8n-io/n8n/commit/0876c38aaeb8355141fecbc14e84cdda0b2c737b))
+* **editor:** Move canvas by holding Space or Middle mouse button ([#5719](https://github.com/n8n-io/n8n/issues/5719)) ([19dded1](https://github.com/n8n-io/n8n/commit/19dded18c9a588a30b9ac1fc274dcd967e9b7b6b))
+* **editor:** Recommend and pre-select auth type with overrides ([#5684](https://github.com/n8n-io/n8n/issues/5684)) ([f59b591](https://github.com/n8n-io/n8n/commit/f59b591c93ecd7cbd279668abe6494ef2b88c831))
+* **editor:** SSO login button ([#5615](https://github.com/n8n-io/n8n/issues/5615)) ([6916628](https://github.com/n8n-io/n8n/commit/6916628a9f11e07cbcdf390f747f396fb0ef9e3c))
+* **QuickChart Node:** Add QuickChart node ([#3572](https://github.com/n8n-io/n8n/issues/3572)) ([233f1fa](https://github.com/n8n-io/n8n/commit/233f1fa7ec230e92e868de0247e315aa6a705ead))
+
+
+
+## [0.220.1](https://github.com/n8n-io/n8n/compare/n8n@0.220.0...n8n@0.220.1) (2023-03-22)
+
+
+### Bug Fixes
+
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([6d1c88e](https://github.com/n8n-io/n8n/commit/6d1c88ea8c2e5dc72c6e6edeeeef52dc1fba4075))
+
+
+
+# [0.220.0](https://github.com/n8n-io/n8n/compare/n8n@0.219.1...n8n@0.220.0) (2023-03-16)
+
+
+### Bug Fixes
+
+* **core:** Initialize License and LDAP in the correct order ([#5673](https://github.com/n8n-io/n8n/issues/5673)) ([90afa5e](https://github.com/n8n-io/n8n/commit/90afa5e55f96fbe46417f4be8f764795fb5c2225))
+* **editor:** Display correct error message for env access ([#5634](https://github.com/n8n-io/n8n/issues/5634)) ([5f238ea](https://github.com/n8n-io/n8n/commit/5f238ea6413d25704a5865d339401117e81dbbab))
+* **editor:** Fix autocomplete for complex expresions ([#5695](https://github.com/n8n-io/n8n/issues/5695)) ([11bf260](https://github.com/n8n-io/n8n/commit/11bf260bf164c6c9dffe71b875fde139c93f905d))
+* **editor:** Fix owner set-up checkbox wording ([#5697](https://github.com/n8n-io/n8n/issues/5697)) ([58232be](https://github.com/n8n-io/n8n/commit/58232bec618edd403f18527913c489bfa11f570b))
+* **editor:** Properly handle mapping of dragged expression if it contains hyphen ([#5703](https://github.com/n8n-io/n8n/issues/5703)) ([7025efe](https://github.com/n8n-io/n8n/commit/7025efe8654a8a55ff10e2105ddc6ce2dc5a89d6))
+* **Metabase Node:** Fix issue with question results not correctly being returned ([#5665](https://github.com/n8n-io/n8n/issues/5665)) ([d1e3c19](https://github.com/n8n-io/n8n/commit/d1e3c192ba9e2dfd852e570e88f6135d42d2ed45))
+
+
+### Features
+
+* **core:** Improve SAML connection test ([#5680](https://github.com/n8n-io/n8n/issues/5680)) ([ef07528](https://github.com/n8n-io/n8n/commit/ef07528cc21f06ee52f93bafb34ac54a244609f9))
+* **editor:** Add basic Datatable and Pagination components ([#5652](https://github.com/n8n-io/n8n/issues/5652)) ([29f2629](https://github.com/n8n-io/n8n/commit/29f2629716e3693372ec9a4572113a3f3721ff5e))
+* **editor:** Add support for schema view in the NDV output ([#5688](https://github.com/n8n-io/n8n/issues/5688)) ([541850f](https://github.com/n8n-io/n8n/commit/541850f95f1c42fc16d9aeee3a3fef68a4b77082))
+* **editor:** Do not show actions panel for single-action nodes ([#5683](https://github.com/n8n-io/n8n/issues/5683)) ([de1db92](https://github.com/n8n-io/n8n/commit/de1db927cbdc5fc8ef7d697cccbd8603f66391ea))
+* **Item Lists Node:** Update actions ([#5648](https://github.com/n8n-io/n8n/issues/5648)) ([332d50c](https://github.com/n8n-io/n8n/commit/332d50c5f1f8ba63b87325799360adecdbaa06bf))
+* **OpenAI Node:** Add support for gpt4 on chat completion ([#5692](https://github.com/n8n-io/n8n/issues/5692)) ([ba73fff](https://github.com/n8n-io/n8n/commit/ba73fff27d2972093746acc3f7016c7420e23459))
+* **Split In Batches Node:** Make it easy to combine processed data ([#5655](https://github.com/n8n-io/n8n/issues/5655)) ([2f7639e](https://github.com/n8n-io/n8n/commit/2f7639e9e4b10f08c5cb1c4916fc6ae031375cf3))
+
+
+
+## [0.215.4](https://github.com/n8n-io/n8n/compare/n8n@0.215.3...n8n@0.215.4) (2023-03-14)
+
+
+### Bug Fixes
+
+* **core:** Revert `isPending` check on the user entity ([#5571](https://github.com/n8n-io/n8n/issues/5571)) ([6d2c50d](https://github.com/n8n-io/n8n/commit/6d2c50dfed0aeffa2afdb09f5aac80c0e25a6a06))
+
+
+
+## [0.214.5](https://github.com/n8n-io/n8n/compare/n8n@0.214.4...n8n@0.214.5) (2023-03-14)
+
+
+### Bug Fixes
+
+* **core:** Revert `isPending` check on the user entity ([#5571](https://github.com/n8n-io/n8n/issues/5571)) ([b94af03](https://github.com/n8n-io/n8n/commit/b94af0384243d634683212d5199316067956f628))
+
+
+
+## [0.219.1](https://github.com/n8n-io/n8n/compare/n8n@0.219.0...n8n@0.219.1) (2023-03-10)
+
+
+### Bug Fixes
+
+* **HTTP Request Node:** Remove streaming response  ([#5663](https://github.com/n8n-io/n8n/issues/5663)) ([974d57d](https://github.com/n8n-io/n8n/commit/974d57dfed78489d3f22c8c63e0ea624c637bfe0))
+
+
+
 # [0.219.0](https://github.com/n8n-io/n8n/compare/n8n@0.218.0...n8n@0.219.0) (2023-03-09)
 
 

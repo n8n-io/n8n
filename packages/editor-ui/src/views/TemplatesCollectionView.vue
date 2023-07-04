@@ -50,26 +50,28 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import {
+import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
 	ITemplatesWorkflow,
 	ITemplatesWorkflowFull,
 } from '@/Interface';
 
-import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
+import { useTemplatesStore } from '@/stores/templates.store';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesCollectionView',
+	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplateList,
@@ -119,7 +121,7 @@ export default mixins(workflowHelpers).extend({
 				wf_template_repo_session_id: this.workflowsStore.currentSessionId,
 				source: 'collection',
 			};
-			this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
+			void this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
 			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
@@ -130,7 +132,7 @@ export default mixins(workflowHelpers).extend({
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: page, params: { id } });
+				void this.$router.push({ name: page, params: { id } });
 			}
 		},
 	},

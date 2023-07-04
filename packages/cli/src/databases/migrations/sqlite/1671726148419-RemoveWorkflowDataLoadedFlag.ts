@@ -1,23 +1,15 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';
-import { v4 as uuidv4 } from 'uuid';
-import { StatisticsNames } from '@db/entities/WorkflowStatistics';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
+import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 
-export class RemoveWorkflowDataLoadedFlag1671726148419 implements MigrationInterface {
-	name = 'RemoveWorkflowDataLoadedFlag1671726148419';
-
-	async up(queryRunner: QueryRunner) {
-		logMigrationStart(this.name);
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class RemoveWorkflowDataLoadedFlag1671726148419 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// If any existing workflow has dataLoaded set to true, insert the relevant information to the statistics table
-		const workflowIds: Array<{ id: number; dataLoaded: boolean }> = await queryRunner.query(`
+		const workflowIds = (await queryRunner.query(`
 			SELECT id, dataLoaded
 			FROM "${tablePrefix}workflow_entity"
-		`);
+		`)) as Array<{ id: number; dataLoaded: boolean }>;
 
-		workflowIds.map(({ id, dataLoaded }) => {
+		workflowIds.map(async ({ id, dataLoaded }) => {
 			if (dataLoaded) {
 				const [insertQuery, insertParams] = queryRunner.connection.driver.escapeQueryWithParameters(
 					`
@@ -36,24 +28,20 @@ export class RemoveWorkflowDataLoadedFlag1671726148419 implements MigrationInter
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN "dataLoaded"`,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner) {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "dataLoaded" BOOLEAN DEFAULT false`,
 		);
 
 		// Search through statistics for any workflows that have the dataLoaded stat
-		const workflowsIds: Array<{ workflowId: string }> = await queryRunner.query(`
+		const workflowsIds = (await queryRunner.query(`
 			SELECT workflowId
 			FROM "${tablePrefix}workflow_statistics"
 			WHERE name = '${StatisticsNames.dataLoaded}'
-		`);
-		workflowsIds.map(({ workflowId }) => {
+		`)) as Array<{ workflowId: string }>;
+		workflowsIds.map(async ({ workflowId }) => {
 			return queryRunner.query(`
 				UPDATE "${tablePrefix}workflow_entity"
 				SET dataLoaded = true

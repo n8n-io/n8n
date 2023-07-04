@@ -207,7 +207,7 @@ export function hasPackageLoaded(packageName: string): boolean {
 
 export function removePackageFromMissingList(packageName: string): void {
 	try {
-		const failedPackages = (config.get('nodes.packagesMissing') as string).split(' ');
+		const failedPackages = config.get('nodes.packagesMissing').split(' ');
 
 		const packageFailedToLoad = failedPackages.filter(
 			(packageNameAndVersion) =>
@@ -216,7 +216,7 @@ export function removePackageFromMissingList(packageName: string): void {
 		);
 
 		config.set('nodes.packagesMissing', packageFailedToLoad.join(' '));
-	} catch (_error) {
+	} catch {
 		// Do nothing
 	}
 }

@@ -5,19 +5,18 @@ const ndv = new NDV();
 
 describe('Data transformation expressions', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
 	beforeEach(() => {
 		wf.actions.visit();
-		cy.waitForLoad();
 
-		cy.window()
-			// @ts-ignore
-			.then(
-				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
-			);
+		cy.window().then(
+			(win) => {
+				// @ts-ignore
+				win.preventNodeViewBeforeUnload = true;
+			},
+		);
 	});
 
 	it('$json + native string methods', () => {

@@ -110,7 +110,7 @@ export class ExportCredentialsCommand extends BaseCommand {
 			findQuery.id = flags.id;
 		}
 
-		const credentials = await Db.collections.Credentials.findBy(findQuery);
+		const credentials: ICredentialsDb[] = await Db.collections.Credentials.findBy(findQuery);
 
 		if (flags.decrypted) {
 			const encryptionKey = await UserSettings.getEncryptionKey();

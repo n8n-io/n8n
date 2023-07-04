@@ -8,7 +8,7 @@ export default {
 	argTypes: {
 		placement: {
 			type: 'select',
-			options: ['top', 'top-start', 'top-end', 'bottom', 'bottom-end'],
+			options: ['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'],
 		},
 		size: {
 			type: 'select',

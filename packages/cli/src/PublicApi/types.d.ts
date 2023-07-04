@@ -7,7 +7,7 @@ import type { Role } from '@db/entities/Role';
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { UserManagementMailer } from '@/UserManagement/email';
 
 import type { Risk } from '@/audit/types';
 
@@ -26,10 +26,10 @@ export type AuthenticatedRequest<
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
 	user: User;
 	globalMemberRole?: Role;
-	mailer?: UserManagementMailer.UserManagementMailer;
+	mailer?: UserManagementMailer;
 };
 
-export type PaginatatedRequest = AuthenticatedRequest<
+export type PaginatedRequest = AuthenticatedRequest<
 	{},
 	{},
 	{},
@@ -161,6 +161,16 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
+}
+
+export class SourceControlPull {
+	force?: boolean;
+
+	variables?: { [key: string]: string };
+}
+
+export declare namespace PublicSourceControlRequest {
+	type Pull = AuthenticatedRequest<{}, {}, SourceControlPull, {}>;
 }
 
 // ----------------------------------

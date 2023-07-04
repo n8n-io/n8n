@@ -79,7 +79,7 @@ export class Coda implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available docs to display them to user so that he can
+			// Get all the available docs to display them to user so that they can
 			// select them easily
 			async getDocs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -95,7 +95,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tables to display them to user so that he can
+			// Get all the available tables to display them to user so that they can
 			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -119,7 +119,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available columns to display them to user so that he can
+			// Get all the available columns to display them to user so that they can
 			// select them easily
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -144,7 +144,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available views to display them to user so that he can
+			// Get all the available views to display them to user so that they can
 			// select them easily
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -166,7 +166,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available formulas to display them to user so that he can
+			// Get all the available formulas to display them to user so that they can
 			// select them easily
 			async getFormulas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -188,7 +188,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available view rows to display them to user so that he can
+			// Get all the available view rows to display them to user so that they can
 			// select them easily
 			async getViewRows(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -211,7 +211,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available view columns to display them to user so that he can
+			// Get all the available view columns to display them to user so that they can
 			// select them easily
 			async getViewColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

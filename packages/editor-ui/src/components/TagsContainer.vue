@@ -4,6 +4,7 @@
 		@observed="onObserved"
 		class="tags-container"
 		:enabled="responsive"
+		:event-bus="intersectionEventBus"
 	>
 		<template>
 			<span class="tags">
@@ -26,6 +27,7 @@
 						:class="{ hidden: tag.hidden }"
 						:data-id="tag.id"
 						:enabled="responsive"
+						:event-bus="intersectionEventBus"
 						v-else
 					>
 						<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
@@ -39,13 +41,14 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import { ITag } from '@/Interface';
+import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
-import { useTagsStore } from '@/stores/tags';
+import { useTagsStore } from '@/stores/tags.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
@@ -56,32 +59,33 @@ interface TagEl extends ITag {
 	isCount?: boolean;
 }
 
-export default Vue.extend({
-	components: { IntersectionObserver, IntersectionObserved },
+export default defineComponent({
 	name: 'TagsContainer',
+	components: { IntersectionObserver, IntersectionObserved },
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],
 	data() {
 		return {
+			intersectionEventBus: createEventBus(),
 			visibility: {} as { [id: string]: boolean },
 		};
 	},
 	computed: {
 		...mapStores(useTagsStore),
 		tags() {
-			const tags = this.$props.tagIds
+			const tags = this.tagIds
 				.map((tagId: string) => this.tagsStore.getTagById(tagId))
 				.filter(Boolean); // if tag has been deleted from store
 
-			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;
+			const limit = this.limit || DEFAULT_MAX_TAGS_LIMIT;
 
 			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
 			toDisplay = toDisplay.map((tag: ITag) => ({
 				...tag,
-				hidden: this.$props.responsive && !this.$data.visibility[tag.id],
+				hidden: this.responsive && !this.$data.visibility[tag.id],
 			}));
 
 			let visibleCount = toDisplay.length;
-			if (this.$props.responsive) {
+			if (this.responsive) {
 				visibleCount = Object.values(this.visibility).reduce(
 					(accu, val) => (val ? accu + 1 : accu),
 					0,
@@ -109,7 +113,7 @@ export default Vue.extend({
 	methods: {
 		onObserved({ el, isIntersecting }: { el: HTMLElement; isIntersecting: boolean }) {
 			if (el.dataset.id) {
-				Vue.set(this.$data.visibility, el.dataset.id, isIntersecting);
+				this.$data.visibility = { ...this.$data.visibility, [el.dataset.id]: isIntersecting };
 			}
 		},
 		onClick(e: MouseEvent, tag: TagEl) {

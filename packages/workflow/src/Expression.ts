@@ -14,16 +14,14 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
+import { ExpressionError } from './ExpressionError';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
-import { extend, extendOptional, hasExpressionExtension, hasNativeMethod } from './Extensions';
-import type { ExpressionChunk, ExpressionCode } from './Extensions/ExpressionParser';
-import { joinExpression, splitExpression } from './Extensions/ExpressionParser';
-import { extendTransform } from './Extensions/ExpressionExtension';
+import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
+import { extendSyntax } from './Extensions/ExpressionExtension';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -39,6 +37,18 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 			throw error;
 		}
 	}
+};
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
+
+const fnConstructors = {
+	sync: Function.prototype.constructor,
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	async: AsyncFunction.prototype.constructor,
+	mock: () => {
+		throw new ExpressionError('Arbitrary code execution detected');
+	},
 };
 
 export class Expression {
@@ -68,7 +78,7 @@ export class Expression {
 		if (value instanceof Date) {
 			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
 			result = DateTime.fromJSDate(value, {
-				zone: this.workflow.settings.timezone?.toString() ?? 'default',
+				zone: this.workflow.settings?.timezone ?? 'default',
 			}).toISO();
 		} else {
 			result = JSON.stringify(value);
@@ -292,7 +302,7 @@ export class Expression {
 		}
 
 		// Execute the expression
-		const extendedExpression = this.extendSyntax(parameterValue);
+		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
@@ -317,6 +327,9 @@ export class Expression {
 		data: IWorkflowDataProxyData,
 	): tmpl.ReturnValue | undefined {
 		try {
+			[Function, AsyncFunction].forEach(({ prototype }) =>
+				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
+			);
 			return tmpl.tmpl(expression, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
@@ -354,47 +367,13 @@ export class Expression {
 
 				throw new Error(match.groups.msg);
 			}
+		} finally {
+			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });
+			Object.defineProperty(AsyncFunction.prototype, 'constructor', {
+				value: fnConstructors.async,
+			});
 		}
 		return null;
-	}
-
-	extendSyntax(bracketedExpression: string): string {
-		const chunks = splitExpression(bracketedExpression);
-
-		const codeChunks = chunks
-			.filter((c) => c.type === 'code')
-			.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
-
-		if (!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression))
-			return bracketedExpression;
-
-		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
-			if (chunk.type === 'code') {
-				const output = extendTransform(chunk.text);
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				if (!output?.code) {
-					throw new ExpressionExtensionError('invalid syntax');
-				}
-
-				let text = output.code;
-
-				// We need to cut off any trailing semicolons. These cause issues
-				// with certain types of expression and cause the whole expression
-				// to fail.
-				if (text.trim().endsWith(';')) {
-					text = text.trim().slice(0, -1);
-				}
-
-				return {
-					...chunk,
-					text,
-				} as ExpressionCode;
-			}
-			return chunk;
-		});
-
-		return joinExpression(extendedChunks);
 	}
 
 	/**
@@ -593,7 +572,9 @@ export class Expression {
 		// The parameter value is complex so resolve depending on type
 		if (Array.isArray(parameterValue)) {
 			// Data is an array
-			const returnData = parameterValue.map((item) => resolveParameterValue(item, {}));
+			const returnData = parameterValue.map((item) =>
+				resolveParameterValue(item as NodeParameterValueType, {}),
+			);
 			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
 

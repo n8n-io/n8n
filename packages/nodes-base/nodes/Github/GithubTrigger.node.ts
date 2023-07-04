@@ -215,12 +215,6 @@ export class GithubTrigger implements INodeType {
 						description: 'Triggered when a commit comment is created',
 					},
 					{
-						name: 'Content Reference',
-						value: 'content_reference',
-						description:
-							'Triggered when the body or comment of an issue or pull request includes a URL that matches a configured content reference domain. Only GitHub Apps can receive this event.',
-					},
-					{
 						name: 'Create',
 						value: 'create',
 						description: 'Represents a created repository, branch, or tag',

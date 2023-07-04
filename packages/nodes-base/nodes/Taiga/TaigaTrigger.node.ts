@@ -121,7 +121,7 @@ export class TaigaTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available projects to display them to user so that he can
+			// Get all the available projects to display them to user so that they can
 			// select them easily
 			async getUserProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -142,7 +142,6 @@ export class TaigaTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

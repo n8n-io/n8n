@@ -1,17 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
 	INode,
 	IConnections,
 	IRunExecutionData,
-	Workflow,
 	IExecuteData,
-	WorkflowDataProxy,
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
 	IVersionedNodeType,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { Workflow, WorkflowDataProxy, NodeHelpers } from 'n8n-workflow';
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {

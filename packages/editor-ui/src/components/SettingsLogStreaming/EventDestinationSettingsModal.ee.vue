@@ -174,44 +174,46 @@
 <script lang="ts">
 import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
-import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import { useNDVStore } from '../../stores/ndv';
-import { useWorkflowsStore } from '../../stores/workflows';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
-import { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
+import type { IMenuItem, INodeUi, IUpdateInformation } from '@/Interface';
+import type {
+	IDataObject,
+	INodeCredentials,
+	NodeParameterValue,
+	MessageEventBusDestinationOptions,
+} from 'n8n-workflow';
 import {
 	deepCopy,
 	defaultMessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
-	IDataObject,
-	INodeCredentials,
-	NodeParameterValue,
 	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import Vue from 'vue';
-import { LOG_STREAM_MODAL_KEY } from '../../constants';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
-import { showMessage } from '@/mixins/showMessage';
-import { useUIStore } from '../../stores/ui';
-import { useUsersStore } from '../../stores/users';
-import { destinationToFakeINodeUi } from './Helpers.ee';
+import { useMessage } from '@/composables';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
 import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
-import { BaseTextKey } from '../../plugins/i18n';
-import InlineNameEdit from '../InlineNameEdit.vue';
-import SaveButton from '../SaveButton.vue';
+import type { BaseTextKey } from '@/plugins/i18n';
+import InlineNameEdit from '@/components/InlineNameEdit.vue';
+import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import { Checkbox } from 'element-ui';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'event-destination-settings-modal',
 	props: {
 		modalName: String,
@@ -221,35 +223,40 @@ export default mixins(showMessage).extend({
 		},
 		isNew: Boolean,
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 	},
 	components: {
 		Modal,
 		ParameterInputList,
-		NodeCredentials,
 		InlineNameEdit,
 		SaveButton,
 		EventSelection,
-		Checkbox,
+	},
+	setup() {
+		return {
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
-			unchanged: !this.$props.isNew,
+			unchanged: !this.isNew,
 			activeTab: 'settings',
-			hasOnceBeenSaved: !this.$props.isNew,
+			hasOnceBeenSaved: !this.isNew,
 			isSaving: false,
 			isDeleting: false,
 			loading: false,
 			showRemoveConfirm: false,
 			typeSelectValue: '',
 			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions),
+			nodeParameters: deepCopy(
+				defaultMessageEventBusDestinationOptions,
+			) as MessageEventBusDestinationOptions,
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
-			modalBus: new Vue(),
-			headerLabel: this.$props.destination.label,
+			modalBus: createEventBus(),
+			headerLabel: this.destination.label,
 			testMessageSent: false,
 			testMessageResult: false,
 			isInstanceOwner: false,
@@ -305,18 +312,6 @@ export default mixins(showMessage).extend({
 				});
 			}
 			return items;
-		},
-		tabItems(): ITab[] {
-			return [
-				{
-					label: this.$locale.baseText('settings.log-streaming.tab.settings'),
-					value: 'settings',
-				},
-				{
-					label: this.$locale.baseText('settings.log-streaming.tab.events'),
-					value: 'events',
-				},
-			];
 		},
 	},
 	mounted() {
@@ -407,13 +402,13 @@ export default mixins(showMessage).extend({
 			// Apply the new value
 			if (parameterData.value === undefined && parameterPathArray !== null) {
 				// Delete array item
-				const path = parameterPathArray[1];
+				const path = parameterPathArray[1] as keyof MessageEventBusDestinationOptions;
 				const index = parameterPathArray[2];
 				const data = get(nodeParameters, path);
 
 				if (Array.isArray(data)) {
 					data.splice(parseInt(index, 10), 1);
-					Vue.set(nodeParameters, path, data);
+					nodeParameters[path] = data as never;
 				}
 			} else {
 				if (newValue === undefined) {
@@ -437,20 +432,26 @@ export default mixins(showMessage).extend({
 			this.testMessageSent = true;
 		},
 		async removeThis() {
-			const deleteConfirmed = await this.confirmMessage(
+			const deleteConfirmed = await this.confirm(
 				this.$locale.baseText('settings.log-streaming.destinationDelete.message', {
 					interpolate: { destinationName: this.destination.label },
 				}),
 				this.$locale.baseText('settings.log-streaming.destinationDelete.headline'),
-				'warning',
-				this.$locale.baseText('settings.log-streaming.destinationDelete.confirmButtonText'),
-				this.$locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
+				{
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'settings.log-streaming.destinationDelete.confirmButtonText',
+					),
+					cancelButtonText: this.$locale.baseText(
+						'settings.log-streaming.destinationDelete.cancelButtonText',
+					),
+				},
 			);
 
-			if (deleteConfirmed === false) {
+			if (deleteConfirmed !== MODAL_CONFIRM) {
 				return;
 			} else {
-				this.$props.eventBus.$emit('remove', this.destination.id);
+				this.eventBus.emit('remove', this.destination.id);
 				this.uiStore.closeModal(LOG_STREAM_MODAL_KEY);
 				this.uiStore.stateIsDirty = false;
 			}
@@ -461,7 +462,7 @@ export default mixins(showMessage).extend({
 				this.logStreamingStore.removeDestination(this.nodeParameters.id!);
 			}
 			this.ndvStore.activeNodeName = null;
-			this.$props.eventBus.$emit('closing', this.destination.id);
+			this.eventBus.emit('closing', this.destination.id);
 			this.uiStore.stateIsDirty = false;
 		},
 		async saveDestination() {
@@ -473,7 +474,7 @@ export default mixins(showMessage).extend({
 				this.hasOnceBeenSaved = true;
 				this.testMessageSent = false;
 				this.unchanged = true;
-				this.$props.eventBus.$emit('destinationWasSaved', this.destination.id);
+				this.eventBus.emit('destinationWasSaved', this.destination.id);
 				this.uiStore.stateIsDirty = false;
 			}
 		},

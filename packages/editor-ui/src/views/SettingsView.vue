@@ -15,7 +15,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 
 import { VIEWS } from '@/constants';
 import SettingsSidebar from '@/components/SettingsSidebar.vue';
@@ -37,7 +37,9 @@ const SettingsView = defineComponent({
 	},
 	methods: {
 		onReturn() {
-			this.$router.push(this.previousRoute ? this.previousRoute.path : { name: VIEWS.HOMEPAGE });
+			void this.$router.push(
+				this.previousRoute ? this.previousRoute.path : { name: VIEWS.HOMEPAGE },
+			);
 		},
 	},
 });

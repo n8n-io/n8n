@@ -7,7 +7,6 @@ const executionsTab = new WorkflowExecutionsTab();
 // Test suite for executions tab
 describe('Current Workflow Executions', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

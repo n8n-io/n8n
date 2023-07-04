@@ -7,7 +7,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { getLogger } from '@/Logger';
-import { getLicense } from '@/License';
+import { License } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
 import { Service } from 'typedi';
@@ -39,7 +39,7 @@ export class Telemetry {
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private postHog: PostHogClient) {}
+	constructor(private postHog: PostHogClient, private license: License) {}
 
 	setInstanceId(instanceId: string) {
 		this.instanceId = instanceId;
@@ -76,29 +76,39 @@ export class Telemetry {
 
 	private async pulse(): Promise<unknown> {
 		if (!this.rudderStack) {
-			return Promise.resolve();
+			return;
 		}
 
-		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
-			const promise = this.track(
-				'Workflow execution count',
-				{
-					event_version: '2',
-					workflow_id: workflowId,
-					...this.executionCountsBuffer[workflowId],
-				},
-				{ withPostHog: true },
-			);
+		const allPromises = Object.keys(this.executionCountsBuffer)
+			.filter((workflowId) => {
+				const data = this.executionCountsBuffer[workflowId];
+				const sum =
+					(data.manual_error?.count ?? 0) +
+					(data.manual_success?.count ?? 0) +
+					(data.prod_error?.count ?? 0) +
+					(data.prod_success?.count ?? 0);
+				return sum > 0;
+			})
+			.map(async (workflowId) => {
+				const promise = this.track(
+					'Workflow execution count',
+					{
+						event_version: '2',
+						workflow_id: workflowId,
+						...this.executionCountsBuffer[workflowId],
+					},
+					{ withPostHog: true },
+				);
 
-			return promise;
-		});
+				return promise;
+			});
 
 		this.executionCountsBuffer = {};
 
 		// License info
 		const pulsePacket = {
-			plan_name_current: getLicense().getPlanName(),
-			quota: getLicense().getTriggerLimit(),
+			plan_name_current: this.license.getPlanName(),
+			quota: this.license.getTriggerLimit(),
 			usage: await LicenseService.getActiveTriggerCount(),
 		};
 		allPromises.push(this.track('pulse', pulsePacket));
@@ -128,7 +138,11 @@ export class Telemetry {
 				this.executionCountsBuffer[workflowId][key]!.count++;
 			}
 
-			if (!properties.success && properties.error_node_type?.startsWith('n8n-nodes-base')) {
+			if (
+				!properties.success &&
+				properties.is_manual &&
+				properties.error_node_type?.startsWith('n8n-nodes-base')
+			) {
 				void this.track('Workflow execution errored', properties);
 			}
 		}

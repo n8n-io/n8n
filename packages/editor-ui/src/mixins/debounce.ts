@@ -1,7 +1,7 @@
 import { debounce } from 'lodash-es';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export const debounceHelper = Vue.extend({
+export const debounceHelper = defineComponent({
 	data() {
 		return {
 			debouncedFunctions: [] as any[],

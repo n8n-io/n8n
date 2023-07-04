@@ -55,22 +55,44 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-import { ITag } from '@/Interface';
+import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useTagsStore } from '@/stores/tags';
+import { useUIStore } from '@/stores/ui.store';
+import { useTagsStore } from '@/stores/tags.store';
+import type { EventBus } from 'n8n-design-system';
+import type { PropType } from 'vue';
+import type { N8nOption, N8nSelect } from 'n8n-design-system';
+
+type SelectRef = InstanceType<typeof N8nSelect>;
+type TagRef = InstanceType<typeof N8nOption>;
+type CreateRef = InstanceType<typeof N8nOption>;
 
 const MANAGE_KEY = '__manage';
 const CREATE_KEY = '__create';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'TagsDropdown',
-	props: ['placeholder', 'currentTagIds', 'createEnabled', 'eventBus'],
+	props: {
+		placeholder: {},
+		currentTagIds: {
+			type: Array as PropType<string[]>,
+			default: () => [],
+		},
+		createEnabled: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			filter: '',
@@ -81,10 +103,8 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		// @ts-ignore
-		const select = (this.$refs.select &&
-			this.$refs.select.$refs &&
-			this.$refs.select.$refs.innerSelect) as Vue | undefined;
+		const selectRef = this.$refs.select as SelectRef | undefined;
+		const select = selectRef?.$refs?.innerSelect;
 		if (select) {
 			const input = select.$refs.input as Element | undefined;
 			if (input) {
@@ -98,24 +118,20 @@ export default mixins(showMessage).extend({
 						this.$data.preventUpdate = true;
 						this.$emit('blur');
 
-						// @ts-ignore
-						if (this.$refs.select && typeof this.$refs.select.blur === 'function') {
-							// @ts-ignore
-							this.$refs.select.blur();
+						if (typeof selectRef?.blur === 'function') {
+							selectRef.blur();
 						}
 					}
 				});
 			}
 		}
 
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
-				this.focusOnInput();
-				this.focusOnTopOption();
-			});
-		}
+		this.eventBus?.on('focus', this.onBusFocus);
 
-		this.tagsStore.fetchAll();
+		void this.tagsStore.fetchAll();
+	},
+	destroyed() {
+		this.eventBus?.off('focus', this.onBusFocus);
 	},
 	computed: {
 		...mapStores(useTagsStore, useUIStore),
@@ -131,10 +147,14 @@ export default mixins(showMessage).extend({
 			);
 		},
 		appliedTags(): string[] {
-			return this.$props.currentTagIds.filter((id: string) => this.tagsStore.getTagById(id));
+			return this.currentTagIds.filter((id: string) => this.tagsStore.getTagById(id));
 		},
 	},
 	methods: {
+		onBusFocus() {
+			this.focusOnInput();
+			this.focusOnTopOption();
+		},
 		filterOptions(filter = '') {
 			this.$data.filter = filter.trim();
 			this.$nextTick(() => this.focusOnTopOption());
@@ -143,12 +163,12 @@ export default mixins(showMessage).extend({
 			const name = this.$data.filter;
 			try {
 				const newTag = await this.tagsStore.create(name);
-				this.$emit('update', [...this.$props.currentTagIds, newTag.id]);
+				this.$emit('update', [...this.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
 				this.$data.filter = '';
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsDropdown.showError.title'),
 					this.$locale.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
@@ -161,7 +181,7 @@ export default mixins(showMessage).extend({
 				this.$data.filter = '';
 				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
-				this.onCreate();
+				void this.onCreate();
 			} else {
 				setTimeout(() => {
 					if (!this.$data.preventUpdate) {
@@ -172,31 +192,27 @@ export default mixins(showMessage).extend({
 			}
 		},
 		focusOnTopOption() {
-			const tags = this.$refs.tag as Vue[] | undefined;
-			const create = this.$refs.create as Vue | undefined;
-			//@ts-ignore // focus on create option
-			if (create && create.hoverItem) {
-				// @ts-ignore
-				create.hoverItem();
+			const tagRefs = this.$refs.tag as TagRef[] | undefined;
+			const createRef = this.$refs.create as CreateRef | undefined;
+			// focus on create option
+			if (createRef && createRef.hoverItem) {
+				createRef.hoverItem();
 			}
-			//@ts-ignore // focus on top option after filter
-			else if (tags && tags[0] && tags[0].hoverItem) {
-				// @ts-ignore
-				tags[0].hoverItem();
+			// focus on top option after filter
+			else if (tagRefs && tagRefs[0] && tagRefs[0].hoverItem) {
+				tagRefs[0].hoverItem();
 			}
 		},
 		focusOnTag(tagId: string) {
-			const tagOptions = (this.$refs.tag as Vue[]) || [];
+			const tagOptions = (this.$refs.tag as TagRef[]) || [];
 			if (tagOptions && tagOptions.length) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const added = tagOptions.find((ref: any) => ref.value === tagId);
+				const added = tagOptions.find((ref) => ref.value === tagId);
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.select as Vue | undefined;
-			if (select) {
-				// @ts-ignore
-				select.focusOnInput();
+			const selectRef = this.$refs.select as SelectRef | undefined;
+			if (selectRef) {
+				selectRef.focusOnInput();
 				this.focused = true;
 			}
 		},

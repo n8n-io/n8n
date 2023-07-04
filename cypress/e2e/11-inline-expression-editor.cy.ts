@@ -4,7 +4,6 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Inline expression editor', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
@@ -69,6 +68,6 @@ describe('Inline expression editor', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
-		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^getAll$/);
+		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
 	});
 });

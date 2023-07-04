@@ -1,18 +1,20 @@
-import mixins from 'vue-typed-mixins';
-import { Expression, ExpressionExtensions } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+
+import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { ensureSyntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
-import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 
-export const expressionManager = mixins(workflowHelpers).extend({
+export const expressionManager = defineComponent({
+	mixins: [workflowHelpers],
 	props: {
 		targetItem: {
 			type: Object as PropType<TargetItem | null>,
@@ -21,6 +23,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 	data() {
 		return {
 			editor: {} as EditorView,
+			skipSegments: [] as string[],
 		};
 	},
 	watch: {
@@ -69,6 +72,8 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		},
 
 		segments(): Segment[] {
+			if (!this.editor?.state) return [];
+
 			const rawSegments: RawSegment[] = [];
 
 			const fullTree = ensureSyntaxTree(
@@ -81,14 +86,18 @@ export const expressionManager = mixins(workflowHelpers).extend({
 				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
 			}
 
+			const skipSegments = ['Program', 'Script', 'Document', ...this.skipSegments];
+
 			fullTree.cursor().iterate((node) => {
-				if (node.type.name === 'Program') return;
+				const text = this.editor.state.sliceDoc(node.from, node.to);
+
+				if (skipSegments.includes(node.type.name)) return;
 
 				rawSegments.push({
 					from: node.from,
 					to: node.to,
-					text: this.editor.state.sliceDoc(node.from, node.to),
-					token: node.type.name,
+					text,
+					token: node.type.name === 'Resolvable' ? 'Resolvable' : 'Plaintext',
 				});
 			});
 
@@ -98,7 +107,18 @@ export const expressionManager = mixins(workflowHelpers).extend({
 				if (token === 'Resolvable') {
 					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
 
-					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
+					acc.push({
+						kind: 'resolvable',
+						from,
+						to,
+						resolvable: text,
+						// TODO:
+						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
+						// This fixes that but as as TODO we should figure out why this is happening
+						resolved: String(resolved),
+						error,
+						fullError,
+					});
 
 					return acc;
 				}
@@ -170,16 +190,21 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			};
 
 			try {
-				if (!useNDVStore().activeNode) {
+				const ndvStore = useNDVStore();
+				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
 				} else {
-					result.resolved = this.resolveExpression('=' + resolvable, undefined, {
-						targetItem: targetItem ?? undefined,
-						inputNodeName: this.ndvStore.ndvInputNodeName,
-						inputRunIndex: this.ndvStore.ndvInputRunIndex,
-						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
-					});
+					let opts;
+					if (ndvStore.isInputParentOfActiveNode) {
+						opts = {
+							targetItem: targetItem ?? undefined,
+							inputNodeName: this.ndvStore.ndvInputNodeName,
+							inputRunIndex: this.ndvStore.ndvInputRunIndex,
+							inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						};
+					}
+					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;

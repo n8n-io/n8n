@@ -3731,7 +3731,7 @@ export class Pipedrive implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all Organizations to display them to user so that he can
+			// Get all Organizations to display them to user so that they can
 			// select them easily
 			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3745,7 +3745,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Filters to display them to user so that he can
+			// Get all Filters to display them to user so that they can
 			// select them easily
 			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3773,7 +3773,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Organizations to display them to user so that he can
+			// Get all Organizations to display them to user so that they can
 			// select them easily
 			async getOrganizationIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3787,7 +3787,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Users to display them to user so that he can
+			// Get all Users to display them to user so that they can
 			// select them easily
 			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3811,7 +3811,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Deals to display them to user so that he can
+			// Get all Deals to display them to user so that they can
 			// select them easily
 			async getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/deals', {})) as {
@@ -3819,7 +3819,7 @@ export class Pipedrive implements INodeType {
 				};
 				return sortOptionParameters(data.map(({ id, title }) => ({ value: id, name: title })));
 			},
-			// Get all Products to display them to user so that he can
+			// Get all Products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/products', {})) as {
@@ -3827,7 +3827,7 @@ export class Pipedrive implements INodeType {
 				};
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
-			// Get all Products related to a deal and display them to user so that he can
+			// Get all Products related to a deal and display them to user so that they can
 			// select them easily
 			async getProductsDeal(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const dealId = this.getCurrentNodeParameter('dealId');
@@ -3841,7 +3841,7 @@ export class Pipedrive implements INodeType {
 				};
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
-			// Get all Stages to display them to user so that he can
+			// Get all Stages to display them to user so that they can
 			// select them easily
 			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3855,7 +3855,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Organization Custom Fields to display them to user so that he can
+			// Get all the Organization Custom Fields to display them to user so that they can
 			// select them easily
 			async getOrganizationCustomFields(
 				this: ILoadOptionsFunctions,
@@ -3873,7 +3873,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Deal Custom Fields to display them to user so that he can
+			// Get all the Deal Custom Fields to display them to user so that they can
 			// select them easily
 			async getDealCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3889,7 +3889,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Person Custom Fields to display them to user so that he can
+			// Get all the Person Custom Fields to display them to user so that they can
 			// select them easily
 			async getPersonCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3905,7 +3905,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the person labels to display them to user so that he can
+			// Get all the person labels to display them to user so that they can
 			// select them easily
 			async getPersonLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3934,7 +3934,7 @@ export class Pipedrive implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getOrganizationLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3964,7 +3964,7 @@ export class Pipedrive implements INodeType {
 				return returnData;
 			},
 
-			// Get all the persons to display them to user so that he can
+			// Get all the persons to display them to user so that they can
 			// select them easily
 			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/persons', {})) as {
@@ -3974,7 +3974,7 @@ export class Pipedrive implements INodeType {
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
-			// Get all the lead labels to display them to user so that he can
+			// Get all the lead labels to display them to user so that they can
 			// select them easily
 			async getLeadLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/leadLabels', {})) as {
@@ -3984,7 +3984,7 @@ export class Pipedrive implements INodeType {
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

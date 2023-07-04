@@ -5,9 +5,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-heading',
 	props: {
 		tag: {
@@ -52,7 +52,7 @@ export default Vue.extend({
 
 			applied.push(this.bold ? 'bold' : 'regular');
 
-			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
+			return applied.map((c) => this.$style[c]);
 		},
 	},
 });

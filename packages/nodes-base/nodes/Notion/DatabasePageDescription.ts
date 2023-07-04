@@ -14,7 +14,7 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 			},
 		},
@@ -53,7 +53,7 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['databasePage'],
 			},
 		},
@@ -161,7 +161,7 @@ export const databasePageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['create'],
 			},
@@ -502,7 +502,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'/version': [2],
+								'@version': [2],
 								type: ['files'],
 							},
 						},
@@ -969,7 +969,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'/version': [2],
+								'@version': [2],
 								type: ['files'],
 							},
 						},
@@ -1097,7 +1097,7 @@ export const databasePageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['get'],
 			},
@@ -1110,7 +1110,7 @@ export const databasePageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['get'],
 			},
@@ -1254,7 +1254,7 @@ export const databasePageFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'/version': [2],
+						'@version': [2],
 						'/resource': ['databasePage'],
 						'/operation': ['getAll'],
 					},
@@ -1272,7 +1272,7 @@ export const databasePageFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/version': [1],
+						'@version': [1],
 					},
 				},
 				default: {},
