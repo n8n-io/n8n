@@ -9,6 +9,14 @@ import { jsonParse } from 'n8n-workflow';
 import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 
 import { isEqual, isNull, merge } from 'lodash';
+import {
+	BLOCK_FILE_ACCESS_TO_N8N_FILES,
+	RESTRICT_FILE_ACCESS_TO,
+	CONFIG_FILES,
+	BINARY_DATA_STORAGE_PATH,
+	UM_EMAIL_TEMPLATES_INVITE,
+	UM_EMAIL_TEMPLATES_PWRESET,
+} from './constants';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -236,15 +244,22 @@ export function getResolvables(expression: string) {
 	return resolvables;
 }
 
+export const getAllowedPaths = () => {
+	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
+	if (!restrictFileAccessTo) {
+		return [];
+	}
+	const allowedPaths = restrictFileAccessTo
+		.split(';')
+		.map((path) => path.trim())
+		.filter((path) => path);
+	return allowedPaths;
+};
+
 export function checkFilePathAccess(filePath: string): void {
-	const restrictFileAccessTo = process.env.N8N_RESTRICT_FILE_ACCESS_TO;
+	const allowedPaths = getAllowedPaths();
 
-	if (restrictFileAccessTo) {
-		const allowedPaths = restrictFileAccessTo
-			.split(';')
-			.map((path) => path.trim())
-			.filter((path) => path);
-
+	if (allowedPaths.length) {
 		for (const path of allowedPaths) {
 			if (filePath.startsWith(path)) {
 				return;
@@ -256,7 +271,7 @@ export function checkFilePathAccess(filePath: string): void {
 		);
 	}
 
-	const blockAccessToN8nFiles = process.env.N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES !== 'false';
+	const blockAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
 	if (blockAccessToN8nFiles) {
 		const restrictedPaths: string[] = [];
@@ -267,15 +282,8 @@ export function checkFilePathAccess(filePath: string): void {
 			restrictedPaths.push(`${userFolder}/.n8n/`);
 		}
 
-		const {
-			N8N_CONFIG_FILES,
-			N8N_BINARY_DATA_STORAGE_PATH,
-			N8N_UM_EMAIL_TEMPLATES_INVITE,
-			N8N_UM_EMAIL_TEMPLATES_PWRESET,
-		} = process.env;
-
-		if (N8N_CONFIG_FILES) {
-			restrictedPaths.push(...N8N_CONFIG_FILES.split(','));
+		if (process.env[CONFIG_FILES]) {
+			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
 		}
 
 		if (process.env[CUSTOM_EXTENSION_ENV]) {
@@ -283,16 +291,16 @@ export function checkFilePathAccess(filePath: string): void {
 			restrictedPaths.push(...customExtensionFolders);
 		}
 
-		if (N8N_BINARY_DATA_STORAGE_PATH) {
-			restrictedPaths.push(N8N_BINARY_DATA_STORAGE_PATH);
+		if (process.env[BINARY_DATA_STORAGE_PATH]) {
+			restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
 		}
 
-		if (N8N_UM_EMAIL_TEMPLATES_INVITE) {
-			restrictedPaths.push(N8N_UM_EMAIL_TEMPLATES_INVITE);
+		if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
+			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
 		}
 
-		if (N8N_UM_EMAIL_TEMPLATES_PWRESET) {
-			restrictedPaths.push(N8N_UM_EMAIL_TEMPLATES_PWRESET);
+		if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
+			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
 		}
 
 		for (const path of restrictedPaths) {

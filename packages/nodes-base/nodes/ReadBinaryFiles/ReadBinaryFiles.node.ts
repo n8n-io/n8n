@@ -1,13 +1,15 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import glob from 'fast-glob';
 
 import { checkFilePathAccess } from '@utils/utilities';
+import { allowedPathsNotice } from '@utils/descriptions';
 
 export class ReadBinaryFiles implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,6 +26,7 @@ export class ReadBinaryFiles implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			allowedPathsNotice,
 			{
 				displayName: 'File Selector',
 				name: 'fileSelector',
@@ -49,6 +52,13 @@ export class ReadBinaryFiles implements INodeType {
 		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 		const files = await glob(fileSelector);
+
+		if (files.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No files found that would match the file selector, check if paths are correct',
+			);
+		}
 
 		const items: INodeExecutionData[] = [];
 		for (const filePath of files) {

@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { checkFilePathAccess } from '@utils/utilities';
+import { allowedPathsNotice } from '@utils/descriptions';
 
 export class ReadBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,6 +24,7 @@ export class ReadBinaryFile implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			allowedPathsNotice,
 			{
 				displayName: 'File Path',
 				name: 'filePath',

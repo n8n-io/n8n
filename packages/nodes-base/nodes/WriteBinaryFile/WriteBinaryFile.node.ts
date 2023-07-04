@@ -10,6 +10,7 @@ import { writeFile as fsWriteFile } from 'fs/promises';
 import type { Readable } from 'stream';
 
 import { checkFilePathAccess } from '@utils/utilities';
+import { allowedPathsNotice } from '@utils/descriptions';
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,6 +27,7 @@ export class WriteBinaryFile implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			allowedPathsNotice,
 			{
 				displayName: 'File Name',
 				name: 'fileName',
