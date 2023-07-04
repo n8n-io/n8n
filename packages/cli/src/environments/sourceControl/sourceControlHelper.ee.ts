@@ -8,7 +8,6 @@ import { LoggerProxy } from 'n8n-workflow';
 import { SOURCE_CONTROL_GIT_KEY_COMMENT } from './constants';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import type { ImportResult } from './types/importResult';
-import type { PushResult } from 'simple-git';
 
 export function sourceControlFoldersExistCheck(folders: string[]) {
 	// running these file access function synchronously to avoid race conditions
