@@ -3,8 +3,6 @@ import type { OptionsWithUri } from 'request-promise-native';
 
 import set from 'lodash/set';
 
-import { JsonObject } from 'n8n-workflow';
-
 export type BodyParameter = { name: string; value: string };
 
 export type IAuthDataSanitizeKeys = {

@@ -3,7 +3,6 @@ import type {
 	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
-	JsonObject,
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
@@ -234,38 +233,4 @@ export function getResolvables(expression: string) {
 	}
 
 	return resolvables;
-}
-
-export const isTraversableObject = (value: any): value is JsonObject => {
-	return (
-		value &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		!!Object.keys(value).length
-	);
-}
-
-export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
-	seen.add(obj);
-	Object.entries(obj).forEach(([key, value]) => {
-		if (isTraversableObject(value)) {
-			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-			seen.has(value)
-				? (obj[key] = { circularReference: true })
-				: removeCircularRefs(value, seen);
-			return;
-		}
-		if (Array.isArray(value)) {
-			value.forEach((val, index) => {
-				if (seen.has(val)) {
-					value[index] = { circularReference: true };
-					return;
-				}
-				if (isTraversableObject(val)) {
-					removeCircularRefs(val, seen);
-				}
-			});
-		}
-	});
 }
