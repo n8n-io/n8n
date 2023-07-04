@@ -107,7 +107,10 @@ export function mapResource(resource: string): string {
 
 export function splitTags<T>(tags: T) {
 	if (typeof tags === 'string') {
-		return tags.split(',').filter((tag) => tag !== ' ' && tag);
+		return tags
+			.split(',')
+			.map((tag) => tag.trim())
+			.filter((tag) => tag);
 	}
 	return tags;
 }

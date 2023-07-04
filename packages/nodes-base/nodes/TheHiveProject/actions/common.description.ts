@@ -280,7 +280,8 @@ export const customFieldsCollection2: INodeProperties = {
 													type: 'string',
 													default: '',
 													description:
-														'Custom Field value. Use an expression if the type is not a string.',
+														'Custom Field value. Use an expression if the type is not a string. Could be a single value or an array of values.',
+													hint: 'Use an expression to send multiple values as an array',
 												},
 											],
 										},

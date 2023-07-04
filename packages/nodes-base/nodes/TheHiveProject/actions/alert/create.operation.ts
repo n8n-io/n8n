@@ -122,28 +122,25 @@ export async function execute(
 		const artifactValues = artifactUi.artifactValues as IDataObject[];
 
 		if (artifactValues) {
-			const artifactData = [];
+			const observables = [];
 
 			for (const artifactvalue of artifactValues) {
-				const element: IDataObject = {};
+				const observable: IDataObject = {};
 
-				element.message = artifactvalue.message as string;
-
-				element.tags = (artifactvalue.tags as string).split(',');
-
-				element.dataType = artifactvalue.dataType as string;
-
-				element.data = artifactvalue.data as string;
+				observable.dataType = artifactvalue.dataType as string;
+				observable.data = artifactvalue.data as string;
+				observable.message = artifactvalue.message as string;
+				observable.tags = splitTags(artifactvalue.tags as string);
 
 				if (artifactvalue.dataType === 'file') {
 					const binaryPropertyName = artifactvalue.binaryProperty as string;
 					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-					element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
+					observable.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 				}
 
-				artifactData.push(element);
+				observables.push(observable);
 			}
-			body.artifacts = artifactData;
+			body.observables = observables;
 		}
 	}
 
