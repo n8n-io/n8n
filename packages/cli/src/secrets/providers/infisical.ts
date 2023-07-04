@@ -26,7 +26,6 @@ export class InfisicalProvider implements SecretsProvider {
 			required: true,
 			placeholder: '***************',
 			typeOptions: { password: true },
-			noDataExpression: true,
 		},
 		{
 			displayName: 'Site URL',
@@ -36,7 +35,6 @@ export class InfisicalProvider implements SecretsProvider {
 			required: true,
 			placeholder: 'https://app.infisical.com',
 			default: 'https://app.infisical.com',
-			noDataExpression: true,
 		},
 	];
 
@@ -80,18 +78,18 @@ export class InfisicalProvider implements SecretsProvider {
 		}
 	}
 
-	async test() {
+	async test(): Promise<[boolean] | [boolean, string]> {
 		if (!this.client) {
-			return false;
+			return [false, 'Client not initialized'];
 		}
 		try {
 			await populateClientWorkspaceConfigsHelper(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				this.client.clientConfig,
 			);
-			return true;
+			return [true];
 		} catch (e) {
-			return false;
+			return [false];
 		}
 	}
 

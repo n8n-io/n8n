@@ -79,6 +79,7 @@ export const enum LICENSE_FEATURES {
 	VARIABLES = 'feat:variables',
 	VERSION_CONTROL = 'feat:versionControl',
 	API_DISABLED = 'feat:apiDisabled',
+	EXTERNAL_SECRETS = 'feat:externalSecrets',
 }
 
 export const enum LICENSE_QUOTAS {

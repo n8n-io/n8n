@@ -14,6 +14,7 @@ import { getLogger } from '@/Logger';
 import type { IDataObject } from 'n8n-workflow';
 import { InfisicalProvider } from './providers/infisical';
 import { EXTERNAL_SECRETS_UPDATE_INTERVAL } from './constants';
+import { License } from '@/License';
 
 const logger = getLogger();
 
@@ -33,7 +34,7 @@ export class ExternalSecretsManager {
 
 	updateInterval: NodeJS.Timer;
 
-	constructor(private settingsRepo: SettingsRepository) {}
+	constructor(private settingsRepo: SettingsRepository, private license: License) {}
 
 	async init(): Promise<void> {
 		if (!this.initialized) {
@@ -132,6 +133,9 @@ export class ExternalSecretsManager {
 	}
 
 	async updateSecrets() {
+		if (!this.license.isExternalSecretsEnabled()) {
+			return;
+		}
 		await Promise.all(
 			Object.entries(this.providers).map(async ([k, p]) => {
 				if (this.cachedSettings[k].connected) {
@@ -265,6 +269,7 @@ export class ExternalSecretsManager {
 	): Promise<{
 		success: boolean;
 		testState: 'connected' | 'tested' | 'error';
+		error?: string;
 	}> {
 		try {
 			const testProvider = await this.initProvider(provider, {
@@ -278,7 +283,7 @@ export class ExternalSecretsManager {
 					testState: 'error',
 				};
 			}
-			const success = await testProvider.test();
+			const [success, error] = await testProvider.test();
 			let testState: 'connected' | 'tested' | 'error' = 'error';
 			if (success && this.cachedSettings[provider]?.connected) {
 				testState = 'connected';
@@ -288,6 +293,7 @@ export class ExternalSecretsManager {
 			return {
 				success,
 				testState,
+				error,
 			};
 		} catch {
 			return {

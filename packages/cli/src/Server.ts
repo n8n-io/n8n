@@ -173,6 +173,7 @@ import { VersionControlService } from '@/environments/versionControl/versionCont
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 import { SecretsService } from './secrets/secrets.service.ee';
 import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
+import { isExternalSecretsEnabled } from './secrets/externalSecretsHelper.ee';
 
 const exec = promisify(callbackExec);
 
@@ -316,6 +317,7 @@ export class Server extends AbstractServer {
 				variables: false,
 				versionControl: false,
 				auditLogs: false,
+				externalSecrets: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -433,6 +435,7 @@ export class Server extends AbstractServer {
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
 			versionControl: isVersionControlLicensed(),
+			externalSecrets: isExternalSecretsEnabled(),
 		});
 
 		if (isLdapEnabled()) {

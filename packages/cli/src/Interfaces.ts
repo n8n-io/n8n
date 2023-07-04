@@ -813,7 +813,7 @@ export abstract class SecretsProvider {
 	abstract init(settings: SecretsProviderSettings): Promise<void>;
 	abstract connect(): Promise<void>;
 	abstract update(): Promise<void>;
-	abstract test(): Promise<boolean>;
+	abstract test(): Promise<[boolean] | [boolean, string]>;
 	abstract getSecret(name: string): string | undefined;
 	abstract getSecretNames(): string[];
 }

@@ -133,6 +133,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
 	}
 
+	isExternalSecretsEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_SECRETS);
+	}
+
 	isAPIDisabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
 	}

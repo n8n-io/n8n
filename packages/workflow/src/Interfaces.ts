@@ -2115,6 +2115,7 @@ export interface IN8nUISettings {
 		variables: boolean;
 		versionControl: boolean;
 		auditLogs: boolean;
+		externalSecrets: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
