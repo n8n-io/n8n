@@ -12,13 +12,6 @@ import { getValue } from './utils';
 import { getResolvables } from '@utils/utilities';
 import type { IValueData } from './types';
 
-type HtmlCommonAtrributes = {
-	id?: string;
-	style?: string;
-	class?: string;
-	other?: string;
-};
-
 export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 	if (!capitalize) return header;
 	return header
@@ -63,7 +56,7 @@ export class Html implements INodeType {
 					{
 						name: 'Convert to HTML Table',
 						value: 'convertToHtmlTable',
-						action: 'Converts the input data to an HTML table',
+						action: 'Convert to HTML Table',
 					},
 				],
 				default: 'generateHtmlTemplate',
@@ -263,213 +256,6 @@ export class Html implements INodeType {
 			//       convertToHtmlTable
 			// ----------------------------------
 			{
-				displayName: 'Table Attributes',
-				name: 'tableAttributes',
-				type: 'collection',
-				placeholder: 'Add Attribute',
-				default: {},
-				displayOptions: {
-					show: {
-						operation: ['convertToHtmlTable'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Style',
-						name: 'style',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. border: 1px solid black;',
-						description: 'Inline style to use for the table',
-					},
-					{
-						displayName: 'Class',
-						name: 'class',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. my-table my-table-striped',
-						description: 'Classes to attach to the table',
-					},
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. my-table-1',
-						description: 'ID to attach to the table',
-					},
-					{
-						displayName: 'Other Attributes',
-						name: 'other',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. data="my-data"',
-						description: 'Attributes to attach to the table',
-					},
-				],
-			},
-			{
-				displayName: 'Header Attributes',
-				name: 'headerAttributes',
-				type: 'collection',
-				placeholder: 'Add Attribute',
-				default: {},
-				displayOptions: {
-					show: {
-						operation: ['convertToHtmlTable'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Style',
-						name: 'style',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. border: 1px solid black;',
-						description: 'Inline style to use for the table header',
-					},
-					{
-						displayName: 'Class',
-						name: 'class',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. my-header',
-						description: 'Classes to attach to the table header',
-					},
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. my-header-1',
-						description: 'ID to attach to the table header',
-					},
-					{
-						displayName: 'Other Attributes',
-						name: 'other',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. data="my-header-data"',
-						description: 'Attributes to attach to the table header',
-					},
-				],
-			},
-			{
-				displayName: 'Row Attributes',
-				name: 'rowsAttributes',
-				type: 'collection',
-				placeholder: 'Add Attribute',
-				default: {},
-				displayOptions: {
-					show: {
-						operation: ['convertToHtmlTable'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Style',
-						name: 'style',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. border: 1px solid black;',
-						description: 'Inline style to use for the table row',
-					},
-					{
-						displayName: 'Class',
-						name: 'class',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. my-row',
-						description: 'Classes to attach to the table row',
-					},
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. my-row-1',
-						description: 'ID to attach to the table row',
-					},
-					{
-						displayName: 'Other Attributes',
-						name: 'other',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. data="my-data"',
-						description: 'Attributes to attach to the table row',
-					},
-				],
-			},
-			{
-				displayName: 'Cell Attributes',
-				name: 'cellAttributes',
-				type: 'fixedCollection',
-				placeholder: 'Add Attribute',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				displayOptions: {
-					show: {
-						operation: ['convertToHtmlTable'],
-					},
-				},
-				options: [
-					{
-						displayName: 'Values',
-						name: 'values',
-						values: [
-							{
-								displayName: 'Column Header',
-								name: 'columnHeader',
-								type: 'string',
-								default: '',
-								placeholder: 'e.g. my-header',
-								description: 'Column header under which the cell located in',
-								requiresDataPath: 'single',
-							},
-							{
-								displayName: 'Attributes',
-								name: 'attributes',
-								type: 'collection',
-								placeholder: 'Add Attribute',
-								default: {},
-								options: [
-									{
-										displayName: 'Style',
-										name: 'style',
-										type: 'string',
-										default: '',
-										description: 'Inline style to use for the cell',
-									},
-									{
-										displayName: 'Class',
-										name: 'class',
-										type: 'string',
-										default: '',
-										description: 'Classes to attach to the cell',
-									},
-									{
-										displayName: 'ID',
-										name: 'id',
-										type: 'string',
-										default: '',
-										description: 'ID to attach to the cell',
-									},
-									{
-										displayName: 'Other Attributes',
-										name: 'other',
-										type: 'string',
-										default: '',
-										description: 'Attributes to attach to the cell',
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -489,11 +275,50 @@ export class Html implements INodeType {
 						description: 'Whether to capitalize the headers',
 					},
 					{
+						displayName: 'Custom Styling',
+						name: 'customStyling',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to use custom styling',
+					},
+					{
 						displayName: 'Caption',
 						name: 'caption',
 						type: 'string',
 						default: '',
 						description: 'Caption to add to the table',
+					},
+					{
+						displayName: 'Table Attributes',
+						name: 'tableAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table',
+						placeholder: 'e.g. style="padding:10px"',
+					},
+					{
+						displayName: 'Header Attributes',
+						name: 'headerAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table header',
+						placeholder: 'e.g. style="padding:10px"',
+					},
+					{
+						displayName: 'Row Attributes',
+						name: 'rowAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table row',
+						placeholder: 'e.g. style="padding:10px"',
+					},
+					{
+						displayName: 'Cell Attributes',
+						name: 'cellAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table cell',
+						placeholder: 'e.g. style="padding:10px"',
 					},
 				],
 			},
@@ -509,10 +334,19 @@ export class Html implements INodeType {
 
 			const options = this.getNodeParameter('options', 0);
 
-			const tableAttributes = this.getNodeParameter('tableAttributes', 0) as HtmlCommonAtrributes;
-			const tableStyle = tableAttributes.style ? ` style="${tableAttributes.style}"` : '';
-			const tableClass = tableAttributes.class ? ` class="${tableAttributes.class}"` : '';
-			const tableId = tableAttributes.id ? ` id="${tableAttributes.id}"` : '';
+			let tableStyle = '';
+			let headerStyle = '';
+			let cellStyle = '';
+
+			if (!options.customStyling) {
+				tableStyle = "style='border-spacing:0; font-family:helvetica,arial,sans-serif'";
+				headerStyle =
+					"style='margin:0; padding:7px 20px 7px 0px; border-bottom:1px solid #eee; text-align:left; color:#888; font-weight:normal'";
+				cellStyle = "style='margin:0; padding:7px 20px 7px 0px; border-bottom:1px solid #eee'";
+			}
+
+			const tableAttributes = (options.tableAttributes as string) || '';
+			const headerAttributes = (options.headerAttributes as string) || '';
 
 			const itemsData: IDataObject[] = [];
 			const itemsKeys = new Set<string>();
@@ -527,18 +361,13 @@ export class Html implements INodeType {
 
 			const headers = Array.from(itemsKeys);
 
-			table += `<table ${tableStyle} ${tableClass} ${tableId} ${tableAttributes.other || ''}>`;
+			table += `<table ${tableStyle} ${tableAttributes}>`;
 
 			if (options.caption) {
 				table += `<caption>${options.caption}</caption>`;
 			}
 
-			const headerAttributes = this.getNodeParameter('headerAttributes', 0) as HtmlCommonAtrributes;
-			const headerStyle = headerAttributes.style ? ` style="${headerAttributes.style}"` : '';
-			const headerClass = headerAttributes.class ? ` class="${headerAttributes.class}"` : '';
-			const headerId = headerAttributes.id ? ` id="${headerAttributes.id}"` : '';
-
-			table += `<thead ${headerStyle} ${headerClass} ${headerId} ${headerAttributes.other || ''}>`;
+			table += `<thead ${headerStyle} ${headerAttributes}>`;
 			table += '<tr>';
 			table += headers
 				.map((header) => '<th>' + capitalizeHeader(header, options.capitalize as boolean) + '</th>')
@@ -549,41 +378,22 @@ export class Html implements INodeType {
 			table += '<tbody>';
 			itemsData.forEach((entry, entryIndex) => {
 				const rowsAttributes = this.getNodeParameter(
-					'rowsAttributes',
+					'options.rowsAttributes',
 					entryIndex,
-				) as HtmlCommonAtrributes;
+					'',
+				) as string;
 
-				const rowStyle = rowsAttributes.style ? ` style="${rowsAttributes.style}"` : '';
-				const rowClass = rowsAttributes.class ? ` class="${rowsAttributes.class}"` : '';
-				const rowId = rowsAttributes.id ? ` id="${rowsAttributes.id}"` : '';
+				table += `<tr  ${rowsAttributes}>`;
 
-				table += `<tr ${rowStyle} ${rowClass} ${rowId} ${rowsAttributes.other || ''}>`;
-
-				const cellsAttributesUI = this.getNodeParameter(
-					'cellAttributes',
+				const cellsAttributes = this.getNodeParameter(
+					'options.cellAttributes',
 					entryIndex,
-					{},
-				) as IDataObject;
-
-				const cellsAttributes: IDataObject = {};
-
-				for (const cellAttribute of (cellsAttributesUI.values as IDataObject[]) || []) {
-					cellsAttributes[cellAttribute.columnHeader as string] =
-						cellAttribute.attributes as HtmlCommonAtrributes;
-				}
+					'',
+				) as string;
 
 				table += headers
 					.map((header) => {
-						let td = '<td>';
-
-						if (cellsAttributes[header]) {
-							const cellAttributes = cellsAttributes[header] as HtmlCommonAtrributes;
-							const cellStyle = cellAttributes.style ? ` style="${cellAttributes.style}"` : '';
-							const cellClass = cellAttributes.class ? ` class="${cellAttributes.class}"` : '';
-							const cellId = cellAttributes.id ? ` id="${cellAttributes.id}"` : '';
-							const cellOther = cellAttributes.other ? ` ${cellAttributes.other}` : '';
-							td = `<td ${cellStyle} ${cellClass} ${cellId} ${cellOther}>`;
-						}
+						let td = `<td ${cellStyle} ${cellsAttributes}>`;
 
 						if (typeof entry[header] === 'boolean') {
 							const isChecked = entry[header] ? 'checked="checked"' : '';
