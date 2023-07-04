@@ -9,6 +9,9 @@ import { jsonParse } from 'n8n-workflow';
 import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 
 import { isEqual, isNull, merge } from 'lodash';
+
+import { resolve } from 'path';
+
 import {
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	RESTRICT_FILE_ACCESS_TO,
@@ -258,10 +261,11 @@ export const getAllowedPaths = () => {
 
 export function checkFilePathAccess(filePath: string): void {
 	const allowedPaths = getAllowedPaths();
+	const resolvedFilePath = resolve(filePath);
 
 	if (allowedPaths.length) {
 		for (const path of allowedPaths) {
-			if (filePath.startsWith(path)) {
+			if (resolvedFilePath.startsWith(path)) {
 				return;
 			}
 		}
@@ -304,7 +308,7 @@ export function checkFilePathAccess(filePath: string): void {
 		}
 
 		for (const path of restrictedPaths) {
-			if (filePath.startsWith(path)) {
+			if (resolvedFilePath.startsWith(path)) {
 				throw new Error(`Access to file "${filePath}" is not allowed.`);
 			}
 		}
