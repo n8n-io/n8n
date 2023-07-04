@@ -18,7 +18,6 @@ interface BaseMigration {
 	up: MigrationFn;
 	down?: MigrationFn | never;
 	pruneBeforeRunning?: boolean;
-	vacuumAfterRunning?: boolean;
 }
 
 export interface ReversibleMigration extends BaseMigration {
