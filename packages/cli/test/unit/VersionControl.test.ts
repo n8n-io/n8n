@@ -1,6 +1,6 @@
-import { generateSshKeyPair } from '../../src/environments/versionControl/versionControlHelper';
+import { generateSshKeyPair } from '../../src/environments/sourceControl/sourceControlHelper.ee';
 
-describe('Version Control', () => {
+describe('Source Control', () => {
 	it('should generate an SSH key pair', () => {
 		const keyPair = generateSshKeyPair();
 		expect(keyPair.privateKey).toBeTruthy();

@@ -35,6 +35,7 @@ export class SshPrivateKey implements ICredentialType {
 			type: 'string',
 			typeOptions: {
 				rows: 4,
+				password: true,
 			},
 			default: '',
 		},

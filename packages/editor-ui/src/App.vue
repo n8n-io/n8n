@@ -38,18 +38,20 @@ import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS }
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
 import { useGlobalLinkActions, useToast } from '@/composables';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCloudPlanStore } from './stores/cloudPlan.store';
+import {
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useRootStore,
+	useTemplatesStore,
+	useNodeTypesStore,
+	useCloudPlanStore,
+	useSourceControlStore,
+	useUsageStore,
+} from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
-import { useVersionControlStore } from '@/stores/versionControl.store';
-import { useUsageStore } from '@/stores/usage.store';
 import { useExternalHooks } from '@/composables';
 
 export default defineComponent({
@@ -77,7 +79,7 @@ export default defineComponent({
 			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
-			useVersionControlStore,
+			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
 		),
@@ -100,6 +102,7 @@ export default defineComponent({
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 
 				throw e;
@@ -192,7 +195,7 @@ export default defineComponent({
 		},
 		async checkForCloudPlanData(): Promise<void> {
 			try {
-				await this.cloudPlanStore.getOwnerCurrentPLan();
+				await this.cloudPlanStore.getOwnerCurrentPlan();
 				if (!this.cloudPlanStore.userIsTrialing) return;
 				await this.cloudPlanStore.getInstanceCurrentUsage();
 				this.startPollingInstanceUsageData();
@@ -219,6 +222,13 @@ export default defineComponent({
 		void this.checkForNewVersions();
 		void this.checkForCloudPlanData();
 
+		if (
+			this.sourceControlStore.isEnterpriseSourceControlEnabled &&
+			this.usersStore.isInstanceOwner
+		) {
+			await this.sourceControlStore.getPreferences();
+		}
+
 		this.loading = false;
 
 		this.trackPage();
@@ -226,13 +236,6 @@ export default defineComponent({
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
-		}
-
-		if (
-			this.versionControlStore.isEnterpriseVersionControlEnabled &&
-			this.usersStore.isInstanceOwner
-		) {
-			void this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {

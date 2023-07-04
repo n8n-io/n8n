@@ -8,11 +8,12 @@ import type { User } from '@db/entities/User';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { createWorkflow } from './shared/testDb';
+import { createWorkflow, getGlobalMemberRole, getGlobalOwnerRole } from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
 import { License } from '@/License';
+import { getSharedWorkflowIds } from '../../src/WorkflowHelpers';
 
 let owner: User;
 let member: User;
@@ -192,6 +193,23 @@ describe('GET /workflows', () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe('GET /workflows/new', () => {
+	[true, false].forEach((sharingEnabled) => {
+		test(`should return an auto-incremented name, even when sharing is ${
+			sharingEnabled ? 'enabled' : 'disabled'
+		}`, async () => {
+			sharingSpy.mockReturnValueOnce(sharingEnabled);
+
+			await createWorkflow({ name: 'My workflow' }, owner);
+			await createWorkflow({ name: 'My workflow 7' }, owner);
+
+			const response = await authOwnerAgent.get('/workflows/new');
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.name).toEqual('My workflow 8');
+		});
 	});
 });
 
@@ -585,7 +603,6 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 				},
 			],
 		});
-
 		expect(response.statusCode).toBe(400);
 	});
 
@@ -848,5 +865,30 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.code).toBe(100);
+	});
+});
+
+describe('getSharedWorkflowIds', () => {
+	it('should show all workflows to owners', async () => {
+		owner.globalRole = await getGlobalOwnerRole();
+		const workflow1 = await createWorkflow({}, member);
+		const workflow2 = await createWorkflow({}, anotherMember);
+		const sharedWorkflowIds = await getSharedWorkflowIds(owner);
+		expect(sharedWorkflowIds).toHaveLength(2);
+		expect(sharedWorkflowIds).toContain(workflow1.id);
+		expect(sharedWorkflowIds).toContain(workflow2.id);
+	});
+
+	it('should show shared workflows to users', async () => {
+		member.globalRole = await getGlobalMemberRole();
+		const workflow1 = await createWorkflow({}, anotherMember);
+		const workflow2 = await createWorkflow({}, anotherMember);
+		const workflow3 = await createWorkflow({}, anotherMember);
+		await testDb.shareWorkflowWithUsers(workflow1, [member]);
+		await testDb.shareWorkflowWithUsers(workflow3, [member]);
+		const sharedWorkflowIds = await getSharedWorkflowIds(member);
+		expect(sharedWorkflowIds).toHaveLength(2);
+		expect(sharedWorkflowIds).toContain(workflow1.id);
+		expect(sharedWorkflowIds).toContain(workflow3.id);
 	});
 });

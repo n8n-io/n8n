@@ -21,7 +21,7 @@ const licenseLike = {
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['variables'] });
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 	utils.mockInstance(License, licenseLike);
 
 	ownerUser = await testDb.createOwner();

@@ -14,6 +14,7 @@
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
 							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
+							:disabled="readOnly"
 							@toggle="onNameToggle"
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
@@ -25,7 +26,7 @@
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<div v-if="isTagsEditEnabled">
+			<div v-if="isTagsEditEnabled && !readOnly">
 				<TagsDropdown
 					:createEnabled="true"
 					:currentTagIds="appliedTagIds"
@@ -39,7 +40,7 @@
 					data-test-id="workflow-tags-dropdown"
 				/>
 			</div>
-			<div v-else-if="currentWorkflowTagIds.length === 0">
+			<div v-else-if="currentWorkflowTagIds.length === 0 && !readOnly">
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
 				</span>
@@ -99,7 +100,7 @@
 				<SaveButton
 					type="primary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
-					:disabled="isWorkflowSaving"
+					:disabled="isWorkflowSaving || readOnly"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
@@ -132,6 +133,7 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -150,18 +152,23 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage } from '@/composables';
+import { useTitleChange, useToast, useMessage, useLoadingService } from '@/composables';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useTagsStore } from '@/stores/tags.store';
+import {
+	useUIStore,
+	useSettingsStore,
+	useWorkflowsStore,
+	useRootStore,
+	useTagsStore,
+	useUsersStore,
+	useUsageStore,
+	useSourceControlStore,
+} from '@/stores';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { useUsersStore } from '@/stores/users.store';
-import { useUsageStore } from '@/stores/usage.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
+import { useCloudPlanStore } from '@/stores';
+import { nodeViewEventBus } from '@/event-bus';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -185,8 +192,17 @@ export default defineComponent({
 		InlineTextEdit,
 		BreakpointsObserver,
 	},
+	props: {
+		readOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	setup() {
+		const loadingService = useLoadingService();
+
 		return {
+			loadingService,
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
@@ -200,6 +216,7 @@ export default defineComponent({
 			tagsEditBus: createEventBus(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			eventBus: createEventBus(),
 			EnterpriseEditionFeature,
 		};
 	},
@@ -212,6 +229,8 @@ export default defineComponent({
 			useUsageStore,
 			useWorkflowsStore,
 			useUsersStore,
+			useCloudPlanStore,
+			useSourceControlStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -264,44 +283,61 @@ export default defineComponent({
 			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
 		},
 		workflowMenuItems(): Array<{}> {
-			return [
-				{
-					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
-					label: this.$locale.baseText('menuActions.duplicate'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
-				},
+			const actions = [
 				{
 					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 					label: this.$locale.baseText('menuActions.download'),
 					disabled: !this.onWorkflowPage,
 				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-					label: this.$locale.baseText('menuActions.importFromUrl'),
-					disabled: !this.onWorkflowPage || this.onExecutionsTab,
-				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-					label: this.$locale.baseText('menuActions.importFromFile'),
-					disabled: !this.onWorkflowPage || this.onExecutionsTab,
-				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
-					label: this.$locale.baseText('generic.settings'),
-					disabled: !this.onWorkflowPage || this.isNewWorkflow,
-				},
-				...(this.workflowPermissions.delete
-					? [
-							{
-								id: WORKFLOW_MENU_ACTIONS.DELETE,
-								label: this.$locale.baseText('menuActions.delete'),
-								disabled: !this.onWorkflowPage || this.isNewWorkflow,
-								customClass: this.$style.deleteItem,
-								divided: true,
-							},
-					  ]
-					: []),
 			];
+
+			if (!this.readOnly) {
+				actions.unshift({
+					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
+					label: this.$locale.baseText('menuActions.duplicate'),
+					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
+				});
+
+				actions.push(
+					{
+						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
+						label: this.$locale.baseText('menuActions.importFromUrl'),
+						disabled: !this.onWorkflowPage || this.onExecutionsTab,
+					},
+					{
+						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+						label: this.$locale.baseText('menuActions.importFromFile'),
+						disabled: !this.onWorkflowPage || this.onExecutionsTab,
+					},
+				);
+			}
+
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.PUSH,
+				label: this.$locale.baseText('menuActions.push'),
+				disabled:
+					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
+					!this.onWorkflowPage ||
+					this.onExecutionsTab,
+			});
+
+			actions.push({
+				id: WORKFLOW_MENU_ACTIONS.SETTINGS,
+				label: this.$locale.baseText('generic.settings'),
+				disabled: !this.onWorkflowPage || this.isNewWorkflow,
+			});
+
+			if (this.workflowPermissions.delete && !this.readOnly) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.DELETE,
+					label: this.$locale.baseText('menuActions.delete'),
+					disabled: !this.onWorkflowPage || this.isNewWorkflow,
+					customClass: this.$style.deleteItem,
+					divided: true,
+				});
+			}
+
+			return actions;
 		},
 	},
 	methods: {
@@ -426,7 +462,7 @@ export default defineComponent({
 					return;
 				}
 
-				this.$root.$emit('importWorkflowData', { data: workflowData });
+				nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
 			};
 
 			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
@@ -486,12 +522,36 @@ export default defineComponent({
 							},
 						)) as MessageBoxInputData;
 
-						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
+						nodeViewEventBus.emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
 					(this.$refs.importFile as HTMLInputElement).click();
+					break;
+				}
+				case WORKFLOW_MENU_ACTIONS.PUSH: {
+					this.loadingService.startLoading();
+					try {
+						await this.onSaveButtonClick();
+
+						const status = await this.sourceControlStore.getAggregatedStatus();
+						const workflowStatus = status.filter(
+							(s) =>
+								(s.id === this.currentWorkflowId && s.type === 'workflow') || s.type !== 'workflow',
+						);
+
+						this.uiStore.openModalWithData({
+							name: SOURCE_CONTROL_PUSH_MODAL_KEY,
+							data: { eventBus: this.eventBus, status: workflowStatus },
+						});
+					} catch (error) {
+						this.showError(error, this.$locale.baseText('error'));
+					} finally {
+						this.loadingService.stopLoading();
+						this.loadingService.setLoadingText(this.$locale.baseText('genericHelpers.loading'));
+					}
+
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.SETTINGS: {

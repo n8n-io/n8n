@@ -98,6 +98,7 @@ export class License {
 
 	isFeatureEnabled(feature: string): boolean {
 		if (!this.manager) {
+			getLogger().warn('License manager not initialized');
 			return false;
 		}
 
@@ -128,8 +129,8 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
 
-	isVersionControlLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	isSourceControlLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
 	}
 
 	isAPIDisabled() {
@@ -183,6 +184,10 @@ export class License {
 
 	getVariablesLimit(): number {
 		return (this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1) as number;
+	}
+
+	getUsersLimit(): number {
+		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) as number;
 	}
 
 	getPlanName(): string {

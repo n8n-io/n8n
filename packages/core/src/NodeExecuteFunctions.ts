@@ -61,10 +61,12 @@ import type {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
+	INodeType,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
 	isObjectEmpty,
+	isResourceMapperValue,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -74,9 +76,11 @@ import {
 	deepCopy,
 	fileTypeFromMimeType,
 	ExpressionError,
+	validateFieldType,
+	NodeSSLError,
 } from 'n8n-workflow';
 
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { Agent } from 'https';
 import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
@@ -89,7 +93,7 @@ import type {
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import crypto, { createHmac } from 'crypto';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
@@ -114,7 +118,7 @@ import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
-import type { IResponseError, IWorkflowSettings } from './Interfaces';
+import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
@@ -422,6 +426,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	if (requestObject.rejectUnauthorized === false) {
 		axiosConfig.httpsAgent = new Agent({
 			rejectUnauthorized: false,
+			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
 		});
 	}
 
@@ -723,6 +728,9 @@ export async function proxyRequestToAxios(
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else {
+				if (error instanceof Error && error.message.includes('SSL routines'))
+					throw new NodeSSLError(error);
+
 				throw Object.assign(error, {
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
 				});
@@ -744,6 +752,8 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		auth,
 		proxy,
 		url,
+		maxBodyLength: Infinity,
+		maxContentLength: Infinity,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;
@@ -912,7 +922,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
+	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
 }
 
 /**
@@ -1094,14 +1104,12 @@ export async function requestOAuth2(
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
 		credentials.grantType === OAuth2GrantType.clientCredentials &&
 		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
 	) {
 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
-
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
 			throw new Error(
@@ -1140,7 +1148,6 @@ export async function requestOAuth2(
 	if (oAuth2Options?.keepBearer === false && typeof newRequestHeaders.Authorization === 'string') {
 		newRequestHeaders.Authorization = newRequestHeaders.Authorization.split(' ')[1];
 	}
-
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 		Object.assign(newRequestHeaders, {
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
@@ -1156,7 +1163,9 @@ export async function requestOAuth2(
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 					const body: IDataObject = {
 						client_id: credentials.clientId as string,
-						client_secret: credentials.clientSecret as string,
+						...(credentials.grantType === 'authorizationCode' && {
+							client_secret: credentials.clientSecret as string,
+						}),
 					};
 					tokenRefreshOptions.body = body;
 					tokenRefreshOptions.headers = {
@@ -1867,7 +1876,7 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (Array.isArray(inputData)) {
-		inputData.forEach((value) => cleanupParameterData(value));
+		inputData.forEach((value) => cleanupParameterData(value as NodeParameterValueType));
 		return;
 	}
 
@@ -1885,6 +1894,103 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 		});
 	}
 }
+
+const validateResourceMapperValue = (
+	parameterName: string,
+	paramValues: { [key: string]: unknown },
+	node: INode,
+	skipRequiredCheck = false,
+): ExtendedValidationResult => {
+	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
+	const paramNameParts = parameterName.split('.');
+	if (paramNameParts.length !== 2) {
+		return result;
+	}
+	const resourceMapperParamName = paramNameParts[0];
+	const resourceMapperField = node.parameters[resourceMapperParamName];
+	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
+		return result;
+	}
+	const schema = resourceMapperField.schema;
+	const paramValueNames = Object.keys(paramValues);
+	for (let i = 0; i < paramValueNames.length; i++) {
+		const key = paramValueNames[i];
+		const resolvedValue = paramValues[key];
+		const schemaEntry = schema.find((s) => s.id === key);
+
+		if (
+			!skipRequiredCheck &&
+			schemaEntry?.required === true &&
+			schemaEntry.type !== 'boolean' &&
+			!resolvedValue
+		) {
+			return {
+				valid: false,
+				errorMessage: `The value "${String(key)}" is required but not set`,
+				fieldName: key,
+			};
+		}
+
+		if (schemaEntry?.type) {
+			const validationResult = validateFieldType(
+				key,
+				resolvedValue,
+				schemaEntry.type,
+				schemaEntry.options,
+			);
+			if (!validationResult.valid) {
+				return { ...validationResult, fieldName: key };
+			} else {
+				// If it's valid, set the casted value
+				paramValues[key] = validationResult.newValue;
+			}
+		}
+	}
+	return result;
+};
+
+const validateValueAgainstSchema = (
+	node: INode,
+	nodeType: INodeType,
+	inputValues: string | number | boolean | object | null | undefined,
+	parameterName: string,
+	runIndex: number,
+	itemIndex: number,
+) => {
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
+	// Currently only validate resource mapper values
+	const resourceMapperField = nodeType.description.properties.find(
+		(prop) =>
+			NodeHelpers.displayParameter(node.parameters, prop, node) &&
+			prop.type === 'resourceMapper' &&
+			parameterName === `${prop.name}.value`,
+	);
+
+	if (resourceMapperField && typeof inputValues === 'object') {
+		validationResult = validateResourceMapperValue(
+			parameterName,
+			inputValues as { [key: string]: unknown },
+			node,
+			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+		);
+	}
+
+	if (!validationResult.valid) {
+		throw new ExpressionError(
+			`Invalid input for '${
+				String(validationResult.fieldName) || parameterName
+			}' [item ${itemIndex}]`,
+			{
+				description: validationResult.errorMessage,
+				failExecution: true,
+				runIndex,
+				itemIndex,
+				nodeCause: node.name,
+			},
+		);
+	}
+	return validationResult.newValue;
+};
 
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
@@ -1946,6 +2052,16 @@ export function getNodeParameter(
 	if (options?.extractValue) {
 		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
+
+	// Validate parameter value if it has a schema defined
+	returnData = validateValueAgainstSchema(
+		node,
+		nodeType,
+		returnData,
+		parameterName,
+		runIndex,
+		itemIndex,
+	);
 
 	return returnData;
 }

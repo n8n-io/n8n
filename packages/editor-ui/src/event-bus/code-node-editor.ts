@@ -1,3 +1,3 @@
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 export const codeNodeEditorEventBus = createEventBus();

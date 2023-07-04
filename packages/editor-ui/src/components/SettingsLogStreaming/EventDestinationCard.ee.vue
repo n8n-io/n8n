@@ -56,7 +56,7 @@ import { mapStores } from 'pinia';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
-import type { EventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',

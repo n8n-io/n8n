@@ -1,4 +1,4 @@
-import uniq from 'lodash.uniq';
+import uniq from 'lodash/uniq';
 import glob from 'fast-glob';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {

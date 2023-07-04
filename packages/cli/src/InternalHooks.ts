@@ -29,8 +29,9 @@ import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
-import * as Db from '@/Db';
 import { NodeTypes } from './NodeTypes';
+import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
+import { ExecutionRepository } from './databases/repositories';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -56,6 +57,7 @@ export class InternalHooks implements IInternalHooksClass {
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
 		private roleService: RoleService,
+		private executionRepository: ExecutionRepository,
 	) {}
 
 	async init(instanceId: string) {
@@ -235,7 +237,9 @@ export class InternalHooks implements IInternalHooksClass {
 		data: IWorkflowExecutionDataProcess,
 	): Promise<void> {
 		void Promise.all([
-			Db.collections.Execution.update(executionId, { status: 'running' }),
+			this.executionRepository.updateExistingExecution(executionId, {
+				status: 'running',
+			}),
 			eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.started',
 				payload: {
@@ -253,7 +257,17 @@ export class InternalHooks implements IInternalHooksClass {
 		executionId: string,
 		executionMode: WorkflowExecuteMode,
 		workflowData?: IWorkflowBase,
+		executionMetadata?: ExecutionMetadata[],
 	): Promise<void> {
+		let metaData;
+		try {
+			if (executionMetadata) {
+				metaData = executionMetadata.reduce((acc, meta) => {
+					return { ...acc, [meta.key]: meta.value };
+				}, {});
+			}
+		} catch {}
+
 		void Promise.all([
 			eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.crashed',
@@ -262,6 +276,7 @@ export class InternalHooks implements IInternalHooksClass {
 					isManual: executionMode === 'manual',
 					workflowId: workflowData?.id?.toString(),
 					workflowName: workflowData?.name,
+					metaData,
 				},
 			}),
 		]);
@@ -414,12 +429,6 @@ export class InternalHooks implements IInternalHooksClass {
 		}
 
 		promises.push(
-			Db.collections.Execution.update(executionId, {
-				status: executionStatus,
-			}) as unknown as Promise<void>,
-		);
-
-		promises.push(
 			properties.success
 				? eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.success',
@@ -430,6 +439,7 @@ export class InternalHooks implements IInternalHooksClass {
 							workflowId: properties.workflow_id,
 							isManual: properties.is_manual,
 							workflowName: workflow.name,
+							metaData: runData?.data?.resultData?.metadata,
 						},
 				  })
 				: eventBus.sendWorkflowEvent({
@@ -445,6 +455,7 @@ export class InternalHooks implements IInternalHooksClass {
 							errorMessage: properties.error_message?.toString(),
 							isManual: properties.is_manual,
 							workflowName: workflow.name,
+							metaData: runData?.data?.resultData?.metadata,
 						},
 				  }),
 		);

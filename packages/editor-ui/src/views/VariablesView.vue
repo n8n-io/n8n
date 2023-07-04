@@ -1,7 +1,13 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { useEnvironmentsStore, useUIStore, useSettingsStore, useUsersStore } from '@/stores';
-import { useI18n, useTelemetry, useToast, useUpgradeLink, useMessage } from '@/composables';
+import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import {
+	useEnvironmentsStore,
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useSourceControlStore,
+} from '@/stores';
+import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
@@ -22,6 +28,8 @@ const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const { i18n } = useI18n();
 const message = useMessage();
+const sourceControlStore = useSourceControlStore();
+let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
 
@@ -70,10 +78,6 @@ const datatableColumns = computed<DatatableColumn[]>(() => [
 ]);
 
 const contextBasedTranslationKeys = computed(() => uiStore.contextBasedTranslationKeys);
-const { upgradeLinkUrl } = useUpgradeLink({
-	default: '&source=variables',
-	desktop: '&utm_campaign=upgrade-variables',
-});
 
 const newlyAddedVariableIds = ref<number[]>([]);
 
@@ -153,9 +157,8 @@ async function saveVariable(data: EnvironmentVariable | TemporaryEnvironmentVari
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
 			updatedVariable = await environmentsStore.updateVariable(data as EnvironmentVariable);
-			allVariables.value = allVariables.value.map((variable) =>
-				variable.id === data.id ? updatedVariable : variable,
-			);
+			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
+			allVariables.value.push(updatedVariable);
 			toggleEditing(updatedVariable);
 		}
 	} catch (error) {
@@ -201,12 +204,26 @@ async function deleteVariable(data: EnvironmentVariable) {
 }
 
 function goToUpgrade() {
-	window.open(upgradeLinkUrl.value, '_blank');
+	uiStore.goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: EnvironmentVariable) {
 	return resource.key;
 }
+
+onBeforeMount(() => {
+	sourceControlStoreUnsubscribe = sourceControlStore.$onAction(({ name, after }) => {
+		if (name === 'pullWorkfolder' && after) {
+			after(() => {
+				void initialize();
+			});
+		}
+	});
+});
+
+onBeforeUnmount(() => {
+	sourceControlStoreUnsubscribe();
+});
 </script>
 
 <template>

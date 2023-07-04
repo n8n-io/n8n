@@ -194,7 +194,7 @@ import {
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 import type { PropType } from 'vue';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables';
@@ -210,8 +210,8 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import type { EventBus } from '@/event-bus';
-import { createEventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'event-destination-settings-modal',
@@ -249,7 +249,9 @@ export default defineComponent({
 			showRemoveConfirm: false,
 			typeSelectValue: '',
 			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions),
+			nodeParameters: deepCopy(
+				defaultMessageEventBusDestinationOptions,
+			) as MessageEventBusDestinationOptions,
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
@@ -400,13 +402,13 @@ export default defineComponent({
 			// Apply the new value
 			if (parameterData.value === undefined && parameterPathArray !== null) {
 				// Delete array item
-				const path = parameterPathArray[1];
+				const path = parameterPathArray[1] as keyof MessageEventBusDestinationOptions;
 				const index = parameterPathArray[2];
 				const data = get(nodeParameters, path);
 
 				if (Array.isArray(data)) {
 					data.splice(parseInt(index, 10), 1);
-					Vue.set(nodeParameters, path, data);
+					nodeParameters[path] = data as never;
 				}
 			} else {
 				if (newValue === undefined) {

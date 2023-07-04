@@ -44,6 +44,7 @@ export class PermissionChecker {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
+				select: ['userId'],
 			});
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
