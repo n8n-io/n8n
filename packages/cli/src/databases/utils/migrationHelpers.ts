@@ -1,26 +1,14 @@
-import { readFileSync, rmSync, statSync } from 'fs';
-import path from 'path';
+import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
 import { inTest } from '@/constants';
-import type { Migration, MigrationContext } from '@db/types';
+import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 
 const logger = getLogger();
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
-
-const DESIRED_DATABASE_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1 GB
-
-function getSqliteDbFileSize(): number {
-	const filename = path.resolve(
-		UserSettings.getUserN8nFolderPath(),
-		config.getEnv('database.sqlite.database'),
-	);
-	const { size } = statSync(filename);
-	return size;
-}
 
 export function loadSurveyFromDisk(): string | null {
 	const userSettingsPath = UserSettings.getUserN8nFolderPath();
@@ -69,6 +57,22 @@ function logMigrationEnd(migrationName: string): void {
 	logger.debug(`Finished migration ${migrationName}`);
 }
 
+const runDisablingForeignKeys = async (
+	migration: BaseMigration,
+	context: MigrationContext,
+	fn: MigrationFn,
+) => {
+	const { dbType, queryRunner } = context;
+	if (dbType !== 'sqlite') throw new Error('Disabling transactions only available in sqlite');
+	await queryRunner.query('PRAGMA foreign_keys=OFF');
+	await queryRunner.startTransaction();
+
+	await fn.call(migration, context);
+
+	await queryRunner.commitTransaction();
+	await queryRunner.query('PRAGMA foreign_keys=ON');
+};
+
 export const wrapMigration = (migration: Migration) => {
 	const dbType = config.getEnv('database.type');
 	const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
@@ -82,56 +86,25 @@ export const wrapMigration = (migration: Migration) => {
 		logger,
 	};
 
-	const migrationsPruningEnabled =
-		dbType === 'sqlite' && process.env.MIGRATIONS_PRUNING_ENABLED === 'true';
-
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {
-		async beforeTransaction(this: typeof migration.prototype, queryRunner: QueryRunner) {
-			if (this.pruneBeforeRunning) {
-				if (migrationsPruningEnabled) {
-					const dbFileSize = getSqliteDbFileSize();
-					if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
-						console.log(`DB Size not large enough to prune: ${dbFileSize}`);
-						return;
-					}
-
-					console.time('pruningData');
-					const counting = (await queryRunner.query(
-						`select count(id) as rows from "${tablePrefix}execution_entity";`,
-					)) as Array<{ rows: number }>;
-
-					const averageExecutionSize = dbFileSize / counting[0].rows;
-					const numberOfExecutionsToKeep = Math.floor(
-						DESIRED_DATABASE_FILE_SIZE / averageExecutionSize,
-					);
-
-					const query = `
-					SELECT id FROM "${tablePrefix}execution_entity"
-					ORDER BY id DESC limit ${numberOfExecutionsToKeep}, 1;
-				`;
-
-					const idToKeep = (await queryRunner.query(query)) as Array<{ id: number }>;
-
-					const removalQuery = `
-					DELETE FROM "${tablePrefix}execution_entity"
-					WHERE id < ${idToKeep[0].id} and status IN ('success');
-				`;
-
-					await queryRunner.query(removalQuery);
-					console.timeEnd('pruningData');
-				} else {
-					console.log('Pruning was requested, but was not enabled');
-				}
-			}
-		},
-		async up(queryRunner: QueryRunner) {
+		async up(this: BaseMigration, queryRunner: QueryRunner) {
 			logMigrationStart(migrationName);
-			await up.call(this, { queryRunner, ...context });
+			if (!this.transaction) {
+				await runDisablingForeignKeys(this, { queryRunner, ...context }, up);
+			} else {
+				await up.call(this, { queryRunner, ...context });
+			}
 			logMigrationEnd(migrationName);
 		},
-		async down(queryRunner: QueryRunner) {
-			await down?.call(this, { queryRunner, ...context });
+		async down(this: BaseMigration, queryRunner: QueryRunner) {
+			if (down) {
+				if (!this.transaction) {
+					await runDisablingForeignKeys(this, { queryRunner, ...context }, up);
+				} else {
+					await down.call(this, { queryRunner, ...context });
+				}
+			}
 		},
 	});
 };

@@ -12,12 +12,13 @@ export interface MigrationContext {
 	migrationName: string;
 }
 
-type MigrationFn = (ctx: MigrationContext) => Promise<void>;
+export type MigrationFn = (ctx: MigrationContext) => Promise<void>;
 
-interface BaseMigration {
+export interface BaseMigration {
 	up: MigrationFn;
 	down?: MigrationFn | never;
 	pruneBeforeRunning?: boolean;
+	transaction?: false;
 }
 
 export interface ReversibleMigration extends BaseMigration {
