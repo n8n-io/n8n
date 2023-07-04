@@ -5,6 +5,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore, useSourceControlStore } from '@/stores';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import type { SourceControlAggregatedFile } from '../Interface';
 
 const props = defineProps<{
 	isCollapsed: boolean;
@@ -54,9 +55,15 @@ async function pullWorkfolder() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
 
 	try {
-		const status = await sourceControlStore.pullWorkfolder(false);
+		const status: SourceControlAggregatedFile[] =
+			((await sourceControlStore.pullWorkfolder(
+				false,
+			)) as unknown as SourceControlAggregatedFile[]) || [];
 
-		if (status.length === 0) {
+		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
+			return file.type !== 'workflow' && file.status !== 'created' && file.location !== 'local';
+		});
+		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
 			toast.showMessage({
 				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
 				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
