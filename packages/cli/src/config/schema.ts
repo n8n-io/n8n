@@ -297,7 +297,7 @@ export const schema = {
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
 			format: 'Boolean',
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
@@ -309,7 +309,7 @@ export const schema = {
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
 			format: 'Boolean',
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
@@ -327,11 +327,11 @@ export const schema = {
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
 		// Deletes the oldest entries first
-		// Default is 0 = No limit
+		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
 			format: Number,
-			default: 0,
+			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
 	},
