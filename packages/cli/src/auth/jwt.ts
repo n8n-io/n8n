@@ -23,8 +23,12 @@ export function issueJWT(user: User): JwtToken {
 		password: password ?? null,
 	};
 
-	if (!user.isOwner && !isWithinUsersQuota) {
-		throw new ResponseHelper.UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+	if (
+		config.getEnv('userManagement.isInstanceOwnerSetUp') &&
+		!user.isOwner &&
+		!isWithinUsersQuota
+	) {
+		throw new ResponseHelper.BadRequestError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 	}
 	if (password) {
 		payload.password = createHash('sha256')
@@ -44,16 +48,11 @@ export function issueJWT(user: User): JwtToken {
 }
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const isWithinUsersQuota = Container.get(License).isWithinUsersLimit();
-
 	const user = await Db.collections.User.findOne({
 		where: { id: jwtPayload.id },
 		relations: ['globalRole'],
 	});
 
-	if (!user?.isOwner && !isWithinUsersQuota) {
-		throw new ResponseHelper.UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-	}
 	let passwordHash = null;
 	if (user?.password) {
 		passwordHash = createHash('sha256')

@@ -90,11 +90,9 @@ describe('POST /login', () => {
 	test('should throw AuthError for non-owner if not within users limit quota', async () => {
 		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
 		const member = await testDb.createUserShell(globalMemberRole);
-		try {
-			await authAgent(member).get('/login');
-		} catch (error) {
-			expect(error.httpStatusCode).toBe(401);
-		}
+
+		const response = await authAgent(member).get('/login');
+		expect(response.statusCode).toBe(401);
 	});
 
 	test('should not throw AuthError for owner if not within users limit quota', async () => {
@@ -120,7 +118,7 @@ describe('GET /login', () => {
 		expect(authToken).toBeUndefined();
 	});
 
-	test('should return cookie if UM is disabled and no cookie is already set and is owner', async () => {
+	test('should return cookie if UM is disabled and no cookie is already set', async () => {
 		await testDb.createUserShell(globalOwnerRole);
 		await utils.setInstanceOwnerSetUp(false);
 

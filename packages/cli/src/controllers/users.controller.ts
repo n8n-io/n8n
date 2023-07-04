@@ -111,21 +111,21 @@ export class UsersController {
 	async sendEmailInvites(req: UserRequest.Invite) {
 		const isWithinUsersQuota = Container.get(License).isWithinUsersLimit();
 
-		if (!isWithinUsersQuota) {
-			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
-			);
-			throw new BadRequestError(
-				'You have reached the maximum number of users allowed for your plan.',
-			);
-		}
-
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 			throw new BadRequestError(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+			);
+		}
+
+		if (!isWithinUsersQuota) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new BadRequestError(
+				'You have reached the maximum number of users allowed for your plan.',
 			);
 		}
 
