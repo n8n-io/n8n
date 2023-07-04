@@ -100,7 +100,7 @@ export default defineComponent({
 			this.expanded = !this.expanded;
 		},
 		onClick(e: MouseEvent) {
-			this.$emit('click', e);
+			this.$emit('click:body', e);
 		},
 		onTooltipClick(item: string, event: MouseEvent) {
 			this.$emit('tooltipClick', item, event);

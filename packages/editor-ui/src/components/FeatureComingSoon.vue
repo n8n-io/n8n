@@ -16,7 +16,7 @@
 				:buttonText="
 					$locale.baseText(featureInfo.actionBoxButtonLabel || 'fakeDoor.actionBox.button.label')
 				"
-				@click="openLinkPage"
+				@click:button="openLinkPage"
 			>
 				<template #heading>
 					<span v-html="$locale.baseText(featureInfo.actionBoxTitle)" />

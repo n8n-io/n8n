@@ -27,7 +27,7 @@
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
-						@click="onClickTag"
+						@click:tag="onClickTag"
 						@expand="onExpandTags"
 						data-test-id="workflow-card-tags"
 					/>

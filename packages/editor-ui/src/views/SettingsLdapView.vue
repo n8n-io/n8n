@@ -12,7 +12,7 @@
 		<n8n-action-box
 			:description="$locale.baseText('settings.ldap.disabled.description')"
 			:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>

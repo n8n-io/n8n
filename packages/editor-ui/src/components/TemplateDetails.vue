@@ -23,7 +23,7 @@
 			v-if="!loading && template?.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
-			<n8n-tags :tags="template.categories" @click="redirectToCategory" />
+			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
 		</template-details-block>
 
 		<template-details-block v-if="!loading" :title="$locale.baseText('template.details.details')">

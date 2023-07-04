@@ -26,7 +26,7 @@ const goToUpgrade = () => {
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.auditLogs.actionBox.description')"
 			:buttonText="locale.baseText('settings.auditLogs.actionBox.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.auditLogs.actionBox.title') }}</span>

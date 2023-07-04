@@ -375,7 +375,7 @@ const refreshBranches = async () => {
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sourceControl.actionBox.description')"
 			:buttonText="locale.baseText('settings.sourceControl.actionBox.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.sourceControl.actionBox.title') }}</span>

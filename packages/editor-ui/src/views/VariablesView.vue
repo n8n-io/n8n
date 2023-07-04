@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</template>
 		<template v-if="!isFeatureEnabled" #empty>
@@ -289,7 +289,7 @@ onBeforeUnmount(() => {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</template>
 		<template #default="{ data }">

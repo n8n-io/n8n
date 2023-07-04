@@ -134,7 +134,7 @@ const openPricingPage = () => {
 			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
 			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
 			:buttonText="locale.baseText('settings.usageAndPlan.button.plans')"
-			@click="openPricingPage"
+			@click:button="openPricingPage"
 		/>
 		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
 			<n8n-heading :class="$style.title" size="large">

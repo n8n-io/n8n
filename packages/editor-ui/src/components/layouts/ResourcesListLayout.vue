@@ -54,7 +54,7 @@
 						:description="$locale.baseText(`${resourceKey}.empty.description`)"
 						:buttonText="$locale.baseText(`${resourceKey}.empty.button`)"
 						buttonType="secondary"
-						@click="$emit('click:add', $event)"
+						@click:button="$emit('click:add', $event)"
 					/>
 				</slot>
 			</div>

@@ -225,7 +225,7 @@ onMounted(async () => {
 			:class="$style.actionBox"
 			:description="i18n.baseText('settings.sso.actionBox.description')"
 			:buttonText="i18n.baseText('settings.sso.actionBox.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>

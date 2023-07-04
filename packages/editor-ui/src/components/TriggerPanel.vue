@@ -95,7 +95,7 @@
 					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
 					:description="executionsHelp"
 					:eventBus="executionsHelpEventBus"
-					@click="onLinkClick"
+					@click:body="onLinkClick"
 				></n8n-info-accordion>
 			</div>
 		</transition>

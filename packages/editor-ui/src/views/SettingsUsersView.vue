@@ -32,7 +32,7 @@
 				:buttonText="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
 				"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</div>
 		<div v-else-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
@@ -42,7 +42,7 @@
 				:description="`${
 					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
 				}`"
-				@click="redirectToSetup"
+				@click:button="redirectToSetup"
 			/>
 		</div>
 		<div :class="$style.usersContainer" v-else>
