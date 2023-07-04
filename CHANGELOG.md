@@ -1,3 +1,12 @@
+## [0.235.1](https://github.com/n8n-io/n8n/compare/n8n@0.235.0...n8n@0.235.1) (2023-07-04)
+
+
+### Bug Fixes
+
+* **core:** Fix migrations for MySQL/MariaDB ([#6591](https://github.com/n8n-io/n8n/issues/6591)) ([ba59bb0](https://github.com/n8n-io/n8n/commit/ba59bb076c55df828f7317a8b0961ec8e3d874ad))
+
+
+
 # [0.235.0](https://github.com/n8n-io/n8n/compare/n8n@0.234.0...n8n@0.235.0) (2023-06-28)
 
 
