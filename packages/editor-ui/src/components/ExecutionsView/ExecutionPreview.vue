@@ -214,7 +214,7 @@ export default defineComponent({
 	justify-content: space-between;
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
-	z-index: 1;
+	z-index: 2;
 
 	& * {
 		pointer-events: all;

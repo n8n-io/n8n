@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style['content']">
+	<div :class="$style.content">
 		<div
 			class="node-view-root do-not-select"
 			id="node-view-root"
@@ -3992,6 +3992,7 @@ export default defineComponent({
 	overflow: auto;
 	width: 100%;
 	height: 100%;
+	z-index: 1;
 }
 
 .shake {
