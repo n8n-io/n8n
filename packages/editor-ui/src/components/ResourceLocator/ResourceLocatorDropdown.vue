@@ -1,5 +1,6 @@
 <template>
 	<n8n-popover
+		:teleported="false"
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
