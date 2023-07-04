@@ -30,6 +30,10 @@ const route = useRoute();
 const staged = ref<Record<string, boolean>>({});
 const files = ref<SourceControlAggregatedFile[]>(
 	props.data.status.filter((file, index, self) => {
+		// do not show remote workflows that are not yet created locally during push
+		if (file.location === 'remote' && file.type === 'workflow' && file.status === 'created') {
+			return false;
+		}
 		return self.findIndex((f) => f.id === file.id) === index;
 	}) || [],
 );
@@ -274,9 +278,7 @@ async function commitAndPush() {
 										<span v-if="file.type === 'credential'"> Deleted Credential: </span>
 										<strong>{{ file.id }}</strong>
 									</n8n-text>
-									<n8n-text bold v-else>
-										{{ file.name }}
-									</n8n-text>
+									<n8n-text bold v-else> {{ file.name }} </n8n-text>
 									<div v-if="file.updatedAt">
 										<n8n-text color="text-light" size="small">
 											{{ renderUpdatedAt(file) }}
