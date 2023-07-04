@@ -121,11 +121,6 @@ export class User extends AbstractEntity implements IUser {
 
 	@AfterLoad()
 	computeIsOwner(): void {
-		// If globalRole is not defined, it means that the owner is not set-up yet
-		// and the (only)user is the owner
-		this.isOwner =
-			this.globalRole === undefined
-				? ['1', 1].includes(this.globalRoleId)
-				: this.globalRole.name === 'owner';
+		this.isOwner = this.globalRole?.name === 'owner';
 	}
 }

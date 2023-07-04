@@ -187,10 +187,13 @@ export class PasswordResetController {
 		// Timestamp is saved in seconds
 		const currentTimestamp = Math.floor(Date.now() / 1000);
 
-		const user = await this.userRepository.findOneBy({
-			id,
-			resetPasswordToken,
-			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+		const user = await this.userRepository.findOne({
+			where: {
+				id,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			},
+			relations: ['globalRole'],
 		});
 		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
 			throw new BadRequestError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
@@ -238,7 +241,7 @@ export class PasswordResetController {
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
 			},
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'globalRole'],
 		});
 
 		if (!user) {
