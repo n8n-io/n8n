@@ -9,11 +9,11 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { removeCircularRefs } from '@utils/utilities'
 
 import type { OptionsWithUri } from 'request';
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
-
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -977,6 +977,7 @@ export class HttpRequestV1 implements INodeType {
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
 					// Return the actual reason as error
+					removeCircularRefs(response.reason)
 					returnItems.push({
 						json: {
 							error: response.reason,

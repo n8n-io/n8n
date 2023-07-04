@@ -8,6 +8,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { removeCircularRefs } from '@utils/utilities'
 
 import type { OptionsWithUri } from 'request';
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
@@ -1022,13 +1023,13 @@ export class HttpRequestV2 implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			// @ts-ignore
 			response = promisesResponses.shift();
-
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					// throw error;
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
 					// Return the actual reason as error
+			    removeCircularRefs(response.reason)
 					returnItems.push({
 						json: {
 							error: response.reason,
