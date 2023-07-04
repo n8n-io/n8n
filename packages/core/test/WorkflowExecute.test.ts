@@ -11,7 +11,7 @@ describe('WorkflowExecute', () => {
 		initLogger();
 	});
 
-	describe('legacy execution order', () => {
+	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 
 		const executionMode = 'manual';
@@ -25,6 +25,9 @@ describe('WorkflowExecute', () => {
 					connections: testData.input.workflowData.connections,
 					active: false,
 					nodeTypes,
+					settings: {
+						executionOrder: 'v0',
+					},
 				});
 
 				const waitPromise = await createDeferredPromise<IRun>();

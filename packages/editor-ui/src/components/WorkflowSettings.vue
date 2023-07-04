@@ -447,13 +447,13 @@ export default defineComponent({
 			saveExecutionProgressOptions: [] as Array<{ key: string | boolean; value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean; value: string }>,
 			executionOrderOptions: [
-				{ key: 'legacy', value: 'v0 (legacy)' },
+				{ key: 'v0', value: 'v0 (legacy)' },
 				{ key: 'v1', value: 'v1 (recommended)' },
 			] as Array<{ key: string; value: string }>,
 			timezones: [] as Array<{ key: string; value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
-			executionOrder: 'legacy',
+			executionOrder: 'v0',
 			executionTimeout: 0,
 			maxExecutionTimeout: 0,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
@@ -566,7 +566,7 @@ export default defineComponent({
 			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
 		if (workflowSettings.executionOrder === undefined) {
-			workflowSettings.executionOrder = 'legacy';
+			workflowSettings.executionOrder = 'v0';
 		}
 
 		this.workflowSettings = workflowSettings;
