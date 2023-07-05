@@ -126,7 +126,6 @@ EEWorkflowController.post(
 		Object.assign(newWorkflow, req.body);
 
 		newWorkflow.versionId = uuid();
-		newWorkflow.settings = { ...newWorkflow.settings, executionOrder: 'v1' };
 
 		await validateEntity(newWorkflow);
 
