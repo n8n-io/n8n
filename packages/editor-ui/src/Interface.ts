@@ -1067,6 +1067,7 @@ export interface UIState {
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
+	bannersHeight: number;
 	banners: { [key in BANNERS]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
 }
 

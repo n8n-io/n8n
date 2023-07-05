@@ -24,7 +24,7 @@ function onCloseClick() {
 }
 </script>
 <template>
-	<n8n-callout :theme="props.theme" :icon="props.customIcon" :roundCorners="false">
+	<n8n-callout :theme="props.theme" :icon="props.customIcon" :roundCorners="false" :slim="true">
 		<div :class="$style.mainContent">
 			<slot name="mainContent" />
 		</div>

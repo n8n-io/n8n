@@ -166,7 +166,7 @@ export default defineComponent({
 .nodeCreatorButton {
 	position: absolute;
 	text-align: center;
-	top: calc(#{$header-height} + var(--spacing-s));
+	top: var(--spacing-s);
 	right: var(--spacing-s);
 	pointer-events: all !important;
 

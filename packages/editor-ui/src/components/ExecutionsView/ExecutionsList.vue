@@ -744,9 +744,7 @@ export default defineComponent({
 <style module lang="scss">
 .container {
 	display: flex;
-	position: relative;
-	top: $header-height;
-	height: calc(100% - $header-height);
+	height: 100%;
 	width: 100%;
 }
 

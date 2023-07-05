@@ -37,7 +37,13 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import {
+	CLOUD_TRIAL_CHECK_INTERVAL,
+	HIRING_BANNER,
+	LOCAL_STORAGE_THEME,
+	VIEWS,
+	BANNERS,
+} from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
@@ -217,6 +223,22 @@ export default defineComponent({
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
+		initBanners() {
+			// Update banner container height when a banner is shown or dismissed
+			this.uiStore.$onAction(({ name, after }) => {
+				if (['dismissBanner', 'showBanner'].includes(name)) {
+					after(() => {
+						this.$nextTick(() => {
+							this.uiStore.updateBannersHeight();
+						});
+					});
+				}
+			});
+			// TODO: Implement proper banner logic
+			this.uiStore.showBanner(BANNERS.TRIAL);
+			this.uiStore.showBanner(BANNERS.TRIAL_OVER);
+			this.uiStore.showBanner(BANNERS.V1);
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -235,6 +257,7 @@ export default defineComponent({
 		}
 
 		this.loading = false;
+		this.initBanners();
 
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
@@ -270,7 +293,7 @@ export default defineComponent({
 		'sidebar header'
 		'sidebar content';
 	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-	grid-template-rows: fit-content($sidebar-width) 0 1fr;
+	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
 }
 

@@ -188,7 +188,7 @@ export default function useCanvasMouseSelect() {
 			: SIDEBAR_WIDTH_EXPANDED;
 
 		const relativeX = mouseX - sidebarWidth;
-		const relativeY = mouseY - uiStore.bannersHeight;
+		const relativeY = mouseY - uiStore.bannersHeight - uiStore.headerHeight;
 		const nodeViewScale = canvasStore.nodeViewScale;
 		const nodeViewOffsetPosition = uiStore.nodeViewOffsetPosition;
 

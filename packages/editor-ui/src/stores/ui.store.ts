@@ -183,10 +183,11 @@ export const useUIStore = defineStore(STORES.UI, {
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
 		banners: {
-			V1: { dismissed: false },
-			TRIAL: { dismissed: false },
-			TRIAL_OVER: { dismissed: false },
+			V1: { dismissed: true },
+			TRIAL: { dismissed: true },
+			TRIAL_OVER: { dismissed: true },
 		},
+		bannersHeight: document.getElementById('banners')?.clientHeight ?? 0,
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
@@ -339,12 +340,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		headerHeight() {
 			return Number(getStyleTokenValue('--header-height'));
-		},
-		bannersHeight() {
-			if (!this.showBanners) {
-				return 0;
-			}
-			return document.getElementById('banners')?.clientHeight ?? 0;
 		},
 	},
 	actions: {
@@ -548,6 +543,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		dismissBanner(name: BANNERS, type: 'temporary' | 'permanent' = 'temporary'): void {
 			this.banners[name].dismissed = true;
 			this.banners[name].type = type;
+		},
+		showBanner(name: BANNERS): void {
+			this.banners[name].dismissed = false;
+		},
+		updateBannersHeight(): void {
+			this.bannersHeight = document.getElementById('banners')?.clientHeight ?? 0;
 		},
 	},
 });
