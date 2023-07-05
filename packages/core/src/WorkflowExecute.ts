@@ -1085,6 +1085,7 @@ export class WorkflowExecute {
 						executionTime: new Date().getTime() - startTime,
 						source: !executionData.source ? [] : executionData.source.main,
 						executionStatus: 'success',
+						isSearchableViaElastic: executionData.node.isSearchableViaElastic ?? false,
 					};
 
 					if (executionError !== undefined) {

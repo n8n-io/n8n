@@ -1,6 +1,7 @@
 import { LoggerProxy as Logger } from 'n8n-workflow';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Client } from '@elastic/elasticsearch';
+import isEmpty from 'lodash/isEmpty';
 
 export class ElasticSearchClient {
 	index: string;

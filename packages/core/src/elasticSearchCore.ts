@@ -1,3 +1,5 @@
+import moment from 'moment-timezone';
+import isEmpty from 'lodash/isEmpty';
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LoggerProxy as Logger } from 'n8n-workflow';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -14,7 +16,18 @@ export class ElasticSearchCoreClient {
 	}
 
 	addDocument = async (executionId: string, data: any) => {
+		this.removeNodesWithoutElasticSearchEnabled(data);
+
+		if (isEmpty(data)) {
+			// If all nodes don't have advanced search option then we don't add the document to elastic
+			Logger.debug(
+				`ElasticSearch: Not storing anything in elastic since none of the nodes have advanced search option for: ${executionId} to index:${this.index}`,
+			);
+			return;
+		}
+
 		this.cleanLargeValues(data);
+		data.createdAt = moment().tz('America/Los_Angeles').format();
 		const document = {
 			index: this.index,
 			id: executionId,
@@ -47,6 +60,16 @@ export class ElasticSearchCoreClient {
 					apiKey,
 				},
 			});
+		}
+	};
+
+	removeNodesWithoutElasticSearchEnabled = (obj: any): void => {
+		// Making sure we're only pushing relevant nodes to elastic
+		// These nodes were marked manually by the user
+		for (const nodeExecutionKey in obj) {
+			if (!obj[nodeExecutionKey][0].isSearchableViaElastic) {
+				delete obj[nodeExecutionKey];
+			}
 		}
 	};
 
