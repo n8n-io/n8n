@@ -1,3 +1,32 @@
+# [0.236.0](https://github.com/n8n-io/n8n/compare/n8n@0.235.0...n8n@0.236.0) (2023-07-05)
+
+
+### Bug Fixes
+
+* **Brevo Node:** Rename SendInBlue node to Brevo node ([#6521](https://github.com/n8n-io/n8n/issues/6521)) ([e63b398](https://github.com/n8n-io/n8n/commit/e63b3982d200ade34461b9159eb1e988f494c025))
+* **core:** Fix credentials test ([#6569](https://github.com/n8n-io/n8n/issues/6569)) ([1abd172](https://github.com/n8n-io/n8n/commit/1abd172f73e171e37c4cc3ccfaa395c6a46bdf48))
+* **core:** Fix migrations for MySQL/MariaDB ([#6591](https://github.com/n8n-io/n8n/issues/6591)) ([29882a6](https://github.com/n8n-io/n8n/commit/29882a6f39dddcd1c8c107c20a548ce8dc665cba))
+* **core:** Improve the performance of last 2 sqlite migrations ([#6522](https://github.com/n8n-io/n8n/issues/6522)) ([31cba87](https://github.com/n8n-io/n8n/commit/31cba87d307183d613890c7e6d627636b5280b52))
+* **core:** Remove typeorm patches, but still enforce transactions on every migration ([#6594](https://github.com/n8n-io/n8n/issues/6594)) ([9def7a7](https://github.com/n8n-io/n8n/commit/9def7a729b52cd6b4698c47e190e9e2bd7894da5)), closes [#6519](https://github.com/n8n-io/n8n/issues/6519)
+* **core:** Use owners file to export wf owners ([#6547](https://github.com/n8n-io/n8n/issues/6547)) ([4b755fb](https://github.com/n8n-io/n8n/commit/4b755fb0b441a37eb804c9e70d4b071a341f7155))
+* **editor:** Show retry information in execution list only when it exists ([#6587](https://github.com/n8n-io/n8n/issues/6587)) ([3ca66be](https://github.com/n8n-io/n8n/commit/3ca66be38082e7a3866d53d07328be58e913067f))
+* **Salesforce Node:** Fix typo for adding a contact to a campaign ([#6598](https://github.com/n8n-io/n8n/issues/6598)) ([7ffe3cb](https://github.com/n8n-io/n8n/commit/7ffe3cb36adeecaca6cc6ddf067a701ee55c18d1))
+* **Strapi Node:** Fix issue with pagination ([#4991](https://github.com/n8n-io/n8n/issues/4991)) ([54444fa](https://github.com/n8n-io/n8n/commit/54444fa388da12d75553e66e53a8cf6f8a99b6fc))
+* **XML Node:** Fix issue with not returning valid data ([#6565](https://github.com/n8n-io/n8n/issues/6565)) ([cdd215f](https://github.com/n8n-io/n8n/commit/cdd215f642b47413c05f229e641074d0d4048f68))
+
+
+### Features
+
+* Add crowd.dev node and trigger node ([#6082](https://github.com/n8n-io/n8n/issues/6082)) ([238a78f](https://github.com/n8n-io/n8n/commit/238a78f0582dbf439a9799de0edcb2e9bef29978))
+* Add various source control improvements ([#6533](https://github.com/n8n-io/n8n/issues/6533)) ([68fdc20](https://github.com/n8n-io/n8n/commit/68fdc2078928be478a286774f2889feba1c3f5fe))
+* **HTTP Request Node:** New http request generic custom auth credential ([#5798](https://github.com/n8n-io/n8n/issues/5798)) ([b17b458](https://github.com/n8n-io/n8n/commit/b17b4582a059104665888a2369c3e2256db4c1ed))
+* **Microsoft To Do Node:** Add an option to set a reminder when creating a task ([#5757](https://github.com/n8n-io/n8n/issues/5757)) ([b19833d](https://github.com/n8n-io/n8n/commit/b19833d673bd554ba86c0b234e8d13633912563a))
+* **Notion Node:** Add option to update icon when updating a page ([#5670](https://github.com/n8n-io/n8n/issues/5670)) ([225e849](https://github.com/n8n-io/n8n/commit/225e849960ce65d7f85b482f05fb3d7ffb4f9427))
+* **Strava Node:** Add hide_from_home field in Activity Update ([#5883](https://github.com/n8n-io/n8n/issues/5883)) ([7495e31](https://github.com/n8n-io/n8n/commit/7495e31a5b25e97683c7ea38225ba253d8fae8b7))
+* **Twitter Node:** Node overhaul ([#4788](https://github.com/n8n-io/n8n/issues/4788)) ([42721db](https://github.com/n8n-io/n8n/commit/42721dba80077fb796086a2bf0ecce256bf3a50f))
+
+
+
 # [0.235.0](https://github.com/n8n-io/n8n/compare/n8n@0.234.0...n8n@0.235.0) (2023-06-28)
 
 
