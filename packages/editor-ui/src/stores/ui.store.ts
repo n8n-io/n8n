@@ -31,6 +31,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
 import type { BANNERS } from '@/constants';
 import type {
@@ -136,6 +137,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				showAuthSelector: false,
 			},
 			[SOURCE_CONTROL_PUSH_MODAL_KEY]: {
+				open: false,
+			},
+			[SOURCE_CONTROL_PULL_MODAL_KEY]: {
 				open: false,
 			},
 		},

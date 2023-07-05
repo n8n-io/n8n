@@ -1,11 +1,10 @@
-/* eslint-disable no-await-in-loop */
 import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import config from '@/config';
 import { getLogger } from '@/Logger';
 import { inTest } from '@/constants';
-import type { Migration } from '@db/types';
+import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 
 const logger = getLogger();
 
@@ -39,46 +38,79 @@ export function loadSurveyFromDisk(): string | null {
 	}
 }
 
-let logFinishTimeout: NodeJS.Timeout;
+let runningMigrations = false;
 
-export function logMigrationStart(migrationName: string, disableLogging = inTest): void {
-	if (disableLogging) return;
+function logMigrationStart(migrationName: string): void {
+	if (inTest) return;
 
-	if (!logFinishTimeout) {
+	if (!runningMigrations) {
 		logger.warn('Migrations in progress, please do NOT stop the process.');
+		runningMigrations = true;
 	}
 
 	logger.debug(`Starting migration ${migrationName}`);
-
-	clearTimeout(logFinishTimeout);
 }
 
-export function logMigrationEnd(migrationName: string, disableLogging = inTest): void {
-	if (disableLogging) return;
+function logMigrationEnd(migrationName: string): void {
+	if (inTest) return;
 
 	logger.debug(`Finished migration ${migrationName}`);
-
-	logFinishTimeout = setTimeout(() => {
-		logger.warn('Migrations finished.');
-	}, 100);
 }
+
+const runDisablingForeignKeys = async (
+	migration: BaseMigration,
+	context: MigrationContext,
+	fn: MigrationFn,
+) => {
+	const { dbType, queryRunner } = context;
+	if (dbType !== 'sqlite') throw new Error('Disabling transactions only available in sqlite');
+	await queryRunner.query('PRAGMA foreign_keys=OFF');
+	await queryRunner.startTransaction();
+	try {
+		await fn.call(migration, context);
+		await queryRunner.commitTransaction();
+	} catch (e) {
+		try {
+			await queryRunner.rollbackTransaction();
+		} catch {}
+		throw e;
+	} finally {
+		await queryRunner.query('PRAGMA foreign_keys=ON');
+	}
+};
 
 export const wrapMigration = (migration: Migration) => {
 	const dbType = config.getEnv('database.type');
 	const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
 	const tablePrefix = config.getEnv('database.tablePrefix');
 	const migrationName = migration.name;
-	const context = { tablePrefix, dbType, dbName, migrationName };
+	const context: Omit<MigrationContext, 'queryRunner'> = {
+		tablePrefix,
+		dbType,
+		dbName,
+		migrationName,
+		logger,
+	};
 
 	const { up, down } = migration.prototype;
 	Object.assign(migration.prototype, {
-		async up(queryRunner: QueryRunner) {
+		async up(this: BaseMigration, queryRunner: QueryRunner) {
 			logMigrationStart(migrationName);
-			await up.call(this, { queryRunner, ...context });
+			if (!this.transaction) {
+				await runDisablingForeignKeys(this, { queryRunner, ...context }, up);
+			} else {
+				await up.call(this, { queryRunner, ...context });
+			}
 			logMigrationEnd(migrationName);
 		},
-		async down(queryRunner: QueryRunner) {
-			await down?.call(this, { queryRunner, ...context });
+		async down(this: BaseMigration, queryRunner: QueryRunner) {
+			if (down) {
+				if (!this.transaction) {
+					await runDisablingForeignKeys(this, { queryRunner, ...context }, up);
+				} else {
+					await down.call(this, { queryRunner, ...context });
+				}
+			}
 		},
 	});
 };

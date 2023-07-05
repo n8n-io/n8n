@@ -1,18 +1,21 @@
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
+	transaction = false as const;
+
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
-CREATE TABLE "${tablePrefix}TMP_workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36), "triggerCount" integer NOT NULL DEFAULT 0);`);
+			CREATE TABLE "${tablePrefix}TMP_workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36), "triggerCount" integer NOT NULL DEFAULT 0);`);
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}TMP_workflow_entity" (id, name, active, nodes, connections, createdAt, updatedAt, settings, staticData, pinData, triggerCount, versionId) SELECT id, name, active, nodes, connections, createdAt, updatedAt, settings, staticData, pinData, triggerCount, versionId FROM "${tablePrefix}workflow_entity";`,
 		);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}workflow_entity";`);
-		await queryRunner.query(`ALTER TABLE "${tablePrefix}TMP_workflow_entity" RENAME TO "${tablePrefix}workflow_entity";
-`);
+		await queryRunner.query(
+			`ALTER TABLE "${tablePrefix}TMP_workflow_entity" RENAME TO "${tablePrefix}workflow_entity"`,
+		);
 
 		await queryRunner.query(`
-CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(24) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')));`);
+			CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(24) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')));`);
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}TMP_tag_entity" SELECT * FROM "${tablePrefix}tag_entity";`,
 		);
@@ -22,7 +25,7 @@ CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NU
 		);
 
 		await queryRunner.query(`
-CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NULL, "tagId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}workflows_tags_workflow_entity" FOREIGN KEY ("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}workflows_tags_tag_entity" FOREIGN KEY ("tagId") REFERENCES "${tablePrefix}tag_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("workflowId", "tagId"));`);
+			CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NULL, "tagId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}workflows_tags_workflow_entity" FOREIGN KEY ("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}workflows_tags_tag_entity" FOREIGN KEY ("tagId") REFERENCES "${tablePrefix}tag_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("workflowId", "tagId"));`);
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}TMP_workflows_tags" SELECT * FROM "${tablePrefix}workflows_tags";`,
 		);

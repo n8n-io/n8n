@@ -49,6 +49,7 @@ export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
+export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -429,6 +430,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
+	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 }
@@ -516,7 +518,11 @@ export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
 
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
-export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
+export const KEEP_AUTH_IN_NDV_FOR_NODES = [
+	HTTP_REQUEST_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	WAIT_NODE_TYPE,
+];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 

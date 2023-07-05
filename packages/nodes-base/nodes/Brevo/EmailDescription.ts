@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { SendInBlueNode } from './GenericFunctions';
+import { BrevoNode } from './GenericFunctions';
 
 export const emailOperations: INodeProperties[] = [
 	{
@@ -120,7 +120,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				preSend: [SendInBlueNode.Validators.validateAndCompileSenderEmail],
+				preSend: [BrevoNode.Validators.validateAndCompileSenderEmail],
 			},
 		},
 	},
@@ -138,7 +138,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				preSend: [SendInBlueNode.Validators.validateAndCompileReceipientEmails],
+				preSend: [BrevoNode.Validators.validateAndCompileReceipientEmails],
 			},
 		},
 	},
@@ -180,7 +180,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [SendInBlueNode.Validators.validateAndCompileAttachmentsData],
+						preSend: [BrevoNode.Validators.validateAndCompileAttachmentsData],
 					},
 				},
 			},
@@ -206,7 +206,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [SendInBlueNode.Validators.validateAndCompileBCCEmails],
+						preSend: [BrevoNode.Validators.validateAndCompileBCCEmails],
 					},
 				},
 			},
@@ -232,7 +232,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [SendInBlueNode.Validators.validateAndCompileCCEmails],
+						preSend: [BrevoNode.Validators.validateAndCompileCCEmails],
 					},
 				},
 			},
@@ -259,7 +259,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [SendInBlueNode.Validators.validateAndCompileTags],
+						preSend: [BrevoNode.Validators.validateAndCompileTags],
 					},
 				},
 			},
@@ -339,7 +339,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				preSend: [SendInBlueNode.Validators.validateAndCompileReceipientEmails],
+				preSend: [BrevoNode.Validators.validateAndCompileReceipientEmails],
 			},
 		},
 	},
@@ -381,7 +381,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [SendInBlueNode.Validators.validateAndCompileAttachmentsData],
+						preSend: [BrevoNode.Validators.validateAndCompileAttachmentsData],
 					},
 				},
 			},
@@ -408,7 +408,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [SendInBlueNode.Validators.validateAndCompileTags],
+						preSend: [BrevoNode.Validators.validateAndCompileTags],
 					},
 				},
 			},
@@ -437,7 +437,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 				],
 				routing: {
 					send: {
-						preSend: [SendInBlueNode.Validators.validateAndCompileTemplateParameters],
+						preSend: [BrevoNode.Validators.validateAndCompileTemplateParameters],
 					},
 				},
 			},
