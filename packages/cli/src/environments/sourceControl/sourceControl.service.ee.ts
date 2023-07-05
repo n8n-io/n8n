@@ -382,7 +382,12 @@ export class SourceControlService {
 		else if (statusResult.ignored?.find((e) => e === fileName)) status = 'ignored';
 		else if (statusResult.renamed.find((e) => e.to === fileName)) status = 'renamed';
 		else if (statusResult.staged.find((e) => e === fileName)) status = 'staged';
-		else {
+		else if (location === 'remote' && status === 'unknown') {
+			// special case where git status does not have the remote file
+			// this means it was deleted remotely but still exists locally, so we mark it as locally created
+			status = 'created';
+			location = 'local';
+		} else {
 			LoggerProxy.debug(
 				`Unknown status for file ${fileName} in status result ${JSON.stringify(statusResult)}`,
 			);
