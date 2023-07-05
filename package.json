@@ -36,6 +36,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.363.0",
     "@elastic/elasticsearch": "^8.8.0",
+    "moment": "~2.29.2",
+    "moment-timezone": "^0.5.28",
     "n8n": "workspace:*"
   },
   "devDependencies": {

@@ -360,6 +360,7 @@ export default defineComponent({
 				notesInFlow: false,
 				continueOnFail: false,
 				retryOnFail: false,
+				isSearchableViaElastic: false,
 				maxTries: 3,
 				waitBetweenTries: 1000,
 				notes: '',
@@ -451,6 +452,14 @@ export default defineComponent({
 					default: false,
 					noDataExpression: true,
 					description: this.$locale.baseText('nodeSettings.notesInFlow.description'),
+				},
+				{
+					displayName: this.$locale.baseText('nodeSettings.isSearchableViaElastic.displayName'),
+					name: 'isSearchableViaElastic',
+					type: 'boolean',
+					default: false,
+					noDataExpression: true,
+					description: this.$locale.baseText('nodeSettings.isSearchableViaElastic.description'),
 				},
 			] as INodeProperties[],
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -877,6 +886,14 @@ export default defineComponent({
 					this.nodeValues = {
 						...this.nodeValues,
 						notesInFlow: this.node.notesInFlow,
+					};
+				}
+
+				if (this.node.isSearchableViaElastic) {
+					foundNodeSettings.push('isSearchableViaElastic');
+					this.nodeValues = {
+						...this.nodeValues,
+						isSearchableViaElastic: this.node.isSearchableViaElastic,
 					};
 				}
 
