@@ -6,7 +6,6 @@ import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { LoggerProxy } from 'n8n-workflow';
 import { SOURCE_CONTROL_GIT_KEY_COMMENT } from './constants';
 import type { SourceControlledFile } from './types/sourceControlledFile';
-import type { ImportResult } from './types/importResult';
 
 export function sourceControlFoldersExistCheck(folders: string[]) {
 	// running these file access function synchronously to avoid race conditions
@@ -77,21 +76,25 @@ export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
 	return 'other';
 }
 
-export function getTrackingInformationFromSourceControlledFiles(result: SourceControlledFile[]) {
-	return {
-		cred_conflicts: result.filter((file) => file.type === 'credential' && file.conflict).length,
-		workflow_conflicts: result.filter((file) => file.type === 'workflow' && file.conflict).length,
-		workflow_updates: result.filter(
-			(file) => file.type === 'workflow' && file.status === 'modified',
-		).length,
-	};
+function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
+	return (
+		files.filter((file, index, self) => {
+			return self.findIndex((f) => f.id === file.id) === index;
+		}) || []
+	);
 }
 
-export function getTrackingInformationFromImportResult(result: ImportResult): {
-	workflow_updates: number;
-} {
+export function getTrackingInformationFromPullResult(result: SourceControlledFile[]) {
+	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
-		workflow_updates: result.workflows.filter((wf) => wf.name !== 'skipped').length,
+		cred_conflicts: uniques.filter(
+			(file) =>
+				file.type === 'credential' && file.status === 'modified' && file.location === 'local',
+		).length,
+		workflow_conflicts: uniques.filter(
+			(file) => file.type === 'workflow' && file.status === 'modified' && file.location === 'local',
+		).length,
+		workflow_updates: uniques.filter((file) => file.type === 'workflow').length,
 	};
 }
 
@@ -102,34 +105,34 @@ export function getTrackingInformationFromPrePushResult(result: SourceControlled
 	creds_eligible_with_conflicts: number;
 	variables_eligible: number;
 } {
+	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
-		workflows_eligible: result.filter((file) => file.type === 'workflow').length,
-		workflows_eligible_with_conflicts: result.filter(
+		workflows_eligible: uniques.filter((file) => file.type === 'workflow').length,
+		workflows_eligible_with_conflicts: uniques.filter(
 			(file) => file.type === 'workflow' && file.conflict,
 		).length,
-		creds_eligible: result.filter((file) => file.type === 'credential').length,
-		creds_eligible_with_conflicts: result.filter(
+		creds_eligible: uniques.filter((file) => file.type === 'credential').length,
+		creds_eligible_with_conflicts: uniques.filter(
 			(file) => file.type === 'credential' && file.conflict,
 		).length,
-		variables_eligible: result.filter((file) => file.type === 'variables').length,
+		variables_eligible: uniques.filter((file) => file.type === 'variables').length,
 	};
 }
 
-export function getTrackingInformationFromPostPushResult(
-	result: SourceControlledFile[] | undefined,
-): {
+export function getTrackingInformationFromPostPushResult(result: SourceControlledFile[]): {
 	workflows_eligible: number;
 	workflows_pushed: number;
 	creds_pushed: number;
 	variables_pushed: number;
 } {
+	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
 		workflows_pushed:
-			result?.filter((file) => file.pushed && file.type === 'workflow' && file.pushed).length ?? 0,
-		workflows_eligible: result?.filter((file) => file.type === 'workflow').length ?? 0,
+			uniques.filter((file) => file.pushed && file.type === 'workflow' && file.pushed).length ?? 0,
+		workflows_eligible: uniques.filter((file) => file.type === 'workflow').length ?? 0,
 		creds_pushed:
-			result?.filter((file) => file.pushed && file.file.startsWith('credential_stubs')).length ?? 0,
+			uniques.filter((file) => file.pushed && file.file.startsWith('credential_stubs')).length ?? 0,
 		variables_pushed:
-			result?.filter((file) => file.pushed && file.file.startsWith('variable_stubs')).length ?? 0,
+			uniques.filter((file) => file.pushed && file.file.startsWith('variable_stubs')).length ?? 0,
 	};
 }

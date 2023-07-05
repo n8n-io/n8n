@@ -19,7 +19,7 @@ import {
 	getRepoType,
 	getTrackingInformationFromPrePushResult,
 	getTrackingInformationFromPostPushResult,
-	getTrackingInformationFromSourceControlledFiles,
+	getTrackingInformationFromPullResult,
 } from './sourceControlHelper.ee';
 
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
@@ -212,12 +212,12 @@ export class SourceControlController {
 			});
 			if (result.status === 200) {
 				void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
-					getTrackingInformationFromSourceControlledFiles(result.diffResult),
+					getTrackingInformationFromPullResult(result.diffResult),
 				);
 				res.statusCode = 200;
 			} else {
 				void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
-					getTrackingInformationFromSourceControlledFiles(result.diffResult),
+					getTrackingInformationFromPullResult(result.diffResult),
 				);
 				res.statusCode = 409;
 			}
@@ -249,6 +249,7 @@ export class SourceControlController {
 	async getStatus() {
 		try {
 			const result = await this.sourceControlService.getStatus();
+			getTrackingInformationFromPrePushResult(result);
 			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
 				getTrackingInformationFromPrePushResult(result),
 			);

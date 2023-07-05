@@ -7,7 +7,7 @@ import Container from 'typedi';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import {
-	getTrackingInformationFromSourceControlledFiles,
+	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
 } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { InternalHooks } from '@/InternalHooks';
@@ -41,7 +41,7 @@ export = {
 
 				if (result.status === 200) {
 					void Container.get(InternalHooks).onSourceControlUserPulledAPI({
-						...getTrackingInformationFromSourceControlledFiles(result.diffResult),
+						...getTrackingInformationFromPullResult(result.diffResult),
 						forced: req.body.force ?? false,
 					});
 					return res.status(200).send(result.diffResult);
