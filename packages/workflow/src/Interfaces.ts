@@ -919,6 +919,7 @@ export interface INode {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
+	isSearchableViaElastic?: boolean;
 }
 
 export interface IPinData {
@@ -1632,6 +1633,7 @@ export interface ITaskData {
 	data?: ITaskDataConnections;
 	error?: ExecutionError;
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
+	isSearchableViaElastic?: boolean;
 }
 
 export interface ISourceData {

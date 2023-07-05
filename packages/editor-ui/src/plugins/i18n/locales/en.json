@@ -829,6 +829,8 @@
 	"nodeSettings.notes.displayName": "Notes",
 	"nodeSettings.notesInFlow.description": "If active, the note above will display in the flow as a subtitle",
 	"nodeSettings.notesInFlow.displayName": "Display Note in Flow?",
+	"nodeSettings.isSearchableViaElastic.description": "If active, the output of the node will be searchable via advanced search",
+	"nodeSettings.isSearchableViaElastic.displayName": "Enable advanced search for this node?",
 	"nodeSettings.parameters": "Parameters",
 	"nodeSettings.communityNodeTooltip": "This is a <a href=\"{docUrl}\" target=\"_blank\"/>community node</a>",
 	"nodeSettings.retryOnFail.description": "If active, the node tries to execute again when it fails",
