@@ -30,7 +30,6 @@ const versionDescription: INodeTypeDescription = {
 	inputs: ['main', 'main'],
 	outputs: ['main'],
 	inputNames: ['Input 1', 'Input 2'],
-	forceInputNodeExecution: true,
 	properties: [
 		oldVersionNotice,
 		{
