@@ -140,7 +140,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return this.workflow.versionId;
 		},
 		workflowSettings(): IWorkflowSettings {
-			return this.workflow.settings ?? defaults.settings;
+			return this.workflow.settings ?? { ...defaults.settings };
 		},
 		workflowTags(): string[] {
 			return this.workflow.tags as string[];
@@ -396,7 +396,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
-				settings: defaults.settings,
+				settings: { ...defaults.settings },
 			};
 			try {
 				const rootStore = useRootStore();
@@ -436,7 +436,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.setActive(defaults.active);
 			this.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 			this.setWorkflowName({ newName: '', setStateDirty: false });
-			this.setWorkflowSettings(defaults.settings);
+			this.setWorkflowSettings({ ...defaults.settings });
 			this.setWorkflowTagIds([]);
 
 			this.activeExecutionId = null;
@@ -650,7 +650,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				...(!this.workflow.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
 				...(!this.workflow.hasOwnProperty('id') ? { id: PLACEHOLDER_EMPTY_WORKFLOW_ID } : {}),
 				...(!this.workflow.hasOwnProperty('nodes') ? { nodes: [] } : {}),
-				...(!this.workflow.hasOwnProperty('settings') ? { settings: defaults.settings } : {}),
+				...(!this.workflow.hasOwnProperty('settings')
+					? { settings: { ...defaults.settings } }
+					: {}),
 			};
 		},
 
