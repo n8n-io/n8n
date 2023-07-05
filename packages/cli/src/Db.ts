@@ -195,9 +195,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 
 export async function migrate() {
 	(connection.options.migrations as Migration[]).forEach(wrapMigration);
-	console.time('migrations');
 	await connection.runMigrations({ transaction: 'each' });
-	console.timeEnd('migrations');
 	connectionState.migrated = true;
 }
 
