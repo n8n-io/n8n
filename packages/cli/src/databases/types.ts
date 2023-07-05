@@ -12,15 +12,19 @@ export interface MigrationContext {
 	migrationName: string;
 }
 
-type MigrationFn = (ctx: MigrationContext) => Promise<void>;
+export type MigrationFn = (ctx: MigrationContext) => Promise<void>;
 
-export interface ReversibleMigration {
+export interface BaseMigration {
 	up: MigrationFn;
+	down?: MigrationFn | never;
+	transaction?: false;
+}
+
+export interface ReversibleMigration extends BaseMigration {
 	down: MigrationFn;
 }
 
-export interface IrreversibleMigration {
-	up: MigrationFn;
+export interface IrreversibleMigration extends BaseMigration {
 	down?: never;
 }
 
