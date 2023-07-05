@@ -200,6 +200,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
+	LOCAL_STORAGE_WORKFLOW_CACHE,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -240,7 +241,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -396,7 +397,11 @@ export default defineComponent({
 	async beforeRouteLeave(to, from, next) {
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
 			this.uiStore.stateIsDirtyCached = this.uiStore.stateIsDirty;
-			this.workflowsStore.workflowCached = deepCopy(this.workflowsStore.workflow);
+			this.workflowsStore.workflowCached = true;
+			localStorage.setItem(
+				LOCAL_STORAGE_WORKFLOW_CACHE,
+				JSON.stringify(this.workflowsStore.workflow),
+			);
 			this.resetWorkspace();
 			next();
 			return;
@@ -2501,7 +2506,9 @@ export default defineComponent({
 					workflowId = this.$route.params.name;
 				}
 				if (workflowId !== null) {
-					let workflow: IWorkflowDb | null = this.workflowsStore.workflowCached;
+					let workflow: IWorkflowDb | null = jsonParse(
+						localStorage.getItem(LOCAL_STORAGE_WORKFLOW_CACHE) || 'null',
+					);
 
 					if (!workflow) {
 						try {
@@ -2519,7 +2526,8 @@ export default defineComponent({
 						this.titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflow);
-						this.workflowsStore.workflowCached = null;
+						localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_CACHE);
+						this.workflowsStore.workflowCached = false;
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow

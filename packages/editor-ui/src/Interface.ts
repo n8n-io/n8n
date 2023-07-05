@@ -879,7 +879,7 @@ export interface WorkflowsState {
 	subWorkflowExecutionError: Error | null;
 	usedCredentials: Record<string, IUsedCredential>;
 	workflow: IWorkflowDb;
-	workflowCached: IWorkflowDb | null;
+	workflowCached: boolean;
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
