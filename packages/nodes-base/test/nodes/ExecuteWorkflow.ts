@@ -12,6 +12,7 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 		connections: testData.input.workflowData.connections,
 		active: false,
 		nodeTypes,
+		settings: testData.input.workflowData.settings,
 	});
 	const waitPromise = await createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
