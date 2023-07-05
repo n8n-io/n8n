@@ -112,6 +112,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+.userActionsMenu {
+	width: 160px;
+}
+
 .activator {
 	cursor: pointer;
 	padding: var(--spacing-2xs);
