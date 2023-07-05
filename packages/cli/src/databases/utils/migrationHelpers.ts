@@ -115,6 +115,37 @@ export const wrapMigration = (migration: Migration) => {
 	});
 };
 
+export const copyTable = async (
+	{ tablePrefix, queryRunner }: Pick<MigrationContext, 'queryRunner' | 'tablePrefix'>,
+	fromTable: string,
+	toTable: string,
+	fromFields: string[] = [],
+	toFields: string[] = [],
+	batchSize = 10,
+) => {
+	const driver = queryRunner.connection.driver;
+	fromTable = driver.escape(`${tablePrefix}${fromTable}`);
+	toTable = driver.escape(`${tablePrefix}${toTable}`);
+	const fromFieldsStr = fromFields.length
+		? fromFields.map((f) => driver.escape(f)).join(', ')
+		: '*';
+	const toFieldsStr = toFields.length
+		? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
+		: '';
+
+	const total = await queryRunner
+		.query(`SELECT COUNT(*) as count from ${fromTable}`)
+		.then((rows: Array<{ count: number }>) => rows[0].count);
+
+	let migrated = 0;
+	while (migrated < total) {
+		await queryRunner.query(
+			`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${migrated}, ${batchSize}`,
+		);
+		migrated += batchSize;
+	}
+};
+
 function batchQuery(query: string, limit: number, offset = 0): string {
 	return `
 			${query}
