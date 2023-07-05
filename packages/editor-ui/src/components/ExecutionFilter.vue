@@ -21,7 +21,7 @@ export type ExecutionFilterProps = {
 	popoverPlacement?: Placement;
 };
 
-const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
+const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
@@ -146,7 +146,7 @@ onBeforeMount(() => {
 </script>
 <template>
 	<div :class="$style.filter">
-		<n8n-popover trigger="click" :placement="popoverPlacement">
+		<n8n-popover trigger="click" :placement="popoverPlacement" width="440">
 			<template #reference>
 				<n8n-button
 					icon="filter"
@@ -222,6 +222,7 @@ onBeforeMount(() => {
 						<el-date-picker
 							id="execution-filter-start-date"
 							type="datetime"
+							:teleported="false"
 							v-model="vModel.startDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="locale.baseText('executionsFilter.startDate')"
@@ -231,6 +232,7 @@ onBeforeMount(() => {
 						<el-date-picker
 							id="execution-filter-end-date"
 							type="datetime"
+							:teleported="false"
 							v-model="vModel.endDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="locale.baseText('executionsFilter.endDate')"

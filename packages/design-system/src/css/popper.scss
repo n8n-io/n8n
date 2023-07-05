@@ -9,7 +9,7 @@
 	visibility: visible;
 
 	&:not(.el-popover) {
-		max-width: 240px;
+		max-width: 420px;
 	}
 
 	img {
@@ -22,7 +22,7 @@
 		margin: 0;
 	}
 
-	&:not(.el-select__popper):not(.el-dropdown__popper) {
+	&:not(.el-select__popper):not(.el-dropdown__popper):not(.el-picker__popper) {
 		padding: var.$tooltip-padding;
 		font-size: var.$tooltip-font-size;
 		border-radius: 4px;
