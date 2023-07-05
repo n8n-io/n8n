@@ -49,7 +49,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
-		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
+		// if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
 		state.loadingPlan = true;
 		let plan;
 		try {
