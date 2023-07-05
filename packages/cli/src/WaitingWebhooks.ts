@@ -6,12 +6,7 @@ import type express from 'express';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { NodeTypes } from '@/NodeTypes';
-import type {
-	IExecutionResponse,
-	IResponseCallbackData,
-	IWebhookManager,
-	IWorkflowDb,
-} from '@/Interfaces';
+import type { IResponseCallbackData, IWebhookManager, IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from './services/ownership.service';
@@ -24,28 +19,17 @@ export class WaitingWebhooks implements IWebhookManager {
 		private ownershipService: OwnershipService,
 	) {}
 
+	// TODO: implement `getWebhookMethods` for CORS support
+
 	async executeWebhook(
 		httpMethod: IHttpRequestMethods,
-		fullPath: string,
+		executionId: string,
 		req: express.Request,
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
-		Logger.debug(`Received waiting-webhook "${httpMethod}" for path "${fullPath}"`);
+		Logger.debug(`Received waiting-webhook "${httpMethod}" for execution "${executionId}"`);
 
-		// Reset request parameters
-		req.params = {};
-
-		// Remove trailing slash
-		if (fullPath.endsWith('/')) {
-			fullPath = fullPath.slice(0, -1);
-		}
-
-		const pathParts = fullPath.split('/');
-
-		const executionId = pathParts.shift();
-		const path = pathParts.join('/');
-
-		const execution = await this.executionRepository.findSingleExecution(executionId as string, {
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -58,35 +42,19 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ResponseHelper.ConflictError(`The execution "${executionId} has finished already.`);
 		}
 
-		return this.startExecution(httpMethod, path, execution, req, res);
-	}
-
-	async startExecution(
-		httpMethod: IHttpRequestMethods,
-		path: string,
-		fullExecutionData: IExecutionResponse,
-		req: express.Request,
-		res: express.Response,
-	): Promise<IResponseCallbackData> {
-		const executionId = fullExecutionData.id;
-
-		if (fullExecutionData.finished) {
-			throw new Error('The execution did succeed and can so not be started again.');
-		}
-
-		const lastNodeExecuted = fullExecutionData.data.resultData.lastNodeExecuted as string;
+		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
-		fullExecutionData.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 
 		// Remove waitTill information else the execution would stop
-		fullExecutionData.data.waitTill = undefined;
+		execution.data.waitTill = undefined;
 
 		// Remove the data of the node execution again else it will display the node as executed twice
-		fullExecutionData.data.resultData.runData[lastNodeExecuted].pop();
+		execution.data.resultData.runData[lastNodeExecuted].pop();
 
-		const { workflowData } = fullExecutionData;
+		const { workflowData } = execution;
 
 		const workflow = new Workflow({
 			id: workflowData.id!,
@@ -112,18 +80,17 @@ export class WaitingWebhooks implements IWebhookManager {
 			workflow,
 			workflow.getNode(lastNodeExecuted) as INode,
 			additionalData,
-		).find((webhook) => {
-			return (
+		).find(
+			(webhook) =>
 				webhook.httpMethod === httpMethod &&
-				webhook.path === path &&
-				webhook.webhookDescription.restartWebhook === true
-			);
-		});
+				webhook.path === executionId &&
+				webhook.webhookDescription.restartWebhook === true,
+		);
 
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
-			const errorMessage = `The execution "${executionId}" with webhook suffix path "${path}" is not known.`;
+			const errorMessage = `The execution "${executionId}" with webhook suffix path "${executionId}" is not known.`;
 			throw new ResponseHelper.NotFoundError(errorMessage);
 		}
 
@@ -133,7 +100,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
-		const runExecutionData = fullExecutionData.data;
+		const runExecutionData = execution.data;
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
@@ -145,7 +112,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				executionMode,
 				undefined,
 				runExecutionData,
-				fullExecutionData.id,
+				execution.id,
 				req,
 				res,
 

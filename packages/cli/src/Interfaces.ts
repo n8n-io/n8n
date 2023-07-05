@@ -301,6 +301,10 @@ export interface IExternalHooksClass {
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
+export type WebhookRequest = Request<{ path: string }> & {
+	method: IHttpRequestMethods | 'OPTIONS';
+};
+
 export interface IWebhookManager {
 	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
 	executeWebhook(

@@ -1,36 +1,29 @@
 import { Container } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
-import type { Url } from 'url';
 import express from 'express';
 import bodyParser from 'body-parser';
 import compression from 'compression';
 import type { RedisOptions } from 'ioredis';
 
-import type { IHttpRequestMethods } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
-import { N8N_VERSION, inDevelopment } from '@/constants';
+import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import type { IExternalHooksClass, IWebhookManager } from '@/Interfaces';
+import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
-import {
-	send,
-	sendErrorResponse,
-	sendSuccessResponse,
-	ServiceUnavailableError,
-} from '@/ResponseHelper';
+import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
 import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
-import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 import { getRedisClusterNodes } from './GenericHelpers';
+import { webhookRequestHandler } from '@/WebhookHelpers';
 
 export abstract class AbstractServer {
 	protected server: Server;
 
-	protected app: express.Application;
+	readonly app: express.Application;
 
 	protected externalHooks: IExternalHooksClass;
 
@@ -208,9 +201,7 @@ export abstract class AbstractServer {
 		const activeWorkflowRunner = this.activeWorkflowRunner;
 
 		// Register all webhook requests
-		this.app.all(`/${endpoint}/:path`, async (req, res) =>
-			this.handleWebhookRequest(req, res, activeWorkflowRunner),
-		);
+		this.app.all(`/${endpoint}/:path`, webhookRequestHandler(activeWorkflowRunner));
 	}
 
 	// ----------------------------------------
@@ -221,9 +212,7 @@ export abstract class AbstractServer {
 		const waitingWebhooks = Container.get(WaitingWebhooks);
 
 		// Register all webhook-waiting requests
-		this.app.all(`/${endpoint}/:path`, async (req, res) =>
-			this.handleWebhookRequest(req, res, waitingWebhooks),
-		);
+		this.app.all(`/${endpoint}/:path`, webhookRequestHandler(waitingWebhooks));
 	}
 
 	// ----------------------------------------
@@ -234,9 +223,7 @@ export abstract class AbstractServer {
 		const testWebhooks = Container.get(TestWebhooks);
 
 		// Register all test webhook requests (for testing via the UI)
-		this.app.all(`/${endpoint}/:path`, async (req, res) =>
-			this.handleWebhookRequest(req, res, testWebhooks),
-		);
+		this.app.all(`/${endpoint}/:path`, webhookRequestHandler(testWebhooks));
 
 		// Removes a test webhook
 		// TODO UM: check if this needs validation with user management.
@@ -286,8 +273,11 @@ export abstract class AbstractServer {
 	}
 
 	async start(): Promise<void> {
-		await this.setupErrorHandlers();
-		this.setupPushServer();
+		if (!inTest) {
+			await this.setupErrorHandlers();
+			this.setupPushServer();
+		}
+
 		this.setupCommonMiddlewares();
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
@@ -306,65 +296,16 @@ export abstract class AbstractServer {
 		}
 
 		await this.configure();
-		console.log(`Version: ${N8N_VERSION}`);
 
-		const defaultLocale = config.getEnv('defaultLocale');
-		if (defaultLocale !== 'en') {
-			console.log(`Locale: ${defaultLocale}`);
-		}
+		if (!inTest) {
+			console.log(`Version: ${N8N_VERSION}`);
 
-		await this.externalHooks.run('n8n.ready', [this, config]);
-	}
-
-	private async handleWebhookRequest(
-		req: express.Request<{ path: string }>,
-		res: express.Response,
-		webhookManager: IWebhookManager,
-	) {
-		const { path } = req.params;
-		const method = req.method;
-
-		if (!WEBHOOK_METHODS.includes(method)) {
-			return sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
-		}
-
-		if ('origin' in req.headers) {
-			res.header('Access-Control-Allow-Origin', '*');
-		}
-
-		if (method === 'OPTIONS') {
-			if (webhookManager.getWebhookMethods) {
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await webhookManager.getWebhookMethods(path);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					return sendErrorResponse(res, error as Error);
-				}
+			const defaultLocale = config.getEnv('defaultLocale');
+			if (defaultLocale !== 'en') {
+				console.log(`Locale: ${defaultLocale}`);
 			}
 
-			sendSuccessResponse(res, {}, true, 204);
-			return;
+			await this.externalHooks.run('n8n.ready', [this, config]);
 		}
-
-		let response;
-		try {
-			response = await webhookManager.executeWebhook(method as IHttpRequestMethods, path, req, res);
-		} catch (error) {
-			return sendErrorResponse(res, error as Error);
-		}
-
-		// Don't respond, if already responded
-		if (!response.noWebhookResponse)
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
-	}
-}
-
-declare module 'http' {
-	export interface IncomingMessage {
-		parsedUrl: Url;
 	}
 }

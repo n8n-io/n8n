@@ -51,8 +51,10 @@ import config from '@/config';
 import type {
 	IExecutionDb,
 	IResponseCallbackData,
+	IWebhookManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
+	WebhookRequest,
 } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -82,6 +84,48 @@ const xmlParser = new XmlParser({
 	normalizeTags: true, // Transform tags to lowercase
 	explicitArray: false, // Only put properties in array if length > 1
 });
+
+export const webhookRequestHandler =
+	(webhookManager: IWebhookManager) => async (req: WebhookRequest, res: express.Response) => {
+		const { path } = req.params;
+		const method = req.method;
+
+		if (method !== 'OPTIONS' && !WEBHOOK_METHODS.includes(method)) {
+			return ResponseHelper.sendErrorResponse(
+				res,
+				new Error(`The method ${method} is not supported.`),
+			);
+		}
+
+		// Setup CORS headers only if the incoming request has an `origin` header
+		if ('origin' in req.headers) {
+			if (webhookManager.getWebhookMethods) {
+				try {
+					const allowedMethods = await webhookManager.getWebhookMethods(path);
+					res.header('Access-Control-Allow-Methods', ['OPTIONS', ...allowedMethods].join(', '));
+				} catch (error) {
+					return ResponseHelper.sendErrorResponse(res, error as Error);
+				}
+			}
+			res.header('Access-Control-Allow-Origin', req.headers.origin);
+		}
+
+		if (method === 'OPTIONS') {
+			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+		}
+
+		let response;
+		try {
+			response = await webhookManager.executeWebhook(method, path, req, res);
+		} catch (error) {
+			return ResponseHelper.sendErrorResponse(res, error as Error);
+		}
+
+		// Don't respond, if already responded
+		if (response.noWebhookResponse !== true) {
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		}
+	};
 
 /**
  * Returns all the webhooks which should be created for the given workflow
