@@ -10,7 +10,7 @@
 			}"
 		>
 			<div id="banners" :class="$style.banners">
-				<banner-stack />
+				<banner-stack v-if="!isDemoMode" />
 			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
@@ -58,6 +58,7 @@ import {
 	useCloudPlanStore,
 	useSourceControlStore,
 	useUsageStore,
+	useCanvasStore,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
@@ -93,9 +94,13 @@ export default defineComponent({
 			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
+			useCanvasStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
+		},
+		isDemoMode(): boolean {
+			return this.canvasStore.isDemo;
 		},
 	},
 	data() {
@@ -133,7 +138,7 @@ export default defineComponent({
 			} catch (e) {}
 		},
 		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
+			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -299,6 +304,7 @@ export default defineComponent({
 
 .banners {
 	grid-area: banners;
+	z-index: 999;
 }
 
 .content {

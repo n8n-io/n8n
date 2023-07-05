@@ -15,6 +15,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
+import { useUIStore } from '@/stores';
 
 /*
 	Canvas constants and functions.
@@ -689,6 +690,7 @@ export const getZoomToFit = (
 	const { minX, minY, maxX, maxY } = getWorkflowCorners(nodes);
 	const { editorWidth, editorHeight } = getContentDimensions();
 	const footerHeight = addFooterPadding ? 200 : 100;
+	const uiStore = useUIStore();
 
 	const PADDING = NODE_SIZE * 4;
 
@@ -704,7 +706,7 @@ export const getZoomToFit = (
 	xOffset += (editorWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
 	let yOffset = minY * -1 * zoomLevel; // find top right corner
-	yOffset += (editorHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
+	yOffset += (editorHeight - (maxY - minY + footerHeight - uiStore.headerHeight) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,

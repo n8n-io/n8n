@@ -129,6 +129,7 @@ export default defineComponent({
 }
 
 .icon {
+	line-height: 1;
 	margin-right: var(--spacing-xs);
 }
 
