@@ -1487,6 +1487,7 @@ export interface SourceControlAggregatedFile {
 	name: string;
 	status: string;
 	type: string;
+	updatedAt?: string;
 }
 
 export declare namespace Cloud {
