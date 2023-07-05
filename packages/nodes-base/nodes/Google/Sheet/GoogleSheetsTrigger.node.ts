@@ -20,6 +20,7 @@ import {
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -84,15 +85,13 @@ export class GoogleSheetsTrigger implements INodeType {
 						type: 'string',
 						extractValue: {
 							type: 'regex',
-							regex:
-								'https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex:
-										'https:\\/\\/(?:drive|docs)\\.google.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 									errorMessage: 'Not a valid Google Drive File URL',
 								},
 							},
