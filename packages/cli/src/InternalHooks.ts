@@ -1063,7 +1063,9 @@ export class InternalHooks implements IInternalHooksClass {
 	}
 
 	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
-		return this.telemetry.track('User finished pull via UI', data);
+		return this.telemetry.track('User finished pull via UI', {
+			workflow_updates: data.workflow_updates,
+		});
 	}
 
 	async onSourceControlUserPulledAPI(data: {
