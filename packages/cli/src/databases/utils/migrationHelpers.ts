@@ -66,41 +66,16 @@ const runDisablingForeignKeys = async (
 	if (dbType !== 'sqlite') throw new Error('Disabling transactions only available in sqlite');
 	await queryRunner.query('PRAGMA foreign_keys=OFF');
 	await queryRunner.startTransaction();
-
-	await fn.call(migration, context);
-
-	await queryRunner.commitTransaction();
-	await queryRunner.query('PRAGMA foreign_keys=ON');
-};
-
-export const copyTable = async (
-	{ tablePrefix, queryRunner }: Pick<MigrationContext, 'queryRunner' | 'tablePrefix'>,
-	fromTable: string,
-	toTable: string,
-	fromFields: string[] = [],
-	toFields: string[] = [],
-	batchSize = 10,
-) => {
-	const driver = queryRunner.connection.driver;
-	fromTable = driver.escape(`${tablePrefix}${fromTable}`);
-	toTable = driver.escape(`${tablePrefix}${toTable}`);
-	const fromFieldsStr = fromFields.length
-		? fromFields.map((f) => driver.escape(f)).join(', ')
-		: '*';
-	const toFieldsStr = toFields.length
-		? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
-		: '';
-
-	const total = await queryRunner
-		.query(`SELECT COUNT(*) as count from ${fromTable}`)
-		.then((rows: Array<{ count: number }>) => rows[0].count);
-
-	let migrated = 0;
-	while (migrated < total) {
-		await queryRunner.query(
-			`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${migrated}, ${batchSize}`,
-		);
-		migrated += batchSize;
+	try {
+		await fn.call(migration, context);
+		await queryRunner.commitTransaction();
+	} catch (e) {
+		try {
+			await queryRunner.rollbackTransaction();
+		} catch {}
+		throw e;
+	} finally {
+		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 };
 
@@ -138,6 +113,37 @@ export const wrapMigration = (migration: Migration) => {
 			}
 		},
 	});
+};
+
+export const copyTable = async (
+	{ tablePrefix, queryRunner }: Pick<MigrationContext, 'queryRunner' | 'tablePrefix'>,
+	fromTable: string,
+	toTable: string,
+	fromFields: string[] = [],
+	toFields: string[] = [],
+	batchSize = 10,
+) => {
+	const driver = queryRunner.connection.driver;
+	fromTable = driver.escape(`${tablePrefix}${fromTable}`);
+	toTable = driver.escape(`${tablePrefix}${toTable}`);
+	const fromFieldsStr = fromFields.length
+		? fromFields.map((f) => driver.escape(f)).join(', ')
+		: '*';
+	const toFieldsStr = toFields.length
+		? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
+		: '';
+
+	const total = await queryRunner
+		.query(`SELECT COUNT(*) as count from ${fromTable}`)
+		.then((rows: Array<{ count: number }>) => rows[0].count);
+
+	let migrated = 0;
+	while (migrated < total) {
+		await queryRunner.query(
+			`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${migrated}, ${batchSize}`,
+		);
+		migrated += batchSize;
+	}
 };
 
 function batchQuery(query: string, limit: number, offset = 0): string {
