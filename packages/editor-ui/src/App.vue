@@ -239,10 +239,6 @@ export default defineComponent({
 					});
 				}
 			});
-			// TODO: Implement proper banner logic
-			this.uiStore.showBanner(BANNERS.TRIAL);
-			this.uiStore.showBanner(BANNERS.TRIAL_OVER);
-			this.uiStore.showBanner(BANNERS.V1);
 		},
 	},
 	async mounted() {
@@ -252,7 +248,15 @@ export default defineComponent({
 		this.authenticate();
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		void this.checkForCloudPlanData();
+		void this.checkForCloudPlanData().then(() => {
+			if (this.cloudPlanStore.userIsTrialing) {
+				if (this.cloudPlanStore.trialExpired) {
+					this.uiStore.showBanner(BANNERS.TRIAL_OVER);
+				} else {
+					this.uiStore.showBanner(BANNERS.TRIAL);
+				}
+			}
+		})
 
 		if (
 			this.sourceControlStore.isEnterpriseSourceControlEnabled &&
