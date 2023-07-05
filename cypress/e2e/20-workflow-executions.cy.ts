@@ -32,7 +32,6 @@ describe('Current Workflow Executions', () => {
 });
 
 const createMockExecutions = () => {
-	workflowPage.actions.turnOnManualExecutionSaving();
 	executionsTab.actions.createManualExecutions(5);
 	// Make some failed executions by enabling Code node with syntax error
 	executionsTab.actions.toggleNodeEnabled('Error');
