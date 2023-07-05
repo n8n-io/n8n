@@ -66,11 +66,17 @@ const runDisablingForeignKeys = async (
 	if (dbType !== 'sqlite') throw new Error('Disabling transactions only available in sqlite');
 	await queryRunner.query('PRAGMA foreign_keys=OFF');
 	await queryRunner.startTransaction();
-
-	await fn.call(migration, context);
-
-	await queryRunner.commitTransaction();
-	await queryRunner.query('PRAGMA foreign_keys=ON');
+	try {
+		await fn.call(migration, context);
+		await queryRunner.commitTransaction();
+	} catch (e) {
+		try {
+			await queryRunner.rollbackTransaction();
+		} catch {}
+		throw e;
+	} finally {
+		await queryRunner.query('PRAGMA foreign_keys=ON');
+	}
 };
 
 export const wrapMigration = (migration: Migration) => {
