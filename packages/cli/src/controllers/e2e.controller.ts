@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import { RoleRepository, SettingsRepository, UserRepository } from '@db/repositories';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
@@ -66,6 +67,7 @@ export class E2EController {
 		private roleRepo: RoleRepository,
 		private settingsRepo: SettingsRepository,
 		private userRepo: UserRepository,
+		private workflowRunner: ActiveWorkflowRunner,
 	) {
 		license.isFeatureEnabled = (feature: LICENSE_FEATURES) =>
 			this.enabledFeatures[feature] ?? false;
@@ -76,6 +78,7 @@ export class E2EController {
 		config.set('ui.banners.v1.dismissed', true);
 		this.resetFeatures();
 		await this.resetLogStreaming();
+		await this.removeActiveWorkflows();
 		await this.truncateAll();
 		await this.setupUserManagement(req.body.owner, req.body.members);
 	}
@@ -90,6 +93,11 @@ export class E2EController {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as LICENSE_FEATURES] = false;
 		}
+	}
+
+	private async removeActiveWorkflows() {
+		this.workflowRunner.removeAllQueuedWorkflowActivations();
+		await this.workflowRunner.removeAll();
 	}
 
 	private async resetLogStreaming() {
