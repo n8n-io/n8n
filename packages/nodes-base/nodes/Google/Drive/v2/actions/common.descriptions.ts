@@ -33,8 +33,7 @@ export const fileRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex:
-							'https:\\/\\/(?:drive|docs)\\.google.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 						errorMessage: 'Not a valid Google Drive File URL',
 					},
 				},
