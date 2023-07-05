@@ -61,7 +61,10 @@ async function pullWorkfolder() {
 			)) as unknown as SourceControlAggregatedFile[]) || [];
 
 		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
-			return file.type !== 'workflow' && file.status !== 'created' && file.location !== 'local';
+			if (file.type === 'workflow' && file.status === 'created' && file.location === 'local') {
+				return false;
+			}
+			return true;
 		});
 		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
 			toast.showMessage({
