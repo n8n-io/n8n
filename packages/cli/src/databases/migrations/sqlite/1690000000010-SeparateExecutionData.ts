@@ -1,4 +1,5 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import { copyTable } from '@/databases/utils/migrationHelpers';
 
 export class SeparateExecutionData1690000000010 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {
@@ -11,13 +12,12 @@ export class SeparateExecutionData1690000000010 implements ReversibleMigration {
 			)`,
 		);
 
-		await queryRunner.query(
-			`INSERT INTO "${tablePrefix}execution_data" (
-				"executionId",
-				"workflowData",
-				"data")
-				SELECT "id", "workflowData", "data" FROM "${tablePrefix}execution_entity"
-			`,
+		await copyTable(
+			{ tablePrefix, queryRunner },
+			'execution_entity',
+			'execution_data',
+			['id', 'workflowData', 'data'],
+			['executionId', 'workflowData', 'data'],
 		);
 
 		await queryRunner.query(
