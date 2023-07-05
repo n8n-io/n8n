@@ -113,7 +113,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .userActionsMenu {
-	width: 160px;
+	min-width: 160px;
 }
 
 .activator {
