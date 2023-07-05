@@ -10,7 +10,6 @@ import {
 	buildCustomFieldSearch,
 	prepareOptional,
 	prepareRangeQuery,
-	prepareSortQuery,
 } from '../../helpers/utils';
 import { prepareCustomFields, theHiveApiRequest } from '../../transport';
 import type { IQueryObject } from '../../helpers/interfaces';
@@ -19,18 +18,42 @@ const properties: INodeProperties[] = [
 	...returnAllAndLimit,
 	filtersCollection,
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'fixedCollection',
+		placeholder: 'Add Sort Rule',
 		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
 		options: [
 			{
-				displayName: 'Sort',
-				name: 'sort',
-				type: 'string',
-				placeholder: '±Attribut, exp +status',
-				default: '',
+				displayName: 'Fields',
+				name: 'fields',
+				values: [
+					{
+						displayName: 'Field',
+						name: 'field',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+							},
+						],
+						default: 'asc',
+					},
+				],
 			},
 		],
 	},
@@ -52,7 +75,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const filters = this.getNodeParameter('filters', i, {});
 	const queryAttributs = prepareOptional(filters);
-	const options = this.getNodeParameter('options', i);
 
 	const _searchQuery: IQueryObject = And();
 
@@ -82,19 +104,32 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const qs: IDataObject = {};
 
-	const body = {
-		query: [
-			{
-				_name: 'listAlert',
-			},
-			{
-				_name: 'filter',
-				_and: _searchQuery._and,
-			},
-		],
-	};
+	const query: IDataObject[] = [
+		{
+			_name: 'listAlert',
+		},
+		{
+			_name: 'filter',
+			_and: _searchQuery._and,
+		},
+	];
 
-	prepareSortQuery(options.sort as string, body);
+	const sortFields = this.getNodeParameter('sort.fields', i, []) as IDataObject[];
+
+	if (sortFields.length) {
+		query.push({
+			_name: 'sort',
+			_fields: sortFields.map((field) => {
+				return {
+					[`${field.field as string}`]: field.direction as string,
+				};
+			}),
+		});
+	}
+
+	const body: IDataObject = {
+		query,
+	};
 
 	if (limit !== undefined) {
 		prepareRangeQuery(`0-${limit}`, body);

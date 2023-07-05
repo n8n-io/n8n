@@ -5,24 +5,12 @@ import * as create from './create.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as getMany from './getMany.operation';
-import * as markAsRead from './markAsRead.operation';
-import * as markAsUnread from './markAsUnread.operation';
+import * as status from './status.operation';
 import * as merge from './merge.operation';
 import * as promote from './promote.operation';
 import * as update from './update.operation';
 
-export {
-	count,
-	create,
-	executeResponder,
-	get,
-	getMany,
-	markAsRead,
-	markAsUnread,
-	merge,
-	promote,
-	update,
-};
+export { count, create, executeResponder, get, getMany, status, merge, promote, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -58,16 +46,6 @@ export const description: INodeProperties[] = [
 				action: 'Get many alerts',
 			},
 			{
-				name: 'Mark as Read',
-				value: 'markAsRead',
-				action: 'Mark the alert as read',
-			},
-			{
-				name: 'Mark as Unread',
-				value: 'markAsUnread',
-				action: 'Mark the alert as unread',
-			},
-			{
 				name: 'Merge Into Case',
 				value: 'merge',
 				action: 'Merge alert into an existing case',
@@ -82,6 +60,11 @@ export const description: INodeProperties[] = [
 				value: 'update',
 				action: 'Update alert',
 			},
+			{
+				name: 'Update Status',
+				value: 'status',
+				action: 'Update alert status',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -95,8 +78,7 @@ export const description: INodeProperties[] = [
 	...executeResponder.description,
 	...get.description,
 	...getMany.description,
-	...markAsRead.description,
-	...markAsUnread.description,
+	...status.description,
 	...merge.description,
 	...promote.description,
 	...update.description,

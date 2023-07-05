@@ -196,7 +196,6 @@ export const severitySelector: INodeProperties = {
 		{
 			name: 'Critical',
 			value: 4,
-			description: 'Only for TheHive 4+',
 		},
 	],
 	default: 2,

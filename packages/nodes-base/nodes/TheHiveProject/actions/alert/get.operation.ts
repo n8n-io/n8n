@@ -14,8 +14,15 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Include Similar Alerts',
+				name: 'includeSimilarAlerts',
+				type: 'boolean',
+				description: 'Whether to include similar cases',
+				default: false,
+			},
+			{
 				displayName: 'Include Similar Cases',
-				name: 'includeSimilar',
+				name: 'includeSimilarCases',
 				type: 'boolean',
 				description: 'Whether to include similar cases',
 				default: false,
@@ -34,18 +41,50 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+	let responseData: IDataObject;
 
 	const alertId = this.getNodeParameter('alertId', i, '', { extractValue: true }) as string;
-	const includeSimilar = this.getNodeParameter('options.includeSimilar', i, false) as boolean;
+	const options = this.getNodeParameter('options', i, {});
 
-	const qs: IDataObject = {};
+	responseData = await theHiveApiRequest.call(this, 'GET', `/v1/alert/${alertId}`);
 
-	if (includeSimilar) {
-		qs.similarity = true;
+	if (responseData && options.includeSimilarAlerts) {
+		const similarAlerts = await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+			query: [
+				{
+					_name: 'getAlert',
+					idOrName: alertId,
+				},
+				{
+					_name: 'similarAlerts',
+				},
+			],
+		});
+
+		responseData = {
+			...responseData,
+			similarAlerts,
+		};
 	}
 
-	responseData = await theHiveApiRequest.call(this, 'GET', `/v1/alert/${alertId}`, {}, qs);
+	if (responseData && options.includeSimilarCases) {
+		const similarCases = await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+			query: [
+				{
+					_name: 'getAlert',
+					idOrName: alertId,
+				},
+				{
+					_name: 'similarCases',
+				},
+			],
+		});
+
+		responseData = {
+			...responseData,
+			similarCases,
+		};
+	}
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

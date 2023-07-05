@@ -7,18 +7,22 @@ import { alertRLC } from '../common.description';
 const properties: INodeProperties[] = [
 	alertRLC,
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		placeholder: 'Add Field',
 		type: 'collection',
 		default: {},
 		options: [
 			{
-				displayName: 'Case Template',
+				displayName: 'Case Template Name or ID',
 				name: 'caseTemplate',
-				type: 'string',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
-				description: 'Case template to use when a case is created from this alert',
+				typeOptions: {
+					loadOptionsMethod: 'loadCaseTemplate',
+				},
 			},
 		],
 	},
@@ -37,14 +41,21 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let responseData: IDataObject | IDataObject[] = [];
 
 	const alertId = this.getNodeParameter('alertId', i, '', { extractValue: true }) as string;
-
-	const additionalFields = this.getNodeParameter('additionalFields', i);
+	const caseTemplate = this.getNodeParameter('options.caseTemplate', i, '') as string;
 
 	const body: IDataObject = {};
 
-	Object.assign(body, additionalFields);
+	// await theHiveApiRequest.call(this, 'POST', '/v1/caseTemplate', {
+	// 	name: 'test template 001',
+	// 	displayName: 'Test Template 001',
+	// 	description: 'test',
+	// });
 
-	responseData = await theHiveApiRequest.call(this, 'POST', `/alert/${alertId}/createCase`, body);
+	if (caseTemplate) {
+		body.caseTemplate = caseTemplate;
+	}
+
+	responseData = await theHiveApiRequest.call(this, 'POST', `/v1/alert/${alertId}/case`, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

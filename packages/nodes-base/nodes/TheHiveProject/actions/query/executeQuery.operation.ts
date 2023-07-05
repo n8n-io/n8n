@@ -61,6 +61,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
 
+	if (typeof responseData !== 'object') {
+		responseData = { queryResult: responseData };
+	}
+
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },
 	});

@@ -7,8 +7,7 @@ type NodeMap = {
 		| 'executeResponder'
 		| 'get'
 		| 'getMany'
-		| 'markAsRead'
-		| 'markAsUnread'
+		| 'status'
 		| 'merge'
 		| 'promote'
 		| 'update';
