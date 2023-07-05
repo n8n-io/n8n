@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { SpreadSheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 
 export const description: SpreadSheetProperties = [
 	// {
@@ -37,8 +38,7 @@ export const description: SpreadSheetProperties = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex:
-						'https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 				},
 				validation: [
 					{
