@@ -24,8 +24,7 @@ export class CompareDatasets implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'main'],
 		inputNames: ['Input A', 'Input B'],
-		forceInputNodeExecution: '={{ $version < 2.3 }}',
-		requiredInputs: '={{ $version < 2.3 ? undefined : 1 }}',
+		requiredInputs: 1,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
 		outputNames: ['In A only', 'Same', 'Different', 'In B only'],

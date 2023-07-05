@@ -1429,8 +1429,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	eventTriggerDescription?: string;
 	activationMessage?: string;
 	inputs: string[];
-	forceInputNodeExecution?: string | boolean; // TODO: This option should be deprecated after a while
-	requiredInputs?: string | number[] | number;
+	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
 	outputs: string[];
 	outputNames?: string[];
@@ -1770,6 +1769,7 @@ export interface IWorkflowSettings {
 	saveManualExecutions?: 'DEFAULT' | boolean;
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
+	executionOrder?: 'v0' | 'v1';
 }
 
 export interface WorkflowTestData {
