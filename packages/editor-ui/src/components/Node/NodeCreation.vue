@@ -145,6 +145,7 @@ export default defineComponent({
 	top: 0;
 	right: 0;
 	display: flex;
+	z-index: 2;
 }
 
 .addStickyButton {
