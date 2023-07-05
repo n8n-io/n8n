@@ -60,6 +60,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 	const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const canvasState = computed(() => ({
+		zoomLevel: nodeViewScale.value,
+		offset: uiStore.nodeViewOffsetPosition,
+	}));
 
 	watch(readOnlyEnv, (readOnly) => {
 		if (jsPlumbInstanceRef.value) {
@@ -283,5 +287,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomToFit,
 		wheelScroll,
 		initInstance,
+		canvasState,
 	};
 });

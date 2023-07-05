@@ -201,6 +201,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	LOCAL_STORAGE_WORKFLOW_CACHE,
+	LOCAL_STORAGE_CANVAS_CACHE,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -401,6 +402,10 @@ export default defineComponent({
 			localStorage.setItem(
 				LOCAL_STORAGE_WORKFLOW_CACHE,
 				JSON.stringify(this.workflowsStore.workflow),
+			);
+			localStorage.setItem(
+				LOCAL_STORAGE_CANVAS_CACHE,
+				JSON.stringify(this.canvasStore.canvasState),
 			);
 			this.resetWorkspace();
 			next();
@@ -881,7 +886,17 @@ export default defineComponent({
 			} else if (this.workflowsStore.workflowCached) {
 				this.uiStore.stateIsDirty = this.uiStore.stateIsDirtyCached;
 			}
-			this.canvasStore.zoomToFit();
+
+			const canvasState: { zoomLevel: number; offset: XYPosition } | null = jsonParse(
+				localStorage.getItem(LOCAL_STORAGE_CANVAS_CACHE) ?? '',
+				{ fallbackValue: null },
+			);
+			if (canvasState) {
+				this.canvasStore.setZoomLevel(canvasState.zoomLevel, canvasState.offset);
+			} else {
+				this.canvasStore.zoomToFit();
+			}
+
 			void this.$externalHooks().run('workflow.open', {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
@@ -2507,7 +2522,8 @@ export default defineComponent({
 				}
 				if (workflowId !== null) {
 					let workflow: IWorkflowDb | null = jsonParse(
-						localStorage.getItem(LOCAL_STORAGE_WORKFLOW_CACHE) || 'null',
+						localStorage.getItem(LOCAL_STORAGE_WORKFLOW_CACHE) ?? '',
+						{ fallbackValue: null },
 					);
 
 					if (!workflow) {
@@ -2527,6 +2543,7 @@ export default defineComponent({
 						// Open existing workflow
 						await this.openWorkflow(workflow);
 						localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_CACHE);
+						localStorage.removeItem(LOCAL_STORAGE_CANVAS_CACHE);
 						this.workflowsStore.workflowCached = false;
 					}
 				} else if (this.$route.meta?.nodeView === true) {
