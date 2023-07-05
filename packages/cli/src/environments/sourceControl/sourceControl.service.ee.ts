@@ -221,6 +221,9 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 		let diffResult: SourceControlledFile[] = [];
+		if (options.force === true) {
+			options.skipDiff = true;
+		}
 		if (!options.skipDiff) {
 			diffResult = await this.getStatus();
 			const possibleConflicts = diffResult?.filter((file) => file.conflict);
@@ -312,10 +315,15 @@ export class SourceControlService {
 			]);
 		}
 		mergedFileNames.add(this.sourceControlExportService.getOwnersPath());
-		const deletedFiles = new Set<string>(status.deleted);
-		deletedFiles.forEach((e) => mergedFileNames.delete(e));
+		const filesMarkedToBeDeleted = new Set<string>();
+		status.deleted?.forEach((e) => {
+			if (mergedFileNames.has(e)) {
+				filesMarkedToBeDeleted.add(e);
+				mergedFileNames.delete(e);
+			}
+		});
 		await this.unstage();
-		const stageResult = await this.gitService.stage(mergedFileNames, deletedFiles);
+		const stageResult = await this.gitService.stage(mergedFileNames, filesMarkedToBeDeleted);
 		if (!stageResult) {
 			const statusResult = await this.gitService.status();
 			return { staged: statusResult.staged };
