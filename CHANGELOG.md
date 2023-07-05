@@ -1,3 +1,27 @@
+## [0.234.1](https://github.com/n8n-io/n8n/compare/n8n@0.234.0...n8n@0.234.1) (2023-07-05)
+
+
+### Bug Fixes
+
+* **core:** All migrations should run in a transaction ([#6519](https://github.com/n8n-io/n8n/issues/6519)) ([e3fcf17](https://github.com/n8n-io/n8n/commit/e3fcf17d0d291756961fcf55a6e24c60ea8dc461))
+* **core:** Fix credentials test ([#6569](https://github.com/n8n-io/n8n/issues/6569)) ([d6b6669](https://github.com/n8n-io/n8n/commit/d6b66695ffb3fdebdc16ce738590907110c1e443))
+* **core:** Fix migrations for MySQL/MariaDB ([#6591](https://github.com/n8n-io/n8n/issues/6591)) ([464f0f7](https://github.com/n8n-io/n8n/commit/464f0f7e3a0f5c795f316b684700fa0519edbea1))
+* **core:** Improve the performance of last 2 sqlite migrations ([#6522](https://github.com/n8n-io/n8n/issues/6522)) ([d2b8207](https://github.com/n8n-io/n8n/commit/d2b8207e61f2c8b72085a74ba7d29890a7486698))
+* **core:** Remove typeorm patches, but still enforce transactions on every migration ([#6594](https://github.com/n8n-io/n8n/issues/6594)) ([7bb85e0](https://github.com/n8n-io/n8n/commit/7bb85e07f9f85da3a44c8704b52776dc5863a78f)), closes [#6519](https://github.com/n8n-io/n8n/issues/6519)
+* **Edit Image Node:** Fix transparent operation ([#6513](https://github.com/n8n-io/n8n/issues/6513)) ([de2281d](https://github.com/n8n-io/n8n/commit/de2281de82220c80286fc1ee70eb4c45fde87525))
+* **editor:** Show retry information in execution list only when it exists ([#6587](https://github.com/n8n-io/n8n/issues/6587)) ([0b8c046](https://github.com/n8n-io/n8n/commit/0b8c046a5b23d9f4afeb8bd001d77f914c0ffda4))
+* Fix migrations for postgres and mysql ([edce39a](https://github.com/n8n-io/n8n/commit/edce39a26d9f3b3453a29592a065cd11472c8553))
+* **Google Drive Node:** URL parsing ([#6527](https://github.com/n8n-io/n8n/issues/6527)) ([5b01f0e](https://github.com/n8n-io/n8n/commit/5b01f0e320c808512f727d56134388b74420aeba))
+* **Google Sheets Node:** Incorrect read of 0 and false ([#6525](https://github.com/n8n-io/n8n/issues/6525)) ([d9cbae4](https://github.com/n8n-io/n8n/commit/d9cbae4eba7775468eccda6044072cb4c23599a3))
+* **Merge Node:** Enrich input 2 fix ([#6526](https://github.com/n8n-io/n8n/issues/6526)) ([666e0f0](https://github.com/n8n-io/n8n/commit/666e0f07f8da16355d1a70464132227c61ff3e80))
+* **Notion Node:** Version fix ([#6531](https://github.com/n8n-io/n8n/issues/6531)) ([442897a](https://github.com/n8n-io/n8n/commit/442897a317d19ae77c0b953dc82baa413769b025))
+* **Salesforce Node:** Fix typo for adding a contact to a campaign ([#6598](https://github.com/n8n-io/n8n/issues/6598)) ([f6a9497](https://github.com/n8n-io/n8n/commit/f6a9497d89efcb7ea0ef0ef2b32de0e0b201ecb3))
+* **Sendy Node:** Fix issue with brand id not being sent ([#6530](https://github.com/n8n-io/n8n/issues/6530)) ([046265e](https://github.com/n8n-io/n8n/commit/046265e984d781d158083ad25afedb358dc64242))
+* **Strapi Node:** Fix issue with pagination ([#4991](https://github.com/n8n-io/n8n/issues/4991)) ([e5edbb6](https://github.com/n8n-io/n8n/commit/e5edbb6e4abd4decc19e10643fd526361744dbb9))
+* **XML Node:** Fix issue with not returning valid data ([#6565](https://github.com/n8n-io/n8n/issues/6565)) ([c206b3d](https://github.com/n8n-io/n8n/commit/c206b3d57a317b9fc3a4df71f9d3acca757ff077))
+
+
+
 # [0.234.0](https://github.com/n8n-io/n8n/compare/n8n@0.233.0...n8n@0.234.0) (2023-06-22)
 
 
