@@ -292,7 +292,7 @@ export async function executeWebhook(
 				}
 
 				if (!req.body) {
-					throw new ResponseHelper.UnprocessableRequestError(`Unknown content type: ${type}`);
+					req.body = {};
 				}
 			}
 		}
