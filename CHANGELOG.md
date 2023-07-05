@@ -1,3 +1,25 @@
+# [2.0.0](https://github.com/n8n-io/n8n/compare/n8n@1.0.0...n8n@2.0.0) (2023-07-05)
+
+
+### Bug Fixes
+
+* **core:** Fix credentials test ([#6569](https://github.com/n8n-io/n8n/issues/6569)) ([8f244df](https://github.com/n8n-io/n8n/commit/8f244df0f9efcb087a78dd8d9481489c484c77b7))
+* **core:** Fix migrations for MySQL/MariaDB ([#6591](https://github.com/n8n-io/n8n/issues/6591)) ([b9da67b](https://github.com/n8n-io/n8n/commit/b9da67b653bf19f39d0d1506d3140c71432efaed))
+* **core:** Make node execution order configurable, and backward-compatible ([#6507](https://github.com/n8n-io/n8n/issues/6507)) ([d97edbc](https://github.com/n8n-io/n8n/commit/d97edbcffa966a693548eed033ac41d4a404fc23))
+* **core:** Update pruning related config defaults for v1 ([#6577](https://github.com/n8n-io/n8n/issues/6577)) ([ffb4e47](https://github.com/n8n-io/n8n/commit/ffb4e470b56222ae11891d478e96ea9c31675afe))
+* **editor:** Restore expression completions ([#6566](https://github.com/n8n-io/n8n/issues/6566)) ([516e572](https://github.com/n8n-io/n8n/commit/516e5728f73da6393defe7633533cc142c531c7a))
+* **editor:** Show retry information in execution list only when it exists ([#6587](https://github.com/n8n-io/n8n/issues/6587)) ([2580286](https://github.com/n8n-io/n8n/commit/2580286a198e53c3bf3db6e56faed301b606db07))
+* **Sendy Node:** Fix issue with brand id not being sent ([#6530](https://github.com/n8n-io/n8n/issues/6530)) ([b9e5211](https://github.com/n8n-io/n8n/commit/b9e52117355d939e77a2e3c59a7f67ac21e31b22))
+* **Strapi Node:** Fix issue with pagination ([#4991](https://github.com/n8n-io/n8n/issues/4991)) ([4253b48](https://github.com/n8n-io/n8n/commit/4253b48b26d1625cd2fb7f38159f9528cea45f34))
+* **XML Node:** Fix issue with not returning valid data ([#6565](https://github.com/n8n-io/n8n/issues/6565)) ([c2b9d5a](https://github.com/n8n-io/n8n/commit/c2b9d5ac506375ecc316e8c79a3ce0bf143e9406))
+
+
+### Features
+
+* Add missing input panels to some trigger nodes ([#6518](https://github.com/n8n-io/n8n/issues/6518)) ([3b12864](https://github.com/n8n-io/n8n/commit/3b12864460a458f23b57a6f3f4b40d0d364ef6e6))
+
+
+
 # [1.0.0](https://github.com/n8n-io/n8n/compare/n8n@0.234.0...n8n@1.0.0) (2023-06-27)
 
 ### ⚠ BREAKING CHANGES

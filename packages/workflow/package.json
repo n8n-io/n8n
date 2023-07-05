@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
