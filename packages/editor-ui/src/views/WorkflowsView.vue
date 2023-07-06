@@ -106,6 +106,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -117,6 +118,7 @@ const StatusFilter = {
 
 const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
+	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
@@ -167,9 +169,6 @@ const WorkflowsView = defineComponent({
 					value: StatusFilter.DEACTIVATED,
 				},
 			];
-		},
-		readOnlyEnv(): boolean {
-			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {
