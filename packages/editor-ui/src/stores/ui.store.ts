@@ -33,7 +33,7 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
-import type { BANNERS } from '@/constants';
+import { BANNERS } from '@/constants';
 import type {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
@@ -551,9 +551,21 @@ export const useUIStore = defineStore(STORES.UI, {
 				location.href = this.upgradeLinkUrl(source, utm_campaign);
 			}
 		},
-		dismissBanner(name: BANNERS, type: 'temporary' | 'permanent' = 'temporary'): void {
+		async dismissBanner(
+			name: BANNERS,
+			type: 'temporary' | 'permanent' = 'temporary',
+			skipReq = false,
+		): Promise<void> {
+			if (type === 'permanent') {
+				if (name === BANNERS.V1 && !skipReq) {
+					await dismissV1BannerPermanently(useRootStore().getRestApiContext);
+				}
+				this.banners[name].dismissed = true;
+				this.banners[name].type = 'permanent';
+				return;
+			}
 			this.banners[name].dismissed = true;
-			this.banners[name].type = type;
+			this.banners[name].type = 'temporary';
 		},
 		showBanner(name: BANNERS): void {
 			this.banners[name].dismissed = false;

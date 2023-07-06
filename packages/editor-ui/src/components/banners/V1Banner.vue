@@ -9,8 +9,8 @@ const uiStore = useUIStore();
 
 const { isInstanceOwner } = useUsersStore();
 
-function dismiss() {
-	uiStore.dismissBanner(BANNERS.V1);
+async function dismissPermanently() {
+	await uiStore.dismissBanner(BANNERS.V1, 'permanent');
 }
 </script>
 
@@ -18,7 +18,7 @@ function dismiss() {
 	<base-banner customIcon="info-circle" theme="warning" :name="BANNERS.V1">
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
-			<a v-if="isInstanceOwner" :class="$style.link" @click="dismiss">
+			<a v-if="isInstanceOwner" :class="$style.link" @click="dismissPermanently">
 				<span v-html="locale.baseText('generic.confirm')"></span>
 			</a>
 		</template>

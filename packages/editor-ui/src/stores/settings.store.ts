@@ -9,7 +9,7 @@ import {
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { EnterpriseEditionFeature } from '@/constants';
-import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { BANNERS, CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import type {
 	ILdapConfig,
 	IN8nPromptResponse,
@@ -31,6 +31,7 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils';
+import { useCloudPlanStore } from './cloudPlan.store';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -212,8 +213,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-			if (settings.banners.v1.dismissed) {
-				useUIStore().setBanners({ v1: { dismissed: true, mode: 'permanent' } });
+
+			if (settings.banners.v1.dismissed === true) {
+				// TODO: Just set it in store, no need to send request at this point
+				await useUIStore().dismissBanner(BANNERS.V1, 'permanent', true);
+			} else if (
+				useRootStore().versionCli.startsWith('1.') &&
+				!useCloudPlanStore().userIsTrialing
+			) {
+				useUIStore().showBanner(BANNERS.V1);
 			}
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);

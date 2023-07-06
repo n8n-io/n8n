@@ -249,14 +249,16 @@ export default defineComponent({
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		void this.checkForCloudPlanData().then(() => {
+			// TODO: Move this to initBanners
 			if (this.cloudPlanStore.userIsTrialing) {
+				this.uiStore.dismissBanner(BANNERS.V1, 'temporary');
 				if (this.cloudPlanStore.trialExpired) {
 					this.uiStore.showBanner(BANNERS.TRIAL_OVER);
 				} else {
 					this.uiStore.showBanner(BANNERS.TRIAL);
 				}
 			}
-		})
+		});
 
 		if (
 			this.sourceControlStore.isEnterpriseSourceControlEnabled &&
@@ -267,9 +269,6 @@ export default defineComponent({
 
 		this.loading = false;
 		this.initBanners();
-		if(this.rootStore.versionCli.startsWith('1.')) {
-			this.uiStore.showBanner(BANNERS.V1);
-		}
 
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
