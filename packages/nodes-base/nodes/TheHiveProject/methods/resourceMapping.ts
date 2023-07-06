@@ -9,6 +9,29 @@ import { theHiveApiRequest } from '../transport';
 import { TLP } from '../helpers/interfaces';
 import { loadAlertStatus, loadCaseTemplate } from './loadOptions';
 
+async function getCustomFields(this: ILoadOptionsFunctions, isRemoved?: boolean) {
+	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+		query: [
+			{
+				_name: 'listCustomField',
+			},
+		],
+	})) as IDataObject[];
+
+	return customFields.map((field) => ({
+		displayName: `Custom Field: ${(field.displayName || field.name) as string}`,
+		id: `customFields.${field.name}`,
+		required: false,
+		display: true,
+		type: (field.options as string[])?.length ? 'options' : (field.type as FieldType),
+		defaultMatch: false,
+		options: (field.options as string[])?.length
+			? (field.options as string[]).map((option) => ({ name: option, value: option }))
+			: undefined,
+		removed: isRemoved,
+	}));
+}
+
 export async function getAlertFields(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const alertStatus = await loadAlertStatus.call(this);
 	const caseTemplates = await loadCaseTemplate.call(this);
@@ -200,6 +223,9 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 			options: caseTemplates,
 		},
 	];
+
+	const customFields = (await getCustomFields.call(this, true)) || [];
+	fields.push(...customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,
@@ -431,27 +457,8 @@ export async function getAlertUpdateFields(
 		},
 	];
 
-	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
-		query: [
-			{
-				_name: 'listCustomField',
-			},
-		],
-	})) as IDataObject[];
-
-	for (const field of customFields) {
-		fields.push({
-			displayName: `Custom Field: ${(field.displayName || field.name) as string}`,
-			id: `customFields.${field.name}`,
-			required: false,
-			display: true,
-			type: (field.options as string[])?.length ? 'options' : (field.type as FieldType),
-			defaultMatch: false,
-			options: (field.options as string[])?.length
-				? (field.options as string[]).map((option) => ({ name: option, value: option }))
-				: undefined,
-		});
-	}
+	const customFields = (await getCustomFields.call(this)) || [];
+	fields.push(...customFields);
 
 	const columnData: ResourceMapperFields = {
 		fields,

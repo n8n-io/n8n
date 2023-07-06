@@ -2,11 +2,13 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
-import { customFieldsCollection2, observableDataType } from '../common.description';
 import { theHiveApiRequest } from '../../transport';
-import { convertCustomFieldUiToObject, splitTags } from '../../helpers/utils';
+
+import set from 'lodash/set';
 
 import FormData from 'form-data';
+import { splitTags } from '../../helpers/utils';
+import { observableDataType } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -80,7 +82,6 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
-	customFieldsCollection2,
 ];
 
 const displayOptions = {
@@ -98,25 +99,30 @@ export async function execute(
 	item: INodeExecutionData,
 ): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
-	let body: IDataObject = {};
+	let inputData: IDataObject = {};
 
 	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		body = item.json;
+		inputData = item.json;
 	}
 
 	if (dataMode === 'defineBelow') {
 		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
-		body = fields;
+		inputData = fields;
 	}
 
-	if (body.tags) {
-		body.tags = splitTags(body.tags);
+	if (inputData.tags) {
+		inputData.tags = splitTags(inputData.tags);
 	}
 
-	const customFieldsUi = this.getNodeParameter('customFieldsUi.values', i, {}) as IDataObject;
-	body.customFields = convertCustomFieldUiToObject(customFieldsUi);
+	const body: IDataObject = {};
+
+	for (const field of Object.keys(inputData)) {
+		// use set to construct the updateBody, as it allows to process customFields.fieldName
+		// if customFields provided under customFields property, it will be send as is
+		set(body, field, inputData[field]);
+	}
 
 	let multiPartRequest = false;
 	const formData = new FormData();
