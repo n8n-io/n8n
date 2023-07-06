@@ -152,7 +152,6 @@ export class SourceControlExportService {
 			workflowsToBeExported.map(async (e) => {
 				const fileName = this.getWorkflowPath(e.id);
 				const sanitizedWorkflow: ExportableWorkflow = {
-					active: e.active,
 					id: e.id,
 					name: e.name,
 					nodes: e.nodes,
