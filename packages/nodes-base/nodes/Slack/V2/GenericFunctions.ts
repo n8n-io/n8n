@@ -136,7 +136,7 @@ export function getMessageContent(
 ) {
 	const includeLinToWorkflow = this.getNodeParameter('includeLinkToWorkflow', i) as boolean;
 	const { id } = this.getWorkflow();
-	const automatedMessage = `_Automated with this <${process.env.N8N_EDITOR_BASE_URL}/workflow/${id}|n8n workflow>_`;
+	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}|n8n workflow>_`;
 	const messageType = this.getNodeParameter('messageType', i) as string;
 
 	let content: IDataObject = {};
