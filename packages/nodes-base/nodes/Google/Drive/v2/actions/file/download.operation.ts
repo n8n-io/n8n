@@ -1,12 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { fileRLC } from '../common.descriptions';
 

@@ -10,7 +10,6 @@
 		},
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
-		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["credentials/**/*.ts", "nodes/**/*.ts", "test/**/*.ts", "utils/**/*.ts"],

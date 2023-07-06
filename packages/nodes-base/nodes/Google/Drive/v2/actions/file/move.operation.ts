@@ -1,7 +1,11 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 import { driveRLC, fileRLC, folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 import { setParentFolder } from '../../helpers/utils';
