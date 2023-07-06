@@ -13,7 +13,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 					return new Proxy(
 						{},
 						{
-							get(target2, secretName): string | undefined {
+							get(target2, secretName): IDataObject | undefined {
 								if (typeof secretName !== 'string') {
 									return;
 								}

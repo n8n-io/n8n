@@ -403,11 +403,26 @@ export class VaultProvider extends SecretsProvider {
 		return [true];
 	}
 
-	getSecret(name: string): string {
-		return this.cachedSecrets[name] as unknown as string;
+	getSecret(name: string): IDataObject {
+		return this.cachedSecrets[name];
 	}
 
 	getSecretNames(): string[] {
-		return Object.keys(this.cachedSecrets);
+		const getKeys = ([k, v]: [string, IDataObject]): string[] => {
+			if (typeof v === 'object') {
+				const keys: string[] = [];
+				for (const key of Object.keys(v)) {
+					const value = v[key];
+					if (typeof value === 'object' && value !== null) {
+						keys.push(...getKeys([key, value as IDataObject]).map((ok) => `${k}.${ok}`));
+					} else {
+						keys.push(`${k}.${key}`);
+					}
+				}
+				return keys;
+			}
+			return [k];
+		};
+		return Object.entries(this.cachedSecrets).flatMap(getKeys);
 	}
 }

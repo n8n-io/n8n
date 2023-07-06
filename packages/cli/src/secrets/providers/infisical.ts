@@ -1,7 +1,7 @@
 import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/Interfaces';
 import InfisicalClient from 'infisical-node';
 import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 export interface InfisicalSettings {
 	token: string;
@@ -97,8 +97,8 @@ export class InfisicalProvider implements SecretsProvider {
 		//
 	}
 
-	getSecret(name: string): string {
-		return this.cachedSecrets[name];
+	getSecret(name: string): IDataObject {
+		return this.cachedSecrets[name] as unknown as IDataObject;
 	}
 
 	getSecretNames(): string[] {

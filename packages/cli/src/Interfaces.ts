@@ -815,6 +815,6 @@ export abstract class SecretsProvider {
 	abstract disconnect(): Promise<void>;
 	abstract update(): Promise<void>;
 	abstract test(): Promise<[boolean] | [boolean, string]>;
-	abstract getSecret(name: string): string | undefined;
+	abstract getSecret(name: string): IDataObject | undefined;
 	abstract getSecretNames(): string[];
 }

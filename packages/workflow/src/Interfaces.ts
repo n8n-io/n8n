@@ -2129,7 +2129,7 @@ export interface IN8nUISettings {
 export interface SecretsHelpersBase {
 	update(): Promise<void>;
 
-	getSecret(provider: string, name: string): string | undefined;
+	getSecret(provider: string, name: string): IDataObject | undefined;
 	hasProvider(provider: string): boolean;
 	listProviders(): string[];
 	listSecrets(provider: string): string[];
