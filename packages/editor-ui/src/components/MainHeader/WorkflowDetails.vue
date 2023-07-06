@@ -534,14 +534,10 @@ export default defineComponent({
 						await this.onSaveButtonClick();
 
 						const status = await this.sourceControlStore.getAggregatedStatus();
-						const workflowStatus = status.filter(
-							(s) =>
-								(s.id === this.currentWorkflowId && s.type === 'workflow') || s.type !== 'workflow',
-						);
 
 						this.uiStore.openModalWithData({
 							name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-							data: { eventBus: this.eventBus, status: workflowStatus },
+							data: { eventBus: this.eventBus, status },
 						});
 					} catch (error) {
 						this.showError(error, this.$locale.baseText('error'));
