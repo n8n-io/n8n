@@ -225,10 +225,7 @@ export default defineComponent({
 		void this.checkForNewVersions();
 		void this.checkForCloudPlanData();
 
-		if (
-			this.sourceControlStore.isEnterpriseSourceControlEnabled &&
-			this.usersStore.isInstanceOwner
-		) {
+		if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
 			await this.sourceControlStore.getPreferences();
 		}
 
