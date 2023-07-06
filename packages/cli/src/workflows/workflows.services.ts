@@ -223,7 +223,8 @@ export class WorkflowsService {
 		}
 
 		if (
-			Object.keys(workflow).length === 2 &&
+			Object.keys(workflow).length === 3 &&
+			workflow.id !== undefined &&
 			workflow.versionId !== undefined &&
 			workflow.active !== undefined
 		) {
