@@ -93,6 +93,10 @@ export class InfisicalProvider implements SecretsProvider {
 		}
 	}
 
+	async disconnect(): Promise<void> {
+		//
+	}
+
 	getSecret(name: string): string {
 		return this.cachedSecrets[name];
 	}

@@ -13,6 +13,7 @@ import { getLogger } from '@/Logger';
 
 import type { IDataObject } from 'n8n-workflow';
 import { InfisicalProvider } from './providers/infisical';
+import { VaultProvider } from './providers/vault';
 import { EXTERNAL_SECRETS_UPDATE_INTERVAL } from './constants';
 import { License } from '@/License';
 
@@ -20,6 +21,7 @@ const logger = getLogger();
 
 const PROVIDER_MAP: Record<string, { new (): SecretsProvider }> = {
 	infisical: InfisicalProvider,
+	vault: VaultProvider,
 };
 
 @Service()
@@ -56,6 +58,9 @@ export class ExternalSecretsManager {
 
 	shutdown() {
 		clearInterval(this.updateInterval);
+		Object.values(this.providers).forEach((p) => {
+			void p.disconnect();
+		});
 	}
 
 	private async getEncryptionKey(): Promise<string> {
@@ -123,6 +128,9 @@ export class ExternalSecretsManager {
 				await provider.connect();
 			}
 		} catch (e) {
+			try {
+				await provider.disconnect();
+			} catch {}
 			logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
@@ -138,8 +146,12 @@ export class ExternalSecretsManager {
 		}
 		await Promise.all(
 			Object.entries(this.providers).map(async ([k, p]) => {
-				if (this.cachedSettings[k].connected) {
-					await p.update();
+				try {
+					if (this.cachedSettings[k].connected) {
+						await p.update();
+					}
+				} catch {
+					logger.error(`Error updating secrets provider ${p.displayName} (${p.name}).`);
 				}
 			}),
 		);
@@ -199,6 +211,17 @@ export class ExternalSecretsManager {
 		};
 	}
 
+	async reloadProvider(provider: string) {
+		if (provider in this.providers) {
+			await this.providers[provider].disconnect();
+			delete this.providers[provider];
+		}
+		const newProvider = await this.initProvider(provider, this.cachedSettings[provider]);
+		if (newProvider) {
+			this.providers[provider] = newProvider;
+		}
+	}
+
 	async setProviderSettings(provider: string, data: IDataObject) {
 		await this.settingsRepo.manager.transaction(async (em) => {
 			const settingsRepo = new SettingsRepository(em.connection);
@@ -216,13 +239,7 @@ export class ExternalSecretsManager {
 			await this.saveAndSetSettings(settings, settingsRepo);
 			this.cachedSettings = settings;
 		});
-		const newProvider = await this.initProvider(provider, this.cachedSettings[provider]);
-		if (newProvider) {
-			this.providers[provider] = newProvider;
-		} else {
-			// Delete it so we're not fetching old values
-			delete this.providers[provider];
-		}
+		await this.reloadProvider(provider);
 		await this.updateSecrets();
 	}
 
@@ -243,13 +260,7 @@ export class ExternalSecretsManager {
 			await this.saveAndSetSettings(settings, settingsRepo);
 			this.cachedSettings = settings;
 		});
-		const newProvider = await this.initProvider(provider, this.cachedSettings[provider]);
-		if (newProvider) {
-			this.providers[provider] = newProvider;
-		} else {
-			// Delete it so we're not fetching old values
-			delete this.providers[provider];
-		}
+		await this.reloadProvider(provider);
 		await this.updateSecrets();
 	}
 
@@ -271,8 +282,9 @@ export class ExternalSecretsManager {
 		testState: 'connected' | 'tested' | 'error';
 		error?: string;
 	}> {
+		let testProvider: SecretsProvider | null = null;
 		try {
-			const testProvider = await this.initProvider(provider, {
+			testProvider = await this.initProvider(provider, {
 				connected: true,
 				connectedAt: new Date(),
 				settings: data,
@@ -300,6 +312,10 @@ export class ExternalSecretsManager {
 				success: false,
 				testState: 'error',
 			};
+		} finally {
+			if (testProvider) {
+				await testProvider.disconnect();
+			}
 		}
 	}
 }
