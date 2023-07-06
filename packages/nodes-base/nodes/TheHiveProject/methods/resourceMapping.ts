@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { theHiveApiRequest } from '../transport';
 import { TLP } from '../helpers/interfaces';
-import { loadAlertStatus, loadCaseTemplate } from './loadOptions';
+import { loadAlertStatus, loadCaseStatus, loadCaseTemplate, loadUsers } from './loadOptions';
 
 async function getCustomFields(this: ILoadOptionsFunctions, isRemoved?: boolean) {
 	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
@@ -113,11 +113,11 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 			],
 		},
 		{
-			displayName: 'Date (timestam in ms)',
+			displayName: 'Date',
 			id: 'date',
 			required: false,
 			display: true,
-			type: 'number',
+			type: 'dateTime',
 			defaultMatch: false,
 			removed: true,
 		},
@@ -329,20 +329,20 @@ export async function getAlertUpdateFields(
 			],
 		},
 		{
-			displayName: 'Date (timestam in ms)',
+			displayName: 'Date',
 			id: 'date',
 			required: false,
 			display: true,
-			type: 'number',
+			type: 'dateTime',
 			defaultMatch: false,
 			canBeUsedToMatch: true,
 		},
 		{
-			displayName: 'Last Sync Date (timestam in ms)',
+			displayName: 'Last Sync Date',
 			id: 'lastSyncDate',
 			required: false,
 			display: true,
-			type: 'number',
+			type: 'dateTime',
 			defaultMatch: false,
 			canBeUsedToMatch: true,
 		},
@@ -458,6 +458,231 @@ export async function getAlertUpdateFields(
 	];
 
 	const customFields = (await getCustomFields.call(this)) || [];
+	fields.push(...customFields);
+
+	const columnData: ResourceMapperFields = {
+		fields,
+	};
+
+	return columnData;
+}
+
+export async function getCaseFields(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
+	const caseStatus = await loadCaseStatus.call(this);
+	const caseTemplates = await loadCaseTemplate.call(this);
+	const users = await loadUsers.call(this);
+	const fields: ResourceMapperField[] = [
+		{
+			displayName: 'Title',
+			id: 'title',
+			required: true,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+		},
+		{
+			displayName: 'Description',
+			id: 'description',
+			required: true,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+		},
+		{
+			displayName: 'Severity (Severity of information)',
+			id: 'severity',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			removed: true,
+			options: [
+				{
+					name: 'Low',
+					value: 1,
+				},
+				{
+					name: 'Medium',
+					value: 2,
+				},
+				{
+					name: 'High',
+					value: 3,
+				},
+				{
+					name: 'Critical',
+					value: 4,
+				},
+			],
+		},
+		{
+			displayName: 'Start Date',
+			id: 'startDate',
+			required: false,
+			display: true,
+			type: 'dateTime',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'End Date',
+			id: 'endDate',
+			required: false,
+			display: true,
+			type: 'dateTime',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'Tags',
+			id: 'tags',
+			required: false,
+			display: true,
+			type: 'array',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'Flag',
+			id: 'flag',
+			required: false,
+			display: true,
+			type: 'boolean',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'TLP (Confidentiality of information)',
+			id: 'tlp',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			removed: true,
+			options: [
+				{
+					name: 'White',
+					value: TLP.white,
+				},
+				{
+					name: 'Green',
+					value: TLP.green,
+				},
+				{
+					name: 'Amber',
+					value: TLP.amber,
+				},
+				{
+					name: 'Red',
+					value: TLP.red,
+				},
+			],
+		},
+		{
+			displayName: 'PAP (Level of exposure of information)',
+			id: 'pap',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			removed: true,
+			options: [
+				{
+					name: 'White',
+					value: TLP.white,
+				},
+				{
+					name: 'Green',
+					value: TLP.green,
+				},
+				{
+					name: 'Amber',
+					value: TLP.amber,
+				},
+				{
+					name: 'Red',
+					value: TLP.red,
+				},
+			],
+		},
+		{
+			displayName: 'Status',
+			id: 'status',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			removed: true,
+			options: caseStatus,
+		},
+		{
+			displayName: 'Summary',
+			id: 'summary',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'Assignee',
+			id: 'assignee',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			removed: true,
+			options: users,
+		},
+		{
+			displayName: 'Case Template',
+			id: 'caseTemplate',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			removed: true,
+			options: caseTemplates,
+		},
+		{
+			displayName: 'Tasks',
+			id: 'tasks',
+			required: false,
+			display: true,
+			type: 'array',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'Sharing Parameters',
+			id: 'sharingParameters',
+			required: false,
+			display: true,
+			type: 'array',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'Task Rule',
+			id: 'taskRule',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'Observable Rule',
+			id: 'observableRule',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			removed: true,
+		},
+	];
+
+	const customFields = (await getCustomFields.call(this, true)) || [];
 	fields.push(...customFields);
 
 	const columnData: ResourceMapperFields = {

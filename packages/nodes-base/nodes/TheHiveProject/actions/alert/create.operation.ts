@@ -116,6 +116,10 @@ export async function execute(
 		inputData.tags = splitTags(inputData.tags);
 	}
 
+	if (inputData.date) {
+		inputData.date = Date.parse(inputData.date as string);
+	}
+
 	const body: IDataObject = {};
 
 	for (const field of Object.keys(inputData)) {

@@ -2,131 +2,30 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
+import { theHiveApiRequest } from '../../transport';
+
 import set from 'lodash/set';
 
-import { customFieldsCollection, severitySelector, tlpSelector } from '../common.description';
-import { prepareCustomFields, theHiveApiRequest } from '../../transport';
-import { prepareOptional, splitTags } from '../../helpers/utils';
+import { splitTags } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Title',
-		name: 'title',
-		type: 'string',
-		default: '',
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
 		required: true,
-		description: 'Title of the case',
-	},
-	{
-		displayName: 'Description',
-		name: 'description',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'Description of the case',
 		typeOptions: {
-			rows: 2,
-		},
-	},
-	{ ...severitySelector, required: true },
-	{
-		displayName: 'Start Date',
-		name: 'startDate',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		description: 'Date and time of the begin of the case default=now',
-	},
-	{
-		displayName: 'Owner',
-		name: 'owner',
-		type: 'string',
-		default: '',
-		required: true,
-	},
-	{
-		displayName: 'Flag',
-		name: 'flag',
-		type: 'boolean',
-		required: true,
-		default: false,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description: 'Flag of the case default=false',
-	},
-	{ ...tlpSelector, required: true },
-	{
-		displayName: 'Tags',
-		name: 'tags',
-		type: 'string',
-		required: true,
-		default: '',
-	},
-	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: true,
-	},
-	{
-		displayName: 'Options',
-		type: 'collection',
-		name: 'options',
-		placeholder: 'Add options',
-		displayOptions: {
-			show: {
-				resource: ['case'],
-				operation: ['create'],
+			resourceMapper: {
+				resourceMapperMethod: 'getCaseFields',
+				mode: 'add',
+				valuesLabel: 'Fields',
 			},
 		},
-		default: {},
-		options: [
-			{
-				...customFieldsCollection,
-				displayOptions: {
-					hide: {
-						'/jsonParameters': [true],
-					},
-				},
-			},
-			{
-				displayName: 'Custom Fields (JSON)',
-				name: 'customFieldsJson',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [true],
-					},
-				},
-				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
-			},
-			{
-				displayName: 'End Date',
-				name: 'endDate',
-				default: '',
-				type: 'dateTime',
-				description: 'Resolution date',
-			},
-			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				default: '',
-				description: 'Summary of the case, to be provided when closing a case',
-			},
-			{
-				displayName: 'Metrics (JSON)',
-				name: 'metrics',
-				default: '[]',
-				type: 'json',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [true],
-					},
-				},
-				description: 'List of metrics',
-			},
-		],
 	},
 ];
 
@@ -139,32 +38,46 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
+	let inputData: IDataObject = {};
 
-	const options = this.getNodeParameter('options', i, {});
-	const jsonParameters = this.getNodeParameter('jsonParameters', i);
-	const customFields = await prepareCustomFields.call(this, options, jsonParameters);
+	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
-	const body: IDataObject = {
-		title: this.getNodeParameter('title', i),
-		description: this.getNodeParameter('description', i),
-		severity: this.getNodeParameter('severity', i),
-		startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
-		owner: this.getNodeParameter('owner', i),
-		flag: this.getNodeParameter('flag', i),
-		tlp: this.getNodeParameter('tlp', i),
-		tags: splitTags(this.getNodeParameter('tags', i) as string),
-		...prepareOptional(options),
-	};
-
-	if (customFields) {
-		Object.keys(customFields).forEach((key) => {
-			set(body, key, customFields[key]);
-		});
+	if (dataMode === 'autoMapInputData') {
+		inputData = item.json;
 	}
 
-	responseData = await theHiveApiRequest.call(this, 'POST', '/case' as string, body);
+	if (dataMode === 'defineBelow') {
+		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
+		inputData = fields;
+	}
+
+	if (inputData.tags) {
+		inputData.tags = splitTags(inputData.tags);
+	}
+
+	if (inputData.startDate) {
+		inputData.startDate = Date.parse(inputData.startDate as string);
+	}
+
+	if (inputData.endDate) {
+		inputData.endDate = Date.parse(inputData.endDate as string);
+	}
+
+	const body: IDataObject = {};
+
+	for (const field of Object.keys(inputData)) {
+		// use set to construct the updateBody, as it allows to process customFields.fieldName
+		// if customFields provided under customFields property, it will be send as is
+		set(body, field, inputData[field]);
+	}
+
+	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/case' as string, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

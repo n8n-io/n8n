@@ -68,6 +68,14 @@ export async function execute(
 		body.removeTags = splitTags(body.removeTags);
 	}
 
+	if (body.date) {
+		body.date = Date.parse(body.date as string);
+	}
+
+	if (body.lastSyncDate) {
+		body.lastSyncDate = Date.parse(body.lastSyncDate as string);
+	}
+
 	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
 
 	const updateBody: IDataObject = {};

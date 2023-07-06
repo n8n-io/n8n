@@ -177,6 +177,29 @@ export async function loadAlertStatus(
 	return returnData.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export async function loadCaseStatus(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const body = {
+		query: [
+			{
+				_name: 'listCaseStatus',
+			},
+		],
+	};
+
+	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+
+	for (const entry of response) {
+		returnData.push({
+			name: entry.value,
+			value: entry.value,
+			description: `Stage: ${entry.stage}`,
+		});
+	}
+	return returnData.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function loadCaseTemplate(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
@@ -196,6 +219,28 @@ export async function loadCaseTemplate(
 		returnData.push({
 			name: entry.displayName || entry.name,
 			value: entry.name,
+		});
+	}
+	return returnData;
+}
+
+export async function loadUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const body = {
+		query: [
+			{
+				_name: 'listUser',
+			},
+		],
+	};
+
+	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+
+	for (const entry of response) {
+		returnData.push({
+			name: entry.name,
+			value: entry.login,
 		});
 	}
 	return returnData;
