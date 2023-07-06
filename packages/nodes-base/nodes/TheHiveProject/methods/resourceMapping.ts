@@ -126,7 +126,7 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 			id: 'tags',
 			required: false,
 			display: true,
-			type: 'array',
+			type: 'string',
 			defaultMatch: false,
 			removed: true,
 		},
@@ -351,7 +351,7 @@ export async function getAlertUpdateFields(
 			id: 'tags',
 			required: false,
 			display: true,
-			type: 'array',
+			type: 'string',
 			defaultMatch: false,
 			canBeUsedToMatch: true,
 		},
@@ -442,7 +442,7 @@ export async function getAlertUpdateFields(
 			id: 'addTags',
 			required: false,
 			display: true,
-			type: 'array',
+			type: 'string',
 			defaultMatch: false,
 			canBeUsedToMatch: false,
 		},
@@ -451,7 +451,7 @@ export async function getAlertUpdateFields(
 			id: 'removeTags',
 			required: false,
 			display: true,
-			type: 'array',
+			type: 'string',
 			defaultMatch: false,
 			canBeUsedToMatch: false,
 		},
@@ -538,7 +538,7 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 			id: 'tags',
 			required: false,
 			display: true,
-			type: 'array',
+			type: 'string',
 			defaultMatch: false,
 			removed: true,
 		},
@@ -683,6 +683,240 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 	];
 
 	const customFields = (await getCustomFields.call(this, true)) || [];
+	fields.push(...customFields);
+
+	const columnData: ResourceMapperFields = {
+		fields,
+	};
+
+	return columnData;
+}
+
+export async function getCaseUpdateFields(
+	this: ILoadOptionsFunctions,
+): Promise<ResourceMapperFields> {
+	const caseStatus = await loadCaseStatus.call(this);
+	const users = await loadUsers.call(this);
+	const fields: ResourceMapperField[] = [
+		{
+			displayName: 'ID',
+			id: 'id',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: true,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'Title',
+			id: 'title',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'Description',
+			id: 'description',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'Severity (Severity of information)',
+			id: 'severity',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+			options: [
+				{
+					name: 'Low',
+					value: 1,
+				},
+				{
+					name: 'Medium',
+					value: 2,
+				},
+				{
+					name: 'High',
+					value: 3,
+				},
+				{
+					name: 'Critical',
+					value: 4,
+				},
+			],
+		},
+		{
+			displayName: 'Start Date',
+			id: 'startDate',
+			required: false,
+			display: true,
+			type: 'dateTime',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'End Date',
+			id: 'endDate',
+			required: false,
+			display: true,
+			type: 'dateTime',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'Tags',
+			id: 'tags',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'Flag',
+			id: 'flag',
+			required: false,
+			display: true,
+			type: 'boolean',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'TLP (Confidentiality of information)',
+			id: 'tlp',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+			options: [
+				{
+					name: 'White',
+					value: TLP.white,
+				},
+				{
+					name: 'Green',
+					value: TLP.green,
+				},
+				{
+					name: 'Amber',
+					value: TLP.amber,
+				},
+				{
+					name: 'Red',
+					value: TLP.red,
+				},
+			],
+		},
+		{
+			displayName: 'PAP (Level of exposure of information)',
+			id: 'pap',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+			options: [
+				{
+					name: 'White',
+					value: TLP.white,
+				},
+				{
+					name: 'Green',
+					value: TLP.green,
+				},
+				{
+					name: 'Amber',
+					value: TLP.amber,
+				},
+				{
+					name: 'Red',
+					value: TLP.red,
+				},
+			],
+		},
+		{
+			displayName: 'Status',
+			id: 'status',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+			options: caseStatus,
+		},
+		{
+			displayName: 'Summary',
+			id: 'summary',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'Assignee',
+			id: 'assignee',
+			required: false,
+			display: true,
+			type: 'options',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+			options: users,
+		},
+		{
+			displayName: 'Impact Status',
+			id: 'impactStatus',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		},
+		{
+			displayName: 'Task Rule',
+			id: 'taskRule',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+		},
+		{
+			displayName: 'Observable Rule',
+			id: 'observableRule',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+		},
+		{
+			displayName: 'Add Tags',
+			id: 'addTags',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			canBeUsedToMatch: false,
+		},
+		{
+			displayName: 'Remove Tags',
+			id: 'removeTags',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: false,
+			canBeUsedToMatch: false,
+		},
+	];
+
+	const customFields = (await getCustomFields.call(this)) || [];
 	fields.push(...customFields);
 
 	const columnData: ResourceMapperFields = {

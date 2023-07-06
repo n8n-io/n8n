@@ -1,178 +1,32 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import {
-	caseRLC,
-	caseStatusSelector,
-	customFieldsCollection,
-	severitySelector,
-	tlpSelector,
-} from '../common.description';
-import { prepareCustomFields, theHiveApiRequest } from '../../transport';
-import { prepareOptional } from '../../helpers/utils';
+
+import { theHiveApiRequest } from '../../transport';
+import { splitTags } from '../../helpers/utils';
+import set from 'lodash/set';
 
 const properties: INodeProperties[] = [
-	caseRLC,
 	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: true,
-	},
-	{
-		displayName: 'Update Fields',
-		type: 'collection',
-		name: 'updateFields',
-		placeholder: 'Add Field',
-		displayOptions: {
-			show: {
-				resource: ['case'],
-				operation: ['update'],
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
+		required: true,
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getCaseUpdateFields',
+				mode: 'update',
+				valuesLabel: 'Fields',
+				addAllFields: true,
+				multiKeyMatch: true,
 			},
 		},
-		default: {},
-		options: [
-			{
-				...customFieldsCollection,
-				displayOptions: {
-					hide: {
-						'/jsonParameters': [true],
-					},
-				},
-			},
-			{
-				displayName: 'Custom Fields (JSON)',
-				name: 'customFieldsJson',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [true],
-					},
-				},
-				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'Description of the case',
-			},
-			{
-				displayName: 'End Date',
-				name: 'endDate',
-				type: 'dateTime',
-				default: '',
-				description: 'Resolution date',
-			},
-			{
-				displayName: 'Flag',
-				name: 'flag',
-				type: 'boolean',
-				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Flag of the case default=false',
-			},
-			{
-				displayName: 'Impact Status',
-				name: 'impactStatus',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'No Impact',
-						value: 'NoImpact',
-					},
-					{
-						name: 'With Impact',
-						value: 'WithImpact',
-					},
-					{
-						name: 'Not Applicable',
-						value: 'NotApplicable',
-					},
-				],
-				description: 'Impact status of the case',
-			},
-			{
-				displayName: 'Metrics (JSON)',
-				name: 'metrics',
-				type: 'json',
-				default: '[]',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [true],
-					},
-				},
-				description: 'List of metrics',
-			},
-			{
-				displayName: 'Owner',
-				name: 'owner',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Resolution Status',
-				name: 'resolutionStatus',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						value: 'Duplicated',
-						name: 'Duplicated',
-					},
-					{
-						value: 'FalsePositive',
-						name: 'False Positive',
-					},
-					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
-					},
-					{
-						value: 'Other',
-						name: 'Other',
-					},
-					{
-						value: 'TruePositive',
-						name: 'True Positive',
-					},
-				],
-				description: 'Resolution status of the case',
-			},
-			severitySelector,
-			{
-				displayName: 'Start Date',
-				name: 'startDate',
-				type: 'dateTime',
-				default: '',
-				description: 'Date and time of the begin of the case default=now',
-			},
-			caseStatusSelector,
-			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				default: '',
-				description: 'Summary of the case, to be provided when closing a case',
-			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'Title of the case',
-			},
-			tlpSelector,
-		],
 	},
 ];
 
@@ -185,25 +39,122 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
+	let body: IDataObject = {};
+	let updated = 1;
 
-	const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
-	const updateFields = this.getNodeParameter('updateFields', i, {});
-	const jsonParameters = this.getNodeParameter('jsonParameters', i);
+	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
-	const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
+	if (dataMode === 'autoMapInputData') {
+		body = item.json;
+	}
 
-	const body: IDataObject = {
-		...customFields,
-		...prepareOptional(updateFields),
-	};
+	if (dataMode === 'defineBelow') {
+		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
+		body = fields;
+	}
 
-	responseData = await theHiveApiRequest.call(this, 'PATCH', `/case/${caseId}`, body);
+	if (body.tags) {
+		body.tags = splitTags(body.tags);
+	}
 
-	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
-		itemData: { item: i },
-	});
+	if (body.addTags) {
+		body.addTags = splitTags(body.addTags);
+	}
+
+	if (body.removeTags) {
+		body.removeTags = splitTags(body.removeTags);
+	}
+
+	if (body.startDate) {
+		body.startDate = Date.parse(body.startDate as string);
+	}
+
+	if (body.endDate) {
+		body.endDate = Date.parse(body.endDate as string);
+	}
+
+	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
+
+	const updateBody: IDataObject = {};
+	const updateFields: IDataObject = {};
+	const { id } = body; // id would be used if matching on id, also we need to remove it from the body
+
+	for (const field of Object.keys(body)) {
+		if (field === 'customFields') {
+			//in input data customFields sent as an object, parse it extracting customFields that are used for matching
+			const customFields: IDataObject = {};
+			for (const customField of Object.keys(body.customFields || {})) {
+				const customFieldPath = `customFields.${customField}`;
+				if (fieldsToMatchOn.includes(customFieldPath)) {
+					updateFields[customFieldPath] = (body.customFields as IDataObject)[customField];
+				} else {
+					customFields[customField] = (body.customFields as IDataObject)[customField];
+				}
+			}
+			set(updateBody, 'customFields', customFields);
+			continue;
+		}
+		if (fieldsToMatchOn.includes(field)) {
+			// if field is in fieldsToMatchOn, we need to exclude it from the updateBody, as values used for matching should not be updated
+			updateFields[field] = body[field];
+		} else {
+			// use set to construct the updateBody, as it allows to process customFields.fieldName
+			// if customFields provided under customFields property, it will be send as is
+			set(updateBody, field, body[field]);
+		}
+	}
+
+	if (fieldsToMatchOn.includes('id')) {
+		await theHiveApiRequest.call(this, 'PATCH', `/v1/case/${id}`, body);
+	} else {
+		const filter = {
+			_name: 'filter',
+			_and: fieldsToMatchOn.map((field) => ({
+				_eq: {
+					_field: field,
+					_value: body[field],
+				},
+			})),
+		};
+
+		const queryBody = {
+			query: [
+				{
+					_name: 'listCase',
+				},
+				filter,
+			],
+		};
+
+		const matches = (await theHiveApiRequest.call(
+			this,
+			'POST',
+			'/v1/query',
+			queryBody,
+		)) as IDataObject[];
+
+		if (!matches.length) {
+			throw new NodeOperationError(this.getNode(), 'No matching alerts found');
+		}
+		const ids = matches.map((match) => match._id);
+		updated = ids.length;
+
+		updateBody.ids = ids;
+
+		await theHiveApiRequest.call(this, 'PATCH', '/v1/case/_bulk', updateBody);
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		wrapData({ success: true, updated }),
+		{
+			itemData: { item: i },
+		},
+	);
 
 	return executionData;
 }

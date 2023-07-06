@@ -45,7 +45,7 @@ export async function execute(
 	item: INodeExecutionData,
 ): Promise<INodeExecutionData[]> {
 	let body: IDataObject = {};
-	let updatedAlerts = 1;
+	let updated = 1;
 
 	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
@@ -140,7 +140,7 @@ export async function execute(
 			throw new NodeOperationError(this.getNode(), 'No matching alerts found');
 		}
 		const ids = matches.map((match) => match._id);
-		updatedAlerts = ids.length;
+		updated = ids.length;
 
 		updateBody.ids = ids;
 
@@ -148,7 +148,7 @@ export async function execute(
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		wrapData({ success: true, updatedAlerts }),
+		wrapData({ success: true, updatedAlerts: updated }),
 		{
 			itemData: { item: i },
 		},
