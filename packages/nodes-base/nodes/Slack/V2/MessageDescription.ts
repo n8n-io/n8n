@@ -347,6 +347,20 @@ export const messageFields: INodeProperties[] = [
 			'Fallback text to display in slack notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
 	},
 	{
+		displayName: 'Include Link To Workflow',
+		name: 'includeLinkToWorkflow',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['post'],
+				resource: ['message'],
+			},
+		},
+		default: true,
+		description:
+			'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
+	},
+	{
 		displayName: 'This is a legacy Slack feature. Slack advises to instead use Blocks.',
 		name: 'noticeAttachments',
 		type: 'notice',
