@@ -21,7 +21,7 @@ interface IExecutionResult {
 	finished: boolean;
 	executionStatus: ExecutionStatus;
 	error?: string;
-	changes?: string;
+	changes?: object;
 	coveredNodes: {
 		[nodeType: string]: number;
 	};
