@@ -669,7 +669,14 @@ export const workflowHelpers = defineComponent({
 
 			const isCurrentWorkflow = workflowId === this.workflowsStore.workflowId;
 			if (isCurrentWorkflow) {
-				data = await this.getWorkflowDataToSave();
+				if (this.uiStore.stateIsDirty) {
+					data = await this.getWorkflowDataToSave();
+				} else {
+					data = {
+						versionId: this.workflowsStore.workflowVersionId,
+						active: this.workflowsStore.isWorkflowActive,
+					};
+				}
 			} else {
 				const { versionId } = await this.workflowsStore.fetchWorkflow(workflowId);
 				data.versionId = versionId;
@@ -713,14 +720,20 @@ export const workflowHelpers = defineComponent({
 				}
 				this.uiStore.addActiveAction('workflowSaving');
 
-				const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
+				let workflowDataRequest: IWorkflowDataUpdate = {};
+				if (this.uiStore.stateIsDirty) {
+					workflowDataRequest = await this.getWorkflowDataToSave();
 
-				if (name) {
-					workflowDataRequest.name = name.trim();
-				}
+					if (name) {
+						workflowDataRequest.name = name.trim();
+					}
 
-				if (tags) {
-					workflowDataRequest.tags = tags;
+					if (tags) {
+						workflowDataRequest.tags = tags;
+					}
+				} else {
+					// If workflow hasn't changed, only send the active state
+					workflowDataRequest.active = this.workflowsStore.isWorkflowActive;
 				}
 
 				workflowDataRequest.versionId = this.workflowsStore.workflowVersionId;
