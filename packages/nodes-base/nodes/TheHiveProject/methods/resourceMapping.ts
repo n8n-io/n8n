@@ -879,6 +879,7 @@ export async function getCaseUpdateFields(
 			type: 'string',
 			defaultMatch: false,
 			canBeUsedToMatch: true,
+			removed: true,
 		},
 		{
 			displayName: 'Task Rule',
@@ -887,6 +888,7 @@ export async function getCaseUpdateFields(
 			display: true,
 			type: 'string',
 			defaultMatch: false,
+			removed: true,
 		},
 		{
 			displayName: 'Observable Rule',
@@ -895,6 +897,7 @@ export async function getCaseUpdateFields(
 			display: true,
 			type: 'string',
 			defaultMatch: false,
+			removed: true,
 		},
 		{
 			displayName: 'Add Tags',

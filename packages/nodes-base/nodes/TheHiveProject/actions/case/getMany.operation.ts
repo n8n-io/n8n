@@ -1,38 +1,50 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-
 import { filtersCollection, returnAllAndLimit } from '../common.description';
-import {
-	And,
-	ContainsString,
-	Eq,
-	In,
-	buildCustomFieldSearch,
-	prepareOptional,
-	prepareRangeQuery,
-	prepareSortQuery,
-} from '../../helpers/utils';
-import type { IQueryObject } from '../../helpers/interfaces';
-import { prepareCustomFields, theHiveApiRequest } from '../../transport';
+import { convertCustomFieldUiToObject, prepareRangeQuery } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	...returnAllAndLimit,
 	filtersCollection,
 	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
+		displayName: 'Sort',
+		name: 'sort',
+		type: 'fixedCollection',
+		placeholder: 'Add Sort Rule',
 		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
 		options: [
 			{
-				displayName: 'Sort',
-				name: 'sort',
-				type: 'string',
-				placeholder: '±Attribut, exp +status',
-				description: 'Specify the sorting attribut, + for asc, - for desc',
-				default: '',
+				displayName: 'Fields',
+				name: 'fields',
+				values: [
+					{
+						displayName: 'Field',
+						name: 'field',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+							},
+						],
+						default: 'asc',
+					},
+				],
 			},
 		],
 	},
@@ -53,31 +65,57 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	const filters = this.getNodeParameter('filters', i, {});
-	const queryAttributs = prepareOptional(filters);
 
-	const _searchQuery: IQueryObject = And();
+	if (filters.customFieldsUi) {
+		const customFields = convertCustomFieldUiToObject(filters.customFieldsUi as IDataObject);
 
-	const options = this.getNodeParameter('options', i);
-
-	if ('customFieldsUi' in filters) {
-		const customFields = (await prepareCustomFields.call(this, filters)) as IDataObject;
-		const searchQueries = buildCustomFieldSearch(customFields);
-		(_searchQuery._and as IQueryObject[]).push(...searchQueries);
-	}
-
-	for (const key of Object.keys(queryAttributs)) {
-		if (key === 'tags') {
-			(_searchQuery._and as IQueryObject[]).push(In(key, queryAttributs[key] as string[]));
-		} else if (key === 'description' || key === 'summary' || key === 'title') {
-			(_searchQuery._and as IQueryObject[]).push(
-				ContainsString(key, queryAttributs[key] as string),
-			);
-		} else {
-			(_searchQuery._and as IQueryObject[]).push(Eq(key, queryAttributs[key] as string));
+		for (const [key, value] of Object.entries(customFields || {})) {
+			filters[`customFields.${key}`] = value;
 		}
+
+		delete filters.customFieldsUi;
 	}
 
-	const qs: IDataObject = {};
+	const query: IDataObject[] = [
+		{
+			_name: 'listCase',
+		},
+	];
+
+	let filter;
+
+	if (Object.keys(filters).length) {
+		filter = {
+			_name: 'filter',
+			_and: Object.keys(filters).map((field) => ({
+				_eq: {
+					_field: field,
+					_value: filters[field],
+				},
+			})),
+		};
+	}
+
+	if (filter) {
+		query.push(filter);
+	}
+
+	const sortFields = this.getNodeParameter('sort.fields', i, []) as IDataObject[];
+
+	if (sortFields.length) {
+		query.push({
+			_name: 'sort',
+			_fields: sortFields.map((field) => {
+				return {
+					[`${field.field as string}`]: field.direction as string,
+				};
+			}),
+		});
+	}
+
+	const body: IDataObject = {
+		query,
+	};
 
 	let limit = undefined;
 
@@ -85,27 +123,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		limit = this.getNodeParameter('limit', i);
 	}
 
-	const body: IDataObject = {
-		query: [
-			{
-				_name: 'listCase',
-			},
-			{
-				_name: 'filter',
-				_and: _searchQuery._and,
-			},
-		],
-	};
-
-	prepareSortQuery(options.sort as string, body);
-
 	if (limit !== undefined) {
 		prepareRangeQuery(`0-${limit}`, body);
 	}
 
-	qs.name = 'cases';
-
-	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
+	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

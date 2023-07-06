@@ -81,7 +81,7 @@ export async function execute(
 	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
 
 	const updateBody: IDataObject = {};
-	const updateFields: IDataObject = {};
+	const matchFields: IDataObject = {};
 	const { id } = body; // id would be used if matching on id, also we need to remove it from the body
 
 	for (const field of Object.keys(body)) {
@@ -91,7 +91,7 @@ export async function execute(
 			for (const customField of Object.keys(body.customFields || {})) {
 				const customFieldPath = `customFields.${customField}`;
 				if (fieldsToMatchOn.includes(customFieldPath)) {
-					updateFields[customFieldPath] = (body.customFields as IDataObject)[customField];
+					matchFields[customFieldPath] = (body.customFields as IDataObject)[customField];
 				} else {
 					customFields[customField] = (body.customFields as IDataObject)[customField];
 				}
@@ -101,7 +101,7 @@ export async function execute(
 		}
 		if (fieldsToMatchOn.includes(field)) {
 			// if field is in fieldsToMatchOn, we need to exclude it from the updateBody, as values used for matching should not be updated
-			updateFields[field] = body[field];
+			matchFields[field] = body[field];
 		} else {
 			// use set to construct the updateBody, as it allows to process customFields.fieldName
 			// if customFields provided under customFields property, it will be send as is
@@ -117,7 +117,7 @@ export async function execute(
 			_and: fieldsToMatchOn.map((field) => ({
 				_eq: {
 					_field: field,
-					_value: body[field],
+					_value: matchFields[field],
 				},
 			})),
 		};

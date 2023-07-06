@@ -172,17 +172,18 @@ export function prepareRangeQuery(range: string, body: IDataObject) {
 }
 
 export function convertCustomFieldUiToObject(customFieldsUi: IDataObject) {
-	if (Object.values(customFieldsUi).length) {
-		if (customFieldsUi.jsonInput === true) {
-			if (typeof customFieldsUi.json === 'string') {
-				let parsedFields = jsonParse<IDataObject>(customFieldsUi.json);
+	const fieldsValues = customFieldsUi.values as IDataObject;
+	if (Object.values(fieldsValues).length) {
+		if (fieldsValues.jsonInput === true) {
+			if (typeof fieldsValues.json === 'string') {
+				let parsedFields = jsonParse<IDataObject>(fieldsValues.json);
 				if (!Array.isArray(parsedFields) && parsedFields.customFields) {
 					parsedFields = parsedFields.customFields as IDataObject;
 				}
 				return parsedFields;
 			}
 		} else {
-			const values = (customFieldsUi.customFields as IDataObject).values as IDataObject;
+			const values = (fieldsValues.customFields as IDataObject).values as IDataObject;
 			if (values.fields) {
 				const customFields: IDataObject = {};
 

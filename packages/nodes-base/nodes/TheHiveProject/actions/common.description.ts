@@ -202,136 +202,6 @@ export const severitySelector: INodeProperties = {
 	description: 'Severity of the alert. Default=Medium.',
 };
 
-export const customFieldsCollection2: INodeProperties = {
-	displayName: 'Custom Fields',
-	name: 'customFieldsUi',
-	type: 'fixedCollection',
-	placeholder: 'Add Custom Fields',
-	default: {},
-	options: [
-		{
-			displayName: 'Values',
-			name: 'values',
-			values: [
-				{
-					displayName: 'Use JSON',
-					name: 'jsonInput',
-					type: 'boolean',
-					default: true,
-				},
-				{
-					displayName: 'JSON',
-					name: 'json',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						show: {
-							jsonInput: [true],
-						},
-					},
-					description: 'Custom fields in JSON format',
-				},
-				{
-					displayName: 'Custom Fields',
-					name: 'customFields',
-					type: 'fixedCollection',
-					placeholder: 'Add Custom Fields',
-					default: {},
-					displayOptions: {
-						show: {
-							jsonInput: [false],
-						},
-					},
-					options: [
-						{
-							displayName: 'Values',
-							name: 'values',
-							values: [
-								{
-									displayName: 'Fields',
-									name: 'fields',
-									type: 'fixedCollection',
-									default: {},
-									typeOptions: {
-										multipleValues: true,
-									},
-									placeholder: 'Add Field',
-									options: [
-										{
-											displayName: 'Values',
-											name: 'values',
-											values: [
-												{
-													// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-													displayName: 'Field',
-													name: 'field',
-													type: 'options',
-													description:
-														'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-													typeOptions: {
-														loadOptionsMethod: 'listCustomField',
-													},
-													default: '',
-												},
-												{
-													displayName: 'Value',
-													name: 'value',
-													type: 'string',
-													default: '',
-													description:
-														'Custom Field value. Use an expression if the type is not a string. Could be a single value or an array of values.',
-													hint: 'Use an expression to send multiple values as an array',
-												},
-											],
-										},
-									],
-								},
-							],
-						},
-					],
-				},
-			],
-		},
-	],
-};
-
-export const customFieldsCollection: INodeProperties = {
-	displayName: 'Custom Fields',
-	name: 'customFieldsUi',
-	type: 'fixedCollection',
-	default: {},
-	typeOptions: {
-		multipleValues: true,
-	},
-	placeholder: 'Add Custom Field',
-	options: [
-		{
-			displayName: 'Custom Field',
-			name: 'customFields',
-			values: [
-				{
-					displayName: 'Field Name or ID',
-					name: 'field',
-					type: 'options',
-					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-					typeOptions: {
-						loadOptionsMethod: 'loadCustomFields',
-					},
-					default: 'Custom Field',
-				},
-				{
-					displayName: 'Value',
-					name: 'value',
-					type: 'string',
-					default: '',
-					description: 'Custom Field value. Use an expression if the type is not a string.',
-				},
-			],
-		},
-	],
-};
-
 export const observableDataType: INodeProperties = {
 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 	displayName: 'Data Type',
@@ -435,7 +305,98 @@ export const taskStatusSelector: INodeProperties = {
 	],
 	description: 'Status of the task. Default=Waiting.',
 };
-
+const customFieldsCollection: INodeProperties = {
+	displayName: 'Custom Fields',
+	name: 'customFieldsUi',
+	type: 'fixedCollection',
+	placeholder: 'Add Custom Fields',
+	default: {},
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					displayName: 'Use JSON',
+					name: 'jsonInput',
+					type: 'boolean',
+					default: true,
+				},
+				{
+					displayName: 'JSON',
+					name: 'json',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							jsonInput: [true],
+						},
+					},
+					description: 'Custom fields in JSON format',
+				},
+				{
+					displayName: 'Custom Fields',
+					name: 'customFields',
+					type: 'fixedCollection',
+					placeholder: 'Add Custom Fields',
+					default: {},
+					displayOptions: {
+						show: {
+							jsonInput: [false],
+						},
+					},
+					options: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							values: [
+								{
+									displayName: 'Fields',
+									name: 'fields',
+									type: 'fixedCollection',
+									default: {},
+									typeOptions: {
+										multipleValues: true,
+									},
+									placeholder: 'Add Field',
+									options: [
+										{
+											displayName: 'Values',
+											name: 'values',
+											values: [
+												{
+													// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+													displayName: 'Field',
+													name: 'field',
+													type: 'options',
+													description:
+														'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+													typeOptions: {
+														loadOptionsMethod: 'listCustomField',
+													},
+													default: '',
+												},
+												{
+													displayName: 'Value',
+													name: 'value',
+													type: 'string',
+													default: '',
+													description:
+														'Custom Field value. Use an expression if the type is not a string. Could be a single value or an array of values.',
+													hint: 'Use an expression to send multiple values as an array',
+												},
+											],
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+	],
+};
 export const filtersCollection: INodeProperties = {
 	displayName: 'Filters',
 	name: 'filters',
