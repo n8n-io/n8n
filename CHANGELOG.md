@@ -1,3 +1,64 @@
+## [1.0.1](https://github.com/n8n-io/n8n/compare/n8n@1.0.0...n8n@1.0.1) (2023-07-05)
+
+
+### Bug Fixes
+
+* **core:** Fix credentials test ([#6569](https://github.com/n8n-io/n8n/issues/6569)) ([8f244df](https://github.com/n8n-io/n8n/commit/8f244df0f9efcb087a78dd8d9481489c484c77b7))
+* **core:** Fix migrations for MySQL/MariaDB ([#6591](https://github.com/n8n-io/n8n/issues/6591)) ([b9da67b](https://github.com/n8n-io/n8n/commit/b9da67b653bf19f39d0d1506d3140c71432efaed))
+* **core:** Make node execution order configurable, and backward-compatible ([#6507](https://github.com/n8n-io/n8n/issues/6507)) ([d97edbc](https://github.com/n8n-io/n8n/commit/d97edbcffa966a693548eed033ac41d4a404fc23))
+* **core:** Update pruning related config defaults for v1 ([#6577](https://github.com/n8n-io/n8n/issues/6577)) ([ffb4e47](https://github.com/n8n-io/n8n/commit/ffb4e470b56222ae11891d478e96ea9c31675afe))
+* **editor:** Restore expression completions ([#6566](https://github.com/n8n-io/n8n/issues/6566)) ([516e572](https://github.com/n8n-io/n8n/commit/516e5728f73da6393defe7633533cc142c531c7a))
+* **editor:** Show retry information in execution list only when it exists ([#6587](https://github.com/n8n-io/n8n/issues/6587)) ([2580286](https://github.com/n8n-io/n8n/commit/2580286a198e53c3bf3db6e56faed301b606db07))
+* **Sendy Node:** Fix issue with brand id not being sent ([#6530](https://github.com/n8n-io/n8n/issues/6530)) ([b9e5211](https://github.com/n8n-io/n8n/commit/b9e52117355d939e77a2e3c59a7f67ac21e31b22))
+* **Strapi Node:** Fix issue with pagination ([#4991](https://github.com/n8n-io/n8n/issues/4991)) ([4253b48](https://github.com/n8n-io/n8n/commit/4253b48b26d1625cd2fb7f38159f9528cea45f34))
+* **XML Node:** Fix issue with not returning valid data ([#6565](https://github.com/n8n-io/n8n/issues/6565)) ([c2b9d5a](https://github.com/n8n-io/n8n/commit/c2b9d5ac506375ecc316e8c79a3ce0bf143e9406))
+
+
+### Features
+
+* Add missing input panels to some trigger nodes ([#6518](https://github.com/n8n-io/n8n/issues/6518)) ([3b12864](https://github.com/n8n-io/n8n/commit/3b12864460a458f23b57a6f3f4b40d0d364ef6e6))
+
+
+
+# [1.0.0](https://github.com/n8n-io/n8n/compare/n8n@0.234.0...n8n@1.0.0) (2023-06-27)
+
+
+### ⚠️ BREAKING CHANGES
+* **core** Docker containers now run as the user `node` instead of `root` ([#6365](https://github.com/n8n-io/n8n/pull/6365)) ([f636616](https://github.com/n8n-io/n8n/commit/f6366160a476f42cb0612d10c5777a154d8665dd))
+* **core** Drop `debian` and `rhel7` images ([#6365](https://github.com/n8n-io/n8n/pull/6365)) ([f636616](https://github.com/n8n-io/n8n/commit/f6366160a476f42cb0612d10c5777a154d8665dd))
+* **core** Drop support for deprecated `WEBHOOK_TUNNEL_URL` env variable ([#6363](https://github.com/n8n-io/n8n/pull/6363))
+* **core** Execution mode defaults to `main` now, instead of `own` ([#6363](https://github.com/n8n-io/n8n/pull/6363))
+* **core** Default push backend is `websocket` now, instead of `sse` ([#6363](https://github.com/n8n-io/n8n/pull/6363))
+* **core** Stop loading custom/community nodes from n8n's `node_modules` folder ([#6396](https://github.com/n8n-io/n8n/pull/6396)) ([a45a2c8](https://github.com/n8n-io/n8n/commit/a45a2c8c41eb7ffb2d62d5a8877c34eb45799fa9))
+* **core** User management is mandatory now. basic-auth, external-jwt-auth, and no-auth options are removed ([#6362](https://github.com/n8n-io/n8n/pull/6362)) ([8c008f5](https://github.com/n8n-io/n8n/commit/8c008f5d2217030e93d79e2baca0f2965d4d643e))
+* **core** Allow syntax errors and expression errors to fail executions ([#6352](https://github.com/n8n-io/n8n/pull/6352)) ([1197811](https://github.com/n8n-io/n8n/commit/1197811a1e3bc4ad7464d53d7e4860d0e62335a3))
+* **core** Drop support for `request` library and `N8N_USE_DEPRECATED_REQUEST_LIB` env variable ([#6413](https://github.com/n8n-io/n8n/pull/6413)) ([632ea27](https://github.com/n8n-io/n8n/commit/632ea275b7fa352d4af23339208bed66bb948da8))
+* **core** Make date extensions outputs match inputs ([#6435](https://github.com/n8n-io/n8n/pull/6435)) ([85372aa](https://github.com/n8n-io/n8n/commit/85372aabdfc52493504d4723ee1829e2ea15151d))
+* **core** Drop support for `executeSingle` method on nodes ([#4853](https://github.com/n8n-io/n8n/pull/4853)) ([9194d8b](https://github.com/n8n-io/n8n/commit/9194d8bb0ecf81e52d47ddfc4b75dc4e0efd492d))
+* **core** Change data processing for multi-input-nodes ([#4238](https://github.com/n8n-io/n8n/pull/4238)) ([b8458a5](https://github.com/n8n-io/n8n/commit/b8458a53f66b79903f0fdb168f6febdefb36d13a))
+
+
+### Bug Fixes
+
+* **core:** All migrations should run in a transaction ([#6519](https://github.com/n8n-io/n8n/issues/6519)) ([e152cfe](https://github.com/n8n-io/n8n/commit/e152cfe27cf3396f4b278614f1d46d9dd723f36e))
+* **Edit Image Node:** Fix transparent operation ([#6513](https://github.com/n8n-io/n8n/issues/6513)) ([4a4bcbc](https://github.com/n8n-io/n8n/commit/4a4bcbca298bf90c54d3597103e6a231855abbd2))
+* **Google Drive Node:** URL parsing ([#6527](https://github.com/n8n-io/n8n/issues/6527)) ([18aa9f3](https://github.com/n8n-io/n8n/commit/18aa9f3c62149cd603c560c2944c3146cd31e9e7))
+* **Google Sheets Node:** Incorrect read of 0 and false ([#6525](https://github.com/n8n-io/n8n/issues/6525)) ([b6202b5](https://github.com/n8n-io/n8n/commit/b6202b5585f864d97dc114e1e49a6a7dae5c674a))
+* **Merge Node:** Enrich input 2 fix ([#6526](https://github.com/n8n-io/n8n/issues/6526)) ([70822ce](https://github.com/n8n-io/n8n/commit/70822ce988543476719089c132e1d10af0d03e78))
+* **Notion Node:** Version fix ([#6531](https://github.com/n8n-io/n8n/issues/6531)) ([d3d8522](https://github.com/n8n-io/n8n/commit/d3d8522e8f0c702f56997667a252892296540450))
+* Show error when referencing node that exist but has not been executed ([#6496](https://github.com/n8n-io/n8n/issues/6496)) ([3db2707](https://github.com/n8n-io/n8n/commit/3db2707b8e47ea539f4f6c40497a928b51b40274))
+
+
+### Features
+
+* **core:** Change node execution order (most top-left one first) ([#6246](https://github.com/n8n-io/n8n/issues/6246)) ([0287d5b](https://github.com/n8n-io/n8n/commit/0287d5becdce30a9c0de2a0d6ad4a0db50e198d7))
+* **core:** Remove conditional defaults in V1 release ([#6363](https://github.com/n8n-io/n8n/issues/6363)) ([f636616](https://github.com/n8n-io/n8n/commit/f6366160a476f42cb0612d10c5777a154d8665dd))
+* **editor:** Add v1 banner ([#6443](https://github.com/n8n-io/n8n/issues/6443)) ([0fe415a](https://github.com/n8n-io/n8n/commit/0fe415add2baa8e70e29087f7a90312bd1ab38af))
+* **editor:** SQL editor overhaul ([#6282](https://github.com/n8n-io/n8n/issues/6282)) ([beedfb6](https://github.com/n8n-io/n8n/commit/beedfb609ccde2ef202e08566580a2e1a6b6eafa))
+* **HTTP Request Node:** Notice about dev console ([#6516](https://github.com/n8n-io/n8n/issues/6516)) ([d431117](https://github.com/n8n-io/n8n/commit/d431117c9e5db9ff0ec6a1e7371bbf58698957c9))
+
+
+
 # [0.236.0](https://github.com/n8n-io/n8n/compare/n8n@0.235.0...n8n@0.236.0) (2023-07-05)
 
 

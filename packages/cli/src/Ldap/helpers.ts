@@ -12,7 +12,6 @@ import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { RoleRepository } from '@db/repositories';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
-import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
 
 import {
@@ -37,10 +36,7 @@ import { InternalServerError } from '../ResponseHelper';
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
-export const isLdapEnabled = (): boolean => {
-	const license = Container.get(License);
-	return isUserManagementEnabled() && license.isLdapEnabled();
-};
+export const isLdapEnabled = () => Container.get(License).isLdapEnabled();
 
 /**
  * 	Check whether the LDAP feature is enabled in the instance

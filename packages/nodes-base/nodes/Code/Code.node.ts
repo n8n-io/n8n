@@ -12,7 +12,6 @@ import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
-import { IS_V1_RELEASE } from '../../utils/constants';
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +20,7 @@ export class Code implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: [1, 2],
-		defaultVersion: IS_V1_RELEASE ? 2 : 1,
+		defaultVersion: 2,
 		description: 'Run custom JavaScript code',
 		defaults: {
 			name: 'Code',
