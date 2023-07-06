@@ -362,7 +362,10 @@ export class SourceControlImportService {
 						LoggerProxy.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 						await workflowRunner.add(existingWorkflow.id, 'activate');
 						// update the versionId of the workflow to match the imported workflow
-						await Db.collections.Workflow.upsert({ versionId: importedWorkflow.versionId }, ['id']);
+						await Db.collections.Workflow.update(
+							{ id: existingWorkflow.id },
+							{ versionId: importedWorkflow.versionId },
+						);
 					} catch (error) {
 						LoggerProxy.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
 					}
