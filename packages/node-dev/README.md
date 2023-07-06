@@ -1,6 +1,6 @@
 ![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
-# n8n-node-dev
+# n8n-node-dev 
 
 Currently very simple and not very sophisticated CLI which makes it easier
 to create credentials and nodes in TypeScript for n8n.
@@ -129,7 +129,6 @@ following methods defined which contains the actual logic:
 Method is called when the workflow gets executed
 
 - `execute`: Executed once no matter how many items
-- `executeSingle`: Executed once for every item
 
 By default, `execute` should always be used, especially when creating a
 third-party integration. The reason for this is that it provides much more 
@@ -158,7 +157,6 @@ Property overview
 
 - **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` bellow.
 - **execute** [optional]: Method is called when the workflow gets executed (once).
-- **executeSingle** [optional]: Method is called when the workflow gets executed (once for every item).
 - **hooks** [optional]: The hook methods.
 - **methods** [optional]: Additional methods. Currently only "loadOptions" exists which allows loading options for parameters from external services
 - **trigger** [optional]: Method is called once when the workflow gets activated.

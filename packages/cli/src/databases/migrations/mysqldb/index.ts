@@ -41,6 +41,7 @@ import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserAc
 import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
 import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
+import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -85,4 +86,5 @@ export const mysqlMigrations: Migration[] = [
 	MigrateIntegerKeysToString1690000000001,
 	SeparateExecutionData1690000000030,
 	FixExecutionDataType1690000000031,
+	RemoveSkipOwnerSetup1681134145997,
 ];

@@ -55,6 +55,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils';
+import { dismissV1BannerPermanently } from '@/api/ui';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -347,6 +348,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
+		setBanners(banners: UIState['banners']): void {
+			this.banners = {
+				...this.banners,
+				...banners,
+			};
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],

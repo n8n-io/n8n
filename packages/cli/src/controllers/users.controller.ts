@@ -32,7 +32,6 @@ import type {
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
-import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import type {
 	RoleRepository,
@@ -106,7 +105,7 @@ export class UsersController {
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-	@Post('/', { middlewares: [userManagementEnabledMiddleware] })
+	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(

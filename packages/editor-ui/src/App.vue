@@ -158,7 +158,7 @@ export default defineComponent({
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
+			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
@@ -267,6 +267,9 @@ export default defineComponent({
 
 		this.loading = false;
 		this.initBanners();
+		if(this.rootStore.versionCli.startsWith('1.')) {
+			this.uiStore.showBanner(BANNERS.V1);
+		}
 
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
@@ -322,7 +325,7 @@ export default defineComponent({
 
 .header {
 	grid-area: header;
-	z-index: 999;
+	z-index: 99;
 }
 
 .sidebar {

@@ -96,7 +96,7 @@ export const wrapMigration = (migration: Migration) => {
 	Object.assign(migration.prototype, {
 		async up(this: BaseMigration, queryRunner: QueryRunner) {
 			logMigrationStart(migrationName);
-			if (!this.transaction) {
+			if (this.transaction === false) {
 				await runDisablingForeignKeys(this, { queryRunner, ...context }, up);
 			} else {
 				await up.call(this, { queryRunner, ...context });
@@ -105,7 +105,7 @@ export const wrapMigration = (migration: Migration) => {
 		},
 		async down(this: BaseMigration, queryRunner: QueryRunner) {
 			if (down) {
-				if (!this.transaction) {
+				if (this.transaction === false) {
 					await runDisablingForeignKeys(this, { queryRunner, ...context }, up);
 				} else {
 					await down.call(this, { queryRunner, ...context });
@@ -113,6 +113,37 @@ export const wrapMigration = (migration: Migration) => {
 			}
 		},
 	});
+};
+
+export const copyTable = async (
+	{ tablePrefix, queryRunner }: Pick<MigrationContext, 'queryRunner' | 'tablePrefix'>,
+	fromTable: string,
+	toTable: string,
+	fromFields: string[] = [],
+	toFields: string[] = [],
+	batchSize = 10,
+) => {
+	const driver = queryRunner.connection.driver;
+	fromTable = driver.escape(`${tablePrefix}${fromTable}`);
+	toTable = driver.escape(`${tablePrefix}${toTable}`);
+	const fromFieldsStr = fromFields.length
+		? fromFields.map((f) => driver.escape(f)).join(', ')
+		: '*';
+	const toFieldsStr = toFields.length
+		? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
+		: '';
+
+	const total = await queryRunner
+		.query(`SELECT COUNT(*) as count from ${fromTable}`)
+		.then((rows: Array<{ count: number }>) => rows[0].count);
+
+	let migrated = 0;
+	while (migrated < total) {
+		await queryRunner.query(
+			`INSERT INTO ${toTable} ${toFieldsStr} SELECT ${fromFieldsStr} FROM ${fromTable} LIMIT ${migrated}, ${batchSize}`,
+		);
+		migrated += batchSize;
+	}
 };
 
 function batchQuery(query: string, limit: number, offset = 0): string {

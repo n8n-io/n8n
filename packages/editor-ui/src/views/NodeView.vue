@@ -3523,22 +3523,7 @@ export default defineComponent({
 						// Ignore all errors
 					});
 			}
-			this.workflowsStore.removeAllConnections({ setStateDirty: false });
-			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
-
-			// Reset workflow execution data
-			this.workflowsStore.setWorkflowExecutionData(null);
-			this.workflowsStore.resetAllNodesIssues();
-
-			this.workflowsStore.setActive(false);
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings({});
-			this.workflowsStore.setWorkflowTagIds([]);
-
-			this.workflowsStore.activeExecutionId = null;
-			this.workflowsStore.executingNode = null;
-			this.workflowsStore.executionWaitingForWebhook = false;
+			this.workflowsStore.resetState();
 			this.uiStore.removeActiveAction('workflowRunning');
 
 			this.uiStore.resetSelectedNodes();
