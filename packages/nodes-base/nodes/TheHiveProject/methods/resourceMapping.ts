@@ -9,35 +9,6 @@ import { theHiveApiRequest } from '../transport';
 import { TLP } from '../helpers/interfaces';
 import { loadAlertStatus, loadCaseTemplate } from './loadOptions';
 
-export async function getCustomFields(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
-	const body = {
-		query: [
-			{
-				_name: 'listCustomField',
-			},
-		],
-	};
-
-	const requestResult = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
-
-	const columnData: ResourceMapperFields = {
-		fields: ((requestResult as IDataObject[]) || []).map((field) => ({
-			id: field._id as string,
-			displayName: (field.displayName || field.name) as string,
-			required: field.mandatory as boolean,
-			display: true,
-			// type: field.type as FieldType,
-			type: (field.options as string[])?.length ? 'options' : (field.type as FieldType),
-			defaultMatch: false,
-			options: (field.options as string[])?.length
-				? (field.options as string[]).map((option) => ({ name: option, value: option }))
-				: undefined,
-		})),
-	};
-
-	return columnData;
-}
-
 export async function getAlertFields(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
 	const alertStatus = await loadAlertStatus.call(this);
 	const caseTemplates = await loadCaseTemplate.call(this);
@@ -459,6 +430,28 @@ export async function getAlertUpdateFields(
 			canBeUsedToMatch: false,
 		},
 	];
+
+	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+		query: [
+			{
+				_name: 'listCustomField',
+			},
+		],
+	})) as IDataObject[];
+
+	for (const field of customFields) {
+		fields.push({
+			displayName: `Custom Field: ${(field.displayName || field.name) as string}`,
+			id: `customFields.${field.name}`,
+			required: false,
+			display: true,
+			type: (field.options as string[])?.length ? 'options' : (field.type as FieldType),
+			defaultMatch: false,
+			options: (field.options as string[])?.length
+				? (field.options as string[]).map((option) => ({ name: option, value: option }))
+				: undefined,
+		});
+	}
 
 	const columnData: ResourceMapperFields = {
 		fields,

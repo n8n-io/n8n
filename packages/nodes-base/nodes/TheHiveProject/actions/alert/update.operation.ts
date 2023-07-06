@@ -3,9 +3,9 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
-import { customFieldsCollection2 } from '../common.description';
 import { theHiveApiRequest } from '../../transport';
-import { convertCustomFieldUiToObject, splitTags } from '../../helpers/utils';
+import { splitTags } from '../../helpers/utils';
+import set from 'lodash/set';
 
 const properties: INodeProperties[] = [
 	{
@@ -28,7 +28,6 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
-	customFieldsCollection2,
 ];
 
 const displayOptions = {
@@ -69,13 +68,38 @@ export async function execute(
 		body.removeTags = splitTags(body.removeTags);
 	}
 
-	const customFieldsUi = this.getNodeParameter('customFieldsUi.values', i, {}) as IDataObject;
-	body.customFields = convertCustomFieldUiToObject(customFieldsUi);
-
 	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
 
+	const updateBody: IDataObject = {};
+	const updateFields: IDataObject = {};
+	const { id } = body; // id would be used if matching on id, also we need to remove it from the body
+
+	for (const field of Object.keys(body)) {
+		if (field === 'customFields') {
+			//in input data customFields sent as an object, parse it extracting customFields that are used for matching
+			const customFields: IDataObject = {};
+			for (const customField of Object.keys(body.customFields || {})) {
+				const customFieldPath = `customFields.${customField}`;
+				if (fieldsToMatchOn.includes(customFieldPath)) {
+					updateFields[customFieldPath] = (body.customFields as IDataObject)[customField];
+				} else {
+					customFields[customField] = (body.customFields as IDataObject)[customField];
+				}
+			}
+			set(updateBody, 'customFields', customFields);
+			continue;
+		}
+		if (fieldsToMatchOn.includes(field)) {
+			// if field is in fieldsToMatchOn, we need to exclude it from the updateBody, as values used for matching should not be updated
+			updateFields[field] = body[field];
+		} else {
+			// use set to construct the updateBody, as it allows to process customFields.fieldName
+			// if customFields provided under customFields property, it will be send as is
+			set(updateBody, field, body[field]);
+		}
+	}
+
 	if (fieldsToMatchOn.includes('id')) {
-		const { id } = body;
 		await theHiveApiRequest.call(this, 'PATCH', `/v1/alert/${id}`, body);
 	} else {
 		const filter = {
@@ -110,12 +134,7 @@ export async function execute(
 		const ids = matches.map((match) => match._id);
 		updatedAlerts = ids.length;
 
-		const updateBody: IDataObject = { ids };
-
-		for (const field of Object.keys(body)) {
-			if (fieldsToMatchOn.includes(field)) continue;
-			updateBody[field] = body[field];
-		}
+		updateBody.ids = ids;
 
 		await theHiveApiRequest.call(this, 'PATCH', '/v1/alert/_bulk', updateBody);
 	}
