@@ -12,6 +12,15 @@ import { getValue } from './utils';
 import { getResolvables } from '@utils/utilities';
 import type { IValueData } from './types';
 
+export const capitalizeHeader = (header: string, capitalize?: boolean) => {
+	if (!capitalize) return header;
+	return header
+		.split('_')
+		.filter((word) => word)
+		.map((word) => word[0].toUpperCase() + word.slice(1))
+		.join(' ');
+};
+
 export class Html implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HTML',
@@ -43,6 +52,11 @@ export class Html implements INodeType {
 						name: 'Extract HTML Content',
 						value: 'extractHtmlContent',
 						action: 'Extract HTML Content',
+					},
+					{
+						name: 'Convert to HTML Table',
+						value: 'convertToHtmlTable',
+						action: 'Convert to HTML Table',
 					},
 				],
 				default: 'generateHtmlTemplate',
@@ -238,15 +252,170 @@ export class Html implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//       convertToHtmlTable
+			// ----------------------------------
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['convertToHtmlTable'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Capitalize Headers',
+						name: 'capitalize',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to capitalize the headers',
+					},
+					{
+						displayName: 'Custom Styling',
+						name: 'customStyling',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to use custom styling',
+					},
+					{
+						displayName: 'Caption',
+						name: 'caption',
+						type: 'string',
+						default: '',
+						description: 'Caption to add to the table',
+					},
+					{
+						displayName: 'Table Attributes',
+						name: 'tableAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table',
+						placeholder: 'e.g. style="padding:10px"',
+					},
+					{
+						displayName: 'Header Attributes',
+						name: 'headerAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table header',
+						placeholder: 'e.g. style="padding:10px"',
+					},
+					{
+						displayName: 'Row Attributes',
+						name: 'rowAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table row',
+						placeholder: 'e.g. style="padding:10px"',
+					},
+					{
+						displayName: 'Cell Attributes',
+						name: 'cellAttributes',
+						type: 'string',
+						default: '',
+						description: 'Attributes to attach to the table cell',
+						placeholder: 'e.g. style="padding:10px"',
+					},
+				],
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		let item: INodeExecutionData;
-		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0);
 
+		if (operation === 'convertToHtmlTable' && items.length) {
+			let table = '';
+
+			const options = this.getNodeParameter('options', 0);
+
+			let tableStyle = '';
+			let headerStyle = '';
+			let cellStyle = '';
+
+			if (!options.customStyling) {
+				tableStyle = "style='border-spacing:0; font-family:helvetica,arial,sans-serif'";
+				headerStyle =
+					"style='margin:0; padding:7px 20px 7px 0px; border-bottom:1px solid #eee; text-align:left; color:#888; font-weight:normal'";
+				cellStyle = "style='margin:0; padding:7px 20px 7px 0px; border-bottom:1px solid #eee'";
+			}
+
+			const tableAttributes = (options.tableAttributes as string) || '';
+			const headerAttributes = (options.headerAttributes as string) || '';
+
+			const itemsData: IDataObject[] = [];
+			const itemsKeys = new Set<string>();
+
+			for (const entry of items) {
+				itemsData.push(entry.json);
+
+				for (const key of Object.keys(entry.json)) {
+					itemsKeys.add(key);
+				}
+			}
+
+			const headers = Array.from(itemsKeys);
+
+			table += `<table ${tableStyle} ${tableAttributes}>`;
+
+			if (options.caption) {
+				table += `<caption>${options.caption}</caption>`;
+			}
+
+			table += `<thead ${headerStyle} ${headerAttributes}>`;
+			table += '<tr>';
+			table += headers
+				.map((header) => '<th>' + capitalizeHeader(header, options.capitalize as boolean) + '</th>')
+				.join('');
+			table += '</tr>';
+			table += '</thead>';
+
+			table += '<tbody>';
+			itemsData.forEach((entry, entryIndex) => {
+				const rowsAttributes = this.getNodeParameter(
+					'options.rowsAttributes',
+					entryIndex,
+					'',
+				) as string;
+
+				table += `<tr  ${rowsAttributes}>`;
+
+				const cellsAttributes = this.getNodeParameter(
+					'options.cellAttributes',
+					entryIndex,
+					'',
+				) as string;
+
+				table += headers
+					.map((header) => {
+						let td = `<td ${cellStyle} ${cellsAttributes}>`;
+
+						if (typeof entry[header] === 'boolean') {
+							const isChecked = entry[header] ? 'checked="checked"' : '';
+							td += `<input type="checkbox" ${isChecked}/>`;
+						} else {
+							td += entry[header];
+						}
+						td += '</td>';
+						return td;
+					})
+					.join('');
+				table += '</tr>';
+			});
+
+			table += '</tbody>';
+			table += '</table>';
+
+			return this.prepareOutputData([{ json: { table } }]);
+		}
+
+		let item: INodeExecutionData;
+		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				if (operation === 'generateHtmlTemplate') {
