@@ -357,6 +357,8 @@ export default defineComponent({
 	watch: {
 		// Listen to route changes and load the workflow accordingly
 		$route(to: Route, from: Route) {
+			this.readOnlyEnvCheck();
+
 			const currentTab = getNodeViewTab(to);
 			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
 			let workflowChanged =
@@ -3816,8 +3818,13 @@ export default defineComponent({
 			}
 		},
 		readOnlyEnvCheck() {
-			if (this.readOnlyEnv && this.$route.name === VIEWS.NEW_WORKFLOW) {
-				this.$router.replace({ name: VIEWS.WORKFLOWS });
+			if (
+				this.readOnlyEnv &&
+				[VIEWS.NEW_WORKFLOW, VIEWS.TEMPLATE_IMPORT].includes(this.$route.name)
+			) {
+				this.$nextTick(async () => {
+					await this.$router.replace({ name: VIEWS.WORKFLOWS });
+				});
 			}
 		},
 	},
