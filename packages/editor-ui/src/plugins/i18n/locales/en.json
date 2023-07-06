@@ -1342,7 +1342,7 @@
 	"settings.sourceControl.authorEmail": "Commit author  email",
 	"settings.sourceControl.authorEmailInvalid": "The provided email is not correct",
 	"settings.sourceControl.sshKey": "SSH Key",
-	"settings.sourceControl.sshKeyDescription": "Paste the SSH key in your git repository settings. {link}",
+	"settings.sourceControl.sshKeyDescription": "Paste the SSH key in your git repository/account settings. {link}",
 	"settings.sourceControl.sshKeyDescriptionLink": "More info",
 	"settings.sourceControl.refreshSshKey": "Refresh Key",
 	"settings.sourceControl.refreshSshKey.successful.title": "SSH Key refreshed successfully",

@@ -135,7 +135,7 @@ const goToSourceControlSetup = async () => {
 			:class="$style.connected"
 			data-test-id="main-sidebar-source-control-connected"
 		>
-			<span>
+			<span :class="$style.branchName">
 				<n8n-icon icon="code-branch" />
 				{{ currentBranch }}
 			</span>
@@ -218,6 +218,11 @@ const goToSourceControlSetup = async () => {
 	button {
 		font-size: var(--font-size-3xs);
 	}
+}
+
+.branchName {
+	white-space: normal;
+	line-break: anywhere;
 }
 
 .collapsed {

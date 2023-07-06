@@ -1440,6 +1440,10 @@ export default defineComponent({
 		 * This method gets called when data got pasted into the window
 		 */
 		async receivedCopyPasteData(plainTextData: string): Promise<void> {
+			if (this.readOnlyEnv) {
+				return;
+			}
+
 			const currentTab = getNodeViewTab(this.$route);
 			if (currentTab === MAIN_HEADER_TABS.WORKFLOW) {
 				let workflowData: IWorkflowDataUpdate | undefined;
@@ -3811,6 +3815,11 @@ export default defineComponent({
 				this.stopLoading();
 			}
 		},
+		readOnlyEnvCheck() {
+			if (this.readOnlyEnv && this.$route.name === VIEWS.NEW_WORKFLOW) {
+				this.$router.replace({ name: VIEWS.WORKFLOWS });
+			}
+		},
 	},
 	async mounted() {
 		this.resetWorkspace();
@@ -3903,6 +3912,8 @@ export default defineComponent({
 				}, promptTimeout);
 			}
 		}
+
+		this.readOnlyEnvCheck();
 	},
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
