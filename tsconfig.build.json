@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"types": ["node"],
+		"noEmit": false,
+		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+	},
+	"tsc-alias": {
+		"replacers": {
+			"base-url": {
+				"enabled": false
+			}
+		}
+	}
+}
