@@ -1,150 +1,34 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import {
-	alertRLC,
-	alertStatusSelector,
-	customFieldsCollection,
-	observableDataType,
-	severitySelector,
-	tlpSelector,
-} from '../common.description';
-import { prepareCustomFields, theHiveApiRequest } from '../../transport';
+
+import { customFieldsCollection2 } from '../common.description';
+import { theHiveApiRequest } from '../../transport';
+import { convertCustomFieldUiToObject, splitTags } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
-	alertRLC,
 	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: true,
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['alert'],
-				operation: ['update'],
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
+		required: true,
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getAlertUpdateFields',
+				mode: 'update',
+				valuesLabel: 'Fields',
+				addAllFields: true,
+				multiKeyMatch: true,
 			},
 		},
-		options: [
-			{
-				displayName: 'Artifacts',
-				name: 'artifactUi',
-				type: 'fixedCollection',
-				placeholder: 'Add Artifact',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Artifact',
-						name: 'artifactValues',
-						values: [
-							observableDataType,
-							{
-								displayName: 'Data',
-								name: 'data',
-								type: 'string',
-								displayOptions: {
-									hide: {
-										dataType: ['file'],
-									},
-								},
-								default: '',
-							},
-							{
-								displayName: 'Binary Property',
-								name: 'binaryProperty',
-								type: 'string',
-								displayOptions: {
-									show: {
-										dataType: ['file'],
-									},
-								},
-								default: 'data',
-							},
-							{
-								displayName: 'Message',
-								name: 'message',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Case Tags',
-								name: 'tags',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
-			},
-			{
-				...customFieldsCollection,
-				displayOptions: {
-					hide: {
-						'/jsonParameters': [true],
-					},
-				},
-			},
-			{
-				displayName: 'Custom Fields (JSON)',
-				name: 'customFieldsJson',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [true],
-					},
-				},
-				default: '',
-				description: 'Custom fields in JSON format. Overrides Custom Fields UI if set.',
-			},
-			{
-				displayName: 'Case Template',
-				name: 'caseTemplate',
-				type: 'string',
-				default: '',
-				description: 'Case template to use when a case is created from this alert',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'Description of the alert',
-			},
-			{
-				displayName: 'Follow',
-				name: 'follow',
-				type: 'boolean',
-				default: true,
-				description: 'Whether the alert becomes active when updated default=true',
-			},
-			severitySelector,
-			alertStatusSelector,
-			{
-				displayName: 'Case Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				placeholder: 'tag,tag2,tag3...',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'Title of the alert',
-			},
-			tlpSelector,
-		],
 	},
+	customFieldsCollection2,
 ];
 
 const displayOptions = {
@@ -156,55 +40,92 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
+	let body: IDataObject = {};
+	let updatedAlerts = 1;
 
-	const alertId = this.getNodeParameter('alertId', i, '', { extractValue: true }) as string;
-	const jsonParameters = this.getNodeParameter('jsonParameters', i);
+	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
-	const updateFields = this.getNodeParameter('updateFields', i);
-	const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
-
-	const artifactUi = updateFields.artifactUi as IDataObject;
-
-	delete updateFields.artifactUi;
-
-	const body: IDataObject = {
-		...customFields,
-	};
-
-	Object.assign(body, updateFields);
-
-	if (artifactUi) {
-		const artifactValues = artifactUi.artifactValues as IDataObject[];
-
-		if (artifactValues) {
-			const artifactData = [];
-
-			for (const artifactvalue of artifactValues) {
-				const element: IDataObject = {};
-				element.message = artifactvalue.message as string;
-				element.tags = (artifactvalue.tags as string).split(',');
-				element.dataType = artifactvalue.dataType as string;
-				element.data = artifactvalue.data as string;
-
-				if (artifactvalue.dataType === 'file') {
-					const binaryPropertyName = artifactvalue.binaryProperty as string;
-					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-					element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
-				}
-
-				artifactData.push(element);
-			}
-			body.artifacts = artifactData;
-		}
+	if (dataMode === 'autoMapInputData') {
+		body = item.json;
 	}
 
-	responseData = await theHiveApiRequest.call(this, 'PATCH', `/alert/${alertId}`, body);
+	if (dataMode === 'defineBelow') {
+		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
+		body = fields;
+	}
 
-	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
-		itemData: { item: i },
-	});
+	if (body.tags) {
+		body.tags = splitTags(body.tags);
+	}
+	if (body.addTags) {
+		body.addTags = splitTags(body.addTags);
+	}
+	if (body.removeTags) {
+		body.removeTags = splitTags(body.removeTags);
+	}
+
+	const customFieldsUi = this.getNodeParameter('customFieldsUi.values', i, {}) as IDataObject;
+	body.customFields = convertCustomFieldUiToObject(customFieldsUi);
+
+	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
+
+	if (fieldsToMatchOn.includes('id')) {
+		const { id } = body;
+		await theHiveApiRequest.call(this, 'PATCH', `/v1/alert/${id}`, body);
+	} else {
+		const filter = {
+			_name: 'filter',
+			_and: fieldsToMatchOn.map((field) => ({
+				_eq: {
+					_field: field,
+					_value: body[field],
+				},
+			})),
+		};
+
+		const queryBody = {
+			query: [
+				{
+					_name: 'listAlert',
+				},
+				filter,
+			],
+		};
+
+		const matches = (await theHiveApiRequest.call(
+			this,
+			'POST',
+			'/v1/query',
+			queryBody,
+		)) as IDataObject[];
+
+		if (!matches.length) {
+			throw new NodeOperationError(this.getNode(), 'No matching alerts found');
+		}
+		const ids = matches.map((match) => match._id);
+		updatedAlerts = ids.length;
+
+		const updateBody: IDataObject = { ids };
+
+		for (const field of Object.keys(body)) {
+			if (fieldsToMatchOn.includes(field)) continue;
+			updateBody[field] = body[field];
+		}
+
+		await theHiveApiRequest.call(this, 'PATCH', '/v1/alert/_bulk', updateBody);
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		wrapData({ success: true, updatedAlerts }),
+		{
+			itemData: { item: i },
+		},
+	);
 
 	return executionData;
 }
