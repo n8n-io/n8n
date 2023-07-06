@@ -357,11 +357,17 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				}
 
 				for (const type in known.credentials) {
-					const { className, sourcePath, nodesToTestWith } = known.credentials[type];
+					const {
+						className,
+						sourcePath,
+						nodesToTestWith,
+						extends: extendsArr,
+					} = known.credentials[type];
 					this.known.credentials[type] = {
 						className,
 						sourcePath: path.join(directory, sourcePath),
 						nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
+						extends: extendsArr,
 					};
 				}
 			}
