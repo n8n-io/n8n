@@ -6,24 +6,14 @@ import {
 	NEW_QUERY_AUTH_ACCOUNT_NAME,
 } from './../constants';
 import {
-	DEFAULT_USER_EMAIL,
-	DEFAULT_USER_PASSWORD,
 	GMAIL_NODE_NAME,
 	NEW_GOOGLE_ACCOUNT_NAME,
 	NEW_TRELLO_ACCOUNT_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	TRELLO_NODE_NAME,
 } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 import { CredentialsPage, CredentialsModal, WorkflowPage, NDV } from '../pages';
-import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
-import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
-import CustomCredential from '../fixtures/Custom_credential.json';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 const workflowPage = new WorkflowPage();
@@ -32,10 +22,6 @@ const nodeDetailsView = new NDV();
 const NEW_CREDENTIAL_NAME = 'Something else';
 
 describe('Credentials', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		cy.visit(credentialsPage.url);
 	});

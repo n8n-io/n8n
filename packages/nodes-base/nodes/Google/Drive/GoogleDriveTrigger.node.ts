@@ -13,6 +13,7 @@ import { extractId, googleApiRequest, googleApiRequestAllItems } from './v1/Gene
 
 import moment from 'moment';
 import { fileSearch, folderSearch } from './v1/SearchFunctions';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../constants';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -112,15 +113,13 @@ export class GoogleDriveTrigger implements INodeType {
 						placeholder: 'https://drive.google.com/file/d/1wroCSfK-hupQIYf_xzeoUEzOhvfTFH2P/edit',
 						extractValue: {
 							type: 'regex',
-							regex:
-								'https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex:
-										'https:\\/\\/(?:drive|docs)\\.google.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 									errorMessage: 'Not a valid Google Drive File URL',
 								},
 							},
@@ -192,15 +191,13 @@ export class GoogleDriveTrigger implements INodeType {
 						placeholder: 'https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
 						extractValue: {
 							type: 'regex',
-							regex:
-								'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex:
-										'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 									errorMessage: 'Not a valid Google Drive Folder URL',
 								},
 							},

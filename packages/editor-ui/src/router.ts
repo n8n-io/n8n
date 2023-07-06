@@ -416,12 +416,6 @@ export const routes = [
 				allow: {
 					role: [ROLE.Default],
 				},
-				deny: {
-					shouldDeny: () => {
-						const settingsStore = useSettingsStore();
-						return settingsStore.isUserManagementEnabled === false;
-					},
-				},
 			},
 		},
 	},
@@ -537,17 +531,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-
-								return (
-									settingsStore.isUserManagementEnabled === false &&
-									!(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment)
-								);
-							},
+							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -645,7 +629,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							role: [ROLE.Member],
@@ -665,7 +649,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							shouldDeny: () => {
@@ -707,7 +691,7 @@ export const routes = [
 				meta: {
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							role: [ROLE.Member],

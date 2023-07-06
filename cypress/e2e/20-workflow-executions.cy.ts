@@ -6,10 +6,6 @@ const executionsTab = new WorkflowExecutionsTab();
 
 // Test suite for executions tab
 describe('Current Workflow Executions', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
@@ -36,7 +32,6 @@ describe('Current Workflow Executions', () => {
 });
 
 const createMockExecutions = () => {
-	workflowPage.actions.turnOnManualExecutionSaving();
 	executionsTab.actions.createManualExecutions(5);
 	// Make some failed executions by enabling Code node with syntax error
 	executionsTab.actions.toggleNodeEnabled('Error');

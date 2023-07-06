@@ -71,20 +71,6 @@ docker run -it --rm \
  n8n start --tunnel
 ```
 
-## Securing n8n
-
-By default n8n can be accessed by everybody. This is OK if you have it only running
-locally but if you deploy it on a server which is accessible from the web you have
-to make sure that n8n is protected!
-Right now we have very basic protection via basic-auth in place. It can be activated
-by setting the following environment variables:
-
-```text
-N8N_BASIC_AUTH_ACTIVE=true
-N8N_BASIC_AUTH_USER=<USER>
-N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
-```
-
 ## Persist data
 
 The workflow data gets by default saved in an SQLite database in the user
@@ -181,8 +167,6 @@ The following environment variables support file input:
 - DB_POSTGRESDB_PORT_FILE
 - DB_POSTGRESDB_USER_FILE
 - DB_POSTGRESDB_SCHEMA_FILE
-- N8N_BASIC_AUTH_PASSWORD_FILE
-- N8N_BASIC_AUTH_USER_FILE
 
 ## Example Setup with Lets Encrypt
 
@@ -193,19 +177,19 @@ A basic step by step example setup of n8n with docker-compose and Lets Encrypt i
 
 1. Pull the latest version from the registry
 
-    `docker pull docker.n8n.io/n8nio/n8n`
+   `docker pull docker.n8n.io/n8nio/n8n`
 
 2. Stop the current setup
 
-    `sudo docker-compose stop`
+   `sudo docker-compose stop`
 
 3. Delete it (will only delete the docker-containers, data is stored separately)
 
-    `sudo docker-compose rm`
+   `sudo docker-compose rm`
 
 4. Then start it again
 
-    `sudo docker-compose up -d`
+   `sudo docker-compose up -d`
 
 ## Setting Timezone
 
