@@ -39,7 +39,6 @@ import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserAc
 import { MigrateIntegerKeysToString1690000000000 } from './1690000000000-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExecutionData';
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
-import { SetMigrationFlagSetting1690000000021 } from './1690000000021-SetMigrationFlagSetting';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -82,5 +81,4 @@ export const postgresMigrations: Migration[] = [
 	MigrateIntegerKeysToString1690000000000,
 	SeparateExecutionData1690000000020,
 	RemoveSkipOwnerSetup1681134145997,
-	SetMigrationFlagSetting1690000000021,
 ];
