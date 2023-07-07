@@ -397,6 +397,7 @@ const customFieldsCollection: INodeProperties = {
 		},
 	],
 };
+
 export const filtersCollection: INodeProperties = {
 	displayName: 'Filters',
 	name: 'filters',
@@ -564,5 +565,46 @@ export const filtersCollection: INodeProperties = {
 			default: '',
 		},
 		tlpSelector,
+	],
+};
+
+export const sortCollection: INodeProperties = {
+	displayName: 'Sort',
+	name: 'sort',
+	type: 'fixedCollection',
+	placeholder: 'Add Sort Rule',
+	default: {},
+	typeOptions: {
+		multipleValues: true,
+	},
+	options: [
+		{
+			displayName: 'Fields',
+			name: 'fields',
+			values: [
+				{
+					displayName: 'Field',
+					name: 'field',
+					type: 'string',
+					default: '',
+				},
+				{
+					displayName: 'Direction',
+					name: 'direction',
+					type: 'options',
+					options: [
+						{
+							name: 'Ascending',
+							value: 'asc',
+						},
+						{
+							name: 'Descending',
+							value: 'desc',
+						},
+					],
+					default: 'asc',
+				},
+			],
+		},
 	],
 };

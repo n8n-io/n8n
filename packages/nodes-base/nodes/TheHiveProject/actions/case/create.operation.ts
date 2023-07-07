@@ -6,7 +6,7 @@ import { theHiveApiRequest } from '../../transport';
 
 import set from 'lodash/set';
 
-import { splitTags } from '../../helpers/utils';
+import { fixFieldType } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -57,17 +57,7 @@ export async function execute(
 		inputData = fields;
 	}
 
-	if (inputData.tags) {
-		inputData.tags = splitTags(inputData.tags);
-	}
-
-	if (inputData.startDate) {
-		inputData.startDate = Date.parse(inputData.startDate as string);
-	}
-
-	if (inputData.endDate) {
-		inputData.endDate = Date.parse(inputData.endDate as string);
-	}
+	inputData = fixFieldType(inputData);
 
 	const body: IDataObject = {};
 

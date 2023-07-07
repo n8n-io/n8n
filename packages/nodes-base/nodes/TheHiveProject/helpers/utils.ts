@@ -87,24 +87,6 @@ export function ContainsString(field: string, value: string) {
 	return { _wildcard: { _field: field, _value: value } };
 }
 
-// Helpers functions
-export function mapResource(resource: string): string {
-	switch (resource) {
-		case 'alert':
-			return 'alert';
-		case 'case':
-			return 'case';
-		case 'observable':
-			return 'case_artifact';
-		case 'task':
-			return 'case_task';
-		case 'log':
-			return 'case_task_log';
-		default:
-			return '';
-	}
-}
-
 export function splitTags<T>(tags: T) {
 	if (typeof tags === 'string') {
 		return tags
@@ -113,6 +95,26 @@ export function splitTags<T>(tags: T) {
 			.filter((tag) => tag);
 	}
 	return tags;
+}
+
+export function fixFieldType(fields: IDataObject) {
+	const returnData: IDataObject = {};
+
+	for (const key of Object.keys(fields)) {
+		if (['date', 'lastSyncDate', 'startDate', 'endDate'].includes(key)) {
+			returnData[key] = Date.parse(fields[key] as string);
+			continue;
+		}
+
+		if (['tags', 'addTags', 'removeTags'].includes(key)) {
+			returnData[key] = splitTags(fields[key]);
+			continue;
+		}
+
+		returnData[key] = fields[key];
+	}
+
+	return returnData;
 }
 
 export function prepareOptional(optionals: IDataObject): IDataObject {

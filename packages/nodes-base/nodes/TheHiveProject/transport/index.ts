@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
+import { convertCustomFieldUiToObject } from '../helpers/utils';
 
 export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -41,6 +42,71 @@ export async function theHiveApiRequest(
 		delete options.qs;
 	}
 	return this.helpers.requestWithAuthentication.call(this, 'theHiveProjectApi', options);
+}
+
+export async function theHiveApiListQuery(
+	this: IExecuteFunctions,
+	listResource: string,
+	filters?: IDataObject,
+	sortFields?: IDataObject[],
+	limit?: number,
+) {
+	const query: IDataObject[] = [
+		{
+			_name: listResource,
+		},
+	];
+
+	if (filters && Object.keys(filters).length) {
+		if (filters.customFieldsUi) {
+			const customFields = convertCustomFieldUiToObject(filters.customFieldsUi as IDataObject);
+
+			for (const [key, value] of Object.entries(customFields || {})) {
+				filters[`customFields.${key}`] = value;
+			}
+
+			delete filters.customFieldsUi;
+		}
+
+		const filter = {
+			_name: 'filter',
+			_and: Object.keys(filters).map((field) => ({
+				_eq: {
+					_field: field,
+					_value: filters[field],
+				},
+			})),
+		};
+
+		query.push(filter);
+	}
+
+	if (sortFields?.length) {
+		const sort = {
+			_name: 'sort',
+			_fields: sortFields.map((field) => {
+				return {
+					[`${field.field as string}`]: field.direction as string,
+				};
+			}),
+		};
+
+		query.push(sort);
+	}
+
+	if (limit) {
+		const pagination = {
+			_name: 'page',
+			from: 0,
+			to: limit,
+		};
+
+		query.push(pagination);
+	}
+
+	const responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+
+	return responseData;
 }
 
 export async function prepareCustomFields(

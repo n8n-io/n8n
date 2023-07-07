@@ -7,7 +7,7 @@ import { theHiveApiRequest } from '../../transport';
 import set from 'lodash/set';
 
 import FormData from 'form-data';
-import { splitTags } from '../../helpers/utils';
+import { fixFieldType, splitTags } from '../../helpers/utils';
 import { observableDataType } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -112,13 +112,7 @@ export async function execute(
 		inputData = fields;
 	}
 
-	if (inputData.tags) {
-		inputData.tags = splitTags(inputData.tags);
-	}
-
-	if (inputData.date) {
-		inputData.date = Date.parse(inputData.date as string);
-	}
+	inputData = fixFieldType(inputData);
 
 	const body: IDataObject = {};
 

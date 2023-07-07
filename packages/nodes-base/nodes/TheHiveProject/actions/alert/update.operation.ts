@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 import { theHiveApiRequest } from '../../transport';
-import { splitTags } from '../../helpers/utils';
+import { fixFieldType } from '../../helpers/utils';
 import set from 'lodash/set';
 
 const properties: INodeProperties[] = [
@@ -58,23 +58,7 @@ export async function execute(
 		body = fields;
 	}
 
-	if (body.tags) {
-		body.tags = splitTags(body.tags);
-	}
-	if (body.addTags) {
-		body.addTags = splitTags(body.addTags);
-	}
-	if (body.removeTags) {
-		body.removeTags = splitTags(body.removeTags);
-	}
-
-	if (body.date) {
-		body.date = Date.parse(body.date as string);
-	}
-
-	if (body.lastSyncDate) {
-		body.lastSyncDate = Date.parse(body.lastSyncDate as string);
-	}
+	body = fixFieldType(body);
 
 	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
 

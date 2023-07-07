@@ -1,13 +1,23 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { theHiveApiRequest } from '../transport';
-import { mapResource } from '../helpers/utils';
 
 export async function loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	// request the analyzers from instance
-	const resource = this.getNodeParameter('resource') as string;
-	const theHiveResource = mapResource(resource);
+	let resource = this.getNodeParameter('resource') as string;
+
+	switch (resource) {
+		case 'observable':
+			resource = 'case_artifact';
+			break;
+		case 'task':
+			resource = 'case_task';
+			break;
+		case 'log':
+			resource = 'case_task_log';
+			break;
+	}
 
 	let resourceId = '';
+
 	if (['case', 'alert'].includes(resource)) {
 		resourceId = this.getNodeParameter('id', '', { extractValue: true }) as string;
 	} else {
@@ -17,7 +27,7 @@ export async function loadResponders(this: ILoadOptionsFunctions): Promise<INode
 	const responders = await theHiveApiRequest.call(
 		this,
 		'GET',
-		`/connector/cortex/responder/${theHiveResource}/${resourceId}`,
+		`/connector/cortex/responder/${resource}/${resourceId}`,
 	);
 
 	const returnData: INodePropertyOptions[] = [];
@@ -29,15 +39,20 @@ export async function loadResponders(this: ILoadOptionsFunctions): Promise<INode
 			description: responder.description as string,
 		});
 	}
+
 	return returnData;
 }
 
 export async function loadAnalyzers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	// request the analyzers from instance
-	const dataType = this.getNodeParameter('dataType') as string;
-	const endpoint = `/connector/cortex/analyzer/type/${dataType}`;
-	const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint);
 	const returnData: INodePropertyOptions[] = [];
+
+	const dataType = this.getNodeParameter('dataType') as string;
+
+	const requestResult = await theHiveApiRequest.call(
+		this,
+		'GET',
+		`/connector/cortex/analyzer/type/${dataType}`,
+	);
 
 	for (const analyzer of requestResult) {
 		for (const cortexId of analyzer.cortexIds) {
@@ -48,6 +63,7 @@ export async function loadAnalyzers(this: ILoadOptionsFunctions): Promise<INodeP
 			});
 		}
 	}
+
 	return returnData;
 }
 
