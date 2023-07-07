@@ -1,6 +1,5 @@
 import type { Application, NextFunction, Request, RequestHandler, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { sync as globSync } from 'fast-glob';
@@ -78,8 +77,6 @@ export const setupAuthMiddlewares = (
 	ignoredEndpoints: Readonly<string[]>,
 	restEndpoint: string,
 ) => {
-	// needed for testing; not adding overhead since it directly returns if req.cookies exists
-	app.use(cookieParser());
 	app.use(userManagementJwtAuth());
 
 	app.use(async (req: Request, res: Response, next: NextFunction) => {
