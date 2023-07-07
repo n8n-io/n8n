@@ -2,6 +2,7 @@ import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
+import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
 import express from 'express';
@@ -121,6 +122,7 @@ export async function initTestServer({
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
+	testServer.app.use(cookieParser());
 
 	config.set('userManagement.jwtSecret', 'My JWT secret');
 	config.set('userManagement.isInstanceOwnerSetUp', false);
