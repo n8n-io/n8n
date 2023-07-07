@@ -13,6 +13,8 @@ export interface QpJwt {
 				storefront: string;
 				workflow: string; // n8n User
 			}>;
+			is_super_admin: boolean;
+			is_service_admin: boolean;
 		};
 	};
 }
