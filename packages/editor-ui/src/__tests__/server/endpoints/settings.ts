@@ -75,9 +75,7 @@ const defaultSettings: IN8nUISettings = {
 		type: 'default',
 	},
 	banners: {
-		v1: {
-			dismissed: false,
-		},
+		permanentlyDismissed: [],
 	},
 };
 

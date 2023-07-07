@@ -171,7 +171,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
 		},
 		permanentlyDismissedBanners(): string[] {
-			return this.settings.banners.permanentlyDismissed;
+			return this.settings.banners?.permanentlyDismissed ?? [];
 		},
 	},
 	actions: {
