@@ -128,6 +128,7 @@ import {
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getUserN8nFolderPath } from './UserSettings';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2244,6 +2245,9 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				: error;
 		}
 		return createReadStream(filePath);
+	},
+	getStoragePath() {
+		return path.join(getUserN8nFolderPath(), `storage/${node.type}`);
 	},
 });
 
