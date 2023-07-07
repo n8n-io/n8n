@@ -1,0 +1,362 @@
+{
+	"name": "Python Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "c855c97f-59ba-4550-9cab-11d4a1745f6f",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [540, 380]
+		},
+		{
+			"parameters": {},
+			"id": "859efb56-51b2-4e3f-9b7a-6903d218f391",
+			"name": "Start",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [760, 380]
+		},
+		{
+			"parameters": {
+				"operation": "getAllPeople"
+			},
+			"id": "5f30752b-81d7-4df9-bd8b-6c8ab0352b88",
+			"name": "Customer Datastore",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [980, 380]
+		},
+		{
+			"parameters": {
+				"language": "python",
+				"pythonCode": "return [\n  {\n    \"_input.first()\": _input.first(),\n    \"_input.first().json.name\": _input.first().json.name,\n    \"_input.item\": _input.item,\n    \"_input.last()\": _input.last(),\n    \"_input.all()\": _input.all(),\n    \"_('Start').params\": _('Start').params,\n    \"_execution\": _execution,\n    \"_('Customer Datastore').context\": _('Customer Datastore').context,\n    \"_('Customer Datastore').item\": _('Customer Datastore').item,\n    \"_('Customer Datastore').first()\": _('Customer Datastore').first(),\n    \"_('Customer Datastore').pairedItem()\": _('Customer Datastore').pairedItem(),\n    \"_('Customer Datastore').itemMatching(0)\": _('Customer Datastore').itemMatching(0),\n    \"_('Customer Datastore').itemMatching(2)\": _('Customer Datastore').itemMatching(2),\n    \"_('Customer Datastore').first().json.name\": _('Customer Datastore').first().json.name,\n    \"_('Customer Datastore').last()\": _('Customer Datastore').last(),\n    \"_('Customer Datastore').all()\": _('Customer Datastore').all(),\n    \"_mode\": _mode,\n    \"_runIndex\": _runIndex,\n    \"_workflow\": _workflow,\n  }\n];"
+			},
+			"id": "17240caa-5cb5-45e7-9416-61a754ed0ecc",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1180, 380]
+		}
+	],
+	"pinData": {
+		"Code": [
+			{
+				"json": {
+					"_input.first()": {
+						"json": {
+							"id": "23423532",
+							"name": "Jay Gatsby",
+							"email": "gatsby@west-egg.com",
+							"notes": "Keeps asking about a green light??",
+							"country": "US",
+							"created": "1925-04-10"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_input.first().json.name": "Jay Gatsby",
+					"_input.item": {
+						"json": {
+							"id": "23423532",
+							"name": "Jay Gatsby",
+							"email": "gatsby@west-egg.com",
+							"notes": "Keeps asking about a green light??",
+							"country": "US",
+							"created": "1925-04-10"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_input.last()": {
+						"json": {
+							"id": "23423536",
+							"name": "Edmund Pevensie",
+							"email": "edmund@narnia.gov",
+							"notes": "Passionate sailor",
+							"country": "UK",
+							"created": "1950-10-16"
+						},
+						"pairedItem": {
+							"item": 4
+						}
+					},
+					"_input.all()": [
+						{
+							"json": {
+								"id": "23423532",
+								"name": "Jay Gatsby",
+								"email": "gatsby@west-egg.com",
+								"notes": "Keeps asking about a green light??",
+								"country": "US",
+								"created": "1925-04-10"
+							},
+							"pairedItem": {
+								"item": 0
+							}
+						},
+						{
+							"json": {
+								"id": "23423533",
+								"name": "José Arcadio Buendía",
+								"email": "jab@macondo.co",
+								"notes": "Lots of people named after him. Very confusing",
+								"country": "CO",
+								"created": "1967-05-05"
+							},
+							"pairedItem": {
+								"item": 1
+							}
+						},
+						{
+							"json": {
+								"id": "23423534",
+								"name": "Max Sendak",
+								"email": "info@in-and-out-of-weeks.org",
+								"notes": "Keeps rolling his terrible eyes",
+								"country": "US",
+								"created": "1963-04-09"
+							},
+							"pairedItem": {
+								"item": 2
+							}
+						},
+						{
+							"json": {
+								"id": "23423535",
+								"name": "Zaphod Beeblebrox",
+								"email": "captain@heartofgold.com",
+								"notes": "Felt like I was talking to more than one person",
+								"country": null,
+								"created": "1979-10-12"
+							},
+							"pairedItem": {
+								"item": 3
+							}
+						},
+						{
+							"json": {
+								"id": "23423536",
+								"name": "Edmund Pevensie",
+								"email": "edmund@narnia.gov",
+								"notes": "Passionate sailor",
+								"country": "UK",
+								"created": "1950-10-16"
+							},
+							"pairedItem": {
+								"item": 4
+							}
+						}
+					],
+					"_('Start').params": {},
+					"_execution": {
+						"id": "__UNKNOWN__",
+						"mode": "test",
+						"resumeUrl": "/webhook-waiting/__UNKNOWN__",
+						"resumeFormUrl": "/form-waiting/__UNKNOWN__",
+						"customData": {}
+					},
+					"_('Customer Datastore').context": {},
+					"_('Customer Datastore').item": {
+						"json": {
+							"id": "23423532",
+							"name": "Jay Gatsby",
+							"email": "gatsby@west-egg.com",
+							"notes": "Keeps asking about a green light??",
+							"country": "US",
+							"created": "1925-04-10"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_('Customer Datastore').first()": {
+						"json": {
+							"id": "23423532",
+							"name": "Jay Gatsby",
+							"email": "gatsby@west-egg.com",
+							"notes": "Keeps asking about a green light??",
+							"country": "US",
+							"created": "1925-04-10"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_('Customer Datastore').pairedItem()": {
+						"json": {
+							"id": "23423532",
+							"name": "Jay Gatsby",
+							"email": "gatsby@west-egg.com",
+							"notes": "Keeps asking about a green light??",
+							"country": "US",
+							"created": "1925-04-10"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_('Customer Datastore').itemMatching(0)": {
+						"json": {
+							"id": "23423532",
+							"name": "Jay Gatsby",
+							"email": "gatsby@west-egg.com",
+							"notes": "Keeps asking about a green light??",
+							"country": "US",
+							"created": "1925-04-10"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_('Customer Datastore').itemMatching(2)": {
+						"json": {
+							"id": "23423534",
+							"name": "Max Sendak",
+							"email": "info@in-and-out-of-weeks.org",
+							"notes": "Keeps rolling his terrible eyes",
+							"country": "US",
+							"created": "1963-04-09"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_('Customer Datastore').first().json.name": "Jay Gatsby",
+					"_('Customer Datastore').last()": {
+						"json": {
+							"id": "23423536",
+							"name": "Edmund Pevensie",
+							"email": "edmund@narnia.gov",
+							"notes": "Passionate sailor",
+							"country": "UK",
+							"created": "1950-10-16"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"_('Customer Datastore').all()": [
+						{
+							"json": {
+								"id": "23423532",
+								"name": "Jay Gatsby",
+								"email": "gatsby@west-egg.com",
+								"notes": "Keeps asking about a green light??",
+								"country": "US",
+								"created": "1925-04-10"
+							},
+							"pairedItem": {
+								"item": 0
+							}
+						},
+						{
+							"json": {
+								"id": "23423533",
+								"name": "José Arcadio Buendía",
+								"email": "jab@macondo.co",
+								"notes": "Lots of people named after him. Very confusing",
+								"country": "CO",
+								"created": "1967-05-05"
+							},
+							"pairedItem": {
+								"item": 0
+							}
+						},
+						{
+							"json": {
+								"id": "23423534",
+								"name": "Max Sendak",
+								"email": "info@in-and-out-of-weeks.org",
+								"notes": "Keeps rolling his terrible eyes",
+								"country": "US",
+								"created": "1963-04-09"
+							},
+							"pairedItem": {
+								"item": 0
+							}
+						},
+						{
+							"json": {
+								"id": "23423535",
+								"name": "Zaphod Beeblebrox",
+								"email": "captain@heartofgold.com",
+								"notes": "Felt like I was talking to more than one person",
+								"country": null,
+								"created": "1979-10-12"
+							},
+							"pairedItem": {
+								"item": 0
+							}
+						},
+						{
+							"json": {
+								"id": "23423536",
+								"name": "Edmund Pevensie",
+								"email": "edmund@narnia.gov",
+								"notes": "Passionate sailor",
+								"country": "UK",
+								"created": "1950-10-16"
+							},
+							"pairedItem": {
+								"item": 0
+							}
+						}
+					],
+					"_mode": "manual",
+					"_runIndex": 0,
+					"_workflow": {
+						"active": false,
+						"id": "test",
+						"name": "Python Test Workflow"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Start",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Customer Datastore",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Customer Datastore": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "057facee-55ac-43ae-999e-4f9e4eee71b6",
+	"id": "1090",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

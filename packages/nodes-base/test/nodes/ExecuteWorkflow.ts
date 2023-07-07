@@ -50,6 +50,7 @@ export async function executeWorkflow(testData: WorkflowTestData) {
 	const executionMode = testData.trigger?.mode ?? 'manual';
 	const workflowInstance = new Workflow({
 		id: 'test',
+		name: testData.input.workflowData.name,
 		nodes: testData.input.workflowData.nodes,
 		connections: testData.input.workflowData.connections,
 		active: false,
@@ -69,6 +70,9 @@ export async function executeWorkflow(testData: WorkflowTestData) {
 		hooks,
 		// Get from node.parameters
 		currentNodeParameters: undefined,
+		executionId: '__UNKNOWN__',
+		formWaitingBaseUrl: '/form-waiting',
+		webhookWaitingBaseUrl: '/webhook-waiting',
 	});
 
 	let executionData: IRun;

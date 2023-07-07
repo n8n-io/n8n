@@ -2418,6 +2418,7 @@ export interface WorkflowTestData {
 	description: string;
 	input: {
 		workflowData: {
+			name?: string;
 			nodes: INode[];
 			connections: IConnections;
 			settings?: IWorkflowSettings;

@@ -10,7 +10,12 @@ import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
 
 describe('Test Code Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
+	let workflows = getWorkflowFilenames(__dirname);
+
+	// Pyodide can't be loaded in tests without `--experimental-vm-modules`
+	if (!process.execArgv.includes('--experimental-vm-modules')) {
+		workflows = workflows.filter((filename) => !filename.includes('python'));
+	}
 
 	beforeAll(async () => {
 		await initBinaryDataService();
