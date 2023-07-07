@@ -146,6 +146,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					if (Reflect.ownKeys(target).length === 0) {
 						// Target object did not get set yet
@@ -178,6 +179,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return Reflect.ownKeys(target);
 				},
@@ -202,6 +204,7 @@ export class WorkflowDataProxy {
 		const node = this.workflow.nodes[nodeName];
 
 		return new Proxy(node.parameters, {
+			has: () => true,
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
 			},
@@ -384,6 +387,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{ binary: undefined, data: undefined, json: undefined },
 			{
+				has: () => true,
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
@@ -461,6 +465,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 
@@ -491,6 +496,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return allowedValues;
 				},
@@ -538,6 +544,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return allowedValues;
 				},
@@ -580,6 +587,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 
@@ -950,6 +958,7 @@ export class WorkflowDataProxy {
 				return new Proxy(
 					{},
 					{
+						has: () => true,
 						ownKeys(target) {
 							return [
 								'pairedItem',
@@ -1073,6 +1082,7 @@ export class WorkflowDataProxy {
 			},
 
 			$input: new Proxy({} as ProxyInput, {
+				has: () => true,
 				ownKeys(target) {
 					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
@@ -1238,6 +1248,7 @@ export class WorkflowDataProxy {
 		};
 
 		return new Proxy(base, {
+			has: () => true,
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
 
