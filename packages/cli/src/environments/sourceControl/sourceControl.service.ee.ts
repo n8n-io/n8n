@@ -221,11 +221,13 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 		let diffResult: SourceControlledFile[] = [];
-		if (options.force === true) {
-			options.skipDiff = true;
-		}
+		// if (options.force === true) {
+		// 	options.skipDiff = true;
+		// }
 		if (!options.skipDiff) {
-			diffResult = await this.getStatus();
+			diffResult = await this.getStatus({
+				skipFetch: options.force === true,
+			});
 			const possibleConflicts = diffResult?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0 && options.force !== true) {
 				await this.unstage();
@@ -269,8 +271,13 @@ export class SourceControlService {
 			userId: options.userId,
 			force: false,
 		});
-
-		const diffResult = await this.getStatus();
+		const diffResult = (await this.getStatus()).filter((e) => {
+			if (e.status === 'created' && e.location === 'local') {
+				// ignore local created files so the frontend does not think a pull created new entries
+				return false;
+			}
+			return true;
+		});
 		const possibleConflicts = diffResult?.filter(
 			(file) =>
 				(file.conflict || file.status === 'modified') &&
@@ -501,13 +508,15 @@ export class SourceControlService {
 		};
 	}
 
-	async getStatus(): Promise<SourceControlledFile[]> {
+	async getStatus(options?: { skipFetch: boolean }): Promise<SourceControlledFile[]> {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
 		await this.export();
 		await this.stage({});
-		await this.gitService.fetch();
+		if (!options?.skipFetch) {
+			await this.gitService.fetch();
+		}
 		const sourceControlledFiles: SourceControlledFile[] = [];
 		const [diffRemote, diffLocal, status] = await Promise.all([
 			this.gitService.diffRemote(),
