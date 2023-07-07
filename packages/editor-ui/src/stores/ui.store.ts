@@ -566,12 +566,17 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 			this.banners[name].dismissed = true;
 			this.banners[name].type = 'temporary';
+			this.updateBannersHeight();
 		},
 		showBanner(name: BANNERS): void {
 			this.banners[name].dismissed = false;
+			this.updateBannersHeight();
 		},
 		updateBannersHeight(): void {
-			this.bannersHeight = document.getElementById('banners')?.clientHeight ?? 0;
+			// Wait a bit for the DOM to update before getting the height
+			setTimeout(() => {
+				this.bannersHeight = document.getElementById('banners')?.clientHeight ?? 0;
+			}, 0);
 		},
 	},
 });
