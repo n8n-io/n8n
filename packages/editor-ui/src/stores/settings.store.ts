@@ -170,6 +170,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isDefaultAuthenticationSaml(): boolean {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
 		},
+		permanentlyDismissedBanners(): string[] {
+			return this.settings.banners.permanentlyDismissed;
+		},
 	},
 	actions: {
 		setSettings(settings: IN8nUISettings): void {
@@ -214,10 +217,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
 
-			if (settings.banners.v1.dismissed === true) {
-				// TODO: Just set it in store, no need to send request at this point
-				await useUIStore().dismissBanner(BANNERS.V1, 'permanent', true);
-			} else if (
+			const isV1BannerDismissedPermanently = settings.banners.permanentlyDismissed.includes(
+				BANNERS.V1,
+			);
+			if (
+				!isV1BannerDismissedPermanently &&
 				useRootStore().versionCli.startsWith('1.') &&
 				!useCloudPlanStore().userIsTrialing
 			) {

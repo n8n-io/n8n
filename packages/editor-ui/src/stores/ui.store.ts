@@ -55,7 +55,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils';
-import { dismissV1BannerPermanently } from '@/api/ui';
+import { dismissBannerPermanently, dismissV1BannerPermanently } from '@/api/ui';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -554,12 +554,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		async dismissBanner(
 			name: BANNERS,
 			type: 'temporary' | 'permanent' = 'temporary',
-			skipReq = false,
 		): Promise<void> {
 			if (type === 'permanent') {
-				if (name === BANNERS.V1 && !skipReq) {
-					await dismissV1BannerPermanently(useRootStore().getRestApiContext);
-				}
+				await dismissBannerPermanently(useRootStore().getRestApiContext, { bannerName: name });
 				this.banners[name].dismissed = true;
 				this.banners[name].type = 'permanent';
 				return;

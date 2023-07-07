@@ -2158,8 +2158,6 @@ export interface IN8nUISettings {
 		limit: number;
 	};
 	banners: {
-		v1: {
-			dismissed: boolean;
-		};
+		permanentlyDismissed: string[];
 	};
 }
