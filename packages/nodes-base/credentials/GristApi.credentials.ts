@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GristApi implements ICredentialType {
 	name = 'gristApi';
@@ -64,5 +64,26 @@ export class GristApi implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			displayOptions: {
+				show: {
+					planType: ['selfHosted'],
+				},
+			},
+		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{credentials.apiKey}}',
+			},
+		},
+	};
 }

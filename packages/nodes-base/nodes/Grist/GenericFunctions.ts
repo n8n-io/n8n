@@ -22,25 +22,21 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, planType, customSubdomain, selfHostedUrl } = (await this.getCredentials(
-		'gristApi',
-	)) as GristCredentials;
+	const credentials = (await this.getCredentials('gristApi')) as GristCredentials;
 
 	const gristapiurl =
-		planType === 'free'
+		credentials.planType === 'free'
 			? `https://docs.getgrist.com/api${endpoint}`
-			: planType === 'paid'
-			? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-			: `${selfHostedUrl}/api${endpoint}`;
+			: credentials.planType === 'paid'
+			? `https://${credentials.customSubdomain}.getgrist.com/api${endpoint}`
+			: `${credentials.selfHostedUrl}/api${endpoint}`;
 
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Bearer ${apiKey}`,
-		},
 		method,
 		uri: gristapiurl,
 		qs,
 		body,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
 	};
 
@@ -53,7 +49,7 @@ export async function gristApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'gristApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
