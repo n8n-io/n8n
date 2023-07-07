@@ -44,12 +44,50 @@ export async function theHiveApiRequest(
 	return this.helpers.requestWithAuthentication.call(this, 'theHiveProjectApi', options);
 }
 
+function constructFilter(entry: IDataObject) {
+	const { field, value } = entry;
+	let { operator } = entry;
+
+	if (operator === undefined) {
+		operator = '_eq';
+	}
+
+	if (operator === '_between') {
+		const { from, to } = entry;
+		return {
+			_between: {
+				_field: field,
+				_from: from,
+				_to: to,
+			},
+		};
+	}
+
+	if (operator === '_in') {
+		const { values } = entry;
+		return {
+			_in: {
+				_field: field,
+				_values: typeof values === 'string' ? values.split(',').map((v) => v.trim()) : values,
+			},
+		};
+	}
+
+	return {
+		[operator as string]: {
+			_field: field,
+			_value: value,
+		},
+	};
+}
+
 export async function theHiveApiListQuery(
 	this: IExecuteFunctions,
 	listResource: string,
-	filters?: IDataObject,
+	filters?: IDataObject | IDataObject[],
 	sortFields?: IDataObject[],
 	limit?: number,
+	returnCount = false,
 ) {
 	const query: IDataObject[] = [
 		{
@@ -57,7 +95,7 @@ export async function theHiveApiListQuery(
 		},
 	];
 
-	if (filters && Object.keys(filters).length) {
+	if (filters && !Array.isArray(filters) && Object.keys(filters).length) {
 		if (filters.customFieldsUi) {
 			const customFields = convertCustomFieldUiToObject(filters.customFieldsUi as IDataObject);
 
@@ -81,6 +119,15 @@ export async function theHiveApiListQuery(
 		query.push(filter);
 	}
 
+	if (filters && Array.isArray(filters) && filters.length) {
+		const filter = {
+			_name: 'filter',
+			_and: filters.map(constructFilter),
+		};
+
+		query.push(filter);
+	}
+
 	if (sortFields?.length) {
 		const sort = {
 			_name: 'sort',
@@ -94,7 +141,13 @@ export async function theHiveApiListQuery(
 		query.push(sort);
 	}
 
-	if (limit) {
+	if (returnCount) {
+		query.push({
+			_name: 'count',
+		});
+	}
+
+	if (limit && !returnCount) {
 		const pagination = {
 			_name: 'page',
 			from: 0,
