@@ -88,7 +88,7 @@ export class QuickplayController {
 	@Post('/login-as-owner')
 	async loginAsOwner(req: TenantRequest, res: Response): Promise<CurrentUser> {
 		if (!req.jwt) throw new AuthError('Token not found');
-		if (!req.jwt.gcip.x_qp_entitlements.is_super_admin)
+		if (!req.jwt.gcip.x_qp_entitlements.is_service_admin)
 			throw new AuthError('Infufficient permissions');
 
 		const ownerGlobalRole = await this.roleRepo.findGlobalOwnerRole();
