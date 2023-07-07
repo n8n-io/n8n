@@ -134,7 +134,8 @@ export function getMessageContent(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	i: number,
 ) {
-	const includeLinToWorkflow = this.getNodeParameter('includeLinkToWorkflow', i) as boolean;
+	const { includeLinkToWorkflow } = this.getNodeParameter('otherOptions', i) as IDataObject;
+
 	const { id } = this.getWorkflow();
 	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}|n8n workflow>_`;
 	const messageType = this.getNodeParameter('messageType', i) as string;
@@ -144,13 +145,13 @@ export function getMessageContent(
 	switch (messageType) {
 		case 'text':
 			content = {
-				text: includeLinToWorkflow ? `${text}\n${automatedMessage}` : text,
+				text: includeLinkToWorkflow ? `${text}\n${automatedMessage}` : text,
 			};
 			break;
 		case 'block':
 			content = jsonParse(this.getNodeParameter('blocksUi', i) as string);
 
-			if (includeLinToWorkflow && Array.isArray(content.blocks)) {
+			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
 				content.blocks.push({
 					type: 'section',
 					text: {
@@ -165,7 +166,7 @@ export function getMessageContent(
 			break;
 		case 'attachment':
 			content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
-			if (includeLinToWorkflow && Array.isArray(content.attachments)) {
+			if (includeLinkToWorkflow && Array.isArray(content.attachments)) {
 				content.attachments.push({
 					text: automatedMessage,
 				});
