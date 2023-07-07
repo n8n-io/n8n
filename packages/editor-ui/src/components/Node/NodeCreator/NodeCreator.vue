@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed, ref } from 'vue';
+import { watch, reactive, toRefs, computed } from 'vue';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';

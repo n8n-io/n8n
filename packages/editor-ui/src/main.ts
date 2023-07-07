@@ -24,7 +24,7 @@ import { FontAwesomePlugin } from './plugins/icons';
 
 import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { useWebhooksStore, useUIStore } from '@/stores';
+import { useWebhooksStore } from '@/stores';
 
 Vue.config.productionTip = false;
 

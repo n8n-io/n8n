@@ -18,8 +18,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits(['close']);
 
-function onCloseClick() {
-	uiStore.dismissBanner(props.name);
+async function onCloseClick() {
+	await uiStore.dismissBanner(props.name);
 	emit('close');
 }
 </script>

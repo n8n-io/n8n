@@ -33,7 +33,7 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
-import { BANNERS } from '@/constants';
+import type { BANNERS } from '@/constants';
 import type {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
@@ -55,7 +55,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils';
-import { dismissBannerPermanently, dismissV1BannerPermanently } from '@/api/ui';
+import { dismissBannerPermanently } from '@/api/ui';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
