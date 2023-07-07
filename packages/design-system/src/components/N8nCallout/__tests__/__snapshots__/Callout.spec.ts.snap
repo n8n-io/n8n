@@ -1,7 +1,7 @@
 // Vitest Snapshot v1
 
 exports[`components > N8nCallout > should render additional slots correctly 1`] = `
-"<div role=\\"alert\\" class=\\"n8n-callout callout custom\\">
+"<div role=\\"alert\\" class=\\"n8n-callout callout custom round\\">
   <div class=\\"messageSection\\">
     <div class=\\"icon\\">
       <n8n-icon-stub icon=\\"code-branch\\" size=\\"large\\"></n8n-icon-stub>
@@ -15,7 +15,7 @@ exports[`components > N8nCallout > should render additional slots correctly 1`] 
 `;
 
 exports[`components > N8nCallout > should render custom theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"n8n-callout callout custom\\">
+"<div role=\\"alert\\" class=\\"n8n-callout callout custom round\\">
   <div class=\\"messageSection\\">
     <div class=\\"icon\\">
       <n8n-icon-stub icon=\\"code-branch\\" size=\\"large\\"></n8n-icon-stub>
@@ -28,7 +28,7 @@ exports[`components > N8nCallout > should render custom theme correctly 1`] = `
 `;
 
 exports[`components > N8nCallout > should render danger theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"n8n-callout callout danger\\">
+"<div role=\\"alert\\" class=\\"n8n-callout callout danger round\\">
   <div class=\\"messageSection\\">
     <div class=\\"icon\\">
       <n8n-icon-stub icon=\\"times-circle\\" size=\\"large\\"></n8n-icon-stub>
@@ -41,7 +41,7 @@ exports[`components > N8nCallout > should render danger theme correctly 1`] = `
 `;
 
 exports[`components > N8nCallout > should render info theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"n8n-callout callout info\\">
+"<div role=\\"alert\\" class=\\"n8n-callout callout info round\\">
   <div class=\\"messageSection\\">
     <div class=\\"icon\\">
       <n8n-icon-stub icon=\\"info-circle\\" size=\\"large\\"></n8n-icon-stub>
@@ -54,7 +54,7 @@ exports[`components > N8nCallout > should render info theme correctly 1`] = `
 `;
 
 exports[`components > N8nCallout > should render secondary theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"n8n-callout callout secondary\\">
+"<div role=\\"alert\\" class=\\"n8n-callout callout secondary round\\">
   <div class=\\"messageSection\\">
     <div class=\\"icon\\">
       <n8n-icon-stub icon=\\"info-circle\\" size=\\"medium\\"></n8n-icon-stub>
@@ -67,7 +67,7 @@ exports[`components > N8nCallout > should render secondary theme correctly 1`] =
 `;
 
 exports[`components > N8nCallout > should render success theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"n8n-callout callout success\\">
+"<div role=\\"alert\\" class=\\"n8n-callout callout success round\\">
   <div class=\\"messageSection\\">
     <div class=\\"icon\\">
       <n8n-icon-stub icon=\\"check-circle\\" size=\\"large\\"></n8n-icon-stub>
@@ -80,7 +80,7 @@ exports[`components > N8nCallout > should render success theme correctly 1`] = `
 `;
 
 exports[`components > N8nCallout > should render warning theme correctly 1`] = `
-"<div role=\\"alert\\" class=\\"n8n-callout callout warning\\">
+"<div role=\\"alert\\" class=\\"n8n-callout callout warning round\\">
   <div class=\\"messageSection\\">
     <div class=\\"icon\\">
       <n8n-icon-stub icon=\\"exclamation-triangle\\" size=\\"large\\"></n8n-icon-stub>
