@@ -671,6 +671,7 @@ interface JsonHelperFunctions {
 
 export interface FileSystemHelperFunctions {
 	createReadStream(path: PathLike): Promise<Readable>;
+	getStoragePath(): string;
 }
 
 export interface BinaryHelperFunctions {

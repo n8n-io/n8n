@@ -36,6 +36,9 @@ patchedDependencies:
   pkce-challenge@3.0.0:
     hash: dypouzb3lve7vncq25i5fuanki
     path: patches/pkce-challenge@3.0.0.patch
+  pyodide@0.23.4:
+    hash: kzcwsjcayy5m6iezu7r4tdimjq
+    path: patches/pyodide@0.23.4.patch
   typedi@0.10.0:
     hash: 62r6bc2crgimafeyruodhqlgo4
     path: patches/typedi@0.10.0.patch
@@ -1143,8 +1146,8 @@ importers:
         specifier: ^1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
       pyodide:
-        specifier: ^0.22.1
-        version: 0.22.1
+        specifier: ^0.23.4
+        version: 0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq)
       redis:
         specifier: ^3.1.1
         version: 3.1.2
@@ -18657,8 +18660,8 @@ packages:
     resolution: {integrity: sha512-t+x1zEHDjBwkDGY5v5ApnZ/utcd4XYDiJsaQQoptTXgUXX95sDg1elCdJghzicm7n2mbCBJ3uYWr6M22SO19rg==}
     dev: true
 
-  /pyodide@0.22.1:
-    resolution: {integrity: sha512-6+PkFLTC+kcBKtFQxYBxR44J5IBxLm8UGkobLgZv1SxzV9qOU2rb0YYf0qDtlnfDiN/IQd2uckf+D8Zwe88Mqg==}
+  /pyodide@0.23.4(patch_hash=kzcwsjcayy5m6iezu7r4tdimjq):
+    resolution: {integrity: sha512-WpQUHaIXQ1xede5BMqPAjBcmopxN22s5hEsYOR8T7/UW/fkNLFUn07SaemUgthbtvedD5JGymMMj4VpD9sGMTg==}
     dependencies:
       base-64: 1.0.0
       node-fetch: 2.6.8
@@ -18668,6 +18671,7 @@ packages:
       - encoding
       - utf-8-validate
     dev: false
+    patched: true
 
   /python-struct@1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
