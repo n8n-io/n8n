@@ -19,27 +19,27 @@
 				</n8n-tooltip>
 			</div>
 		</div>
-		<div
-			v-if="usersStore.showUMSetupWarning || !settingsStore.isWithinUserQuota"
-			:class="$style.setupInfoContainer"
-		>
+		<div v-if="!settingsStore.isWithinUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
-				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
-				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
-				:description="`${
-					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
-				}`"
-				@click="redirectToSetup"
+				:heading="
+					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
+				"
+				:description="
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.users.settings.unavailable.description,
+					)
+				"
+				:buttonText="
+					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
+				"
+				@click="goToUpgrade"
 			/>
 		</div>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
 			:class="$style.usersContainer"
-			v-else-if="
-				!usersStore.showUMSetupWarning &&
-				(settingsStore.isWithinUserQuota || usersStore.allUsers.length > 1)
-			"
+			v-if="settingsStore.isWithinUserQuota || usersStore.allUsers.length > 1"
 		>
 			<n8n-users-list
 				:actions="usersListActions"
@@ -54,6 +54,19 @@
 				@disallowSSOManualLogin="onDisallowSSOManualLogin"
 			/>
 		</div>
+		<n8n-action-box
+			v-else
+			:heading="
+				$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
+			"
+			:description="
+				$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.description)
+			"
+			:buttonText="
+				$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
+			"
+			@click="goToUpgrade"
+		/>
 	</div>
 </template>
 
