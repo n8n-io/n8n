@@ -404,7 +404,7 @@ export class Server extends AbstractServer {
 	/**
 	 * Returns the current settings for the frontend
 	 */
-	getSettingsForFrontend(): IN8nUISettings {
+	async getSettingsForFrontend(): Promise<IN8nUISettings> {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			authenticationMethod: getCurrentAuthenticationMethod(),
@@ -416,7 +416,10 @@ export class Server extends AbstractServer {
 		let v1Dismissed = false;
 
 		try {
-			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+			const isPreV1Instance = await Db.collections.Settings.findOne({
+				where: { key: 'instance.isPreV1Instance' },
+			});
+			v1Dismissed = isPreV1Instance?.value === 'false' || config.getEnv('ui.banners.v1.dismissed');
 		} catch {
 			// not yet in DB
 		}
