@@ -74,6 +74,11 @@ const defaultSettings: IN8nUISettings = {
 	deployment: {
 		type: 'default',
 	},
+	banners: {
+		v1: {
+			dismissed: false,
+		},
+	},
 };
 
 export function routesForSettings(server: Server) {

@@ -37,6 +37,7 @@ import { CreateVariables1677501636752 } from './1677501636752-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { MigrateIntegerKeysToString1690000000002 } from './1690000000002-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000010 } from './1690000000010-SeparateExecutionData';
+import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -77,6 +78,7 @@ const sqliteMigrations: Migration[] = [
 	AddUserActivatedProperty1681134145996,
 	MigrateIntegerKeysToString1690000000002,
 	SeparateExecutionData1690000000010,
+	RemoveSkipOwnerSetup1681134145997,
 ];
 
 export { sqliteMigrations };

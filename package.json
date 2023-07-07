@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.234.0",
+  "version": "1.0.1",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -30,7 +30,6 @@
     "cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
     "test:e2e:ui": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first start-server-and-test start http://localhost:5678/favicon.ico 'cypress open'",
     "test:e2e:dev": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  CYPRESS_BASE_URL=http://localhost:8080 start-server-and-test dev http://localhost:8080/favicon.ico 'cypress open'",
-    "test:e2e:smoke": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless --spec \"cypress/e2e/0-smoke.cy.ts\"'",
     "test:e2e:all": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
@@ -53,7 +52,6 @@
     "jest-mock": "^29.5.0",
     "jest-mock-extended": "^3.0.4",
     "nock": "^13.2.9",
-    "node-fetch": "^2.6.7",
     "p-limit": "^3.1.0",
     "prettier": "^2.8.3",
     "rimraf": "^3.0.2",

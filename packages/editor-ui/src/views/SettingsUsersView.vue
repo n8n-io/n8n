@@ -19,8 +19,10 @@
 				</n8n-tooltip>
 			</div>
 		</div>
-
-		<div v-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
+		<div
+			v-if="usersStore.showUMSetupWarning || !settingsStore.isWithinUserQuota"
+			:class="$style.setupInfoContainer"
+		>
 			<n8n-action-box
 				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
 				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
@@ -30,28 +32,11 @@
 				@click="redirectToSetup"
 			/>
 		</div>
-		<div v-else-if="!settingsStore.isWithinUserQuota" :class="$style.setupInfoContainer">
-			<n8n-action-box
-				:heading="
-					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
-				"
-				:description="
-					$locale.baseText(
-						uiStore.contextBasedTranslationKeys.users.settings.unavailable.description,
-					)
-				"
-				:buttonText="
-					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
-				"
-				@click="goToUpgrade"
-			/>
-		</div>
-		<!-- If there's more than 1 user it means UM was enabled before. So we need to allow instance
-			owner to be able to delete users and transfer workflows.
+		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
 		-->
 		<div
 			:class="$style.usersContainer"
-			v-if="
+			v-else-if="
 				!usersStore.showUMSetupWarning &&
 				(settingsStore.isWithinUserQuota || usersStore.allUsers.length > 1)
 			"
