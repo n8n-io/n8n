@@ -108,10 +108,8 @@ export class Code implements INodeType {
 			}
 
 			if (language === 'python') {
-				const modules = this.getNodeParameter('modules', index) as string;
-				const moduleImports: string[] = modules ? modules.split(',').map((m) => m.trim()) : [];
 				context.printOverwrite = workflowMode === 'manual' ? this.sendMessageToUI : null;
-				return new PythonSandbox(context, code, moduleImports, index, this.helpers);
+				return new PythonSandbox(context, code, index, this.helpers);
 			} else {
 				const sandbox = new JavaScriptSandbox(context, code, index, workflowMode, this.helpers);
 				if (workflowMode === 'manual') {
