@@ -21,7 +21,7 @@ export class SourceControlController {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
-	@Authorized('any')
+	@Authorized('none')
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
 	async getPreferences(): Promise<SourceControlPreferences> {
 		// returns the settings with the privateKey property redacted
