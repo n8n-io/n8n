@@ -251,10 +251,7 @@ export default defineComponent({
 			await this.initBanners();
 		});
 
-		if (
-			this.sourceControlStore.isEnterpriseSourceControlEnabled &&
-			this.usersStore.isInstanceOwner
-		) {
+		if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
 			await this.sourceControlStore.getPreferences();
 		}
 
