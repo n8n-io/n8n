@@ -706,6 +706,10 @@ export const workflowHelpers = defineComponent({
 			redirect = true,
 			forceSave = false,
 		): Promise<boolean> {
+			if (this.readOnlyEnv) {
+				return;
+			}
+
 			const currentWorkflow = id || this.$route.params.name;
 			const isLoading = this.loadingService !== null;
 

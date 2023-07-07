@@ -362,7 +362,7 @@ export default defineComponent({
 	watch: {
 		// Listen to route changes and load the workflow accordingly
 		$route(to: Route, from: Route) {
-			this.readOnlyEnvCheck();
+			this.readOnlyEnvRouteCheck();
 
 			const currentTab = getNodeViewTab(to);
 			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
@@ -641,9 +641,18 @@ export default defineComponent({
 		editAllowedCheck(): boolean {
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
 				this.showMessage({
-					// title: 'Workflow can not be changed!',
-					title: this.$locale.baseText('genericHelpers.showMessage.title'),
-					message: this.$locale.baseText('genericHelpers.showMessage.message'),
+					title: this.$locale.baseText(
+						this.readOnlyEnv
+							? `readOnlyEnv.showMessage.${this.isReadOnlyRoute ? 'executions' : 'workflows'}.title`
+							: 'readOnly.showMessage.executions.title',
+					),
+					message: this.$locale.baseText(
+						this.readOnlyEnv
+							? `readOnlyEnv.showMessage.${
+									this.isReadOnlyRoute ? 'executions' : 'workflows'
+							  }.message`
+							: 'readOnly.showMessage.executions.message',
+					),
 					type: 'info',
 					duration: 0,
 					dangerouslyUseHTMLString: true,
@@ -3821,7 +3830,7 @@ export default defineComponent({
 				this.stopLoading();
 			}
 		},
-		readOnlyEnvCheck() {
+		readOnlyEnvRouteCheck() {
 			if (
 				this.readOnlyEnv &&
 				[VIEWS.NEW_WORKFLOW, VIEWS.TEMPLATE_IMPORT].includes(this.$route.name)
@@ -3924,7 +3933,7 @@ export default defineComponent({
 			}
 		}
 
-		this.readOnlyEnvCheck();
+		this.readOnlyEnvRouteCheck();
 	},
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
