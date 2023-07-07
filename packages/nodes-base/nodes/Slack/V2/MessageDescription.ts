@@ -553,9 +553,7 @@ export const messageFields: INodeProperties[] = [
 				resource: ['message'],
 			},
 		},
-		default: {
-			includeLinkToWorkflow: true,
-		},
+		default: {},
 		description: 'Other options to set',
 		placeholder: 'Add options',
 		options: [

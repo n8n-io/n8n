@@ -134,7 +134,11 @@ export function getMessageContent(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	i: number,
 ) {
-	const { includeLinkToWorkflow } = this.getNodeParameter('otherOptions', i) as IDataObject;
+	const includeLinkToWorkflow = this.getNodeParameter(
+		'otherOptions.includeLinkToWorkflow',
+		i,
+		true,
+	) as IDataObject;
 
 	const { id } = this.getWorkflow();
 	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}|n8n workflow>_`;
