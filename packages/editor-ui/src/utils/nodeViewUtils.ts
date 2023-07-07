@@ -706,7 +706,10 @@ export const getZoomToFit = (
 	xOffset += (editorWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
 	let yOffset = minY * -1 * zoomLevel; // find top right corner
-	yOffset += (editorHeight - (maxY - minY + footerHeight - uiStore.headerHeight) * zoomLevel) / 2; // add padding to center workflow
+	yOffset +=
+		(editorHeight -
+			(maxY - minY + footerHeight - uiStore.headerHeight + uiStore.bannersHeight) * zoomLevel) /
+		2; // add padding to center workflow
 
 	return {
 		zoomLevel,
