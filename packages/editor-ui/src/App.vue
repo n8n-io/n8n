@@ -92,6 +92,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			postAuthenticateDone: false,
 			loading: true,
 		};
 	},
@@ -215,6 +216,21 @@ export default defineComponent({
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
+		async postAuthenticate() {
+			if (this.postAuthenticateDone) {
+				return;
+			}
+
+			if (!this.usersStore.currentUser) {
+				return;
+			}
+
+			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
+				await this.sourceControlStore.getPreferences();
+			}
+
+			this.postAuthenticateDone = true;
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -224,10 +240,7 @@ export default defineComponent({
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		void this.checkForCloudPlanData();
-
-		if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
-			await this.sourceControlStore.getPreferences();
-		}
+		void this.postAuthenticate();
 
 		this.loading = false;
 
@@ -239,6 +252,11 @@ export default defineComponent({
 		}
 	},
 	watch: {
+		'usersStore.currentUser'(currentValue, previousValue) {
+			if (currentValue && !previousValue) {
+				void this.postAuthenticate();
+			}
+		},
 		$route(route) {
 			this.authenticate();
 			this.redirectIfNecessary();
