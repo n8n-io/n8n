@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.list" v-if="loading || workflows.length">
-		<div :class="$style.header">
+		<div :class="$style.header" v-if="!hideHeader">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
@@ -56,6 +56,10 @@ export default defineComponent({
 		},
 		totalWorkflows: {
 			type: Number,
+		},
+		hideHeader: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	mounted() {
