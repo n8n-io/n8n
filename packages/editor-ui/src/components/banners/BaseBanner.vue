@@ -24,7 +24,13 @@ async function onCloseClick() {
 }
 </script>
 <template>
-	<n8n-callout :theme="props.theme" :icon="props.customIcon" :roundCorners="false" :slim="true">
+	<n8n-callout
+		:theme="props.theme"
+		:icon="props.customIcon"
+		:roundCorners="false"
+		:slim="true"
+		:data-test-id="`banners-${props.name}`"
+	>
 		<div :class="$style.mainContent">
 			<slot name="mainContent" />
 		</div>
@@ -37,6 +43,7 @@ async function onCloseClick() {
 					icon="times"
 					title="Dismiss"
 					class="clickable"
+					:data-test-id="`banners-${props.name}-close`"
 					@click="onCloseClick"
 				/>
 			</div>
