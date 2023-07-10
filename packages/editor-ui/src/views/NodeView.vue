@@ -654,7 +654,6 @@ export default defineComponent({
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
-					duration: 0,
 					dangerouslyUseHTMLString: true,
 				});
 
