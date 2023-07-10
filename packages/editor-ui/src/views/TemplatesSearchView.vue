@@ -61,7 +61,7 @@
 						</div>
 					</template>
 					<TemplateList
-						:infinite-scroll-enabled="true"
+						:infinite-scroll-enabled="!isFixedListExperiment"
 						:loading="loadingWorkflows"
 						:total-workflows="totalWorkflows"
 						:workflows="isFixedListExperiment ? fixedTemplatesList : workflows"
