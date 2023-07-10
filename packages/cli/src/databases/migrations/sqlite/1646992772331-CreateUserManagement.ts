@@ -94,6 +94,11 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup) values
 			('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)
 		`);
+
+		await queryRunner.query(`
+			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup)
+				VALUES ('ui.banners.v1.dismissed', 'true', true)
+		`);
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext) {
