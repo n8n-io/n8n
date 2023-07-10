@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount, ref } from 'vue';
+import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
 import { useUIStore, useSourceControlStore } from '@/stores';
@@ -101,11 +101,16 @@ const goToUpgrade = () => {
 	uiStore.goToUpgrade('source-control', 'upgrade-source-control');
 };
 
-onBeforeMount(() => {
+const initialize = async () => {
+	await sourceControlStore.getPreferences();
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
 		void sourceControlStore.getBranches();
 	}
+};
+
+onMounted(async () => {
+	await initialize();
 });
 
 const formValidationStatus = reactive<Record<string, boolean>>({
