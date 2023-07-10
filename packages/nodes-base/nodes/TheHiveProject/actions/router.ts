@@ -52,7 +52,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					executionData = await query[theHiveNodeData.operation].execute.call(this, i);
 					break;
 				case 'task':
-					executionData = await task[theHiveNodeData.operation].execute.call(this, i);
+					executionData = await task[theHiveNodeData.operation].execute.call(this, i, items[i]);
 					break;
 				default:
 					throw new NodeOperationError(

@@ -310,3 +310,61 @@ export const caseCommonFields = [
 		type: 'string',
 	},
 ];
+
+export const taskCommonFields = [
+	{
+		displayName: 'Title',
+		id: 'title',
+		type: 'string',
+	},
+	{
+		displayName: 'Description',
+		id: 'description',
+		type: 'string',
+	},
+	{
+		displayName: 'Group',
+		id: 'group',
+		type: 'string',
+	},
+	{
+		displayName: 'Status',
+		id: 'status',
+		type: 'stirng',
+	},
+	{
+		displayName: 'Flag',
+		id: 'flag',
+		type: 'boolean',
+	},
+	{
+		displayName: 'Start Date',
+		id: 'startDate',
+		type: 'dateTime',
+	},
+	{
+		displayName: 'Due Date',
+		id: 'dueDate',
+		type: 'dateTime',
+	},
+	{
+		displayName: 'End Date',
+		id: 'endDate',
+		type: 'dateTime',
+	},
+	{
+		displayName: 'Assignee',
+		id: 'assignee',
+		type: 'options',
+	},
+	{
+		displayName: 'Mandatory',
+		id: 'mandatory',
+		type: 'boolean',
+	},
+	{
+		displayName: 'Order',
+		id: 'order',
+		type: 'number',
+	},
+];

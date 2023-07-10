@@ -8,7 +8,7 @@ import type {
 import { theHiveApiRequest } from '../transport';
 
 import { loadAlertStatus, loadCaseStatus, loadCaseTemplate, loadUsers } from './loadOptions';
-import { alertCommonFields, caseCommonFields } from '../helpers/constant';
+import { alertCommonFields, caseCommonFields, taskCommonFields } from '../helpers/constant';
 
 async function getCustomFields(this: ILoadOptionsFunctions, isRemoved?: boolean) {
 	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
@@ -232,6 +232,84 @@ export async function getCaseUpdateFields(
 
 	const customFields = (await getCustomFields.call(this)) || [];
 	fields.push(...customFields);
+
+	const columnData: ResourceMapperFields = {
+		fields,
+	};
+
+	return columnData;
+}
+
+export async function getTaskFields(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
+	const users = await loadUsers.call(this);
+
+	const requiredFields = ['title'];
+
+	const fields: ResourceMapperField[] = taskCommonFields.map((entry) => {
+		const type = entry.type as FieldType;
+		const field: ResourceMapperField = {
+			...entry,
+			type,
+			required: false,
+			display: true,
+			defaultMatch: false,
+			removed: true,
+		};
+
+		if (requiredFields.includes(entry.id)) {
+			field.required = true;
+			field.removed = false;
+		}
+
+		if (field.id === 'assignee') {
+			field.options = users;
+		}
+
+		return field;
+	});
+
+	const columnData: ResourceMapperFields = {
+		fields,
+	};
+
+	return columnData;
+}
+
+export async function getTaskUpdateFields(
+	this: ILoadOptionsFunctions,
+): Promise<ResourceMapperFields> {
+	const users = await loadUsers.call(this);
+
+	const caseUpdateFields = taskCommonFields.map((entry) => {
+		const type = entry.type as FieldType;
+		const field: ResourceMapperField = {
+			...entry,
+			type,
+			required: false,
+			display: true,
+			defaultMatch: false,
+			canBeUsedToMatch: true,
+		};
+
+		if (field.id === 'assignee') {
+			field.options = users;
+		}
+
+		return field;
+	});
+
+	const fields: ResourceMapperField[] = [
+		{
+			displayName: 'ID',
+			id: 'id',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: true,
+			canBeUsedToMatch: true,
+		},
+		...caseUpdateFields,
+	];
 
 	const columnData: ResourceMapperFields = {
 		fields,

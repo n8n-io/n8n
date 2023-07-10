@@ -1,73 +1,32 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { taskStatusSelector } from '../common.description';
-import { prepareOptional } from '../../helpers/utils';
+
 import { theHiveApiRequest } from '../../transport';
+import { fixFieldType } from '../../helpers/utils';
+import set from 'lodash/set';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Task ID',
-		name: 'id',
-		type: 'string',
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
 		required: true,
-		default: '',
-		description: 'ID of the taks',
-	},
-	{
-		displayName: 'Update Fields',
-		type: 'collection',
-		name: 'updateFields',
-		placeholder: 'Add Field',
-		default: {},
-		options: [
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'Task details',
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getTaskUpdateFields',
+				mode: 'update',
+				valuesLabel: 'Fields',
+				addAllFields: true,
+				multiKeyMatch: true,
 			},
-			{
-				displayName: 'End Date',
-				name: 'endDate',
-				type: 'dateTime',
-				default: '',
-				description:
-					'Date of the end of the task. This is automatically set when status is set to Completed.',
-			},
-			{
-				displayName: 'Flag',
-				name: 'flag',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to flag the task. Default=false.',
-			},
-			{
-				displayName: 'Owner',
-				name: 'owner',
-				type: 'string',
-				default: '',
-				description:
-					'User who owns the task. This is automatically set to current user when status is set to InProgress.',
-			},
-			{
-				displayName: 'Start Date',
-				name: 'startDate',
-				type: 'dateTime',
-				default: '',
-				description:
-					'Date of the beginning of the task. This is automatically set when status is set to Open.',
-			},
-			taskStatusSelector,
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'Task details',
-			},
-		],
+		},
 	},
 ];
 
@@ -80,20 +39,90 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
+	let body: IDataObject = {};
+	let updated = 1;
 
-	const id = this.getNodeParameter('id', i) as string;
+	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
-	const body: IDataObject = {
-		...prepareOptional(this.getNodeParameter('updateFields', i, {})),
-	};
+	if (dataMode === 'autoMapInputData') {
+		body = item.json;
+	}
 
-	responseData = await theHiveApiRequest.call(this, 'PATCH', `/case/task/${id}`, body);
+	if (dataMode === 'defineBelow') {
+		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
+		body = fields;
+	}
 
-	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
-		itemData: { item: i },
-	});
+	body = fixFieldType(body);
+
+	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
+
+	const updateBody: IDataObject = {};
+	const matchFields: IDataObject = {};
+	const { id } = body; // id would be used if matching on id, also we need to remove it from the body
+
+	for (const field of Object.keys(body)) {
+		if (fieldsToMatchOn.includes(field)) {
+			// if field is in fieldsToMatchOn, we need to exclude it from the updateBody, as values used for matching should not be updated
+			matchFields[field] = body[field];
+		} else {
+			// use set to construct the updateBody, as it allows to process customFields.fieldName
+			// if customFields provided under customFields property, it will be send as is
+			set(updateBody, field, body[field]);
+		}
+	}
+
+	if (fieldsToMatchOn.includes('id')) {
+		await theHiveApiRequest.call(this, 'PATCH', `/v1/task/${id}`, body);
+	} else {
+		const filter = {
+			_name: 'filter',
+			_and: fieldsToMatchOn.map((field) => ({
+				_eq: {
+					_field: field,
+					_value: matchFields[field],
+				},
+			})),
+		};
+
+		const queryBody = {
+			query: [
+				{
+					_name: 'listTask',
+				},
+				filter,
+			],
+		};
+
+		const matches = (await theHiveApiRequest.call(
+			this,
+			'POST',
+			'/v1/query',
+			queryBody,
+		)) as IDataObject[];
+
+		if (!matches.length) {
+			throw new NodeOperationError(this.getNode(), 'No matching alerts found');
+		}
+		const ids = matches.map((match) => match._id);
+		updated = ids.length;
+
+		updateBody.ids = ids;
+
+		await theHiveApiRequest.call(this, 'PATCH', '/v1/task/_bulk', updateBody);
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		wrapData({ success: true, updated }),
+		{
+			itemData: { item: i },
+		},
+	);
 
 	return executionData;
 }

@@ -39,11 +39,6 @@ export const description: INodeProperties[] = [
 				action: 'Get a single task',
 			},
 			{
-				name: 'Get Many',
-				value: 'getMany',
-				action: 'Get many asks of a specific case',
-			},
-			{
 				name: 'Search',
 				value: 'search',
 				action: 'Search tasks',

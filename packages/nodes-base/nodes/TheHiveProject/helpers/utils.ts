@@ -101,7 +101,7 @@ export function fixFieldType(fields: IDataObject) {
 	const returnData: IDataObject = {};
 
 	for (const key of Object.keys(fields)) {
-		if (['date', 'lastSyncDate', 'startDate', 'endDate'].includes(key)) {
+		if (['date', 'lastSyncDate', 'startDate', 'endDate', 'dueDate'].includes(key)) {
 			returnData[key] = Date.parse(fields[key] as string);
 			continue;
 		}
