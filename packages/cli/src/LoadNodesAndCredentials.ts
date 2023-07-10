@@ -331,7 +331,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { types, directory } = loader;
+			const { known, types, directory } = loader;
 			this.types.nodes = this.types.nodes.concat(types.nodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
@@ -344,26 +344,30 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
 			}
 
-			// Nodes and credentials that will be lazy loaded
-			if (loader instanceof PackageDirectoryLoader) {
-				const { packageName, known } = loader;
+			for (const type in known.nodes) {
+				const { className, sourcePath } = known.nodes[type];
+				this.known.nodes[type] = {
+					className,
+					sourcePath: path.join(directory, sourcePath),
+				};
+			}
 
-				for (const type in known.nodes) {
-					const { className, sourcePath } = known.nodes[type];
-					this.known.nodes[type] = {
-						className,
-						sourcePath: path.join(directory, sourcePath),
-					};
-				}
-
-				for (const type in known.credentials) {
-					const { className, sourcePath, nodesToTestWith } = known.credentials[type];
-					this.known.credentials[type] = {
-						className,
-						sourcePath: path.join(directory, sourcePath),
-						nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
-					};
-				}
+			for (const type in known.credentials) {
+				const {
+					className,
+					sourcePath,
+					nodesToTestWith,
+					extends: extendsArr,
+				} = known.credentials[type];
+				this.known.credentials[type] = {
+					className,
+					sourcePath: path.join(directory, sourcePath),
+					nodesToTestWith:
+						loader instanceof PackageDirectoryLoader
+							? nodesToTestWith?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							: undefined,
+					extends: extendsArr,
+				};
 			}
 		}
 	}
