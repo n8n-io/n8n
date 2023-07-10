@@ -16,7 +16,7 @@ export interface IAttributeValue {
 	[attribute: string]: IAttributeValueValue;
 }
 
-interface IAttributeValueValue {
+export interface IAttributeValueValue {
 	[type: string]: string | string[] | IAttributeValue[];
 }
 
@@ -31,7 +31,7 @@ export interface IAttributeNameUi {
 	value: string;
 }
 
-type AttributeValueType =
+export type AttributeValueType =
 	| 'B' // binary
 	| 'BOOL' // boolean
 	| 'BS' // binary set
