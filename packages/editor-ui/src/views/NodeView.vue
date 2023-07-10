@@ -424,7 +424,7 @@ export default defineComponent({
 			next();
 			return;
 		}
-		if (this.uiStore.stateIsDirty) {
+		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
 			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 				{
@@ -2559,8 +2559,7 @@ export default defineComponent({
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId);
 			} else {
-				const result = this.uiStore.stateIsDirty;
-				if (result) {
+				if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
 					const confirmModal = await this.confirm(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 						{
@@ -3836,6 +3835,9 @@ export default defineComponent({
 				[VIEWS.NEW_WORKFLOW, VIEWS.TEMPLATE_IMPORT].includes(this.$route.name)
 			) {
 				this.$nextTick(async () => {
+					this.resetWorkspace();
+					this.uiStore.stateIsDirty = false;
+
 					await this.$router.replace({ name: VIEWS.WORKFLOWS });
 				});
 			}
