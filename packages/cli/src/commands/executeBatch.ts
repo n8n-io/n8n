@@ -18,6 +18,13 @@ import { findCliWorkflowStart } from '@/utils';
 import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import type {
+	IExecutionResult,
+	INodeSpecialCase,
+	INodeSpecialCases,
+	IResult,
+	IWorkflowExecutionProgress,
+} from './Interfaces';
 
 const re = /\d+/;
 
