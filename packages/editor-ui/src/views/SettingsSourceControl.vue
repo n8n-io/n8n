@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount, ref, onMounted, watch } from 'vue';
+import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
 import { useUIStore, useSourceControlStore } from '@/stores';
