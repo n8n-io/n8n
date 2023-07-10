@@ -217,6 +217,7 @@ export default defineComponent({
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
 		async postAuthenticate() {
+			console.log('postAuthenticate', this.usersStore.currentUser); // eslint-disable-line no-console
 			if (this.postAuthenticateDone) {
 				return;
 			}
@@ -252,8 +253,10 @@ export default defineComponent({
 		}
 	},
 	watch: {
-		'usersStore.currentUser'() {
-			void this.postAuthenticate();
+		'usersStore.currentUser'(currentValue, previousValue) {
+			if (currentValue && !previousValue) {
+				void this.postAuthenticate();
+			}
 		},
 		$route(route) {
 			this.authenticate();
