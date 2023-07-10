@@ -800,6 +800,7 @@ export default defineComponent({
 
 				this.updateNodeParameterIssues(node, nodeType);
 				this.updateNodeCredentialIssues(node);
+				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
 
