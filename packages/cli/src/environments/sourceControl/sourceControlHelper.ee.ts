@@ -7,19 +7,22 @@ import { LoggerProxy } from 'n8n-workflow';
 import { SOURCE_CONTROL_GIT_KEY_COMMENT } from './constants';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 
-export function sourceControlFoldersExistCheck(folders: string[]) {
+export function sourceControlFoldersExistCheck(folders: string[]): boolean {
 	// running these file access function synchronously to avoid race conditions
+	let result = true;
 	folders.forEach((folder) => {
 		try {
 			accessSync(folder, fsConstants.F_OK);
 		} catch {
 			try {
-				mkdirSync(folder);
+				mkdirSync(folder, { recursive: true });
 			} catch (error) {
+				result = false;
 				LoggerProxy.error((error as Error).message);
 			}
 		}
 	});
+	return result;
 }
 
 export function isSourceControlLicensed() {
@@ -84,7 +87,11 @@ function filterSourceControlledFilesUniqueIds(files: SourceControlledFile[]) {
 	);
 }
 
-export function getTrackingInformationFromPullResult(result: SourceControlledFile[]) {
+export function getTrackingInformationFromPullResult(result: SourceControlledFile[]): {
+	cred_conflicts: number;
+	workflow_conflicts: number;
+	workflow_updates: number;
+} {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
 		cred_conflicts: uniques.filter(
@@ -127,8 +134,7 @@ export function getTrackingInformationFromPostPushResult(result: SourceControlle
 } {
 	const uniques = filterSourceControlledFilesUniqueIds(result);
 	return {
-		workflows_pushed:
-			uniques.filter((file) => file.pushed && file.type === 'workflow' && file.pushed).length ?? 0,
+		workflows_pushed: uniques.filter((file) => file.pushed && file.type === 'workflow').length ?? 0,
 		workflows_eligible: uniques.filter((file) => file.type === 'workflow').length ?? 0,
 		creds_pushed:
 			uniques.filter((file) => file.pushed && file.file.startsWith('credential_stubs')).length ?? 0,
