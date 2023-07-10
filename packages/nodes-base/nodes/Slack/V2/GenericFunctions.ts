@@ -134,10 +134,12 @@ export function getMessageContent(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	i: number,
 ) {
+	const nodeVersion = this.getNode().typeVersion;
+
 	const includeLinkToWorkflow = this.getNodeParameter(
 		'otherOptions.includeLinkToWorkflow',
 		i,
-		true,
+		nodeVersion >= 2.1 ? true : false,
 	) as IDataObject;
 
 	const { id } = this.getWorkflow();
