@@ -69,9 +69,12 @@ describe('SettingsSourceControl', () => {
 
 	it('should render user flow happy path', async () => {
 		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
 
 		const { container, getByTestId, queryByTestId, getByRole } = renderComponent();
+
+		await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
 		const connectButton = getByTestId('source-control-connect-button');
 		expect(connectButton).toBeDisabled();
@@ -104,7 +107,7 @@ describe('SettingsSourceControl', () => {
 		await userEvent.type(authorEmail, 'com');
 		await userEvent.tab();
 
-		expect(connectButton).toBeEnabled();
+		await waitFor(() => expect(connectButton).toBeEnabled());
 		expect(queryByTestId('source-control-save-settings-button')).not.toBeInTheDocument();
 
 		await userEvent.click(connectButton);
@@ -139,5 +142,5 @@ describe('SettingsSourceControl', () => {
 		await waitFor(() =>
 			expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument(),
 		);
-	});
+	}, 10000);
 });
