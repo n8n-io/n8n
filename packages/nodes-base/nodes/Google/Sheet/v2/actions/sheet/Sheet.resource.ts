@@ -7,6 +7,7 @@ import * as del from './delete.operation';
 import * as read from './read.operation';
 import * as remove from './remove.operation';
 import * as update from './update.operation';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 
 export { append, appendOrUpdate, clear, create, del as delete, read, remove, update };
 
@@ -96,15 +97,13 @@ export const descriptions: INodeProperties[] = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex:
-						'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 				},
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 							errorMessage: 'Not a valid Google Drive File URL',
 						},
 					},
@@ -139,6 +138,9 @@ export const descriptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		// default: '', //empty string set to progresivly reveal fields
 		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['documentId.value'],
+		},
 		modes: [
 			{
 				displayName: 'From List',

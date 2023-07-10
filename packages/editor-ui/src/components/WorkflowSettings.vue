@@ -15,6 +15,31 @@
 			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
 				<el-row>
 					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.executionOrder') + ':' }}
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.executionOrder"
+							placeholder="Select Execution Order"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-execution-order"
+						>
+							<n8n-option
+								v-for="option in executionOrderOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+
+				<el-row>
+					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
 						<n8n-tooltip class="setting-info" placement="top">
 							<template #content>
@@ -29,6 +54,7 @@
 							placeholder="Select Workflow"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
 						>
@@ -57,6 +83,7 @@
 						<el-col :span="14" class="ignore-key-press">
 							<n8n-select
 								v-model="workflowSettings.callerPolicy"
+								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.selectOption')"
 								size="medium"
 								filterable
@@ -84,6 +111,7 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								size="medium"
@@ -109,6 +137,7 @@
 							placeholder="Select Timezone"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-timezone"
 						>
@@ -138,6 +167,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-failed-executions"
 						>
@@ -167,6 +197,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-success-executions"
 						>
@@ -196,6 +227,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-manual-executions"
 						>
@@ -225,6 +257,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-execution-progress"
 						>
@@ -252,6 +285,7 @@
 						<div>
 							<el-switch
 								ref="inputField"
+								:disabled="readOnlyEnv"
 								:value="workflowSettings.executionTimeout > -1"
 								@change="toggleTimeout"
 								active-color="#13ce66"
@@ -277,6 +311,7 @@
 						<el-col :span="4">
 							<n8n-input
 								size="medium"
+								:disabled="readOnlyEnv"
 								:value="timeoutHMS.hours"
 								@input="(value) => setTimeout('hours', value)"
 								:min="0"
@@ -287,6 +322,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								size="medium"
+								:disabled="readOnlyEnv"
 								:value="timeoutHMS.minutes"
 								@input="(value) => setTimeout('minutes', value)"
 								:min="0"
@@ -298,6 +334,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								size="medium"
+								:disabled="readOnlyEnv"
 								:value="timeoutHMS.seconds"
 								@input="(value) => setTimeout('seconds', value)"
 								:min="0"
@@ -313,6 +350,7 @@
 		<template #footer>
 			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
+					:disabled="readOnlyEnv"
 					:label="$locale.baseText('workflowSettings.save')"
 					size="large"
 					float="right"
@@ -324,42 +362,48 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import {
+import { useToast } from '@/composables';
+import type {
 	ITimeoutHMS,
 	IUser,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
-	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
-import Modal from './Modal.vue';
+import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '../constants';
+} from '@/constants';
 
-import mixins from 'vue-typed-mixins';
-
+import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
+import {
+	useWorkflowsStore,
+	useSettingsStore,
+	useRootStore,
+	useWorkflowsEEStore,
+	useUsersStore,
+} from '@/stores';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
+export default defineComponent({
 	name: 'WorkflowSettings',
+	mixins: [externalHooks, genericHelpers],
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -401,13 +445,18 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			saveDataSuccessExecutionOptions: [] as Array<{ key: string; value: string }>,
 			saveExecutionProgressOptions: [] as Array<{ key: string | boolean; value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean; value: string }>,
+			executionOrderOptions: [
+				{ key: 'v0', value: 'v0 (legacy)' },
+				{ key: 'v1', value: 'v1 (recommended)' },
+			] as Array<{ key: string; value: string }>,
 			timezones: [] as Array<{ key: string; value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
+			executionOrder: 'v0',
 			executionTimeout: 0,
 			maxExecutionTimeout: 0,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			WORKFLOW_SETTINGS_MODAL_KEY,
 		};
 	},
@@ -448,7 +497,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		this.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			this.$showMessage({
+			this.showMessage({
 				title: 'No workflow active',
 				message: 'No workflow active to display settings of.',
 				type: 'error',
@@ -477,7 +526,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		try {
 			await Promise.all(promises);
 		} catch (error) {
-			this.$showError(
+			this.showError(
 				error,
 				'Problem loading settings',
 				'The following error occurred loading the data:',
@@ -503,7 +552,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		}
 		if (workflowSettings.callerPolicy === undefined) {
 			workflowSettings.callerPolicy = this.defaultValues
-				.workflowCallerPolicy as WorkflowCallerPolicyDefaultOption;
+				.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 		}
 		if (workflowSettings.executionTimeout === undefined) {
 			workflowSettings.executionTimeout = this.rootStore.executionTimeout;
@@ -511,12 +560,17 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		if (workflowSettings.maxExecutionTimeout === undefined) {
 			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
+		if (workflowSettings.executionOrder === undefined) {
+			workflowSettings.executionOrder = 'v0';
+		}
 
-		Vue.set(this, 'workflowSettings', workflowSettings);
+		this.workflowSettings = workflowSettings;
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
-		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
+		void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			dialogVisible: true,
+		});
 		this.$telemetry.track('User opened workflow settings', {
 			workflow_id: this.workflowsStore.workflowId,
 		});
@@ -528,8 +582,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				: str.replace(/[^0-9,\s]/g, '');
 		},
 		closeDialog() {
-			this.modalBus.$emit('close');
-			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
+			this.modalBus.emit('close');
+			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+				dialogVisible: false,
+			});
 		},
 		setTimeout(key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -702,7 +758,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				return;
 			}
 
-			const timezones = await this.restApi().getTimezones();
+			const timezones = await this.settingsStore.getTimezones();
 
 			let defaultTimezoneValue = timezones[this.defaultValues.timezone] as string | undefined;
 			if (defaultTimezoneValue === undefined) {
@@ -723,7 +779,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			}
 		},
 		async loadWorkflows() {
-			const workflows = await this.restApi().getWorkflows();
+			const workflows = (await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;
@@ -734,13 +790,12 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				return 0;
 			});
 
-			// @ts-ignore
 			workflows.unshift({
 				id: undefined as unknown as string,
 				name: this.$locale.baseText('workflowSettings.noWorkflow'),
-			});
+			} as IWorkflowShortResponse);
 
-			Vue.set(this, 'workflows', workflows);
+			this.workflows = workflows;
 		},
 		async saveSettings() {
 			// Set that the active state should be changed
@@ -754,7 +809,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				data.settings!.executionTimeout !== -1 ? hours * 3600 + minutes * 60 + seconds : -1;
 
 			if (data.settings!.executionTimeout === 0) {
-				this.$showError(
+				this.showError(
 					new Error(this.$locale.baseText('workflowSettings.showError.saveSettings1.errorMessage')),
 					this.$locale.baseText('workflowSettings.showError.saveSettings1.title'),
 					this.$locale.baseText('workflowSettings.showError.saveSettings1.message') + ':',
@@ -767,7 +822,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				const { hours, minutes, seconds } = this.convertToHMS(
 					this.workflowSettings.maxExecutionTimeout as number,
 				);
-				this.$showError(
+				this.showError(
 					new Error(
 						this.$locale.baseText('workflowSettings.showError.saveSettings2.errorMessage', {
 							interpolate: {
@@ -788,10 +843,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			data.versionId = this.workflowsStore.workflowVersionId;
 
 			try {
-				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
+				const workflow = await this.workflowsStore.updateWorkflow(this.$route.params.name, data);
 				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('workflowSettings.showError.saveSettings3.title'),
 				);
@@ -813,14 +868,14 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 			this.isLoading = false;
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('workflowSettings.showMessage.saveSettings.title'),
 				type: 'success',
 			});
 
 			this.closeDialog();
 
-			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			void this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 			this.$telemetry.track('User updated workflow settings', {
 				workflow_id: this.workflowsStore.workflowId,
 			});

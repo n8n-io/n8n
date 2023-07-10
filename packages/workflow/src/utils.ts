@@ -1,4 +1,19 @@
+import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
 import type { BinaryFileType } from './Interfaces';
+
+const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
+
+export const isObjectEmpty = (obj: object | null | undefined): boolean => {
+	if (obj === undefined || obj === null) return true;
+	if (typeof obj === 'object') {
+		if (Array.isArray(obj)) return obj.length === 0;
+		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
+		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
+		if (Symbol.iterator in obj || readStreamClasses.has(obj.constructor.name)) return false;
+		return Object.keys(obj).length === 0;
+	}
+	return true;
+};
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
@@ -64,27 +79,23 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 
 type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
-	circularRefReplacement?: string;
 };
 
-const getReplaceCircularReferencesFn = (options: JSONStringifyOptions) => {
-	const knownObjects = new WeakSet();
-	return (key: any, value: any) => {
-		if (typeof value === 'object' && value !== null) {
-			if (knownObjects.has(value)) {
-				return options?.circularRefReplacement ?? '[Circular Reference]';
-			}
-			knownObjects.add(value);
-		}
-		return value;
-	};
+const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
+	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
+	if (knownObjects.has(value)) return '[Circular Reference]' as T;
+	knownObjects.add(value);
+	const copy = (Array.isArray(value) ? [] : {}) as T;
+	for (const key in value) {
+		copy[key] = replaceCircularReferences(value[key], knownObjects);
+	}
+	knownObjects.delete(value);
+	return copy;
 };
 
 export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}): string => {
-	const replacer = options?.replaceCircularRefs
-		? getReplaceCircularReferencesFn(options)
-		: undefined;
-	return JSON.stringify(obj, replacer);
+	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
 };
 
 export const sleep = async (ms: number): Promise<void> =>
@@ -117,3 +128,20 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 		throw error;
 	}
 }
+
+const IS_FRONTEND_IN_DEV_MODE =
+	typeof process === 'object' &&
+	Object.keys(process).length === 1 &&
+	'env' in process &&
+	Object.keys(process.env).length === 0;
+
+export const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
+
+export const isSyntaxError = (error: unknown): error is SyntaxError =>
+	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
+
+export const isExpressionError = (error: unknown): error is ExpressionError =>
+	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
+
+export const isTypeError = (error: unknown): error is TypeError =>
+	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');

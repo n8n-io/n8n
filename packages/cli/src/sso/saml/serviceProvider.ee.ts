@@ -15,6 +15,10 @@ export function getServiceProviderReturnUrl(): string {
 	return getInstanceBaseUrl() + SamlUrls.restAcs;
 }
 
+export function getServiceProviderConfigTestReturnUrl(): string {
+	return getInstanceBaseUrl() + SamlUrls.configTestReturn;
+}
+
 // TODO:SAML: make these configurable for the end user
 export function getServiceProviderInstance(prefs: SamlPreferences): ServiceProviderInstance {
 	if (serviceProviderInstance === undefined) {
@@ -24,6 +28,7 @@ export function getServiceProviderInstance(prefs: SamlPreferences): ServiceProvi
 			wantAssertionsSigned: prefs.wantAssertionsSigned,
 			wantMessageSigned: prefs.wantMessageSigned,
 			signatureConfig: prefs.signatureConfig,
+			relayState: prefs.relayState,
 			nameIDFormat: ['urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'],
 			assertionConsumerService: [
 				{

@@ -28,6 +28,7 @@
 				</el-menu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
+				<slot name="beforeLowerMenu"></slot>
 				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
@@ -54,11 +55,11 @@
 <script lang="ts">
 import { Menu as ElMenu } from 'element-ui';
 import N8nMenuItem from '../N8nMenuItem';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { IMenuItem, RouteObject } from '../../types';
 
-import Vue, { PropType } from 'vue';
-import { IMenuItem } from '../../types';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-menu',
 	components: {
 		ElMenu,
@@ -93,6 +94,7 @@ export default Vue.extend({
 		},
 		items: {
 			type: Array as PropType<IMenuItem[]>,
+			default: (): IMenuItem[] => [],
 		},
 		value: {
 			type: String,
@@ -104,9 +106,9 @@ export default Vue.extend({
 			const found = this.items.find((item) => {
 				return (
 					(Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.$route.name || '')) ||
+						item.activateOnRouteNames.includes(this.currentRoute.name || '')) ||
 					(Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.$route.path))
+						item.activateOnRoutePaths.includes(this.currentRoute.path))
 				);
 			});
 			this.activeTab = found ? found.id : '';
@@ -125,6 +127,14 @@ export default Vue.extend({
 		lowerMenuItems(): IMenuItem[] {
 			return this.items.filter(
 				(item: IMenuItem) => item.position === 'bottom' && item.available !== false,
+			);
+		},
+		currentRoute(): RouteObject {
+			return (
+				(this as typeof this & { $route: RouteObject }).$route || {
+					name: '',
+					path: '',
+				}
 			);
 		},
 	},
@@ -182,10 +192,5 @@ export default Vue.extend({
 	:global(.hideme) {
 		display: none !important;
 	}
-}
-
-.menuPrefix,
-.menuSuffix {
-	padding: var(--spacing-xs) var(--spacing-l);
 }
 </style>

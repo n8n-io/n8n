@@ -1,8 +1,8 @@
 import config from '@/config';
 
-export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
+export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest');
 
-export const PUBLIC_API_REST_PATH_SEGMENT = config.getEnv('publicApi.path') as Readonly<string>;
+export const PUBLIC_API_REST_PATH_SEGMENT = config.getEnv('publicApi.path');
 
 export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
 	'healthz',
@@ -42,9 +42,7 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users',
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
-	'POST /owner/pre-setup',
 	'POST /owner/setup',
-	'POST /owner/skip-setup',
 ];
 
 export const COMMUNITY_PACKAGE_VERSION = {

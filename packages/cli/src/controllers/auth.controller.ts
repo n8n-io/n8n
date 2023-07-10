@@ -1,5 +1,5 @@
 import validator from 'validator';
-import { Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
@@ -8,7 +8,6 @@ import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type {
@@ -20,9 +19,13 @@ import type {
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
 import {
+	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
+import type { UserRepository } from '@db/repositories';
+import { InternalHooks } from '../InternalHooks';
+import Container from 'typedi';
 
 @RestController()
 export class AuthController {
@@ -32,7 +35,7 @@ export class AuthController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	private readonly postHog?: PostHogClient;
 
@@ -58,7 +61,6 @@ export class AuthController {
 
 	/**
 	 * Log in a user.
-	 * Authless endpoint.
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
@@ -68,14 +70,20 @@ export class AuthController {
 
 		let user: User | undefined;
 
+		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
+
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
-			if (preliminaryUser?.globalRole?.name === 'owner') {
+			if (
+				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.settings?.allowSSOManualLogin
+			) {
 				user = preliminaryUser;
+				usedAuthenticationMethod = 'email';
 			} else {
-				throw new AuthError('SAML is enabled, please log in with SAML');
+				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			user = await handleLdapLogin(email, password);
@@ -84,9 +92,17 @@ export class AuthController {
 		}
 		if (user) {
 			await issueCookie(res, user);
+			void Container.get(InternalHooks).onUserLoginSuccess({
+				user,
+				authenticationMethod: usedAuthenticationMethod,
+			});
 			return withFeatureFlags(this.postHog, sanitizeUser(user));
 		}
-
+		void Container.get(InternalHooks).onUserLoginFailed({
+			user: email,
+			authenticationMethod: usedAuthenticationMethod,
+			reason: 'wrong credentials',
+		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 
@@ -135,7 +151,6 @@ export class AuthController {
 
 	/**
 	 * Validate invite token to enable invitee to set up their account.
-	 * Authless endpoint.
 	 */
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
@@ -196,8 +211,8 @@ export class AuthController {
 
 	/**
 	 * Log out a user.
-	 * Authless endpoint.
 	 */
+	@Authorized()
 	@Post('/logout')
 	logout(req: Request, res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);

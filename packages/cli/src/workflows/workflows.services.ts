@@ -4,7 +4,7 @@ import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -27,6 +27,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
+import type { RoleNames } from '../databases/entities/Role';
 
 export type IGetWorkflowsQueryFilter = Pick<
 	FindOptionsWhere<WorkflowEntity>,
@@ -111,7 +112,7 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
+	static async getWorkflowIdsForUser(user: User, roles?: RoleNames[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
@@ -186,7 +187,7 @@ export class WorkflowsService {
 		user: User,
 		workflow: WorkflowEntity,
 		workflowId: string,
-		tags?: string[],
+		tagIds?: string[],
 		forceSave?: boolean,
 		roles?: string[],
 	): Promise<WorkflowEntity> {
@@ -285,13 +286,11 @@ export class WorkflowsService {
 			]),
 		);
 
-		if (tags && !config.getEnv('workflowTagsDisabled')) {
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			await TagHelpers.removeRelations(workflowId, tablePrefix);
-
-			if (tags.length) {
-				await TagHelpers.createRelations(workflowId, tags, tablePrefix);
-			}
+		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
+			await Db.collections.WorkflowTagMapping.delete({ workflowId });
+			await Db.collections.WorkflowTagMapping.insert(
+				tagIds.map((tagId) => ({ tagId, workflowId })),
+			);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
@@ -309,9 +308,9 @@ export class WorkflowsService {
 			);
 		}
 
-		if (updatedWorkflow.tags?.length && tags?.length) {
+		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
-				requestOrder: tags,
+				requestOrder: tagIds,
 			});
 		}
 

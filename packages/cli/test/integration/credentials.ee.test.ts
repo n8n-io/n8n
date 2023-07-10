@@ -25,7 +25,7 @@ let sharingSpy: jest.SpyInstance<boolean>;
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['credentials'] });
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
@@ -100,8 +100,12 @@ describe('GET /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
-
-		const [ownerCredential, memberCredential] = response.body.data as CredentialWithSharings[];
+		const ownerCredential = response.body.data.find(
+			(e: CredentialWithSharings) => e.ownedBy?.id === owner.id,
+		);
+		const memberCredential = response.body.data.find(
+			(e: CredentialWithSharings) => e.ownedBy?.id === member1.id,
+		);
 
 		validateMainCredentialData(ownerCredential);
 		expect(ownerCredential.data).toBeUndefined();
@@ -415,7 +419,7 @@ describe('PUT /credentials/:id/share', () => {
 
 	test('should respond 403 for non-existing credentials', async () => {
 		const response = await authOwnerAgent
-			.put(`/credentials/1234567/share`)
+			.put('/credentials/1234567/share')
 			.send({ shareWithIds: [member.id] });
 
 		expect(response.statusCode).toBe(403);

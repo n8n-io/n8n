@@ -194,7 +194,7 @@ export class GmailTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -246,7 +246,7 @@ export class GmailTrigger implements INodeType {
 				delete filters.receivedAfter;
 			}
 
-			Object.assign(qs, prepareQuery.call(this, filters), options);
+			Object.assign(qs, prepareQuery.call(this, filters, 0), options);
 
 			responseData = await googleApiRequest.call(
 				this,

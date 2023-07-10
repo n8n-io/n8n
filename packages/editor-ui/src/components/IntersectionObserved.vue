@@ -5,24 +5,35 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import emitter from '@/mixins/emitter';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(emitter).extend({
+export default defineComponent({
 	name: 'IntersectionObserved',
-	props: ['enabled'],
+	props: {
+		enabled: {
+			type: Boolean,
+			default: false,
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
+	},
 	mounted() {
-		if (!this.$props.enabled) {
+		if (!this.enabled) {
 			return;
 		}
 
 		this.$nextTick(() => {
-			this.$dispatch('IntersectionObserver', 'observe', this.$refs.observed);
+			this.eventBus.emit('observe', this.$refs.observed);
 		});
 	},
 	beforeDestroy() {
-		if (this.$props.enabled) {
-			this.$dispatch('IntersectionObserver', 'unobserve', this.$refs.observed);
+		if (this.enabled) {
+			this.eventBus.emit('unobserve', this.$refs.observed);
 		}
 	},
 });

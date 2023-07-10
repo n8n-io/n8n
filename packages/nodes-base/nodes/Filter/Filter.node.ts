@@ -23,6 +23,7 @@ export class Filter implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		outputNames: ['Kept', 'Discarded'],
 		properties: [
 			{
 				displayName: 'Conditions',
@@ -305,7 +306,8 @@ export class Filter implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: INodeExecutionData[] = [];
+		const returnDataTrue: INodeExecutionData[] = [];
+		const returnDataFalse: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 
@@ -340,21 +342,27 @@ export class Filter implements INodeType {
 
 					// If the operation is "OR" it means the item did match one condition no ned to check further
 					if (compareResult && combineConditions === 'OR') {
-						returnData.push(item);
+						returnDataTrue.push(item);
 						continue itemLoop;
 					}
 
 					// If the operation is "AND" it means the item failed one condition no ned to check further
 					if (!compareResult && combineConditions === 'AND') {
+						returnDataFalse.push(item);
 						continue itemLoop;
 					}
 				}
 			}
 
 			// If the operation is "AND" it means the item did match all conditions
-			if (combineConditions === 'AND') returnData.push(item);
+			if (combineConditions === 'AND') {
+				returnDataTrue.push(item);
+			} else {
+				// If the operation is "OR" it means the the item did not match any condition.
+				returnDataFalse.push(item);
+			}
 		}
 
-		return [returnData];
+		return [returnDataTrue, returnDataFalse];
 	}
 }

@@ -1,4 +1,4 @@
-import uniq from 'lodash.uniq';
+import uniq from 'lodash/uniq';
 import glob from 'fast-glob';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
@@ -66,10 +66,22 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
-		// Load nodes from `n8n-nodes-base` and any other `n8n-nodes-*` package in the main `node_modules`
-		await this.loadNodesFromNodeModules(CLI_DIR);
-		// Load nodes from installed community packages
-		await this.loadNodesFromNodeModules(this.downloadFolder);
+		// Load nodes from `n8n-nodes-base`
+		const basePathsToScan = [
+			// In case "n8n" package is in same node_modules folder.
+			path.join(CLI_DIR, '..'),
+			// In case "n8n" package is the root and the packages are
+			// in the "node_modules" folder underneath it.
+			path.join(CLI_DIR, 'node_modules'),
+		];
+
+		for (const nodeModulesDir of basePathsToScan) {
+			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
+		}
+
+		// Load nodes from any other `n8n-nodes-*` packages in the download directory
+		// This includes the community nodes
+		await this.loadNodesFromNodeModules(path.join(this.downloadFolder, 'node_modules'));
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -117,13 +129,15 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
-	private async loadNodesFromNodeModules(scanDir: string): Promise<void> {
-		const nodeModulesDir = path.join(scanDir, 'node_modules');
-		const globOptions = { cwd: nodeModulesDir, onlyDirectories: true };
-		const installedPackagePaths = [
-			...(await glob('n8n-nodes-*', { ...globOptions, deep: 1 })),
-			...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-		];
+	private async loadNodesFromNodeModules(
+		nodeModulesDir: string,
+		packageName?: string,
+	): Promise<void> {
+		const installedPackagePaths = await glob(packageName ?? ['n8n-nodes-*', '@*/n8n-nodes-*'], {
+			cwd: nodeModulesDir,
+			onlyDirectories: true,
+			deep: 1,
+		});
 
 		for (const packagePath of installedPackagePaths) {
 			try {

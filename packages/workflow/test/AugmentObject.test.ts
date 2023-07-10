@@ -6,7 +6,7 @@ describe('AugmentObject', () => {
 	describe('augmentArray', () => {
 		test('should work with arrays', () => {
 			const originalObject = [1, 2, 3, 4, null];
-			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentArray(originalObject);
 
@@ -70,7 +70,7 @@ describe('AugmentObject', () => {
 					},
 				],
 			};
-			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentObject(originalObject);
 
@@ -81,13 +81,13 @@ describe('AugmentObject', () => {
 
 			// Make sure that also array operations as push and length work as expected
 			// On lower levels
-			augmentedObject.a.b.c[0].a3!.b3.c3 = '033';
-			expect(augmentedObject.a.b.c[0].a3!.b3.c3).toEqual('033');
-			expect(originalObject.a.b.c[0].a3!.b3.c3).toEqual('03');
+			augmentedObject.a.b.c[0].a3.b3.c3 = '033';
+			expect(augmentedObject.a.b.c[0].a3.b3.c3).toEqual('033');
+			expect(originalObject.a.b.c[0].a3.b3.c3).toEqual('03');
 
-			augmentedObject.a.b.c[1].a3!.b3.c3 = '133';
-			expect(augmentedObject.a.b.c[1].a3!.b3.c3).toEqual('133');
-			expect(originalObject.a.b.c[1].a3!.b3.c3).toEqual('13');
+			augmentedObject.a.b.c[1].a3.b3.c3 = '133';
+			expect(augmentedObject.a.b.c[1].a3.b3.c3).toEqual('133');
+			expect(originalObject.a.b.c[1].a3.b3.c3).toEqual('13');
 
 			augmentedObject.a.b.c.push({
 				a3: {
@@ -193,13 +193,17 @@ describe('AugmentObject', () => {
 
 	describe('augmentObject', () => {
 		test('should work with simple values on first level', () => {
+			const date = new Date(1680089084200);
+			const regexp = new RegExp('^test$', 'ig');
 			const originalObject: IDataObject = {
 				1: 11,
 				2: '22',
 				a: 111,
 				b: '222',
+				d: date,
+				r: regexp,
 			};
-			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentObject(originalObject);
 
@@ -221,7 +225,7 @@ describe('AugmentObject', () => {
 
 			augmentedObject.c = 3;
 
-			expect(originalObject).toEqual(copyOriginal);
+			expect({ ...originalObject, d: date.toJSON(), r: {} }).toEqual(copyOriginal);
 
 			expect(augmentedObject).toEqual({
 				1: 911,
@@ -229,6 +233,8 @@ describe('AugmentObject', () => {
 				a: 9111,
 				b: '9222',
 				c: 3,
+				d: date.toJSON(),
+				r: regexp.toString(),
 			});
 		});
 
@@ -242,30 +248,30 @@ describe('AugmentObject', () => {
 				},
 				aa: '1',
 			};
-			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentObject(originalObject);
 
 			augmentedObject.a.bb = '92';
 			expect(originalObject.a.bb).toEqual('2');
-			expect(augmentedObject.a!.bb!).toEqual('92');
+			expect(augmentedObject.a.bb).toEqual('92');
 
-			augmentedObject.a!.b!.cc = '93';
+			augmentedObject.a.b.cc = '93';
 			expect(originalObject.a.b.cc).toEqual('3');
-			expect(augmentedObject.a!.b!.cc).toEqual('93');
+			expect(augmentedObject.a.b.cc).toEqual('93');
 
 			// @ts-ignore
-			augmentedObject.a!.b!.ccc = {
+			augmentedObject.a.b.ccc = {
 				d: '4',
 			};
 
 			// @ts-ignore
-			expect(augmentedObject.a!.b!.ccc).toEqual({ d: '4' });
+			expect(augmentedObject.a.b.ccc).toEqual({ d: '4' });
 
 			// @ts-ignore
-			augmentedObject.a!.b!.ccc.d = '94';
+			augmentedObject.a.b.ccc.d = '94';
 			// @ts-ignore
-			expect(augmentedObject.a!.b!.ccc.d).toEqual('94');
+			expect(augmentedObject.a.b.ccc.d).toEqual('94');
 
 			expect(originalObject).toEqual(copyOriginal);
 
@@ -294,7 +300,7 @@ describe('AugmentObject', () => {
 				},
 				aa: '1',
 			};
-			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentObject(originalObject);
 
@@ -345,7 +351,7 @@ describe('AugmentObject', () => {
 				},
 				aa: '1' as string | undefined,
 			};
-			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentObject(originalObject);
 
@@ -417,7 +423,7 @@ describe('AugmentObject', () => {
 				},
 				aa: '1' as string | undefined,
 			};
-			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
+			const copyOriginal = deepCopy(originalObject);
 
 			const augmentedObject = augmentObject(originalObject);
 
@@ -513,6 +519,57 @@ describe('AugmentObject', () => {
 			const timeCopied = new Date().getTime() - startTime;
 
 			expect(timeAugmented).toBeLessThan(timeCopied);
+		});
+
+		test('should ignore non-enumerable keys', () => {
+			const originalObject = { a: 1, b: 2 };
+			Object.defineProperty(originalObject, '__hiddenProp', { enumerable: false });
+
+			const augmentedObject = augmentObject(originalObject);
+			expect(Object.keys(augmentedObject)).toEqual(['a', 'b']);
+		});
+
+		test('should return property descriptors', () => {
+			const originalObject = {
+				x: {
+					y: {},
+					z: {},
+				},
+			};
+			const augmentedObject = augmentObject(originalObject);
+
+			expect(Object.getOwnPropertyDescriptor(augmentedObject.x, 'y')).toEqual({
+				configurable: true,
+				enumerable: true,
+				value: {},
+				writable: true,
+			});
+
+			delete augmentedObject.x.y;
+			expect(augmentedObject.x.hasOwnProperty('y')).toEqual(false);
+
+			augmentedObject.x.y = 42;
+			expect(augmentedObject.x.hasOwnProperty('y')).toEqual(true);
+			expect(Object.getOwnPropertyDescriptor(augmentedObject.x, 'y')).toEqual({
+				configurable: true,
+				enumerable: true,
+				value: 42,
+				writable: true,
+			});
+		});
+
+		test('should return valid values on `has` calls', () => {
+			const originalObject = {
+				x: {
+					y: {},
+				},
+			};
+			const augmentedObject = augmentObject(originalObject);
+			expect('y' in augmentedObject.x).toBe(true);
+			expect('z' in augmentedObject.x).toBe(false);
+
+			augmentedObject.x.z = 5;
+			expect('z' in augmentedObject.x).toBe(true);
 		});
 	});
 });

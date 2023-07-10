@@ -4,30 +4,27 @@ import { simpleParser } from 'mailparser';
 
 import type {
 	IBinaryKeyData,
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
-
 import { DateTime } from 'luxon';
 
-import isEmpty from 'lodash.isempty';
+import isEmpty from 'lodash/isEmpty';
 
 export interface IEmail {
 	from?: string;
 	to?: string;
 	cc?: string;
 	bcc?: string;
+	replyTo?: string;
 	inReplyTo?: string;
 	reference?: string;
 	subject: string;
@@ -43,62 +40,7 @@ export interface IAttachments {
 }
 
 import MailComposer from 'nodemailer/lib/mail-composer';
-
-async function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: ICredentialDataDecryptedObject,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const scopes = [
-		'https://www.googleapis.com/auth/gmail.labels',
-		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
-		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
-		'https://mail.google.com/',
-		'https://www.googleapis.com/auth/gmail.modify',
-		'https://www.googleapis.com/auth/gmail.compose',
-	];
-
-	const now = moment().unix();
-
-	credentials.email = (credentials.email as string).trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email,
-			sub: credentials.delegatedEmail || credentials.email,
-			scope: scopes.join(' '),
-			aud: 'https://oauth2.googleapis.com/token',
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	return this.helpers.request(options);
-}
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -138,7 +80,7 @@ export async function googleApiRequest(
 			const credentials = await this.getCredentials('googleApi');
 			credentialType = 'googleApi';
 
-			const { access_token } = await getAccessToken.call(this, credentials);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'gmail');
 
 			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
 		}
@@ -281,6 +223,7 @@ export async function encodeEmail(email: IEmail) {
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,
+		replyTo: email.replyTo,
 		inReplyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,
@@ -351,9 +294,64 @@ export function extractEmail(s: string) {
 	return s;
 }
 
+export const prepareTimestamp = (
+	node: INode,
+	itemIndex: number,
+	query: string,
+	dateValue: string | number | DateTime,
+	label: 'after' | 'before',
+) => {
+	if (dateValue instanceof DateTime) {
+		dateValue = dateValue.toISO();
+	}
+
+	let timestamp = DateTime.fromISO(dateValue as string).toSeconds();
+	const timestampLengthInMilliseconds1990 = 12;
+
+	if (typeof timestamp === 'number') {
+		timestamp = Math.round(timestamp);
+	}
+
+	if (
+		!timestamp &&
+		typeof dateValue === 'number' &&
+		dateValue.toString().length < timestampLengthInMilliseconds1990
+	) {
+		timestamp = dateValue;
+	}
+
+	if (!timestamp && (dateValue as string).length < timestampLengthInMilliseconds1990) {
+		timestamp = parseInt(dateValue as string, 10);
+	}
+
+	if (!timestamp) {
+		timestamp = Math.floor(DateTime.fromMillis(parseInt(dateValue as string, 10)).toSeconds());
+	}
+
+	if (!timestamp) {
+		const description = `'${dateValue}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
+		throw new NodeOperationError(
+			node,
+			`Invalid date/time in 'Received ${label[0].toUpperCase() + label.slice(1)}' field`,
+			{
+				description,
+				itemIndex,
+			},
+		);
+	}
+
+	if (query) {
+		query += ` ${label}:${timestamp}`;
+	} else {
+		query = `${label}:${timestamp}`;
+	}
+	return query;
+};
+
 export function prepareQuery(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	fields: IDataObject,
+	itemIndex: number,
 ) {
 	const qs: IDataObject = { ...fields };
 	if (qs.labelIds) {
@@ -383,68 +381,24 @@ export function prepareQuery(
 	}
 
 	if (qs.receivedAfter) {
-		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
-		const timestampLengthInMilliseconds1990 = 12;
-
-		if (
-			!timestamp &&
-			typeof qs.receivedAfter === 'number' &&
-			qs.receivedAfter.toString().length < timestampLengthInMilliseconds1990
-		) {
-			timestamp = qs.receivedAfter;
-		}
-
-		if (!timestamp && (qs.receivedAfter as string).length < timestampLengthInMilliseconds1990) {
-			timestamp = parseInt(qs.receivedAfter as string, 10);
-		}
-
-		if (!timestamp) {
-			timestamp = Math.floor(
-				DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds(),
-			);
-		}
-
-		if (!timestamp) {
-			const description = `'${qs.receivedAfter}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received After' field", {
-				description,
-			});
-		}
-
-		if (qs.q) {
-			qs.q += ` after:${timestamp}`;
-		} else {
-			qs.q = `after:${timestamp}`;
-		}
+		qs.q = prepareTimestamp(
+			this.getNode(),
+			itemIndex,
+			qs.q as string,
+			qs.receivedAfter as string,
+			'after',
+		);
 		delete qs.receivedAfter;
 	}
 
 	if (qs.receivedBefore) {
-		let timestamp = DateTime.fromISO(qs.receivedBefore as string).toSeconds();
-		const timestampLengthInMilliseconds1990 = 12;
-
-		if (!timestamp && (qs.receivedBefore as string).length < timestampLengthInMilliseconds1990) {
-			timestamp = parseInt(qs.receivedBefore as string, 10);
-		}
-
-		if (!timestamp) {
-			timestamp = Math.floor(
-				DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds(),
-			);
-		}
-
-		if (!timestamp) {
-			const description = `'${qs.receivedBefore}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received Before' field", {
-				description,
-			});
-		}
-
-		if (qs.q) {
-			qs.q += ` before:${timestamp}`;
-		} else {
-			qs.q = `before:${timestamp}`;
-		}
+		qs.q = prepareTimestamp(
+			this.getNode(),
+			itemIndex,
+			qs.q as string,
+			qs.receivedBefore as string,
+			'before',
+		);
 		delete qs.receivedBefore;
 	}
 
@@ -557,7 +511,7 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 	return result;
 }
 
-export async function replayToEmail(
+export async function replyToEmail(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	gmailId: string,

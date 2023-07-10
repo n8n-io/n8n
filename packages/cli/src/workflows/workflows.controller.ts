@@ -14,6 +14,7 @@ import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { RoleRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
@@ -80,10 +81,7 @@ workflowsController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneByOrFail({
-				name: 'owner',
-				scope: 'workflow',
-			});
+			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -191,7 +189,7 @@ workflowsController.get(
  * GET /workflows/:id
  */
 workflowsController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
@@ -230,7 +228,7 @@ workflowsController.get(
  * PATCH /workflows/:id
  */
 workflowsController.patch(
-	'/:id',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
 
@@ -256,7 +254,7 @@ workflowsController.patch(
  * DELETE /workflows/:id
  */
 workflowsController.delete(
-	'/:id',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 

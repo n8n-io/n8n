@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import { ICredentialTypes, INodeTypes, SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import type { ICredentialTypes, INodeTypes } from 'n8n-workflow';
+import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -79,7 +80,7 @@ describe('PermissionChecker.check()', () => {
 			],
 		});
 
-		expect(() => PermissionChecker.check(workflow, userId)).not.toThrow();
+		expect(async () => PermissionChecker.check(workflow, userId)).not.toThrow();
 	});
 
 	test('should allow if requesting user is instance owner', async () => {
@@ -109,7 +110,7 @@ describe('PermissionChecker.check()', () => {
 			],
 		});
 
-		expect(async () => await PermissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => PermissionChecker.check(workflow, owner.id)).not.toThrow();
 	});
 
 	test('should allow if workflow creds are valid subset', async () => {
@@ -156,7 +157,7 @@ describe('PermissionChecker.check()', () => {
 			],
 		});
 
-		expect(async () => await PermissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => PermissionChecker.check(workflow, owner.id)).not.toThrow();
 	});
 
 	test('should deny if workflow creds are not valid subset', async () => {
@@ -212,7 +213,7 @@ describe('PermissionChecker.check()', () => {
 
 		const workflow = new Workflow(workflowDetails);
 
-		expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
+		await expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
 	});
 });
 
@@ -273,11 +274,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 
 		// Check description
 		try {
-			await PermissionChecker.checkSubworkflowExecutePolicy(
-				subworkflow,
-				subworkflow.settings.userId as string,
-				'abcde',
-			);
+			await PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, '', 'abcde');
 		} catch (error) {
 			if (error instanceof SubworkflowOperationError) {
 				expect(error.description).toBe(

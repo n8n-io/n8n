@@ -7,7 +7,8 @@ import { START_NODES } from './constants';
  * Returns if the given id is a valid workflow id
  */
 export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
+	// TODO: could also check if id only contains nanoId characters
+	return typeof id === 'string' && id?.length <= 16;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
@@ -57,4 +58,32 @@ export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	array.forEach((i) => (test(i) ? pass : fail).push(i));
 
 	return [pass, fail];
+};
+
+export const webhookNotFoundErrorMessage = (
+	path: string,
+	httpMethod?: string,
+	webhookMethods?: string[],
+) => {
+	let webhookPath = path;
+
+	if (httpMethod) {
+		webhookPath = `${httpMethod} ${webhookPath}`;
+	}
+
+	if (webhookMethods?.length && httpMethod) {
+		let methods = '';
+
+		if (webhookMethods.length === 1) {
+			methods = webhookMethods[0];
+		} else {
+			const lastMethod = webhookMethods.pop();
+
+			methods = `${webhookMethods.join(', ')} or ${lastMethod as string}`;
+		}
+
+		return `This webhook is not registered for ${httpMethod} requests. Did you mean to make a ${methods} request?`;
+	} else {
+		return `The requested webhook "${webhookPath}" is not registered.`;
+	}
 };

@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -7,8 +7,9 @@ import {
 	INode,
 	INodeProperties,
 	INodesAndCredentials,
-	Workflow,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import { Container } from 'typedi';
@@ -82,7 +83,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'User',
@@ -124,7 +127,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'Access Token',
@@ -154,7 +159,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'Access Token',
@@ -184,7 +191,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'Access Token',
@@ -215,7 +224,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'My Token',
@@ -229,8 +240,8 @@ describe('CredentialsHelper', () => {
 							credentials: ICredentialDataDecryptedObject,
 							requestOptions: IHttpRequestOptions,
 						): Promise<IHttpRequestOptions> {
-							requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-							requestOptions.qs!['user'] = credentials.user;
+							requestOptions.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+							requestOptions.qs!.user = credentials.user;
 							return requestOptions;
 						}
 					})(),
@@ -287,7 +298,7 @@ describe('CredentialsHelper', () => {
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,
 					testData.input.credentialType.name,
-					JSON.parse(JSON.stringify(incomingRequestOptions)),
+					deepCopy(incomingRequestOptions),
 					workflow,
 					node,
 					timezone,

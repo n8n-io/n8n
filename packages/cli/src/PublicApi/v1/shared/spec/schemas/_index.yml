@@ -1,5 +1,7 @@
 Error:
   $ref: './error.yml'
+Role:
+  $ref: './../../../handlers/users/spec/schemas/role.yml'
 Execution:
   $ref: './../../../handlers/executions/spec/schemas/execution.yml'
 Node:
@@ -20,3 +22,11 @@ CredentialType:
   $ref: './../../../handlers/credentials/spec/schemas/credentialType.yml'
 Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
+Pull:
+  $ref: "./../../../handlers/sourceControl/spec/schemas/pull.yml"
+ImportResult:
+  $ref: "./../../../handlers/sourceControl/spec/schemas/importResult.yml"
+UserList:
+  $ref: './../../../handlers/users/spec/schemas/userList.yml'
+User:
+  $ref: './../../../handlers/users/spec/schemas/user.yml'

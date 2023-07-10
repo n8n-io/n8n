@@ -19,7 +19,7 @@ export default function useDeviceSupportHelpers(): DeviceSupportHelpers {
 	const controlKeyCode = ref(isMacOs.value ? 'Meta' : 'Control');
 
 	function isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
-		if (isTouchDevice.value === true) {
+		if (isTouchDevice.value === true && e instanceof MouseEvent) {
 			return true;
 		}
 		if (isMacOs.value) {

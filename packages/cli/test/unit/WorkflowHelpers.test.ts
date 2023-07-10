@@ -1,4 +1,5 @@
-import { INode, LoggerProxy } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { getNodesWithInaccessibleCreds, validateWorkflowCredentialUsage } from '@/WorkflowHelpers';

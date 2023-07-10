@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import type {
 	ICredentialDataDecryptedObject,
@@ -224,7 +224,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		node: INode,
 		defaultTimezone: string,
 	): string {
-		if (parameterValue.charAt(0) !== '=') {
+		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
 		}
 
@@ -453,12 +453,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<void> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		if (!Db.isInitialized) {
-			// The first time executeWorkflow gets called the Database has
-			// to get initialized first
-			await Db.init();
-		}
-
 		credentials.setData(data, this.encryptionKey);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -542,10 +536,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
-			return Promise.resolve({
+			return {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
-			});
+			};
 		}
 
 		if (credentialsDecrypted.data) {

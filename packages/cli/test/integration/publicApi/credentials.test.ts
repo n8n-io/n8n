@@ -25,7 +25,7 @@ beforeAll(async () => {
 		enablePublicAPI: true,
 	});
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 
 	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
 		await testDb.getAllRoles();
@@ -51,7 +51,7 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
-	utils.initCredentialsTypes();
+	await utils.initCredentialsTypes();
 });
 
 beforeEach(async () => {
@@ -77,7 +77,6 @@ describe('POST /credentials', () => {
 		const response = await authOwnerAgent.post('/credentials').send(payload);
 
 		expect(response.statusCode).toBe(200);
-
 		const { id, name, type } = response.body;
 
 		expect(name).toBe(payload.name);

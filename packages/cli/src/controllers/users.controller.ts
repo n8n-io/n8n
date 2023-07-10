@@ -1,12 +1,11 @@
 import validator from 'validator';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
 import {
 	addInviteLinkToUser,
 	generateUserInviteUrl,
@@ -21,9 +20,8 @@ import { issueCookie } from '@/auth/jwt';
 import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
-import { UserRequest } from '@/requests';
+import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
-import type { Role } from '@db/entities/Role';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -34,9 +32,17 @@ import type {
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
-import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import type {
+	RoleRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@db/repositories';
+import { UserService } from '../user/user.service';
+import { plainToInstance } from 'class-transformer';
 
+@Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
 	private config: Config;
@@ -47,13 +53,13 @@ export class UsersController {
 
 	private internalHooks: IInternalHooksClass;
 
-	private userRepository: Repository<User>;
+	private userRepository: UserRepository;
 
-	private roleRepository: Repository<Role>;
+	private roleRepository: RoleRepository;
 
-	private sharedCredentialsRepository: Repository<SharedCredentials>;
+	private sharedCredentialsRepository: SharedCredentialsRepository;
 
-	private sharedWorkflowRepository: Repository<SharedWorkflow>;
+	private sharedWorkflowRepository: SharedWorkflowRepository;
 
 	private activeWorkflowRunner: ActiveWorkflowRunner;
 
@@ -99,7 +105,7 @@ export class UsersController {
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-	@Post('/', { middlewares: [userManagementEnabledMiddleware] })
+	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
@@ -147,7 +153,7 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findOneBy({ scope: 'global', name: 'member' });
+		const role = await this.roleRepository.findGlobalMemberRole();
 
 		if (!role) {
 			this.logger.error(
@@ -278,6 +284,7 @@ export class UsersController {
 	/**
 	 * Fill out user shell with first name, last name, and password.
 	 */
+	@NoAuthRequired()
 	@Post('/:id')
 	async updateUser(req: UserRequest.Update, res: Response) {
 		const { id: inviteeId } = req.params;
@@ -339,6 +346,7 @@ export class UsersController {
 		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
 	}
 
+	@Authorized('any')
 	@Get('/')
 	async listUsers(req: UserRequest.List) {
 		const users = await this.userRepository.find({ relations: ['globalRole', 'authIdentities'] });
@@ -346,6 +354,38 @@ export class UsersController {
 			(user): PublicUser =>
 				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
 		);
+	}
+
+	@Authorized(['global', 'owner'])
+	@Get('/:id/password-reset-link')
+	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: req.params.id },
+		});
+		if (!user) {
+			throw new NotFoundError('User not found');
+		}
+		const link = await UserService.generatePasswordResetUrl(user);
+		return {
+			link,
+		};
+	}
+
+	@Authorized(['global', 'owner'])
+	@Patch('/:id/settings')
+	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+
+		const id = req.params.id;
+
+		await UserService.updateUserSettings(id, payload);
+
+		const user = await this.userRepository.findOneOrFail({
+			select: ['settings'],
+			where: { id },
+		});
+
+		return user.settings;
 	}
 
 	/**
@@ -396,8 +436,8 @@ export class UsersController {
 		}
 
 		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'workflow' }),
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'credential' }),
+			this.roleRepository.findWorkflowOwnerRole(),
+			this.roleRepository.findCredentialOwnerRole(),
 		]);
 
 		if (transferId) {

@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import { ICredentialTypes } from 'n8n-workflow';
 import { join } from 'path';
 import { access } from 'fs/promises';
-import { Get, RestController } from '@/decorators';
+import { Authorized, Get, RestController } from '@/decorators';
 import { BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { Config } from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
@@ -14,6 +14,7 @@ export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
 }
 
+@Authorized()
 @RestController('/')
 export class TranslationController {
 	constructor(private config: Config, private credentialTypes: ICredentialTypes) {}

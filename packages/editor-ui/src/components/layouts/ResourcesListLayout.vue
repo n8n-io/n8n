@@ -8,14 +8,17 @@
 			</div>
 
 			<div class="mt-xs mb-l">
-				<n8n-button
-					size="large"
-					block
-					@click="$emit('click:add', $event)"
-					data-test-id="resources-list-add"
-				>
-					{{ $locale.baseText(`${resourceKey}.add`) }}
-				</n8n-button>
+				<slot name="add-button">
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="$emit('click:add', $event)"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`${resourceKey}.add`) }}
+					</n8n-button>
+				</slot>
 			</div>
 
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
@@ -55,7 +58,7 @@
 					/>
 				</slot>
 			</div>
-			<page-view-layout-list v-else>
+			<page-view-layout-list :overflow="type !== 'list'" v-else>
 				<template #header>
 					<div class="mb-xs">
 						<div :class="$style['filters-row']">
@@ -75,23 +78,14 @@
 							<div :class="$style['sort-and-filter']">
 								<n8n-select v-model="sortBy" size="medium" data-test-id="resources-list-sort">
 									<n8n-option
-										value="lastUpdated"
-										:label="$locale.baseText(`${resourceKey}.sort.lastUpdated`)"
-									/>
-									<n8n-option
-										value="lastCreated"
-										:label="$locale.baseText(`${resourceKey}.sort.lastCreated`)"
-									/>
-									<n8n-option
-										value="nameAsc"
-										:label="$locale.baseText(`${resourceKey}.sort.nameAsc`)"
-									/>
-									<n8n-option
-										value="nameDesc"
-										:label="$locale.baseText(`${resourceKey}.sort.nameDesc`)"
+										v-for="sortOption in sortOptions"
+										:key="sortOption"
+										:value="sortOption"
+										:label="$locale.baseText(`${resourceKey}.sort.${sortOption}`)"
 									/>
 								</n8n-select>
 								<resource-filters-dropdown
+									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
 									:value="filters"
@@ -121,18 +115,41 @@
 					<div class="pb-xs" />
 				</template>
 
-				<n8n-recycle-scroller
+				<slot name="preamble" />
+
+				<div
 					v-if="filteredAndSortedSubviewResources.length > 0"
-					data-test-id="resources-list"
-					:class="[$style.list, 'list-style-none']"
-					:items="filteredAndSortedSubviewResources"
-					:item-size="itemSize"
-					item-key="id"
+					:class="$style.listWrapper"
+					ref="listWrapperRef"
 				>
-					<template #default="{ item, updateItemSize }">
-						<slot :data="item" :updateItemSize="updateItemSize" />
-					</template>
-				</n8n-recycle-scroller>
+					<n8n-recycle-scroller
+						v-if="type === 'list'"
+						data-test-id="resources-list"
+						:class="[$style.list, 'list-style-none']"
+						:items="filteredAndSortedSubviewResources"
+						:item-size="typeProps.itemSize"
+						item-key="id"
+					>
+						<template #default="{ item, updateItemSize }">
+							<slot :data="item" :updateItemSize="updateItemSize" />
+						</template>
+					</n8n-recycle-scroller>
+					<n8n-datatable
+						v-if="typeProps.columns"
+						data-test-id="resources-table"
+						:class="$style.datatable"
+						:columns="typeProps.columns"
+						:rows="filteredAndSortedSubviewResources"
+						:currentPage="currentPage"
+						:rowsPerPage="rowsPerPage"
+						@update:currentPage="setCurrentPage"
+						@update:rowsPerPage="setRowsPerPage"
+					>
+						<template #row="{ columns, row }">
+							<slot :data="row" :columns="columns" />
+						</template>
+					</n8n-datatable>
+				</div>
 
 				<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
 					{{ $locale.baseText(`${resourceKey}.noResults`) }}
@@ -156,27 +173,29 @@
 						</span>
 					</template>
 				</n8n-text>
+
+				<slot name="postamble" />
 			</page-view-layout-list>
 		</template>
 	</page-view-layout>
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
+import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import TemplateCard from '@/components/TemplateCard.vue';
-import Vue, { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import type { N8nInput } from 'n8n-design-system';
+import type { DatatableColumn } from 'n8n-design-system';
 
 export interface IResource {
 	id: string;
@@ -196,13 +215,12 @@ interface IFilters {
 }
 
 type IResourceKeyType = 'credentials' | 'workflows';
+type SearchRef = InstanceType<typeof N8nInput>;
 
-const filterKeys = ['ownedBy', 'sharedWith'];
-
-export default mixins(showMessage, debounceHelper).extend({
+export default defineComponent({
 	name: 'resources-list-layout',
+	mixins: [debounceHelper],
 	components: {
-		TemplateCard,
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceOwnershipSelect,
@@ -213,17 +231,21 @@ export default mixins(showMessage, debounceHelper).extend({
 			type: String,
 			default: '' as IResourceKeyType,
 		},
+		displayName: {
+			type: Function as PropType<(resource: IResource) => string>,
+			default: (resource: IResource) => resource.name,
+		},
 		resources: {
 			type: Array,
 			default: (): IResource[] => [],
 		},
-		itemSize: {
-			type: Number,
-			default: 80,
+		disabled: {
+			type: Boolean,
+			default: false,
 		},
 		initialize: {
 			type: Function as PropType<() => Promise<void>>,
-			default: () => () => Promise.resolve(),
+			default: () => async () => {},
 		},
 		filters: {
 			type: Object,
@@ -240,13 +262,37 @@ export default mixins(showMessage, debounceHelper).extend({
 			type: Boolean,
 			default: true,
 		},
+		showFiltersDropdown: {
+			type: Boolean,
+			default: true,
+		},
+		sortFns: {
+			type: Object as PropType<Record<string, (a: IResource, b: IResource) => number>>,
+			default: (): Record<string, (a: IResource, b: IResource) => number> => ({}),
+		},
+		sortOptions: {
+			type: Array as PropType<string[]>,
+			default: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
+		},
+		type: {
+			type: String as PropType<'datatable' | 'list'>,
+			default: 'list',
+		},
+		typeProps: {
+			type: Object as PropType<{ itemSize: number } | { columns: DatatableColumn[] }>,
+			default: () => ({
+				itemSize: 80,
+			}),
+		},
 	},
 	data() {
 		return {
 			loading: true,
 			isOwnerSubview: false,
-			sortBy: 'lastUpdated',
+			sortBy: this.sortOptions[0],
 			hasFilters: false,
+			currentPage: 1,
+			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
 			EnterpriseEditionFeature,
 		};
@@ -292,7 +338,7 @@ export default mixins(showMessage, debounceHelper).extend({
 				if (this.filters.search) {
 					const searchString = this.filters.search.toLowerCase();
 
-					matches = matches && resource.name.toLowerCase().includes(searchString);
+					matches = matches && this.displayName(resource).toLowerCase().includes(searchString);
 				}
 
 				if (this.additionalFiltersHandler) {
@@ -305,15 +351,23 @@ export default mixins(showMessage, debounceHelper).extend({
 			return filtered.sort((a, b) => {
 				switch (this.sortBy) {
 					case 'lastUpdated':
-						return new Date(b.updatedAt).valueOf() - new Date(a.updatedAt).valueOf();
+						return this.sortFns['lastUpdated']
+							? this.sortFns['lastUpdated'](a, b)
+							: new Date(b.updatedAt).valueOf() - new Date(a.updatedAt).valueOf();
 					case 'lastCreated':
-						return new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
+						return this.sortFns['lastCreated']
+							? this.sortFns['lastCreated'](a, b)
+							: new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
 					case 'nameAsc':
-						return a.name.trim().localeCompare(b.name.trim());
+						return this.sortFns['nameAsc']
+							? this.sortFns['nameAsc'](a, b)
+							: this.displayName(a).trim().localeCompare(this.displayName(b).trim());
 					case 'nameDesc':
-						return b.name.localeCompare(a.name);
+						return this.sortFns['nameDesc']
+							? this.sortFns['nameDesc'](a, b)
+							: this.displayName(b).trim().localeCompare(this.displayName(a).trim());
 					default:
-						return 0;
+						return this.sortFns[this.sortBy] ? this.sortFns[this.sortBy](a, b) : 0;
 				}
 			});
 		},
@@ -333,6 +387,12 @@ export default mixins(showMessage, debounceHelper).extend({
 			this.loading = false;
 			this.$nextTick(this.focusSearchInput);
 		},
+		setCurrentPage(page: number) {
+			this.currentPage = page;
+		},
+		setRowsPerPage(rowsPerPage: number | '*') {
+			this.rowsPerPage = rowsPerPage;
+		},
 		resetFilters() {
 			Object.keys(this.filters).forEach((key) => {
 				this.filters[key] = Array.isArray(this.filters[key]) ? [] : '';
@@ -343,7 +403,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {
-				(this.$refs.search as Vue & { focus: () => void }).focus();
+				(this.$refs.search as SearchRef).focus();
 			}
 		},
 		setOwnerSubview(active: boolean) {
@@ -400,7 +460,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
-		this.onMounted();
+		void this.onMounted();
 	},
 	watch: {
 		isOwnerSubview() {
@@ -416,9 +476,14 @@ export default mixins(showMessage, debounceHelper).extend({
 			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filters.search'() {
-			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true }, 'search');
+			void this.callDebounced(
+				'sendFiltersTelemetry',
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
 		},
-		sortBy() {
+		sortBy(newValue) {
+			this.$emit('sort', newValue);
 			this.sendSortingTelemetry();
 		},
 	},
@@ -446,6 +511,10 @@ export default mixins(showMessage, debounceHelper).extend({
 	//flex-direction: column;
 }
 
+.listWrapper {
+	height: 100%;
+}
+
 .sort-and-filter {
 	display: flex;
 	flex-direction: row;
@@ -459,5 +528,9 @@ export default mixins(showMessage, debounceHelper).extend({
 
 .card-loading {
 	height: 69px;
+}
+
+.datatable {
+	padding-bottom: var(--spacing-s);
 }
 </style>

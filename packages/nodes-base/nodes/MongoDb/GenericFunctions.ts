@@ -12,8 +12,8 @@ import type {
 	IMongoParametricCredentials,
 } from './mongoDb.types';
 
-import get from 'lodash.get';
-import set from 'lodash.set';
+import get from 'lodash/get';
+import set from 'lodash/set';
 import { ObjectId } from 'mongodb';
 
 /**

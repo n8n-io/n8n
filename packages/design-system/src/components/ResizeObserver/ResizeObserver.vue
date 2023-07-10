@@ -5,9 +5,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ResizeObserver',
 	props: {
 		enabled: {
@@ -34,7 +34,7 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		if (!this.$props.enabled) {
+		if (!this.enabled) {
 			return;
 		}
 
@@ -62,15 +62,15 @@ export default Vue.extend({
 			});
 		});
 
-		this.$data.observer = observer;
+		this.observer = observer;
 
 		if (this.$refs.root) {
 			observer.observe(this.$refs.root as HTMLDivElement);
 		}
 	},
 	beforeDestroy() {
-		if (this.$props.enabled) {
-			this.$data.observer.disconnect(); // eslint-disable-line
+		if (this.enabled) {
+			this.observer?.disconnect(); // eslint-disable-line
 		}
 	},
 });

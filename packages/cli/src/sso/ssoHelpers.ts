@@ -1,6 +1,6 @@
 import config from '@/config';
 import * as Db from '@/Db';
-import type { AuthProviderType } from '@/databases/entities/AuthIdentity';
+import type { AuthProviderType } from '@db/entities/AuthIdentity';
 
 /**
  * Only one authentication method can be active at a time. This function sets the current authentication method

@@ -2,30 +2,29 @@ import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
+import cookieParser from 'cookie-parser';
 import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
 import express from 'express';
-import set from 'lodash.set';
+import set from 'lodash/set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
-import {
+import type {
 	ICredentialType,
-	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	ITriggerFunctions,
 	ITriggerResponse,
-	LoggerProxy,
-	NodeHelpers,
-	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import superagent from 'superagent';
+import { deepCopy } from 'n8n-workflow';
+import { LoggerProxy, NodeHelpers, toCronExpression } from 'n8n-workflow';
+import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 import { mock } from 'jest-mock-extended';
-import { DeepPartial } from 'ts-essentials';
+import type { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -53,10 +52,8 @@ import type {
 	EndpointGroup,
 	InstalledNodePayload,
 	InstalledPackagePayload,
-	PostgresSchemaSection,
 } from './types';
 import { licenseController } from '@/license/license.controller';
-import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { registerController } from '@/decorators';
 import {
 	AuthController,
@@ -74,13 +71,18 @@ import { v4 as uuid } from 'uuid';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+import { variablesController } from '@/environments/variables/variables.controller';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { LDAP_ENABLED } from '@/Ldap/constants';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
+import { EventBusController } from '@/eventbus/eventBus.controller';
+import { License } from '@/License';
+import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
+import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -120,6 +122,7 @@ export async function initTestServer({
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
+	testServer.app.use(cookieParser());
 
 	config.set('userManagement.jwtSecret', 'My JWT secret');
 	config.set('userManagement.isInstanceOwnerSetUp', false);
@@ -151,7 +154,7 @@ export async function initTestServer({
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			license: { controller: licenseController, path: 'license' },
-			eventBus: { controller: eventBusRouter, path: 'eventbus' },
+			variables: { controller: variablesController, path: 'variables' },
 		};
 
 		if (enablePublicAPI) {
@@ -176,6 +179,9 @@ export async function initTestServer({
 
 		for (const group of functionEndpoints) {
 			switch (group) {
+				case 'eventBus':
+					registerController(testServer.app, config, new EventBusController());
+					break;
 				case 'auth':
 					registerController(
 						testServer.app,
@@ -184,7 +190,7 @@ export async function initTestServer({
 					);
 					break;
 				case 'ldap':
-					config.set(LDAP_ENABLED, true);
+					Container.get(License).isLdapEnabled = () => true;
 					await handleLdapInit();
 					const { service, sync } = LdapManager.getInstance();
 					registerController(
@@ -197,6 +203,15 @@ export async function initTestServer({
 					await setSamlLoginEnabled(true);
 					const samlService = Container.get(SamlService);
 					registerController(testServer.app, config, new SamlController(samlService));
+					break;
+				case 'sourceControl':
+					const sourceControlService = Container.get(SourceControlService);
+					const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+					registerController(
+						testServer.app,
+						config,
+						new SourceControlController(sourceControlService, sourceControlPreferencesService),
+					);
 					break;
 				case 'nodes':
 					registerController(
@@ -266,7 +281,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'eventBus', 'license'];
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -284,7 +299,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
  */
 export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	workflowRunner.init();
+	await workflowRunner.init();
 	return workflowRunner;
 }
 
@@ -354,7 +369,7 @@ export async function initNodeTypes() {
 					outputs: ['main'],
 					properties: [],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					return this.prepareOutputData(items);
@@ -557,7 +572,7 @@ export async function initNodeTypes() {
 						},
 					],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -571,13 +586,13 @@ export async function initNodeTypes() {
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
-						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+						const options = this.getNodeParameter('options', itemIndex, {});
 
 						const newItem: INodeExecutionData = {
 							json: {},
 						};
 
-						if (keepOnlySet !== true) {
+						if (!keepOnlySet) {
 							if (item.binary !== undefined) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
@@ -586,7 +601,7 @@ export async function initNodeTypes() {
 								Object.assign(newItem.binary, item.binary);
 							}
 
-							newItem.json = JSON.parse(JSON.stringify(item.json));
+							newItem.json = deepCopy(item.json);
 						}
 
 						// Add boolean values
@@ -643,12 +658,12 @@ export async function initBinaryManager() {
 /**
  * Initialize a user settings config file if non-existent.
  */
-export function initConfigFile() {
+export async function initConfigFile() {
 	const settingsPath = UserSettings.getUserSettingsPath();
 
 	if (!existsSync(settingsPath)) {
 		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		UserSettings.writeUserSettings(userSettings, settingsPath);
+		await UserSettings.writeUserSettings(userSettings, settingsPath);
 	}
 }
 
@@ -666,7 +681,7 @@ export function createAgent(
 	const agent = request.agent(app);
 
 	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
-		agent.use(prefix(REST_PATH_SEGMENT));
+		void agent.use(prefix(REST_PATH_SEGMENT));
 		if (options?.auth && options?.user) {
 			const { token } = issueJWT(options.user);
 			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -674,10 +689,10 @@ export function createAgent(
 	}
 
 	if (options?.apiPath === 'public') {
-		agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
+		void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
 
 		if (options?.auth && options?.user.apiKey) {
-			agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
+			void agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
 		}
 	}
 
@@ -694,7 +709,7 @@ export function createAuthAgent(app: express.Application) {
  * Example: http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
  */
 export function prefix(pathSegment: string) {
-	return function (request: superagent.SuperAgentRequest) {
+	return async function (request: superagent.SuperAgentRequest) {
 		const url = new URL(request.url);
 
 		// enforce consistency at call sites
@@ -749,22 +764,6 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 };
 
 // ----------------------------------
-//              misc
-// ----------------------------------
-
-export function getPostgresSchemaSection(
-	schema = config.getSchema(),
-): PostgresSchemaSection | null {
-	for (const [key, value] of Object.entries(schema)) {
-		if (key === 'postgresdb') {
-			return value._cvtProperties;
-		}
-	}
-
-	return null;
-}
-
-// ----------------------------------
 //           community nodes
 // ----------------------------------
 
@@ -785,11 +784,11 @@ export function installedNodePayload(packageName: string): InstalledNodePayload 
 	};
 }
 
-export const emptyPackage = () => {
+export const emptyPackage = async () => {
 	const installedPackage = new InstalledPackages();
 	installedPackage.installedNodes = [];
 
-	return Promise.resolve(installedPackage);
+	return installedPackage;
 };
 
 // ----------------------------------

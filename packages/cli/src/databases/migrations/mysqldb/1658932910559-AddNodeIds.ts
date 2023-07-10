@@ -1,16 +1,16 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable n8n-local-rules/no-uncaught-json-parse */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { runInBatches } from '@db/utils/migrationHelpers';
 import { v4 as uuid } from 'uuid';
 
 // add node ids in workflow objects
 
-export class AddNodeIds1658932910559 implements MigrationInterface {
-	name = 'AddNodeIds1658932910559';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class AddNodeIds1658932910559 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowsQuery = `
 			SELECT id, nodes
 			FROM ${tablePrefix}workflow_entity
@@ -41,14 +41,12 @@ export class AddNodeIds1658932910559 implements MigrationInterface {
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			});
 		});
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowsQuery = `
 			SELECT id, nodes
 			FROM ${tablePrefix}workflow_entity
@@ -71,7 +69,7 @@ export class AddNodeIds1658932910559 implements MigrationInterface {
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			});
 		});
 	}

@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 type AggregationType =
 	| 'append'
@@ -29,16 +29,17 @@ type Aggregation = {
 
 type Aggregations = Aggregation[];
 
-enum AggregationDisplayNames {
-	append = 'appended_',
-	average = 'average_',
-	concatenate = 'concatenated_',
-	count = 'count_',
-	countUnique = 'unique_count_',
-	max = 'max_',
-	min = 'min_',
-	sum = 'sum_',
-}
+// eslint-disable-next-line no-restricted-syntax
+const AggregationDisplayNames = {
+	append: 'appended_',
+	average: 'average_',
+	concatenate: 'concatenated_',
+	count: 'count_',
+	countUnique: 'unique_count_',
+	max: 'max_',
+	min: 'min_',
+	sum: 'sum_',
+};
 
 const NUMERICAL_AGGREGATIONS = ['average', 'max', 'min', 'sum'];
 
@@ -570,7 +571,11 @@ export async function execute(
 
 	const getValue = fieldValueGetter(options.disableDotNotation);
 
-	checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+	const nodeVersion = this.getNode().typeVersion;
+
+	if (nodeVersion < 2.1) {
+		checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+	}
 
 	const aggregationResult = splitData(
 		fieldsToSplitBy,

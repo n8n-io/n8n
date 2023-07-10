@@ -5,12 +5,12 @@ import ElementUI from 'element-ui';
 import lang from 'element-ui/lib/locale/lang/en';
 import locale from 'element-ui/lib/locale';
 
-import designSystemComponents from '../src/plugins/n8nComponents';
+import { N8nPlugin } from '../src/plugin';
 
 import Vue from 'vue';
 
 Vue.use(ElementUI);
-Vue.use(designSystemComponents);
+Vue.use(N8nPlugin);
 
 locale.use(lang);
 
@@ -58,7 +58,7 @@ export const parameters = {
 		list: [
 			{
 				name: 'dark',
-				class: 'theme-dark',
+				class: 'theme-dark-beta',
 				color: '#000',
 			},
 		],
