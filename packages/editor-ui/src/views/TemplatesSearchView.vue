@@ -410,9 +410,11 @@ export default defineComponent({
 	},
 	async created() {
 		if (this.isFixedListExperiment) {
-			TEMPLATES_EXPERIMENT.variantIds.forEach(async (templateId) => {
-				await this.templatesStore.fetchTemplateById(templateId);
-			});
+			// Templates are lazy-loaded so we need to make sure the fixed ids are loaded
+			TEMPLATES_EXPERIMENT.variantIds.forEach(async (templateId) =>
+				this.templatesStore.fetchTemplateById(templateId),
+			);
+			// Categorization and filtering based on search is not supported if fixed list is enabled
 			return;
 		}
 
