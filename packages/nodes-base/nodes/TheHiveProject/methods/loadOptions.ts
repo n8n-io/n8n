@@ -76,9 +76,9 @@ export async function loadCustomFields(
 
 	for (const field of requestResult) {
 		returnData.push({
-			name: `${field.name}: ${field.reference}`,
-			value: field.reference,
-			description: `${field.type}: ${field.description}`,
+			name: `Custom Field: ${(field.displayName || field.name) as string}`,
+			value: `customFields.${field.name}`,
+			// description: `${field.type}: ${field.description}`,
 		} as INodePropertyOptions);
 	}
 
@@ -259,5 +259,91 @@ export async function loadUsers(this: ILoadOptionsFunctions): Promise<INodePrope
 			value: entry.login,
 		});
 	}
+	return returnData;
+}
+
+export async function loadAlertFields(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const alertFields: INodePropertyOptions[] = [
+		// {
+		// 	name: 'ID',
+		// 	value: 'id',
+		// },
+		{
+			name: 'Title',
+			value: 'title',
+		},
+		{
+			name: 'Description',
+			value: 'description',
+		},
+		{
+			name: 'Type',
+			value: 'type',
+		},
+		{
+			name: 'Source',
+			value: 'source',
+		},
+		{
+			name: 'Source Reference',
+			value: 'sourceRef',
+		},
+		{
+			name: 'External Link',
+			value: 'externalLink',
+		},
+		{
+			name: 'Severity (Severity of Information)',
+			value: 'severity',
+		},
+		{
+			name: 'Date',
+			value: 'date',
+		},
+		{
+			name: 'Last Sync Date',
+			value: 'lastSyncDate',
+		},
+		{
+			name: 'Tags',
+			value: 'tags',
+		},
+		{
+			name: 'Follow',
+			value: 'follow',
+		},
+		{
+			name: 'TLP (Confidentiality of Information)',
+			value: 'tlp',
+		},
+		{
+			name: 'PAP (Level of Exposure of Information)',
+			value: 'pap',
+		},
+		{
+			name: 'Summary',
+			value: 'summary',
+		},
+		{
+			name: 'Status',
+			value: 'status',
+		},
+		{
+			name: 'Add Tags',
+			value: 'addTags',
+		},
+		{
+			name: 'Remove Tags',
+			value: 'removeTags',
+		},
+	];
+
+	const customFields = await loadCustomFields.call(this);
+
+	returnData.push(...alertFields, ...customFields);
 	return returnData;
 }

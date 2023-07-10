@@ -3,7 +3,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { theHiveApiListQuery, theHiveApiRequest } from '../../transport';
+import { theHiveApiQuery, theHiveApiRequest } from '../../transport';
 import { genericFiltersCollection, sortCollection } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -259,9 +259,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			limit = this.getNodeParameter('limit', i);
 		}
 
-		responseData = await theHiveApiListQuery.call(
+		responseData = await theHiveApiQuery.call(
 			this,
-			listResource,
+			{ query: listResource },
 			filtersValues,
 			sortFields,
 			limit,

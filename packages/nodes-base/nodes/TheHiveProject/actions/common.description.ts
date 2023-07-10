@@ -631,6 +631,28 @@ export const genericFiltersCollection: INodeProperties = {
 					default: '',
 					requiresDataPath: 'single',
 					description: 'Dot notation is also supported, e.g. customFields.field1',
+					displayOptions: {
+						hide: {
+							'/resource': ['alert'],
+						},
+					},
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Field',
+					name: 'field',
+					type: 'options',
+					default: 'name',
+					typeOptions: {
+						loadOptionsMethod: 'loadAlertFields',
+					},
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					displayOptions: {
+						show: {
+							'/resource': ['alert'],
+						},
+					},
 				},
 				{
 					displayName: 'Operator',
@@ -670,8 +692,8 @@ export const genericFiltersCollection: INodeProperties = {
 							value: '_lte',
 						},
 						{
-							name: 'Like',
-							value: '_like',
+							name: 'Match Word',
+							value: '_match',
 						},
 						{
 							name: 'Not Equal',

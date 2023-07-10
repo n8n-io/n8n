@@ -1,10 +1,14 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { filtersCollection, returnAllAndLimit, sortCollection } from '../common.description';
-import { theHiveApiListQuery } from '../../transport';
+import { genericFiltersCollection, returnAllAndLimit, sortCollection } from '../common.description';
+import { theHiveApiQuery } from '../../transport';
 
-const properties: INodeProperties[] = [...returnAllAndLimit, filtersCollection, sortCollection];
+const properties: INodeProperties[] = [
+	...returnAllAndLimit,
+	genericFiltersCollection,
+	sortCollection,
+];
 
 const displayOptions = {
 	show: {
@@ -18,7 +22,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const filters = this.getNodeParameter('filters', i, {});
+	const filtersValues = this.getNodeParameter('filters.values', i, []) as IDataObject[];
 	const sortFields = this.getNodeParameter('sort.fields', i, []) as IDataObject[];
 	const returnAll = this.getNodeParameter('returnAll', i);
 	let limit;
@@ -27,7 +31,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		limit = this.getNodeParameter('limit', i);
 	}
 
-	responseData = await theHiveApiListQuery.call(this, 'listCase', filters, sortFields, limit);
+	responseData = await theHiveApiQuery.call(
+		this,
+		{ query: 'listCase' },
+		filtersValues,
+		sortFields,
+		limit,
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

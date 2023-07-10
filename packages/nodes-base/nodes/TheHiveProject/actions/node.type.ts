@@ -35,7 +35,7 @@ type NodeMap = {
 		| 'update';
 	page: 'create' | 'deletePage' | 'update';
 	query: 'executeQuery';
-	task: 'count' | 'create' | 'executeResponder' | 'get' | 'getMany' | 'search' | 'update';
+	task: 'count' | 'create' | 'executeResponder' | 'get' | 'search' | 'update';
 };
 
 export type TheHiveType = AllEntities<NodeMap>;

@@ -31,3 +31,5 @@ export declare type queryIndexSignature =
 export type IQueryObject = {
 	[key in queryIndexSignature]?: IQueryObject | IQueryObject[] | string | number | object;
 };
+
+export type QueryScope = { query: string; id?: string; restrictTo?: string };

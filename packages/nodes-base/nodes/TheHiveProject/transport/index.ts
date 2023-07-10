@@ -9,6 +9,7 @@ import type {
 
 import { jsonParse } from 'n8n-workflow';
 import { convertCustomFieldUiToObject } from '../helpers/utils';
+import type { QueryScope } from '../helpers/interfaces';
 
 export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -81,19 +82,32 @@ function constructFilter(entry: IDataObject) {
 	};
 }
 
-export async function theHiveApiListQuery(
+export async function theHiveApiQuery(
 	this: IExecuteFunctions,
-	listResource: string,
+	scope: QueryScope,
 	filters?: IDataObject | IDataObject[],
 	sortFields?: IDataObject[],
 	limit?: number,
 	returnCount = false,
 ) {
-	const query: IDataObject[] = [
-		{
-			_name: listResource,
-		},
-	];
+	const query: IDataObject[] = [];
+
+	if (scope.id) {
+		query.push({
+			_name: scope.query,
+			idOrName: scope.id,
+		});
+	} else {
+		query.push({
+			_name: scope.query,
+		});
+	}
+
+	if (scope.restrictTo) {
+		query.push({
+			_name: scope.restrictTo,
+		});
+	}
 
 	if (filters && !Array.isArray(filters) && Object.keys(filters).length) {
 		if (filters.customFieldsUi) {

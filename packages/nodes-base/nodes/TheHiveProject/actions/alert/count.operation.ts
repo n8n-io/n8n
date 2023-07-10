@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { genericFiltersCollection } from '../common.description';
-import { theHiveApiListQuery } from '../../transport';
+import { theHiveApiQuery } from '../../transport';
 
 const properties: INodeProperties[] = [genericFiltersCollection];
 
@@ -20,9 +20,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const filtersValues = this.getNodeParameter('filters.values', i, []) as IDataObject[];
 
-	responseData = await theHiveApiListQuery.call(
+	responseData = await theHiveApiQuery.call(
 		this,
-		'listAlert',
+		{ query: 'listAlert' },
 		filtersValues,
 		undefined,
 		undefined,
