@@ -526,10 +526,11 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const TEMPLATE_EXPERIMENT = {
-	name: '002_remove_templates',
+export const TEMPLATES_EXPERIMENT = {
+	name: '008_template_variants',
 	control: 'control',
 	variant: 'variant',
+	variantIds: ['1932', '1930', '1931', '1933', '1750', '1748', '1435'],
 };
 
 export const ONBOARDING_EXPERIMENT = {
@@ -538,7 +539,7 @@ export const ONBOARDING_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [TEMPLATES_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 
