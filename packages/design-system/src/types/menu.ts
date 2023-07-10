@@ -1,3 +1,5 @@
+import type { Tooltip } from 'element-ui';
+
 export type IMenuItem = {
 	id: string;
 	label: string;
@@ -14,6 +16,7 @@ export type IMenuItem = {
 	// For more specific matching, we can use paths
 	activateOnRoutePaths?: string[];
 	children?: IMenuItem[];
+	tooltip?: Tooltip & { bindTo?: 'menuItem' | 'secondaryIcon' };
 };
 
 export type ILinkMenuItemProperties = {

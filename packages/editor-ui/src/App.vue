@@ -103,6 +103,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			postAuthenticateDone: false,
 			loading: true,
 		};
 	},
@@ -239,6 +240,21 @@ export default defineComponent({
 				this.uiStore.updateBannersHeight();
 			});
 		},
+		async postAuthenticate() {
+			if (this.postAuthenticateDone) {
+				return;
+			}
+
+			if (!this.usersStore.currentUser) {
+				return;
+			}
+
+			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
+				await this.sourceControlStore.getPreferences();
+			}
+
+			this.postAuthenticateDone = true;
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -247,13 +263,15 @@ export default defineComponent({
 		this.authenticate();
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		void this.checkForCloudPlanData().then(async () => {
+		this.checkForCloudPlanData().then(async () => {
 			await this.initBanners();
 		});
 
 		if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
 			await this.sourceControlStore.getPreferences();
 		}
+		void this.checkForCloudPlanData();
+		void this.postAuthenticate();
 
 		this.loading = false;
 
@@ -265,7 +283,12 @@ export default defineComponent({
 		}
 	},
 	watch: {
-		$route() {
+		'usersStore.currentUser'(currentValue, previousValue) {
+			if (currentValue && !previousValue) {
+				void this.postAuthenticate();
+			}
+		},
+		$route(route) {
 			this.authenticate();
 			this.redirectIfNecessary();
 

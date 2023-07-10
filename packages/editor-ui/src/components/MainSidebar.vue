@@ -193,6 +193,22 @@ export default defineComponent({
 			const items: IMenuItem[] = [];
 			const injectedItems = this.uiStore.sidebarMenuItems;
 
+			const workflows: IMenuItem = {
+				id: 'workflows',
+				icon: 'network-wired',
+				label: this.$locale.baseText('mainSidebar.workflows'),
+				position: 'top',
+				activateOnRouteNames: [VIEWS.WORKFLOWS],
+			};
+
+			if (this.sourceControlStore.preferences.branchReadOnly) {
+				workflows.secondaryIcon = { name: 'lock' };
+				workflows.tooltip = {
+					content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
+					bindTo: 'secondaryIcon',
+				};
+			}
+
 			if (injectedItems && injectedItems.length > 0) {
 				for (const item of injectedItems) {
 					items.push({
@@ -209,16 +225,7 @@ export default defineComponent({
 			}
 
 			const regularItems: IMenuItem[] = [
-				{
-					id: 'workflows',
-					icon: 'network-wired',
-					secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
-						? { name: 'lock' }
-						: undefined,
-					label: this.$locale.baseText('mainSidebar.workflows'),
-					position: 'top',
-					activateOnRouteNames: [VIEWS.WORKFLOWS],
-				},
+				workflows,
 				{
 					id: 'templates',
 					icon: 'box-open',
