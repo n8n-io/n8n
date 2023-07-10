@@ -18,7 +18,12 @@ async function dismissPermanently() {
 	<base-banner customIcon="info-circle" theme="warning" :name="BANNERS.V1">
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
-			<a v-if="isInstanceOwner" :class="$style.link" @click="dismissPermanently">
+			<a
+				v-if="isInstanceOwner"
+				:class="$style.link"
+				@click="dismissPermanently"
+				data-test-id="banner-confirm-v1"
+			>
 				<span v-html="locale.baseText('generic.confirm')"></span>
 			</a>
 		</template>
