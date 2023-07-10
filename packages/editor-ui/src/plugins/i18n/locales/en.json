@@ -1462,7 +1462,6 @@
 	"templates.collections": "Collections",
 	"templates.collectionsNotFound": "Collection could not be found",
 	"templates.connectionWarning": "⚠️ There was a problem fetching workflow templates. Check your internet connection.",
-	"templates.endResult": "Share your own useful workflows through your <a href='https://n8n.io/dashboard' target='_blank'>n8n.io account</a>",
 	"templates.heading": "Workflow templates",
 	"templates.newButton": "New blank workflow",
 	"templates.noSearchResults": "Nothing found. Try adjusting your search to see more.",

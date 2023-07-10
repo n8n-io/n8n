@@ -64,7 +64,7 @@
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
 						:total-workflows="totalWorkflows"
-						:workflows="Object.values(fixedTemplatesList)"
+						:workflows="isFixedListExperiment ? fixedTemplatesList : workflows"
 						:hide-header="isFixedListExperiment"
 						@loadMore="onLoadMore"
 						@openTemplate="onOpenTemplate"
@@ -166,9 +166,6 @@ export default defineComponent({
 		endOfSearchMessage(): string | null {
 			if (this.loadingWorkflows) {
 				return null;
-			}
-			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
-				return this.$locale.baseText('templates.endResult');
 			}
 			if (
 				!this.loadingCollections &&
