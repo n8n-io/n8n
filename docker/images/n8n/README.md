@@ -8,21 +8,27 @@ n8n is an extendable workflow automation tool. With a [fair-code](http://faircod
 
 ## Contents
 
-- [Demo](#demo)
-- [Available integrations](#available-integrations)
-- [Documentation](#documentation)
-- [Start n8n in Docker](#start-n8n-in-docker)
-- [Start with tunnel](#start-with-tunnel)
-- [Securing n8n](#securing-n8n)
-- [Persist data](#persist-data)
-- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
-- [Updating a Running docker-compose Instance](#updating-a-running-docker-compose-instance)
-- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
-- [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
-- [Support](#support)
-- [Jobs](#jobs)
-- [Upgrading](#upgrading)
-- [License](#license)
+- [n8n - Workflow automation tool](#n8n---workflow-automation-tool)
+	- [Contents](#contents)
+	- [Demo](#demo)
+	- [Available integrations](#available-integrations)
+	- [Documentation](#documentation)
+	- [Start n8n in Docker](#start-n8n-in-docker)
+	- [Start with tunnel](#start-with-tunnel)
+	- [Persist data](#persist-data)
+		- [Start with other Database](#start-with-other-database)
+			- [Use with PostgresDB](#use-with-postgresdb)
+			- [Use with MySQL](#use-with-mysql)
+	- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
+	- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
+	- [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
+	- [Setting Timezone](#setting-timezone)
+	- [Build Docker-Image](#build-docker-image)
+	- [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
+	- [Support](#support)
+	- [Jobs](#jobs)
+	- [Upgrading](#upgrading)
+	- [License](#license)
 
 ## Demo
 
@@ -157,7 +163,7 @@ docker run -it --rm \
 To avoid passing sensitive information via environment variables "\_FILE" may be
 appended to some environment variables. It will then load the data from a file
 with the given name. That makes it possible to load data easily from
-Docker- and Kubernetes-Secrets.
+Docker and Kubernetes secrets.
 
 The following environment variables support file input:
 
@@ -194,7 +200,7 @@ A basic step by step example setup of n8n with docker-compose and Lets Encrypt i
 ## Setting Timezone
 
 To define the timezone n8n should use, the environment variable `GENERIC_TIMEZONE` can
-be set. One instance where this variable is implemented is in the Cron-Node. Furthermore, the system's timezone can be set separately, 
+be set. One instance where this variable is implemented is in the Cron-Node. Furthermore, the system's timezone can be set separately,
 which controls the output of certain scripts and commands such as `$ date`. The system timezone can be set via
 the environment variable `TZ`.
 
