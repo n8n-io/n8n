@@ -245,6 +245,9 @@ export default defineComponent({
 		isDirty(): boolean {
 			return this.uiStore.stateIsDirty;
 		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		currentWorkflowTagIds(): string[] {
 			return this.workflowsStore.workflowTags;
 		},
@@ -316,7 +319,8 @@ export default defineComponent({
 				disabled:
 					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
 					!this.onWorkflowPage ||
-					this.onExecutionsTab,
+					this.onExecutionsTab ||
+					this.readOnlyEnv,
 			});
 
 			actions.push({
