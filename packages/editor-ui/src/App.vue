@@ -217,7 +217,6 @@ export default defineComponent({
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
 		async postAuthenticate() {
-			console.log('postAuthenticate', this.usersStore.currentUser); // eslint-disable-line no-console
 			if (this.postAuthenticateDone) {
 				return;
 			}
