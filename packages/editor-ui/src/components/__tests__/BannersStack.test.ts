@@ -8,9 +8,9 @@ import { STORES } from '@/constants';
 
 import { createTestingPinia } from '@pinia/testing';
 import BannerStack from '@/components/banners/BannerStack.vue';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 
-const uiStore = useUIStore();
+let uiStore: ReturnType<typeof useUIStore>;
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -35,6 +35,10 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 	});
 
 describe('BannerStack', () => {
+	beforeEach(() => {
+		uiStore = useUIStore();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
