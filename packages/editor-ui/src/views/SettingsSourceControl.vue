@@ -101,12 +101,16 @@ const goToUpgrade = () => {
 	uiStore.goToUpgrade('source-control', 'upgrade-source-control');
 };
 
-onMounted(async () => {
+const initialize = async () => {
 	await sourceControlStore.getPreferences();
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
 		void sourceControlStore.getBranches();
 	}
+};
+
+onMounted(async () => {
+	await initialize();
 });
 
 const formValidationStatus = reactive<Record<string, boolean>>({
