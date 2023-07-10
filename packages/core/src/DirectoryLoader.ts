@@ -168,6 +168,7 @@ export abstract class DirectoryLoader {
 		this.known.credentials[tempCredential.name] = {
 			className: credentialName,
 			sourcePath: filePath,
+			extends: tempCredential.extends,
 		};
 
 		this.credentialTypes[tempCredential.name] = {
