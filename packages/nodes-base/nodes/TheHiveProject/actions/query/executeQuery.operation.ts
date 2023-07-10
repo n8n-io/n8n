@@ -65,16 +65,16 @@ const properties: INodeProperties[] = [
 				value: 'listCase',
 			},
 			{
+				name: 'Case Status',
+				value: 'listCaseStatus',
+			},
+			{
 				name: 'Case Task',
 				value: 'listCaseTask',
 			},
 			{
 				name: 'Case Template',
 				value: 'listCaseTemplate',
-			},
-			{
-				name: 'CaseStatus',
-				value: 'listCaseStatus',
 			},
 			{
 				name: 'Catalog',

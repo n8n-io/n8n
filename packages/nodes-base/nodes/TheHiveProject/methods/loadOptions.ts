@@ -1,5 +1,6 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { theHiveApiRequest } from '../transport';
+import { alertCommonFields } from '../helpers/constant';
 
 export async function loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	let resource = this.getNodeParameter('resource') as string;
@@ -267,83 +268,21 @@ export async function loadAlertFields(
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 
-	const alertFields: INodePropertyOptions[] = [
-		// {
-		// 	name: 'ID',
-		// 	value: 'id',
-		// },
-		{
-			name: 'Title',
-			value: 'title',
-		},
-		{
-			name: 'Description',
-			value: 'description',
-		},
-		{
-			name: 'Type',
-			value: 'type',
-		},
-		{
-			name: 'Source',
-			value: 'source',
-		},
-		{
-			name: 'Source Reference',
-			value: 'sourceRef',
-		},
-		{
-			name: 'External Link',
-			value: 'externalLink',
-		},
-		{
-			name: 'Severity (Severity of Information)',
-			value: 'severity',
-		},
-		{
-			name: 'Date',
-			value: 'date',
-		},
-		{
-			name: 'Last Sync Date',
-			value: 'lastSyncDate',
-		},
-		{
-			name: 'Tags',
-			value: 'tags',
-		},
-		{
-			name: 'Follow',
-			value: 'follow',
-		},
-		{
-			name: 'TLP (Confidentiality of Information)',
-			value: 'tlp',
-		},
-		{
-			name: 'PAP (Level of Exposure of Information)',
-			value: 'pap',
-		},
-		{
-			name: 'Summary',
-			value: 'summary',
-		},
-		{
-			name: 'Status',
-			value: 'status',
-		},
-		{
-			name: 'Add Tags',
-			value: 'addTags',
-		},
-		{
-			name: 'Remove Tags',
-			value: 'removeTags',
-		},
-	];
+	const excludeFields = ['flag', 'caseTemplate', 'addTags', 'removeTags'];
+
+	const fields = alertCommonFields
+		.filter((entry) => !excludeFields.includes(entry.id))
+		.map((entry) => {
+			const field: INodePropertyOptions = {
+				name: entry.id,
+				value: entry.id,
+			};
+
+			return field;
+		});
 
 	const customFields = await loadCustomFields.call(this);
 
-	returnData.push(...alertFields, ...customFields);
+	returnData.push(...fields, ...customFields);
 	return returnData;
 }
