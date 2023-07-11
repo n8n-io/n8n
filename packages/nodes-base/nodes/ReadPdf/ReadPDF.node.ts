@@ -1,8 +1,9 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	BINARY_ENCODING,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
@@ -95,9 +96,7 @@ export class ReadPDF implements INodeType {
 					const binaryPath = this.helpers.getBinaryPath(binaryData.id);
 					params.url = new URL(`file://${binaryPath}`);
 				} else {
-					params.data = (
-						await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName)
-					).buffer;
+					params.data = Buffer.from(binaryData.data, BINARY_ENCODING).buffer;
 				}
 
 				const document = await readPDF(params).promise;
