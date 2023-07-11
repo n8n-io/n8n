@@ -825,7 +825,7 @@
     "node-ssh": "^12.0.0",
     "nodemailer": "^6.7.1",
     "otpauth": "^9.1.1",
-    "pdfjs-dist": "^3.8.162",
+    "pdfjs-dist": "^2.16.105",
     "pg": "^8.3.0",
     "pg-promise": "^10.5.8",
     "pretty-bytes": "^5.6.0",
