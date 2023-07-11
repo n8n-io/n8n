@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.list" v-if="loading || workflows.length">
-		<div :class="$style.header" v-if="!hideHeader">
+		<div :class="$style.header" v-if="!simpleView">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
@@ -12,6 +12,7 @@
 				:key="workflow.id"
 				:workflow="workflow"
 				:firstItem="index === 0"
+				:simple-view="simpleView"
 				:lastItem="index === workflows.length - 1 && !loading"
 				:useWorkflowButton="useWorkflowButton"
 				@click="(e) => onCardClick(e, workflow.id)"
@@ -57,7 +58,7 @@ export default defineComponent({
 		totalWorkflows: {
 			type: Number,
 		},
-		hideHeader: {
+		simpleView: {
 			type: Boolean,
 			default: false,
 		},
