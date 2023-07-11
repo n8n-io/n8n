@@ -686,7 +686,7 @@ export function createAgent(
 			try {
 				const { token } = issueJWT(options.user);
 				agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
-			} catch (error) {}
+			} catch {}
 		}
 	}
 
