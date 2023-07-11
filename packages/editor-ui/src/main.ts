@@ -46,8 +46,6 @@ new Vue({
 }).$mount('#app');
 
 router.afterEach((to, from) => {
-	// useUIStore().restoreBanner('v1');
-
 	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
 });
 

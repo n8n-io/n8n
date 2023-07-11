@@ -556,7 +556,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
-				await dismissBannerPermanently(useRootStore().getRestApiContext, { bannerName: name });
+				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+					bannerName: name,
+					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
+				});
 				this.banners[name].dismissed = true;
 				this.banners[name].type = 'permanent';
 				return;
