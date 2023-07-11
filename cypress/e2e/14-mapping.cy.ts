@@ -9,10 +9,6 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data mapping', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 
@@ -192,7 +188,11 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
-		ndv.getters.parameterExpressionPreview('value').should('not.exist');
+		ndv.getters
+			.parameterExpressionPreview('value')
+			.invoke('text')
+			.invoke('replace', /\u00a0/g, ' ')
+			.should('equal', '[ERROR: no data, execute "Schedule Trigger" node first]');
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.mapDataFromHeader(1, 'value');

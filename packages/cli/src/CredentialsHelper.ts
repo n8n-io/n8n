@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import type {
 	ICredentialDataDecryptedObject,

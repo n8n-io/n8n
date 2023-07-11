@@ -94,12 +94,12 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.AUDIT_LOGS],
 				},
 				{
-					id: 'settings-version-control',
+					id: 'settings-source-control',
 					icon: 'code-branch',
-					label: this.$locale.baseText('settings.versionControl.title'),
+					label: this.$locale.baseText('settings.sourceControl.title'),
 					position: 'top',
-					available: this.canAccessVersionControl(),
-					activateOnRouteNames: [VIEWS.VERSION_CONTROL],
+					available: this.canAccessSourceControl(),
+					activateOnRouteNames: [VIEWS.SOURCE_CONTROL],
 				},
 				{
 					id: 'settings-sso',
@@ -178,8 +178,8 @@ export default defineComponent({
 		canAccessExternalSecrets(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS);
 		},
-		canAccessVersionControl(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
+		canAccessSourceControl(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.SOURCE_CONTROL);
 		},
 		canAccessAuditLogs(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.AUDIT_LOGS);
@@ -230,11 +230,13 @@ export default defineComponent({
 				case 'settings-sso':
 					await this.navigateTo(VIEWS.SSO_SETTINGS);
 					break;
-				case 'settings-version-control':
-					await this.navigateTo(VIEWS.VERSION_CONTROL);
-					break;
 				case 'settings-external-secrets':
 					await this.navigateTo(VIEWS.EXTERNAL_SECRETS_SETTINGS);
+					break;
+				case 'settings-source-control':
+					if (this.$router.currentRoute.name !== VIEWS.SOURCE_CONTROL) {
+						void this.$router.push({ name: VIEWS.SOURCE_CONTROL });
+					}
 					break;
 				case 'settings-audit-logs':
 					if (this.$router.currentRoute.name !== VIEWS.AUDIT_LOGS) {

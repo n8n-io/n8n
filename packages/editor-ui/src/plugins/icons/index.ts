@@ -134,7 +134,7 @@ import {
 	faUserLock,
 	faGem,
 } from '@fortawesome/free-solid-svg-icons';
-import { faVariable, faVault } from './custom';
+import { faVariable, faXmark, faVault } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -278,6 +278,7 @@ export const FontAwesomePlugin: PluginObject<{}> = {
 		addIcon(faTree);
 		addIcon(faUserLock);
 		addIcon(faGem);
+		addIcon(faXmark);
 
 		app.component('font-awesome-icon', FontAwesomeIcon);
 	},

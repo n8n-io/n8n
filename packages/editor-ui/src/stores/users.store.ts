@@ -8,12 +8,10 @@ import {
 	login,
 	loginCurrentUser,
 	logout,
-	preOwnerSetup,
 	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
 	signup,
-	skipOwnerSetup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -186,9 +184,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.currentUserId = null;
 			usePostHog().reset();
 		},
-		async preOwnerSetup() {
-			return preOwnerSetup(useRootStore().getRestApiContext);
-		},
 		async createOwner(params: {
 			firstName: string;
 			lastName: string;
@@ -331,14 +326,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				const uiStore = useUIStore();
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
 			}
-		},
-		async skipOwnerSetup(): Promise<void> {
-			try {
-				const rootStore = useRootStore();
-				const settingsStore = useSettingsStore();
-				settingsStore.stopShowingSetupPage();
-				await skipOwnerSetup(rootStore.getRestApiContext);
-			} catch (error) {}
 		},
 	},
 });

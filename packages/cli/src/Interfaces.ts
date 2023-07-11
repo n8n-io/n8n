@@ -45,6 +45,7 @@ import type {
 	AuthProviderSyncHistoryRepository,
 	CredentialsRepository,
 	EventDestinationsRepository,
+	ExecutionDataRepository,
 	ExecutionMetadataRepository,
 	ExecutionRepository,
 	InstalledNodesRepository,
@@ -91,6 +92,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Credentials: CredentialsRepository;
 	EventDestinations: EventDestinationsRepository;
 	Execution: ExecutionRepository;
+	ExecutionData: ExecutionDataRepository;
 	ExecutionMetadata: ExecutionMetadataRepository;
 	InstalledNodes: InstalledNodesRepository;
 	InstalledPackages: InstalledPackagesRepository;
@@ -218,19 +220,6 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 }
 
-export interface IExecutionResponseApi {
-	id: string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId?: string;
-	finished: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	data?: object;
-	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
-}
 export interface IExecutionsListResponse {
 	count: number;
 	// results: IExecutionShortResponse[];
@@ -318,7 +307,6 @@ export interface IDiagnosticInfo {
 	databaseType: DatabaseType;
 	notificationsEnabled: boolean;
 	disableProductionWebhooksOnMainProcess: boolean;
-	basicAuthActive: boolean;
 	systemInfo: {
 		os: {
 			type?: string;
@@ -336,7 +324,6 @@ export interface IDiagnosticInfo {
 	};
 	deploymentType: string;
 	binaryDataMode: string;
-	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
 	saml_enabled: boolean;

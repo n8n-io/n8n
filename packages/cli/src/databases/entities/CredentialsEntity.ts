@@ -1,15 +1,28 @@
 import type { ICredentialNodeAccess } from 'n8n-workflow';
-import { Column, Entity, Generated, Index, OneToMany, PrimaryColumn } from 'typeorm';
+import { BeforeInsert, Column, Entity, Index, OneToMany, PrimaryColumn } from 'typeorm';
 import { IsArray, IsObject, IsString, Length } from 'class-validator';
 import type { SharedCredentials } from './SharedCredentials';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-import { idStringifier } from '../utils/transformers';
-
+import { generateNanoId } from '../utils/generators';
 @Entity()
 export class CredentialsEntity extends AbstractEntity implements ICredentialsDb {
-	@Generated()
-	@PrimaryColumn({ transformer: idStringifier })
+	constructor(data?: Partial<CredentialsEntity>) {
+		super();
+		Object.assign(this, data);
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
+	@BeforeInsert()
+	nanoId(): void {
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
+	@PrimaryColumn('varchar')
 	id: string;
 
 	@Column({ length: 128 })

@@ -57,8 +57,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useExternalSecretsStore } from '@/stores';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -76,7 +76,7 @@ export default defineComponent({
 				sharedWith: '',
 				type: '',
 			},
-			versionControlStoreUnsubscribe: () => {},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -85,7 +85,7 @@ export default defineComponent({
 			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
-			useVersionControlStore,
+			useSourceControlStore,
 			useExternalSecretsStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
@@ -153,7 +153,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
 			if (name === 'pullWorkfolder' && after) {
 				after(() => {
 					void this.initialize();
@@ -162,7 +162,7 @@ export default defineComponent({
 		});
 	},
 	beforeUnmount() {
-		this.versionControlStoreUnsubscribe();
+		this.sourceControlStoreUnsubscribe();
 	},
 });
 </script>

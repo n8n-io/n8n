@@ -8,7 +8,7 @@ COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node packages ./packages
 COPY --chown=node:node patches ./patches
 
-RUN apk add --update libc6-compat jq
+RUN apk add --update jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
@@ -28,7 +28,8 @@ RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.c
 FROM n8nio/base:${NODE_VERSION}
 COPY --from=builder /home/node /usr/local/lib/node_modules/n8n
 RUN ln -s /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n /usr/local/bin/n8n
-COPY docker/images/n8n-custom/docker-entrypoint.sh /
+
+COPY docker/images/n8n/docker-entrypoint.sh /
 
 RUN \
 	mkdir .n8n && \

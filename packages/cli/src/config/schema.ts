@@ -4,7 +4,6 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { IS_V1_RELEASE } from '@/constants';
 
 convict.addFormat({
 	name: 'nodes-list',
@@ -225,13 +224,12 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in their own process.
-		// If this option gets set to "main" it will run them in the
-		// main-process instead.
+		// By default workflows get always executed in the main process.
+		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
 		process: {
-			doc: 'In what process workflows should be executed. Note: Own mode has been deprecated and will be removed in a future version as well as this setting.',
+			doc: 'In what process workflows should be executed.',
 			format: ['main', 'own'] as const,
-			default: IS_V1_RELEASE ? 'main' : 'own',
+			default: 'main',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
@@ -299,7 +297,7 @@ export const schema = {
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
 			format: 'Boolean',
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
@@ -311,7 +309,7 @@ export const schema = {
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
 			format: 'Boolean',
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
@@ -329,11 +327,11 @@ export const schema = {
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
 		// Deletes the oldest entries first
-		// Default is 0 = No limit
+		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
 			format: Number,
-			default: 0,
+			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
 	},
@@ -494,82 +492,6 @@ export const schema = {
 			default: '',
 			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
 		},
-		basicAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_ACTIVE',
-				doc: '[DEPRECATED] If basic auth should be activated for editor and REST-API',
-			},
-			user: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_USER',
-				doc: '[DEPRECATED] The name of the basic auth user',
-			},
-			password: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_PASSWORD',
-				doc: '[DEPRECATED] The password of the basic auth user',
-			},
-			hash: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_HASH',
-				doc: '[DEPRECATED] If password for basic auth is hashed',
-			},
-		},
-		jwtAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_JWT_AUTH_ACTIVE',
-				doc: '[DEPRECATED] If JWT auth should be activated for editor and REST-API',
-			},
-			jwtHeader: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER',
-				doc: '[DEPRECATED] The request header containing a signed JWT',
-			},
-			jwtHeaderValuePrefix: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
-				doc: '[DEPRECATED] The request header value prefix to strip (optional)',
-			},
-			jwksUri: {
-				format: String,
-				default: '',
-				env: 'N8N_JWKS_URI',
-				doc: '[DEPRECATED] The URI to fetch JWK Set for JWT authentication',
-			},
-			jwtIssuer: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ISSUER',
-				doc: '[DEPRECATED] JWT issuer to expect (optional)',
-			},
-			jwtNamespace: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_NAMESPACE',
-				doc: '[DEPRECATED] JWT namespace to expect (optional)',
-			},
-			jwtAllowedTenantKey: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
-				doc: '[DEPRECATED] JWT tenant key name to inspect within JWT namespace (optional)',
-			},
-			jwtAllowedTenant: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT',
-				doc: '[DEPRECATED] JWT tenant to allow (optional)',
-			},
-		},
 	},
 
 	endpoints: {
@@ -728,12 +650,6 @@ export const schema = {
 	},
 
 	userManagement: {
-		disabled: {
-			doc: '[DEPRECATED] Disable user management and hide it completely.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_USER_MANAGEMENT_DISABLED',
-		},
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
 			format: String,
@@ -743,12 +659,6 @@ export const schema = {
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
-			format: Boolean,
-			default: false,
-		},
-		skipInstanceOwnerSetup: {
-			// n8n loads this setting from DB on startup
-			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
 			format: Boolean,
 			default: false,
 		},
@@ -944,7 +854,7 @@ export const schema = {
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
-			default: IS_V1_RELEASE ? 'websocket' : 'sse',
+			default: 'websocket',
 			env: 'N8N_PUSH_BACKEND',
 			doc: 'Backend to use for push notifications',
 		},

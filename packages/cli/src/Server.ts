@@ -14,14 +14,14 @@ import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve } from 'path';
+import { join as pathJoin, resolve as pathResolve, relative as pathRelative } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { engine as expressHandlebars } from 'express-handlebars';
 import type { ServeStaticOptions } from 'serve-static';
-import type { FindManyOptions } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
@@ -68,6 +68,7 @@ import {
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
 	inDevelopment,
+	inE2ETests,
 	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -106,7 +107,6 @@ import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
 	isSharingEnabled,
-	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
@@ -115,7 +115,6 @@ import type {
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
-	IExecutionFlattedDb,
 	IExecutionsStopData,
 } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -147,8 +146,6 @@ import {
 } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
-import { setupBasicAuth } from './middlewares/basicAuth';
-import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
@@ -168,12 +165,14 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper.ee';
-import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
-import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 import { SecretsService } from './secrets/secrets.service.ee';
-import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
 import { isExternalSecretsEnabled } from './secrets/externalSecretsHelper.ee';
+import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
+import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
+import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
+import { ExecutionRepository } from './databases/repositories';
+import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
 
 const exec = promisify(callbackExec);
 
@@ -263,11 +262,7 @@ export class Server extends AbstractServer {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				enabled: isUserManagementEnabled(),
-				showSetupOnFirstLoad:
-					config.getEnv('userManagement.disabled') === false &&
-					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
 				smtpSetup: isEmailSetUp(),
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -315,7 +310,7 @@ export class Server extends AbstractServer {
 				logStreaming: false,
 				advancedExecutionFilters: false,
 				variables: false,
-				versionControl: false,
+				sourceControl: false,
 				auditLogs: false,
 				externalSecrets: false,
 			},
@@ -325,6 +320,11 @@ export class Server extends AbstractServer {
 			},
 			variables: {
 				limit: 0,
+			},
+			banners: {
+				v1: {
+					dismissed: false,
+				},
 			},
 		};
 	}
@@ -343,16 +343,11 @@ export class Server extends AbstractServer {
 
 		this.push = Container.get(Push);
 
-		if (process.env.E2E_TESTS === 'true') {
-			this.app.use('/e2e', require('./api/e2e.api').e2eController);
-		}
-
 		await super.start();
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
-			basicAuthActive: config.getEnv('security.basicAuth.active'),
 			databaseType: config.getEnv('database.type'),
 			disableProductionWebhooksOnMainProcess: config.getEnv(
 				'endpoints.disableProductionWebhooksOnMainProcess',
@@ -388,7 +383,6 @@ export class Server extends AbstractServer {
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binaryDataConfig.mode,
-			n8n_multi_user_allowed: isUserManagementEnabled(),
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
@@ -417,14 +411,21 @@ export class Server extends AbstractServer {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
-			enabled: isUserManagementEnabled(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
-				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('userManagement.skipInstanceOwnerSetup') === false &&
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
+
+		let v1Dismissed = false;
+
+		try {
+			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+		} catch {
+			// not yet in DB
+		}
+
+		this.frontendSettings.banners.v1.dismissed = v1Dismissed;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
@@ -434,7 +435,7 @@ export class Server extends AbstractServer {
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
-			versionControl: isVersionControlLicensed(),
+			sourceControl: isSourceControlLicensed(),
 			externalSecrets: isExternalSecretsEnabled(),
 		});
 
@@ -462,19 +463,19 @@ export class Server extends AbstractServer {
 		return this.frontendSettings;
 	}
 
-	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
-		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
+		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
-		const versionControlService = Container.get(VersionControlService);
 		const secretsService = Container.get(SecretsService);
-		const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
+		const sourceControlService = Container.get(SourceControlService);
+		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -504,7 +505,7 @@ export class Server extends AbstractServer {
 			}),
 			new SamlController(samlService),
 			new ExternalSecretsController(secretsService),
-			new VersionControlController(versionControlService, versionControlPreferencesService),
+			new SourceControlController(sourceControlService, sourceControlPreferencesService),
 		];
 
 		if (isLdapEnabled()) {
@@ -516,6 +517,12 @@ export class Server extends AbstractServer {
 			controllers.push(
 				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
 			);
+		}
+
+		if (inE2ETests) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { E2EController } = await import('./controllers/e2e.controller');
+			controllers.push(Container.get(E2EController));
 		}
 
 		controllers.forEach((controller) => registerController(app, config, controller));
@@ -558,19 +565,6 @@ export class Server extends AbstractServer {
 			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
 		);
 
-		// eslint-disable-next-line no-useless-escape
-		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
-
-		// Check for basic auth credentials if activated
-		if (config.getEnv('security.basicAuth.active')) {
-			setupBasicAuth(this.app, config, authIgnoreRegex);
-		}
-
-		// Check for and validate JWT if configured
-		if (config.getEnv('security.jwtAuth.active')) {
-			setupExternalJWTAuth(this.app, config, authIgnoreRegex);
-		}
-
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
@@ -584,7 +578,7 @@ export class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
-		setupPushHandler(restEndpoint, app, isUserManagementEnabled());
+		setupPushHandler(restEndpoint, app);
 
 		// Make sure that Vue history mode works properly
 		this.app.use(
@@ -606,7 +600,7 @@ export class Server extends AbstractServer {
 
 		await handleLdapInit();
 
-		this.registerControllers(ignoredEndpoints);
+		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
@@ -644,15 +638,12 @@ export class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
 
 		// ----------------------------------------
-		// Version Control
+		// Source Control
 		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
 		try {
-			await Container.get(VersionControlService).init();
+			await Container.get(SourceControlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`Version Control initialization failed: ${error.message}`);
+			LoggerProxy.warn(`Source Control initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
@@ -1169,7 +1160,9 @@ export class Server extends AbstractServer {
 
 						if (!currentlyRunningExecutionIds.length) return [];
 
-						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
+						const findOptions: FindManyOptions<ExecutionEntity> & {
+							where: FindOptionsWhere<ExecutionEntity>;
+						} = {
 							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
 							order: { id: 'DESC' },
 							where: {
@@ -1185,19 +1178,23 @@ export class Server extends AbstractServer {
 						if (req.query.filter) {
 							const { workflowId, status, finished } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where!, { workflowId });
+								Object.assign(findOptions.where, { workflowId });
+							} else {
+								Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 							}
 							if (status) {
-								Object.assign(findOptions.where!, { status: In(status) });
+								Object.assign(findOptions.where, { status: In(status) });
 							}
 							if (finished) {
-								Object.assign(findOptions.where!, { finished });
+								Object.assign(findOptions.where, { finished });
 							}
 						} else {
-							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const executions = await Db.collections.Execution.find(findOptions);
+						const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+							findOptions,
+						);
 
 						if (!executions.length) return [];
 
@@ -1262,14 +1259,16 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
-				const execution = await Db.collections.Execution.exist({
-					where: {
-						id: executionId,
-						workflowId: In(sharedWorkflowIds),
+				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+					executionId,
+					{
+						where: {
+							workflowId: In(sharedWorkflowIds),
+						},
 					},
-				});
+				);
 
-				if (!execution) {
+				if (!fullExecutionData) {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
@@ -1306,11 +1305,6 @@ export class Server extends AbstractServer {
 					} else {
 						await queue.stopJob(job);
 					}
-
-					const executionDb = (await Db.collections.Execution.findOneBy({
-						id: req.params.id,
-					})) as IExecutionFlattedDb;
-					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 					const returnData: IExecutionsStopData = {
 						mode: fullExecutionData.mode,
@@ -1481,6 +1475,9 @@ export class Server extends AbstractServer {
 						loader.directory,
 						req.originalUrl.substring(pathPrefix.length),
 					);
+					if (pathRelative(loader.directory, filePath).includes('..')) {
+						return res.status(404).end();
+					}
 					try {
 						await fsAccess(filePath);
 						return res.sendFile(filePath);

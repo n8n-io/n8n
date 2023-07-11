@@ -2,6 +2,7 @@ import { EXTERNAL_SECRETS_DB_KEY } from '@/secrets/constants';
 import { Service } from 'typedi';
 import { DataSource, Repository } from 'typeorm';
 import { Settings } from '../entities/Settings';
+import config from '@/config';
 
 @Service()
 export class SettingsRepository extends Repository<Settings> {
@@ -22,5 +23,17 @@ export class SettingsRepository extends Repository<Settings> {
 			},
 			['key'],
 		);
+	}
+
+	async saveSetting(key: string, value: string, loadOnStartup = true) {
+		const setting = await this.findOneBy({ key });
+
+		if (setting) {
+			await this.update({ key }, { value, loadOnStartup });
+		} else {
+			await this.save({ key, value, loadOnStartup });
+		}
+
+		if (loadOnStartup) config.set('ui.banners.v1.dismissed', true);
 	}
 }

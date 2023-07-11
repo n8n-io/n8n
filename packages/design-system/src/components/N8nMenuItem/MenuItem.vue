@@ -1,7 +1,7 @@
 <template>
 	<div :class="['n8n-menu-item', $style.item]">
 		<el-submenu
-			v-if="item.children && item.children.length > 0"
+			v-if="item.children?.length"
 			:id="item.id"
 			:class="{
 				[$style.submenu]: true,
@@ -21,25 +21,16 @@
 				/>
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
-			<el-menu-item
-				v-for="child in availableChildren"
-				:key="child.id"
-				:id="child.id"
-				:class="{
-					[$style.menuItem]: true,
-					[$style.disableActiveStyle]: !isItemActive(child),
-					[$style.active]: isItemActive(child),
-				}"
-				data-test-id="menu-item"
-				:index="child.id"
-				@click="onItemClick(child, $event)"
-			>
-				<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
-				<span :class="$style.label">{{ child.label }}</span>
-				<span v-if="child.secondaryIcon" :class="$style.secondaryIcon">
-					<n8n-icon :icon="child.secondaryIcon.name" :size="child.secondaryIcon.size || 'small'" />
-				</span>
-			</el-menu-item>
+			<n8n-menu-item
+				v-for="item in availableChildren"
+				:key="item.id"
+				:item="item"
+				:compact="compact"
+				:tooltipDelay="tooltipDelay"
+				:popperClass="popperClass"
+				:mode="mode"
+				:activeTab="activeTab"
+			/>
 		</el-submenu>
 		<n8n-tooltip
 			v-else
@@ -68,9 +59,16 @@
 					:size="item.customIconSize || 'large'"
 				/>
 				<span :class="$style.label">{{ item.label }}</span>
-				<span v-if="item.secondaryIcon" :class="$style.secondaryIcon">
+				<n8n-tooltip
+					v-if="item.secondaryIcon"
+					:class="$style.secondaryIcon"
+					:placement="item.tooltip?.placement || 'right'"
+					:content="item.tooltip?.content"
+					:disabled="compact || !item.tooltip?.content || item.tooltip?.bindTo !== 'secondaryIcon'"
+					:open-delay="tooltipDelay"
+				>
 					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
-				</span>
+				</n8n-tooltip>
 			</el-menu-item>
 		</n8n-tooltip>
 	</div>

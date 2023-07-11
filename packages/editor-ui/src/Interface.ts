@@ -703,6 +703,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	maxExecutionTimeout?: number;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
+	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
 }
 
 export interface ITimeoutHMS {
@@ -1045,6 +1046,12 @@ export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
+	banners: {
+		v1: {
+			dismissed: boolean;
+			mode: 'temporary' | 'permanent';
+		};
+	};
 	modalStack: string[];
 	modals: Modals;
 	isPageLoading: boolean;
@@ -1440,7 +1447,7 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
-export type VersionControlPreferences = {
+export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
 	authorName: string;
@@ -1453,7 +1460,7 @@ export type VersionControlPreferences = {
 	currentBranch?: string;
 };
 
-export interface VersionControlStatus {
+export interface SourceControlStatus {
 	ahead: number;
 	behind: number;
 	conflicted: string[];
@@ -1473,7 +1480,7 @@ export interface VersionControlStatus {
 	tracking: null;
 }
 
-export interface VersionControlAggregatedFile {
+export interface SourceControlAggregatedFile {
 	conflict: boolean;
 	file: string;
 	id: string;
@@ -1481,6 +1488,7 @@ export interface VersionControlAggregatedFile {
 	name: string;
 	status: string;
 	type: string;
+	updatedAt?: string;
 }
 
 export declare namespace Cloud {

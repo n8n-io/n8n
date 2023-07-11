@@ -1,6 +1,6 @@
 import type { OptionsWithUri } from 'request';
 
-import map from 'lodash.map';
+import map from 'lodash/map';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
