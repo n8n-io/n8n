@@ -1635,6 +1635,33 @@ export class Telegram implements INodeType {
 							'Thumbnail of the file sent; can be ignored if thumbnail generation for the file is supported server-side. The thumbnail should be in JPEG format and less than 200 kB in size. A thumbnail‘s width and height should not exceed 320.',
 					},
 					{
+						displayName: 'Topic ID',
+						name: 'top_msg_id',
+						type: 'number',
+						default: 0,
+						displayOptions: {
+							show: {
+								operation: [
+									'pinChatMessage',
+									'sendAnimation',
+									'sendAudio',
+									'sendChatAction',
+									'sendDocument',
+									'sendLocation',
+									'sendMessage',
+									'sendMediaGroup',
+									'sendPhoto',
+									'sendSticker',
+									'sendVideo',
+									'unpinChatMessage',
+								],
+								resource: ['message'],
+							},
+						},
+						description:
+							'Unique identifier for the target Topic of the target Chat. It comes as "message_thread_id".',
+					},
+					{
 						displayName: 'Width',
 						name: 'width',
 						type: 'number',
