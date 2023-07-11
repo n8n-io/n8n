@@ -3,16 +3,16 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import {
 	caseRLC,
-	observableDataType,
-	observableStatusSelector,
-	tlpSelector,
-} from '../common.description';
+	observableTypeOptions,
+	observableStatusOptions,
+	tlpOptions,
+} from '../../descriptions';
 import { prepareOptional } from '../../helpers/utils';
 import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	caseRLC,
-	observableDataType,
+	observableTypeOptions,
 	{
 		displayName: 'Data',
 		name: 'data',
@@ -54,7 +54,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		description: 'Date and time of the begin of the case default=now',
 	},
-	tlpSelector,
+	tlpOptions,
 	{
 		displayName: 'Indicator of Compromise (IOC)',
 		name: 'ioc',
@@ -71,7 +71,7 @@ const properties: INodeProperties[] = [
 		default: false,
 		description: 'Whether sighted previously',
 	},
-	observableStatusSelector,
+	observableStatusOptions,
 	{
 		displayName: 'Options',
 		name: 'options',

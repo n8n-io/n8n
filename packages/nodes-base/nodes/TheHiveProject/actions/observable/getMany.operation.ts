@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { caseRLC, returnAllAndLimit } from '../common.description';
+import { caseRLC, returnAllAndLimit } from '../../descriptions';
 import { prepareRangeQuery, prepareSortQuery } from '../../helpers/utils';
 import { theHiveApiRequest } from '../../transport';
 

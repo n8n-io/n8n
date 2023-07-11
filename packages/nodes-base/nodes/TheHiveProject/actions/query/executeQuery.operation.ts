@@ -4,7 +4,7 @@ import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiQuery, theHiveApiRequest } from '../../transport';
-import { genericFiltersCollection, sortCollection } from '../common.description';
+import { genericFiltersCollection, sortCollection } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{

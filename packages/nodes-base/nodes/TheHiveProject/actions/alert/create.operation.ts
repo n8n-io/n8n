@@ -8,7 +8,7 @@ import set from 'lodash/set';
 
 import FormData from 'form-data';
 import { fixFieldType, splitTags } from '../../helpers/utils';
-import { observableDataType } from '../common.description';
+import { observableTypeOptions } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Values',
 				name: 'values',
 				values: [
-					observableDataType,
+					observableTypeOptions,
 					{
 						displayName: 'Data',
 						name: 'data',

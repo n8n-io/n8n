@@ -8,7 +8,7 @@ import type {
 import { theHiveApiRequest } from '../transport';
 
 import { loadAlertStatus, loadCaseStatus, loadCaseTemplate, loadUsers } from './loadOptions';
-import { alertCommonFields, caseCommonFields, taskCommonFields } from '../helpers/constant';
+import { alertCommonFields, caseCommonFields, taskCommonFields } from '../helpers/constants';
 
 async function getCustomFields(this: ILoadOptionsFunctions, isRemoved?: boolean) {
 	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
@@ -187,7 +187,7 @@ export async function getCaseUpdateFields(
 	const caseStatus = await loadCaseStatus.call(this);
 	const users = await loadUsers.call(this);
 
-	const excludedFromMatching = ['addTags', 'removeTags'];
+	const excludedFromMatching = ['addTags', 'removeTags', 'taskRule', 'observableRule'];
 	const excludeFields = ['caseTemplate', 'tasks', 'sharingParameters'];
 
 	const caseUpdateFields = caseCommonFields

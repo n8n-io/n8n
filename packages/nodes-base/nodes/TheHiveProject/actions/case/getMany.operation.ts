@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { genericFiltersCollection, returnAllAndLimit, sortCollection } from '../common.description';
+import { genericFiltersCollection, returnAllAndLimit, sortCollection } from '../../descriptions';
 import { theHiveApiQuery } from '../../transport';
 
 const properties: INodeProperties[] = [

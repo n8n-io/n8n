@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { observableStatusSelector, tlpSelector } from '../common.description';
+import { observableStatusOptions, tlpOptions } from '../../descriptions';
 import { prepareOptional } from '../../helpers/utils';
 import { theHiveApiRequest } from '../../transport';
 
@@ -34,7 +34,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				placeholder: 'tag1,tag2',
 			},
-			tlpSelector,
+			tlpOptions,
 			{
 				displayName: 'Indicator of Compromise (IOC)',
 				name: 'ioc',
@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 			},
-			observableStatusSelector,
+			observableStatusOptions,
 		],
 	},
 ];

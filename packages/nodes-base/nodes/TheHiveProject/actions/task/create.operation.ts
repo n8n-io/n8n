@@ -5,7 +5,7 @@ import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
 
 import { fixFieldType } from '../../helpers/utils';
-import { caseRLC } from '../common.description';
+import { caseRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	caseRLC,

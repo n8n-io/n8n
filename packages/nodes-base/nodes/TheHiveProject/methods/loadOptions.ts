@@ -1,6 +1,6 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { theHiveApiRequest } from '../transport';
-import { alertCommonFields } from '../helpers/constant';
+import { alertCommonFields, caseCommonFields, taskCommonFields } from '../helpers/constants';
 
 export async function loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	let resource = this.getNodeParameter('resource') as string;
@@ -268,13 +268,13 @@ export async function loadAlertFields(
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 
-	const excludeFields = ['flag', 'caseTemplate', 'addTags', 'removeTags'];
+	const excludeFields = ['addTags', 'removeTags'];
 
 	const fields = alertCommonFields
 		.filter((entry) => !excludeFields.includes(entry.id))
 		.map((entry) => {
 			const field: INodePropertyOptions = {
-				name: entry.id,
+				name: entry.displayName || entry.id,
 				value: entry.id,
 			};
 
@@ -285,4 +285,39 @@ export async function loadAlertFields(
 
 	returnData.push(...fields, ...customFields);
 	return returnData;
+}
+
+export async function loadCaseFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const excludeFields = ['addTags', 'removeTags', 'taskRule', 'observableRule'];
+
+	const fields = caseCommonFields
+		.filter((entry) => !excludeFields.includes(entry.id))
+		.map((entry) => {
+			const field: INodePropertyOptions = {
+				name: entry.displayName || entry.id,
+				value: entry.id,
+			};
+
+			return field;
+		});
+
+	const customFields = await loadCustomFields.call(this);
+
+	returnData.push(...fields, ...customFields);
+	return returnData;
+}
+
+export async function loadTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const fields = taskCommonFields.map((entry) => {
+		const field: INodePropertyOptions = {
+			name: entry.displayName || entry.id,
+			value: entry.id,
+		};
+
+		return field;
+	});
+
+	return fields;
 }

@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
-import { returnAllAndLimit } from '../common.description';
+import { returnAllAndLimit } from '../../descriptions';
 import { prepareRangeQuery } from '../../helpers/utils';
 
 import { theHiveApiRequest } from '../../transport';

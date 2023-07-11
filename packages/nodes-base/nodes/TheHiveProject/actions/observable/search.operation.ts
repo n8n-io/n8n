@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { observableDataType, observableStatusSelector, tlpSelector } from '../common.description';
+import { observableTypeOptions, observableStatusOptions, tlpOptions } from '../../descriptions';
 import {
 	And,
 	Between,
@@ -25,7 +25,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		options: [
 			{
-				...observableDataType,
+				...observableTypeOptions,
 				type: 'multiOptions',
 			},
 			{
@@ -95,8 +95,8 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 			},
-			observableStatusSelector,
-			tlpSelector,
+			observableStatusOptions,
+			tlpOptions,
 			{
 				displayName: 'Value',
 				name: 'data',

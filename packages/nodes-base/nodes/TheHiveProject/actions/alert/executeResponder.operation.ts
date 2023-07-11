@@ -1,10 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { alertRLC, responderSelector } from '../common.description';
+import { alertRLC, responderOptions } from '../../descriptions';
 import { theHiveApiRequest } from '../../transport';
 
-const properties: INodeProperties[] = [{ ...alertRLC, name: 'id' }, responderSelector];
+const properties: INodeProperties[] = [{ ...alertRLC, name: 'id' }, responderOptions];
 
 const displayOptions = {
 	show: {

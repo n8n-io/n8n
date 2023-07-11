@@ -1,310 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { TLP } from '../helpers/interfaces';
+import { caseStatusOptions, severityOptions, tlpOptions } from './common.description';
 
-export const caseRLC: INodeProperties = {
-	displayName: 'Case',
-	name: 'caseId',
-	type: 'resourceLocator',
-	default: { mode: 'list', value: '' },
-	required: true,
-	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a file...',
-			typeOptions: {
-				searchListMethod: 'caseSearch',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'Link',
-			name: 'url',
-			type: 'string',
-			extractValue: {
-				type: 'regex',
-				regex: 'https:\\/\\/.+\\/cases\\/(~[0-9]{1,})\\/details',
-			},
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: 'https:\\/\\/.+\\/cases\\/(~[0-9]{1,})\\/details',
-						errorMessage: 'Not a valid Case URL',
-					},
-				},
-			],
-		},
-		{
-			displayName: 'ID',
-			name: 'id',
-			type: 'string',
-			placeholder: 'e.g. ~123456789',
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: '(~[0-9]{1,})',
-						errorMessage: 'Not a valid Case ID',
-					},
-				},
-			],
-		},
-	],
-};
-
-export const alertRLC: INodeProperties = {
-	displayName: 'Alert',
-	name: 'alertId',
-	type: 'resourceLocator',
-	default: { mode: 'list', value: '' },
-	required: true,
-	modes: [
-		{
-			displayName: 'From List',
-			name: 'list',
-			type: 'list',
-			placeholder: 'Select a file...',
-			typeOptions: {
-				searchListMethod: 'alertSearch',
-				searchable: true,
-			},
-		},
-		{
-			displayName: 'Link',
-			name: 'url',
-			type: 'string',
-			extractValue: {
-				type: 'regex',
-				regex: 'https:\\/\\/.+\\/alerts\\/(~[0-9]{1,})\\/details',
-			},
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: 'https:\\/\\/.+\\/alerts\\/(~[0-9]{1,})\\/details',
-						errorMessage: 'Not a valid Alert URL',
-					},
-				},
-			],
-		},
-		{
-			displayName: 'ID',
-			name: 'id',
-			type: 'string',
-			placeholder: 'e.g. ~123456789',
-			validation: [
-				{
-					type: 'regex',
-					properties: {
-						regex: '(~[0-9]{1,})',
-						errorMessage: 'Not a valid Alert ID',
-					},
-				},
-			],
-		},
-	],
-};
-
-export const returnAllAndLimit: INodeProperties[] = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		default: 50,
-		description: 'Max number of results to return',
-		displayOptions: {
-			show: {
-				returnAll: [false],
-			},
-		},
-	},
-];
-
-export const responderSelector: INodeProperties = {
-	displayName: 'Responder Name or ID',
-	name: 'responder',
-	type: 'options',
-	description:
-		'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-	required: true,
-	default: '',
-	typeOptions: {
-		loadOptionsDependsOn: ['id', 'id.value'],
-		loadOptionsMethod: 'loadResponders',
-	},
-	displayOptions: {
-		hide: {
-			id: [''],
-		},
-	},
-};
-
-export const tlpSelector: INodeProperties = {
-	displayName: 'Traffict Light Protocol (TLP)',
-	name: 'tlp',
-	type: 'options',
-	default: 2,
-	options: [
-		{
-			name: 'White',
-			value: TLP.white,
-		},
-		{
-			name: 'Green',
-			value: TLP.green,
-		},
-		{
-			name: 'Amber',
-			value: TLP.amber,
-		},
-		{
-			name: 'Red',
-			value: TLP.red,
-		},
-	],
-};
-
-export const severitySelector: INodeProperties = {
-	displayName: 'Severity',
-	name: 'severity',
-	type: 'options',
-	options: [
-		{
-			name: 'Low',
-			value: 1,
-		},
-		{
-			name: 'Medium',
-			value: 2,
-		},
-		{
-			name: 'High',
-			value: 3,
-		},
-		{
-			name: 'Critical',
-			value: 4,
-		},
-	],
-	default: 2,
-	description: 'Severity of the alert. Default=Medium.',
-};
-
-export const observableDataType: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-	displayName: 'Data Type',
-	name: 'dataType',
-	type: 'options',
-	default: '',
-	typeOptions: {
-		loadOptionsMethod: 'loadObservableTypes',
-	},
-	description:
-		'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-};
-
-export const alertStatusSelector: INodeProperties = {
-	displayName: 'Status',
-	name: 'status',
-	type: 'options',
-	options: [
-		{
-			name: 'New',
-			value: 'New',
-		},
-		{
-			name: 'Updated',
-			value: 'Updated',
-		},
-		{
-			name: 'Ignored',
-			value: 'Ignored',
-		},
-		{
-			name: 'Imported',
-			value: 'Imported',
-		},
-	],
-	default: 'New',
-	description: 'Status of the alert',
-};
-
-export const caseStatusSelector: INodeProperties = {
-	displayName: 'Status',
-	name: 'status',
-	type: 'options',
-	options: [
-		{
-			name: 'Open',
-			value: 'Open',
-		},
-		{
-			name: 'Resolved',
-			value: 'Resolved',
-		},
-		{
-			name: 'Deleted',
-			value: 'Deleted',
-		},
-	],
-	default: 'Open',
-};
-
-export const observableStatusSelector: INodeProperties = {
-	displayName: 'Status',
-	name: 'Status',
-	type: 'options',
-	default: 'Ok',
-	options: [
-		{
-			name: 'Ok',
-			value: 'Ok',
-		},
-		{
-			name: 'Deleted',
-			value: 'Deleted',
-		},
-	],
-	description: 'Status of the observable. Default=Ok.',
-};
-
-export const taskStatusSelector: INodeProperties = {
-	displayName: 'Status',
-	name: 'status',
-	type: 'options',
-	default: 'Waiting',
-	options: [
-		{
-			name: 'Cancel',
-			value: 'Cancel',
-		},
-		{
-			name: 'Completed',
-			value: 'Completed',
-		},
-		{
-			name: 'InProgress',
-			value: 'InProgress',
-		},
-		{
-			name: 'Waiting',
-			value: 'Waiting',
-		},
-	],
-	description: 'Status of the task. Default=Waiting.',
-};
 const customFieldsCollection: INodeProperties = {
 	displayName: 'Custom Fields',
 	name: 'customFieldsUi',
@@ -518,7 +214,7 @@ export const filtersCollection: INodeProperties = {
 				},
 			},
 		},
-		severitySelector,
+		severityOptions,
 		{
 			displayName: 'Start Date',
 			name: 'startDate',
@@ -532,7 +228,7 @@ export const filtersCollection: INodeProperties = {
 			},
 		},
 		{
-			...caseStatusSelector,
+			...caseStatusOptions,
 			displayOptions: {
 				show: {
 					'/resource': ['case'],
@@ -564,49 +260,7 @@ export const filtersCollection: INodeProperties = {
 			type: 'string',
 			default: '',
 		},
-		tlpSelector,
-	],
-};
-
-export const sortCollection: INodeProperties = {
-	displayName: 'Sort',
-	name: 'sort',
-	type: 'fixedCollection',
-	placeholder: 'Add Sort Rule',
-	default: {},
-	typeOptions: {
-		multipleValues: true,
-	},
-	options: [
-		{
-			displayName: 'Fields',
-			name: 'fields',
-			values: [
-				{
-					displayName: 'Field',
-					name: 'field',
-					type: 'string',
-					default: '',
-					requiresDataPath: 'single',
-				},
-				{
-					displayName: 'Direction',
-					name: 'direction',
-					type: 'options',
-					options: [
-						{
-							name: 'Ascending',
-							value: 'asc',
-						},
-						{
-							name: 'Descending',
-							value: 'desc',
-						},
-					],
-					default: 'asc',
-				},
-			],
-		},
+		tlpOptions,
 	],
 };
 
@@ -633,6 +287,23 @@ export const genericFiltersCollection: INodeProperties = {
 					description: 'Dot notation is also supported, e.g. customFields.field1',
 					displayOptions: {
 						hide: {
+							'/resource': ['alert', 'case', 'task'],
+						},
+					},
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Field',
+					name: 'field',
+					type: 'options',
+					default: 'title',
+					typeOptions: {
+						loadOptionsMethod: 'loadAlertFields',
+					},
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					displayOptions: {
+						show: {
 							'/resource': ['alert'],
 						},
 					},
@@ -642,15 +313,32 @@ export const genericFiltersCollection: INodeProperties = {
 					displayName: 'Field',
 					name: 'field',
 					type: 'options',
-					default: 'name',
+					default: 'title',
 					typeOptions: {
-						loadOptionsMethod: 'loadAlertFields',
+						loadOptionsMethod: 'loadCaseFields',
 					},
 					description:
 						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 					displayOptions: {
 						show: {
-							'/resource': ['alert'],
+							'/resource': ['case'],
+						},
+					},
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Field',
+					name: 'field',
+					type: 'options',
+					default: 'title',
+					typeOptions: {
+						loadOptionsMethod: 'loadTaskFields',
+					},
+					description:
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					displayOptions: {
+						show: {
+							'/resource': ['task'],
 						},
 					},
 				},

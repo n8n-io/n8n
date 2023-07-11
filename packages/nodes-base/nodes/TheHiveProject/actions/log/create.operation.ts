@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { observableStatusSelector } from '../common.description';
+import { observableStatusOptions } from '../../descriptions';
 import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 		description: 'Date of the log submission default=now',
 	},
 	{
-		...observableStatusSelector,
+		...observableStatusOptions,
 		required: true,
 		description: 'Status of the log (Ok or Deleted) default=Ok',
 	},

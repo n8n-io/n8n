@@ -6,7 +6,7 @@ import {
 	genericFiltersCollection,
 	returnAllAndLimit,
 	sortCollection,
-} from '../common.description';
+} from '../../descriptions';
 import { theHiveApiQuery } from '../../transport';
 import type { QueryScope } from '../../helpers/interfaces';
 

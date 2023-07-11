@@ -1,10 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { caseRLC, responderSelector } from '../common.description';
+import { caseRLC, responderOptions } from '../../descriptions';
 import { theHiveApiRequest } from '../../transport';
 
-const properties: INodeProperties[] = [{ ...caseRLC, name: 'id' }, responderSelector];
+const properties: INodeProperties[] = [{ ...caseRLC, name: 'id' }, responderOptions];
 
 const displayOptions = {
 	show: {
