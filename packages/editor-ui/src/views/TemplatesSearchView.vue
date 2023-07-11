@@ -18,7 +18,7 @@
 		</template>
 		<template #content>
 			<div :class="$style.contentWrapper">
-				<div :class="$style.filters">
+				<div :class="$style.filters" v-if="!isFixedListExperiment">
 					<TemplateFilters
 						:categories="templatesStore.allCategories"
 						:sortOnPopulate="areCategoriesPrepopulated"
@@ -30,36 +30,42 @@
 					/>
 				</div>
 				<div :class="$style.search">
-					<n8n-input
-						:value="search"
-						:placeholder="$locale.baseText('templates.searchPlaceholder')"
-						@input="onSearchInput"
-						@blur="trackSearch"
-						clearable
-					>
-						<template #prefix>
-							<font-awesome-icon icon="search" />
-						</template>
-					</n8n-input>
-					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
-						<div :class="$style.header">
-							<n8n-heading :bold="true" size="medium" color="text-light">
-								{{ $locale.baseText('templates.collections') }}
-								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
-							</n8n-heading>
-						</div>
+					<template v-if="!isFixedListExperiment">
+						<n8n-input
+							:value="search"
+							:placeholder="$locale.baseText('templates.searchPlaceholder')"
+							@input="onSearchInput"
+							@blur="trackSearch"
+							clearable
+						>
+							<template #prefix>
+								<font-awesome-icon icon="search" />
+							</template>
+						</n8n-input>
+						<div
+							:class="$style.carouselContainer"
+							v-show="collections.length || loadingCollections"
+						>
+							<div :class="$style.header">
+								<n8n-heading :bold="true" size="medium" color="text-light">
+									{{ $locale.baseText('templates.collections') }}
+									<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
+								</n8n-heading>
+							</div>
 
-						<CollectionsCarousel
-							:collections="collections"
-							:loading="loadingCollections"
-							@openCollection="onOpenCollection"
-						/>
-					</div>
+							<CollectionsCarousel
+								:collections="collections"
+								:loading="loadingCollections"
+								@openCollection="onOpenCollection"
+							/>
+						</div>
+					</template>
 					<TemplateList
-						:infinite-scroll-enabled="true"
+						:infinite-scroll-enabled="!isFixedListExperiment"
 						:loading="loadingWorkflows"
 						:total-workflows="totalWorkflows"
-						:workflows="workflows"
+						:workflows="isFixedListExperiment ? fixedTemplatesList : workflows"
+						:hide-header="isFixedListExperiment"
 						@loadMore="onLoadMore"
 						@openTemplate="onOpenTemplate"
 					/>
@@ -91,13 +97,14 @@ import type {
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
-import { VIEWS } from '@/constants';
+import { TEMPLATES_EXPERIMENT, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables';
+import { usePostHog } from '@/stores/posthog.store';
 
 interface ISearchEvent {
 	search_string: string;
@@ -135,7 +142,18 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore),
+		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore, usePostHog),
+		isFixedListExperiment() {
+			return this.posthogStore.isVariantEnabled(
+				TEMPLATES_EXPERIMENT.name,
+				TEMPLATES_EXPERIMENT.variant,
+			);
+		},
+		fixedTemplatesList() {
+			return TEMPLATES_EXPERIMENT.variantIds
+				.map((id) => this.templatesStore.workflows[id])
+				.filter(Boolean);
+		},
 		totalWorkflows(): number {
 			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
 		},
@@ -148,9 +166,6 @@ export default defineComponent({
 		endOfSearchMessage(): string | null {
 			if (this.loadingWorkflows) {
 				return null;
-			}
-			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
-				return this.$locale.baseText('templates.endResult');
 			}
 			if (
 				!this.loadingCollections &&
@@ -391,6 +406,15 @@ export default defineComponent({
 		}, 100);
 	},
 	async created() {
+		if (this.isFixedListExperiment) {
+			// Templates are lazy-loaded so we need to make sure the fixed ids are loaded
+			TEMPLATES_EXPERIMENT.variantIds.forEach(async (templateId) =>
+				this.templatesStore.fetchTemplateById(templateId),
+			);
+			// Categorization and filtering based on search is not supported if fixed list is enabled
+			return;
+		}
+
 		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
 			this.search = this.$route.query.search;
 		}
@@ -423,11 +447,11 @@ export default defineComponent({
 .filters {
 	width: 200px;
 	margin-bottom: var(--spacing-xl);
+	margin-right: var(--spacing-2xl);
 }
 
 .search {
 	width: 100%;
-	padding-left: var(--spacing-2xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);

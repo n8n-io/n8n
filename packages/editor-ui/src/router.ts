@@ -33,7 +33,6 @@ import VariablesView from '@/views/VariablesView.vue';
 import type { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import type { RouteConfigSingleView } from 'vue-router/types/router';
-import { TEMPLATE_EXPERIMENT, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useSSOStore } from './stores/sso.store';
@@ -43,7 +42,7 @@ import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsSourceControl from './views/SettingsSourceControl.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
-import { usePostHog } from './stores/posthog.store';
+import { VIEWS } from '@/constants';
 
 Vue.use(Router);
 
@@ -63,12 +62,8 @@ interface IRouteConfig extends RouteConfigSingleView {
 
 function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
-	const posthog = usePostHog();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
-	if (
-		!posthog.isVariantEnabled(TEMPLATE_EXPERIMENT.name, TEMPLATE_EXPERIMENT.variant) &&
-		!isTemplatesEnabled
-	) {
+	if (!isTemplatesEnabled) {
 		return { name: VIEWS.NOT_FOUND };
 	}
 

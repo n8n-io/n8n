@@ -2,8 +2,8 @@
 //         sea-table
 // ----------------------------------
 
-type TSeaTableServerVersion = '2.0.6';
-type TSeaTableServerEdition = 'enterprise edition';
+export type TSeaTableServerVersion = '2.0.6';
+export type TSeaTableServerEdition = 'enterprise edition';
 
 // ----------------------------------
 //         dtable
@@ -12,9 +12,9 @@ type TSeaTableServerEdition = 'enterprise edition';
 import type { IDtableMetadataColumn, IDtableMetadataTable, TDtableViewColumn } from './Interfaces';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-type TInheritColumnTypeTime = 'ctime' | 'mtime';
-type TInheritColumnTypeUser = 'creator' | 'last-modifier';
-type TColumnType =
+export type TInheritColumnTypeTime = 'ctime' | 'mtime';
+export type TInheritColumnTypeUser = 'creator' | 'last-modifier';
+export type TColumnType =
 	| 'text'
 	| 'long-text'
 	| 'number'
@@ -33,7 +33,7 @@ type TColumnType =
 	| 'auto-number';
 
 type TImplementInheritColumnKey = '_seq';
-type TInheritColumnKey =
+export type TInheritColumnKey =
 	| '_id'
 	| '_creator'
 	| '_ctime'
@@ -41,8 +41,8 @@ type TInheritColumnKey =
 	| '_mtime'
 	| TImplementInheritColumnKey;
 
-type TColumnValue = undefined | boolean | number | string | string[] | null;
-type TColumnKey = TInheritColumnKey | string;
+export type TColumnValue = undefined | boolean | number | string | string[] | null;
+export type TColumnKey = TInheritColumnKey | string;
 
 export type TDtableMetadataTables = readonly IDtableMetadataTable[];
 export type TDtableMetadataColumns = readonly IDtableMetadataColumn[];
@@ -52,34 +52,34 @@ export type TDtableViewColumns = readonly TDtableViewColumn[];
 //         api
 // ----------------------------------
 
-type TEndpointVariableName = 'access_token' | 'dtable_uuid' | 'server';
+export type TEndpointVariableName = 'access_token' | 'dtable_uuid' | 'server';
 
 // Template Literal Types requires-ts-4.1.5 -- deferred
-type TMethod = 'GET' | 'POST';
+export type TMethod = 'GET' | 'POST';
 type TDeferredEndpoint = string;
 type TDeferredEndpointExpr = string;
 type TEndpoint =
 	| '/api/v2.1/dtable/app-access-token/'
 	| '/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/'
 	| TDeferredEndpoint;
-type TEndpointExpr = TEndpoint | TDeferredEndpointExpr;
-type TEndpointResolvedExpr =
+export type TEndpointExpr = TEndpoint | TDeferredEndpointExpr;
+export type TEndpointResolvedExpr =
 	| TEndpoint
 	| string; /* deferred: but already in use for header values, e.g. authentication */
 
-type TDateTimeFormat = 'YYYY-MM-DDTHH:mm:ss.SSSZ' /* moment.js */;
+export type TDateTimeFormat = 'YYYY-MM-DDTHH:mm:ss.SSSZ' /* moment.js */;
 
 // ----------------------------------
 //         node
 // ----------------------------------
 
-type TCredentials = ICredentialDataDecryptedObject | undefined;
+export type TCredentials = ICredentialDataDecryptedObject | undefined;
 
-type TTriggerOperation = 'create' | 'update';
+export type TTriggerOperation = 'create' | 'update';
 
-type TOperation = 'append' | 'list' | 'metadata';
+export type TOperation = 'append' | 'list' | 'metadata';
 
-type TLoadedResource = {
+export type TLoadedResource = {
 	name: string;
 };
 export type TColumnsUiValues = Array<{
