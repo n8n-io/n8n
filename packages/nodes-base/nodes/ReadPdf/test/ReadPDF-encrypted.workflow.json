@@ -21,6 +21,7 @@
 			"type": "n8n-nodes-base.readPDF",
 			"typeVersion": 1,
 			"parameters": {
+				"encrypted": true,
 				"password": "ReaderPassword"
 			},
 			"position": [1100, 780]
