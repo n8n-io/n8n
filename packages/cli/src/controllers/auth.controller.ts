@@ -1,6 +1,11 @@
 import validator from 'validator';
 import { Authorized, Get, Post, RestController } from '@/decorators';
-import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
+import {
+	AuthError,
+	BadRequestError,
+	InternalServerError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -163,7 +168,7 @@ export class AuthController {
 				inviterId,
 				inviteeId,
 			});
-			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!inviterId || !inviteeId) {

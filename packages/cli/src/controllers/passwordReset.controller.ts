@@ -2,7 +2,6 @@ import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import {
-	AuthError,
 	BadRequestError,
 	InternalServerError,
 	NotFoundError,
@@ -111,7 +110,7 @@ export class PasswordResetController {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
-			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
@@ -204,7 +203,7 @@ export class PasswordResetController {
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: id },
 			);
-			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 		if (!user) {
 			this.logger.debug(

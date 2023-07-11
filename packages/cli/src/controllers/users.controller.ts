@@ -17,7 +17,12 @@ import {
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
-import { BadRequestError, InternalServerError, NotFoundError, AuthError } from '@/ResponseHelper';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
 import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
@@ -125,7 +130,7 @@ export class UsersController {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
-			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -569,7 +574,7 @@ export class UsersController {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
-			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!isEmailSetUp()) {

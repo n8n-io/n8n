@@ -28,7 +28,7 @@ export function issueJWT(user: User): JwtToken {
 		!user.isOwner &&
 		!isWithinUsersLimit
 	) {
-		throw new ResponseHelper.AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		throw new ResponseHelper.UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 	}
 	if (password) {
 		payload.password = createHash('sha256')

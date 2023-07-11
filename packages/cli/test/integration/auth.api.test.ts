@@ -314,7 +314,7 @@ describe('GET /resolve-signup-token', () => {
 		});
 	});
 
-	test('should return 400 if user quota reached', async () => {
+	test('should return 403 if user quota reached', async () => {
 		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
 		const memberShell = await testDb.createUserShell(globalMemberRole);
 
@@ -323,7 +323,7 @@ describe('GET /resolve-signup-token', () => {
 			.query({ inviterId: owner.id })
 			.query({ inviteeId: memberShell.id });
 
-		expect(response.statusCode).toBe(401);
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should fail with invalid inputs', async () => {
