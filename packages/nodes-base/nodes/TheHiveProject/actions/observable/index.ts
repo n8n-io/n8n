@@ -5,11 +5,10 @@ import * as create from './create.operation';
 import * as executeAnalyzer from './executeAnalyzer.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
-import * as getMany from './getMany.operation';
 import * as search from './search.operation';
 import * as update from './update.operation';
 
-export { count, create, executeAnalyzer, executeResponder, get, getMany, search, update };
+export { count, create, executeAnalyzer, executeResponder, get, search, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -46,11 +45,6 @@ export const description: INodeProperties[] = [
 				action: 'Get a single observable',
 			},
 			{
-				name: 'Get Many',
-				value: 'getMany',
-				action: 'Get many observables of a specific case',
-			},
-			{
 				name: 'Search',
 				value: 'search',
 				action: 'Search observables',
@@ -72,7 +66,6 @@ export const description: INodeProperties[] = [
 	...executeAnalyzer.description,
 	...executeResponder.description,
 	...get.description,
-	...getMany.description,
 	...search.description,
 	...update.description,
 ];

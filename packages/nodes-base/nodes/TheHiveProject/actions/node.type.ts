@@ -30,7 +30,6 @@ type NodeMap = {
 		| 'executeAnalyzer'
 		| 'executeResponder'
 		| 'get'
-		| 'getMany'
 		| 'search'
 		| 'update';
 	page: 'create' | 'deletePage' | 'update';
