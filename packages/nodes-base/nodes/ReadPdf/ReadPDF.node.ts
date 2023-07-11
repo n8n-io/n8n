@@ -51,6 +51,14 @@ export class ReadPDF implements INodeType {
 				required: true,
 				description: 'Name of the binary property from which to read the PDF file',
 			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: { password: true },
+				default: '',
+				description: 'Password to decrypt the PDF file with',
+			},
 		],
 	};
 
@@ -59,22 +67,18 @@ export class ReadPDF implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		let item: INodeExecutionData;
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
-				item = items[itemIndex];
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
-
-				if (item.binary === undefined) {
-					item.binary = {};
-				}
+				this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 					itemIndex,
 					binaryPropertyName,
 				);
-				const document = await readPDF(binaryDataBuffer.buffer).promise;
+				const password = this.getNodeParameter('password', itemIndex) as string;
+				const document = await readPDF({ data: binaryDataBuffer.buffer, password }).promise;
 				const { info, metadata } = await document
 					.getMetadata()
 					.catch(() => ({ info: null, metadata: null }));
@@ -87,7 +91,6 @@ export class ReadPDF implements INodeType {
 				}
 
 				returnData.push({
-					binary: item.binary,
 					json: {
 						numpages: document.numPages,
 						numrender: document.numPages,

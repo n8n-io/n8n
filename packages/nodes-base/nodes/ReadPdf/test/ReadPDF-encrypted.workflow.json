@@ -8,40 +8,42 @@
 			"position": [660, 580]
 		},
 		{
-			"name": "Read sample.pdf",
+			"name": "Read sample-encrypted.pdf",
 			"type": "n8n-nodes-base.readBinaryFile",
 			"typeVersion": 1,
 			"parameters": {
-				"filePath": "C:\\Test\\sample.pdf"
+				"filePath": "C:\\Test\\sample-encrypted.pdf"
 			},
-			"position": [880, 580]
+			"position": [880, 780]
 		},
 		{
-			"name": "Read PDF",
+			"name": "Read PDF (encrypted)",
 			"type": "n8n-nodes-base.readPDF",
 			"typeVersion": 1,
-			"parameters": {},
-			"position": [1100, 580]
+			"parameters": {
+				"password": "ReaderPassword"
+			},
+			"position": [1100, 780]
 		}
 	],
 	"pinData": {
-		"Read PDF": [
+		"Read PDF (encrypted)": [
 			{
 				"json": {
 					"numpages": 1,
 					"numrender": 1,
 					"info": {
-						"PDFFormatVersion": "1.4",
+						"PDFFormatVersion": "1.7",
 						"Language": null,
-						"EncryptFilterName": null,
+						"EncryptFilterName": "Standard",
 						"IsLinearized": false,
 						"IsAcroFormPresent": false,
 						"IsXFAPresent": false,
 						"IsCollectionPresent": false,
 						"IsSignaturesPresent": false,
-						"Title": "sample",
+						"ModDate": "D:20230210122750Z",
 						"Producer": "iLovePDF",
-						"ModDate": "D:20230210122750Z"
+						"Title": "sample"
 					},
 					"metadata": null,
 					"text": "N8N\nSample PDF\nLorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor\ninvidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et\njusto duo dolores et ea rebum.",
@@ -55,18 +57,18 @@
 			"main": [
 				[
 					{
-						"node": "Read sample.pdf",
+						"node": "Read sample-encrypted.pdf",
 						"type": "main",
 						"index": 0
 					}
 				]
 			]
 		},
-		"Read sample.pdf": {
+		"Read sample-encrypted.pdf": {
 			"main": [
 				[
 					{
-						"node": "Read PDF",
+						"node": "Read PDF (encrypted)",
 						"type": "main",
 						"index": 0
 					}
