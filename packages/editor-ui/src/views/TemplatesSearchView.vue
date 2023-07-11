@@ -59,7 +59,8 @@
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
 						:total-workflows="totalWorkflows"
-						:workflows="workflows"
+						:workflows="isFixedListExperiment ? fixedTemplatesList : workflows"
+						:simple-view="isFixedListExperiment"
 						@loadMore="onLoadMore"
 						@openTemplate="onOpenTemplate"
 					/>
