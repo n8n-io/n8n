@@ -32,7 +32,7 @@ export = {
 			}
 			try {
 				const sourceControlService = Container.get(SourceControlService);
-				const result = await sourceControlService.pullWorkfolder({
+				const result = await sourceControlService.pullWorkfolder2({
 					force: req.body.force,
 					variables: req.body.variables,
 					userId: req.user.id,

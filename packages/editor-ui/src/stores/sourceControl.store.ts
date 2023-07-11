@@ -39,7 +39,16 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 
 	const pushWorkfolder = async (data: {
 		commitMessage: string;
-		fileNames?: string[];
+		fileNames?: Array<{
+			conflict: boolean;
+			file: string;
+			id: string;
+			location: string;
+			name: string;
+			status: string;
+			type: string;
+			updatedAt?: string | undefined;
+		}>;
 		force: boolean;
 	}) => {
 		state.commitMessage = data.commitMessage;

@@ -4,8 +4,32 @@ import { generateKeyPairSync } from 'crypto';
 import type { KeyPair } from './types/keyPair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { LoggerProxy } from 'n8n-workflow';
-import { SOURCE_CONTROL_GIT_KEY_COMMENT } from './constants';
+import {
+	SOURCE_CONTROL_GIT_KEY_COMMENT,
+	SOURCE_CONTROL_TAGS_EXPORT_FILE,
+	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
+} from './constants';
 import type { SourceControlledFile } from './types/sourceControlledFile';
+import path from 'path';
+
+export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {
+	return path.join(workflowExportFolder, `${workflowId}.json`);
+}
+
+export function getCredentialExportPath(
+	credentialId: string,
+	credentialExportFolder: string,
+): string {
+	return path.join(credentialExportFolder, `${credentialId}.json`);
+}
+
+export function getVariablesPath(gitFolder: string): string {
+	return path.join(gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
+}
+
+export function getTagsPath(gitFolder: string): string {
+	return path.join(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+}
 
 export function sourceControlFoldersExistCheck(folders: string[]): boolean {
 	// running these file access function synchronously to avoid race conditions

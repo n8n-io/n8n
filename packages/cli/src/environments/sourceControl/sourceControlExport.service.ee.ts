@@ -18,8 +18,13 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
-import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
-import type { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
+import {
+	getCredentialExportPath,
+	getVariablesPath,
+	getWorkflowExportPath,
+	sourceControlFoldersExistCheck,
+} from './sourceControlHelper.ee';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 @Service()
 export class SourceControlExportService {
@@ -40,11 +45,11 @@ export class SourceControlExportService {
 	}
 
 	getWorkflowPath(workflowId: string): string {
-		return path.join(this.workflowExportFolder, `${workflowId}.json`);
+		return getWorkflowExportPath(workflowId, this.workflowExportFolder);
 	}
 
 	getCredentialsPath(credentialsId: string): string {
-		return path.join(this.credentialExportFolder, `${credentialsId}.json`);
+		return getCredentialExportPath(credentialsId, this.credentialExportFolder);
 	}
 
 	getTagsPath(): string {
@@ -56,7 +61,7 @@ export class SourceControlExportService {
 	}
 
 	getVariablesPath(): string {
-		return path.join(this.gitFolder, SOURCE_CONTROL_VARIABLES_EXPORT_FILE);
+		return getVariablesPath(this.gitFolder);
 	}
 
 	async getWorkflowFromFile(
@@ -147,7 +152,10 @@ export class SourceControlExportService {
 		return deletedWorkflows;
 	}
 
-	private async writeExportableWorkflowsToExportFolder(workflowsToBeExported: WorkflowEntity[]) {
+	private async writeExportableWorkflowsToExportFolder(
+		workflowsToBeExported: WorkflowEntity[],
+		owners: Record<string, string>,
+	) {
 		await Promise.all(
 			workflowsToBeExported.map(async (e) => {
 				const fileName = this.getWorkflowPath(e.id);
@@ -159,6 +167,7 @@ export class SourceControlExportService {
 					settings: e.settings,
 					triggerCount: e.triggerCount,
 					versionId: e.versionId,
+					owner: owners[e.id],
 				};
 				LoggerProxy.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
@@ -180,14 +189,16 @@ export class SourceControlExportService {
 			});
 			const workflows = await Db.collections.Workflow.find();
 
-			// before exporting, figure out which workflows have been deleted and remove them from the export folder
-			const removedFiles = await this.rmDeletedWorkflowsFromExportFolder(workflows);
-			// write the workflows to the export folder as json files
-			await this.writeExportableWorkflowsToExportFolder(workflows);
 			// write list of owners to file
 			const ownersFileName = this.getOwnersPath();
 			const owners: Record<string, string> = {};
 			sharedWorkflows.forEach((e) => (owners[e.workflowId] = e.user.email));
+
+			// before exporting, figure out which workflows have been deleted and remove them from the export folder
+			const removedFiles = await this.rmDeletedWorkflowsFromExportFolder(workflows);
+			// write the workflows to the export folder as json files
+			await this.writeExportableWorkflowsToExportFolder(workflows, owners);
+
 			await fsWriteFile(ownersFileName, JSON.stringify(owners, null, 2));
 			return {
 				count: sharedWorkflows.length,

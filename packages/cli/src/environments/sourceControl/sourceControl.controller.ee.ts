@@ -21,6 +21,7 @@ import {
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPullResult,
 } from './sourceControlHelper.ee';
+import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
@@ -179,7 +180,7 @@ export class SourceControlController {
 				`${req.user.firstName} ${req.user.lastName}`,
 				req.user.email,
 			);
-			const result = await this.sourceControlService.pushWorkfolder(req.body);
+			const result = await this.sourceControlService.pushWorkfolder2(req.body);
 			if ('pushResult' in result && result.pushResult) {
 				void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
 					getTrackingInformationFromPostPushResult(result.diffResult),
@@ -204,7 +205,7 @@ export class SourceControlController {
 		res: express.Response,
 	): Promise<SourceControlledFile[] | ImportResult | PullResult | StatusResult | undefined> {
 		try {
-			const result = await this.sourceControlService.pullWorkfolder({
+			const result = await this.sourceControlService.pullWorkfolder2({
 				force: req.body.force,
 				variables: req.body.variables,
 				userId: req.user.id,
@@ -246,9 +247,12 @@ export class SourceControlController {
 
 	@Authorized('any')
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	async getStatus() {
+	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
-			const result = await this.sourceControlService.getStatus();
+			// const result = await this.sourceControlService.getStatus();
+			const result = (await this.sourceControlService.getStatus2(
+				new SourceControlGetStatus(req.body),
+			)) as SourceControlledFile[];
 			getTrackingInformationFromPrePushResult(result);
 			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
 				getTrackingInformationFromPrePushResult(result),
@@ -261,9 +265,9 @@ export class SourceControlController {
 
 	@Authorized('any')
 	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
-	async status(): Promise<StatusResult> {
+	async status(req: SourceControlRequest.GetStatus) {
 		try {
-			return await this.sourceControlService.status();
+			return await this.sourceControlService.getStatus2(new SourceControlGetStatus(req.body));
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

@@ -1,4 +1,5 @@
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import type { SourceControlledFile } from './sourceControlledFile';
 
 export class SourceControlPushWorkFolder {
 	@IsBoolean()
@@ -7,15 +8,15 @@ export class SourceControlPushWorkFolder {
 
 	@IsString({ each: true })
 	@IsOptional()
-	fileNames?: Set<string>;
+	fileNames?: SourceControlledFile[];
 
-	@IsString({ each: true })
-	@IsOptional()
-	workflowIds?: Set<string>;
+	// @IsString({ each: true })
+	// @IsOptional()
+	// workflowIds?: Set<string>;
 
-	@IsString({ each: true })
-	@IsOptional()
-	credentialIds?: Set<string>;
+	// @IsString({ each: true })
+	// @IsOptional()
+	// credentialIds?: Set<string>;
 
 	@IsString()
 	@IsOptional()

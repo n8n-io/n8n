@@ -202,7 +202,7 @@ async function onCommitKeyDownEnter() {
 }
 
 async function commitAndPush() {
-	const fileNames = files.value.filter((file) => staged.value[file.file]).map((file) => file.file);
+	const fileNames = files.value.filter((file) => staged.value[file.file]);
 
 	loadingService.startLoading(locale.baseText('settings.sourceControl.loading.push'));
 	close();
@@ -276,7 +276,7 @@ async function commitAndPush() {
 									<n8n-text v-if="file.status === 'deleted'" color="text-light">
 										<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
 										<span v-if="file.type === 'credential'"> Deleted Credential: </span>
-										<strong>{{ file.id }}</strong>
+										<strong>{{ file.name || file.id }}</strong>
 									</n8n-text>
 									<n8n-text bold v-else> {{ file.name }} </n8n-text>
 									<div v-if="file.updatedAt">

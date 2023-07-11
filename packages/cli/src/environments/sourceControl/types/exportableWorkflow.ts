@@ -8,4 +8,5 @@ export interface ExportableWorkflow {
 	settings?: IWorkflowSettings;
 	triggerCount: number;
 	versionId: string;
+	owner: string;
 }

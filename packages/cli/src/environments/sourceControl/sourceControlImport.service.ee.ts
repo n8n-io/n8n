@@ -25,6 +25,8 @@ import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
 import type { SourceControllPullOptions } from './types/sourceControlPullWorkFolder';
 import { In } from 'typeorm';
 import { isUniqueConstraintError } from '../../ResponseHelper';
+import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
+import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 
 @Service()
 export class SourceControlImportService {
@@ -248,6 +250,141 @@ export class SourceControlImportService {
 			return mappedTags;
 		}
 		return { tags: [], mappings: [] };
+	}
+
+	public async getRemoteVersionIdsFromFiles(): Promise<SourceControlWorkflowVersionId[]> {
+		const remoteWorkflowFiles = await glob('*.json', {
+			cwd: this.workflowExportFolder,
+			absolute: true,
+		});
+		const remoteWorkflowFilesParsed = await Promise.all(
+			remoteWorkflowFiles.map(async (file) => {
+				LoggerProxy.debug(`Parsing workflow file ${file}`);
+				const remote = jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
+				if (!remote?.id) {
+					return undefined;
+				}
+				return {
+					id: remote.id,
+					versionId: remote.versionId,
+					name: remote.name,
+					remoteId: remote.id,
+					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
+				} as SourceControlWorkflowVersionId;
+			}),
+		);
+		return remoteWorkflowFilesParsed.filter(
+			(e) => e !== undefined,
+		) as SourceControlWorkflowVersionId[];
+	}
+
+	public async getLocalVersionIdsFromDb(): Promise<SourceControlWorkflowVersionId[]> {
+		const localWorkflows = await Db.collections.Workflow.find({
+			select: ['id', 'name', 'versionId', 'updatedAt'],
+		});
+		return localWorkflows.map((local) => ({
+			id: local.id,
+			versionId: local.versionId,
+			name: local.name,
+			localId: local.id,
+			filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
+			updatedAt: local.updatedAt.toISOString(),
+		})) as SourceControlWorkflowVersionId[];
+	}
+
+	public async getRemoteCredentialsFromFiles(): Promise<
+		Array<ExportableCredential & { filename: string }>
+	> {
+		const remoteCredentialFiles = await glob('*.json', {
+			cwd: this.credentialExportFolder,
+			absolute: true,
+		});
+		const remoteCredentialFilesParsed = await Promise.all(
+			remoteCredentialFiles.map(async (file) => {
+				LoggerProxy.debug(`Parsing credential file ${file}`);
+				const remote = jsonParse<ExportableCredential>(
+					await fsReadFile(file, { encoding: 'utf8' }),
+				);
+				if (!remote?.id) {
+					return undefined;
+				}
+				return {
+					...remote,
+					filename: getCredentialExportPath(remote.id, this.credentialExportFolder),
+				};
+			}),
+		);
+		return remoteCredentialFilesParsed.filter((e) => e !== undefined) as Array<
+			ExportableCredential & { filename: string }
+		>;
+	}
+
+	public async getLocalCredentialsFromDb(): Promise<
+		Array<ExportableCredential & { filename: string }>
+	> {
+		const localCredentials = await Db.collections.Credentials.find({
+			select: ['id', 'name', 'type', 'nodesAccess'],
+		});
+		return localCredentials.map((local) => ({
+			id: local.id,
+			name: local.name,
+			type: local.type,
+			nodesAccess: local.nodesAccess,
+			filename: getCredentialExportPath(local.id, this.credentialExportFolder),
+		})) as Array<ExportableCredential & { filename: string }>;
+	}
+
+	public async getRemoteVariablesFromFile(): Promise<Variables[]> {
+		const variablesFile = await glob(SOURCE_CONTROL_VARIABLES_EXPORT_FILE, {
+			cwd: this.gitFolder,
+			absolute: true,
+		});
+		if (variablesFile.length > 0) {
+			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
+			return jsonParse<Variables[]>(await fsReadFile(variablesFile[0], { encoding: 'utf8' }), {
+				fallbackValue: [],
+			});
+		}
+		return [];
+	}
+
+	public async getLocalVariablesFromDb(): Promise<Variables[]> {
+		const localVariables = await Db.collections.Variables.find({
+			select: ['id', 'key', 'type', 'value'],
+		});
+		return localVariables;
+	}
+
+	public async getRemoteTagsAndMappingsFromFile(): Promise<{
+		tags: TagEntity[];
+		mappings: WorkflowTagMapping[];
+	}> {
+		const tagsFile = await glob(SOURCE_CONTROL_TAGS_EXPORT_FILE, {
+			cwd: this.gitFolder,
+			absolute: true,
+		});
+		if (tagsFile.length > 0) {
+			LoggerProxy.debug(`Importing tags from file ${tagsFile[0]}`);
+			const mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+				await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
+				{ fallbackValue: { tags: [], mappings: [] } },
+			);
+			return mappedTags;
+		}
+		return { tags: [], mappings: [] };
+	}
+
+	public async getLocalTagsAndMappingsFromDb(): Promise<{
+		tags: TagEntity[];
+		mappings: WorkflowTagMapping[];
+	}> {
+		const localTags = await Db.collections.Tag.find({
+			select: ['id', 'name'],
+		});
+		const localMappings = await Db.collections.WorkflowTagMapping.find({
+			select: ['workflowId', 'tagId'],
+		});
+		return { tags: localTags, mappings: localMappings };
 	}
 
 	private async importWorkflowsFromFiles(
