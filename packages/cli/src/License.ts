@@ -11,14 +11,14 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 } from './constants';
 import { Service } from 'typedi';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from './Interfaces';
 
-type FeatureReturnType = Partial<{
-	planName: string;
-	licenseCount: number;
-	[LICENSE_QUOTAS.USERS_LIMIT]: number;
-	[LICENSE_QUOTAS.VARIABLES_LIMIT]: number;
-	[LICENSE_QUOTAS.TRIGGER_LIMIT]: number;
-}>;
+type FeatureReturnType = Partial<
+	{
+		planName: string;
+		licenseCount: number;
+	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
+>;
 
 @Service()
 export class License {
@@ -104,12 +104,8 @@ export class License {
 		await this.manager.renew();
 	}
 
-	isFeatureEnabled(feature: LICENSE_FEATURES): boolean {
-		if (!this.manager) {
-			return false;
-		}
-
-		return this.manager.hasFeatureEnabled(feature);
+	isFeatureEnabled(feature: BooleanLicenseFeature) {
+		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
 	isSharingEnabled() {
