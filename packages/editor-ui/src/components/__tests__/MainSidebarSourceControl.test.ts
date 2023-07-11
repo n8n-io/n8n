@@ -12,7 +12,6 @@ import { useUsersStore, useSourceControlStore, useUIStore } from '@/stores';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
-let usersStore: ReturnType<typeof useUsersStore>;
 let uiStore: ReturnType<typeof useUIStore>;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
@@ -44,7 +43,6 @@ describe('MainSidebarSourceControl', () => {
 
 		sourceControlStore = useSourceControlStore();
 		uiStore = useUIStore();
-		usersStore = useUsersStore();
 	});
 
 	it('should render nothing', async () => {

@@ -19,6 +19,7 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { debounceHelper } from '@/mixins/debounce';
+import { useUIStore } from '@/stores';
 
 export default defineComponent({
 	name: 'BreakpointsObserver',
@@ -41,6 +42,7 @@ export default defineComponent({
 		},
 		onResizeEnd() {
 			this.$data.width = window.innerWidth;
+			useUIStore().updateBannersHeight();
 		},
 	},
 	computed: {
