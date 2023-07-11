@@ -2,7 +2,7 @@
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
 			<div :class="$style.icon" v-if="!iconless">
-				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
+				<n8n-icon :icon="getIcon" :size="getIconSize" />
 			</div>
 			<n8n-text size="small">
 				<slot />
@@ -43,6 +43,10 @@ export default defineComponent({
 		icon: {
 			type: String,
 		},
+		iconSize: {
+			type: String,
+			required: false,
+		},
 		iconless: {
 			type: Boolean,
 		},
@@ -73,6 +77,15 @@ export default defineComponent({
 			}
 
 			return CALLOUT_DEFAULT_ICONS.info;
+		},
+		getIconSize(): string {
+			if (this.iconSize) {
+				return this.iconSize;
+			}
+			if (this.theme === 'secondary') {
+				return 'medium';
+			}
+			return 'large';
 		},
 	},
 });
@@ -106,7 +119,7 @@ export default defineComponent({
 .info,
 .custom {
 	border-color: var(--color-foreground-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color-foreground-xlight);
 	color: var(--color-info);
 }
 

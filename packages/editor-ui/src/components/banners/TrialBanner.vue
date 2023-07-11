@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { BANNERS } from '@/constants';
+import { BANNERS, CLOUD_UPDATE_PLAN_LINK } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { computed } from 'vue';
 
@@ -11,7 +11,7 @@ const trialDaysLeft = computed(() => {
 });
 
 function onUpdatePlanClick() {
-	window.location.href = '/account/change-plan';
+	window.location.href = CLOUD_UPDATE_PLAN_LINK;
 }
 
 function messageText() {
@@ -25,12 +25,12 @@ function messageText() {
 </script>
 
 <template>
-	<base-banner :name="BANNERS.TRIAL">
+	<base-banner :name="BANNERS.TRIAL" theme="custom">
 		<template #mainContent>
 			<span>{{ messageText() }}</span>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" @click="onUpdatePlanClick" icon="gem">{{
+			<n8n-button type="success" @click="onUpdatePlanClick" icon="gem" size="small">{{
 				locale.baseText('generic.upgradeNow')
 			}}</n8n-button>
 		</template>

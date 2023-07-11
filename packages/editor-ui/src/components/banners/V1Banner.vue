@@ -24,13 +24,14 @@ async function dismissPermanently() {
 				@click="dismissPermanently"
 				data-test-id="banner-confirm-v1"
 			>
-				<span v-html="locale.baseText('generic.confirm')"></span>
+				<span v-html="locale.baseText('generic.dontShowAgain')"></span>
 			</a>
 		</template>
 	</base-banner>
 </template>
 
 <style lang="scss" module>
+a,
 .link {
 	font-weight: bold;
 	text-decoration: underline;
