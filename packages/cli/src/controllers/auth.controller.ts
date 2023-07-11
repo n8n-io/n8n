@@ -3,7 +3,7 @@ import { Authorized, Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
@@ -156,10 +156,14 @@ export class AuthController {
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
-		const isWithinUsersQuota = Container.get(License).isWithinUsersLimit();
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
-		if (!isWithinUsersQuota) {
-			throw new AuthError('Maximum number of users reached');
+		if (!isWithinUsersLimit) {
+			this.logger.debug('Request to resolve signup token failed because of users quota reached', {
+				inviterId,
+				inviteeId,
+			});
+			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!inviterId || !inviteeId) {

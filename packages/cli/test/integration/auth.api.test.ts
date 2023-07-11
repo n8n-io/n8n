@@ -314,13 +314,16 @@ describe('GET /resolve-signup-token', () => {
 		});
 	});
 
-	test('should return 400 if UM is disabled', async () => {
-		await testDb.createUser({ globalRole: globalMemberRole });
+	test('should return 400 if user quota reached', async () => {
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		const memberShell = await testDb.createUserShell(globalMemberRole);
 
 		const response = await authOwnerAgent
 			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id });
-		expect(response.statusCode).toBe(400);
+			.query({ inviterId: owner.id })
+			.query({ inviteeId: memberShell.id });
+
+		expect(response.statusCode).toBe(401);
 	});
 
 	test('should fail with invalid inputs', async () => {

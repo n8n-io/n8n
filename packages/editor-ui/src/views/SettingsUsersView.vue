@@ -9,7 +9,7 @@
 					</template>
 					<div>
 						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isWithinUserQuota"
+							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
 							:label="$locale.baseText('settings.users.invite')"
 							@click="onInvite"
 							size="large"
@@ -19,7 +19,7 @@
 				</n8n-tooltip>
 			</div>
 		</div>
-		<div v-if="!settingsStore.isWithinUserQuota" :class="$style.setupInfoContainer">
+		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
@@ -39,7 +39,7 @@
 		-->
 		<div
 			:class="$style.usersContainer"
-			v-if="settingsStore.isWithinUserQuota || usersStore.allUsers.length > 1"
+			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
 		>
 			<n8n-users-list
 				:actions="usersListActions"
@@ -108,13 +108,13 @@ export default defineComponent({
 					label: this.$locale.baseText('settings.users.actions.copyInviteLink'),
 					value: 'copyInviteLink',
 					guard: (user) =>
-						this.settingsStore.isWithinUserQuota && !user.firstName && !!user.inviteAcceptUrl,
+						this.settingsStore.isBelowUserQuota && !user.firstName && !!user.inviteAcceptUrl,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.reinvite'),
 					value: 'reinvite',
 					guard: (user) =>
-						this.settingsStore.isWithinUserQuota &&
+						this.settingsStore.isBelowUserQuota &&
 						!user.firstName &&
 						this.settingsStore.isSmtpSetup,
 				},
@@ -125,7 +125,7 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
 					value: 'copyPasswordResetLink',
-					guard: () => this.settingsStore.isWithinUserQuota,
+					guard: () => this.settingsStore.isBelowUserQuota,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),

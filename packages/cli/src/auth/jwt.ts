@@ -15,7 +15,7 @@ import { Container } from 'typedi';
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
 	const expiresIn = 7 * 86400000; // 7 days
-	const isWithinUsersQuota = Container.get(License).isWithinUsersLimit();
+	const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
 	const payload: JwtPayload = {
 		id,
@@ -26,9 +26,9 @@ export function issueJWT(user: User): JwtToken {
 	if (
 		config.getEnv('userManagement.isInstanceOwnerSetUp') &&
 		!user.isOwner &&
-		!isWithinUsersQuota
+		!isWithinUsersLimit
 	) {
-		throw new ResponseHelper.BadRequestError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		throw new ResponseHelper.AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 	}
 	if (password) {
 		payload.password = createHash('sha256')

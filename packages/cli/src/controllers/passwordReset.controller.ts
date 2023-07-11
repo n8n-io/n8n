@@ -2,6 +2,7 @@ import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import {
+	AuthError,
 	BadRequestError,
 	InternalServerError,
 	NotFoundError,
@@ -107,7 +108,10 @@ export class PasswordResetController {
 		});
 
 		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
-			throw new BadRequestError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			this.logger.debug(
+				'Request to send password reset email failed because the user limit was reached',
+			);
+			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
@@ -196,7 +200,11 @@ export class PasswordResetController {
 			relations: ['globalRole'],
 		});
 		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
-			throw new BadRequestError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			this.logger.debug(
+				'Request to resolve password token failed because the user limit was reached',
+				{ userId: id },
+			);
+			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 		if (!user) {
 			this.logger.debug(
@@ -241,7 +249,7 @@ export class PasswordResetController {
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
 			},
-			relations: ['authIdentities', 'globalRole'],
+			relations: ['authIdentities'],
 		});
 
 		if (!user) {

@@ -85,5 +85,6 @@ export const LICENSE_QUOTAS = {
 	VARIABLES_LIMIT: 'quota:maxVariables',
 	USERS_LIMIT: 'quota:users',
 } as const;
+export const UNLIMITED_LICENSE_QUOTA = -1;
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';

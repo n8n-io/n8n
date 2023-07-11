@@ -17,7 +17,7 @@ import {
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
-import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import { BadRequestError, InternalServerError, NotFoundError, AuthError } from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
 import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
@@ -43,6 +43,7 @@ import { UserService } from '@/user/user.service';
 import { plainToInstance } from 'class-transformer';
 import { License } from '@/License';
 import { Container } from 'typedi';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -109,7 +110,7 @@ export class UsersController {
 	 */
 	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
-		const isWithinUsersQuota = Container.get(License).isWithinUsersLimit();
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
@@ -120,13 +121,11 @@ export class UsersController {
 			);
 		}
 
-		if (!isWithinUsersQuota) {
+		if (!isWithinUsersLimit) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
-			throw new BadRequestError(
-				'You have reached the maximum number of users allowed for your plan.',
-			);
+			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -564,15 +563,13 @@ export class UsersController {
 	@Post('/:id/reinvite')
 	async reinviteUser(req: UserRequest.Reinvite) {
 		const { id: idToReinvite } = req.params;
-		const isWithinUsersQuota = Container.get(License).isWithinUsersLimit();
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
-		if (!isWithinUsersQuota) {
+		if (!isWithinUsersLimit) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
 			);
-			throw new BadRequestError(
-				'You have reached the maximum number of users allowed for your plan.',
-			);
+			throw new AuthError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!isEmailSetUp()) {

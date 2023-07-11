@@ -9,6 +9,7 @@ import {
 	LICENSE_QUOTAS,
 	N8N_VERSION,
 	SETTINGS_LICENSE_CERT_KEY,
+	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import { Service } from 'typedi';
 import type { BooleanLicenseFeature, NumericLicenseFeature } from './Interfaces';
@@ -16,7 +17,6 @@ import type { BooleanLicenseFeature, NumericLicenseFeature } from './Interfaces'
 type FeatureReturnType = Partial<
 	{
 		planName: string;
-		licenseCount: number;
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
@@ -174,16 +174,16 @@ export class License {
 	}
 
 	// Helper functions for computed data
-	getUsersLimit(): number {
-		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) ?? -1;
+	getUsersLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
-	getTriggerLimit(): number {
-		return this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? -1;
+	getTriggerLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
-	getVariablesLimit(): number {
-		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1;
+	getVariablesLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getPlanName(): string {
@@ -198,8 +198,7 @@ export class License {
 		return this.manager.toString();
 	}
 
-	isWithinUsersLimit(): boolean {
-		// -1 -> no limit
-		return this.getUsersLimit() === -1;
+	isWithinUsersLimit() {
+		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
 	}
 }

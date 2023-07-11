@@ -170,7 +170,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isDefaultAuthenticationSaml(): boolean {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
 		},
-		isWithinUserQuota(): boolean {
+		isBelowUserQuota(): boolean {
 			const userStore = useUsersStore();
 			return (
 				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
