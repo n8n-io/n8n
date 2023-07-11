@@ -9,7 +9,7 @@ const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
 const MOCK_ACTIVATION_KEY = 'activation-key';
-const MOCK_FEATURE_FLAG = 'planName';
+const MOCK_FEATURE_FLAG = 'feat:sharing';
 const MOCK_MAIN_PLAN_ID = '1b765dc4-d39d-4ffe-9885-c56dd67c4b26';
 
 describe('License', () => {

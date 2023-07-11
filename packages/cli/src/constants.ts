@@ -69,16 +69,16 @@ export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
-export const enum LICENSE_FEATURES {
-	SHARING = 'feat:sharing',
-	LDAP = 'feat:ldap',
-	SAML = 'feat:saml',
-	LOG_STREAMING = 'feat:logStreaming',
-	ADVANCED_EXECUTION_FILTERS = 'feat:advancedExecutionFilters',
-	VARIABLES = 'feat:variables',
-	SOURCE_CONTROL = 'feat:sourceControl',
-	API_DISABLED = 'feat:apiDisabled',
-}
+export const LICENSE_FEATURES = {
+	SHARING: 'feat:sharing',
+	LDAP: 'feat:ldap',
+	SAML: 'feat:saml',
+	LOG_STREAMING: 'feat:logStreaming',
+	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
+	VARIABLES: 'feat:variables',
+	SOURCE_CONTROL: 'feat:sourceControl',
+	API_DISABLED: 'feat:apiDisabled',
+} as const;
 
 export const LICENSE_QUOTAS = {
 	TRIGGER_LIMIT: 'quota:activeWorkflows',
