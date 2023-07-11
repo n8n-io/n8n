@@ -6,7 +6,7 @@ type NodeMap = {
 		| 'create'
 		| 'executeResponder'
 		| 'get'
-		| 'getMany'
+		| 'search'
 		| 'status'
 		| 'merge'
 		| 'promote'
@@ -18,7 +18,7 @@ type NodeMap = {
 		| 'deleteAttachment'
 		| 'executeResponder'
 		| 'get'
-		| 'getMany'
+		| 'search'
 		| 'getAttachment'
 		| 'getTimeline'
 		| 'update';

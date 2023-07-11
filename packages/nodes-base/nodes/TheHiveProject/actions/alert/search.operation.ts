@@ -12,8 +12,8 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['case'],
-		operation: ['getMany'],
+		resource: ['alert'],
+		operation: ['search'],
 	},
 };
 
@@ -33,7 +33,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	responseData = await theHiveApiQuery.call(
 		this,
-		{ query: 'listCase' },
+		{ query: 'listAlert' },
 		filtersValues,
 		sortFields,
 		limit,

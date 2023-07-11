@@ -4,13 +4,13 @@ import * as count from './count.operation';
 import * as create from './create.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
-import * as getMany from './getMany.operation';
+import * as search from './search.operation';
 import * as status from './status.operation';
 import * as merge from './merge.operation';
 import * as promote from './promote.operation';
 import * as update from './update.operation';
 
-export { count, create, executeResponder, get, getMany, status, merge, promote, update };
+export { count, create, executeResponder, get, search, status, merge, promote, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -41,11 +41,6 @@ export const description: INodeProperties[] = [
 				action: 'Get an alert',
 			},
 			{
-				name: 'Get Many',
-				value: 'getMany',
-				action: 'Get many alerts',
-			},
-			{
 				name: 'Merge Into Case',
 				value: 'merge',
 				action: 'Merge alert into an existing case',
@@ -54,6 +49,11 @@ export const description: INodeProperties[] = [
 				name: 'Promote to Case',
 				value: 'promote',
 				action: 'Promote an alert into a case',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search alerts',
 			},
 			{
 				name: 'Update',
@@ -77,7 +77,7 @@ export const description: INodeProperties[] = [
 	...create.description,
 	...executeResponder.description,
 	...get.description,
-	...getMany.description,
+	...search.description,
 	...status.description,
 	...merge.description,
 	...promote.description,

@@ -7,7 +7,7 @@ import * as deleteAttachment from './deleteAttachment.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as getAttachment from './getAttachment.operation';
-import * as getMany from './getMany.operation';
+import * as search from './search.operation';
 import * as getTimeline from './getTimeline.operation';
 import * as update from './update.operation';
 
@@ -18,7 +18,7 @@ export {
 	deleteAttachment,
 	executeResponder,
 	get,
-	getMany,
+	search,
 	getAttachment,
 	getTimeline,
 	update,
@@ -69,14 +69,14 @@ export const description: INodeProperties[] = [
 				action: 'Get attachment from the case',
 			},
 			{
-				name: 'Get Many',
-				value: 'getMany',
-				action: 'Get many cases',
-			},
-			{
 				name: 'Get Timeline',
 				value: 'getTimeline',
 				action: 'Get the timeline of a case',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search cases',
 			},
 			{
 				name: 'Update',
@@ -97,7 +97,7 @@ export const description: INodeProperties[] = [
 	...executeResponder.description,
 	...get.description,
 	...getAttachment.description,
-	...getMany.description,
+	...search.description,
 	...getTimeline.description,
 	...update.description,
 ];
