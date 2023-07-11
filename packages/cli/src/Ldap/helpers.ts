@@ -36,7 +36,7 @@ import { InternalServerError } from '../ResponseHelper';
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
-export const isLdapEnabled = (): boolean => {
+export const isLdapEnabled = () => {
 	return Container.get(License).isLdapEnabled();
 };
 
