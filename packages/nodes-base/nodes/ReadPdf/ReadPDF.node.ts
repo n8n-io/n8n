@@ -71,14 +71,22 @@ export class ReadPDF implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
-				this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+				const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
-				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-					itemIndex,
-					binaryPropertyName,
-				);
-				const password = this.getNodeParameter('password', itemIndex) as string;
-				const document = await readPDF({ data: binaryDataBuffer.buffer, password }).promise;
+				const params: { password: string; url?: URL; data?: ArrayBuffer } = {
+					password: this.getNodeParameter('password', itemIndex) as string,
+				};
+
+				if (binaryData.id) {
+					const binaryPath = this.helpers.getBinaryPath(binaryData.id);
+					params.url = new URL(`file://${binaryPath}`);
+				} else {
+					params.data = (
+						await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName)
+					).buffer;
+				}
+
+				const document = await readPDF(params).promise;
 				const { info, metadata } = await document
 					.getMetadata()
 					.catch(() => ({ info: null, metadata: null }));
