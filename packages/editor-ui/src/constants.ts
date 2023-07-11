@@ -574,5 +574,3 @@ export const enum BANNERS {
 	TRIAL_OVER = 'TRIAL_OVER',
 	TRIAL = 'TRIAL',
 }
-
-export const CLOUD_UPDATE_PLAN_LINK = 'https://app.n8n.cloud/account/change-plan';

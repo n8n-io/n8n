@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { BANNERS, CLOUD_UPDATE_PLAN_LINK } from '@/constants';
+import { BANNERS } from '@/constants';
+import { useUIStore } from '@/stores';
 
 function onUpdatePlanClick() {
-	window.location.href = CLOUD_UPDATE_PLAN_LINK;
+	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 

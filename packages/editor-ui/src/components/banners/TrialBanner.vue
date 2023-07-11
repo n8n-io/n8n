@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { BANNERS, CLOUD_UPDATE_PLAN_LINK } from '@/constants';
+import { BANNERS } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { computed } from 'vue';
+import { useUIStore } from '@/stores';
 
 const trialDaysLeft = computed(() => {
 	const { trialDaysLeft } = useCloudPlanStore();
@@ -11,7 +12,7 @@ const trialDaysLeft = computed(() => {
 });
 
 function onUpdatePlanClick() {
-	window.location.href = CLOUD_UPDATE_PLAN_LINK;
+	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 
 function messageText() {
