@@ -169,6 +169,34 @@ export async function getCaseAttachments(
 	return returnData;
 }
 
+export async function getLogAttachments(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const logId = this.getNodeParameter('logId', '', { extractValue: true }) as string;
+
+	const body = {
+		query: [
+			{
+				_name: 'getLog',
+				idOrName: logId,
+			},
+		],
+	};
+
+	// extract log object from array
+	const [response] = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+
+	for (const entry of (response.attachments as IDataObject[]) || []) {
+		returnData.push({
+			name: entry.name as string,
+			value: entry._id as string,
+			description: `Content-Type: ${entry.contentType}`,
+		});
+	}
+	return returnData;
+}
+
 export async function loadAlertStatus(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {

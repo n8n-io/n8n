@@ -72,3 +72,27 @@ export async function alertSearch(
 ): Promise<INodeListSearchResult> {
 	return listResource.call(this, 'listAlert', 'title', 'title', 'alerts', filter, paginationToken);
 }
+
+export async function taskSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return listResource.call(this, 'listTask', 'title', 'title', undefined, filter, paginationToken);
+}
+
+export async function logSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return listResource.call(
+		this,
+		'listLog',
+		'message',
+		'message',
+		undefined,
+		filter,
+		paginationToken,
+	);
+}

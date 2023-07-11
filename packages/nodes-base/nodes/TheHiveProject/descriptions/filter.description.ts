@@ -283,7 +283,7 @@ const field: INodeProperties[] = [
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',
-		default: 'title',
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'loadAlertFields',
 		},
@@ -300,7 +300,7 @@ const field: INodeProperties[] = [
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',
-		default: 'title',
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'loadCaseFields',
 		},
@@ -317,7 +317,7 @@ const field: INodeProperties[] = [
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',
-		default: 'title',
+		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'loadTaskFields',
 		},

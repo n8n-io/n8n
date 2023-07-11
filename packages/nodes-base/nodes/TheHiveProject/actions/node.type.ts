@@ -23,7 +23,7 @@ type NodeMap = {
 		| 'getTimeline'
 		| 'update';
 	comment: 'add' | 'deleteComment' | 'update';
-	log: 'create' | 'executeResponder' | 'get' | 'getMany';
+	log: 'addAttachment' | 'create' | 'deleteAttachment' | 'executeResponder' | 'get' | 'search';
 	observable:
 		| 'count'
 		| 'create'

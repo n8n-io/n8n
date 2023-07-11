@@ -11,7 +11,7 @@ export const caseRLC: INodeProperties = {
 			displayName: 'From List',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a file...',
+			placeholder: 'Select a case...',
 			typeOptions: {
 				searchListMethod: 'caseSearch',
 				searchable: true,
@@ -64,7 +64,7 @@ export const alertRLC: INodeProperties = {
 			displayName: 'From List',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a file...',
+			placeholder: 'Select a alert...',
 			typeOptions: {
 				searchListMethod: 'alertSearch',
 				searchable: true,
@@ -99,6 +99,76 @@ export const alertRLC: INodeProperties = {
 					properties: {
 						regex: '(~[0-9]{1,})',
 						errorMessage: 'Not a valid Alert ID',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const taskRLC: INodeProperties = {
+	displayName: 'Task',
+	name: 'taskId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a task...',
+			typeOptions: {
+				searchListMethod: 'taskSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. ~123456789',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '(~[0-9]{1,})',
+						errorMessage: 'Not a valid Task ID',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const logRLC: INodeProperties = {
+	displayName: 'Log',
+	name: 'logId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a log...',
+			typeOptions: {
+				searchListMethod: 'logSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. ~123456789',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '(~[0-9]{1,})',
+						errorMessage: 'Not a valid Log ID',
 					},
 				},
 			],

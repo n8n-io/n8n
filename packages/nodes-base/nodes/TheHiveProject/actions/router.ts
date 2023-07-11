@@ -40,7 +40,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					executionData = await comment[theHiveNodeData.operation].execute.call(this, i);
 					break;
 				case 'log':
-					executionData = await log[theHiveNodeData.operation].execute.call(this, i);
+					executionData = await log[theHiveNodeData.operation].execute.call(this, i, items[i]);
 					break;
 				case 'observable':
 					executionData = await observable[theHiveNodeData.operation].execute.call(this, i);

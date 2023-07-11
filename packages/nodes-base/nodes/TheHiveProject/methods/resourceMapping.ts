@@ -317,3 +317,40 @@ export async function getTaskUpdateFields(
 
 	return columnData;
 }
+
+export async function getLogFields(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
+	const fields: ResourceMapperField[] = [
+		{
+			displayName: 'Message',
+			id: 'message',
+			required: true,
+			display: true,
+			type: 'string',
+			defaultMatch: true,
+		},
+		{
+			displayName: 'Start Date',
+			id: 'startDate',
+			required: false,
+			display: true,
+			type: 'dateTime',
+			defaultMatch: false,
+			removed: true,
+		},
+		{
+			displayName: 'Include In Timeline',
+			id: 'includeInTimeline',
+			required: false,
+			display: true,
+			type: 'dateTime',
+			defaultMatch: false,
+			removed: true,
+		},
+	];
+
+	const columnData: ResourceMapperFields = {
+		fields,
+	};
+
+	return columnData;
+}

@@ -1,76 +1,40 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { observableStatusOptions } from '../../descriptions';
+
 import { theHiveApiRequest } from '../../transport';
 
+import { fixFieldType } from '../../helpers/utils';
+import { taskRLC } from '../../descriptions';
+
 const properties: INodeProperties[] = [
+	taskRLC,
 	{
-		displayName: 'Task ID',
-		name: 'taskId',
-		type: 'string',
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
 		required: true,
-		default: '',
-		description: 'ID of the task',
-	},
-	{
-		displayName: 'Message',
-		name: 'message',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'Content of the Log',
 		typeOptions: {
-			rows: 2,
+			resourceMapper: {
+				resourceMapperMethod: 'getLogFields',
+				mode: 'add',
+				valuesLabel: 'Fields',
+			},
 		},
 	},
 	{
-		displayName: 'Start Date',
-		name: 'startDate',
-		type: 'dateTime',
-		required: true,
+		displayName: 'Attachments',
+		name: 'attachments',
+		type: 'string',
+		placeholder: '“e.g. data, data2',
 		default: '',
-		description: 'Date of the log submission default=now',
-	},
-	{
-		...observableStatusOptions,
-		required: true,
-		description: 'Status of the log (Ok or Deleted) default=Ok',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		default: {},
-		placeholder: 'Add Option',
-		options: [
-			{
-				displayName: 'Attachment',
-				name: 'attachmentValues',
-				placeholder: 'Add Attachment',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: false,
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Attachment',
-						name: 'attachmentValues',
-						values: [
-							{
-								displayName: 'Binary Property',
-								name: 'binaryProperty',
-								type: 'string',
-								default: 'data',
-								description: 'Object property name which holds binary data',
-							},
-						],
-					},
-				],
-				description: 'File attached to the log',
-			},
-		],
+		description:
+			'The names of the fields in a input item which contain the binary data to be send as attachments',
 	},
 ];
 
@@ -83,55 +47,70 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
+	let body: IDataObject = {};
 
-	const taskId = this.getNodeParameter('taskId', i) as string;
+	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const taskId = this.getNodeParameter('taskId', i, '', { extractValue: true }) as string;
+	const attachments = this.getNodeParameter('attachments', i, '') as string;
 
-	let body: IDataObject = {
-		message: this.getNodeParameter('message', i),
-		startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
-		status: this.getNodeParameter('status', i),
-	};
-	const optionals = this.getNodeParameter('options', i);
-
-	let options: IDataObject = {};
-
-	if (optionals.attachementUi) {
-		const attachmentValues = (optionals.attachementUi as IDataObject)
-			.attachmentValues as IDataObject;
-
-		if (attachmentValues) {
-			const binaryPropertyName = attachmentValues.binaryProperty as string;
-			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
-			options = {
-				formData: {
-					attachment: {
-						value: dataBuffer,
-						options: {
-							contentType: binaryData.mimeType,
-							filename: binaryData.fileName,
-						},
-					},
-					_json: JSON.stringify(body),
-				},
-			};
-
-			body = {};
-		}
+	if (dataMode === 'autoMapInputData') {
+		body = item.json;
 	}
 
-	responseData = await theHiveApiRequest.call(
-		this,
-		'POST',
-		`/case/task/${taskId}/log`,
-		body,
-		undefined,
-		undefined,
-		options,
-	);
+	if (dataMode === 'defineBelow') {
+		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
+		body = fields;
+	}
+
+	body = fixFieldType(body);
+
+	if (attachments) {
+		const inputDataFields = attachments
+			.split(',')
+			.filter((field) => field)
+			.map((field) => field.trim());
+
+		const binaries = [];
+
+		for (const inputDataField of inputDataFields) {
+			const binaryData = this.helpers.assertBinaryData(i, inputDataField);
+			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, inputDataField);
+
+			binaries.push({
+				value: dataBuffer,
+				options: {
+					contentType: binaryData.mimeType,
+					filename: binaryData.fileName,
+				},
+			});
+		}
+
+		responseData = await theHiveApiRequest.call(
+			this,
+			'POST',
+			`/v1/task/${taskId}/log`,
+			undefined,
+			undefined,
+			undefined,
+			{
+				Headers: {
+					'Content-Type': 'multipart/form-data',
+				},
+				formData: {
+					attachments: binaries,
+					_json: JSON.stringify(body),
+				},
+			},
+		);
+	} else {
+		responseData = await theHiveApiRequest.call(this, 'POST', `/v1/task/${taskId}/log`, body);
+	}
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

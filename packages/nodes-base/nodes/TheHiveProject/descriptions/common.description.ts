@@ -158,7 +158,7 @@ export const caseStatusOptions: INodeProperties = {
 
 export const observableStatusOptions: INodeProperties = {
 	displayName: 'Status',
-	name: 'Status',
+	name: 'status',
 	type: 'options',
 	default: 'Ok',
 	options: [
