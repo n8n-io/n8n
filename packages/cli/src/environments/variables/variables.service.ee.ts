@@ -1,10 +1,10 @@
-import type { Variables } from '@/databases/entities/Variables';
+import { Container } from 'typedi';
+import type { Variables } from '@db/entities/Variables';
 import { collections } from '@/Db';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
+import { generateNanoId } from '@db/utils/generators';
 import { canCreateNewVariable } from './enviromentHelpers';
 import { VariablesService } from './variables.service';
-import { generateNanoId } from '../../databases/utils/generators';
 
 export class VariablesLicenseError extends Error {}
 export class VariablesValidationError extends Error {}

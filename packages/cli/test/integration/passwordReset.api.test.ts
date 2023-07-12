@@ -1,4 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import { compare } from 'bcryptjs';
 
@@ -6,7 +5,7 @@ import * as Db from '@/Db';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -22,28 +21,19 @@ jest.mock('@/UserManagement/email/NodeMailer');
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
-let authlessAgent: SuperAgentTest;
+
 const externalHooks = utils.mockInstance(ExternalHooks);
+const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
 
 beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['passwordReset'] });
-
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
-
-	authlessAgent = utils.createAgent(app);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 	externalHooks.run.mockReset();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('POST /forgot-password', () => {
@@ -57,7 +47,7 @@ describe('POST /forgot-password', () => {
 
 		await Promise.all(
 			[{ email: owner.email }, { email: member.email.toUpperCase() }].map(async (payload) => {
-				const response = await authlessAgent.post('/forgot-password').send(payload);
+				const response = await testServer.authlessAgent.post('/forgot-password').send(payload);
 
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual({});
@@ -72,7 +62,10 @@ describe('POST /forgot-password', () => {
 	test('should fail if emailing is not set up', async () => {
 		config.set('userManagement.emails.mode', '');
 
-		await authlessAgent.post('/forgot-password').send({ email: owner.email }).expect(500);
+		await testServer.authlessAgent
+			.post('/forgot-password')
+			.send({ email: owner.email })
+			.expect(500);
 
 		const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
 		expect(storedOwner.resetPasswordToken).toBeNull();
@@ -86,7 +79,10 @@ describe('POST /forgot-password', () => {
 			globalRole: globalMemberRole,
 		});
 
-		await authlessAgent.post('/forgot-password').send({ email: member.email }).expect(403);
+		await testServer.authlessAgent
+			.post('/forgot-password')
+			.send({ email: member.email })
+			.expect(403);
 
 		const storedOwner = await Db.collections.User.findOneByOrFail({ email: member.email });
 		expect(storedOwner.resetPasswordToken).toBeNull();
@@ -97,7 +93,9 @@ describe('POST /forgot-password', () => {
 		await setCurrentAuthenticationMethod('saml');
 		config.set('userManagement.emails.mode', 'smtp');
 
-		const response = await authlessAgent.post('/forgot-password').send({ email: owner.email });
+		const response = await testServer.authlessAgent
+			.post('/forgot-password')
+			.send({ email: owner.email });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({});
@@ -118,21 +116,21 @@ describe('POST /forgot-password', () => {
 			[{ email: randomName() }],
 		];
 
-		await Promise.all(
-			invalidPayloads.map(async (invalidPayload) => {
-				const response = await authlessAgent.post('/forgot-password').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
+		for (const invalidPayload of invalidPayloads) {
+			const response = await testServer.authlessAgent.post('/forgot-password').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-				const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
-				expect(storedOwner.resetPasswordToken).toBeNull();
-			}),
-		);
+			const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
+			expect(storedOwner.resetPasswordToken).toBeNull();
+		}
 	});
 
 	test('should fail if user is not found', async () => {
 		config.set('userManagement.emails.mode', 'smtp');
 
-		const response = await authlessAgent.post('/forgot-password').send({ email: randomEmail() });
+		const response = await testServer.authlessAgent
+			.post('/forgot-password')
+			.send({ email: randomEmail() });
 
 		expect(response.statusCode).toBe(200); // expect 200 to remain vague
 	});
@@ -152,7 +150,7 @@ describe('GET /resolve-password-token', () => {
 			resetPasswordTokenExpiration,
 		});
 
-		const response = await authlessAgent
+		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
 			.query({ userId: owner.id, token: resetPasswordToken });
 
@@ -160,9 +158,13 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		const first = await authlessAgent.get('/resolve-password-token').query({ token: uuid() });
+		const first = await testServer.authlessAgent
+			.get('/resolve-password-token')
+			.query({ token: uuid() });
 
-		const second = await authlessAgent.get('/resolve-password-token').query({ userId: owner.id });
+		const second = await testServer.authlessAgent
+			.get('/resolve-password-token')
+			.query({ userId: owner.id });
 
 		for (const response of [first, second]) {
 			expect(response.statusCode).toBe(400);
@@ -170,7 +172,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if user is not found', async () => {
-		const response = await authlessAgent
+		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
 			.query({ userId: owner.id, token: uuid() });
 
@@ -186,7 +188,7 @@ describe('GET /resolve-password-token', () => {
 			resetPasswordTokenExpiration,
 		});
 
-		const response = await authlessAgent
+		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
 			.query({ userId: owner.id, token: resetPasswordToken });
 
@@ -206,7 +208,7 @@ describe('POST /change-password', () => {
 			resetPasswordTokenExpiration,
 		});
 
-		const response = await authlessAgent.post('/change-password').send({
+		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
 			userId: owner.id,
 			password: passwordToStore,
@@ -258,15 +260,15 @@ describe('POST /change-password', () => {
 			},
 		];
 
-		await Promise.all(
-			invalidPayloads.map(async (invalidPayload) => {
-				const response = await authlessAgent.post('/change-password').query(invalidPayload);
-				expect(response.statusCode).toBe(400);
+		for (const invalidPayload of invalidPayloads) {
+			const response = await testServer.authlessAgent
+				.post('/change-password')
+				.query(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-				const { password: storedPassword } = await Db.collections.User.findOneByOrFail({});
-				expect(owner.password).toBe(storedPassword);
-			}),
-		);
+			const { password: storedPassword } = await Db.collections.User.findOneByOrFail({});
+			expect(owner.password).toBe(storedPassword);
+		}
 	});
 
 	test('should fail when token has expired', async () => {
@@ -277,7 +279,7 @@ describe('POST /change-password', () => {
 			resetPasswordTokenExpiration,
 		});
 
-		const response = await authlessAgent.post('/change-password').send({
+		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
 			userId: owner.id,
 			password: passwordToStore,
