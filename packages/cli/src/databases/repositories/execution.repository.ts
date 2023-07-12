@@ -240,7 +240,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async deleteExecution(executionId: string) {
 		// TODO: Should this be awaited? Should we add a catch in case it fails?
-		await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(executionId);
+		await BinaryDataManager.getInstance().deleteBinaryDataByExecutionIds([executionId]);
 		return this.delete({ id: executionId });
 	}
 
@@ -392,17 +392,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		const idsToDelete = executions.map(({ id }) => id);
-
+		const executionIds = executions.map(({ id }) => id);
 		const binaryDataManager = BinaryDataManager.getInstance();
-		await Promise.all(
-			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-		);
+		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
 
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = idsToDelete.splice(0, 500);
+			const batch = executionIds.splice(0, 500);
 			await this.delete(batch);
-		} while (idsToDelete.length > 0);
+		} while (executionIds.length > 0);
 	}
 }
