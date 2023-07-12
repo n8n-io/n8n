@@ -3,6 +3,7 @@ import type { Application } from 'express';
 import type { User } from '@/databases/entities/User';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
+import config from '@/config';
 
 import type { AuthAgent } from './shared/types';
 import { License } from '@/License';
@@ -16,6 +17,7 @@ let variablesSpy: jest.SpyInstance<boolean>;
 const licenseLike = {
 	isVariablesEnabled: jest.fn().mockReturnValue(true),
 	getVariablesLimit: jest.fn().mockReturnValue(-1),
+	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 };
 
 beforeAll(async () => {
@@ -28,6 +30,7 @@ beforeAll(async () => {
 	memberUser = await testDb.createUser();
 
 	authAgent = utils.createAuthAgent(app);
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 beforeEach(async () => {
