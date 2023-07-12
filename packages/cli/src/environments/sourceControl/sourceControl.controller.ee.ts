@@ -10,7 +10,7 @@ import type { SourceControlPreferences } from './types/sourceControlPreferences'
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { BadRequestError } from '@/ResponseHelper';
-import type { PullResult, PushResult, StatusResult } from 'simple-git';
+import type { PullResult } from 'simple-git';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
 import Container from 'typedi';
@@ -168,10 +168,7 @@ export class SourceControlController {
 	async pushWorkfolder(
 		req: SourceControlRequest.PushWorkFolder,
 		res: express.Response,
-	): Promise<
-		| { pushResult: PushResult; diffResult: SourceControlledFile[] | undefined }
-		| SourceControlledFile[]
-	> {
+	): Promise<SourceControlledFile[]> {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
@@ -180,19 +177,19 @@ export class SourceControlController {
 				`${req.user.firstName} ${req.user.lastName}`,
 				req.user.email,
 			);
-			const result = await this.sourceControlService.pushWorkfolder2(req.body);
+			const result = await this.sourceControlService.pushWorkfolder(req.body);
 			if ('pushResult' in result && result.pushResult) {
 				void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
-					getTrackingInformationFromPostPushResult(result.diffResult),
+					getTrackingInformationFromPostPushResult(result.statusResult),
 				);
 				res.statusCode = 200;
 			} else {
 				void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
-					getTrackingInformationFromPrePushResult(result.diffResult),
+					getTrackingInformationFromPrePushResult(result.statusResult),
 				);
 				res.statusCode = 409;
 			}
-			return result.diffResult;
+			return result.statusResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -203,26 +200,25 @@ export class SourceControlController {
 	async pullWorkfolder(
 		req: SourceControlRequest.PullWorkFolder,
 		res: express.Response,
-	): Promise<SourceControlledFile[] | ImportResult | PullResult | StatusResult | undefined> {
+	): Promise<SourceControlledFile[] | ImportResult | PullResult | undefined> {
 		try {
-			const result = await this.sourceControlService.pullWorkfolder2({
+			const result = await this.sourceControlService.pullWorkfolder({
 				force: req.body.force,
 				variables: req.body.variables,
 				userId: req.user.id,
-				importAfterPull: req.body.importAfterPull ?? true,
 			});
-			if (result.status === 200) {
+			if (result.statusCode === 200) {
 				void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
-					getTrackingInformationFromPullResult(result.diffResult),
+					getTrackingInformationFromPullResult(result.statusResult),
 				);
 				res.statusCode = 200;
 			} else {
 				void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
-					getTrackingInformationFromPullResult(result.diffResult),
+					getTrackingInformationFromPullResult(result.statusResult),
 				);
 				res.statusCode = 409;
 			}
-			return result.diffResult;
+			return result.statusResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -230,16 +226,9 @@ export class SourceControlController {
 
 	@Authorized(['global', 'owner'])
 	@Get('/reset-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	async resetWorkfolder(
-		req: SourceControlRequest.PullWorkFolder,
-	): Promise<ImportResult | undefined> {
+	async resetWorkfolder(): Promise<ImportResult | undefined> {
 		try {
-			return await this.sourceControlService.resetWorkfolder({
-				force: req.body.force,
-				variables: req.body.variables,
-				userId: req.user.id,
-				importAfterPull: req.body.importAfterPull ?? true,
-			});
+			return await this.sourceControlService.resetWorkfolder();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -250,7 +239,7 @@ export class SourceControlController {
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
 			// const result = await this.sourceControlService.getStatus();
-			const result = (await this.sourceControlService.getStatus2(
+			const result = (await this.sourceControlService.getStatus(
 				new SourceControlGetStatus(req.body),
 			)) as SourceControlledFile[];
 			getTrackingInformationFromPrePushResult(result);
@@ -267,7 +256,7 @@ export class SourceControlController {
 	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
 	async status(req: SourceControlRequest.GetStatus) {
 		try {
-			return await this.sourceControlService.getStatus2(new SourceControlGetStatus(req.body));
+			return await this.sourceControlService.getStatus(new SourceControlGetStatus(req.body));
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

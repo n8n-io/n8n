@@ -162,7 +162,7 @@ export class SourceControlService {
 
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
-	async resetWorkfolder(options: SourceControllPullOptions): Promise<ImportResult | undefined> {
+	async resetWorkfolder(): Promise<ImportResult | undefined> {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
@@ -172,17 +172,14 @@ export class SourceControlService {
 			hard: true,
 			target: currentBranch.remote,
 		});
-		await this.gitService.pull();
-		if (options.importAfterPull) {
-			return this.import(options);
-		}
+		await this.gitService.pull({ ffOnly: false });
 		return;
 	}
 
-	async pushWorkfolder2(options: SourceControlPushWorkFolder): Promise<{
-		status: number;
+	async pushWorkfolder(options: SourceControlPushWorkFolder): Promise<{
+		statusCode: number;
 		pushResult: PushResult | undefined;
-		diffResult: SourceControlledFile[];
+		statusResult: SourceControlledFile[];
 	}> {
 		if (!this.gitService.git) {
 			await this.initGitService();
@@ -192,9 +189,9 @@ export class SourceControlService {
 		}
 
 		// only determine file status if not provided by the frontend
-		let diffResult: SourceControlledFile[] = options.fileNames;
-		if (diffResult.length === 0) {
-			diffResult = (await this.getStatus2({
+		let statusResult: SourceControlledFile[] = options.fileNames;
+		if (statusResult.length === 0) {
+			statusResult = (await this.getStatus({
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: true,
@@ -204,12 +201,12 @@ export class SourceControlService {
 		// await this.unstage(); // just in case there are staged files
 
 		if (!options.force) {
-			const possibleConflicts = diffResult?.filter((file) => file.conflict);
+			const possibleConflicts = statusResult?.filter((file) => file.conflict);
 			if (possibleConflicts?.length > 0) {
 				return {
-					status: 409,
+					statusCode: 409,
 					pushResult: undefined,
-					diffResult,
+					statusResult,
 				};
 			}
 		}
@@ -247,9 +244,9 @@ export class SourceControlService {
 		await this.gitService.resetBranch();
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
-		for (let i = 0; i < diffResult.length; i++) {
-			if (options.fileNames.find((file) => file.file === diffResult[i].file)) {
-				diffResult[i].pushed = true;
+		for (let i = 0; i < statusResult.length; i++) {
+			if (options.fileNames.find((file) => file.file === statusResult[i].file)) {
+				statusResult[i].pushed = true;
 			}
 		}
 
@@ -261,9 +258,9 @@ export class SourceControlService {
 		});
 
 		return {
-			status: 200,
+			statusCode: 200,
 			pushResult,
-			diffResult,
+			statusResult,
 		};
 	}
 
@@ -308,57 +305,52 @@ export class SourceControlService {
 	// 	};
 	// }
 
-	async pullWorkfolder2(
+	async pullWorkfolder(
 		options: SourceControllPullOptions,
-	): Promise<{ status: number; diffResult: SourceControlledFile[] }> {
+	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
 
 		// TODO: update Pull
 
-		// await this.resetWorkfolder({
-		// 	importAfterPull: false,
-		// 	userId: options.userId,
-		// 	force: false,
-		// });
-		// const status = (await this.getStatus2({
-		// 	direction: 'pull',
-		// 	verbose: false,
-		// 	preferLocalVersion: true,
-		// })) as SourceControlledFile[];
-		// const filteredResult = diffResult.filter((e) => {
-		// 	if (e.status === 'created' && e.location === 'local') {
-		// 		// ignore local created files so the frontend does not think a pull created new entries
-		// 		return false;
-		// 	}
-		// 	return true;
-		// });
-		// const possibleConflicts = filteredResult?.filter(
-		// 	(file) =>
-		// 		(file.conflict || file.status === 'modified') &&
-		// 		file.type !== 'credential' &&
-		// 		file.type !== 'variables',
-		// );
-		// if (possibleConflicts?.length > 0 && options.force !== true) {
-		// 	await this.unstage();
-		// 	return {
-		// 		status: 409,
-		// 		diffResult: filteredResult,
-		// 	};
-		// }
-		// await this.resetWorkfolder({ ...options, importAfterPull: false });
-		// if (options.importAfterPull) {
-		// 	await this.import(options);
-		// }
-		// return {
-		// 	status: 200,
-		// 	diffResult: filteredResult,
-		// };
+		const statusResult = (await this.getStatus({
+			direction: 'pull',
+			verbose: false,
+			preferLocalVersion: false,
+		})) as SourceControlledFile[];
+
+		const filteredResult = statusResult.filter((e) => {
+			// ignore local created files so the frontend does not think a pull created new entries
+			if (e.status === 'created' && e.location === 'local') {
+				return false;
+			}
+			return true;
+		});
+		const possibleConflicts = filteredResult?.filter(
+			(file) =>
+				(file.conflict || file.status === 'modified') &&
+				file.type !== 'credential' &&
+				file.type !== 'variables',
+		);
+		if (possibleConflicts?.length > 0 && options.force !== true) {
+			await this.gitService.resetBranch();
+			return {
+				statusCode: 409,
+				statusResult: filteredResult,
+			};
+		}
+		await this.resetWorkfolder();
+		// TODO: import
+		// await this.import(options);
 		return {
-			status: 200,
-			diffResult: [],
+			statusCode: 200,
+			statusResult: filteredResult,
 		};
+		// return {
+		// 	statusCode: 200,
+		// 	statusResult: [],
+		// };
 	}
 
 	/**
@@ -371,7 +363,7 @@ export class SourceControlService {
 	 * @returns either SourceControlledFile[] if verbose is false,
 	 * or multiple SourceControlledFile[] with all determined differences for debugging purposes
 	 */
-	async getStatus2(options: SourceControlGetStatus) {
+	async getStatus(options: SourceControlGetStatus) {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}

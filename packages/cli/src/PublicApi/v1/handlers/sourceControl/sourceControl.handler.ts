@@ -32,21 +32,20 @@ export = {
 			}
 			try {
 				const sourceControlService = Container.get(SourceControlService);
-				const result = await sourceControlService.pullWorkfolder2({
+				const result = await sourceControlService.pullWorkfolder({
 					force: req.body.force,
 					variables: req.body.variables,
 					userId: req.user.id,
-					importAfterPull: true,
 				});
 
-				if (result.status === 200) {
+				if (result.statusCode === 200) {
 					void Container.get(InternalHooks).onSourceControlUserPulledAPI({
-						...getTrackingInformationFromPullResult(result.diffResult),
+						...getTrackingInformationFromPullResult(result.statusResult),
 						forced: req.body.force ?? false,
 					});
-					return res.status(200).send(result.diffResult);
+					return res.status(200).send(result.statusResult);
 				} else {
-					return res.status(409).send(result.diffResult);
+					return res.status(409).send(result.statusResult);
 				}
 			} catch (error) {
 				return res.status(400).send((error as { message: string }).message);
