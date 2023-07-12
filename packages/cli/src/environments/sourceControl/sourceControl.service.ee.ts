@@ -1,8 +1,11 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import * as Db from '@/Db';
 import {
 	getTagsPath,
+	getTrackingInformationFromPostPushResult,
+	getTrackingInformationFromPrePushResult,
+	getTrackingInformationFromPullResult,
 	getVariablesPath,
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
@@ -35,6 +38,7 @@ import type { TagEntity } from '@/databases/entities/TagEntity';
 import type { Variables } from '@/databases/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
+import { InternalHooks } from '@/InternalHooks';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
@@ -133,14 +137,6 @@ export class SourceControlService {
 			}
 		}
 		return getBranchesResult;
-	}
-
-	private async import(options: SourceControllPullOptions): Promise<ImportResult | undefined> {
-		try {
-			return await this.sourceControlImportService.importFromWorkFolder(options);
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {
@@ -260,53 +256,18 @@ export class SourceControlService {
 			force: options.force ?? false,
 		});
 
+		// #region Tracking Information
+		void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
+			getTrackingInformationFromPostPushResult(statusResult),
+		);
+		// #endregion
+
 		return {
 			statusCode: 200,
 			pushResult,
 			statusResult,
 		};
 	}
-
-	// async pullWorkfolder(
-	// 	options: SourceControllPullOptions,
-	// ): Promise<{ status: number; diffResult: SourceControlledFile[] }> {
-	// 	if (!this.gitService.git) {
-	// 		await this.initGitService();
-	// 	}
-	// 	await this.resetWorkfolder({
-	// 		importAfterPull: false,
-	// 		userId: options.userId,
-	// 		force: false,
-	// 	});
-	// 	const diffResult = (await this.getStatus()).filter((e) => {
-	// 		if (e.status === 'created' && e.location === 'local') {
-	// 			// ignore local created files so the frontend does not think a pull created new entries
-	// 			return false;
-	// 		}
-	// 		return true;
-	// 	});
-	// 	const possibleConflicts = diffResult?.filter(
-	// 		(file) =>
-	// 			(file.conflict || file.status === 'modified') &&
-	// 			file.type !== 'credential' &&
-	// 			file.type !== 'variables',
-	// 	);
-	// 	if (possibleConflicts?.length > 0 && options.force !== true) {
-	// 		await this.unstage();
-	// 		return {
-	// 			status: 409,
-	// 			diffResult,
-	// 		};
-	// 	}
-	// 	await this.resetWorkfolder({ ...options, importAfterPull: false });
-	// 	if (options.importAfterPull) {
-	// 		await this.import(options);
-	// 	}
-	// 	return {
-	// 		status: 200,
-	// 		diffResult,
-	// 	};
-	// }
 
 	async pullWorkfolder(
 		options: SourceControllPullOptions,
@@ -343,17 +304,44 @@ export class SourceControlService {
 				statusResult: filteredResult,
 			};
 		}
-		await this.resetWorkfolder();
+		// await this.resetWorkfolder();
 		// TODO: import
-		// await this.import(options);
+		const workflowsToBeImported = statusResult.filter(
+			(e) => e.type === 'workflow' && e.status !== 'deleted',
+		);
+		await this.sourceControlImportService.importWorkflowFromWorkFolder(
+			workflowsToBeImported,
+			options.userId,
+		);
+
+		const credentialsToBeImported = statusResult.filter(
+			(e) => e.type === 'credential' && e.status !== 'deleted',
+		);
+		await this.sourceControlImportService.importCredentialsFromWorkFolder(
+			credentialsToBeImported,
+			options.userId,
+		);
+
+		const tagsToBeImported = statusResult.find((e) => e.type === 'tags');
+		if (tagsToBeImported) {
+			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
+		}
+
+		const variablesToBeImported = statusResult.find((e) => e.type === 'variables');
+		if (variablesToBeImported) {
+			await this.sourceControlImportService.importVariablesFromWorkFolder(variablesToBeImported);
+		}
+
+		// #region Tracking Information
+		void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
+			getTrackingInformationFromPullResult(statusResult),
+		);
+		// #endregion
+
 		return {
 			statusCode: 200,
 			statusResult: filteredResult,
 		};
-		// return {
-		// 	statusCode: 200,
-		// 	statusResult: [],
-		// };
 	}
 
 	/**
@@ -630,6 +618,18 @@ export class SourceControlService {
 				file: getTagsPath(this.gitFolder),
 				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
 			});
+		}
+		// #endregion
+
+		// #region Tracking Information
+		if (options.direction === 'push') {
+			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+				getTrackingInformationFromPrePushResult(sourceControlledFiles),
+			);
+		} else if (options.direction === 'pull') {
+			void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
+				getTrackingInformationFromPullResult(sourceControlledFiles),
+			);
 		}
 		// #endregion
 

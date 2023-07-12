@@ -15,12 +15,7 @@ import express from 'express';
 import type { ImportResult } from './types/importResult';
 import Container from 'typedi';
 import { InternalHooks } from '../../InternalHooks';
-import {
-	getRepoType,
-	getTrackingInformationFromPrePushResult,
-	getTrackingInformationFromPostPushResult,
-	getTrackingInformationFromPullResult,
-} from './sourceControlHelper.ee';
+import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
@@ -87,12 +82,15 @@ export class SourceControlController {
 			}
 			await this.sourceControlService.init();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			// #region Tracking Information
+			// located in controller so as to not call this multiple times when updating preferences
 			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
 				branch_name: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				read_only_instance: resultingPreferences.branchReadOnly,
 				repo_type: getRepoType(resultingPreferences.repositoryUrl),
 			});
+			// #endregion
 			return resultingPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
@@ -178,17 +176,7 @@ export class SourceControlController {
 				req.user.email,
 			);
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
-			if ('pushResult' in result && result.pushResult) {
-				void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
-					getTrackingInformationFromPostPushResult(result.statusResult),
-				);
-				res.statusCode = 200;
-			} else {
-				void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
-					getTrackingInformationFromPrePushResult(result.statusResult),
-				);
-				res.statusCode = 409;
-			}
+			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
@@ -207,17 +195,7 @@ export class SourceControlController {
 				variables: req.body.variables,
 				userId: req.user.id,
 			});
-			if (result.statusCode === 200) {
-				void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
-					getTrackingInformationFromPullResult(result.statusResult),
-				);
-				res.statusCode = 200;
-			} else {
-				void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
-					getTrackingInformationFromPullResult(result.statusResult),
-				);
-				res.statusCode = 409;
-			}
+			res.statusCode = result.statusCode;
 			return result.statusResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
@@ -238,14 +216,9 @@ export class SourceControlController {
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
-			// const result = await this.sourceControlService.getStatus();
 			const result = (await this.sourceControlService.getStatus(
 				new SourceControlGetStatus(req.body),
 			)) as SourceControlledFile[];
-			getTrackingInformationFromPrePushResult(result);
-			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
-				getTrackingInformationFromPrePushResult(result),
-			);
 			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
