@@ -10,6 +10,7 @@ import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
 import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
+import type { BooleanLicenseFeature } from '@/Interfaces';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -50,7 +51,7 @@ type ResetRequest = Request<
 @NoAuthRequired()
 @RestController('/e2e')
 export class E2EController {
-	private enabledFeatures: Record<LICENSE_FEATURES, boolean> = {
+	private enabledFeatures: Record<BooleanLicenseFeature, boolean> = {
 		[LICENSE_FEATURES.SHARING]: false,
 		[LICENSE_FEATURES.LDAP]: false,
 		[LICENSE_FEATURES.SAML]: false,
@@ -67,7 +68,7 @@ export class E2EController {
 		private settingsRepo: SettingsRepository,
 		private userRepo: UserRepository,
 	) {
-		license.isFeatureEnabled = (feature: LICENSE_FEATURES) =>
+		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
 	}
 
@@ -81,14 +82,14 @@ export class E2EController {
 	}
 
 	@Patch('/feature')
-	setFeature(req: Request<{}, {}, { feature: LICENSE_FEATURES; enabled: boolean }>) {
+	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
 	}
 
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
-			this.enabledFeatures[feature as LICENSE_FEATURES] = false;
+			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
 		}
 	}
 

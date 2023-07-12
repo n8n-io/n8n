@@ -2044,6 +2044,7 @@ export interface IVersionNotificationSettings {
 }
 
 export interface IUserManagementSettings {
+	quota: number;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;

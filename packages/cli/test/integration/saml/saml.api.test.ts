@@ -11,6 +11,7 @@ import * as utils from '../shared/utils';
 import { sampleConfig } from './sampleMetadata';
 import { InternalHooks } from '@/InternalHooks';
 import { SamlService } from '@/sso/saml/saml.service.ee';
+import config from '@/config';
 import type { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
 import type { AuthenticationMethod } from 'n8n-workflow';
 
@@ -32,6 +33,8 @@ beforeAll(async () => {
 	authOwnerAgent = utils.createAuthAgent(app)(owner);
 	authMemberAgent = utils.createAgent(app, { auth: true, user: someUser });
 	noAuthMemberAgent = utils.createAgent(app, { auth: false, user: someUser });
+
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 afterAll(async () => {
