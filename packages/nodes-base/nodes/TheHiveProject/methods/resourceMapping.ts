@@ -1,7 +1,7 @@
-import type { ILoadOptionsFunctions } from 'n8n-core';
 import type {
 	FieldType,
 	IDataObject,
+	ILoadOptionsFunctions,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
