@@ -52,7 +52,9 @@ export function setSamlLoginLabel(label: string): void {
 	config.set(SAML_LOGIN_LABEL, label);
 }
 
-export const isSamlLicensed = () => Container.get(License).isSamlEnabled();
+export function isSamlLicensed(): boolean {
+	return Container.get(License).isSamlEnabled();
+}
 
 export function isSamlLicensedAndEnabled(): boolean {
 	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();
