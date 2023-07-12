@@ -20,9 +20,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const { db, pgp, sshClient } = await configurePostgres(credentials, options);
 
-	const runQueries = configureQueryRunner(
+	const runQueries = configureQueryRunner.call(
+		this,
 		this.getNode(),
-		this.helpers.constructExecutionMetaData,
 		this.continueOnFail(),
 		pgp,
 		db,

@@ -1,5 +1,4 @@
-import type { ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject, ResourceMapperFields } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
