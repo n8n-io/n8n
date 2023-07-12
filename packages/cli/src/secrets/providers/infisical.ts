@@ -31,7 +31,8 @@ export class InfisicalProvider implements SecretsProvider {
 			hint: 'The Infisical Service Token with read access.',
 			default: '',
 			required: true,
-			placeholder: 'e.g. fe333be1-37f9-40bb-a9f8-d54dce389f17',
+			placeholder:
+				'e.g. st.64ae9d6d237532cc280fbd25.2f307bf3de1b15dcc0d54a3cc78a7c3c.b49127ce6dcf8c579052ecf354ce99b7',
 			typeOptions: { password: true },
 		},
 		{

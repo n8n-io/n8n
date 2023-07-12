@@ -113,7 +113,7 @@ export class VaultProvider extends SecretsProvider {
 			type: 'string',
 			default: '',
 			required: true,
-			placeholder: '***************',
+			placeholder: 'e.g. hvs.2OCsZxZA6Z9lChbt0janOOZI',
 			typeOptions: { password: true },
 			displayOptions: {
 				show: {
