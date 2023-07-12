@@ -31,6 +31,7 @@ export class InfisicalProvider implements SecretsProvider {
 			hint: 'The Infisical Service Token with read access.',
 			default: '',
 			required: true,
+			noDataExpression: true,
 			placeholder:
 				'e.g. st.64ae9d6d237532cc280fbd25.2f307bf3de1b15dcc0d54a3cc78a7c3c.b49127ce6dcf8c579052ecf354ce99b7',
 			typeOptions: { password: true },
@@ -41,6 +42,7 @@ export class InfisicalProvider implements SecretsProvider {
 			type: 'string',
 			hint: "The absolute URL of the Infisical instance. Change it only if you're self-hosting Infisical.",
 			required: true,
+			noDataExpression: true,
 			placeholder: 'https://app.infisical.com',
 			default: 'https://app.infisical.com',
 		},
