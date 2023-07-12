@@ -61,8 +61,8 @@ would look like this:
 File named: `MyNode.node.ts`
 
 ```TypeScript
-import { IExecuteFunctions } from 'n8n-core';
 import {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
