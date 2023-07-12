@@ -19,15 +19,37 @@ export const secretsCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			const provider = preCursor.text.split('.')[1];
 			const externalSecretsStore = useExternalSecretsStore();
-			const options: Completion[] = provider
-				? Object.keys(externalSecretsStore.secretsAsObject[provider]).map((secret) => ({
-						label: `${matcher}.${provider}.${secret}`,
-						info: externalSecretsStore.secretsAsObject[provider][secret],
-				  }))
-				: Object.keys(externalSecretsStore.secretsAsObject).map((provider) => ({
-						label: `${matcher}.${provider}`,
-						info: JSON.stringify(externalSecretsStore.secretsAsObject[provider]),
-				  }));
+			let options: Completion[];
+
+			const optionsForObject = (leftSide: string, object: object): Completion[] => {
+				return Object.entries(object).flatMap(([key, value]) => {
+					if (typeof value === 'object' && value !== null) {
+						return optionsForObject(`${leftSide}.${key}`, value);
+					}
+					return {
+						label: `${leftSide}.${key}`,
+						info: '*******',
+					};
+				});
+			};
+
+			if (provider) {
+				options = optionsForObject(
+					`${matcher}.${provider}`,
+					externalSecretsStore.secretsAsObject[provider],
+				);
+				// Object.keys(externalSecretsStore.secretsAsObject[provider]).map((secret) => ({
+				// 	label: `${matcher}.${provider}.${secret}`,
+				// 	info: externalSecretsStore.secretsAsObject[provider][secret],
+				// }));
+			} else {
+				options = Object.keys(externalSecretsStore.secretsAsObject).map((provider) => ({
+					label: `${matcher}.${provider}`,
+					info: JSON.stringify(externalSecretsStore.secretsAsObject[provider]),
+				}));
+			}
+
+			console.log({ options });
 
 			return {
 				from: preCursor.from,
