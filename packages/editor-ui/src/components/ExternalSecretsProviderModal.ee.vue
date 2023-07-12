@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useToast } from '@/composables';
@@ -9,7 +9,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router/composables';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
-import type { ExternalSecretsProvider, IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation, ExternalSecretsProviderWithProperties } from '@/Interface';
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
@@ -40,9 +40,20 @@ const provider = computed(() =>
 	externalSecretsStore.providers.find((provider) => provider.name === props.data.name),
 );
 
+const connectionState = ref<ExternalSecretsProviderWithProperties['state']>();
+
 const providerData = ref<Record<string, IUpdateInformation['value']>>({});
 
-const connectionState = ref<ExternalSecretsProvider['state']>();
+const normalizedProviderData = computed(() => {
+	return Object.entries(providerData.value).reduce((acc, [key, value]) => {
+		const property = provider.value.properties?.find((property) => property.name === key);
+		if (shouldDisplay(property)) {
+			acc[key] = value;
+		}
+
+		return acc;
+	}, {} as Record<string, IUpdateInformation['value']>);
+});
 
 const providerDataUpdated = computed(() => {
 	return Object.keys(providerData.value).find((key) => {
@@ -56,7 +67,7 @@ const providerDataUpdated = computed(() => {
 const canSave = computed(
 	() =>
 		provider.value.properties
-			?.filter((property) => property.required)
+			?.filter((property) => property.required && shouldDisplay(property))
 			.every((property) => {
 				const value = providerData.value[property.name];
 				return !!value;
@@ -83,6 +94,28 @@ onMounted(async () => {
 	}
 });
 
+function shouldDisplay(property: ExternalSecretsProviderWithProperties['properties'][0]): boolean {
+	let visible = true;
+
+	if (property.displayOptions?.show) {
+		visible =
+			visible &&
+			Object.entries(property.displayOptions.show).every(([key, value]) => {
+				return value.includes(providerData.value[key]);
+			});
+	}
+
+	if (property.displayOptions?.hide) {
+		visible =
+			visible &&
+			!Object.entries(property.displayOptions.hide).every(([key, value]) => {
+				return value.includes(providerData.value[key]);
+			});
+	}
+
+	return visible;
+}
+
 function close() {
 	uiStore.closeModal(EXTERNAL_SECRETS_PROVIDER_MODAL_KEY);
 }
@@ -98,7 +131,7 @@ async function testConnection() {
 	try {
 		const { testState } = await externalSecretsStore.testProviderConnection(
 			props.data.name,
-			providerData.value,
+			normalizedProviderData.value,
 		);
 		connectionState.value = testState;
 	} catch (error) {
@@ -110,7 +143,7 @@ async function save() {
 	try {
 		loadingService.startLoading();
 		await externalSecretsStore.updateProvider(provider.value.name, {
-			data: providerData.value,
+			data: normalizedProviderData.value,
 		});
 
 		toast.showMessage({
@@ -193,6 +226,7 @@ async function save() {
 
 				<form
 					v-for="property in provider.properties"
+					v-show="shouldDisplay(property)"
 					:key="property.name"
 					autocomplete="off"
 					data-test-id="external-secrets-provider-properties-form"

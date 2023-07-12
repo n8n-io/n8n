@@ -4,7 +4,7 @@ import { ExternalSecretsProvider } from '@/Interface';
 import { computed } from 'vue';
 import infisical from '../assets/images/infisical.webp';
 import doppler from '../assets/images/doppler.webp';
-import hashicorp from '../assets/images/hashicorp.webp';
+import vault from '../assets/images/hashicorp.webp';
 
 const props = defineProps({
 	provider: {
@@ -18,7 +18,7 @@ const image = computed(
 		({
 			doppler,
 			infisical,
-			hashicorp,
+			vault,
 		}[props.provider.name]),
 );
 </script>

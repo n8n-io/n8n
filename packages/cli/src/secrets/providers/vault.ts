@@ -90,6 +90,7 @@ export class VaultProvider extends SecretsProvider {
 			displayName: 'Authentication Method',
 			name: 'authMethod',
 			type: 'options',
+			required: true,
 			noDataExpression: true,
 			options: [
 				{ name: 'Token', value: 'token' },
