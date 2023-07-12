@@ -6,7 +6,7 @@ export class SeparateExecutionData1690000000030 implements ReversibleMigration {
 			`CREATE TABLE ${tablePrefix}execution_data (
 				executionId int(11) NOT NULL primary key,
 				workflowData json NOT NULL,
-				data TEXT NOT NULL,
+				data MEDIUMTEXT NOT NULL,
 				CONSTRAINT \`${tablePrefix}execution_data_FK\` FOREIGN KEY (\`executionId\`) REFERENCES \`${tablePrefix}execution_entity\` (\`id\`) ON DELETE CASCADE
 			)
 			ENGINE=InnoDB`,
@@ -30,7 +30,7 @@ export class SeparateExecutionData1690000000030 implements ReversibleMigration {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity
 			ADD workflowData json NULL,
-			ADD data text NULL`,
+			ADD data MEDIUMTEXT NULL`,
 		);
 
 		await queryRunner.query(

@@ -70,57 +70,54 @@ const DATETIMEUNIT_MAP: Record<string, DateTimeUnit> = {
 	ms: 'millisecond',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isDateTime(date: any): date is DateTime {
-	if (date) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		return DateTime.isDateTime(date);
-	}
-	return false;
+function isDateTime(date: unknown): date is DateTime {
+	return date ? DateTime.isDateTime(date) : false;
 }
 
-function generateDurationObject(durationValue: number, unit: DurationUnit) {
+function generateDurationObject(durationValue: number, unit: DurationUnit): DurationObjectUnits {
 	const convertedUnit = DURATION_MAP[unit] || unit;
-	return { [`${convertedUnit}`]: durationValue } as DurationObjectUnits;
+	return { [`${convertedUnit}`]: durationValue };
 }
 
-function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date {
-	const [unit = 'week'] = extraArgs;
+function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date | DateTime {
+	const [rawUnit = 'week'] = extraArgs;
 
-	if (isDateTime(date)) {
-		return date.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
-	}
-	const dateTime = DateTime.fromJSDate(date);
-	return dateTime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
+	const unit = DATETIMEUNIT_MAP[rawUnit] || rawUnit;
+
+	if (isDateTime(date)) return date.startOf(unit);
+
+	return DateTime.fromJSDate(date).startOf(unit).toJSDate();
 }
 
-function endOfMonth(date: Date | DateTime): Date {
-	if (isDateTime(date)) {
-		return date.endOf('month').toJSDate();
-	}
+function endOfMonth(date: Date | DateTime): Date | DateTime {
+	if (isDateTime(date)) return date.endOf('month');
+
 	return DateTime.fromJSDate(date).endOf('month').toJSDate();
 }
 
-function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Date {
-	let [part = 'week'] = extraArgs;
-	let date = inputDate;
-	if (isDateTime(date)) {
-		date = date.toJSDate();
-	}
+function extract(date: Date | DateTime, args: DatePart[]): number {
+	let [part = 'week'] = args;
+
 	if (part === 'yearDayNumber') {
+		date = isDateTime(date) ? date.toJSDate() : date;
+
 		const firstDayOfTheYear = new Date(date.getFullYear(), 0, 0);
+
 		const diff =
 			date.getTime() -
 			firstDayOfTheYear.getTime() +
 			(firstDayOfTheYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
+
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
 	}
 
-	if (part === 'week') {
-		part = 'weekNumber';
-	}
+	if (part === 'week') part = 'weekNumber';
 
-	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
+	const unit = (DATETIMEUNIT_MAP[part] as keyof DateTime) || part;
+
+	if (isDateTime(date)) return date.get(unit);
+
+	return DateTime.fromJSDate(date).get(unit);
 }
 
 function format(date: Date | DateTime, extraArgs: unknown[]): string {
@@ -178,30 +175,46 @@ function isWeekend(date: Date | DateTime): boolean {
 	return WEEKEND_DAYS.includes(weekday);
 }
 
-function minus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
-	if (isDateTime(date) && extraArgs.length === 1) {
-		return date.minus(extraArgs[0] as DurationLike);
+function minus(
+	date: Date | DateTime,
+	args: [DurationLike] | [number, DurationUnit],
+): Date | DateTime {
+	if (args.length === 1) {
+		const [arg] = args;
+
+		if (isDateTime(date)) return date.minus(arg);
+
+		return DateTime.fromJSDate(date).minus(arg).toJSDate();
 	}
 
-	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+	const [durationValue = 0, unit = 'minutes'] = args;
 
-	if (isDateTime(date)) {
-		return date.minus(generateDurationObject(durationValue, unit)).toJSDate();
-	}
-	return DateTime.fromJSDate(date).minus(generateDurationObject(durationValue, unit)).toJSDate();
+	const duration = generateDurationObject(durationValue, unit);
+
+	if (isDateTime(date)) return date.minus(duration);
+
+	return DateTime.fromJSDate(date).minus(duration).toJSDate();
 }
 
-function plus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
-	if (isDateTime(date) && extraArgs.length === 1) {
-		return date.plus(extraArgs[0] as DurationLike);
+function plus(
+	date: Date | DateTime,
+	args: [DurationLike] | [number, DurationUnit],
+): Date | DateTime {
+	if (args.length === 1) {
+		const [arg] = args;
+
+		if (isDateTime(date)) return date.plus(arg);
+
+		return DateTime.fromJSDate(date).plus(arg).toJSDate();
 	}
 
-	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+	const [durationValue = 0, unit = 'minutes'] = args;
 
-	if (isDateTime(date)) {
-		return date.plus(generateDurationObject(durationValue, unit)).toJSDate();
-	}
-	return DateTime.fromJSDate(date).plus(generateDurationObject(durationValue, unit)).toJSDate();
+	const duration = generateDurationObject(durationValue, unit);
+
+	if (isDateTime(date)) return date.plus(duration);
+
+	return DateTime.fromJSDate(date).plus(duration).toJSDate();
 }
 
 endOfMonth.doc = {

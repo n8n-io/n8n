@@ -41,14 +41,14 @@ export type IdType = 'accountId' | 'contactId' | 'dealId' | 'purchaseOrderId';
 
 export type NameType = 'Account_Name' | 'Full_Name' | 'Deal_Name' | 'Product_Name' | 'Vendor_Name';
 
-type LocationType =
+export type LocationType =
 	| 'Address'
 	| 'Billing_Address'
 	| 'Mailing_Address'
 	| 'Shipping_Address'
 	| 'Other_Address';
 
-type DateType =
+export type DateType =
 	| 'Date_of_Birth'
 	| 'Closing_Date'
 	| 'Due_Date'

@@ -63,7 +63,6 @@ beforeEach(async () => {
 		version: 1,
 	});
 
-	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 

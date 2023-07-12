@@ -6,7 +6,7 @@ import { User } from '@db/entities/User';
 import { RoleRepository } from '@db/repositories';
 import { License } from '@/License';
 import { AuthError, InternalServerError } from '@/ResponseHelper';
-import { hashPassword, isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
+import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
@@ -52,10 +52,7 @@ export function setSamlLoginLabel(label: string): void {
 	config.set(SAML_LOGIN_LABEL, label);
 }
 
-export function isSamlLicensed(): boolean {
-	const license = Container.get(License);
-	return isUserManagementEnabled() && license.isSamlEnabled();
-}
+export const isSamlLicensed = () => Container.get(License).isSamlEnabled();
 
 export function isSamlLicensedAndEnabled(): boolean {
 	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.234.0",
+  "version": "1.0.1",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -59,7 +59,9 @@
     "bin",
     "templates",
     "dist",
-    "oclif.manifest.json"
+    "oclif.manifest.json",
+    "!dist/**/e2e.*",
+    "!dist/ReloadNodesAndCredentials.*"
   ],
   "devDependencies": {
     "@apidevtools/swagger-cli": "4.0.0",
@@ -72,7 +74,7 @@
     "@types/convict": "^6.1.1",
     "@types/cookie-parser": "^1.4.2",
     "@types/express": "^4.17.6",
-    "@types/json-diff": "^0.5.1",
+    "@types/json-diff": "^1.0.0",
     "@types/jsonwebtoken": "^9.0.1",
     "@types/localtunnel": "^1.9.0",
     "@types/lodash": "^4.14.195",
@@ -137,7 +139,7 @@
     "handlebars": "4.7.7",
     "inquirer": "^7.0.1",
     "ioredis": "^5.2.4",
-    "json-diff": "^0.5.4",
+    "json-diff": "^1.0.6",
     "jsonschema": "^1.4.1",
     "jsonwebtoken": "^9.0.0",
     "jwks-rsa": "^3.0.1",

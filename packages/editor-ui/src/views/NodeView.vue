@@ -102,7 +102,7 @@
 				@addNode="onAddNode"
 			/>
 			<canvas-controls />
-			<div class="workflow-execute-wrapper" v-if="!isReadOnlyRoute">
+			<div class="workflow-execute-wrapper" v-if="!isReadOnlyRoute && !readOnlyEnv">
 				<span
 					@mouseenter="showTriggerMissingToltip(true)"
 					@mouseleave="showTriggerMissingToltip(false)"
@@ -149,7 +149,13 @@
 				/>
 
 				<n8n-icon-button
-					v-if="!isReadOnlyRoute && workflowExecution && !workflowRunning && !allTriggersDisabled"
+					v-if="
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						workflowExecution &&
+						!workflowRunning &&
+						!allTriggersDisabled
+					"
 					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
 					icon="trash"
 					size="large"
@@ -281,7 +287,6 @@ import {
 	useSettingsStore,
 	useUIStore,
 	useHistoryStore,
-	useSourceControlStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -483,11 +488,7 @@ export default defineComponent({
 			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
-			useSourceControlStore,
 		),
-		readOnlyEnv(): boolean {
-			return this.sourceControlStore.preferences.branchReadOnly;
-		},
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.rootStore.nativelyNumberSuffixedDefaults;
 		},
@@ -635,6 +636,21 @@ export default defineComponent({
 		this.unregisterCustomAction('showNodeCreator');
 	},
 	methods: {
+		editAllowedCheck(): boolean {
+			if (this.isReadOnlyRoute || this.readOnlyEnv) {
+				this.showMessage({
+					// title: 'Workflow can not be changed!',
+					title: this.$locale.baseText('genericHelpers.showMessage.title'),
+					message: this.$locale.baseText('genericHelpers.showMessage.message'),
+					type: 'info',
+					duration: 0,
+					dangerouslyUseHTMLString: true,
+				});
+
+				return false;
+			}
+			return true;
+		},
 		showTriggerMissingToltip(isVisible: boolean) {
 			this.showTriggerMissingTooltip = isVisible;
 		},
@@ -961,7 +977,7 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				if (this.isReadOnlyRoute) {
+				if (this.isReadOnlyRoute || this.readOnlyEnv) {
 					return;
 				}
 
@@ -1015,13 +1031,13 @@ export default defineComponent({
 			} else if (e.key === 'Tab') {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
-					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute,
+					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute && !this.readOnlyEnv,
 				});
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
 			} else if (e.key === ' ') {
 				this.moveCanvasKeyPressed = true;
-			} else if (e.key === 'F2' && !this.isReadOnlyRoute) {
+			} else if (e.key === 'F2' && !this.isReadOnlyRoute && !this.readOnlyEnv) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
 					void this.callDebounced(
@@ -1067,7 +1083,10 @@ export default defineComponent({
 				const lastSelectedNode = this.lastSelectedNode;
 
 				if (lastSelectedNode !== null) {
-					if (lastSelectedNode.type === STICKY_NODE_TYPE && this.isReadOnlyRoute) {
+					if (
+						lastSelectedNode.type === STICKY_NODE_TYPE &&
+						(this.isReadOnlyRoute || this.readOnlyEnv)
+					) {
 						return;
 					}
 					this.ndvStore.activeNodeName = lastSelectedNode.name;
@@ -1307,7 +1326,7 @@ export default defineComponent({
 		},
 
 		cutSelectedNodes() {
-			const deleteCopiedNodes = !this.isReadOnlyRoute;
+			const deleteCopiedNodes = !this.isReadOnlyRoute && !this.readOnlyEnv;
 			this.copySelectedNodes(deleteCopiedNodes);
 			if (deleteCopiedNodes) {
 				this.deleteSelectedNodes();
@@ -2162,7 +2181,7 @@ export default defineComponent({
 				if (!this.suspendRecordingDetachedConnections) {
 					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 				}
-				if (!this.isReadOnlyRoute) {
+				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
 					NodeViewUtils.addConnectionActionsOverlay(
 						info.connection,
 						() => {
@@ -2609,7 +2628,7 @@ export default defineComponent({
 			// Create connections in DOM
 			this.instance?.connect({
 				uuids: uuid,
-				detachable: !this.isReadOnlyRoute,
+				detachable: !this.isReadOnlyRoute && !this.readOnlyEnv,
 			});
 
 			setTimeout(() => {
@@ -3523,22 +3542,7 @@ export default defineComponent({
 						// Ignore all errors
 					});
 			}
-			this.workflowsStore.removeAllConnections({ setStateDirty: false });
-			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
-
-			// Reset workflow execution data
-			this.workflowsStore.setWorkflowExecutionData(null);
-			this.workflowsStore.resetAllNodesIssues();
-
-			this.workflowsStore.setActive(false);
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings({});
-			this.workflowsStore.setWorkflowTagIds([]);
-
-			this.workflowsStore.activeExecutionId = null;
-			this.workflowsStore.executingNode = null;
-			this.workflowsStore.executionWaitingForWebhook = false;
+			this.workflowsStore.resetState();
 			this.uiStore.removeActiveAction('workflowRunning');
 
 			this.uiStore.resetSelectedNodes();

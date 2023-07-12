@@ -5,10 +5,6 @@ const wf = new WorkflowPage();
 const TEST_TAGS = ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4', 'Tag 5'];
 
 describe('Workflow tags', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		wf.actions.visit();
 	});
