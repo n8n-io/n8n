@@ -368,3 +368,117 @@ export const taskCommonFields = [
 		type: 'number',
 	},
 ];
+
+export const observableCommonFields = [
+	{
+		displayName: 'Data Type',
+		id: 'dataType',
+		type: 'options',
+	},
+	{
+		displayName: 'Data',
+		id: 'data',
+		type: 'string',
+	},
+	{
+		displayName: 'Start Date',
+		id: 'startDate',
+		type: 'dateTime',
+	},
+	{
+		displayName: 'Message',
+		id: 'message',
+		type: 'string',
+	},
+	{
+		displayName: 'Tags',
+		id: 'tags',
+		type: 'string',
+	},
+	{
+		displayName: 'TLP (Confidentiality of information)',
+		id: 'tlp',
+		type: 'options',
+		options: [
+			{
+				name: 'White',
+				value: TLP.white,
+			},
+			{
+				name: 'Green',
+				value: TLP.green,
+			},
+			{
+				name: 'Amber',
+				value: TLP.amber,
+			},
+			{
+				name: 'Red',
+				value: TLP.red,
+			},
+		],
+	},
+	{
+		displayName: 'PAP (Level of exposure of information)',
+		id: 'pap',
+		type: 'options',
+		options: [
+			{
+				name: 'White',
+				value: TLP.white,
+			},
+			{
+				name: 'Green',
+				value: TLP.green,
+			},
+			{
+				name: 'Amber',
+				value: TLP.amber,
+			},
+			{
+				name: 'Red',
+				value: TLP.red,
+			},
+		],
+	},
+	{
+		displayName: 'IOC',
+		id: 'ioc',
+		type: 'boolean',
+	},
+	{
+		displayName: 'Sighted',
+		id: 'sighted',
+		type: 'boolean',
+	},
+	{
+		displayName: 'Sighted At',
+		id: 'sightedAt',
+		type: 'dateTime',
+	},
+	{
+		displayName: 'Ignore Similarity',
+		id: 'ignoreSimilarity',
+		type: 'boolean',
+	},
+	{
+		displayName: 'Is Zip',
+		id: 'isZip',
+		type: 'boolean',
+	},
+	{
+		displayName: 'Zip Password',
+		id: 'zipPassword',
+		type: 'string',
+	},
+	{
+		displayName: 'Add Tags',
+		id: 'addTags',
+		type: 'string',
+	},
+	{
+		displayName: 'Remove Tags',
+		id: 'removeTags',
+		type: 'string',
+	},
+];

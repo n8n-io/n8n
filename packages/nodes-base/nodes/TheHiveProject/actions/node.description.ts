@@ -10,7 +10,7 @@ import * as query from './query';
 import * as task from './task';
 import * as page from './page';
 
-export const versionDescription: INodeTypeDescription = {
+export const description: INodeTypeDescription = {
 	displayName: 'TheHive 5',
 	name: 'theHiveProject',
 	icon: 'file:thehiveproject.svg',

@@ -7,8 +7,19 @@ import type {
 } from 'n8n-workflow';
 import { theHiveApiRequest } from '../transport';
 
-import { loadAlertStatus, loadCaseStatus, loadCaseTemplate, loadUsers } from './loadOptions';
-import { alertCommonFields, caseCommonFields, taskCommonFields } from '../helpers/constants';
+import {
+	loadAlertStatus,
+	loadCaseStatus,
+	loadCaseTemplate,
+	loadObservableTypes,
+	loadUsers,
+} from './loadOptions';
+import {
+	alertCommonFields,
+	caseCommonFields,
+	observableCommonFields,
+	taskCommonFields,
+} from '../helpers/constants';
 
 async function getCustomFields(this: ILoadOptionsFunctions, isRemoved?: boolean) {
 	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
@@ -347,6 +358,46 @@ export async function getLogFields(this: ILoadOptionsFunctions): Promise<Resourc
 			removed: true,
 		},
 	];
+
+	const columnData: ResourceMapperFields = {
+		fields,
+	};
+
+	return columnData;
+}
+
+export async function getObservableFields(
+	this: ILoadOptionsFunctions,
+): Promise<ResourceMapperFields> {
+	const dataTypes = await loadObservableTypes.call(this);
+
+	const requiredFields = ['dataType'];
+	const excludeFields = ['addTags', 'removeTags'];
+
+	const fields: ResourceMapperField[] = observableCommonFields
+		.filter((entry) => !excludeFields.includes(entry.id))
+		.map((entry) => {
+			const type = entry.type as FieldType;
+			const field: ResourceMapperField = {
+				...entry,
+				type,
+				required: false,
+				display: true,
+				defaultMatch: false,
+				removed: true,
+			};
+
+			if (requiredFields.includes(entry.id)) {
+				field.required = true;
+				field.removed = false;
+			}
+
+			if (field.id === 'dataType') {
+				field.options = dataTypes;
+			}
+
+			return field;
+		});
 
 	const columnData: ResourceMapperFields = {
 		fields,

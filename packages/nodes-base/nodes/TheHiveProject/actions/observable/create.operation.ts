@@ -1,92 +1,75 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import {
-	caseRLC,
-	observableTypeOptions,
-	observableStatusOptions,
-	tlpOptions,
-} from '../../descriptions';
-import { prepareOptional } from '../../helpers/utils';
+
 import { theHiveApiRequest } from '../../transport';
 
+import { fixFieldType } from '../../helpers/utils';
+import { alertRLC, caseRLC } from '../../descriptions';
+
+import FormData from 'form-data';
+
 const properties: INodeProperties[] = [
-	caseRLC,
-	observableTypeOptions,
 	{
-		displayName: 'Data',
-		name: 'data',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			hide: {
-				dataType: ['file'],
-			},
-		},
-	},
-	{
-		displayName: 'Binary Property',
-		name: 'binaryProperty',
-		type: 'string',
-		required: true,
-		default: 'data',
-		description: 'Binary Property that represent the attachment file',
-		displayOptions: {
-			show: {
-				dataType: ['file'],
-			},
-		},
-	},
-	{
-		displayName: 'Message',
-		name: 'message',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'Description of the observable in the context of the case',
-	},
-	{
-		displayName: 'Start Date',
-		name: 'startDate',
-		type: 'dateTime',
-		required: true,
-		default: '',
-		description: 'Date and time of the begin of the case default=now',
-	},
-	tlpOptions,
-	{
-		displayName: 'Indicator of Compromise (IOC)',
-		name: 'ioc',
-		type: 'boolean',
-		required: true,
-		default: false,
-		description: 'Whether the observable is an IOC (Indicator of compromise)',
-	},
-	{
-		displayName: 'Sighted',
-		name: 'sighted',
-		type: 'boolean',
-		required: true,
-		default: false,
-		description: 'Whether sighted previously',
-	},
-	observableStatusOptions,
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
+		displayName: 'Create in ...',
+		name: 'createIn',
+		type: 'options',
 		options: [
 			{
-				displayName: 'Observable Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				placeholder: 'tag1,tag2',
+				name: 'Case',
+				value: 'case',
+			},
+			{
+				name: 'Alert',
+				value: 'alert',
 			},
 		],
+		default: 'case',
+	},
+	{
+		...caseRLC,
+		name: 'id',
+		displayOptions: {
+			show: {
+				createIn: ['case'],
+			},
+		},
+	},
+	{
+		...alertRLC,
+		name: 'id',
+		displayOptions: {
+			show: {
+				createIn: ['alert'],
+			},
+		},
+	},
+	{
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
+		required: true,
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getObservableFields',
+				mode: 'add',
+				valuesLabel: 'Fields',
+			},
+		},
+	},
+	{
+		displayName: 'Attachments',
+		name: 'attachments',
+		type: 'string',
+		placeholder: '“e.g. data, data2',
+		default: '',
+		description:
+			'The names of the fields in a input item which contain the binary data to be send as attachments',
 	},
 ];
 
@@ -99,55 +82,73 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
+	let body: IDataObject = {};
 
-	const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
+	const createIn = this.getNodeParameter('createIn', i) as string;
+	const id = this.getNodeParameter('id', i, '', { extractValue: true }) as string;
+	const endpoint = `/v1/${createIn}/${id}/observable`;
 
-	let body: IDataObject = {
-		dataType: this.getNodeParameter('dataType', i) as string,
-		message: this.getNodeParameter('message', i) as string,
-		startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
-		tlp: this.getNodeParameter('tlp', i) as number,
-		ioc: this.getNodeParameter('ioc', i) as boolean,
-		sighted: this.getNodeParameter('sighted', i) as boolean,
-		status: this.getNodeParameter('status', i) as string,
-		...prepareOptional(this.getNodeParameter('options', i, {})),
-	};
+	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const attachments = this.getNodeParameter('attachments', i, '') as string;
 
-	let options: IDataObject = {};
-
-	if (body.dataType === 'file') {
-		const binaryPropertyName = this.getNodeParameter('binaryProperty', i);
-		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-		const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
-		options = {
-			formData: {
-				attachment: {
-					value: dataBuffer,
-					options: {
-						contentType: binaryData.mimeType,
-						filename: binaryData.fileName,
-					},
-				},
-				_json: JSON.stringify(body),
-			},
-		};
-		body = {};
-	} else {
-		body.data = this.getNodeParameter('data', i) as string;
+	if (dataMode === 'autoMapInputData') {
+		body = { ...item.json };
 	}
 
-	responseData = await theHiveApiRequest.call(
-		this,
-		'POST',
-		`/case/${caseId}/artifact`,
-		body,
-		undefined,
-		undefined,
-		options,
-	);
+	if (dataMode === 'defineBelow') {
+		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
+		body = fields;
+	}
+
+	if (body.dataType === 'file') {
+		delete body.data;
+	}
+
+	body = fixFieldType(body);
+
+	if (attachments) {
+		const inputDataFields = attachments
+			.split(',')
+			.filter((field) => field)
+			.map((field) => field.trim());
+
+		const formData = new FormData();
+
+		for (const inputDataField of inputDataFields) {
+			const binaryData = this.helpers.assertBinaryData(i, inputDataField);
+			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, inputDataField);
+
+			formData.append('attachment', dataBuffer, {
+				filename: binaryData.fileName,
+				contentType: binaryData.mimeType,
+			});
+		}
+
+		formData.append('_json', JSON.stringify(body));
+
+		responseData = await theHiveApiRequest.call(
+			this,
+			'POST',
+			endpoint,
+			undefined,
+			undefined,
+			undefined,
+			{
+				Headers: {
+					'Content-Type': 'multipart/form-data',
+				},
+				formData,
+			},
+		);
+	} else {
+		responseData = await theHiveApiRequest.call(this, 'POST', endpoint, body);
+	}
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

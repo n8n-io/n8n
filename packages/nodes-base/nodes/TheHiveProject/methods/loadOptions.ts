@@ -116,29 +116,29 @@ export async function listCustomField(
 export async function loadObservableTypes(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const dataTypes = await theHiveApiRequest.call(this, 'GET', '/observable/type?range=all');
+	const returnData: INodePropertyOptions[] = [];
 
-	const returnData: INodePropertyOptions[] = dataTypes.map((dataType: IDataObject) => {
-		return {
-			name: dataType.name as string,
-			value: dataType.name as string,
-		};
-	});
+	const body = {
+		query: [
+			{
+				_name: 'listObservableType',
+			},
+		],
+	};
 
-	// Sort the array by option name
-	returnData.sort((a, b) => {
-		if (a.name < b.name) {
-			return -1;
-		}
-		if (a.name > b.name) {
-			return 1;
-		}
-		return 0;
-	});
+	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
 
+	for (const entry of response) {
+		returnData.push({
+			name: entry.name as string,
+			value: entry.name,
+			description: `${
+				entry.isAttachment ? 'Supports attachments' : 'Does not support attachments'
+			}`,
+		});
+	}
 	return returnData;
 }
-
 export async function getCaseAttachments(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {

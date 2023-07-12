@@ -43,7 +43,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					executionData = await log[theHiveNodeData.operation].execute.call(this, i, items[i]);
 					break;
 				case 'observable':
-					executionData = await observable[theHiveNodeData.operation].execute.call(this, i);
+					executionData = await observable[theHiveNodeData.operation].execute.call(
+						this,
+						i,
+						items[i],
+					);
 					break;
 				case 'page':
 					executionData = await page[theHiveNodeData.operation].execute.call(this, i);
