@@ -1,3 +1,27 @@
+## [1.0.2](https://github.com/n8n-io/n8n/compare/n8n@1.0.1...n8n@1.0.2) (2023-07-12)
+
+
+### Bug Fixes
+
+* **Brevo Node:** Rename SendInBlue node to Brevo node ([#6521](https://github.com/n8n-io/n8n/issues/6521)) ([81de96b](https://github.com/n8n-io/n8n/commit/81de96bac8d9bb713ffde57765b80eab5b026a89))
+* **Code Node:** Install python modules always in a user-writable folder ([#6568](https://github.com/n8n-io/n8n/issues/6568)) ([5abe530](https://github.com/n8n-io/n8n/commit/5abe530524cb561654a9f068e5f0968a5ccf85d9))
+* **core:** Improve the performance of last 2 sqlite migrations ([#6522](https://github.com/n8n-io/n8n/issues/6522)) ([718a89d](https://github.com/n8n-io/n8n/commit/718a89dcb01dcfed5dfb4024faffbd889acb5cdf))
+* **core:** Reduce memory consumption on `BinaryDataManager.init` ([#6633](https://github.com/n8n-io/n8n/issues/6633)) ([39665b7](https://github.com/n8n-io/n8n/commit/39665b7a163961228a9348db7a21490800ab5a33))
+* **core:** Remove typeorm patches, but still enforce transactions on every migration ([#6594](https://github.com/n8n-io/n8n/issues/6594)) ([8933e9b](https://github.com/n8n-io/n8n/commit/8933e9b256e9a3167872de7bc9c30979907f45a8)), closes [#6519](https://github.com/n8n-io/n8n/issues/6519)
+* **core:** Update docker compose setup for V1 images ([#6642](https://github.com/n8n-io/n8n/issues/6642)) ([cfa21bd](https://github.com/n8n-io/n8n/commit/cfa21bd91b2c1730ab4385bf022852fccd60dfd6))
+* **editor:** Show retry information in execution list only when it exists ([#6587](https://github.com/n8n-io/n8n/issues/6587)) ([faa2bcc](https://github.com/n8n-io/n8n/commit/faa2bccf57fce481a7d50da669a99c08073fe761))
+* **Google Drive Node:** Fix regex in file RLC ([#6607](https://github.com/n8n-io/n8n/issues/6607)) ([beba99f](https://github.com/n8n-io/n8n/commit/beba99f053b3c03d5ff4170706ea646ec8e67035))
+* **HTTP Request Node:** Cleanup circular references in response ([#6590](https://github.com/n8n-io/n8n/issues/6590)) ([2151594](https://github.com/n8n-io/n8n/commit/21515943072d6da31864ffeb51758d7cd7e1d491))
+* **Postgres Node:** Upsert does not fetch columns when schema other then public ([#6643](https://github.com/n8n-io/n8n/issues/6643)) ([2e55cd9](https://github.com/n8n-io/n8n/commit/2e55cd985d338cc3d10758ae950413890311c38e))
+* **Salesforce Node:** Fix typo for adding a contact to a campaign ([#6598](https://github.com/n8n-io/n8n/issues/6598)) ([66f3cb6](https://github.com/n8n-io/n8n/commit/66f3cb68fa8a4ca788c9340aa9d70681ece56c85))
+
+
+### Features
+
+* **core:** Only show V1 banner to users who migrated ([#6622](https://github.com/n8n-io/n8n/issues/6622)) ([fb65cd3](https://github.com/n8n-io/n8n/commit/fb65cd31d922d251ba9e10fa70a4bcc7cf331494))
+
+
+
 ## [1.0.1](https://github.com/n8n-io/n8n/compare/n8n@1.0.0...n8n@1.0.1) (2023-07-05)
 
 
