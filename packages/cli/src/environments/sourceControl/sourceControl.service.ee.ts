@@ -8,38 +8,26 @@ import {
 } from './sourceControlHelper.ee';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
 import {
-	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_SSH_KEY_NAME,
-	SOURCE_CONTROL_TAGS_EXPORT_FILE,
-	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
-	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import { LoggerProxy } from 'n8n-workflow';
 import { SourceControlGitService } from './sourceControlGit.service.ee';
 import { UserSettings } from 'n8n-core';
-import type { PushResult, StatusResult } from 'simple-git';
-import type { ExportResult } from './types/exportResult';
+import type { PushResult } from 'simple-git';
 import { SourceControlExportService } from './sourceControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
 import type { ImportResult } from './types/importResult';
 import type { SourceControlPushWorkFolder } from './types/sourceControlPushWorkFolder';
 import type { SourceControllPullOptions } from './types/sourceControlPullWorkFolder';
-import type {
-	SourceControlledFileLocation,
-	SourceControlledFile,
-	SourceControlledFileStatus,
-	SourceControlledFileType,
-} from './types/sourceControlledFile';
+import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import type { User } from '@/databases/entities/User';
 import isEqual from 'lodash/isEqual';
 import type { SourceControlGetStatus } from './types/sourceControlGetStatus';
@@ -144,31 +132,6 @@ export class SourceControlService {
 		return getBranchesResult;
 	}
 
-	private async export() {
-		const result: {
-			tags: ExportResult | undefined;
-			credentials: ExportResult | undefined;
-			variables: ExportResult | undefined;
-			workflows: ExportResult | undefined;
-		} = {
-			credentials: undefined,
-			tags: undefined,
-			variables: undefined,
-			workflows: undefined,
-		};
-		try {
-			// comment next line if needed
-			await this.sourceControlExportService.cleanWorkFolder();
-			result.tags = await this.sourceControlExportService.exportTagsToWorkFolder();
-			result.variables = await this.sourceControlExportService.exportVariablesToWorkFolder();
-			result.workflows = await this.sourceControlExportService.exportWorkflowsToWorkFolder();
-			result.credentials = await this.sourceControlExportService.exportCredentialsToWorkFolder();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-		return result;
-	}
-
 	private async import(options: SourceControllPullOptions): Promise<ImportResult | undefined> {
 		try {
 			return await this.sourceControlImportService.importFromWorkFolder(options);
@@ -216,57 +179,6 @@ export class SourceControlService {
 		return;
 	}
 
-	// async pushWorkfolder(options: SourceControlPushWorkFolder): Promise<{
-	// 	status: number;
-	// 	pushResult: PushResult | undefined;
-	// 	diffResult: SourceControlledFile[];
-	// }> {
-	// 	if (!this.gitService.git) {
-	// 		await this.initGitService();
-	// 	}
-	// 	if (this.sourceControlPreferencesService.isBranchReadOnly()) {
-	// 		throw new BadRequestError('Cannot push onto read-only branch.');
-	// 	}
-	// 	let diffResult: SourceControlledFile[] = [];
-	// 	// if (options.force === true) {
-	// 	// 	options.skipDiff = true;
-	// 	// }
-	// 	if (!options.skipDiff) {
-	// 		diffResult = await this.getStatus({
-	// 			skipFetch: options.force === true,
-	// 		});
-	// 		const possibleConflicts = diffResult?.filter((file) => file.conflict);
-	// 		if (possibleConflicts?.length > 0 && options.force !== true) {
-	// 			await this.unstage();
-	// 			return {
-	// 				status: 409,
-	// 				pushResult: undefined,
-	// 				diffResult,
-	// 			};
-	// 		}
-	// 	}
-	// 	await this.unstage();
-	// 	await this.stage(options);
-	// 	if (options.fileNames && diffResult) {
-	// 		const pushedFiles = Array.from(options.fileNames);
-	// 		for (let i = 0; i < diffResult.length; i++) {
-	// 			if (pushedFiles.includes(diffResult[i].file)) {
-	// 				diffResult[i].pushed = true;
-	// 			}
-	// 		}
-	// 	}
-	// 	await this.gitService.commit(options.message ?? 'Updated Workfolder');
-	// 	const pushResult = await this.gitService.push({
-	// 		branch: this.sourceControlPreferencesService.getBranchName(),
-	// 		force: options.force ?? false,
-	// 	});
-	// 	return {
-	// 		status: 200,
-	// 		pushResult,
-	// 		diffResult,
-	// 	};
-	// }
-
 	async pushWorkfolder2(options: SourceControlPushWorkFolder): Promise<{
 		status: number;
 		pushResult: PushResult | undefined;
@@ -280,7 +192,7 @@ export class SourceControlService {
 		}
 
 		// only determine file status if not provided by the frontend
-		let diffResult: SourceControlledFile[] = options.fileNames ?? [];
+		let diffResult: SourceControlledFile[] = options.fileNames;
 		if (diffResult.length === 0) {
 			diffResult = (await this.getStatus2({
 				direction: 'push',
@@ -302,15 +214,42 @@ export class SourceControlService {
 			}
 		}
 
-		// TODO: export files that are not in the workfolder / need to be updated from local
+		const filesToBePushed = new Set<string>();
+		const filesToBeDeleted = new Set<string>();
+		options.fileNames.forEach((e) => {
+			if (e.status !== 'deleted') {
+				filesToBePushed.add(e.file);
+			} else {
+				filesToBeDeleted.add(e.file);
+			}
+		});
 
-		await this.stage(options);
+		this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
-		if (options.fileNames) {
-			for (let i = 0; i < diffResult.length; i++) {
-				if (options.fileNames.find((file) => file.file === diffResult[i].file)) {
-					diffResult[i].pushed = true;
-				}
+		const workflowsToBeExported = options.fileNames.filter(
+			(e) => e.type === 'workflow' && e.status !== 'deleted',
+		);
+		await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
+
+		const credentialsToBeExported = options.fileNames.filter(
+			(e) => e.type === 'credential' && e.status !== 'deleted',
+		);
+		await this.sourceControlExportService.exportCredentialsToWorkFolder(credentialsToBeExported);
+
+		if (options.fileNames.find((e) => e.type === 'tags')) {
+			await this.sourceControlExportService.exportTagsToWorkFolder();
+		}
+
+		if (options.fileNames.find((e) => e.type === 'variables')) {
+			await this.sourceControlExportService.exportVariablesToWorkFolder();
+		}
+
+		await this.gitService.resetBranch();
+		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
+
+		for (let i = 0; i < diffResult.length; i++) {
+			if (options.fileNames.find((file) => file.file === diffResult[i].file)) {
+				diffResult[i].pushed = true;
 			}
 		}
 
@@ -422,214 +361,16 @@ export class SourceControlService {
 		};
 	}
 
-	private async stage(
-		options: Pick<SourceControlPushWorkFolder, 'fileNames'>,
-	): Promise<{ staged: string[] } | string> {
-		// const { fileNames, credentialIds, workflowIds } = options;
-		const { fileNames } = options;
-		// const status = await this.gitService.status();
-		const mergedFileNames = new Set<string>();
-		const filesMarkedToBeDeleted = new Set<string>();
-		fileNames?.forEach((e) => {
-			if (e.status !== 'deleted') {
-				mergedFileNames.add(e.file);
-			} else {
-				filesMarkedToBeDeleted.add(e.file);
-			}
-		});
-		// credentialIds?.forEach((e) =>
-		// 	mergedFileNames.add(this.sourceControlExportService.getCredentialsPath(e)),
-		// );
-		// workflowIds?.forEach((e) =>
-		// 	mergedFileNames.add(this.sourceControlExportService.getWorkflowPath(e)),
-		// );
-		// if (mergedFileNames.size === 0) {
-		// 	mergedFileNames = new Set<string>([
-		// 		...status.not_added,
-		// 		...status.created,
-		// 		...status.modified,
-		// 	]);
-		// }
-		// mergedFileNames.add(this.sourceControlExportService.getOwnersPath());
-
-		// status.deleted?.forEach((e) => {
-		// 	if (mergedFileNames.has(e)) {
-		// 		filesMarkedToBeDeleted.add(e);
-		// 		mergedFileNames.delete(e);
-		// 	}
-		// });
-		await this.unstage();
-		const stageResult = await this.gitService.stage(mergedFileNames, filesMarkedToBeDeleted);
-		// if (!stageResult) {
-		// 	const statusResult = await this.gitService.status();
-		// 	return { staged: statusResult.staged };
-		// }
-		return stageResult;
-	}
-
-	private async unstage(): Promise<StatusResult | string> {
-		const stageResult = await this.gitService.resetBranch();
-		if (!stageResult) {
-			return this.gitService.status();
-		}
-		return stageResult;
-	}
-
-	private async fileNameToSourceControlledFile(
-		fileName: string,
-		location: SourceControlledFileLocation,
-		statusResult: StatusResult,
-	): Promise<SourceControlledFile | undefined> {
-		let id: string | undefined = undefined;
-		let name = '';
-		let conflict = false;
-		let status: SourceControlledFileStatus = 'unknown';
-		let type: SourceControlledFileType = 'file';
-		let updatedAt = '';
-
-		const allWorkflows: Map<string, WorkflowEntity> = new Map();
-		(await Db.collections.Workflow.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
-			(workflow) => {
-				allWorkflows.set(workflow.id, workflow);
-			},
-		);
-		const allCredentials: Map<string, CredentialsEntity> = new Map();
-		(await Db.collections.Credentials.find({ select: ['id', 'name', 'updatedAt'] })).forEach(
-			(credential) => {
-				allCredentials.set(credential.id, credential);
-			},
-		);
-
-		// initialize status from git status result
-		if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
-		else if (statusResult.conflicted.find((e) => e === fileName)) {
-			status = 'conflicted';
-			conflict = true;
-		} else if (statusResult.created.find((e) => e === fileName)) status = 'created';
-		else if (statusResult.deleted.find((e) => e === fileName)) status = 'deleted';
-		else if (statusResult.modified.find((e) => e === fileName)) status = 'modified';
-		else if (statusResult.ignored?.find((e) => e === fileName)) status = 'ignored';
-		else if (statusResult.renamed.find((e) => e.to === fileName)) status = 'renamed';
-		else if (statusResult.staged.find((e) => e === fileName)) status = 'staged';
-		else if (location === 'remote' && status === 'unknown') {
-			// special case where git status does not have the remote file
-			// this means it was deleted remotely but still exists locally, so we mark it as locally created
-			status = 'created';
-			location = 'local';
-		} else {
-			LoggerProxy.debug(
-				`Unknown status for file ${fileName} in status result ${JSON.stringify(statusResult)}`,
-			);
-		}
-
-		if (fileName.startsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
-			type = 'workflow';
-			if (status === 'deleted') {
-				id = fileName
-					.replace(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER, '')
-					.replace(/[\/,\\]/, '')
-					.replace('.json', '');
-				if (location === 'remote') {
-					const existingWorkflow = allWorkflows.get(id);
-					if (existingWorkflow) {
-						name = existingWorkflow.name;
-						updatedAt = existingWorkflow.updatedAt.toISOString();
-					}
-				} else {
-					name = '(deleted)';
-					// todo: once we have audit log, this deletion date could be looked up
-				}
-			} else {
-				const workflow = await this.sourceControlExportService.getWorkflowFromFile(fileName);
-				if (!workflow?.id) {
-					if (location === 'local') {
-						return;
-					}
-					id = fileName
-						.replace(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER + '/', '')
-						.replace('.json', '');
-					status = 'created';
-				} else {
-					id = workflow.id;
-					name = workflow.name;
-				}
-				const existingWorkflow = allWorkflows.get(id);
-				if (existingWorkflow) {
-					name = existingWorkflow.name;
-					updatedAt = existingWorkflow.updatedAt.toISOString();
-				}
-			}
-		}
-		if (fileName.startsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
-			type = 'credential';
-			if (status === 'deleted') {
-				id = fileName
-					.replace(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER, '')
-					.replace(/[\/,\\]/, '')
-					.replace('.json', '');
-				if (location === 'remote') {
-					const existingCredential = allCredentials.get(id);
-					if (existingCredential) {
-						name = existingCredential.name;
-						updatedAt = existingCredential.updatedAt.toISOString();
-					}
-				} else {
-					name = '(deleted)';
-				}
-			} else {
-				const credential = await this.sourceControlExportService.getCredentialFromFile(fileName);
-				if (!credential?.id) {
-					if (location === 'local') {
-						return;
-					}
-					id = fileName
-						.replace(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER + '/', '')
-						.replace('.json', '');
-					status = 'created';
-				} else {
-					id = credential.id;
-					name = credential.name;
-				}
-				const existingCredential = allCredentials.get(id);
-				if (existingCredential) {
-					name = existingCredential.name;
-					updatedAt = existingCredential.updatedAt.toISOString();
-				}
-			}
-		}
-
-		if (fileName.startsWith(SOURCE_CONTROL_VARIABLES_EXPORT_FILE)) {
-			id = 'variables';
-			name = 'variables';
-			type = 'variables';
-		}
-
-		if (fileName.startsWith(SOURCE_CONTROL_TAGS_EXPORT_FILE)) {
-			const lastUpdatedTag = await Db.collections.Tag.find({
-				order: { updatedAt: 'DESC' },
-				take: 1,
-				select: ['updatedAt'],
-			});
-			id = 'tags';
-			name = 'tags';
-			type = 'tags';
-			updatedAt = lastUpdatedTag[0]?.updatedAt.toISOString();
-		}
-
-		if (!id) return;
-
-		return {
-			file: fileName,
-			id,
-			name,
-			type,
-			status,
-			location,
-			conflict,
-			updatedAt,
-		};
-	}
-
+	/**
+	 * Does a comparison between the local and remote workfolder based on NOT the git status,
+	 * but certain parameters within the items being synced.
+	 * For workflows, it compares the versionIds
+	 * For credentials, it compares the name, type and nodeAccess
+	 * For variables, it compares the name
+	 * For tags, it compares the name and mapping
+	 * @returns either SourceControlledFile[] if verbose is false,
+	 * or multiple SourceControlledFile[] with all determined differences for debugging purposes
+	 */
 	async getStatus2(options: SourceControlGetStatus) {
 		if (!this.gitService.git) {
 			await this.initGitService();
@@ -921,49 +662,6 @@ export class SourceControlService {
 			return sourceControlledFiles;
 		}
 	}
-
-	// async getStatus(options?: { skipFetch: boolean }): Promise<SourceControlledFile[]> {
-	// 	if (!this.gitService.git) {
-	// 		await this.initGitService();
-	// 	}
-	// 	await this.export();
-	// 	await this.stage({});
-	// 	if (!options?.skipFetch) {
-	// 		await this.gitService.fetch();
-	// 	}
-	// 	const sourceControlledFiles: SourceControlledFile[] = [];
-	// 	const [diffRemote, diffLocal, status] = await Promise.all([
-	// 		this.gitService.diffRemote(),
-	// 		this.gitService.diffLocal(),
-	// 		this.gitService.status(),
-	// 	]);
-	// 	// console.log(diffRemote, diffLocal, status);
-	// 	await Promise.all([
-	// 		...(diffRemote?.files.map(async (e) => {
-	// 			const resolvedFile = await this.fileNameToSourceControlledFile(e.file, 'remote', status);
-	// 			if (resolvedFile) {
-	// 				sourceControlledFiles.push(resolvedFile);
-	// 			}
-	// 		}) ?? []),
-	// 		...(diffLocal?.files.map(async (e) => {
-	// 			const resolvedFile = await this.fileNameToSourceControlledFile(e.file, 'local', status);
-	// 			if (resolvedFile) {
-	// 				sourceControlledFiles.push(resolvedFile);
-	// 			}
-	// 		}) ?? []),
-	// 	]);
-	// 	sourceControlledFiles.forEach((e, index, array) => {
-	// 		const similarItems = array.filter(
-	// 			(f) => f.type === e.type && (f.file === e.file || f.id === e.id),
-	// 		);
-	// 		if (similarItems.length > 1) {
-	// 			similarItems.forEach((item) => {
-	// 				item.conflict = true;
-	// 			});
-	// 		}
-	// 	});
-	// 	return sourceControlledFiles;
-	// }
 
 	async setGitUserDetails(
 		name = SOURCE_CONTROL_DEFAULT_NAME,

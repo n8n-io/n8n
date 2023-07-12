@@ -82,6 +82,34 @@ export class SourceControlImportService {
 		return ownerWorkflowRole;
 	}
 
+	async getWorkflowFromFile(
+		filePath: string,
+		root = this.gitFolder,
+	): Promise<IWorkflowToImport | undefined> {
+		try {
+			const importedWorkflow = jsonParse<IWorkflowToImport>(
+				await fsReadFile(path.join(root, filePath), { encoding: 'utf8' }),
+			);
+			return importedWorkflow;
+		} catch (error) {
+			return undefined;
+		}
+	}
+
+	async getCredentialFromFile(
+		filePath: string,
+		root = this.gitFolder,
+	): Promise<ExportableCredential | undefined> {
+		try {
+			const credential = jsonParse<ExportableCredential>(
+				await fsReadFile(path.join(root, filePath), { encoding: 'utf8' }),
+			);
+			return credential;
+		} catch (error) {
+			return undefined;
+		}
+	}
+
 	private async importCredentialsFromFiles(
 		userId: string,
 	): Promise<Array<{ id: string; name: string; type: string }>> {

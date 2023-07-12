@@ -3,7 +3,6 @@ import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
-	SOURCE_CONTROL_OWNERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -11,10 +10,10 @@ import {
 import * as Db from '@/Db';
 import glob from 'fast-glob';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
-import { writeFile as fsWriteFile, readFile as fsReadFile, rm as fsRm } from 'fs/promises';
+import { LoggerProxy } from 'n8n-workflow';
+import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
+import { rmSync } from 'fs';
 import { Credentials, UserSettings } from 'n8n-core';
-import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
@@ -25,6 +24,8 @@ import {
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { In } from 'typeorm';
+import type { SourceControlledFile } from './types/sourceControlledFile';
 
 @Service()
 export class SourceControlExportService {
@@ -50,46 +51,6 @@ export class SourceControlExportService {
 
 	getCredentialsPath(credentialsId: string): string {
 		return getCredentialExportPath(credentialsId, this.credentialExportFolder);
-	}
-
-	getTagsPath(): string {
-		return path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
-	}
-
-	getOwnersPath(): string {
-		return path.join(this.gitFolder, SOURCE_CONTROL_OWNERS_EXPORT_FILE);
-	}
-
-	getVariablesPath(): string {
-		return getVariablesPath(this.gitFolder);
-	}
-
-	async getWorkflowFromFile(
-		filePath: string,
-		root = this.gitFolder,
-	): Promise<IWorkflowToImport | undefined> {
-		try {
-			const importedWorkflow = jsonParse<IWorkflowToImport>(
-				await fsReadFile(path.join(root, filePath), { encoding: 'utf8' }),
-			);
-			return importedWorkflow;
-		} catch (error) {
-			return undefined;
-		}
-	}
-
-	async getCredentialFromFile(
-		filePath: string,
-		root = this.gitFolder,
-	): Promise<ExportableCredential | undefined> {
-		try {
-			const credential = jsonParse<ExportableCredential>(
-				await fsReadFile(path.join(root, filePath), { encoding: 'utf8' }),
-			);
-			return credential;
-		} catch (error) {
-			return undefined;
-		}
 	}
 
 	async cleanWorkFolder() {
@@ -128,28 +89,13 @@ export class SourceControlExportService {
 		}
 	}
 
-	private async rmDeletedWorkflowsFromExportFolder(
-		workflowsToBeExported: WorkflowEntity[],
-	): Promise<Set<string>> {
-		const sharedWorkflowsFileNames = new Set<string>(
-			workflowsToBeExported.map((e) => this.getWorkflowPath(e?.name)),
-		);
-		const existingWorkflowsInFolder = new Set<string>(
-			await glob('*.json', {
-				cwd: this.workflowExportFolder,
-				absolute: true,
-			}),
-		);
-		const deletedWorkflows = new Set(existingWorkflowsInFolder);
-		for (const elem of sharedWorkflowsFileNames) {
-			deletedWorkflows.delete(elem);
-		}
+	public rmFilesFromExportFolder(filesToBeDeleted: Set<string>): Set<string> {
 		try {
-			await Promise.all([...deletedWorkflows].map(async (e) => fsRm(e)));
+			filesToBeDeleted.forEach((e) => rmSync(e));
 		} catch (error) {
 			LoggerProxy.error(`Failed to delete workflows from work folder: ${(error as Error).message}`);
 		}
-		return deletedWorkflows;
+		return filesToBeDeleted;
 	}
 
 	private async writeExportableWorkflowsToExportFolder(
@@ -175,9 +121,10 @@ export class SourceControlExportService {
 		);
 	}
 
-	async exportWorkflowsToWorkFolder(): Promise<ExportResult> {
+	async exportWorkflowsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
+			const workflowIds = candidates.map((e) => e.id);
 			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 				relations: ['role', 'user'],
 				where: {
@@ -185,21 +132,23 @@ export class SourceControlExportService {
 						name: 'owner',
 						scope: 'workflow',
 					},
+					workflowId: In(workflowIds),
 				},
 			});
-			const workflows = await Db.collections.Workflow.find();
+			const workflows = await Db.collections.Workflow.find({
+				where: {
+					id: In(workflowIds),
+				},
+			});
 
-			// write list of owners to file
-			const ownersFileName = this.getOwnersPath();
+			// determine owner of each workflow to be exported
 			const owners: Record<string, string> = {};
 			sharedWorkflows.forEach((e) => (owners[e.workflowId] = e.user.email));
 
-			// before exporting, figure out which workflows have been deleted and remove them from the export folder
-			const removedFiles = await this.rmDeletedWorkflowsFromExportFolder(workflows);
 			// write the workflows to the export folder as json files
 			await this.writeExportableWorkflowsToExportFolder(workflows, owners);
 
-			await fsWriteFile(ownersFileName, JSON.stringify(owners, null, 2));
+			// await fsWriteFile(ownersFileName, JSON.stringify(owners, null, 2));
 			return {
 				count: sharedWorkflows.length,
 				folder: this.workflowExportFolder,
@@ -207,7 +156,6 @@ export class SourceControlExportService {
 					id: e?.id,
 					name: this.getWorkflowPath(e?.name),
 				})),
-				removedFiles: [...removedFiles],
 			};
 		} catch (error) {
 			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
@@ -226,7 +174,7 @@ export class SourceControlExportService {
 					files: [],
 				};
 			}
-			const fileName = this.getVariablesPath();
+			const fileName = getVariablesPath(this.gitFolder);
 			const sanitizedVariables = variables.map((e) => ({ ...e, value: '' }));
 			await fsWriteFile(fileName, JSON.stringify(sanitizedVariables, null, 2));
 			return {
@@ -257,7 +205,7 @@ export class SourceControlExportService {
 				};
 			}
 			const mappings = await Db.collections.WorkflowTagMapping.find();
-			const fileName = this.getTagsPath();
+			const fileName = path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 			await fsWriteFile(
 				fileName,
 				JSON.stringify(
@@ -310,23 +258,24 @@ export class SourceControlExportService {
 		return data;
 	};
 
-	async exportCredentialsToWorkFolder(): Promise<ExportResult> {
+	async exportCredentialsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
-			const sharedCredentials = await Db.collections.SharedCredentials.find({
+			const credentialIds = candidates.map((e) => e.id);
+			const credentialsToBeExported = await Db.collections.SharedCredentials.find({
 				relations: ['credentials', 'role', 'user'],
+				where: {
+					credentialsId: In(credentialIds),
+				},
 			});
 			const encryptionKey = await UserSettings.getEncryptionKey();
 			await Promise.all(
-				sharedCredentials.map(async (sharedCredential) => {
+				credentialsToBeExported.map(async (sharedCredential) => {
 					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
 					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
 					const plainData = credentialObject.getData(encryptionKey);
 					const sanitizedData = this.replaceCredentialData(plainData);
-					const fileName = path.join(
-						this.credentialExportFolder,
-						`${sharedCredential.credentials.id}.json`,
-					);
+					const fileName = this.getCredentialsPath(sharedCredential.credentials.id);
 					const sanitizedCredential: ExportableCredential = {
 						id: sharedCredential.credentials.id,
 						name: sharedCredential.credentials.name,
@@ -339,9 +288,9 @@ export class SourceControlExportService {
 				}),
 			);
 			return {
-				count: sharedCredentials.length,
+				count: credentialsToBeExported.length,
 				folder: this.credentialExportFolder,
-				files: sharedCredentials.map((e) => ({
+				files: credentialsToBeExported.map((e) => ({
 					id: e.credentials.id,
 					name: path.join(this.credentialExportFolder, `${e.credentials.name}.json`),
 				})),
