@@ -65,7 +65,7 @@
 						:loading="loadingWorkflows"
 						:total-workflows="totalWorkflows"
 						:workflows="isFixedListExperiment ? fixedTemplatesList : workflows"
-						:hide-header="isFixedListExperiment"
+						:simple-view="isFixedListExperiment"
 						@loadMore="onLoadMore"
 						@openTemplate="onOpenTemplate"
 					/>

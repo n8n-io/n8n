@@ -17,7 +17,12 @@ import {
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
-import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
 import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
@@ -39,8 +44,11 @@ import type {
 	SharedWorkflowRepository,
 	UserRepository,
 } from '@db/repositories';
-import { UserService } from '../user/user.service';
+import { UserService } from '@/user/user.service';
 import { plainToInstance } from 'class-transformer';
+import { License } from '@/License';
+import { Container } from 'typedi';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -107,6 +115,8 @@ export class UsersController {
 	 */
 	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
@@ -114,6 +124,13 @@ export class UsersController {
 			throw new BadRequestError(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
+		}
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -551,6 +568,14 @@ export class UsersController {
 	@Post('/:id/reinvite')
 	async reinviteUser(req: UserRequest.Reinvite) {
 		const { id: idToReinvite } = req.params;
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 
 		if (!isEmailSetUp()) {
 			this.logger.error('Request to reinvite a user failed because email sending was not set up');

@@ -1,9 +1,14 @@
-import type { IDataObject, INode, INodeExecutionData, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	ColumnInfo,
-	ConstructExecutionMetaData,
 	EnumInfo,
 	PgpClient,
 	PgpDatabase,
@@ -194,15 +199,14 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
-export const configureQueryRunner =
-	(
-		node: INode,
-		constructExecutionMetaData: ConstructExecutionMetaData,
-		continueOnFail: boolean,
-		pgp: PgpClient,
-		db: PgpDatabase,
-	) =>
-	async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
+export function configureQueryRunner(
+	this: IExecuteFunctions,
+	node: INode,
+	continueOnFail: boolean,
+	pgp: PgpClient,
+	db: PgpDatabase,
+) {
+	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
@@ -211,7 +215,7 @@ export const configureQueryRunner =
 			try {
 				returnData = (await db.multi(pgp.helpers.concat(queries)))
 					.map((result, i) => {
-						return constructExecutionMetaData(wrapData(result as IDataObject[]), {
+						return this.helpers.constructExecutionMetaData(wrapData(result as IDataObject[]), {
 							itemData: { item: i },
 						});
 					})
@@ -242,7 +246,7 @@ export const configureQueryRunner =
 							queries[i].values,
 						);
 
-						const executionData = constructExecutionMetaData(
+						const executionData = this.helpers.constructExecutionMetaData(
 							wrapData(transactionResult.length ? transactionResult : [{ success: true }]),
 							{ itemData: { item: i } },
 						);
@@ -269,7 +273,7 @@ export const configureQueryRunner =
 							queries[i].values,
 						);
 
-						const executionData = constructExecutionMetaData(
+						const executionData = this.helpers.constructExecutionMetaData(
 							wrapData(transactionResult.length ? transactionResult : [{ success: true }]),
 							{ itemData: { item: i } },
 						);
@@ -287,6 +291,7 @@ export const configureQueryRunner =
 
 		return returnData;
 	};
+}
 
 export function replaceEmptyStringsByNulls(
 	items: INodeExecutionData[],
@@ -332,16 +337,18 @@ export async function getTableSchema(
 	return columns;
 }
 
-export async function uniqueColumns(db: PgpDatabase, table: string) {
+export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'public') {
 	// Using the modified query from https://wiki.postgresql.org/wiki/Retrieve_primary_key_columns
+	// `quote_ident` - properly quote and escape an identifier
+	// `::regclass` - cast a string to a regclass (internal type for object names)
 	const unique = await db.any(
 		`
 		SELECT DISTINCT a.attname
 			FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-		WHERE i.indrelid = quote_ident($1)::regclass
+		WHERE i.indrelid = (quote_ident($1) || '.' || quote_ident($2))::regclass
 			AND (i.indisprimary OR i.indisunique);
 		`,
-		[table],
+		[schema, table],
 	);
 	return unique as IDataObject[];
 }

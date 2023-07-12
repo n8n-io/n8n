@@ -11,7 +11,7 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service.ee';
+import { getWorkflowOwnerRole } from '../users/users.service';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -101,7 +101,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (isInstanceOwner(req.user)) {
+			if (req.user.isOwner) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					where.id = In(workflowIds);

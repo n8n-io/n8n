@@ -149,6 +149,7 @@ import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+import { License } from './License';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
@@ -259,6 +260,7 @@ export class Server extends AbstractServer {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
+				quota: Container.get(License).getUsersLimit(),
 				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
 				smtpSetup: isEmailSetUp(),
 				authenticationMethod: getCurrentAuthenticationMethod(),
@@ -405,6 +407,7 @@ export class Server extends AbstractServer {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
+			quota: Container.get(License).getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&

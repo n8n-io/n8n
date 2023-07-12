@@ -38,6 +38,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
+			quota: -1,
 			showSetupOnFirstLoad: false,
 			smtpSetup: false,
 			authenticationMethod: UserManagementAuthenticationMethod.Email,
@@ -172,6 +173,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		permanentlyDismissedBanners(): string[] {
 			return this.settings.banners?.permanentlyDismissed ?? [];
+		},
+		isBelowUserQuota(): boolean {
+			const userStore = useUsersStore();
+			return (
+				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
+			);
 		},
 	},
 	actions: {
