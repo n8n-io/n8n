@@ -1,3 +1,16 @@
+## [0.236.1](https://github.com/n8n-io/n8n/compare/n8n@0.236.0...n8n@0.236.1) (2023-07-12)
+
+
+### Bug Fixes
+
+* **core:** Reduce memory consumption on `BinaryDataManager.init` ([#6633](https://github.com/n8n-io/n8n/issues/6633)) ([b8fc8f6](https://github.com/n8n-io/n8n/commit/b8fc8f6512ecafa910cf206143ac5edc84f0b369))
+* **editor:** Prevent keyboard shortcuts to edit workflows in readonly mode ([#6613](https://github.com/n8n-io/n8n/issues/6613)) ([6f6f6d2](https://github.com/n8n-io/n8n/commit/6f6f6d2b9176ed4ee9ce2a6ebaefc46d64557a2f))
+* **Google Drive Node:** Fix regex in file RLC ([#6607](https://github.com/n8n-io/n8n/issues/6607)) ([ca8fbe5](https://github.com/n8n-io/n8n/commit/ca8fbe5656701016bb7d14a338bf0a787c242056))
+* **HTTP Request Node:** Cleanup circular references in response ([#6590](https://github.com/n8n-io/n8n/issues/6590)) ([c8bf06d](https://github.com/n8n-io/n8n/commit/c8bf06dbb013debf27497bbe950c6b90dc11a160))
+* **Postgres Node:** Upsert does not fetch columns when schema other then public ([#6643](https://github.com/n8n-io/n8n/issues/6643)) ([180cb0c](https://github.com/n8n-io/n8n/commit/180cb0c865fb3d150f5e8514ef2585e564d0d4a4))
+
+
+
 # [0.236.0](https://github.com/n8n-io/n8n/compare/n8n@0.235.0...n8n@0.236.0) (2023-07-05)
 
 
