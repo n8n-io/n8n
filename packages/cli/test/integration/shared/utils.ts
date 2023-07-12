@@ -683,8 +683,10 @@ export function createAgent(
 	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
 		void agent.use(prefix(REST_PATH_SEGMENT));
 		if (options?.auth && options?.user) {
-			const { token } = issueJWT(options.user);
-			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+			try {
+				const { token } = issueJWT(options.user);
+				agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+			} catch {}
 		}
 	}
 

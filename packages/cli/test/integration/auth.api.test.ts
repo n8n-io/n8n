@@ -1,5 +1,7 @@
 import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+import { License } from '@/License';
 import validator from 'validator';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -83,6 +85,26 @@ describe('POST /login', () => {
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
+	});
+
+	test('should throw AuthError for non-owner if not within users limit quota', async () => {
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		const member = await testDb.createUserShell(globalMemberRole);
+
+		const response = await authAgent(member).get('/login');
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should not throw AuthError for owner if not within users limit quota', async () => {
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		const ownerUser = await testDb.createUser({
+			password: randomValidPassword(),
+			globalRole: globalOwnerRole,
+			isOwner: true,
+		});
+
+		const response = await authAgent(ownerUser).get('/login');
+		expect(response.statusCode).toBe(200);
 	});
 });
 
@@ -290,6 +312,18 @@ describe('GET /resolve-signup-token', () => {
 				},
 			},
 		});
+	});
+
+	test('should return 403 if user quota reached', async () => {
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		const memberShell = await testDb.createUserShell(globalMemberRole);
+
+		const response = await authOwnerAgent
+			.get('/resolve-signup-token')
+			.query({ inviterId: owner.id })
+			.query({ inviteeId: memberShell.id });
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should fail with invalid inputs', async () => {

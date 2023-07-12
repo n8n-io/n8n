@@ -77,9 +77,6 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 			}
 			return;
 		}
-
-		// Handle authentication
-
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			const authCookie: string = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
