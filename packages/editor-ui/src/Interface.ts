@@ -75,7 +75,8 @@ declare global {
 			reloadFeatureFlags?(): void;
 		};
 		analytics?: {
-			track(event: string, proeprties?: ITelemetryTrackProperties): void;
+			track(event: string, properties?: ITelemetryTrackProperties): void;
+			identify(userId: string, traits?: SegmentUserTraits): void;
 		};
 		featureFlags?: {
 			getAll: () => FeatureFlags;
@@ -84,6 +85,39 @@ declare global {
 		};
 	}
 }
+
+// Based on https://segment.com/docs/connections/spec/identify/#traits
+export type SegmentUserTraits = {
+	address?: {
+		city?: string;
+		country?: string;
+		postalCode?: string;
+		state?: string;
+		street?: string;
+	};
+	age?: number;
+	avatar?: string;
+	birthday?: Date;
+	company?: {
+		name?: string;
+		id?: string | number;
+		industry?: string;
+		employee_count?: number;
+		plan?: string;
+	};
+	createdAt?: Date;
+	description?: string;
+	email?: string;
+	firstName?: string;
+	gender?: string;
+	id?: string;
+	lastName?: string;
+	name?: string;
+	phone?: string;
+	title?: string;
+	username?: string;
+	website?: string;
+};
 
 export type EndpointStyle = {
 	width?: number;

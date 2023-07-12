@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import type { INodeTypeDescription, IRun, ITelemetryTrackProperties } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { SegmentUserTraits } from '@/Interface';
 
 const EVENTS = {
 	SHOW_CHECKLIST: 'Show checklist',
@@ -32,6 +33,12 @@ export const useSegment = defineStore('segment', () => {
 	const track = (eventName: string, properties?: ITelemetryTrackProperties) => {
 		if (settingsStore.telemetry.enabled) {
 			window.analytics?.track(eventName, properties);
+		}
+	};
+
+	const identify = (userId: string, traits?: SegmentUserTraits) => {
+		if (settingsStore.telemetry.enabled) {
+			window.analytics?.identify(userId, traits);
 		}
 	};
 
@@ -123,6 +130,7 @@ export const useSegment = defineStore('segment', () => {
 	};
 
 	return {
+		identify,
 		showAppCuesChecklist,
 		track,
 		trackAddedTrigger,

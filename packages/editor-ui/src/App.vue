@@ -50,11 +50,13 @@ import {
 	useCloudPlanStore,
 	useSourceControlStore,
 	useUsageStore,
+	useSegment,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useExternalHooks } from '@/composables';
+import type { SegmentUserTraits } from './Interface';
 
 export default defineComponent({
 	name: 'App',
@@ -231,6 +233,13 @@ export default defineComponent({
 
 			this.postAuthenticateDone = true;
 		},
+		identifyCurrentUser() {
+			const currentUser = this.usersStore.currentUser;
+			if (currentUser) {
+				const traits: SegmentUserTraits = currentUser.email ? { email: currentUser.email } : {};
+				useSegment().identify(currentUser.id, traits);
+			}
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -245,6 +254,7 @@ export default defineComponent({
 		this.loading = false;
 
 		this.trackPage();
+		this.identifyCurrentUser();
 		void this.externalHooks.run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
