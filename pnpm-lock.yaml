@@ -19240,7 +19240,7 @@ packages:
       request: 2.88.2
       request-promise-core: 1.1.4(request@2.88.2)
       stealthy-require: 1.1.1
-      tough-cookie: 2.5.0
+      tough-cookie: 4.1.3
     dev: false
 
   /request@2.88.2:
