@@ -13,6 +13,7 @@ import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
+import config from '@/config';
 
 let globalMemberRole: Role;
 let owner: User;
@@ -39,6 +40,7 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 beforeEach(async () => {
