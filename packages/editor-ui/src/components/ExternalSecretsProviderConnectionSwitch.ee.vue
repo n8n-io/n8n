@@ -3,7 +3,7 @@ import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { useExternalSecretsStore } from '@/stores';
 import { useI18n, useLoadingService, useToast } from '@/composables';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { EventBus } from 'n8n-design-system/utils';
 
 const emit = defineEmits<{
@@ -26,6 +26,8 @@ const externalSecretsStore = useExternalSecretsStore();
 const { i18n } = useI18n();
 const toast = useToast();
 
+const saving = ref(false);
+
 const connectedTextColor = computed(() => {
 	return props.provider.connected
 		? props.provider.state === 'error'
@@ -46,20 +48,24 @@ onMounted(() => {
 
 async function onUpdateConnected(value: boolean) {
 	try {
-		loadingService.startLoading();
+		saving.value = true;
 		await externalSecretsStore.updateProviderConnected(props.provider.name, value);
 
 		emit('change', value);
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
-		loadingService.stopLoading();
+		saving.value = false;
 	}
 }
 </script>
 
 <template>
-	<div :class="$style.connectionSwitch">
+	<div
+		:class="$style.connectionSwitch"
+		v-loading="saving"
+		element-loading-spinner="el-icon-loading"
+	>
 		<n8n-text :color="connectedTextColor" bold class="mr-2xs">
 			{{
 				i18n.baseText(
@@ -69,7 +75,6 @@ async function onUpdateConnected(value: boolean) {
 		</n8n-text>
 		<el-switch
 			:value="provider.connected"
-			@change="onUpdateConnected"
 			:title="
 				i18n.baseText('settings.externalSecrets.card.connectedSwitch.title', {
 					interpolate: { provider: provider.displayName },
@@ -77,8 +82,8 @@ async function onUpdateConnected(value: boolean) {
 			"
 			:active-color="connectedSwitchColor"
 			inactive-color="#8899AA"
-			element-loading-spinner="el-icon-loading"
 			data-test-id="settings-external-secrets-connected-switch"
+			@change="onUpdateConnected"
 		>
 		</el-switch>
 	</div>
@@ -86,6 +91,7 @@ async function onUpdateConnected(value: boolean) {
 
 <style lang="scss" module>
 .connectionSwitch {
+	position: relative;
 	display: flex;
 	flex-direction: row;
 	align-items: center;

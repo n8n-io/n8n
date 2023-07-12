@@ -1341,6 +1341,7 @@
 	"settings.externalSecrets.provider.description": "Select the files you want to stage in your commit and add a commit message. ",
 	"settings.externalSecrets.provider.buttons.cancel": "Cancel",
 	"settings.externalSecrets.provider.buttons.save": "Save",
+	"settings.externalSecrets.provider.buttons.saving": "Saving",
 	"settings.externalSecrets.card.connectedSwitch.title": "Connect to {provider}",
 	"settings.externalSecrets.provider.save.success.title": "Provider settings saved successfully",
 	"settings.externalSecrets.provider.connected.success.title": "Provider connected successfully",

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
@@ -35,6 +35,8 @@ const toast = useToast();
 const { i18n: locale } = useI18n();
 const route = useRoute();
 const { confirm } = useMessage();
+
+const saving = ref(false);
 
 const eventBus = createEventBus();
 
@@ -149,7 +151,7 @@ async function save() {
 	const previousState = connectionState.value;
 
 	try {
-		loadingService.startLoading();
+		saving.value = true;
 		await externalSecretsStore.updateProvider(provider.value.name, {
 			data: normalizedProviderData.value,
 		});
@@ -163,7 +165,7 @@ async function save() {
 		eventBus.emit('connect', true);
 	}
 
-	loadingService.stopLoading();
+	saving.value = false;
 }
 
 async function onBeforeClose() {
@@ -215,8 +217,17 @@ async function onBeforeClose() {
 						:provider="provider"
 						@change="testConnection"
 					/>
-					<n8n-button type="primary" :disabled="!canSave" @click="save">
-						{{ locale.baseText('settings.externalSecrets.provider.buttons.save') }}
+					<n8n-button
+						type="primary"
+						:loading="saving"
+						:disabled="!canSave && !saving"
+						@click="save"
+					>
+						{{
+							locale.baseText(
+								`settings.externalSecrets.provider.buttons.${saving ? 'saving' : 'save'}`,
+							)
+						}}
 					</n8n-button>
 				</div>
 			</div>
