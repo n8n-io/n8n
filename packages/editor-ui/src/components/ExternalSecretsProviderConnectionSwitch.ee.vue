@@ -3,7 +3,8 @@ import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { useExternalSecretsStore } from '@/stores';
 import { useI18n, useLoadingService, useToast } from '@/composables';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
+import { EventBus } from 'n8n-design-system/utils';
 
 const emit = defineEmits<{
 	(e: 'change', value: boolean): void;
@@ -13,6 +14,10 @@ const props = defineProps({
 	provider: {
 		type: Object as PropType<ExternalSecretsProvider>,
 		required: true,
+	},
+	eventBus: {
+		type: Object as PropType<EventBus>,
+		default: undefined,
 	},
 });
 
@@ -31,6 +36,12 @@ const connectedTextColor = computed(() => {
 
 const connectedSwitchColor = computed(() => {
 	return props.provider.state === 'error' ? '#ff4027' : '#13ce66';
+});
+
+onMounted(() => {
+	if (props.eventBus) {
+		props.eventBus.on('connect', onUpdateConnected);
+	}
 });
 
 async function onUpdateConnected(value: boolean) {

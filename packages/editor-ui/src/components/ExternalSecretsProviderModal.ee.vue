@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
-import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
+import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
-import { useI18n, useLoadingService, useToast } from '@/composables';
+import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router/composables';
@@ -13,6 +13,7 @@ import type { IUpdateInformation, ExternalSecretsProviderWithProperties } from '
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const props = defineProps({
 	data: {
@@ -31,8 +32,11 @@ const loadingService = useLoadingService();
 const externalSecretsStore = useExternalSecretsStore();
 const uiStore = useUIStore();
 const toast = useToast();
-const { i18n } = useI18n();
+const { i18n: locale } = useI18n();
 const route = useRoute();
+const { confirm } = useMessage();
+
+const eventBus = createEventBus();
 
 const labelSize: IParameterLabel = { size: 'medium' };
 
@@ -147,16 +151,45 @@ async function save() {
 		});
 
 		toast.showMessage({
-			title: i18n.baseText('settings.externalSecrets.provider.save.success.title'),
+			title: locale.baseText('settings.externalSecrets.provider.save.success.title'),
 			type: 'success',
 		});
 	} catch (error) {
 		toast.showError(error, 'Error');
 	}
 
+	const previousState = connectionState.value;
 	await testConnection();
+	if (previousState === 'initializing' && connectionState.value === 'tested') {
+		eventBus.emit('connect', true);
+	}
 
 	loadingService.stopLoading();
+}
+
+async function onBeforeClose() {
+	if (providerDataUpdated.value) {
+		const confirmModal = await confirm(
+			locale.baseText('settings.externalSecrets.provider.closeWithoutSaving.description', {
+				interpolate: {
+					provider: provider.value.displayName,
+				},
+			}),
+			{
+				title: locale.baseText('settings.externalSecrets.provider.closeWithoutSaving.title'),
+				confirmButtonText: locale.baseText(
+					'settings.externalSecrets.provider.closeWithoutSaving.confirm',
+				),
+				cancelButtonText: locale.baseText(
+					'settings.externalSecrets.provider.closeWithoutSaving.cancel',
+				),
+			},
+		);
+
+		return confirmModal !== MODAL_CONFIRM;
+	}
+
+	return true;
 }
 </script>
 
@@ -167,6 +200,7 @@ async function save() {
 		:title="provider.displayName"
 		:eventBus="data.eventBus"
 		:name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY"
+		:before-close="onBeforeClose"
 	>
 		<template #header>
 			<div :class="$style.header">
@@ -182,7 +216,7 @@ async function save() {
 						@change="testConnection"
 					/>
 					<n8n-button type="primary" :disabled="!canSave" @click="save">
-						{{ i18n.baseText('settings.externalSecrets.provider.buttons.save') }}
+						{{ locale.baseText('settings.externalSecrets.provider.buttons.save') }}
 					</n8n-button>
 				</div>
 			</div>
@@ -197,7 +231,7 @@ async function save() {
 						theme="success"
 					>
 						{{
-							i18n.baseText(
+							locale.baseText(
 								`settings.externalSecrets.provider.testConnection.success${
 									provider.connected ? '.connected' : ''
 								}`,
@@ -209,10 +243,25 @@ async function save() {
 								},
 							)
 						}}
+						<span v-if="provider.connected">
+							<br />
+							<i18n path="settings.externalSecrets.provider.testConnection.success.connected.usage">
+								<template #code>
+									<code>{{ `\{\{ \$secrets\.${provider.name}\.secret_name \}\}` }}</code>
+								</template>
+							</i18n>
+							<n8n-link :href="locale.baseText('settings.externalSecrets.docs')" size="small">
+								{{
+									locale.baseText(
+										'settings.externalSecrets.provider.testConnection.success.connected.docs',
+									)
+								}}
+							</n8n-link>
+						</span>
 					</n8n-callout>
 					<n8n-callout v-else-if="connectionState === 'error'" theme="danger">
 						{{
-							i18n.baseText(
+							locale.baseText(
 								`settings.externalSecrets.provider.testConnection.error${
 									provider.connected ? '.connected' : ''
 								}`,
