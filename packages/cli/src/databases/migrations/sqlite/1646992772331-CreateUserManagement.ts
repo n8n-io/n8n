@@ -100,7 +100,7 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup)
 				VALUES (?, ?, ?)
 		`,
-			['ui.banners.dismissed', ['V1'], true],
+			['ui.banners.dismissed', '["V1"]', true],
 		);
 	}
 
