@@ -24,11 +24,30 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const providers = computed(() => state.providers);
 
 	const secretsAsObject = computed(() => {
-		return Object.keys(secrets.value).reduce<Record<string, Record<string, string>>>(
+		return Object.keys(secrets.value).reduce<Record<string, Record<string, object | string>>>(
 			(providerAcc, provider) => {
-				providerAcc[provider] = secrets.value[provider]?.reduce<Record<string, string>>(
+				providerAcc[provider] = secrets.value[provider]?.reduce<Record<string, object | string>>(
 					(secretAcc, secret) => {
-						secretAcc[secret] = '*********';
+						const splitSecret = secret.split('.');
+						if (splitSecret.length === 1) {
+							secretAcc[secret] = '*********';
+							return secretAcc;
+						}
+						const obj = (secretAcc[splitSecret[0]] ?? {}) as object;
+						let acc: any = obj;
+						for (let i = 1; i < splitSecret.length; i++) {
+							const key = splitSecret[i];
+							// Actual value key
+							if (i === splitSecret.length - 1) {
+								acc[key] = '*********';
+								continue;
+							}
+							if (!(key in acc)) {
+								acc[key] = {};
+							}
+							acc = acc[key];
+						}
+						secretAcc[splitSecret[0]] = obj;
 						return secretAcc;
 					},
 					{},

@@ -43,7 +43,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
-	} else if (/\$secrets\.[a-zA-Z0-9_]+$/.test(base)) {
+	} else if (/\$secrets\.[a-zA-Z0-9_\.]+$/.test(base)) {
 		options = secretOptions(base);
 	} else if (base === '$secrets') {
 		options = secretProvidersOptions();
@@ -356,20 +356,25 @@ export const variablesOptions = () => {
 };
 
 export const secretOptions = (base: string) => {
-	const provider = base.split('.')[1];
+	const splitBase = base.split('.').slice(1);
+	const provider = splitBase.shift()!;
 	const externalSecretsStore = useExternalSecretsStore();
-	const secrets = externalSecretsStore.secretsAsObject;
+	const secrets = externalSecretsStore.secrets;
+	const path = splitBase.join('.');
 
-	return Object.keys(secrets[provider]).map((secret) =>
-		createCompletionOption('Object', secret, 'keyword', {
-			doc: {
-				name: secret,
-				returnType: 'string',
-				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
-				docURL: 'https://docs.n8n.io/',
-			},
-		}),
-	);
+	return secrets[provider]
+		?.filter((s) => s.startsWith(path))
+		.map((s) => s.substring(path.length + 1))
+		.map((secret) =>
+			createCompletionOption('Object', secret, 'keyword', {
+				doc: {
+					name: secret,
+					returnType: 'string',
+					description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
+					docURL: 'https://docs.n8n.io/',
+				},
+			}),
+		);
 };
 
 export const secretProvidersOptions = () => {
