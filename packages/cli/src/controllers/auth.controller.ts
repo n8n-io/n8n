@@ -1,9 +1,14 @@
 import validator from 'validator';
 import { Authorized, Get, Post, RestController } from '@/decorators';
-import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
+import {
+	AuthError,
+	BadRequestError,
+	InternalServerError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
@@ -26,6 +31,7 @@ import {
 import type { UserRepository } from '@db/repositories';
 import { InternalHooks } from '../InternalHooks';
 import Container from 'typedi';
+import { License } from '@/License';
 
 @RestController()
 export class AuthController {
@@ -71,7 +77,6 @@ export class AuthController {
 		let user: User | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
-
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
@@ -120,6 +125,7 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
+
 				return await withFeatureFlags(this.postHog, sanitizeUser(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
@@ -155,6 +161,15 @@ export class AuthController {
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug('Request to resolve signup token failed because of users quota reached', {
+				inviterId,
+				inviteeId,
+			});
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 
 		if (!inviterId || !inviteeId) {
 			this.logger.debug(

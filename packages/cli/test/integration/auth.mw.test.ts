@@ -5,6 +5,7 @@ import {
 } from './shared/constants';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
+import config from '@/config';
 
 let authlessAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -16,6 +17,8 @@ beforeAll(async () => {
 
 	authlessAgent = utils.createAgent(app);
 	authMemberAgent = utils.createAuthAgent(app)(member);
+
+	config.set('userManagement.isInstanceOwnerSetUp', true);
 });
 
 afterAll(async () => {
