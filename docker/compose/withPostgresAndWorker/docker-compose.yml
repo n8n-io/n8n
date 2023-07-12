@@ -7,6 +7,7 @@ volumes:
 
 x-shared: &shared
   restart: always
+  image: docker.n8n.io/n8nio/n8n
   environment:
     - DB_TYPE=postgresdb
     - DB_POSTGRESDB_HOST=postgres
@@ -60,14 +61,11 @@ services:
 
   n8n:
     <<: *shared
-    image: docker.n8n.io/n8nio/n8n
-    command: /bin/sh -c "n8n start --tunnel"
     ports:
       - 5678:5678
 
   n8n-worker:
     <<: *shared
-    image: docker.n8n.io/n8nio/n8n
-    command: /bin/sh -c "sleep 5; n8n worker"
+    command: worker
     depends_on:
       - n8n
