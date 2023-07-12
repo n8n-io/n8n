@@ -318,4 +318,13 @@ export class ExternalSecretsManager {
 			}
 		}
 	}
+
+	async updateProvider(provider: string): Promise<boolean> {
+		try {
+			await this.providers[provider].update();
+			return true;
+		} catch {
+			return false;
+		}
+	}
 }

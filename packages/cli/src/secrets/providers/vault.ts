@@ -90,6 +90,7 @@ export class VaultProvider extends SecretsProvider {
 			type: 'string',
 			hint: 'Base URL of the Vault instance',
 			required: true,
+			noDataExpression: true,
 			placeholder: 'https://example.com/v1/',
 			default: '',
 		},
@@ -113,7 +114,8 @@ export class VaultProvider extends SecretsProvider {
 			type: 'string',
 			default: '',
 			required: true,
-			placeholder: '***************',
+			noDataExpression: true,
+			placeholder: 'e.g. hvs.2OCsZxZA6Z9lChbt0janOOZI',
 			typeOptions: { password: true },
 			displayOptions: {
 				show: {
@@ -127,6 +129,7 @@ export class VaultProvider extends SecretsProvider {
 			description:
 				'Try to renew Vault token. This will update the settings on this provider when doing so.',
 			type: 'boolean',
+			noDataExpression: true,
 			default: true,
 			displayOptions: {
 				show: {
@@ -142,6 +145,7 @@ export class VaultProvider extends SecretsProvider {
 			type: 'string',
 			default: '',
 			required: true,
+			noDataExpression: true,
 			placeholder: 'Username',
 			displayOptions: {
 				show: {
@@ -155,6 +159,7 @@ export class VaultProvider extends SecretsProvider {
 			type: 'string',
 			default: '',
 			required: true,
+			noDataExpression: true,
 			placeholder: '***************',
 			typeOptions: { password: true },
 			displayOptions: {

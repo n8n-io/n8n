@@ -32,6 +32,7 @@ export class InfisicalProvider implements SecretsProvider {
 			default: '',
 			required: true,
 			placeholder: 'e.g. st.64ae963e1874ea.374226a166439dce.39557e4a1b7bdd82',
+			noDataExpression: true,
 			typeOptions: { password: true },
 		},
 		{
@@ -40,6 +41,7 @@ export class InfisicalProvider implements SecretsProvider {
 			type: 'string',
 			hint: "The absolute URL of the Infisical instance. Change it only if you're self-hosting Infisical.",
 			required: true,
+			noDataExpression: true,
 			placeholder: 'https://app.infisical.com',
 			default: 'https://app.infisical.com',
 		},

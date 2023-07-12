@@ -139,4 +139,12 @@ export class SecretsService {
 		const newData = this.unredact(data, settings.settings);
 		return this.secretsManager.testProviderSettings(providerName, newData);
 	}
+
+	async updateProvider(providerName: string) {
+		const providerAndSettings = this.secretsManager.getProviderWithSettings(providerName);
+		if (!providerAndSettings) {
+			throw new ProviderNotFoundError(providerName);
+		}
+		return this.secretsManager.updateProvider(providerName);
+	}
 }

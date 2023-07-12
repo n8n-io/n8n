@@ -449,4 +449,6 @@ export declare namespace ExternalSecretsRequest {
 		{},
 		{ connected: boolean }
 	>;
+
+	type UpdateProvider = AuthenticatedRequest<{ provider: string }>;
 }
