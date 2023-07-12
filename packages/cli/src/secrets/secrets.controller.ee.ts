@@ -67,6 +67,19 @@ export class ExternalSecretsController {
 		return {};
 	}
 
+	@Post('/providers/:provider/update')
+	async updateProvider(req: ExternalSecretsRequest.UpdateProvider) {
+		const providerName = req.params.provider;
+		try {
+			return { updated: await this.secretsService.updateProvider(providerName) };
+		} catch (e) {
+			if (e instanceof ProviderNotFoundError) {
+				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
+			}
+			throw e;
+		}
+	}
+
 	@Get('/secrets')
 	getSecretNames() {
 		return this.secretsService.getAllSecrets();
