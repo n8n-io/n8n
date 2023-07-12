@@ -18,13 +18,20 @@ interface InfisicalSecret {
 export class InfisicalProvider implements SecretsProvider {
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'Need help filling out these fields? <a href="https://infisical.com/docs/documentation/platform/token" target="_blank">Open docs</a>',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Service Token',
 			name: 'token',
 			type: 'string',
-			hint: 'The Infisical Service Token with read access. <a href="https://infisical.com/docs/documentation/platform/token" target="_blank">More info</a>',
+			hint: 'The Infisical Service Token with read access.',
 			default: '',
 			required: true,
-			placeholder: '***************',
+			placeholder: 'e.g. fe333be1-37f9-40bb-a9f8-d54dce389f17',
 			typeOptions: { password: true },
 		},
 		{

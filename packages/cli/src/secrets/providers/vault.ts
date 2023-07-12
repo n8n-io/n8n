@@ -78,6 +78,13 @@ interface VaultSecretList {
 export class VaultProvider extends SecretsProvider {
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'Need help filling out these fields? <a href="https://infisical.com/docs/documentation/platform/token" target="_blank">Open docs</a>',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Base URL',
 			name: 'url',
 			type: 'string',
@@ -90,6 +97,7 @@ export class VaultProvider extends SecretsProvider {
 			displayName: 'Authentication Method',
 			name: 'authMethod',
 			type: 'options',
+			required: true,
 			noDataExpression: true,
 			options: [
 				{ name: 'Token', value: 'token' },

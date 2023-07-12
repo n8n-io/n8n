@@ -24,7 +24,7 @@ const toast = useToast();
 
 const actionDropdownOptions = [
 	{
-		id: 'setup',
+		value: 'setup',
 		label: i18n.baseText('settings.externalSecrets.card.actionDropdown.setup'),
 	},
 ];
@@ -83,10 +83,11 @@ function onActionDropdownClick(id: string) {
 			</div>
 			<div :class="$style.cardActions" v-if="canConnect">
 				<ExternalSecretsProviderConnectionSwitch :provider="provider" />
-				<n8n-action-dropdown
+				<n8n-action-toggle
 					class="ml-s"
-					:items="actionDropdownOptions"
-					@select="onActionDropdownClick"
+					theme="dark"
+					:actions="actionDropdownOptions"
+					@action="onActionDropdownClick"
 				/>
 			</div>
 			<n8n-button v-else type="tertiary" @click="openExternalSecretProvider()">
