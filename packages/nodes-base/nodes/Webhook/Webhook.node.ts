@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable @typescript-eslint/no-var-requires */
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
@@ -466,6 +465,14 @@ export class Webhook implements INodeType {
 		const headers = this.getHeaderData();
 		const realm = 'Webhook';
 		const ignoreBots = options.ignoreBots as boolean;
+		const requestAuthData: {
+			authData: Record<string, any>;
+			authentication: string;
+		} = {
+			authentication,
+			authData: null!,
+		};
+
 		if (ignoreBots && isbot((headers as IDataObject)['user-agent'] as string)) {
 			return authorizationError(resp, realm, 403);
 		}
@@ -500,7 +507,8 @@ export class Webhook implements INodeType {
 			}
 		} else if (authentication === 'clientPortalAuth') {
 			try {
-				await verifyPortalToken(token, this.helpers.httpRequest);
+				const authData = await verifyPortalToken(token, this.helpers.httpRequest);
+				requestAuthData.authData = authData;
 			} catch (error) {
 				return authorizationError(
 					resp,
@@ -512,16 +520,19 @@ export class Webhook implements INodeType {
 		} else if (authentication === 'zohoCRMAuth') {
 			try {
 				const authData = await verifyCrmToken(token, this.helpers.httpRequest);
-				const setRoles = (this.getNodeParameter('roles', '') as string)?.trim();
-				if (setRoles) {
-					const roles = setRoles?.split(',');
-					if (
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-						!roles.includes(authData?.zohoUser?.role || authData?.zohoUser?.profile)
-					) {
-						return authorizationError(resp, realm, 403, 'User role is not authorized');
-					}
+				const roles = (this.getNodeParameter('roles', '') as string)
+					?.trim()
+					?.split(',')
+					.filter((fragment) => !!fragment);
+				if (
+					roles?.length &&
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					!roles.includes(authData?.zohoUser?.role || authData?.zohoUser?.profile)
+				) {
+					return authorizationError(resp, realm, 403, 'User role is not authorized');
 				}
+
+				requestAuthData.authData = authData;
 			} catch (error) {
 				return authorizationError(
 					resp,
@@ -563,6 +574,21 @@ export class Webhook implements INodeType {
 			}
 		}
 
+		/*
+			NOTE: mask and delete sensitive details from node output itemData to avoid security risk because n8n uses itemData for various
+			purpose e.g executionsList and possibly telemetry and logging.
+		*/
+		if (headers.authorization) headers.authorization = '-------- PROVIDED BUT HIDDEN ----------';
+
+		if (authentication === 'clientPortalAuth') {
+			delete requestAuthData.authData.iat;
+			delete requestAuthData.authData.exp;
+		} else if (authentication === 'zohoCRMAuth') {
+			delete requestAuthData.authData.tokenDetails;
+		} else if (authentication === 'nocoDBWebhookAuth') {
+			delete headers['esa-key'];
+		}
+
 		const mimeType = headers['content-type'] ?? 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
 			const form = new formidable.IncomingForm({ multiples: true });
@@ -572,6 +598,7 @@ export class Webhook implements INodeType {
 					const returnItem: INodeExecutionData = {
 						binary: {},
 						json: {
+							authData: requestAuthData,
 							headers,
 							params: this.getParamsData(),
 							query: this.getQueryData(),
@@ -629,6 +656,7 @@ export class Webhook implements INodeType {
 				const returnItem: INodeExecutionData = {
 					binary: {},
 					json: {
+						authData: requestAuthData,
 						headers,
 						params: this.getParamsData(),
 						query: this.getQueryData(),
@@ -662,6 +690,7 @@ export class Webhook implements INodeType {
 		}
 		const response: INodeExecutionData = {
 			json: {
+				authData: requestAuthData,
 				headers,
 				params: this.getParamsData(),
 				query: this.getQueryData(),
