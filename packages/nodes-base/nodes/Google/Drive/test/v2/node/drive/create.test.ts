@@ -16,9 +16,6 @@ jest.mock('../../../../v2/transport', () => {
 	};
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars, unused-imports/no-unused-imports
-import * as uuid from 'uuid';
-
 jest.mock('uuid', () => {
 	const originalModule = jest.requireActual('uuid');
 	return {

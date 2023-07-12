@@ -1,9 +1,9 @@
-import { setup, workflowToTests, getWorkflowFilenames } from '../../../../test/nodes/Helpers';
+import { setup, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 import nock from 'nock';
-import { executeWorkflow } from '../../../../test/nodes/ExecuteWorkflow';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
-import type { WorkflowTestData } from '../../../../test/nodes/types';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 import type { INodeTypes } from 'n8n-workflow';
 
