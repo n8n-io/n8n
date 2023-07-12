@@ -18,7 +18,7 @@ const image = computed(
 		({
 			doppler,
 			infisical,
-			hashicorp,
+			vault: hashicorp,
 		}[props.provider.name]),
 );
 </script>
