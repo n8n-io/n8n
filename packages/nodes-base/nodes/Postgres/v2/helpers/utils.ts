@@ -332,16 +332,18 @@ export async function getTableSchema(
 	return columns;
 }
 
-export async function uniqueColumns(db: PgpDatabase, table: string) {
+export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'public') {
 	// Using the modified query from https://wiki.postgresql.org/wiki/Retrieve_primary_key_columns
+	// `quote_ident` - properly quote and escape an identifier
+	// `::regclass` - cast a string to a regclass (internal type for object names)
 	const unique = await db.any(
 		`
 		SELECT DISTINCT a.attname
 			FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-		WHERE i.indrelid = quote_ident($1)::regclass
+		WHERE i.indrelid = (quote_ident($1) || '.' || quote_ident($2))::regclass
 			AND (i.indisprimary OR i.indisunique);
 		`,
-		[table],
+		[schema, table],
 	);
 	return unique as IDataObject[];
 }
