@@ -20,7 +20,7 @@ import { SourceControlGitService } from './sourceControlGit.service.ee';
 import { UserSettings } from 'n8n-core';
 import type { PushResult } from 'simple-git';
 import { SourceControlExportService } from './sourceControlExport.service.ee';
-import { BadRequestError } from '../../ResponseHelper';
+import { BadRequestError } from '@/ResponseHelper';
 import type { ImportResult } from './types/importResult';
 import type { SourceControlPushWorkFolder } from './types/sourceControlPushWorkFolder';
 import type { SourceControllPullOptions } from './types/sourceControlPullWorkFolder';
@@ -32,6 +32,9 @@ import type { User } from '@/databases/entities/User';
 import isEqual from 'lodash/isEqual';
 import type { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import type { TagEntity } from '@/databases/entities/TagEntity';
+import type { Variables } from '@/databases/entities/Variables';
+import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
+import type { ExportableCredential } from './types/exportableCredential';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
@@ -389,20 +392,20 @@ export class SourceControlService {
 			(local) => wfRemoteVersionIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		const wfModifiedInEither = wfLocalVersionIds.map((local) => {
+		const wfModifiedInEither: SourceControlWorkflowVersionId[] = [];
+		wfLocalVersionIds.forEach((local) => {
 			const mismatchingIds = wfRemoteVersionIds.find(
 				(remote) => remote.id === local.id && remote.versionId !== local.versionId,
 			);
-			if (!mismatchingIds) {
-				return;
+			if (mismatchingIds) {
+				wfModifiedInEither.push({
+					...local,
+					name: options.preferLocalVersion ? local.name : mismatchingIds.name,
+					versionId: options.preferLocalVersion ? local.versionId : mismatchingIds.versionId,
+					localId: local.versionId,
+					remoteId: mismatchingIds.versionId,
+				});
 			}
-			return {
-				...local,
-				name: options.preferLocalVersion ? local.name : mismatchingIds.name,
-				versionId: options.preferLocalVersion ? local.versionId : mismatchingIds.versionId,
-				localId: local.versionId,
-				remoteId: mismatchingIds.versionId,
-			};
 		});
 
 		wfMissingInLocal.forEach((item) => {
@@ -432,7 +435,6 @@ export class SourceControlService {
 		});
 
 		wfModifiedInEither.forEach((item) => {
-			if (!item) return;
 			sourceControlledFiles.push({
 				id: item.id,
 				name: item.name ?? 'Workflow',
@@ -461,7 +463,12 @@ export class SourceControlService {
 		);
 
 		// only compares the name, since that is the only change synced for credentials
-		const credModifiedInEither = credLocalIds.map((local) => {
+		const credModifiedInEither: Array<
+			ExportableCredential & {
+				filename: string;
+			}
+		> = [];
+		credLocalIds.forEach((local) => {
 			const mismatchingCreds = credRemoteIds.find((remote) => {
 				return (
 					remote.id === local.id &&
@@ -470,13 +477,12 @@ export class SourceControlService {
 						!isEqual(remote.nodesAccess, local.nodesAccess))
 				);
 			});
-			if (!mismatchingCreds) {
-				return;
+			if (mismatchingCreds) {
+				credModifiedInEither.push({
+					...local,
+					name: options?.preferLocalVersion ? local.name : mismatchingCreds.name,
+				});
 			}
-			return {
-				...local,
-				name: options?.preferLocalVersion ? local.name : mismatchingCreds.name,
-			};
 		});
 
 		credMissingInLocal.forEach((item) => {
@@ -506,7 +512,6 @@ export class SourceControlService {
 		});
 
 		credModifiedInEither.forEach((item) => {
-			if (!item) return;
 			sourceControlledFiles.push({
 				id: item.id,
 				name: item.name ?? 'Credential',
@@ -534,18 +539,16 @@ export class SourceControlService {
 			(local) => varRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		const varModifiedInEither = varLocalIds.map((local) => {
+		const varModifiedInEither: Variables[] = [];
+		varLocalIds.forEach((local) => {
 			const mismatchingIds = varRemoteIds.find(
 				(remote) =>
 					(remote.id === local.id && remote.key !== local.key) ||
 					(remote.id !== local.id && remote.key === local.key),
 			);
-			if (!mismatchingIds) {
-				return;
+			if (mismatchingIds) {
+				varModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
 			}
-			return {
-				...(options.preferLocalVersion ? local : mismatchingIds),
-			};
 		});
 
 		if (
