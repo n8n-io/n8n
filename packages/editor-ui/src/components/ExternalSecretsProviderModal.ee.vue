@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
@@ -138,28 +138,27 @@ async function testConnection() {
 			normalizedProviderData.value,
 		);
 		connectionState.value = testState;
+		return testState;
 	} catch (error) {
 		connectionState.value = 'error';
+		return 'error';
 	}
 }
 
 async function save() {
+	const previousState = connectionState.value;
+
 	try {
 		loadingService.startLoading();
 		await externalSecretsStore.updateProvider(provider.value.name, {
 			data: normalizedProviderData.value,
 		});
-
-		toast.showMessage({
-			title: locale.baseText('settings.externalSecrets.provider.save.success.title'),
-			type: 'success',
-		});
 	} catch (error) {
 		toast.showError(error, 'Error');
 	}
 
-	const previousState = connectionState.value;
 	await testConnection();
+
 	if (previousState === 'initializing' && connectionState.value === 'tested') {
 		eventBus.emit('connect', true);
 	}
@@ -211,8 +210,9 @@ async function onBeforeClose() {
 				<div :class="$style.providerActions">
 					<ExternalSecretsProviderConnectionSwitch
 						v-if="connectionState !== 'initializing'"
-						:provider="provider"
 						class="mr-s"
+						:event-bus="eventBus"
+						:provider="provider"
 						@change="testConnection"
 					/>
 					<n8n-button type="primary" :disabled="!canSave" @click="save">

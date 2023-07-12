@@ -50,13 +50,6 @@ async function onUpdateConnected(value: boolean) {
 		await externalSecretsStore.updateProviderConnected(props.provider.name, value);
 
 		emit('change', value);
-
-		toast.showMessage({
-			title: i18n.baseText(
-				`settings.externalSecrets.provider.${value ? 'connected' : 'disconnected'}.success.title`,
-			),
-			type: 'success',
-		});
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
