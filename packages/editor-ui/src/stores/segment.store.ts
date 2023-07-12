@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import type { INodeTypeDescription, IRun, ITelemetryTrackProperties } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { SegmentUserTraits } from '@/Interface';
+import type { SegmentUserTraits } from '@/Interface';
 
 const EVENTS = {
 	SHOW_CHECKLIST: 'Show checklist',
