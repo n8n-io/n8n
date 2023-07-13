@@ -829,12 +829,17 @@ export default defineComponent({
 					this.testedSuccessfully = false;
 				}
 
+				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(([, value]) =>
+					/=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+				);
+
 				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
 					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credential.id,
 					is_complete: !!this.requiredPropertiesFilled,
 					is_new: isNewCredential,
+					uses_external_secrets: usesExternalSecrets,
 				};
 
 				if (this.isOAuthType) {
