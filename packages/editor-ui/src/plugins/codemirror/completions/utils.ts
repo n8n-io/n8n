@@ -98,11 +98,21 @@ export const isAllowedInDotNotation = (str: string) => {
 // ----------------------------------
 
 export function receivesNoBinaryData() {
-	return resolveParameter('={{ $binary }}')?.data === undefined;
+	try {
+		return resolveParameter('={{ $binary }}')?.data === undefined;
+	} catch {
+		return true;
+	}
 }
 
 export function hasNoParams(toResolve: string) {
-	const params = resolveParameter(`={{ ${toResolve}.params }}`);
+	let params;
+
+	try {
+		params = resolveParameter(`={{ ${toResolve}.params }}`);
+	} catch {
+		return true;
+	}
 
 	if (!params) return true;
 

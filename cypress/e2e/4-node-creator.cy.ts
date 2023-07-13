@@ -7,10 +7,6 @@ const WorkflowPage = new WorkflowPageClass();
 const NDVModal = new NDV();
 
 describe('Node Creator', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 	});

@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -15,12 +15,12 @@ import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableCredential } from './types/exportableCredential';
-import { Variables } from '@/databases/entities/Variables';
+import { Variables } from '@db/entities/Variables';
 import type { ImportResult } from './types/importResult';
 import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
-import type { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
-import type { TagEntity } from '@/databases/entities/TagEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
+import type { TagEntity } from '@db/entities/TagEntity';
 import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
 import type { SourceControllPullOptions } from './types/sourceControlPullWorkFolder';
 import { In } from 'typeorm';

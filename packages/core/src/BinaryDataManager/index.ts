@@ -178,9 +178,9 @@ export class BinaryDataManager {
 		}
 	}
 
-	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
+	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
+			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionIds(executionIds);
 		}
 	}
 

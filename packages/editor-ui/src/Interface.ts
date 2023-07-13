@@ -702,6 +702,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	maxExecutionTimeout?: number;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
+	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
 }
 
 export interface ITimeoutHMS {
@@ -1045,6 +1046,12 @@ export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
+	banners: {
+		v1: {
+			dismissed: boolean;
+			mode: 'temporary' | 'permanent';
+		};
+	};
 	modalStack: string[];
 	modals: Modals;
 	isPageLoading: boolean;

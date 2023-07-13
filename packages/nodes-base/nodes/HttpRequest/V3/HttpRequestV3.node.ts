@@ -12,7 +12,16 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { BINARY_ENCODING, jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	jsonParse,
+	NodeApiError,
+	NodeOperationError,
+	sleep,
+	removeCircularRefs,
+} from 'n8n-workflow';
+
+import { keysToLowercase } from '@utils/utilities';
 
 import type { OptionsWithUri } from 'request-promise-native';
 
@@ -25,7 +34,6 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
-import { keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1428,6 +1436,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
+					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({
 						json: {

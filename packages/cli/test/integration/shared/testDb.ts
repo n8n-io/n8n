@@ -32,8 +32,8 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
-import type { ExecutionData } from '@/databases/entities/ExecutionData';
-import { generateNanoId } from '@/databases/utils/generators';
+import type { ExecutionData } from '@db/entities/ExecutionData';
+import { generateNanoId } from '@db/utils/generators';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -181,6 +181,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
+		globalRole,
 		...rest,
 	};
 

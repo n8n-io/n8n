@@ -9,6 +9,7 @@
 				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
+			<V1Banner />
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
@@ -28,6 +29,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
+import V1Banner from '@/components/V1Banner.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -58,6 +60,7 @@ export default defineComponent({
 		LoadingView,
 		Telemetry,
 		Modals,
+		V1Banner,
 	},
 	mixins: [newVersions, userHelpers],
 	setup(props) {
@@ -87,6 +90,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			postAuthenticateDone: false,
 			loading: true,
 		};
 	},
@@ -140,7 +144,7 @@ export default defineComponent({
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
+			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
@@ -210,6 +214,21 @@ export default defineComponent({
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
+		async postAuthenticate() {
+			if (this.postAuthenticateDone) {
+				return;
+			}
+
+			if (!this.usersStore.currentUser) {
+				return;
+			}
+
+			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
+				await this.sourceControlStore.getPreferences();
+			}
+
+			this.postAuthenticateDone = true;
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -219,13 +238,7 @@ export default defineComponent({
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		void this.checkForCloudPlanData();
-
-		if (
-			this.sourceControlStore.isEnterpriseSourceControlEnabled &&
-			this.usersStore.isInstanceOwner
-		) {
-			await this.sourceControlStore.getPreferences();
-		}
+		void this.postAuthenticate();
 
 		this.loading = false;
 
@@ -237,6 +250,11 @@ export default defineComponent({
 		}
 	},
 	watch: {
+		'usersStore.currentUser'(currentValue, previousValue) {
+			if (currentValue && !previousValue) {
+				void this.postAuthenticate();
+			}
+		},
 		$route(route) {
 			this.authenticate();
 			this.redirectIfNecessary();
@@ -277,12 +295,12 @@ export default defineComponent({
 
 .header {
 	grid-area: header;
-	z-index: 999;
+	z-index: 99;
 }
 
 .sidebar {
 	grid-area: sidebar;
 	height: 100vh;
-	z-index: 999;
+	z-index: 99;
 }
 </style>
