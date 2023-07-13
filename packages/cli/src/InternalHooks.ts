@@ -1034,4 +1034,14 @@ export class InternalHooks implements IInternalHooksClass {
 	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
 		return this.telemetry.track('User created variable', createData);
 	}
+
+	async onExternalSecretsProviderSettingsSaved(saveData: {
+		user_id?: string | undefined;
+		vault_type: string;
+		is_valid: boolean;
+		is_new: boolean;
+		error_message?: string | undefined;
+	}): Promise<void> {
+		return this.telemetry.track('User updated external secrets settings', saveData);
+	}
 }

@@ -107,14 +107,14 @@ export class SecretsService {
 		return mergedData;
 	}
 
-	async saveProviderSettings(providerName: string, data: IDataObject) {
+	async saveProviderSettings(providerName: string, data: IDataObject, userId: string) {
 		const providerAndSettings = this.secretsManager.getProviderWithSettings(providerName);
 		if (!providerAndSettings) {
 			throw new ProviderNotFoundError(providerName);
 		}
 		const { settings } = providerAndSettings;
 		const newData = this.unredact(data, settings.settings);
-		await this.secretsManager.setProviderSettings(providerName, newData);
+		await this.secretsManager.setProviderSettings(providerName, newData, userId);
 	}
 
 	async saveProviderConnected(providerName: string, connected: boolean) {

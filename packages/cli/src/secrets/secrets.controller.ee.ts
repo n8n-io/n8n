@@ -43,7 +43,7 @@ export class ExternalSecretsController {
 	async setProviderSettings(req: ExternalSecretsRequest.SetProviderSettings) {
 		const providerName = req.params.provider;
 		try {
-			await this.secretsService.saveProviderSettings(providerName, req.body);
+			await this.secretsService.saveProviderSettings(providerName, req.body, req.user.id);
 		} catch (e) {
 			if (e instanceof ProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);

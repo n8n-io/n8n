@@ -311,10 +311,10 @@ export class VaultProvider extends SecretsProvider {
 			method: 'GET',
 			url: 'auth/token/lookup-self',
 			responseType: 'json',
-			validateStatus: (status) => status === 403 || status === 200,
+			validateStatus: () => true,
 		});
 
-		if (resp.status === 403) {
+		if (resp.status !== 200) {
 			return null;
 		}
 		return resp.data.data;

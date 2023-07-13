@@ -6,7 +6,7 @@ import type {
 } from '@/Interfaces';
 
 import { UserSettings } from 'n8n-core';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 import { AES, enc } from 'crypto-js';
 import { getLogger } from '@/Logger';
@@ -20,6 +20,7 @@ import {
 	EXTERNAL_SECRETS_UPDATE_INTERVAL,
 } from './constants';
 import { License } from '@/License';
+import { InternalHooks } from '@/InternalHooks';
 
 const logger = getLogger();
 
@@ -249,13 +250,17 @@ export class ExternalSecretsManager {
 		}
 	}
 
-	async setProviderSettings(provider: string, data: IDataObject) {
+	async setProviderSettings(provider: string, data: IDataObject, userId?: string) {
+		let isNewProvider = false;
 		await this.settingsRepo.manager.transaction(async (em) => {
 			const settingsRepo = new SettingsRepository(em.connection);
 
 			let settings = await this.getDecryptedSettings(settingsRepo);
 			if (!settings) {
 				settings = {};
+			}
+			if (!(provider in settings)) {
+				isNewProvider = true;
 			}
 			settings[provider] = {
 				connected: settings[provider]?.connected ?? false,
@@ -267,7 +272,8 @@ export class ExternalSecretsManager {
 			this.cachedSettings = settings;
 		});
 		await this.reloadProvider(provider);
-		await this.updateSecrets();
+
+		void this.trackProviderSave(provider, isNewProvider, userId);
 	}
 
 	async setProviderConnected(provider: string, connected: boolean) {
@@ -289,6 +295,20 @@ export class ExternalSecretsManager {
 		});
 		await this.reloadProvider(provider);
 		await this.updateSecrets();
+	}
+
+	private async trackProviderSave(vaultType: string, isNew: boolean, userId?: string) {
+		let testResult: [boolean] | [boolean, string] | undefined;
+		try {
+			testResult = await this.getProvider(vaultType)?.test();
+		} catch {}
+		void Container.get(InternalHooks).onExternalSecretsProviderSettingsSaved({
+			user_id: userId,
+			vault_type: vaultType,
+			is_new: isNew,
+			is_valid: testResult?.[0] ?? false,
+			error_message: testResult?.[1],
+		});
 	}
 
 	encryptSecretsSettings(settings: ExternalSecretsSettings, encryptionKey: string): string {
@@ -347,6 +367,9 @@ export class ExternalSecretsManager {
 	}
 
 	async updateProvider(provider: string): Promise<boolean> {
+		if (!this.license.isExternalSecretsEnabled()) {
+			return false;
+		}
 		try {
 			await this.providers[provider].update();
 			return true;

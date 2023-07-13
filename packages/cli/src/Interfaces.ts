@@ -449,6 +449,13 @@ export interface IInternalHooksClass {
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onVariableCreated(createData: { variable_type: string }): Promise<void>;
+	onExternalSecretsProviderSettingsSaved(saveData: {
+		user_id?: string;
+		vault_type: string;
+		is_valid: boolean;
+		is_new: boolean;
+		error_message?: string;
+	}): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {
