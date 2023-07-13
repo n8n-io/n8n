@@ -550,7 +550,7 @@ export class SourceControlService {
 				type: 'variables',
 				status: 'modified',
 				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: true,
+				conflict: false,
 				file: getVariablesPath(this.gitFolder),
 				updatedAt: new Date().toISOString(),
 			});
@@ -614,7 +614,7 @@ export class SourceControlService {
 				type: 'tags',
 				status: 'modified',
 				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: true,
+				conflict: false,
 				file: getTagsPath(this.gitFolder),
 				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
 			});
