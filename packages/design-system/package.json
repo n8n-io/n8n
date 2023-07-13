@@ -69,7 +69,7 @@
     "markdown-it-emoji": "^2.0.2",
     "markdown-it-link-attributes": "^4.0.1",
     "markdown-it-task-lists": "^2.1.1",
-    "sanitize-html": "2.10.0",
+    "sanitize-html": "2.11.0",
     "vue": "^2.7.14",
     "vue2-boring-avatars": "^0.3.8",
     "xss": "^1.0.14"
