@@ -31,22 +31,27 @@ export function getTagsPath(gitFolder: string): string {
 	return path.join(gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
 }
 
-export function sourceControlFoldersExistCheck(folders: string[]): boolean {
+export function sourceControlFoldersExistCheck(
+	folders: string[],
+	createIfNotExists = true,
+): boolean {
 	// running these file access function synchronously to avoid race conditions
-	let result = true;
+	let existed = true;
 	folders.forEach((folder) => {
 		try {
 			accessSync(folder, fsConstants.F_OK);
 		} catch {
-			try {
-				mkdirSync(folder, { recursive: true });
-			} catch (error) {
-				result = false;
-				LoggerProxy.error((error as Error).message);
+			existed = false;
+			if (createIfNotExists) {
+				try {
+					mkdirSync(folder, { recursive: true });
+				} catch (error) {
+					LoggerProxy.error((error as Error).message);
+				}
 			}
 		}
 	});
-	return result;
+	return existed;
 }
 
 export function isSourceControlLicensed() {

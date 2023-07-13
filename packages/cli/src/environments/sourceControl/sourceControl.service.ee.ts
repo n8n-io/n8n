@@ -77,6 +77,33 @@ export class SourceControlService {
 		});
 	}
 
+	private async sanityCheck(): Promise<void> {
+		try {
+			const foldersExisted = sourceControlFoldersExistCheck(
+				[this.gitFolder, this.sshFolder],
+				false,
+			);
+			if (!foldersExisted) {
+				throw new Error();
+			}
+			if (!this.gitService.git) {
+				await this.initGitService();
+			}
+			const branches = await this.gitService.getCurrentBranch();
+			if (
+				branches.current === '' ||
+				branches.current !==
+					this.sourceControlPreferencesService.sourceControlPreferences.branchName
+			) {
+				throw new Error();
+			}
+		} catch (error) {
+			throw new BadRequestError(
+				'Source control is not properly set up, please disconnect and reconnect.',
+			);
+		}
+	}
+
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
 			await this.sourceControlPreferencesService.setPreferences({
@@ -180,9 +207,8 @@ export class SourceControlService {
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
-		if (!this.gitService.git) {
-			await this.initGitService();
-		}
+		await this.sanityCheck();
+
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
@@ -253,6 +279,7 @@ export class SourceControlService {
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
 		for (let i = 0; i < statusResult.length; i++) {
+			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			if (options.fileNames.find((file) => file.file === statusResult[i].file)) {
 				statusResult[i].pushed = true;
 			}
@@ -281,11 +308,7 @@ export class SourceControlService {
 	async pullWorkfolder(
 		options: SourceControllPullOptions,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
-		if (!this.gitService.git) {
-			await this.initGitService();
-		}
-
-		// TODO: update Pull
+		await this.sanityCheck();
 
 		const statusResult = (await this.getStatus({
 			direction: 'pull',
@@ -369,9 +392,7 @@ export class SourceControlService {
 	 * or multiple SourceControlledFile[] with all determined differences for debugging purposes
 	 */
 	async getStatus(options: SourceControlGetStatus) {
-		if (!this.gitService.git) {
-			await this.initGitService();
-		}
+		await this.sanityCheck();
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
 
@@ -676,9 +697,7 @@ export class SourceControlService {
 		name = SOURCE_CONTROL_DEFAULT_NAME,
 		email = SOURCE_CONTROL_DEFAULT_EMAIL,
 	): Promise<void> {
-		if (!this.gitService.git) {
-			await this.initGitService();
-		}
+		await this.sanityCheck();
 		await this.gitService.setGitUserDetails(name, email);
 	}
 }
