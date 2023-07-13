@@ -13,6 +13,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
+import { Container } from 'typedi';
 import { Like } from 'typeorm';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -23,8 +24,7 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserUpdatePayload } from '@/requests';
-import Container from 'typedi';
-import { ExecutionRepository } from './databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 /**
  * Returns the base URL n8n is reachable from

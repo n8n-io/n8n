@@ -4,8 +4,9 @@ import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+
 import { randomApiKey, randomName, randomString } from '../shared/random';
-import * as utils from '../shared/utils';
+import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
 
@@ -18,14 +19,11 @@ let authMemberAgent: SuperAgentTest;
 
 let saveCredential: SaveCredentialFunction;
 
-beforeAll(async () => {
-	const app = await utils.initTestServer({
-		endpointGroups: ['publicApi'],
-		applyAuth: false,
-		enablePublicAPI: true,
-	});
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
-	await utils.initConfigFile();
+beforeAll(async () => {
+	// TODO: mock encryption key
+	await utils.initEncryptionKey();
 
 	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
 		await testDb.getAllRoles();
@@ -36,18 +34,8 @@ beforeAll(async () => {
 	owner = await testDb.addApiKey(await testDb.createUserShell(globalOwnerRole));
 	member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
-	authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: owner,
-	});
-	authMemberAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		version: 1,
-		auth: true,
-		user: member,
-	});
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authMemberAgent = testServer.publicApiAgentFor(member);
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
@@ -56,10 +44,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('POST /credentials', () => {
