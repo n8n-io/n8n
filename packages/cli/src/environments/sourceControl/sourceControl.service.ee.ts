@@ -284,28 +284,33 @@ export class SourceControlService {
 			preferLocalVersion: false,
 		})) as SourceControlledFile[];
 
+		// filter out items that will not effect a local change and thus should not
+		// trigger a conflict warning in the frontend
 		const filteredResult = statusResult.filter((e) => {
-			// ignore local created files so the frontend does not think a pull created new entries
+			// locally created credentials will not create a conflict on pull
 			if (e.status === 'created' && e.location === 'local') {
+				return false;
+			}
+			// remotely deleted credentials will not delete local credentials
+			if (e.type === 'credential' && e.status === 'deleted') {
 				return false;
 			}
 			return true;
 		});
-		const possibleConflicts = filteredResult?.filter(
-			(file) =>
-				(file.conflict || file.status === 'modified') &&
-				file.type !== 'credential' &&
-				file.type !== 'variables',
-		);
-		if (possibleConflicts?.length > 0 && options.force !== true) {
-			await this.gitService.resetBranch();
-			return {
-				statusCode: 409,
-				statusResult: filteredResult,
-			};
+
+		if (options.force !== true) {
+			const possibleConflicts = filteredResult?.filter(
+				(file) => (file.conflict || file.status === 'modified') && file.type === 'workflow',
+			);
+			if (possibleConflicts?.length > 0) {
+				await this.gitService.resetBranch();
+				return {
+					statusCode: 409,
+					statusResult: filteredResult,
+				};
+			}
 		}
-		// await this.resetWorkfolder();
-		// TODO: import
+
 		const workflowsToBeImported = statusResult.filter(
 			(e) => e.type === 'workflow' && e.status !== 'deleted',
 		);
