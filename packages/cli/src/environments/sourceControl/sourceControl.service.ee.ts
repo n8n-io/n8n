@@ -31,11 +31,11 @@ import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import isEqual from 'lodash/isEqual';
 import type { SourceControlGetStatus } from './types/sourceControlGetStatus';
-import type { TagEntity } from '@/databases/entities/TagEntity';
-import type { Variables } from '@/databases/entities/Variables';
+import type { TagEntity } from '@db/entities/TagEntity';
+import type { Variables } from '@db/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
 import { InternalHooks } from '@/InternalHooks';
@@ -230,7 +230,16 @@ export class SourceControlService {
 		const credentialsToBeExported = options.fileNames.filter(
 			(e) => e.type === 'credential' && e.status !== 'deleted',
 		);
-		await this.sourceControlExportService.exportCredentialsToWorkFolder(credentialsToBeExported);
+		const credentialExportResult =
+			await this.sourceControlExportService.exportCredentialsToWorkFolder(credentialsToBeExported);
+		if (credentialExportResult.missingIds && credentialExportResult.missingIds.length > 0) {
+			credentialExportResult.missingIds.forEach((id) => {
+				filesToBePushed.delete(this.sourceControlExportService.getCredentialsPath(id));
+				statusResult = statusResult.filter(
+					(e) => e.file !== this.sourceControlExportService.getCredentialsPath(id),
+				);
+			});
+		}
 
 		if (options.fileNames.find((e) => e.type === 'tags')) {
 			await this.sourceControlExportService.exportTagsToWorkFolder();

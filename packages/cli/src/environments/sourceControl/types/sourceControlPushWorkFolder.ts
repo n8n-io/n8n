@@ -10,14 +10,6 @@ export class SourceControlPushWorkFolder {
 	// @IsOptional()
 	fileNames: SourceControlledFile[];
 
-	// @IsString({ each: true })
-	// @IsOptional()
-	// workflowIds?: Set<string>;
-
-	// @IsString({ each: true })
-	// @IsOptional()
-	// credentialIds?: Set<string>;
-
 	@IsString()
 	@IsOptional()
 	message?: string;

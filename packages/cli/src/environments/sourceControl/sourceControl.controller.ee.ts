@@ -13,11 +13,12 @@ import { BadRequestError } from '@/ResponseHelper';
 import type { PullResult } from 'simple-git';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
-import Container from 'typedi';
+import Container, { Service } from 'typedi';
 import { InternalHooks } from '../../InternalHooks';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 
+@Service()
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
 	constructor(

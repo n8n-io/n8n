@@ -23,7 +23,7 @@ import {
 	getWorkflowExportPath,
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 
@@ -268,6 +268,18 @@ export class SourceControlExportService {
 					credentialsId: In(credentialIds),
 				},
 			});
+			let missingIds: string[] = [];
+			if (credentialsToBeExported.length !== credentialIds.length) {
+				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
+				missingIds = credentialIds.filter(
+					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
+				);
+				// throw Error(
+				// 	`Failed to export credentials, could not find credentials with Id(s): ${missingIds.join(
+				// 		',',
+				// 	)}`,
+				// );
+			}
 			const encryptionKey = await UserSettings.getEncryptionKey();
 			await Promise.all(
 				credentialsToBeExported.map(async (sharedCredential) => {
@@ -294,6 +306,7 @@ export class SourceControlExportService {
 					id: e.credentials.id,
 					name: path.join(this.credentialExportFolder, `${e.credentials.name}.json`),
 				})),
+				missingIds,
 			};
 		} catch (error) {
 			throw Error(`Failed to export credentials to work folder: ${(error as Error).message}`);

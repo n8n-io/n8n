@@ -1,5 +1,5 @@
 import Container from 'typedi';
-import { License } from '../../License';
+import { License } from '@/License';
 import { generateKeyPairSync } from 'crypto';
 import type { KeyPair } from './types/keyPair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
