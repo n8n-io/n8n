@@ -39,8 +39,6 @@ function getSecuritySettings() {
 		diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
 	};
 
-	console.log('settings', settings);
-
 	return settings;
 }
 
