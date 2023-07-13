@@ -208,6 +208,12 @@ const pruneExecutionsData = async ({ queryRunner, tablePrefix, logger }: Migrati
 		}
 
 		console.time('pruningData');
+		if (dbFileSize > 4 * DESIRED_DATABASE_FILE_SIZE) {
+			await queryRunner.query(`DELETE FROM "${tablePrefix}execution_entity"`);
+			console.timeEnd('pruningData');
+			return;
+		}
+
 		const counting = (await queryRunner.query(
 			`select count(id) as rows from "${tablePrefix}execution_entity";`,
 		)) as Array<{ rows: number }>;
