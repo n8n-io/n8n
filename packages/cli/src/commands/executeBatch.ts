@@ -24,7 +24,7 @@ import type {
 	INodeSpecialCases,
 	IResult,
 	IWorkflowExecutionProgress,
-} from './Interfaces';
+} from '../types/commands.types';
 
 const re = /\d+/;
 
