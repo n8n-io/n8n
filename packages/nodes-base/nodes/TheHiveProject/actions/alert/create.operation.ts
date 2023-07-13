@@ -11,7 +11,7 @@ import { theHiveApiRequest } from '../../transport';
 import set from 'lodash/set';
 
 import FormData from 'form-data';
-import { fixFieldType, prepareInputItem, splitTags } from '../../helpers/utils';
+import { fixFieldType, prepareInputItem, splitAndTrim } from '../../helpers/utils';
 import { observableTypeOptions } from '../../descriptions';
 
 const properties: INodeProperties[] = [
@@ -142,7 +142,7 @@ export async function execute(
 
 				observable.dataType = value.dataType as string;
 				observable.message = value.message as string;
-				observable.tags = splitTags(value.tags as string);
+				observable.tags = splitAndTrim(value.tags as string);
 
 				if (value.dataType === 'file') {
 					multiPartRequest = true;

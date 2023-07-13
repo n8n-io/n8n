@@ -5,20 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { responderOptions } from '../../descriptions';
+import { observableRLC, responderOptions } from '../../descriptions';
 import { theHiveApiRequest } from '../../transport';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Observable ID',
-		name: 'id',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'ID of the observable',
-	},
-	responderOptions,
-];
+const properties: INodeProperties[] = [{ ...observableRLC, name: 'id' }, responderOptions];
 
 const displayOptions = {
 	show: {

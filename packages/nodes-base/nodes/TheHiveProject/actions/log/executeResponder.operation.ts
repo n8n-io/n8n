@@ -5,19 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { responderOptions } from '../../descriptions';
+import { logRLC, responderOptions } from '../../descriptions';
 import { theHiveApiRequest } from '../../transport';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Log ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-	},
-	responderOptions,
-];
+const properties: INodeProperties[] = [{ ...logRLC, name: 'id' }, responderOptions];
 
 const displayOptions = {
 	show: {

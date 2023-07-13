@@ -3,14 +3,14 @@ import type { IDataObject } from 'n8n-workflow';
 import get from 'lodash/get';
 import set from 'lodash/set';
 
-export function splitTags<T>(tags: T) {
-	if (typeof tags === 'string') {
-		return tags
+export function splitAndTrim(str: string | string[]) {
+	if (typeof str === 'string') {
+		return str
 			.split(',')
 			.map((tag) => tag.trim())
 			.filter((tag) => tag);
 	}
-	return tags;
+	return str;
 }
 
 export function fixFieldType(fields: IDataObject) {
@@ -33,7 +33,7 @@ export function fixFieldType(fields: IDataObject) {
 		}
 
 		if (['tags', 'addTags', 'removeTags'].includes(key)) {
-			returnData[key] = splitTags(fields[key]);
+			returnData[key] = splitAndTrim(fields[key] as string);
 			continue;
 		}
 

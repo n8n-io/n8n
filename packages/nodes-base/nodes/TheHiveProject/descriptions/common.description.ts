@@ -472,5 +472,21 @@ export const searchOptions: INodeProperties = {
 				},
 			},
 		},
+		{
+			displayName: 'Extra Data',
+			name: 'extraData',
+			type: 'string',
+			description: 'Additional data to include in the response',
+			default: '',
+			requiresDataPath: 'multiple',
+			displayOptions: {
+				show: {
+					'/resource': ['query'],
+				},
+				hide: {
+					returnCount: [true],
+				},
+			},
+		},
 	],
 };

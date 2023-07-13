@@ -10,6 +10,14 @@ import {
 export async function loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	let resource = this.getNodeParameter('resource') as string;
 
+	let resourceId = '';
+
+	if (['case', 'alert', 'observable', 'log', 'task'].includes(resource)) {
+		resourceId = this.getNodeParameter('id', '', { extractValue: true }) as string;
+	} else {
+		resourceId = this.getNodeParameter('id') as string;
+	}
+
 	switch (resource) {
 		case 'observable':
 			resource = 'case_artifact';
@@ -20,14 +28,6 @@ export async function loadResponders(this: ILoadOptionsFunctions): Promise<INode
 		case 'log':
 			resource = 'case_task_log';
 			break;
-	}
-
-	let resourceId = '';
-
-	if (['case', 'alert'].includes(resource)) {
-		resourceId = this.getNodeParameter('id', '', { extractValue: true }) as string;
-	} else {
-		resourceId = this.getNodeParameter('id') as string;
 	}
 
 	const responders = await theHiveApiRequest.call(

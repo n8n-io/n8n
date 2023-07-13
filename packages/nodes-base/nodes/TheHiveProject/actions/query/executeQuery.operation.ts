@@ -9,6 +9,7 @@ import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiQuery, theHiveApiRequest } from '../../transport';
 import { genericFiltersCollection, searchOptions, sortCollection } from '../../descriptions';
+import { splitAndTrim } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -279,7 +280,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			sortFields,
 			limit,
 			returnCount as boolean,
-			extraData as string[],
+			splitAndTrim(extraData as string),
 		);
 	}
 
