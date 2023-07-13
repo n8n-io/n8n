@@ -1,3 +1,13 @@
+## [1.0.3](https://github.com/n8n-io/n8n/compare/n8n@1.0.2...n8n@1.0.3) (2023-07-13)
+
+
+### Features
+
+* **API:** Implement users account quota guards  ([#6434](https://github.com/n8n-io/n8n/issues/6434)) ([7cd074e](https://github.com/n8n-io/n8n/commit/7cd074e4500600a2843ef4a8eedda938fb75e1b8)), closes [#6636](https://github.com/n8n-io/n8n/issues/6636)
+* **Telegram Node:** Add support for sending messages to forum topics ([#5746](https://github.com/n8n-io/n8n/issues/5746)) ([b971fa9](https://github.com/n8n-io/n8n/commit/b971fa99bc0ed60a07e966d3fc9d05f333a73fe7))
+
+
+
 ## [1.0.2](https://github.com/n8n-io/n8n/compare/n8n@1.0.1...n8n@1.0.2) (2023-07-12)
 
 
