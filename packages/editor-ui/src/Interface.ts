@@ -1525,3 +1525,35 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
+
+export type CloudUpdateLinkSourceType =
+	| 'canvas-nav'
+	| 'custom-data-filter'
+	| 'workflow_sharing'
+	| 'credential_sharing'
+	| 'settings-n8n-api'
+	| 'audit-logs'
+	| 'ldap'
+	| 'log-streaming'
+	| 'source-control'
+	| 'sso'
+	| 'usage_page'
+	| 'settings-users'
+	| 'variables';
+
+export type UTMCampaign =
+	| 'upgrade-custom-data-filter'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-workflow-sharing'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-credentials-sharing'
+	| 'upgrade-workflow-sharing'
+	| 'upgrade-api'
+	| 'upgrade-audit-logs'
+	| 'upgrade-ldap'
+	| 'upgrade-log-streaming'
+	| 'upgrade-source-control'
+	| 'upgrade-sso'
+	| 'open'
+	| 'upgrade-users'
+	| 'upgrade-variables';

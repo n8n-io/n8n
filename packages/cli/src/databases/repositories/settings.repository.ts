@@ -9,7 +9,7 @@ export class SettingsRepository extends Repository<Settings> {
 		super(Settings, dataSource.manager);
 	}
 
-	async dismissNewBanner({ bannerName }: { bannerName: string; }): Promise<{ success: boolean }> {
+	async dismissNewBanner({ bannerName }: { bannerName: string }): Promise<{ success: boolean }> {
 		const dismissedBannersSetting = await this.findOneBy({ key: 'ui.banners.dismissed' });
 
 		if (dismissedBannersSetting) {

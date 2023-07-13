@@ -11,24 +11,24 @@ const trialDaysLeft = computed(() => {
 	return trialDaysLeft;
 });
 
-function onUpdatePlanClick() {
-	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
-}
-
-function messageText() {
+const messageText = computed(() => {
 	if (trialDaysLeft.value === 1) {
 		return locale.baseText('banners.trial.oneDayLeft');
 	}
 	return locale.baseText('banners.trial.message', {
 		interpolate: { daysLeft: String(-1 * trialDaysLeft.value) },
 	});
+});
+
+function onUpdatePlanClick() {
+	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 
 <template>
 	<base-banner :name="BANNERS.TRIAL" theme="custom">
 		<template #mainContent>
-			<span>{{ messageText() }}</span>
+			<span>{{ messageText }}</span>
 		</template>
 		<template #trailingContent>
 			<n8n-button type="success" @click="onUpdatePlanClick" icon="gem" size="small">{{

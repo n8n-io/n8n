@@ -45,7 +45,7 @@ export default defineComponent({
 		},
 		iconSize: {
 			type: String,
-			required: false,
+			default: 'medium',
 		},
 		iconless: {
 			type: Boolean,
@@ -69,14 +69,7 @@ export default defineComponent({
 			];
 		},
 		getIcon(): string {
-			if (this.icon) {
-				return this.icon;
-			}
-			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
-				return CALLOUT_DEFAULT_ICONS[this.theme];
-			}
-
-			return CALLOUT_DEFAULT_ICONS.info;
+			return this.icon ?? CALLOUT_DEFAULT_ICONS?.[this.theme] ?? CALLOUT_DEFAULT_ICONS.info;
 		},
 		getIconSize(): string {
 			if (this.iconSize) {

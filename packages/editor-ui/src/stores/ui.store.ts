@@ -35,6 +35,7 @@ import {
 } from '@/constants';
 import type { BANNERS } from '@/constants';
 import type {
+	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
 	IFakeDoorLocation,
 	IMenuItem,
@@ -42,6 +43,7 @@ import type {
 	IOnboardingCallPrompt,
 	IUser,
 	UIState,
+	UTMCampaign,
 	XYPosition,
 } from '@/Interface';
 import { defineStore } from 'pinia';
@@ -534,7 +536,11 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(source: string, utm_campaign: string, mode: 'open' | 'redirect' = 'open'): void {
+		goToUpgrade(
+			source: CloudUpdateLinkSourceType,
+			utm_campaign: UTMCampaign,
+			mode: 'open' | 'redirect' = 'open',
+		): void {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
 			useTelemetryStore().track('User clicked upgrade CTA', {
