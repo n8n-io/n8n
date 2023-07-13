@@ -175,3 +175,38 @@ export const logRLC: INodeProperties = {
 		},
 	],
 };
+
+export const observableRLC: INodeProperties = {
+	displayName: 'Observable',
+	name: 'observableId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select an observable...',
+			typeOptions: {
+				searchListMethod: 'observableSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. ~123456789',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '(~[0-9]{1,})',
+						errorMessage: 'Not a valid Log ID',
+					},
+				},
+			],
+		},
+	],
+};

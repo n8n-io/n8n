@@ -8,7 +8,7 @@ import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 import { theHiveApiRequest } from '../../transport';
 
-import { fixFieldType } from '../../helpers/utils';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
 import { alertRLC, caseRLC } from '../../descriptions';
 
 import FormData from 'form-data';
@@ -49,6 +49,13 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName:
+			'If Data Type is attachment use "Attachment" field to specify input names with binary data, otherwise use "Data" field ("Attachment" would be ignored)',
+		name: 'noticeDataType',
+		type: 'notice',
+		default: '',
+	},
+	{
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'resourceMapper',
@@ -65,15 +72,6 @@ const properties: INodeProperties[] = [
 				valuesLabel: 'Fields',
 			},
 		},
-	},
-	{
-		displayName: 'Attachments',
-		name: 'attachments',
-		type: 'string',
-		placeholder: '“e.g. data, data2',
-		default: '',
-		description:
-			'The names of the fields in a input item which contain the binary data to be send as attachments',
 	},
 ];
 
@@ -99,10 +97,10 @@ export async function execute(
 	const endpoint = `/v1/${createIn}/${id}/observable`;
 
 	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
-	const attachments = this.getNodeParameter('attachments', i, '') as string;
 
 	if (dataMode === 'autoMapInputData') {
-		body = { ...item.json };
+		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		body = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
@@ -110,14 +108,12 @@ export async function execute(
 		body = fields;
 	}
 
-	if (body.dataType === 'file') {
-		delete body.data;
-	}
+	const { attachment } = body;
 
 	body = fixFieldType(body);
 
-	if (attachments) {
-		const inputDataFields = attachments
+	if (attachment) {
+		const inputDataFields = (attachment as string)
 			.split(',')
 			.filter((field) => field)
 			.map((field) => field.trim());

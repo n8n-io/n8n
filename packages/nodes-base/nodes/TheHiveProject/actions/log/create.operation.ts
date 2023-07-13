@@ -8,7 +8,7 @@ import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 import { theHiveApiRequest } from '../../transport';
 
-import { fixFieldType } from '../../helpers/utils';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
 import { taskRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
@@ -64,7 +64,8 @@ export async function execute(
 	const attachments = this.getNodeParameter('attachments', i, '') as string;
 
 	if (dataMode === 'autoMapInputData') {
-		body = item.json;
+		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		body = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {

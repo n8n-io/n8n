@@ -7,8 +7,6 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 
-import { jsonParse } from 'n8n-workflow';
-import { convertCustomFieldUiToObject } from '../helpers/utils';
 import type { QueryScope } from '../helpers/interfaces';
 
 export async function theHiveApiRequest(
@@ -109,30 +107,6 @@ export async function theHiveApiQuery(
 		});
 	}
 
-	if (filters && !Array.isArray(filters) && Object.keys(filters).length) {
-		if (filters.customFieldsUi) {
-			const customFields = convertCustomFieldUiToObject(filters.customFieldsUi as IDataObject);
-
-			for (const [key, value] of Object.entries(customFields || {})) {
-				filters[`customFields.${key}`] = value;
-			}
-
-			delete filters.customFieldsUi;
-		}
-
-		const filter = {
-			_name: 'filter',
-			_and: Object.keys(filters).map((field) => ({
-				_eq: {
-					_field: field,
-					_value: filters[field],
-				},
-			})),
-		};
-
-		query.push(filter);
-	}
-
 	if (filters && Array.isArray(filters) && filters.length) {
 		const filter = {
 			_name: 'filter',
@@ -174,64 +148,4 @@ export async function theHiveApiQuery(
 	const responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
 
 	return responseData;
-}
-
-export async function prepareCustomFields(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	additionalFields: IDataObject,
-	jsonParameters = false,
-): Promise<IDataObject | undefined> {
-	// Check if the additionalFields object contains customFields
-	if (jsonParameters) {
-		let customFieldsJson = additionalFields.customFieldsJson;
-		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
-		// which would remove the extra fields
-		delete additionalFields.customFieldsJson;
-
-		if (typeof customFieldsJson === 'string') {
-			try {
-				customFieldsJson = jsonParse(customFieldsJson);
-			} catch (error) {
-				throw new Error('Invalid JSON for customFields');
-			}
-		}
-
-		if (typeof customFieldsJson === 'object') {
-			const customFields = Object.keys(customFieldsJson as IDataObject).reduce((acc, curr) => {
-				acc[`customFields.${curr}`] = (customFieldsJson as IDataObject)[curr];
-				return acc;
-			}, {} as IDataObject);
-
-			return customFields;
-		} else if (customFieldsJson) {
-			throw Error('customFieldsJson value is invalid');
-		}
-	} else if (additionalFields.customFieldsUi) {
-		// Get Custom Field Types from TheHive
-		const requestResult = await theHiveApiRequest.call(this, 'GET', '/customField');
-
-		// Build reference to type mapping object
-		const referenceTypeMapping = requestResult.reduce(
-			(acc: IDataObject, curr: IDataObject) => ((acc[curr.reference as string] = curr.type), acc),
-			{},
-		);
-
-		// Build "fieldName": {"type": "value"} objects
-		const customFieldsUi = additionalFields.customFieldsUi as IDataObject;
-		const customFields: IDataObject = (customFieldsUi?.customFields as IDataObject[]).reduce(
-			(acc: IDataObject, curr: IDataObject) => {
-				const fieldName = curr.field as string;
-
-				// Might be able to do some type conversions here if needed, TODO
-				const updatedField = `customFields.${fieldName}.${[referenceTypeMapping[fieldName]]}`;
-				acc[updatedField] = curr.value;
-				return acc;
-			},
-			{} as IDataObject,
-		);
-
-		delete additionalFields.customFieldsUi;
-		return customFields;
-	}
-	return undefined;
 }

@@ -96,3 +96,66 @@ export async function logSearch(
 		paginationToken,
 	);
 }
+
+export async function observableSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const query: IDataObject[] = [
+		{
+			_name: 'listObservable',
+		},
+	];
+
+	if (filter) {
+		query.push({
+			_name: 'filter',
+			_or: [
+				{
+					_match: {
+						_field: 'data',
+						_value: filter,
+					},
+				},
+				{
+					_match: {
+						_field: 'message',
+						_value: filter,
+					},
+				},
+				{
+					_match: {
+						_field: 'attachment.name',
+						_value: filter,
+					},
+				},
+			],
+		});
+	}
+
+	const from = paginationToken !== undefined ? parseInt(paginationToken, 10) : 0;
+	const to = from + 100;
+	query.push({
+		_name: 'page',
+		from,
+		to,
+	});
+
+	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+
+	if (response.length === 0) {
+		return {
+			results: [],
+			paginationToken: undefined,
+		};
+	}
+
+	return {
+		results: response.map((entry: IDataObject) => ({
+			name: entry.data || (entry.attachment as IDataObject)?.name || entry.message || entry._id,
+			value: entry._id,
+		})),
+		paginationToken: to,
+	};
+}

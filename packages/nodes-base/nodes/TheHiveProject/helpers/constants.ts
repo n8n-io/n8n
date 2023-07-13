@@ -376,6 +376,11 @@ export const observableCommonFields = [
 		type: 'options',
 	},
 	{
+		displayName: 'Attachment',
+		id: 'attachment',
+		type: 'string',
+	},
+	{
 		displayName: 'Data',
 		id: 'data',
 		type: 'string',

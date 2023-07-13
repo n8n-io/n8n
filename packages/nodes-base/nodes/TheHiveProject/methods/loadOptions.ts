@@ -130,11 +130,13 @@ export async function loadObservableTypes(
 
 	for (const entry of response) {
 		returnData.push({
-			name: entry.name as string,
+			name: `${entry.name as string}${entry.isAttachment ? ' (attachment)' : ''}`,
 			value: entry.name,
-			description: `${
-				entry.isAttachment ? 'Supports attachments' : 'Does not support attachments'
-			}`,
+			// description: `${
+			// 	entry.isAttachment
+			// 		? 'Use "Attachments" field to specify input names with binary data, "Data" field would be ignored'
+			// 		: 'Use "Data" field, "Attachments" would be ignored'
+			// }`,
 		});
 	}
 	return returnData;

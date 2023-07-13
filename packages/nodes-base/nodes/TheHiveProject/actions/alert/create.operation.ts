@@ -11,7 +11,7 @@ import { theHiveApiRequest } from '../../transport';
 import set from 'lodash/set';
 
 import FormData from 'form-data';
-import { fixFieldType, splitTags } from '../../helpers/utils';
+import { fixFieldType, prepareInputItem, splitTags } from '../../helpers/utils';
 import { observableTypeOptions } from '../../descriptions';
 
 const properties: INodeProperties[] = [
@@ -108,7 +108,8 @@ export async function execute(
 	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		inputData = item.json;
+		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		inputData = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {

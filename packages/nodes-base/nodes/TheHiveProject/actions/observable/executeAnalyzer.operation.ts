@@ -5,18 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { observableTypeOptions } from '../../descriptions';
+import { observableRLC, observableTypeOptions } from '../../descriptions';
 import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Observable ID',
-		name: 'id',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'ID of the observable',
-	},
+	observableRLC,
 	observableTypeOptions,
 	{
 		displayName: 'Analyzer Names or IDs',
@@ -27,7 +20,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		default: [],
 		typeOptions: {
-			loadOptionsDependsOn: ['id', 'dataType'],
+			loadOptionsDependsOn: ['observableId.value', 'dataType'],
 			loadOptionsMethod: 'loadAnalyzers',
 		},
 		displayOptions: {
@@ -50,7 +43,10 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject = {};
 
-	const observableId = this.getNodeParameter('id', i);
+	const observableId = this.getNodeParameter('observableId', i, '', {
+		extractValue: true,
+	}) as string;
+
 	const analyzers = (this.getNodeParameter('analyzers', i) as string[]).map((analyzer) => {
 		const parts = analyzer.split('::');
 		return {

@@ -2,90 +2,9 @@ import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import moment from 'moment';
-import type { IQueryObject } from './interfaces';
 
-// Query Functions
-export function Eq(field: string, value: any): IQueryObject {
-	return { _field: field, _value: value };
-}
-
-export function Gt(field: string, value: any): IQueryObject {
-	return { _gt: { field: value } };
-}
-
-export function Gte(field: string, value: any): IQueryObject {
-	return { _gte: { field: value } };
-}
-
-export function Lt(field: string, value: any): IQueryObject {
-	return { _lt: { field: value } };
-}
-
-export function Lte(field: string, value: any): IQueryObject {
-	return { _lte: { field: value } };
-}
-export function And(...criteria: IQueryObject[]): IQueryObject {
-	return { _and: criteria };
-}
-export function Or(...criteria: IQueryObject[]): IQueryObject {
-	return { _or: criteria };
-}
-export function Not(criteria: IQueryObject[]): IQueryObject {
-	return { _not: criteria };
-}
-
-export function In(field: string, values: any[]): IQueryObject {
-	return { _in: { _field: field, _values: values } };
-}
-export function Contains(field: string): IQueryObject {
-	return { _contains: field };
-}
-export function Id(id: string | number): IQueryObject {
-	return { _id: id };
-}
-
-export function Between(field: string, fromValue: any, toValue: any): IQueryObject {
-	return { _between: { _field: field, _from: fromValue, _to: toValue } };
-}
-export function ParentId(tpe: string, id: string): IQueryObject {
-	return { _parent: { _type: tpe, _id: id } };
-}
-export function Parent(tpe: string, criterion: IQueryObject): IQueryObject {
-	return { _parent: { _type: tpe, _query: criterion } };
-}
-export function Child(tpe: string, criterion: IQueryObject): IQueryObject {
-	return { _child: { _type: tpe, _query: criterion } };
-}
-export function Type(tpe: string): IQueryObject {
-	return { _type: tpe };
-}
-export function queryString(query: string): IQueryObject {
-	return { _string: query };
-}
-export function Like(field: string, value: string): IQueryObject {
-	return { _like: { _field: field, _value: value } };
-}
-export function StartsWith(field: string, value: string) {
-	if (!value.startsWith('*')) {
-		value = value + '*';
-	}
-	return { _wildcard: { _field: field, _value: value } };
-}
-export function EndsWith(field: string, value: string) {
-	if (!value.endsWith('*')) {
-		value = '*' + value;
-	}
-	return { _wildcard: { _field: field, _value: value } };
-}
-export function ContainsString(field: string, value: string) {
-	if (!value.endsWith('*')) {
-		value = value + '*';
-	}
-	if (!value.startsWith('*')) {
-		value = '*' + value;
-	}
-	return { _wildcard: { _field: field, _value: value } };
-}
+import get from 'lodash/get';
+import set from 'lodash/set';
 
 export function splitTags<T>(tags: T) {
 	if (typeof tags === 'string') {
@@ -151,15 +70,6 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 	return response;
 }
 
-export function buildCustomFieldSearch(customFields: IDataObject): IDataObject[] {
-	const searchQueries: IDataObject[] = [];
-
-	Object.keys(customFields).forEach((customFieldName) => {
-		searchQueries.push(Eq(customFieldName, customFields[customFieldName]));
-	});
-	return searchQueries;
-}
-
 export function prepareSortQuery(sort: string, body: IDataObject) {
 	if (sort) {
 		const field = sort.substring(1);
@@ -173,44 +83,21 @@ export function prepareSortQuery(sort: string, body: IDataObject) {
 	}
 }
 
-export function prepareRangeQuery(range: string, body: IDataObject) {
-	if (range && range !== 'all') {
-		(body.query as IDataObject[]).push({
-			_name: 'page',
-			from: parseInt(range.split('-')[0], 10),
-			to: parseInt(range.split('-')[1], 10),
-		});
-	}
-}
+export function prepareInputItem(item: IDataObject, schema: IDataObject[], i: number) {
+	const returnData: IDataObject = {};
 
-export function convertCustomFieldUiToObject(customFieldsUi: IDataObject) {
-	const fieldsValues = customFieldsUi.values as IDataObject;
-	if (Object.values(fieldsValues).length) {
-		if (fieldsValues.jsonInput === true) {
-			if (typeof fieldsValues.json === 'string') {
-				let parsedFields = jsonParse<IDataObject>(fieldsValues.json);
-				if (!Array.isArray(parsedFields) && parsedFields.customFields) {
-					parsedFields = parsedFields.customFields as IDataObject;
-				}
-				return parsedFields;
-			}
+	for (const entry of schema) {
+		const id = entry.id as string;
+		const value = get(item, id);
+
+		if (value !== undefined) {
+			set(returnData, id, value);
 		} else {
-			const values = (fieldsValues.customFields as IDataObject).values as IDataObject;
-			if (values.fields) {
-				const customFields: IDataObject = {};
-
-				const fields = (values.fields as IDataObject).values as IDataObject[];
-				if (fields.length) {
-					for (const field of fields) {
-						const fieldName = field.field as string;
-						const fieldValue = field.value as string;
-
-						customFields[fieldName] = fieldValue;
-					}
-				}
-
-				return customFields;
+			if (entry.required) {
+				throw new Error(`Required field "${id}" is missing in item ${i}`);
 			}
 		}
 	}
+
+	return returnData;
 }

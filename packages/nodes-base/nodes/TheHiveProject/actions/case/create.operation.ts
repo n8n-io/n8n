@@ -10,7 +10,7 @@ import { theHiveApiRequest } from '../../transport';
 
 import set from 'lodash/set';
 
-import { fixFieldType } from '../../helpers/utils';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -53,7 +53,8 @@ export async function execute(
 	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		inputData = item.json;
+		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		inputData = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {

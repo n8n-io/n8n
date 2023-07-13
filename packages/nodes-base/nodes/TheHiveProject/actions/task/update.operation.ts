@@ -8,7 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
 import { theHiveApiRequest } from '../../transport';
-import { fixFieldType } from '../../helpers/utils';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
 import set from 'lodash/set';
 
 const properties: INodeProperties[] = [
@@ -54,7 +54,8 @@ export async function execute(
 	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		body = item.json;
+		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		body = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
