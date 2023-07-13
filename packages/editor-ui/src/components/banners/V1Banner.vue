@@ -33,7 +33,7 @@ async function dismissPermanently() {
 <style lang="scss" module>
 a,
 .link {
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 	text-decoration: underline;
 }
 </style>

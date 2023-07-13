@@ -76,7 +76,6 @@ export class E2EController {
 
 	@Post('/reset')
 	async reset(req: ResetRequest) {
-		config.set('ui.banners.dismissed', ['V1']);
 		this.resetFeatures();
 		await this.resetLogStreaming();
 		await this.removeActiveWorkflows();

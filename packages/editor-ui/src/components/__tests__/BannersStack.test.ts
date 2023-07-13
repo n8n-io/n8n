@@ -108,7 +108,7 @@ describe('BannerStack', () => {
 		const dismissBannerSpy = vi
 			.spyOn(useUIStore(), 'dismissBanner')
 			.mockImplementation(async (banner, mode) => {});
-		const closeTrialBannerButton = getByTestId('banners-TRIAL_OVER-close');
+		const closeTrialBannerButton = getByTestId('banner-TRIAL_OVER-close');
 		expect(closeTrialBannerButton).toBeInTheDocument();
 		await userEvent.click(closeTrialBannerButton);
 		expect(dismissBannerSpy).toHaveBeenCalledWith('TRIAL_OVER');

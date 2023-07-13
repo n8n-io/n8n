@@ -43,7 +43,7 @@ async function onCloseClick() {
 					icon="times"
 					title="Dismiss"
 					class="clickable"
-					:data-test-id="`banners-${props.name}-close`"
+					:data-test-id="`banner-${props.name}-close`"
 					@click="onCloseClick"
 				/>
 			</div>

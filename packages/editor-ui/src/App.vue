@@ -263,9 +263,8 @@ export default defineComponent({
 		this.authenticate();
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		this.checkForCloudPlanData().then(async () => {
-			await this.initBanners();
-		});
+		await this.checkForCloudPlanData();
+		await this.initBanners();
 
 		if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
 			await this.sourceControlStore.getPreferences();

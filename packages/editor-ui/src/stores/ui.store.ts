@@ -194,7 +194,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			TRIAL: { dismissed: true },
 			TRIAL_OVER: { dismissed: true },
 		},
-		bannersHeight: document.getElementById('banners')?.clientHeight ?? 0,
+		bannersHeight: 0,
 	}),
 	getters: {
 		contextBasedTranslationKeys() {

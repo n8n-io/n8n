@@ -8,15 +8,13 @@ import { useUIStore } from '@/stores';
 
 const trialDaysLeft = computed(() => {
 	const { trialDaysLeft } = useCloudPlanStore();
-	return trialDaysLeft;
+	return -1 * trialDaysLeft;
 });
 
 const messageText = computed(() => {
-	if (trialDaysLeft.value === 1) {
-		return locale.baseText('banners.trial.oneDayLeft');
-	}
 	return locale.baseText('banners.trial.message', {
-		interpolate: { daysLeft: String(-1 * trialDaysLeft.value) },
+		adjustToNumber: trialDaysLeft.value,
+		interpolate: { count: String(trialDaysLeft.value) },
 	});
 });
 
