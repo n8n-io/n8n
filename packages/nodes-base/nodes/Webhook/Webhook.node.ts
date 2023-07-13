@@ -466,11 +466,11 @@ export class Webhook implements INodeType {
 		const realm = 'Webhook';
 		const ignoreBots = options.ignoreBots as boolean;
 		const requestAuthData: {
-			authData: Record<string, any>;
+			tokenData: Record<string, any>;
 			authentication: string;
 		} = {
 			authentication,
-			authData: null!,
+			tokenData: null!,
 		};
 
 		if (ignoreBots && isbot((headers as IDataObject)['user-agent'] as string)) {
@@ -508,7 +508,7 @@ export class Webhook implements INodeType {
 		} else if (authentication === 'clientPortalAuth') {
 			try {
 				const authData = await verifyPortalToken(token, this.helpers.httpRequest);
-				requestAuthData.authData = authData;
+				requestAuthData.tokenData = authData;
 			} catch (error) {
 				return authorizationError(
 					resp,
@@ -532,7 +532,7 @@ export class Webhook implements INodeType {
 					return authorizationError(resp, realm, 403, 'User role is not authorized');
 				}
 
-				requestAuthData.authData = authData;
+				requestAuthData.tokenData = authData;
 			} catch (error) {
 				return authorizationError(
 					resp,
@@ -578,15 +578,16 @@ export class Webhook implements INodeType {
 			NOTE: mask and delete sensitive details from node output itemData to avoid security risk because n8n uses itemData for various
 			purpose e.g executionsList and possibly telemetry and logging.
 		*/
-		if (headers.authorization) headers.authorization = '-------- PROVIDED BUT HIDDEN ----------';
+		const hiddenMsg = '-------- PROVIDED BUT HIDDEN ----------';
+		if (headers.authorization) headers.authorization = hiddenMsg;
 
 		if (authentication === 'clientPortalAuth') {
-			delete requestAuthData.authData.iat;
-			delete requestAuthData.authData.exp;
+			delete requestAuthData.tokenData.iat;
+			delete requestAuthData.tokenData.exp;
 		} else if (authentication === 'zohoCRMAuth') {
-			delete requestAuthData.authData.tokenDetails;
+			delete requestAuthData.tokenData.tokenDetails;
 		} else if (authentication === 'nocoDBWebhookAuth') {
-			delete headers['esa-key'];
+			if (headers['esa-key']) headers['esa-key'] = hiddenMsg;
 		}
 
 		const mimeType = headers['content-type'] ?? 'application/json';
