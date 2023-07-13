@@ -367,7 +367,7 @@ export const secretOptions = (base: string) => {
 
 	return secrets[provider]
 		?.filter((s) => s.startsWith(path))
-		.map((s) => s.substring(path.length))
+		.map((s) => s.substring(path === '' ? 0 : path.length + 1))
 		.map((secret) =>
 			createCompletionOption('Object', secret, 'keyword', {
 				doc: {
