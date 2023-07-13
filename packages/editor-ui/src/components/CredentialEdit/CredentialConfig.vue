@@ -125,6 +125,13 @@
 		<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
 			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 		</n8n-text>
+
+		<n8n-info-tip class="mt-s">
+			{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets') }}
+			<n8n-link bold :to="$locale.baseText('settings.externalSecrets.docs')" size="small">
+				{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
+			</n8n-link>
+		</n8n-info-tip>
 	</div>
 </template>
 
