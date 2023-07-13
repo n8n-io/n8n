@@ -1,16 +1,11 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
 import { caseRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Create From ...',
+		displayName: 'Delete From ...',
 		name: 'location',
 		type: 'options',
 		options: [
@@ -23,7 +18,7 @@ const properties: INodeProperties[] = [
 				value: 'knowledgeBase',
 			},
 		],
-		default: 'case',
+		default: 'knowledgeBase',
 	},
 	{
 		...caseRLC,
@@ -52,8 +47,6 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
-
 	const location = this.getNodeParameter('location', i) as string;
 	const pageId = this.getNodeParameter('pageId', i) as string;
 
@@ -66,9 +59,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		endpoint = `/v1/page/${pageId}`;
 	}
 
-	responseData = await theHiveApiRequest.call(this, 'DELETE', endpoint);
+	await theHiveApiRequest.call(this, 'DELETE', endpoint);
 
-	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
+	const executionData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
 		itemData: { item: i },
 	});
 

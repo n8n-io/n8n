@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
+import { alertRLC, caseRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -25,11 +26,8 @@ const properties: INodeProperties[] = [
 		default: 'alert',
 	},
 	{
-		displayName: 'Case ID',
+		...caseRLC,
 		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
 		displayOptions: {
 			show: {
 				addTo: ['case'],
@@ -37,11 +35,8 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Alert ID',
+		...alertRLC,
 		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
 		displayOptions: {
 			show: {
 				addTo: ['alert'],
@@ -73,7 +68,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let responseData: IDataObject | IDataObject[] = [];
 
 	const addTo = this.getNodeParameter('addTo', i) as string;
-	const id = this.getNodeParameter('id', i) as string;
+	const id = this.getNodeParameter('id', i, '', { extractValue: true });
 	const message = this.getNodeParameter('message', i) as string;
 
 	const body: IDataObject = {
