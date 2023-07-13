@@ -200,7 +200,7 @@ A basic step by step example setup of n8n with docker-compose and Lets Encrypt i
 ## Setting Timezone
 
 To define the timezone n8n should use, the environment variable `GENERIC_TIMEZONE` can
-be set. One instance where this variable is implemented is in the Cron-Node. Furthermore, the system's timezone can be set separately,
+be set. One instance where this variable is implemented is in the Schedule node. Furthermore, the system's timezone can be set separately,
 which controls the output of certain scripts and commands such as `$ date`. The system timezone can be set via
 the environment variable `TZ`.
 
