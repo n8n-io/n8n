@@ -81,7 +81,7 @@ export class JotFormTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available forms to display them to user so that he can
+			// Get all the available forms to display them to user so that they can
 			// select them easily
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

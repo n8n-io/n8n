@@ -1,5 +1,6 @@
 import { WorkflowExecute } from 'n8n-core';
-import { createDeferredPromise, INodeTypes, IRun, Workflow } from 'n8n-workflow';
+import type { INodeTypes, IRun } from 'n8n-workflow';
+import { createDeferredPromise, Workflow } from 'n8n-workflow';
 import * as Helpers from './Helpers';
 import type { WorkflowTestData } from './types';
 
@@ -11,12 +12,15 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 		connections: testData.input.workflowData.connections,
 		active: false,
 		nodeTypes,
+		settings: testData.input.workflowData.settings,
 	});
-
 	const waitPromise = await createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
-	const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
-
+	const additionalData = Helpers.WorkflowExecuteAdditionalData(
+		waitPromise,
+		nodeExecutionOrder,
+		testData,
+	);
 	const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 	const executionData = await workflowExecute.run(workflowInstance);

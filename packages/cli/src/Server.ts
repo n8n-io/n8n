@@ -10,17 +10,18 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
+import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve } from 'path';
+import { join as pathJoin, resolve as pathResolve, relative as pathRelative } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import { engine as expressHandlebars } from 'express-handlebars';
 import type { ServeStaticOptions } from 'serve-static';
-import type { FindManyOptions } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
@@ -30,6 +31,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import {
 	BinaryDataManager,
 	Credentials,
+	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
@@ -48,6 +50,8 @@ import type {
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
+	ResourceMapperFields,
+	IN8nUISettings,
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
@@ -64,6 +68,7 @@ import {
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
 	inDevelopment,
+	inE2ETests,
 	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -77,6 +82,7 @@ import type {
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
+	ResourceMapperRequest,
 	WorkflowRequest,
 } from '@/requests';
 import { registerController } from '@/decorators';
@@ -95,12 +101,11 @@ import {
 
 import { executionsController } from '@/executions/executions.controller';
 import { workflowStatsController } from '@/api/workflowStats.api';
-import { loadPublicApiVersions } from '@/PublicApi';
+import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
 	isSharingEnabled,
-	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
@@ -109,9 +114,7 @@ import type {
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
-	IExecutionFlattedDb,
 	IExecutionsStopData,
-	IN8nUISettings,
 } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import {
@@ -128,7 +131,7 @@ import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { EventBusController } from '@/eventbus/eventBus.controller';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
@@ -142,12 +145,11 @@ import {
 } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
-import { setupBasicAuth } from './middlewares/basicAuth';
-import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+import { License } from './License';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
@@ -155,11 +157,23 @@ import {
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
+import { variablesController } from './environments/variables/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from './sso/ssoHelpers';
+import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
+import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
+import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 
 const exec = promisify(callbackExec);
 
-class Server extends AbstractServer {
+export class Server extends AbstractServer {
 	endpointPresetCredentials: string;
 
 	waitTracker: WaitTracker;
@@ -183,22 +197,9 @@ class Server extends AbstractServer {
 	constructor() {
 		super();
 
-		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		this.credentialTypes = Container.get(CredentialTypes);
-		this.nodeTypes = Container.get(NodeTypes);
-
-		this.activeExecutionsInstance = Container.get(ActiveExecutions);
-		this.waitTracker = Container.get(WaitTracker);
-		this.postHog = Container.get(PostHogClient);
-
-		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
-
-		this.push = Container.get(Push);
-
-		if (process.env.E2E_TESTS === 'true') {
-			this.app.use('/e2e', require('./api/e2e.api').e2eController);
-		}
+		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.set('view engine', 'handlebars');
+		this.app.set('views', TEMPLATES_DIR);
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -258,12 +259,10 @@ class Server extends AbstractServer {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				enabled: isUserManagementEnabled(),
-				showSetupOnFirstLoad:
-					config.getEnv('userManagement.disabled') === false &&
-					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				quota: Container.get(License).getUsersLimit(),
+				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
 				smtpSetup: isEmailSetUp(),
+				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
 			sso: {
 				saml: {
@@ -276,7 +275,7 @@ class Server extends AbstractServer {
 				},
 			},
 			publicApi: {
-				enabled: !config.getEnv('publicApi.disabled'),
+				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
 				swaggerUi: {
@@ -299,21 +298,108 @@ class Server extends AbstractServer {
 			},
 			isNpmAvailable: false,
 			allowedModules: {
-				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
 			},
 			enterprise: {
 				sharing: false,
 				ldap: false,
 				saml: false,
-				logStreaming: config.getEnv('enterprise.features.logStreaming'),
-				advancedExecutionFilters: config.getEnv('enterprise.features.advancedExecutionFilters'),
+				logStreaming: false,
+				advancedExecutionFilters: false,
+				variables: false,
+				sourceControl: false,
+				auditLogs: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
 			},
+			variables: {
+				limit: 0,
+			},
+			banners: {
+				v1: {
+					dismissed: false,
+				},
+			},
 		};
+	}
+
+	async start() {
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		this.credentialTypes = Container.get(CredentialTypes);
+		this.nodeTypes = Container.get(NodeTypes);
+
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
+		this.waitTracker = Container.get(WaitTracker);
+		this.postHog = Container.get(PostHogClient);
+
+		this.presetCredentialsLoaded = false;
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		this.push = Container.get(Push);
+
+		await super.start();
+
+		const cpus = os.cpus();
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+		const diagnosticInfo: IDiagnosticInfo = {
+			databaseType: config.getEnv('database.type'),
+			disableProductionWebhooksOnMainProcess: config.getEnv(
+				'endpoints.disableProductionWebhooksOnMainProcess',
+			),
+			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
+			versionCli: N8N_VERSION,
+			systemInfo: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			executionVariables: {
+				executions_process: config.getEnv('executions.process'),
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
+			},
+			deploymentType: config.getEnv('deployment.type'),
+			binaryDataMode: binaryDataConfig.mode,
+			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+			ldap_allowed: isLdapCurrentAuthenticationMethod(),
+			saml_enabled: isSamlCurrentAuthenticationMethod(),
+		};
+
+		// Set up event handling
+		initEvents();
+
+		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
+			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
+		}
+
+		void Db.collections.Workflow.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		}).then(async (workflow) =>
+			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+		);
 	}
 
 	/**
@@ -322,13 +408,22 @@ class Server extends AbstractServer {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
-			enabled: isUserManagementEnabled(),
+			quota: Container.get(License).getUsersLimit(),
+			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
-				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('userManagement.skipInstanceOwnerSetup') === false &&
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
+
+		let v1Dismissed = false;
+
+		try {
+			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+		} catch {
+			// not yet in DB
+		}
+
+		this.frontendSettings.banners.v1.dismissed = v1Dismissed;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
@@ -337,6 +432,8 @@ class Server extends AbstractServer {
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
+			sourceControl: isSourceControlLicensed(),
 		});
 
 		if (isLdapEnabled()) {
@@ -353,25 +450,28 @@ class Server extends AbstractServer {
 			});
 		}
 
+		if (isVariablesEnabled()) {
+			this.frontendSettings.variables.limit = getVariablesLimit();
+		}
+
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
 		}
-
 		return this.frontendSettings;
 	}
 
-	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
-		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
+		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const samlService = Container.get(SamlService);
 
 		const controllers: object[] = [
+			new EventBusController(),
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
@@ -396,7 +496,8 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new SamlController(samlService),
+			Container.get(SamlController),
+			Container.get(SourceControlController),
 		];
 
 		if (isLdapEnabled()) {
@@ -410,11 +511,19 @@ class Server extends AbstractServer {
 			);
 		}
 
+		if (inE2ETests) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { E2EController } = await import('./controllers/e2e.controller');
+			controllers.push(Container.get(E2EController));
+		}
+
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
 
 	async configure(): Promise<void> {
 		configureMetrics(this.app);
+
+		this.instanceId = await UserSettings.getInstanceId();
 
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
@@ -422,7 +531,7 @@ class Server extends AbstractServer {
 
 		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+		this.frontendSettings.instanceId = this.instanceId;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -435,34 +544,24 @@ class Server extends AbstractServer {
 			'assets',
 			'healthz',
 			'metrics',
-			'icons',
-			'types',
 			'e2e',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-			config.getEnv('publicApi.disabled') ? publicApiEndpoint : '',
+			isApiEnabled() ? '' : publicApiEndpoint,
 			...excludeEndpoints.split(':'),
 		].filter((u) => !!u);
 
-		// eslint-disable-next-line no-useless-escape
-		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
-
-		// Check for basic auth credentials if activated
-		if (config.getEnv('security.basicAuth.active')) {
-			await setupBasicAuth(this.app, config, authIgnoreRegex);
-		}
-
-		// Check for and validate JWT if configured
-		if (config.getEnv('security.jwtAuth.active')) {
-			await setupExternalJWTAuth(this.app, config, authIgnoreRegex);
-		}
+		assert(
+			!ignoredEndpoints.includes(this.restEndpoint),
+			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
+		);
 
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
 
-		if (!config.getEnv('publicApi.disabled')) {
+		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
@@ -471,7 +570,7 @@ class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
-		setupPushHandler(restEndpoint, app, isUserManagementEnabled());
+		setupPushHandler(restEndpoint, app);
 
 		// Make sure that Vue history mode works properly
 		this.app.use(
@@ -493,7 +592,7 @@ class Server extends AbstractServer {
 
 		await handleLdapInit();
 
-		this.registerControllers(ignoredEndpoints);
+		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
@@ -518,15 +617,29 @@ class Server extends AbstractServer {
 
 		// initialize SamlService if it is licensed, even if not enabled, to
 		// set up the initial environment
-		if (isSamlLicensed()) {
-			try {
-				await Container.get(SamlService).init();
-			} catch (error) {
-				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
-			}
+		try {
+			await Container.get(SamlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
+		// Variables
+		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
+
+		// ----------------------------------------
+		// Source Control
+		// ----------------------------------------
+		try {
+			await Container.get(SourceControlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`Source Control initialization failed: ${error.message}`);
+		}
+
+		// ----------------------------------------
+
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(
@@ -637,6 +750,58 @@ class Server extends AbstractServer {
 			),
 		);
 
+		this.app.get(
+			`/${this.restEndpoint}/get-mapping-fields`,
+			ResponseHelper.send(
+				async (
+					req: ResourceMapperRequest,
+					res: express.Response,
+				): Promise<ResourceMapperFields | undefined> => {
+					const nodeTypeAndVersion = jsonParse(
+						req.query.nodeTypeAndVersion,
+					) as INodeTypeNameVersion;
+
+					const { path, methodName } = req.query;
+
+					if (!req.query.currentNodeParameters) {
+						throw new ResponseHelper.BadRequestError(
+							'Parameter currentNodeParameters is required.',
+						);
+					}
+
+					const currentNodeParameters = jsonParse(
+						req.query.currentNodeParameters,
+					) as INodeParameters;
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = jsonParse(req.query.credentials);
+					}
+
+					const loadMappingOptionsInstance = new LoadMappingOptions(
+						nodeTypeAndVersion,
+						this.nodeTypes,
+						path,
+						currentNodeParameters,
+						credentials,
+					);
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user.id,
+						currentNodeParameters,
+					);
+
+					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
+						methodName,
+						additionalData,
+					);
+
+					return fields;
+				},
+			),
+		);
+
 		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
@@ -645,8 +810,7 @@ class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-				return activeWorkflows.map(({ id }) => id);
+				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
 			}),
 		);
 
@@ -980,7 +1144,9 @@ class Server extends AbstractServer {
 
 						if (!currentlyRunningExecutionIds.length) return [];
 
-						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
+						const findOptions: FindManyOptions<ExecutionEntity> & {
+							where: FindOptionsWhere<ExecutionEntity>;
+						} = {
 							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
 							order: { id: 'DESC' },
 							where: {
@@ -996,19 +1162,23 @@ class Server extends AbstractServer {
 						if (req.query.filter) {
 							const { workflowId, status, finished } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where!, { workflowId });
+								Object.assign(findOptions.where, { workflowId });
+							} else {
+								Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 							}
 							if (status) {
-								Object.assign(findOptions.where!, { status: In(status) });
+								Object.assign(findOptions.where, { status: In(status) });
 							}
 							if (finished) {
-								Object.assign(findOptions.where!, { finished });
+								Object.assign(findOptions.where, { finished });
 							}
 						} else {
-							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const executions = await Db.collections.Execution.find(findOptions);
+						const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+							findOptions,
+						);
 
 						if (!executions.length) return [];
 
@@ -1073,14 +1243,16 @@ class Server extends AbstractServer {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
-				const execution = await Db.collections.Execution.findOne({
-					where: {
-						id: executionId,
-						workflowId: In(sharedWorkflowIds),
+				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+					executionId,
+					{
+						where: {
+							workflowId: In(sharedWorkflowIds),
+						},
 					},
-				});
+				);
 
-				if (!execution) {
+				if (!fullExecutionData) {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
@@ -1117,11 +1289,6 @@ class Server extends AbstractServer {
 					} else {
 						await queue.stopJob(job);
 					}
-
-					const executionDb = (await Db.collections.Execution.findOneBy({
-						id: req.params.id,
-					})) as IExecutionFlattedDb;
-					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 					const returnData: IExecutionsStopData = {
 						mode: fullExecutionData.mode,
@@ -1226,8 +1393,6 @@ class Server extends AbstractServer {
 		if (!eventBus.isInitialized) {
 			await eventBus.initialize();
 		}
-		// add Event Bus REST endpoints
-		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
 		// ----------------------------------------
 		// Webhooks
@@ -1294,6 +1459,9 @@ class Server extends AbstractServer {
 						loader.directory,
 						req.originalUrl.substring(pathPrefix.length),
 					);
+					if (pathRelative(loader.directory, filePath).includes('..')) {
+						return res.status(404).end();
+					}
 					try {
 						await fsAccess(filePath);
 						return res.sendFile(filePath);
@@ -1326,67 +1494,4 @@ class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		setupPushServer(restEndpoint, server, app);
 	}
-}
-
-export async function start(): Promise<void> {
-	const app = new Server();
-	await app.start();
-
-	const cpus = os.cpus();
-	const binaryDataConfig = config.getEnv('binaryDataManager');
-	const diagnosticInfo: IDiagnosticInfo = {
-		basicAuthActive: config.getEnv('security.basicAuth.active'),
-		databaseType: config.getEnv('database.type'),
-		disableProductionWebhooksOnMainProcess: config.getEnv(
-			'endpoints.disableProductionWebhooksOnMainProcess',
-		),
-		notificationsEnabled: config.getEnv('versionNotifications.enabled'),
-		versionCli: N8N_VERSION,
-		systemInfo: {
-			os: {
-				type: os.type(),
-				version: os.version(),
-			},
-			memory: os.totalmem() / 1024,
-			cpus: {
-				count: cpus.length,
-				model: cpus[0].model,
-				speed: cpus[0].speed,
-			},
-		},
-		executionVariables: {
-			executions_process: config.getEnv('executions.process'),
-			executions_mode: config.getEnv('executions.mode'),
-			executions_timeout: config.getEnv('executions.timeout'),
-			executions_timeout_max: config.getEnv('executions.maxTimeout'),
-			executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-			executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-			executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-			executions_data_save_manual_executions: config.getEnv('executions.saveDataManualExecutions'),
-			executions_data_prune: config.getEnv('executions.pruneData'),
-			executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-			executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
-		},
-		deploymentType: config.getEnv('deployment.type'),
-		binaryDataMode: binaryDataConfig.mode,
-		n8n_multi_user_allowed: isUserManagementEnabled(),
-		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
-		ldap_allowed: isLdapEnabled(),
-	};
-
-	// Set up event handling
-	initEvents();
-
-	if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
-		const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
-		await reloadNodesAndCredentials(app.loadNodesAndCredentials, app.nodeTypes, app.push);
-	}
-
-	void Db.collections.Workflow.findOne({
-		select: ['createdAt'],
-		order: { createdAt: 'ASC' },
-		where: {},
-	}).then(async (workflow) =>
-		Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
-	);
 }

@@ -134,7 +134,7 @@ export class Pushcut implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available devices to display them to user so that he can
+			// Get all the available devices to display them to user so that they can
 			// select them easily
 			async getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -147,7 +147,7 @@ export class Pushcut implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available notifications to display them to user so that he can
+			// Get all the available notifications to display them to user so that they can
 			// select them easily
 			async getNotifications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

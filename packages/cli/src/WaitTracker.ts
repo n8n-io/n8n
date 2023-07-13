@@ -3,28 +3,28 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-floating-promises */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import type { FindManyOptions, ObjectLiteral } from 'typeorm';
 import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type {
-	IExecutionFlattedDb,
+	IExecutionResponse,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
+import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 
 @Service()
 export class WaitTracker {
@@ -37,20 +37,20 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	constructor() {
+	constructor(private executionRepository: ExecutionRepository) {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
-			this.getWaitingExecutions();
+			void this.getWaitingExecutions();
 		}, 60000);
 
-		this.getWaitingExecutions();
+		void this.getWaitingExecutions();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async getWaitingExecutions() {
 		Logger.debug('Wait tracker querying database for waiting executions');
 		// Find all the executions which should be triggered in the next 70 seconds
-		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
+		const findQuery: FindManyOptions<ExecutionEntity> = {
 			select: ['id', 'waitTill'],
 			where: {
 				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
@@ -70,7 +70,7 @@ export class WaitTracker {
 			);
 		}
 
-		const executions = await Db.collections.Execution.find(findQuery);
+		const executions = await this.executionRepository.findMultipleExecutions(findQuery);
 
 		if (executions.length === 0) {
 			return;
@@ -106,14 +106,38 @@ export class WaitTracker {
 		}
 
 		// Also check in database
-		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+		});
 
-		if (execution === null || !execution.waitTill) {
+		if (!execution) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
 		}
 
-		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-
+		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
+			throw new Error(
+				`Only running or waiting executions can be stopped and ${executionId} is currently ${execution.status}.`,
+			);
+		}
+		let fullExecutionData: IExecutionResponse;
+		try {
+			fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
+		} catch (error) {
+			// if the execution ended in an unforseen, non-cancelable state, try to recover it
+			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
+			// find recovered data
+			const restoredExecution = await Container.get(ExecutionRepository).findSingleExecution(
+				executionId,
+				{
+					includeData: true,
+					unflattenData: true,
+				},
+			);
+			if (!restoredExecution) {
+				throw new Error(`Execution ${executionId} could not be recovered or canceled.`);
+			}
+			fullExecutionData = restoredExecution;
+		}
 		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
 
@@ -124,14 +148,12 @@ export class WaitTracker {
 		};
 
 		fullExecutionData.stoppedAt = new Date();
-		fullExecutionData.waitTill = undefined;
+		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
-		await Db.collections.Execution.update(
+		await Container.get(ExecutionRepository).updateExistingExecution(
 			executionId,
-			ResponseHelper.flattenExecutionData({
-				...fullExecutionData,
-			}),
+			fullExecutionData,
 		);
 
 		return {
@@ -149,16 +171,14 @@ export class WaitTracker {
 
 		(async () => {
 			// Get the data to execute
-			const fullExecutionDataFlatted = await Db.collections.Execution.findOneBy({
-				id: executionId,
+			const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
 			});
 
-			if (fullExecutionDataFlatted === null) {
+			if (!fullExecutionData) {
 				throw new Error(`The execution with the id "${executionId}" does not exist.`);
 			}
-
-			const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);
-
 			if (fullExecutionData.finished) {
 				throw new Error('The execution did succeed and can so not be started again.');
 			}

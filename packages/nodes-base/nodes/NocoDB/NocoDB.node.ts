@@ -328,17 +328,24 @@ export class NocoDB implements INodeType {
 
 			if (operation === 'delete') {
 				requestMethod = 'DELETE';
+				let primaryKey = 'id';
+
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
 				} else if (version === 2) {
 					endPoint = `/api/v1/db/data/bulk/noco/${projectId}/${table}`;
+
+					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
+					if (primaryKey === 'custom') {
+						primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
+					}
 				}
 
 				const body: IDataObject[] = [];
 
 				for (let i = 0; i < items.length; i++) {
 					const id = this.getNodeParameter('id', i) as string;
-					body.push({ id });
+					body.push({ [primaryKey]: id });
 				}
 
 				try {
@@ -532,18 +539,25 @@ export class NocoDB implements INodeType {
 
 			if (operation === 'update') {
 				requestMethod = 'PATCH';
+				let primaryKey = 'id';
 
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
 					requestMethod = 'PUT';
 				} else if (version === 2) {
 					endPoint = `/api/v1/db/data/bulk/noco/${projectId}/${table}`;
+
+					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
+					if (primaryKey === 'custom') {
+						primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
+					}
 				}
+
 				const body: IDataObject[] = [];
 
 				for (let i = 0; i < items.length; i++) {
 					const id = this.getNodeParameter('id', i) as string;
-					const newItem: IDataObject = { id };
+					const newItem: IDataObject = { [primaryKey]: id };
 					const dataToSend = this.getNodeParameter('dataToSend', i) as
 						| 'defineBelow'
 						| 'autoMapInputData';

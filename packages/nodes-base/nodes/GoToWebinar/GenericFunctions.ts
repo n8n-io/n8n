@@ -88,7 +88,7 @@ export async function goToWebinarApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	qs: IDataObject,
+	query: IDataObject,
 	body: IDataObject,
 	resource: string,
 ) {
@@ -103,7 +103,7 @@ export async function goToWebinarApiRequestAllItems(
 	let responseData;
 
 	do {
-		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
+		responseData = await goToWebinarApiRequest.call(this, method, endpoint, query, body);
 
 		if (responseData.page && parseInt(responseData.page.totalElements as string, 10) === 0) {
 			return [];
@@ -113,8 +113,9 @@ export async function goToWebinarApiRequestAllItems(
 			returnData.push(...(responseData as IDataObject[]));
 		}
 
-		if (qs.limit && returnData.length >= qs.limit) {
-			returnData = returnData.splice(0, qs.limit as number);
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
+			returnData = returnData.splice(0, limit);
 			return returnData;
 		}
 	} while (

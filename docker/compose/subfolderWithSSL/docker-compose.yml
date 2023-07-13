@@ -20,7 +20,7 @@ services:
       - ${DATA_FOLDER}/letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
   n8n:
-    image: n8nio/n8n
+    image: docker.n8n.io/n8nio/n8n
     ports:
       - '127.0.0.1:5678:5678'
     labels:
@@ -41,9 +41,6 @@ services:
       - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
       - traefik.http.middlewares.n8n.headers.STSPreload=true
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER
-      - N8N_BASIC_AUTH_PASSWORD
       - N8N_HOST=${DOMAIN_NAME}
       - N8N_PORT=5678
       - N8N_PROTOCOL=https

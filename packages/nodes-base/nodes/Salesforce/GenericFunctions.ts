@@ -8,7 +8,7 @@ import type {
 	INodePropertyOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, NodeApiError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -109,7 +109,7 @@ export async function salesforceApiRequest(
 				qs,
 				instance_url as string,
 			);
-			Logger.debug(
+			this.logger.debug(
 				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`,
 			);
 			options.headers!.Authorization = `Bearer ${access_token}`;
@@ -130,7 +130,7 @@ export async function salesforceApiRequest(
 				qs,
 				credentials.oauthTokenData.instance_url,
 			);
-			Logger.debug(
+			this.logger.debug(
 				`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`,
 			);
 			Object.assign(options, option);

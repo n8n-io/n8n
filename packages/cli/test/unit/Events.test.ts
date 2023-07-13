@@ -1,28 +1,36 @@
-import { IRun, LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
-import { QueryFailedError, Repository } from 'typeorm';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
-import { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
+import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
+import type { WorkflowStatisticsRepository } from '@db/repositories';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { getLogger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
 
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../integration/shared/utils/';
+import { UserService } from '@/user/user.service';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-type WorkflowStatisticsRepository = Repository<WorkflowStatistics>;
 jest.mock('@/Db', () => {
 	return {
 		collections: {
-			WorkflowStatistics: mock<WorkflowStatisticsRepository>(),
+			WorkflowStatistics: mock<WorkflowStatisticsRepository>({
+				metadata: { tableName: 'workflow_statistics' },
+			}),
 		},
 	};
 });
 
+jest.spyOn(UserService, 'updateUserSettings').mockImplementation();
+
 describe('Events', () => {
+	const dbType = config.getEnv('database.type');
 	const fakeUser = Object.assign(new User(), { id: 'abcde-fghij' });
 	const internalHooks = mockInstance(InternalHooks);
 
@@ -44,11 +52,28 @@ describe('Events', () => {
 	});
 
 	beforeEach(() => {
+		if (dbType === 'sqlite') {
+			workflowStatisticsRepository.findOne.mockClear();
+		} else {
+			workflowStatisticsRepository.query.mockClear();
+		}
+
 		internalHooks.onFirstProductionWorkflowSuccess.mockClear();
 		internalHooks.onFirstWorkflowDataLoad.mockClear();
 	});
 
-	afterEach(() => {});
+	const mockDBCall = (count = 1) => {
+		if (dbType === 'sqlite') {
+			workflowStatisticsRepository.findOne.mockResolvedValueOnce(
+				mock<WorkflowStatistics>({ count }),
+			);
+		} else {
+			const result = dbType === 'postgresdb' ? [{ count }] : { affectedRows: count };
+			workflowStatisticsRepository.query.mockImplementationOnce(async (query) =>
+				query.startsWith('INSERT INTO') ? result : null,
+			);
+		}
+	};
 
 	describe('workflowExecutionCompleted', () => {
 		test('should create metrics for production successes', async () => {
@@ -69,6 +94,8 @@ describe('Events', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
+			mockDBCall();
+
 			await workflowExecutionCompleted(workflow, runData);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
@@ -101,9 +128,6 @@ describe('Events', () => {
 
 		test('should not send metrics for updated entries', async () => {
 			// Call the function with a fail insert, ensure update is called *and* metrics aren't sent
-			workflowStatisticsRepository.insert.mockImplementationOnce(() => {
-				throw new QueryFailedError('invalid insert', [], '');
-			});
 			const workflow = {
 				id: '1',
 				name: '',
@@ -120,6 +144,7 @@ describe('Events', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
+			mockDBCall(2);
 			await workflowExecutionCompleted(workflow, runData);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
@@ -178,8 +203,14 @@ describe('Events', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			workflowStatisticsRepository.insert.mockImplementationOnce(() => {
-				throw new QueryFailedError('invalid insert', [], '');
+			workflowStatisticsRepository.findOne.mockImplementationOnce(async () => {
+				return {
+					count: 1,
+					name: StatisticsNames.dataLoaded,
+					latestEvent: new Date(),
+					workflowId: '2',
+					workflow: new WorkflowEntity(),
+				};
 			});
 			const workflowId = '1';
 			const node = {

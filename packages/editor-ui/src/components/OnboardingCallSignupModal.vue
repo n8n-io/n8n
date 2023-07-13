@@ -48,26 +48,30 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { ONBOARDING_CALL_SIGNUP_MODAL_KEY, VALID_EMAIL_REGEX } from '@/constants';
 import Modal from './Modal.vue';
 
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	name: 'OnboardingCallSignupModal',
 	components: {
 		Modal,
 	},
-	name: 'OnboardingCallSignupModal',
 	props: ['modalName'],
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			email: '',
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 			showError: false,
 			okToClose: false,
@@ -92,15 +96,15 @@ export default mixins(showMessage).extend({
 
 			try {
 				await this.uiStore.applyForOnboardingCall(this.email);
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
 					message: this.$locale.baseText('onboardingCallSignupSucess.message'),
 				});
 				this.okToClose = true;
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			} catch (e) {
-				this.$showError(
+				this.showError(
 					e,
 					this.$locale.baseText('onboardingCallSignupFailed.title'),
 					this.$locale.baseText('onboardingCallSignupFailed.message'),
@@ -111,7 +115,7 @@ export default mixins(showMessage).extend({
 		},
 		async onCancel() {
 			this.okToClose = true;
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		onModalClose() {
 			return this.okToClose;

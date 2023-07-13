@@ -21,7 +21,7 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
@@ -29,12 +29,11 @@ let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
 let owner: User;
-let authlessAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
 
-beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['users'] });
+const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 
+beforeAll(async () => {
 	const [
 		globalOwnerRole,
 		fetchedGlobalMemberRole,
@@ -48,8 +47,7 @@ beforeAll(async () => {
 
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	authlessAgent = utils.createAgent(app);
-	authOwnerAgent = utils.createAuthAgent(app)(owner);
+	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
 beforeEach(async () => {
@@ -58,18 +56,12 @@ beforeEach(async () => {
 
 	jest.mock('@/config');
 
-	config.set('userManagement.disabled', false);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', 'smtp');
 	config.set('userManagement.emails.smtp.host', '');
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 describe('GET /users', () => {
-	test('should return all users', async () => {
+	test('should return all users (for owner)', async () => {
 		await testDb.createUser({ globalRole: globalMemberRole });
 
 		const response = await authOwnerAgent.get('/users');
@@ -102,6 +94,14 @@ describe('GET /users', () => {
 			expect(globalRole).toBeDefined();
 			expect(apiKey).not.toBeDefined();
 		});
+	});
+
+	test('should return all users (for member)', async () => {
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const response = await testServer.authAgentFor(member).get('/users');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
 	});
 });
 
@@ -243,7 +243,9 @@ describe('POST /users/:id', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authlessAgent.post(`/users/${memberShell.id}`).send(memberData);
+		const response = await testServer.authlessAgent
+			.post(`/users/${memberShell.id}`)
+			.send(memberData);
 
 		const {
 			id,
@@ -315,20 +317,20 @@ describe('POST /users/:id', () => {
 			},
 		];
 
-		await Promise.all(
-			invalidPayloads.map(async (invalidPayload) => {
-				const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
-				expect(response.statusCode).toBe(400);
+		for (const invalidPayload of invalidPayloads) {
+			const response = await testServer.authlessAgent
+				.post(`/users/${memberShell.id}`)
+				.send(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-				const storedUser = await Db.collections.User.findOneOrFail({
-					where: { email: memberShellEmail },
-				});
+			const storedUser = await Db.collections.User.findOneOrFail({
+				where: { email: memberShellEmail },
+			});
 
-				expect(storedUser.firstName).toBeNull();
-				expect(storedUser.lastName).toBeNull();
-				expect(storedUser.password).toBeNull();
-			}),
-		);
+			expect(storedUser.firstName).toBeNull();
+			expect(storedUser.lastName).toBeNull();
+			expect(storedUser.password).toBeNull();
+		}
 	});
 
 	test('should fail with already accepted invite', async () => {
@@ -341,7 +343,7 @@ describe('POST /users/:id', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authlessAgent.post(`/users/${member.id}`).send(newMemberData);
+		const response = await testServer.authlessAgent.post(`/users/${member.id}`).send(newMemberData);
 
 		expect(response.statusCode).toBe(400);
 
@@ -367,15 +369,6 @@ describe('POST /users', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data[0].user.inviteAcceptUrl).toBeDefined();
-	});
-
-	test('should fail if user management is disabled', async () => {
-		config.set('userManagement.disabled', true);
-		config.set('userManagement.isInstanceOwnerSetUp', false);
-
-		const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
-
-		expect(response.statusCode).toBe(400);
 	});
 
 	test('should email invites and create user shells but ignore existing', async () => {
@@ -504,7 +497,7 @@ describe('UserManagementMailer expect NodeMailer.verifyConnection', () => {
 	test('not be called when SMTP not set up', async () => {
 		const userManagementMailer = new UserManagementMailer();
 		// NodeMailer.verifyConnection gets called only explicitly
-		expect(async () => await userManagementMailer.verifyConnection()).rejects.toThrow();
+		await expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
 
 		expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 	});
@@ -516,6 +509,6 @@ describe('UserManagementMailer expect NodeMailer.verifyConnection', () => {
 
 		const userManagementMailer = new UserManagementMailer();
 		// NodeMailer.verifyConnection gets called only explicitly
-		expect(async () => await userManagementMailer.verifyConnection()).not.toThrow();
+		expect(async () => userManagementMailer.verifyConnection()).not.toThrow();
 	});
 });

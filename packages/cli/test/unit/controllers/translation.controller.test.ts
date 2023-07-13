@@ -1,9 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import type { ICredentialTypes } from 'n8n-workflow';
 import type { Config } from '@/config';
+import type { TranslationRequest } from '@/controllers/translation.controller';
 import {
 	TranslationController,
-	TranslationRequest,
 	CREDENTIAL_TRANSLATIONS_DIR,
 } from '@/controllers/translation.controller';
 import { BadRequestError } from '@/ResponseHelper';
@@ -19,7 +19,7 @@ describe('TranslationController', () => {
 			const req = mock<TranslationRequest.Credential>({ query: { credentialType } });
 			credentialTypes.recognizes.calledWith(credentialType).mockReturnValue(false);
 
-			expect(controller.getCredentialTranslation(req)).rejects.toThrowError(
+			await expect(controller.getCredentialTranslation(req)).rejects.toThrowError(
 				new BadRequestError(`Invalid Credential type: "${credentialType}"`),
 			);
 		});

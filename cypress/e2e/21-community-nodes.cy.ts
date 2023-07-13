@@ -13,10 +13,6 @@ const workflowPage = new WorkflowPage();
 // so the /nodes and /credentials endpoints are intercepted and non-cached.
 // We want to keep the other tests as fast as possible so we don't want to break the cache in those.
 describe('Community Nodes', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	})
 	beforeEach(() => {
 		cy.intercept('/types/nodes.json', { middleware: true }, (req) => {
 			req.headers['cache-control'] = 'no-cache, no-store';
@@ -37,6 +33,7 @@ describe('Community Nodes', () => {
 				credentials.push(CustomCredential);
 			})
 		})
+
 		workflowPage.actions.visit();
 	});
 

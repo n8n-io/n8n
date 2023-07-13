@@ -10,11 +10,6 @@ const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Undo/Redo', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 	});

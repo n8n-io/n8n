@@ -1,0 +1,137 @@
+{
+	"name": "microsoft excel 365 - read rows",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "2e1ec8f6-a2e2-4aa9-909c-d0a279584131",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 380]
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "readRows",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+					"mode": "list",
+					"cachedResultName": "Sheet4"
+				},
+				"options": {}
+			},
+			"id": "86f2a240-3acf-45c2-b97f-63dd655d296b",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [1100, 260],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "readRows",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія",
+					"cachedResultUrl": "https://5w1hb7-my.sharepoint.com/personal/michaeldevsandbox_5w1hb7_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7BECC4041C-3AB6-4CF7-B079-0926470A1388%7D&file=%D0%9F%D0%A0%D0%A0%D0%9E%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+					"mode": "list",
+					"cachedResultName": "Sheet4",
+					"cachedResultUrl": "https://5w1hb7-my.sharepoint.com/personal/michaeldevsandbox_5w1hb7_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7BECC4041C-3AB6-4CF7-B079-0926470A1388%7D&file=%D0%9F%D0%A0%D0%A0%D0%9E%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Sheet4!A1"
+				},
+				"useRange": true,
+				"range": "A1:D3",
+				"dataStartRow": 2,
+				"options": {}
+			},
+			"id": "8ce6ab42-8f38-452b-90da-598d8a958c2b",
+			"name": "Microsoft Excel 3651",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [1100, 520],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"id": 1,
+					"name": "Sam",
+					"age": 33,
+					"data": "data 1"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "Jon",
+					"age": 44,
+					"data": "data 2"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Ron",
+					"age": 55,
+					"data": "data 3"
+				}
+			}
+		],
+		"Microsoft Excel 3651": [
+			{
+				"json": {
+					"id": 2,
+					"name": "Jon",
+					"age": 44,
+					"data": "data 2"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Microsoft Excel 3651",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"tags": []
+}

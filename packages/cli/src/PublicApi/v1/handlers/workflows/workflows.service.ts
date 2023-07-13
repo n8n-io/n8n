@@ -1,6 +1,6 @@
 import type { FindManyOptions, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
-import intersection from 'lodash.intersection';
+import intersection from 'lodash/intersection';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -8,7 +8,6 @@ import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { isInstanceOwner } from '../users/users.service';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
 import { START_NODES } from '@/constants';
@@ -18,10 +17,11 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 }
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
+	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where: { userId: user.id },
+		where,
+		select: ['workflowId'],
 	});
-
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
@@ -31,7 +31,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return Db.collections.SharedWorkflow.findOne({
 		where: {
-			...(!isInstanceOwner(user) && { userId: user.id }),
+			...(!user.isOwner && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
@@ -47,7 +47,7 @@ export async function getSharedWorkflows(
 ): Promise<SharedWorkflow[]> {
 	return Db.collections.SharedWorkflow.find({
 		where: {
-			...(!isInstanceOwner(user) && { userId: user.id }),
+			...(!user.isOwner && { userId: user.id }),
 			...(options.workflowIds && { workflowId: In(options.workflowIds) }),
 		},
 		...(options.relations && { relations: options.relations }),

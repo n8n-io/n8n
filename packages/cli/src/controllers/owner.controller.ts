@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
-import { Get, Post, RestController } from '@/decorators';
+import { Authorized, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
 import {
 	hashPassword,
@@ -9,15 +9,13 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
-import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
-import type { IDatabaseCollections, IInternalHooksClass, ICredentialsDb } from '@/Interfaces';
-import type { Settings } from '@db/entities/Settings';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type { SettingsRepository, UserRepository } from '@db/repositories';
 
+@Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
 	private readonly config: Config;
@@ -26,13 +24,9 @@ export class OwnerController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
-	private readonly settingsRepository: Repository<Settings>;
-
-	private readonly credentialsRepository: Repository<ICredentialsDb>;
-
-	private readonly workflowsRepository: Repository<WorkflowEntity>;
+	private readonly settingsRepository: SettingsRepository;
 
 	constructor({
 		config,
@@ -43,28 +37,13 @@ export class OwnerController {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'Settings' | 'Credentials' | 'Workflow'>;
+		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
 		this.settingsRepository = repositories.Settings;
-		this.credentialsRepository = repositories.Credentials;
-		this.workflowsRepository = repositories.Workflow;
-	}
-
-	@Get('/pre-setup')
-	async preSetup(): Promise<{ credentials: number; workflows: number }> {
-		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-			throw new BadRequestError('Instance owner already setup');
-		}
-
-		const [credentials, workflows] = await Promise.all([
-			this.credentialsRepository.countBy({}),
-			this.workflowsRepository.countBy({}),
-		]);
-		return { credentials, workflows };
 	}
 
 	/**
@@ -146,17 +125,9 @@ export class OwnerController {
 		return sanitizeUser(owner);
 	}
 
-	/**
-	 * Persist that the instance owner setup has been skipped
-	 */
-	@Post('/skip-setup')
-	async skipSetup() {
-		await this.settingsRepository.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: JSON.stringify(true) },
-		);
-
-		this.config.set('userManagement.skipInstanceOwnerSetup', true);
+	@Post('/dismiss-v1')
+	async dismissBanner() {
+		await this.settingsRepository.saveSetting('ui.banners.v1.dismissed', JSON.stringify(true));
 
 		return { success: true };
 	}

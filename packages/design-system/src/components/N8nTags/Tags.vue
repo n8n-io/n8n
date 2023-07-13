@@ -13,7 +13,7 @@
 			size="small"
 			@click.stop.prevent="onExpand"
 		>
-			{{ t('tags.showMore', hiddenTagsLength) }}
+			{{ t('tags.showMore', `${hiddenTagsLength}`) }}
 		</n8n-link>
 	</div>
 </template>
@@ -22,16 +22,17 @@
 import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
 import Locale from '../../mixins/locale';
-import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-interface ITag {
+export interface ITag {
 	id: string;
 	name: string;
 }
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-tags',
+	mixins: [Locale],
 	components: {
 		N8nTag,
 		N8nLink,

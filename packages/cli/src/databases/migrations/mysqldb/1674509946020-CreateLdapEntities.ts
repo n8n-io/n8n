@@ -1,15 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
-export class CreateLdapEntities1674509946020 implements MigrationInterface {
-	name = 'CreateLdapEntities1674509946020';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = getTablePrefix();
-
+export class CreateLdapEntities1674509946020 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}user\` ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
 		);
@@ -46,12 +39,9 @@ export class CreateLdapEntities1674509946020 implements MigrationInterface {
 				PRIMARY KEY (\`id\`)
 			) ENGINE='InnoDB';`,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE \`${tablePrefix}auth_provider_sync_history\``);
 		await queryRunner.query(`DROP TABLE \`${tablePrefix}auth_identity\``);
 

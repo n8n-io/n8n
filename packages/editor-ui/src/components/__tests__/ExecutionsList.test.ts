@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import Vue from 'vue';
+import { merge } from 'lodash-es';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
@@ -7,23 +7,39 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { STORES } from '@/constants';
 import ExecutionsList from '@/components/ExecutionsList.vue';
-import { externalHooks } from '@/mixins/externalHooks';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { executionHelpers } from '@/mixins/executionsHelpers';
-import { showMessage } from '@/mixins/showMessage';
 import { i18nInstance } from '@/plugins/i18n';
-import type { IWorkflowShortResponse } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
+import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/stores';
 
-const waitAllPromises = () => new Promise((resolve) => setTimeout(resolve));
+let pinia: ReturnType<typeof createTestingPinia>;
 
-const workflowDataFactory = (): IWorkflowShortResponse => ({
+const generateUndefinedNullOrString = () => {
+	switch (Math.floor(Math.random() * 4)) {
+		case 0:
+			return undefined;
+		case 1:
+			return null;
+		case 2:
+			return faker.datatype.uuid();
+		case 3:
+			return '';
+		default:
+			return undefined;
+	}
+};
+
+const workflowDataFactory = (): IWorkflowDb => ({
 	createdAt: faker.date.past().toDateString(),
 	updatedAt: faker.date.past().toDateString(),
 	id: faker.datatype.uuid(),
 	name: faker.datatype.string(),
 	active: faker.datatype.boolean(),
 	tags: [],
+	nodes: [],
+	connections: {},
+	versionId: faker.datatype.number().toString(),
 });
 
 const executionDataFactory = (): IExecutionsSummary => ({
@@ -36,76 +52,77 @@ const executionDataFactory = (): IExecutionsSummary => ({
 	workflowName: faker.datatype.string(),
 	status: faker.helpers.arrayElement(['failed', 'success']),
 	nodeExecutionStatus: {},
+	retryOf: generateUndefinedNullOrString(),
+	retrySuccessId: generateUndefinedNullOrString(),
 });
 
-const workflowsData = Array.from({ length: 10 }, workflowDataFactory);
+const generateWorkflowsData = () => Array.from({ length: 10 }, workflowDataFactory);
 
-const executionsData = Array.from({ length: 2 }, () => ({
-	count: 20,
-	results: Array.from({ length: 10 }, executionDataFactory),
-	estimated: false,
-}));
-
-let getPastExecutionsSpy = vi.fn().mockResolvedValue({ count: 0, results: [], estimated: false });
-
-const mockRestApiMixin = Vue.extend({
-	methods: {
-		restApi() {
-			return {
-				getWorkflows: vi.fn().mockResolvedValue(workflowsData),
-				getCurrentExecutions: vi.fn().mockResolvedValue([]),
-				getPastExecutions: getPastExecutionsSpy,
-			};
-		},
-	},
-});
-
-const renderOptions = {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: {
-				settings: {
-					templates: {
-						enabled: true,
-						host: 'https://api.n8n.io/api/',
-					},
-				},
-			},
-		},
-	}),
-	i18n: i18nInstance,
-	stubs: ['font-awesome-icon'],
-	mixins: [externalHooks, genericHelpers, executionHelpers, showMessage, mockRestApiMixin],
-};
-
-function TelemetryPlugin(vue: typeof Vue): void {
-	Object.defineProperty(vue, '$telemetry', {
-		get() {
-			return {
-				track: () => {},
-			};
-		},
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() {
-			return {
-				track: () => {},
-			};
-		},
-	});
-}
+const generateExecutionsData = () =>
+	Array.from({ length: 2 }, () => ({
+		count: 20,
+		results: Array.from({ length: 10 }, executionDataFactory),
+		estimated: false,
+	}));
 
 const renderComponent = async () => {
-	const renderResult = render(ExecutionsList, renderOptions);
+	const renderResult = render(
+		ExecutionsList,
+		{
+			pinia,
+			propsData: {
+				autoRefreshEnabled: false,
+			},
+			i18n: i18nInstance,
+			stubs: ['font-awesome-icon'],
+		},
+		(vue) => {
+			vue.use(PiniaVuePlugin);
+			vue.prototype.$telemetry = {
+				track: () => {},
+			};
+		},
+	);
 	await waitAllPromises();
 	return renderResult;
 };
 
-Vue.use(TelemetryPlugin);
-Vue.use(PiniaVuePlugin);
-
 describe('ExecutionsList.vue', () => {
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsData: IWorkflowDb[];
+	let executionsData: Array<{
+		count: number;
+		results: IExecutionsSummary[];
+		estimated: boolean;
+	}>;
+
+	beforeEach(() => {
+		workflowsData = generateWorkflowsData();
+		executionsData = generateExecutionsData();
+
+		pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: merge(SETTINGS_STORE_DEFAULT_STATE.settings, {
+						enterprise: {
+							advancedExecutionFilters: true,
+						},
+					}),
+				},
+			},
+		});
+		workflowsStore = useWorkflowsStore();
+
+		vi.spyOn(workflowsStore, 'fetchAllWorkflows').mockResolvedValue(workflowsData);
+		vi.spyOn(workflowsStore, 'getCurrentExecutions').mockResolvedValue([]);
+	});
+
 	it('should render empty list', async () => {
+		vi.spyOn(workflowsStore, 'getPastExecutions').mockResolvedValueOnce({
+			count: 0,
+			results: [],
+			estimated: false,
+		});
 		const { queryAllByTestId, queryByTestId, getByTestId } = await renderComponent();
 		await userEvent.click(getByTestId('execution-auto-refresh-checkbox'));
 
@@ -116,27 +133,30 @@ describe('ExecutionsList.vue', () => {
 	});
 
 	it('should handle selection flow when loading more items', async () => {
-		getPastExecutionsSpy = vi
-			.fn()
+		const storeSpy = vi
+			.spyOn(workflowsStore, 'getPastExecutions')
 			.mockResolvedValueOnce(executionsData[0])
 			.mockResolvedValueOnce(executionsData[1]);
 
 		const { getByTestId, getAllByTestId, queryByTestId } = await renderComponent();
-		await userEvent.click(getByTestId('execution-auto-refresh-checkbox'));
+
+		expect(storeSpy).toHaveBeenCalledTimes(1);
 
 		await userEvent.click(getByTestId('select-visible-executions-checkbox'));
 
-		expect(getPastExecutionsSpy).toHaveBeenCalledTimes(1);
-		expect(
-			getAllByTestId('select-execution-checkbox').filter((el) =>
-				el.contains(el.querySelector(':checked')),
-			).length,
-		).toBe(10);
+		await retry(() =>
+			expect(
+				getAllByTestId('select-execution-checkbox').filter((el) =>
+					el.contains(el.querySelector(':checked')),
+				).length,
+			).toBe(10),
+		);
 		expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
 		expect(getByTestId('selected-executions-info').textContent).toContain(10);
 
 		await userEvent.click(getByTestId('load-more-button'));
 
+		expect(storeSpy).toHaveBeenCalledTimes(2);
 		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
 		expect(
 			getAllByTestId('select-execution-checkbox').filter((el) =>
@@ -163,5 +183,18 @@ describe('ExecutionsList.vue', () => {
 		expect(getByTestId('selected-executions-info').textContent).toContain(19);
 		expect(getByTestId('select-visible-executions-checkbox')).toBeInTheDocument();
 		expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
+	});
+
+	it('should show "retry" data when appropriate', async () => {
+		vi.spyOn(workflowsStore, 'getPastExecutions').mockResolvedValue(executionsData[0]);
+		const retryOf = executionsData[0].results.filter((execution) => execution.retryOf);
+		const retrySuccessId = executionsData[0].results.filter(
+			(execution) => !execution.retryOf && execution.retrySuccessId,
+		);
+
+		const { queryAllByText } = await renderComponent();
+
+		expect(queryAllByText(/Retry of/).length).toBe(retryOf.length);
+		expect(queryAllByText(/Success retry/).length).toBe(retrySuccessId.length);
 	});
 });

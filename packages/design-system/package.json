@@ -1,13 +1,14 @@
 {
   "name": "n8n-design-system",
-  "version": "0.58.0",
+  "version": "1.0.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
     "name": "Mutasem Aldmour",
     "email": "mutasem@n8n.io"
   },
-  "main": "src/main.js",
+  "main": "src/main.ts",
+  "import": "src/main.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
@@ -15,7 +16,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "vite build",
-    "typecheck": "vue-tsc --emitDeclarationOnly",
+    "typecheck": "vue-tsc --declaration --emitDeclarationOnly",
     "test": "vitest run --coverage",
     "test:dev": "vitest",
     "build:storybook": "storybook build",
@@ -34,45 +35,33 @@
     "markdown-it-link-attributes": "^4.0.0",
     "markdown-it-task-lists": "^2.1.1",
     "vue": "^2.7.14",
-    "vue-typed-mixins": "^0.2.0",
-    "xss": "^1.0.10"
+    "xss": "^1.0.14"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^2.0.9",
-    "@storybook/addon-actions": "^7.0.0-beta.46",
-    "@storybook/addon-essentials": "^7.0.0-beta.46",
-    "@storybook/addon-links": "^7.0.0-beta.46",
+    "@storybook/addon-actions": "^7.0.7",
+    "@storybook/addon-docs": "^7.0.7",
+    "@storybook/addon-essentials": "^7.0.7",
+    "@storybook/addon-links": "^7.0.7",
     "@storybook/addon-postcss": "^3.0.0-alpha.1",
-    "@storybook/vue": "^7.0.0-beta.46",
-    "@storybook/vue-webpack5": "^7.0.0-beta.46",
+    "@storybook/vue": "^7.0.7",
+    "@storybook/vue-webpack5": "^7.0.7",
     "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3",
     "@testing-library/vue": "^5.8.3",
     "@types/markdown-it": "^12.2.3",
     "@types/markdown-it-emoji": "^2.0.2",
     "@types/markdown-it-link-attributes": "^3.0.1",
     "@types/sanitize-html": "^2.8.0",
-    "@vitest/coverage-c8": "^0.28.5",
-    "@vitejs/plugin-vue2": "^2.2.0",
     "autoprefixer": "^10.4.13",
-    "c8": "7.12.0",
     "core-js": "^3.27.2",
     "jsdom": "21.1.0",
-    "node-notifier": "^10.0.1",
     "sass": "^1.58.0",
     "sass-loader": "^13.2.0",
-    "storybook": "^7.0.0-beta.46",
-    "storybook-addon-designs": "^6.3.1",
-    "storybook-addon-themes": "^6.1.0",
-    "trim": "^1.0.1",
-    "vite": "^4.0.4",
-    "vitest": "^0.28.5",
-    "vue-class-component": "^7.2.6",
-    "vue-loader": "^15.10.1",
-    "vue-property-decorator": "^9.1.2",
-    "vue-template-compiler": "^2.7.14",
-    "vue-tsc": "^1.0.24"
+    "storybook": "^7.0.7",
+    "storybook-addon-themes": "^6.1.0"
   },
   "dependencies": {
     "element-ui": "~2.15.12",
@@ -82,7 +71,6 @@
     "markdown-it-task-lists": "^2.1.1",
     "sanitize-html": "2.10.0",
     "vue": "^2.7.14",
-    "vue-typed-mixins": "^0.2.0",
     "vue2-boring-avatars": "^0.3.8",
     "xss": "^1.0.14"
   }

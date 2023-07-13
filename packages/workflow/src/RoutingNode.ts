@@ -9,9 +9,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
-import get from 'lodash.get';
-import merge from 'lodash.merge';
-import set from 'lodash.set';
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import set from 'lodash/set';
 
 import type {
 	ICredentialDataDecryptedObject,
@@ -217,11 +217,13 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
+				if (error instanceof NodeApiError) error = error.cause;
 				throw new NodeApiError(this.node, error, {
 					runIndex,
 					itemIndex: i,
 					message: error?.message,
 					description: error?.description,
+					httpCode: error.isAxiosError && error.response && String(error.response?.status),
 				});
 			}
 		}

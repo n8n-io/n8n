@@ -597,7 +597,7 @@ export class FileMaker implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available topics to display them to user so that he can
+			// Get all the available topics to display them to user so that they can
 			// select them easily
 			async getLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				let returnData: INodePropertyOptions[];

@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
-import type express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -11,15 +10,14 @@ import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
-import type { AuthenticatedRequest } from '@/requests';
+import { RoleRepository } from '@db/repositories';
 import config from '@/config';
-import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { License } from '@/License';
-import { RoleService } from '@/role/role.service';
+import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import type { PostHogClient } from '@/posthog';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
-	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
+	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
 		where: { workflowId, roleId: workflowOwnerRole?.id ?? undefined },
@@ -38,39 +36,14 @@ export function isEmailSetUp(): boolean {
 	return smtp && host && user && pass;
 }
 
-export function isUserManagementEnabled(): boolean {
-	// This can be simplified but readability is more important here
-
-	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-		// Short circuit - if owner is set up, UM cannot be disabled.
-		// Users must reset their instance in order to do so.
-		return true;
-	}
-
-	// UM is disabled for desktop by default
-	if (config.getEnv('deployment.type').startsWith('desktop_')) {
-		return false;
-	}
-
-	return config.getEnv('userManagement.disabled') ? false : true;
-}
-
 export function isSharingEnabled(): boolean {
-	const license = Container.get(License);
-	return (
-		isUserManagementEnabled() &&
-		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
-	);
+	return Container.get(License).isSharingEnabled();
 }
 
 export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
-	return Db.collections.Role.findOneOrFail({
-		select: ['id'],
-		where: {
-			name,
-			scope,
-		},
-	}).then((role) => role.id);
+	return Container.get(RoleRepository)
+		.findRoleOrFail(scope, name)
+		.then((role) => role.id);
 }
 
 export async function getInstanceOwner(): Promise<User> {
@@ -182,7 +155,6 @@ export async function withFeatureFlags(
 
 	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
 		user.featureFlags = await postHog.getFeatureFlags(user);
-
 		resolve(user);
 	});
 
@@ -202,30 +174,6 @@ export async function getUserById(userId: string): Promise<User> {
 		relations: ['globalRole'],
 	});
 	return user;
-}
-
-/**
- * Check if a URL contains an auth-excluded endpoint.
- */
-export function isAuthExcluded(url: string, ignoredEndpoints: Readonly<string[]>): boolean {
-	return !!ignoredEndpoints
-		.filter(Boolean) // skip empty paths
-		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
-}
-
-/**
- * Check if the endpoint is `POST /users/:id`.
- */
-export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {
-	return (
-		req.method === 'POST' &&
-		new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
-		!req.url.includes('reinvite')
-	);
-}
-
-export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
-	return request.user !== undefined;
 }
 
 // ----------------------------------

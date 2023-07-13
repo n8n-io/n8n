@@ -1,17 +1,14 @@
-import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
 import * as Db from '@/Db';
-import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils';
+import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 
-let app: Application;
 let workflowOwnerRole: Role;
 let owner: User;
 let member: User;
@@ -19,13 +16,9 @@ let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
 
-beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['publicApi'],
-		applyAuth: false,
-		enablePublicAPI: true,
-	});
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
+beforeAll(async () => {
 	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await testDb.getAllRoles();
 
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
@@ -40,7 +33,7 @@ beforeAll(async () => {
 		apiKey: randomApiKey(),
 	});
 
-	utils.initConfigFile();
+	await utils.initEncryptionKey();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
@@ -48,35 +41,17 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Tag', 'Workflow', 'Credentials']);
 
-	authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	authMemberAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
-	config.set('userManagement.disabled', false);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
 afterEach(async () => {
 	await workflowRunner?.removeAll();
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
+		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);
 	};
@@ -177,7 +152,7 @@ describe('GET /workflows', () => {
 		}
 
 		// check that we really received a different result
-		expect(Number(response.body.data[0].id)).toBeLessThan(Number(response2.body.data[0].id));
+		expect(response.body.data[0].id).not.toEqual(response2.body.data[0].id);
 	});
 
 	test('should return all owned workflows filtered by tag', async () => {
@@ -309,7 +284,7 @@ describe('GET /workflows/:id', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2', 'abcXYZ'));
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.get(`/workflows/2`);
+		const response = await authOwnerAgent.get('/workflows/2');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -375,7 +350,7 @@ describe('DELETE /workflows/:id', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('delete', '/workflows/2', 'abcXYZ'));
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.delete(`/workflows/2`);
+		const response = await authOwnerAgent.delete('/workflows/2');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -447,7 +422,7 @@ describe('POST /workflows/:id/activate', () => {
 	);
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post(`/workflows/2/activate`);
+		const response = await authOwnerAgent.post('/workflows/2/activate');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -549,7 +524,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	);
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+		const response = await authOwnerAgent.post('/workflows/2/deactivate');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -709,7 +684,7 @@ describe('PUT /workflows/:id', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/1', 'abcXYZ'));
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.put(`/workflows/1`).send({
+		const response = await authOwnerAgent.put('/workflows/1').send({
 			name: 'testing',
 			nodes: [
 				{
@@ -737,7 +712,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should fail due to invalid body', async () => {
-		const response = await authOwnerAgent.put(`/workflows/1`).send({
+		const response = await authOwnerAgent.put('/workflows/1').send({
 			nodes: [
 				{
 					id: 'uuid-1234',

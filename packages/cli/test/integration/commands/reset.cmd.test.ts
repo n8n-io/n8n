@@ -2,7 +2,7 @@ import * as Db from '@/Db';
 import { Reset } from '@/commands/user-management/reset';
 import type { Role } from '@db/entities/Role';
 import * as testDb from '../shared/testDb';
-import { mockInstance } from '../shared/utils';
+import { mockInstance } from '../shared/utils/';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
@@ -26,6 +26,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test.skip('user-management:reset should reset DB to default user state', async () => {
 	await testDb.createUser({ globalRole: globalOwnerRole });
 

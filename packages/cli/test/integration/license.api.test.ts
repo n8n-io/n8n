@@ -1,10 +1,10 @@
 import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import type { User } from '@db/entities/User';
-import { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
 import * as testDb from './shared/testDb';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -14,17 +14,16 @@ let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
-beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['license'] });
+const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 
+beforeAll(async () => {
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	const globalMemberRole = await testDb.getGlobalMemberRole();
 	owner = await testDb.createUserShell(globalOwnerRole);
 	member = await testDb.createUserShell(globalMemberRole);
 
-	const authAgent = utils.createAuthAgent(app);
-	authOwnerAgent = authAgent(owner);
-	authMemberAgent = authAgent(member);
+	authOwnerAgent = testServer.authAgentFor(owner);
+	authMemberAgent = testServer.authAgentFor(member);
 
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);
@@ -33,10 +32,6 @@ beforeAll(async () => {
 
 afterEach(async () => {
 	await testDb.truncate(['Settings']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('GET /license', () => {
@@ -68,13 +63,13 @@ describe('POST /license/activate', () => {
 
 	test('errors out properly', async () => {
 		License.prototype.activate = jest.fn().mockImplementation(() => {
-			throw new Error(INVALID_ACIVATION_KEY_MESSAGE);
+			throw new Error(ACTIVATION_FAILED_MESSAGE);
 		});
 
 		await authOwnerAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(400, { code: 400, message: INVALID_ACIVATION_KEY_MESSAGE });
+			.expect(400, { code: 400, message: ACTIVATION_FAILED_MESSAGE });
 	});
 });
 
@@ -135,5 +130,5 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 };
 
 const NON_OWNER_ACTIVATE_RENEW_MESSAGE = 'Only an instance owner may activate or renew a license';
-const INVALID_ACIVATION_KEY_MESSAGE = 'Invalid activation key';
+const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
 const RENEW_ERROR_MESSAGE = 'Something went wrong when trying to renew license';

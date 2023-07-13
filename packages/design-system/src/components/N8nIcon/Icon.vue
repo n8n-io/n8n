@@ -8,9 +8,9 @@
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nText from '../N8nText';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-icon',
 	components: {
 		FontAwesomeIcon,

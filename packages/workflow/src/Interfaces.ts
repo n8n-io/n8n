@@ -6,8 +6,10 @@ import type { IncomingHttpHeaders } from 'http';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
-import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
+import type { RequestPromiseOptions } from 'request-promise-native';
+import type { PathLike } from 'fs';
 
+import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
 import type { WorkflowHooks } from './WorkflowHooks';
@@ -15,8 +17,8 @@ import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
-import type { PathLike } from 'fs';
 import type { ExecutionStatus } from './ExecutionStatus';
+import type { AuthenticationMethod } from './Authentication';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -172,6 +174,7 @@ export interface IRequestOptionsSimplified {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body: IDataObject;
 	headers: IDataObject;
@@ -182,6 +185,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body?: IDataObject;
 	headers?: IDataObject;
@@ -383,7 +387,6 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
-// export type IExecuteResponsePromiseData = IDataObject;
 export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
 
 export interface INodeTypeNameVersion {
@@ -501,6 +504,7 @@ export interface IHttpRequestOptions {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
@@ -523,7 +527,7 @@ export interface IHttpRequestOptions {
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
-	body: IN8nHttpResponse;
+	body: IN8nHttpResponse | Readable;
 	headers: IDataObject;
 	statusCode: number;
 	statusMessage?: string;
@@ -653,16 +657,21 @@ export type ICredentialTestFunction = (
 
 export interface ICredentialTestFunctions {
 	helpers: {
-		request: RequestPromiseAPI;
+		request: (uriOrObject: string | object, options?: object) => Promise<any>;
 	};
 }
 
-export interface JsonHelperFunctions {
+interface BaseHelperFunctions {
+	createDeferredPromise: <T = void>() => Promise<IDeferredPromise<T>>;
+}
+
+interface JsonHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
 export interface FileSystemHelperFunctions {
 	createReadStream(path: PathLike): Promise<Readable>;
+	getStoragePath(): string;
 }
 
 export interface BinaryHelperFunctions {
@@ -672,10 +681,14 @@ export interface BinaryHelperFunctions {
 		mimeType?: string,
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
-	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
 	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
+}
+
+export interface NodeHelperFunctions {
+	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
 export interface RequestHelperFunctions {
@@ -709,12 +722,15 @@ export interface RequestHelperFunctions {
 }
 
 export interface FunctionsBase {
+	logger: ILogger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	getTimezone(): string;
 	getRestApiUrl(): string;
+	getInstanceBaseUrl(): string;
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
@@ -748,7 +764,9 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
+		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
+			BaseHelperFunctions &
 			BinaryHelperFunctions &
 			FileSystemHelperFunctions &
 			JsonHelperFunctions & {
@@ -772,6 +790,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 	): NodeParameterValueType | object;
 
 	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
 		BinaryHelperFunctions & {
 			assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
@@ -812,7 +831,10 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface ITriggerFunctions
@@ -828,7 +850,10 @@ export interface ITriggerFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface IHookFunctions
@@ -862,7 +887,11 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	nodeHelpers: NodeHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -968,7 +997,8 @@ export type NodeParameterValueType =
 	| INodeParameterResourceLocator
 	| NodeParameterValue[]
 	| INodeParameters[]
-	| INodeParameterResourceLocator[];
+	| INodeParameterResourceLocator[]
+	| ResourceMapperValue[];
 
 export interface INodeParameters {
 	[key: string]: NodeParameterValueType;
@@ -989,11 +1019,23 @@ export type NodePropertyTypes =
 	| 'string'
 	| 'credentialsSelect'
 	| 'resourceLocator'
-	| 'curlImport';
+	| 'curlImport'
+	| 'resourceMapper';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
+export type EditorType = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'sqlEditor' | 'json';
+export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
+export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
+export type SQLDialect =
+	| 'StandardSQL'
+	| 'PostgreSQL'
+	| 'MySQL'
+	| 'MariaSQL'
+	| 'MSSQL'
+	| 'SQLite'
+	| 'Cassandra'
+	| 'PLSQL';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1006,7 +1048,9 @@ export interface ILoadOptions {
 export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
-	editor?: EditorTypes; // Supported by: string
+	editor?: EditorType; // Supported by: string
+	editorLanguage?: CodeNodeEditorLanguage; // Supported by: string in combination with editor: codeNodeEditor
+	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
 	loadOptions?: ILoadOptions; // Supported by: options
@@ -1020,7 +1064,23 @@ export interface INodePropertyTypeOptions {
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
+	resourceMapper?: ResourceMapperTypeOptions;
 	[key: string]: any;
+}
+
+export interface ResourceMapperTypeOptions {
+	resourceMapperMethod: string;
+	mode: 'add' | 'update' | 'upsert';
+	fieldWords?: { singular: string; plural: string };
+	addAllFields?: boolean;
+	noFieldsError?: string;
+	multiKeyMatch?: boolean;
+	supportAutoMap?: boolean;
+	matchingFieldsLabels?: {
+		title?: string;
+		description?: string;
+		hint?: string;
+	};
 }
 
 export interface IDisplayOptions {
@@ -1170,7 +1230,6 @@ export interface INodeType {
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
-	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -1189,12 +1248,25 @@ export interface INodeType {
 			// Contains a group of functions that test credentials.
 			[functionName: string]: ICredentialTestFunction;
 		};
+		resourceMapping?: {
+			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
 	};
 	webhookMethods?: {
 		[name in IWebhookDescription['name']]?: {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
+}
+
+/**
+ * This class serves as the base for all nodes using the new context API
+ * having this as a class enables us to identify these instances at runtime
+ */
+export abstract class Node {
+	abstract description: INodeTypeDescription;
+	execute?(context: IExecuteFunctions): Promise<INodeExecutionData[][]>;
+	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 }
 
 export interface IVersionedNodeType {
@@ -1363,18 +1435,13 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export interface INodeActionTypeDescription extends INodeTypeDescription {
-	displayOptions?: IDisplayOptions;
-	values?: IDataObject;
-	actionKey: string;
-}
-
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
 	inputs: string[];
+	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
 	outputs: string[];
 	outputNames?: string[];
@@ -1407,7 +1474,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
-	actions?: INodeActionTypeDescription[];
+	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
 export interface INodeHookDescription {
@@ -1438,21 +1505,30 @@ export interface IWebhookDescription {
 	restartWebhook?: boolean;
 }
 
+export interface ProxyInput {
+	all: () => INodeExecutionData[];
+	context: any;
+	first: () => INodeExecutionData | undefined;
+	item: INodeExecutionData | undefined;
+	last: () => INodeExecutionData | undefined;
+	params?: INodeParameters;
+}
+
 export interface IWorkflowDataProxyData {
 	[key: string]: any;
-	$binary: any;
+	$binary: INodeExecutionData['binary'];
 	$data: any;
 	$env: any;
-	$evaluateExpression: any;
-	$item: any;
-	$items: any;
-	$json: any;
+	$evaluateExpression: (expression: string, itemIndex?: number) => NodeParameterValueType;
+	$item: (itemIndex: number, runIndex?: number) => IWorkflowDataProxyData;
+	$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => INodeExecutionData[];
+	$json: INodeExecutionData['json'];
 	$node: any;
-	$parameter: any;
-	$position: any;
+	$parameter: INodeParameters;
+	$position: number;
 	$workflow: any;
 	$: any;
-	$input: any;
+	$input: ProxyInput;
 	$thisItem: any;
 	$thisRunIndex: number;
 	$thisItemIndex: number;
@@ -1492,6 +1568,7 @@ export type LoadingDetails = {
 
 export type CredentialLoadingDetails = LoadingDetails & {
 	nodesToTestWith?: string[];
+	extends?: string[];
 };
 
 export type NodeLoadingDetails = LoadingDetails;
@@ -1525,7 +1602,7 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	waitTill?: Date;
+	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
@@ -1544,6 +1621,7 @@ export interface IRunExecutionData {
 		runData: IRunData;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
+		metadata?: Record<string, string>;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
@@ -1618,6 +1696,7 @@ export interface IWorkflowBase {
 	settings?: IWorkflowSettings;
 	staticData?: IDataObject;
 	pinData?: IPinData;
+	versionId?: string;
 }
 
 export interface IWorkflowCredentials {
@@ -1654,10 +1733,12 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;
+	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
+	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendMessageToUI?: (source: string, message: any) => void;
 	timezone: string;
@@ -1667,6 +1748,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId: string;
+	variables: IDataObject;
 }
 
 export type WorkflowExecuteMode =
@@ -1686,8 +1768,39 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
+export namespace WorkflowSettings {
+	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
+	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+}
+
 export interface IWorkflowSettings {
-	[key: string]: IDataObject | string | number | boolean | undefined;
+	timezone?: 'DEFAULT' | string;
+	errorWorkflow?: string;
+	callerIds?: string;
+	callerPolicy?: WorkflowSettings.CallerPolicy;
+	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
+	saveDataSuccessExecution?: WorkflowSettings.SaveDataExecution;
+	saveManualExecutions?: 'DEFAULT' | boolean;
+	saveExecutionProgress?: 'DEFAULT' | boolean;
+	executionTimeout?: number;
+	executionOrder?: 'v0' | 'v1';
+}
+
+export interface WorkflowTestData {
+	description: string;
+	input: {
+		workflowData: {
+			nodes: INode[];
+			connections: IConnections;
+			settings?: IWorkflowSettings;
+		};
+	};
+	output: {
+		nodeExecutionOrder?: string[];
+		nodeData: {
+			[key: string]: any[][];
+		};
+	};
 }
 
 export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
@@ -1816,12 +1929,13 @@ export interface IConnectedNode {
 	depth: number;
 }
 
-export enum OAuth2GrantType {
+export const enum OAuth2GrantType {
+	pkce = 'pkce',
 	authorizationCode = 'authorizationCode',
 	clientCredentials = 'clientCredentials',
 }
 export interface IOAuth2Credentials {
-	grantType: 'authorizationCode' | 'clientCredentials';
+	grantType: 'authorizationCode' | 'clientCredentials' | 'pkce';
 	clientId: string;
 	clientSecret: string;
 	accessTokenUrl: string;
@@ -1859,8 +1973,8 @@ export interface IExecutionsSummary {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
+	retryOf?: string | null;
+	retrySuccessId?: string | null;
 	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
@@ -1870,15 +1984,187 @@ export interface IExecutionsSummary {
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
-		[key: string]: IExceutionSummaryNodeExecutionResult;
+		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
 }
 
-export interface IExceutionSummaryNodeExecutionResult {
+export interface IExecutionSummaryNodeExecutionResult {
 	executionStatus: ExecutionStatus;
 	errors?: Array<{
 		name?: string;
 		message?: string;
 		description?: string;
 	}>;
+}
+
+export interface ResourceMapperFields {
+	fields: ResourceMapperField[];
+}
+
+export interface ResourceMapperField {
+	id: string;
+	displayName: string;
+	defaultMatch: boolean;
+	canBeUsedToMatch?: boolean;
+	required: boolean;
+	display: boolean;
+	type?: FieldType;
+	removed?: boolean;
+	options?: INodePropertyOptions[];
+}
+
+export type FieldType =
+	| 'string'
+	| 'number'
+	| 'dateTime'
+	| 'boolean'
+	| 'time'
+	| 'array'
+	| 'object'
+	| 'options';
+
+export type ValidationResult = {
+	valid: boolean;
+	errorMessage?: string;
+	newValue?: string | number | boolean | object | null | undefined;
+};
+
+export type ResourceMapperValue = {
+	mappingMode: string;
+	value: { [key: string]: string | number | boolean | null } | null;
+	matchingColumns: string[];
+	schema: ResourceMapperField[];
+};
+export interface ExecutionOptions {
+	limit?: number;
+}
+
+export interface ExecutionFilters {
+	finished?: boolean;
+	mode?: WorkflowExecuteMode[];
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	waitTill?: boolean;
+	workflowId?: number | string;
+}
+
+export interface IVersionNotificationSettings {
+	enabled: boolean;
+	endpoint: string;
+	infoUrl: string;
+}
+
+export interface IUserManagementSettings {
+	quota: number;
+	showSetupOnFirstLoad?: boolean;
+	smtpSetup: boolean;
+	authenticationMethod: AuthenticationMethod;
+}
+
+export interface IUserSettings {
+	isOnboarded?: boolean;
+	firstSuccessfulWorkflowId?: string;
+	userActivated?: boolean;
+	allowSSOManualLogin?: boolean;
+}
+
+export interface IPublicApiSettings {
+	enabled: boolean;
+	latestVersion: number;
+	path: string;
+	swaggerUi: {
+		enabled: boolean;
+	};
+}
+
+export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
+
+export interface IN8nUISettings {
+	endpointWebhook: string;
+	endpointWebhookTest: string;
+	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
+	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
+	saveManualExecutions: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
+	oauthCallbackUrls: {
+		oauth1: string;
+		oauth2: string;
+	};
+	timezone: string;
+	urlBaseWebhook: string;
+	urlBaseEditor: string;
+	versionCli: string;
+	n8nMetadata?: {
+		[key: string]: string | number | undefined;
+	};
+	versionNotifications: IVersionNotificationSettings;
+	instanceId: string;
+	telemetry: ITelemetrySettings;
+	posthog: {
+		enabled: boolean;
+		apiHost: string;
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;
+	};
+	personalizationSurveyEnabled: boolean;
+	defaultLocale: string;
+	userManagement: IUserManagementSettings;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+	};
+	publicApi: IPublicApiSettings;
+	workflowTagsDisabled: boolean;
+	logLevel: ILogLevel;
+	hiringBannerEnabled: boolean;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
+	onboardingCallPromptEnabled: boolean;
+	missingPackages?: boolean;
+	executionMode: 'regular' | 'queue';
+	pushBackend: 'sse' | 'websocket';
+	communityNodesEnabled: boolean;
+	deployment: {
+		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
+	};
+	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string[];
+		external?: string[];
+	};
+	enterprise: {
+		sharing: boolean;
+		ldap: boolean;
+		saml: boolean;
+		logStreaming: boolean;
+		advancedExecutionFilters: boolean;
+		variables: boolean;
+		sourceControl: boolean;
+		auditLogs: boolean;
+	};
+	hideUsagePage: boolean;
+	license: {
+		environment: 'development' | 'production' | 'staging';
+	};
+	variables: {
+		limit: number;
+	};
+	banners: {
+		v1: {
+			dismissed: boolean;
+		};
+	};
 }

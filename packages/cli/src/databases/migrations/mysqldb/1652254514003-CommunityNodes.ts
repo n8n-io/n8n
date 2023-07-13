@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CommunityNodes1652254514003 implements MigrationInterface {
-	name = 'CommunityNodes1652254514003';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class CommunityNodes1652254514003 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE \`${tablePrefix}installed_packages\` (` +
 				'`packageName` char(214) NOT NULL,' +
@@ -35,9 +30,7 @@ export class CommunityNodes1652254514003 implements MigrationInterface {
 		);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_entity ADD UNIQUE INDEX \`IDX_${tablePrefix}943d8f922be094eb507cb9a7f9\` (\`name\`)`,
 		);

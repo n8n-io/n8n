@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../../utils/utilities';
+import { chunk, flatten, getResolvables } from '@utils/utilities';
 
 import mssql from 'mssql';
 
@@ -90,6 +90,11 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
+				typeOptions: {
+					editor: 'sqlEditor',
+					sqlDialect: 'MSSQL',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -289,7 +294,11 @@ export class MicrosoftSql implements INodeType {
 				//         executeQuery
 				// ----------------------------------
 
-				const rawQuery = this.getNodeParameter('query', 0) as string;
+				let rawQuery = this.getNodeParameter('query', 0) as string;
+
+				for (const resolvable of getResolvables(rawQuery)) {
+					rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
+				}
 
 				const queryResult = await pool.request().query(rawQuery);
 

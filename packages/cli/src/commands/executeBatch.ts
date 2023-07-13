@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import fs from 'fs';
+import os from 'os';
 import { flags } from '@oclif/command';
-import type { ITaskData } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import type { IRun, ITaskData } from 'n8n-workflow';
+import { jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';
@@ -17,6 +18,13 @@ import { findCliWorkflowStart } from '@/utils';
 import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import type {
+	IExecutionResult,
+	INodeSpecialCase,
+	INodeSpecialCases,
+	IResult,
+	IWorkflowExecutionProgress,
+} from '../types/commands.types';
 
 const re = /\d+/;
 
@@ -34,6 +42,8 @@ export class ExecuteBatch extends BaseCommand {
 	static snapshot: string;
 
 	static concurrency = 1;
+
+	static githubWorkflow = false;
 
 	static debug = false;
 
@@ -80,6 +90,12 @@ export class ExecuteBatch extends BaseCommand {
 			description:
 				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
 		}),
+
+		githubWorkflow: flags.boolean({
+			description:
+				'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
+		}),
+
 		skipList: flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
 		}),
@@ -144,12 +160,16 @@ export class ExecuteBatch extends BaseCommand {
 			'econnrefused',
 			'missing a required parameter',
 			'insufficient credit balance',
+			'internal server error',
+			'503',
+			'502',
+			'504',
+			'insufficient balance',
 			'request timed out',
 			'status code 401',
 		];
 
 		errorMessage = errorMessage.toLowerCase();
-
 		for (let i = 0; i < warningStrings.length; i++) {
 			if (errorMessage.includes(warningStrings[i])) {
 				return true;
@@ -171,7 +191,6 @@ export class ExecuteBatch extends BaseCommand {
 	async run() {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
-
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
 
@@ -245,6 +264,10 @@ export class ExecuteBatch extends BaseCommand {
 
 		if (flags.shallow) {
 			ExecuteBatch.shallow = true;
+		}
+
+		if (flags.githubWorkflow) {
+			ExecuteBatch.githubWorkflow = true;
 		}
 
 		ExecuteBatch.instanceOwner = await getInstanceOwner();
@@ -365,6 +388,7 @@ export class ExecuteBatch extends BaseCommand {
 	private async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
 		const result: IResult = {
 			totalWorkflows: allWorkflows.length,
+			slackMessage: '',
 			summary: {
 				failedExecutions: 0,
 				warningExecutions: 0,
@@ -468,9 +492,28 @@ export class ExecuteBatch extends BaseCommand {
 			}
 
 			await Promise.allSettled(promisesArray);
-
+			if (ExecuteBatch.githubWorkflow) {
+				if (result.summary.errors.length < 6) {
+					const errorMessage = result.summary.errors.map((error) => {
+						return `*${error.workflowId}*: ${error.error}`;
+					});
+					result.slackMessage = `*${
+						result.summary.errors.length
+					} Executions errors*. Workflows failing: ${errorMessage.join(' ')} `;
+				} else {
+					result.slackMessage = `*${result.summary.errors.length} Executions errors*`;
+				}
+				this.setOutput('slackMessage', JSON.stringify(result.slackMessage));
+			}
 			res(result);
 		});
+	}
+
+	setOutput(key: string, value: any) {
+		// Temporary hack until we move to the new action.
+		const output = process.env.GITHUB_OUTPUT;
+		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+		fs.appendFileSync(output as unknown as fs.PathOrFileDescriptor, `${key}=${value}${os.EOL}`);
 	}
 
 	updateStatus() {
@@ -742,8 +785,9 @@ export class ExecuteBatch extends BaseCommand {
 							}${workflowData.id}-snapshot.json`;
 							if (fs.existsSync(fileName)) {
 								const contents = fs.readFileSync(fileName, { encoding: 'utf-8' });
-
-								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
+								const expected = jsonParse<IRun>(contents);
+								const received = jsonParse<IRun>(serializedData);
+								const changes = diff(expected, received, { keysOnly: true }) as object;
 
 								if (changes !== undefined) {
 									// If we had only additions with no removals
@@ -752,8 +796,13 @@ export class ExecuteBatch extends BaseCommand {
 									// and search for the `__deleted` string
 									const changesJson = JSON.stringify(changes);
 									if (changesJson.includes('__deleted')) {
-										// we have structural changes. Report them.
-										executionResult.error = 'Workflow may contain breaking changes';
+										if (ExecuteBatch.githubWorkflow) {
+											const deletedChanges = changesJson.match(/__deleted/g) ?? [];
+											// we have structural changes. Report them.
+											executionResult.error = `Workflow contains ${deletedChanges.length} deleted data.`;
+										} else {
+											executionResult.error = 'Workflow may contain breaking changes';
+										}
 										executionResult.changes = changes;
 										executionResult.executionStatus = 'error';
 									} else {
