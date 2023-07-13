@@ -1,4 +1,3 @@
-import type { Application } from 'express';
 import validator from 'validator';
 import type { SuperAgentTest } from 'supertest';
 
@@ -13,30 +12,26 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
-let app: Application;
+const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
+
 let globalOwnerRole: Role;
 let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['owner'] });
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
 	ownerShell = await testDb.createUserShell(globalOwnerRole);
-	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
+	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 
 afterEach(async () => {
 	await testDb.truncate(['User']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('POST /owner/setup', () => {
@@ -159,13 +154,9 @@ describe('POST /owner/setup', () => {
 	];
 
 	test('should fail with invalid inputs', async () => {
-		const authOwnerAgent = authOwnerShellAgent;
-
-		await Promise.all(
-			INVALID_POST_OWNER_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/owner/setup').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}),
-		);
+		for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
+			const response = await authOwnerShellAgent.post('/owner/setup').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}
 	});
 });

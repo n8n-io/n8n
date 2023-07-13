@@ -1,5 +1,5 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 
 export class RemoveWorkflowDataLoadedFlag1671726148421 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
