@@ -4,12 +4,27 @@ import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { BANNERS } from '@/constants';
+import { onMounted, watch } from 'vue';
+import { getBannerRowHeight } from '@/utils';
 
 const uiStore = useUIStore();
 
 function shouldShowBanner(bannerName: BANNERS) {
 	return uiStore.banners[bannerName].dismissed === false;
 }
+
+async function updateCurrentBannerHeight() {
+	const bannerHeight = await getBannerRowHeight();
+	uiStore.updateBannersHeight(bannerHeight);
+}
+
+onMounted(async () => {
+	await updateCurrentBannerHeight();
+});
+
+watch(uiStore.banners, async () => {
+	await updateCurrentBannerHeight();
+});
 </script>
 
 <template>

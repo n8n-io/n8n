@@ -236,9 +236,6 @@ export default defineComponent({
 					this.uiStore.showBanner(BANNERS.TRIAL);
 				}
 			}
-			this.$nextTick(() => {
-				this.uiStore.updateBannersHeight();
-			});
 		},
 		async postAuthenticate() {
 			if (this.postAuthenticateDone) {

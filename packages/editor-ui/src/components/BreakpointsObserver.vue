@@ -20,6 +20,7 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores';
+import { getBannerRowHeight } from '@/utils';
 
 export default defineComponent({
 	name: 'BreakpointsObserver',
@@ -42,7 +43,10 @@ export default defineComponent({
 		},
 		onResizeEnd() {
 			this.$data.width = window.innerWidth;
-			useUIStore().updateBannersHeight();
+			this.$nextTick(async () => {
+				const bannerHeight = await getBannerRowHeight();
+				useUIStore().updateBannersHeight(bannerHeight);
+			});
 		},
 	},
 	computed: {
