@@ -6,6 +6,5 @@ export async function dismissBannerPermanently(
 	context: IRestApiContext,
 	data: { bannerName: BANNERS; dismissedBanners: string[] },
 ): Promise<void> {
-	const updatedBanners = [...data.dismissedBanners, data.bannerName];
-	return makeRestApiRequest(context, 'POST', '/owner/dismiss-banners', { banners: updatedBanners });
+	return makeRestApiRequest(context, 'POST', '/owner/dismiss-banner', { banner: data.bannerName });
 }
