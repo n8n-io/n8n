@@ -14,7 +14,11 @@ import { getLogger } from '@/Logger';
 import type { IDataObject } from 'n8n-workflow';
 import { InfisicalProvider } from './providers/infisical';
 import { VaultProvider } from './providers/vault';
-import { EXTERNAL_SECRETS_UPDATE_INTERVAL } from './constants';
+import {
+	EXTERNAL_SECRETS_INITIAL_BACKOFF,
+	EXTERNAL_SECRETS_MAX_BACKOFF,
+	EXTERNAL_SECRETS_UPDATE_INTERVAL,
+} from './constants';
 import { License } from '@/License';
 
 const logger = getLogger();
@@ -35,6 +39,8 @@ export class ExternalSecretsManager {
 	initialized = false;
 
 	updateInterval: NodeJS.Timer;
+
+	initRetryTimeouts: Record<string, NodeJS.Timer> = {};
 
 	constructor(private settingsRepo: SettingsRepository, private license: License) {}
 
@@ -61,6 +67,7 @@ export class ExternalSecretsManager {
 		Object.values(this.providers).forEach((p) => {
 			void p.disconnect();
 		});
+		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
 	}
 
 	private async getEncryptionKey(): Promise<string> {
@@ -107,7 +114,11 @@ export class ExternalSecretsManager {
 		await this.updateSecrets();
 	}
 
-	private async initProvider(name: string, providerSettings: SecretsProviderSettings) {
+	private async initProvider(
+		name: string,
+		providerSettings: SecretsProviderSettings,
+		currentBackoff = EXTERNAL_SECRETS_INITIAL_BACKOFF,
+	) {
 		const providerClass = PROVIDER_MAP[name];
 		if (!providerClass) {
 			return null;
@@ -120,7 +131,8 @@ export class ExternalSecretsManager {
 			logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
-			return null;
+			this.retryInitWithBackoff(name, currentBackoff);
+			return provider;
 		}
 
 		try {
@@ -134,10 +146,25 @@ export class ExternalSecretsManager {
 			logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
-			return null;
+			this.retryInitWithBackoff(name, currentBackoff);
+			return provider;
 		}
 
 		return provider;
+	}
+
+	private retryInitWithBackoff(name: string, currentBackoff: number) {
+		if (name in this.initRetryTimeouts) {
+			clearTimeout(this.initRetryTimeouts[name]);
+			delete this.initRetryTimeouts[name];
+		}
+		this.initRetryTimeouts[name] = setTimeout(() => {
+			delete this.initRetryTimeouts[name];
+			if (this.providers[name] && this.providers[name].state !== 'error') {
+				return;
+			}
+			void this.reloadProvider(name, Math.min(currentBackoff * 2, EXTERNAL_SECRETS_MAX_BACKOFF));
+		}, currentBackoff);
 	}
 
 	async updateSecrets() {
@@ -147,7 +174,7 @@ export class ExternalSecretsManager {
 		await Promise.all(
 			Object.entries(this.providers).map(async ([k, p]) => {
 				try {
-					if (this.cachedSettings[k].connected) {
+					if (this.cachedSettings[k].connected && p.state === 'connected') {
 						await p.update();
 					}
 				} catch {
@@ -211,12 +238,12 @@ export class ExternalSecretsManager {
 		};
 	}
 
-	async reloadProvider(provider: string) {
+	async reloadProvider(provider: string, backoff = EXTERNAL_SECRETS_INITIAL_BACKOFF) {
 		if (provider in this.providers) {
 			await this.providers[provider].disconnect();
 			delete this.providers[provider];
 		}
-		const newProvider = await this.initProvider(provider, this.cachedSettings[provider]);
+		const newProvider = await this.initProvider(provider, this.cachedSettings[provider], backoff);
 		if (newProvider) {
 			this.providers[provider] = newProvider;
 		}

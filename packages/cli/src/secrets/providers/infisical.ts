@@ -80,7 +80,7 @@ export class InfisicalProvider implements SecretsProvider {
 
 	async connect(): Promise<void> {
 		this.client = new InfisicalClient(this.settings);
-		if (await this.test()) {
+		if ((await this.test())[0]) {
 			this.state = 'connected';
 		} else {
 			this.state = 'error';

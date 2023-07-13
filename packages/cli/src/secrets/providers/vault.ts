@@ -222,13 +222,18 @@ export class VaultProvider extends SecretsProvider {
 				return;
 			}
 		}
-		if (!(await this.test())) {
+		try {
+			if (!(await this.test())[0]) {
+				this.state = 'error';
+			} else {
+				this.state = 'connected';
+
+				this.#tokenInfo = await this.getTokenInfo();
+				this.setupTokenRefresh();
+			}
+		} catch {
 			this.state = 'error';
-		} else {
-			this.state = 'connected';
 		}
-		this.#tokenInfo = await this.getTokenInfo();
-		this.setupTokenRefresh();
 	}
 
 	async disconnect(): Promise<void> {
