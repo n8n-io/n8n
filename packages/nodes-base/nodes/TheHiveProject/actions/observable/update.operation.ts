@@ -4,57 +4,33 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { observableStatusOptions, tlpOptions } from '../../descriptions';
-import { prepareOptional } from '../../helpers/utils';
+
 import { theHiveApiRequest } from '../../transport';
+import { fixFieldType, prepareInputItem } from '../../helpers/utils';
+import set from 'lodash/set';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Observable ID',
-		name: 'id',
-		type: 'string',
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'resourceMapper',
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		noDataExpression: true,
 		required: true,
-		default: '',
-		description: 'ID of the observable',
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		default: {},
-		options: [
-			{
-				displayName: 'Message',
-				name: 'message',
-				type: 'string',
-				default: '',
-				description: 'Description of the observable in the context of the case',
+		typeOptions: {
+			resourceMapper: {
+				resourceMapperMethod: 'getObservableUpdateFields',
+				mode: 'update',
+				valuesLabel: 'Fields',
+				addAllFields: true,
+				multiKeyMatch: true,
 			},
-			{
-				displayName: 'Observable Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				placeholder: 'tag1,tag2',
-			},
-			tlpOptions,
-			{
-				displayName: 'Indicator of Compromise (IOC)',
-				name: 'ioc',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the observable is an IOC (Indicator of compromise)',
-			},
-			{
-				displayName: 'Sighted',
-				name: 'sighted',
-				description: 'Whether sighted previously',
-				type: 'boolean',
-				default: false,
-			},
-			observableStatusOptions,
-		],
+		},
 	},
 ];
 
@@ -67,22 +43,91 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
+	let body: IDataObject = {};
+	let updated = 1;
 
-	const id = this.getNodeParameter('id', i) as string;
+	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
 
-	const body: IDataObject = {
-		...prepareOptional(this.getNodeParameter('updateFields', i, {})),
-	};
+	if (dataMode === 'autoMapInputData') {
+		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		body = prepareInputItem(item.json, schema, i);
+	}
 
-	responseData = await theHiveApiRequest.call(this, 'PATCH', `/case/artifact/${id}`, body);
+	if (dataMode === 'defineBelow') {
+		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
+		body = fields;
+	}
 
-	responseData = { success: true };
+	body = fixFieldType(body);
 
-	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
-		itemData: { item: i },
-	});
+	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
+
+	const updateBody: IDataObject = {};
+	const matchFields: IDataObject = {};
+	const { id } = body; // id would be used if matching on id, also we need to remove it from the body
+
+	for (const field of Object.keys(body)) {
+		if (fieldsToMatchOn.includes(field)) {
+			// if field is in fieldsToMatchOn, we need to exclude it from the updateBody, as values used for matching should not be updated
+			matchFields[field] = body[field];
+		} else {
+			// use set to construct the updateBody, as it allows to process customFields.fieldName
+			// if customFields provided under customFields property, it will be send as is
+			set(updateBody, field, body[field]);
+		}
+	}
+
+	if (fieldsToMatchOn.includes('id')) {
+		await theHiveApiRequest.call(this, 'PATCH', `/v1/observable/${id}`, body);
+	} else {
+		const filter = {
+			_name: 'filter',
+			_and: fieldsToMatchOn.map((field) => ({
+				_eq: {
+					_field: field,
+					_value: matchFields[field],
+				},
+			})),
+		};
+
+		const queryBody = {
+			query: [
+				{
+					_name: 'listObservable',
+				},
+				filter,
+			],
+		};
+
+		const matches = (await theHiveApiRequest.call(
+			this,
+			'POST',
+			'/v1/query',
+			queryBody,
+		)) as IDataObject[];
+
+		if (!matches.length) {
+			throw new NodeOperationError(this.getNode(), 'No matching alerts found');
+		}
+		const ids = matches.map((match) => match._id);
+		updated = ids.length;
+
+		updateBody.ids = ids;
+
+		await theHiveApiRequest.call(this, 'PATCH', '/v1/observable/_bulk', updateBody);
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		wrapData({ success: true, updated }),
+		{
+			itemData: { item: i },
+		},
+	);
 
 	return executionData;
 }

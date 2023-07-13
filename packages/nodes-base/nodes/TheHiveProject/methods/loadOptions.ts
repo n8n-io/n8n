@@ -1,6 +1,11 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { theHiveApiRequest } from '../transport';
-import { alertCommonFields, caseCommonFields, taskCommonFields } from '../helpers/constants';
+import {
+	alertCommonFields,
+	caseCommonFields,
+	observableCommonFields,
+	taskCommonFields,
+} from '../helpers/constants';
 
 export async function loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	let resource = this.getNodeParameter('resource') as string;
@@ -336,6 +341,28 @@ export async function loadCaseFields(this: ILoadOptionsFunctions): Promise<INode
 	const customFields = await loadCustomFields.call(this);
 
 	returnData.push(...fields, ...customFields);
+	return returnData;
+}
+
+export async function loadObservableFields(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+
+	const excludeFields = ['addTags', 'removeTags', 'zipPassword'];
+
+	const fields = observableCommonFields
+		.filter((entry) => !excludeFields.includes(entry.id))
+		.map((entry) => {
+			const field: INodePropertyOptions = {
+				name: entry.displayName || entry.id,
+				value: entry.id,
+			};
+
+			return field;
+		});
+
+	returnData.push(...fields);
 	return returnData;
 }
 

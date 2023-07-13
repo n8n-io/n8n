@@ -405,3 +405,49 @@ export async function getObservableFields(
 
 	return columnData;
 }
+
+export async function getObservableUpdateFields(
+	this: ILoadOptionsFunctions,
+): Promise<ResourceMapperFields> {
+	const excludedFromMatching = ['addTags', 'removeTags'];
+	const excludeFields: string[] = ['attachment', 'data', 'startDate', 'zipPassword', 'isZip'];
+
+	const caseUpdateFields = observableCommonFields
+		.filter((entry) => !excludeFields.includes(entry.id))
+		.map((entry) => {
+			const type = entry.type as FieldType;
+			const field: ResourceMapperField = {
+				...entry,
+				type,
+				required: false,
+				display: true,
+				defaultMatch: false,
+				canBeUsedToMatch: true,
+			};
+
+			if (excludedFromMatching.includes(field.id)) {
+				field.canBeUsedToMatch = false;
+			}
+
+			return field;
+		});
+
+	const fields: ResourceMapperField[] = [
+		{
+			displayName: 'ID',
+			id: 'id',
+			required: false,
+			display: true,
+			type: 'string',
+			defaultMatch: true,
+			canBeUsedToMatch: true,
+		},
+		...caseUpdateFields,
+	];
+
+	const columnData: ResourceMapperFields = {
+		fields,
+	};
+
+	return columnData;
+}

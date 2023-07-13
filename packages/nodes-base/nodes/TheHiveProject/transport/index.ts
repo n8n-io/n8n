@@ -116,7 +116,7 @@ export async function theHiveApiQuery(
 		query.push(filter);
 	}
 
-	if (sortFields?.length) {
+	if (sortFields?.length && !returnCount) {
 		const sort = {
 			_name: 'sort',
 			_fields: sortFields.map((field) => {
