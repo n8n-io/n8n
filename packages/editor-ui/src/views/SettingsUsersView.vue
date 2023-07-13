@@ -54,19 +54,6 @@
 				@disallowSSOManualLogin="onDisallowSSOManualLogin"
 			/>
 		</div>
-		<n8n-action-box
-			v-else
-			:heading="
-				$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
-			"
-			:description="
-				$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.description)
-			"
-			:buttonText="
-				$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
-			"
-			@click="goToUpgrade"
-		/>
 	</div>
 </template>
 
