@@ -167,8 +167,9 @@ export class SamlService {
 	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
+			const lowerCasedEmail = attributes.email.toLowerCase();
 			const user = await Db.collections.User.findOne({
-				where: { email: attributes.email },
+				where: { email: lowerCasedEmail },
 				relations: ['globalRole', 'authIdentities'],
 			});
 			if (user) {
