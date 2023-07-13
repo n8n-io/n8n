@@ -1610,7 +1610,7 @@ export class Telegram implements INodeType {
 						description: 'If the message is a reply, ID of the original message',
 					},
 					{
-						displayName: 'Send To Forum Topic ID',
+						displayName: 'Message Thread ID',
 						name: 'message_thread_id',
 						type: 'number',
 						displayOptions: {
@@ -1618,6 +1618,7 @@ export class Telegram implements INodeType {
 								'/operation': [
 									'sendAnimation',
 									'sendAudio',
+									'sendChatAction',
 									'sendDocument',
 									'sendLocation',
 									'sendMediaGroup',
@@ -1629,7 +1630,7 @@ export class Telegram implements INodeType {
 							},
 						},
 						default: 0,
-						description: 'If the message should be sent to a forum topic, the ID of that topic',
+						description: 'The unique identifier of the forum topic',
 					},
 					{
 						displayName: 'Title',
