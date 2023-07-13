@@ -97,7 +97,8 @@ export function generatePassword(): string {
 export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
 	const user = new User();
 	const authIdentity = new AuthIdentity();
-	user.email = attributes.email;
+	const lowerCasedEmail = attributes.email?.toLowerCase() ?? '';
+	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
 	user.globalRole = await Container.get(RoleRepository).findGlobalMemberRoleOrFail();
