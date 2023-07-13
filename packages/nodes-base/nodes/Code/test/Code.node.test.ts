@@ -3,11 +3,7 @@ import { NodeVM } from 'vm2';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { normalizeItems } from 'n8n-core';
-import {
-	testWorkflows,
-	getWorkflowFilenames,
-	initBinaryDataManager,
-} from '../../../test/nodes/Helpers';
+import { testWorkflows, getWorkflowFilenames, initBinaryDataManager } from '@test/nodes/Helpers';
 import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
 

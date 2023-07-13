@@ -149,6 +149,7 @@ import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+import { License } from './License';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
@@ -167,9 +168,8 @@ import {
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
-import { ExecutionRepository } from './databases/repositories';
-import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 
 const exec = promisify(callbackExec);
 
@@ -259,6 +259,7 @@ export class Server extends AbstractServer {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
+				quota: Container.get(License).getUsersLimit(),
 				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
 				smtpSetup: isEmailSetUp(),
 				authenticationMethod: getCurrentAuthenticationMethod(),
@@ -407,6 +408,7 @@ export class Server extends AbstractServer {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
+			quota: Container.get(License).getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
@@ -467,9 +469,6 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const samlService = Container.get(SamlService);
-		const sourceControlService = Container.get(SourceControlService);
-		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -497,8 +496,8 @@ export class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new SamlController(samlService),
-			new SourceControlController(sourceControlService, sourceControlPreferencesService),
+			Container.get(SamlController),
+			Container.get(SourceControlController),
 		];
 
 		if (isLdapEnabled()) {

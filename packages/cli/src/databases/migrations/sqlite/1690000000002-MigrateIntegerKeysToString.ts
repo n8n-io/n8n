@@ -3,7 +3,7 @@ import path from 'path';
 import { UserSettings } from 'n8n-core';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
-import { copyTable } from '@/databases/utils/migrationHelpers';
+import { copyTable } from '@db/utils/migrationHelpers';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	transaction = false as const;
@@ -199,11 +199,11 @@ function getSqliteDbFileSize(): number {
 	return size;
 }
 
-const pruneExecutionsData = async ({ queryRunner, tablePrefix }: MigrationContext) => {
+const pruneExecutionsData = async ({ queryRunner, tablePrefix, logger }: MigrationContext) => {
 	if (migrationsPruningEnabled) {
 		const dbFileSize = getSqliteDbFileSize();
 		if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
-			console.log(`DB Size not large enough to prune: ${dbFileSize}`);
+			logger.debug(`DB Size not large enough to prune: ${dbFileSize}`);
 			return;
 		}
 
@@ -224,6 +224,6 @@ const pruneExecutionsData = async ({ queryRunner, tablePrefix }: MigrationContex
 		await queryRunner.query(removalQuery);
 		console.timeEnd('pruningData');
 	} else {
-		console.log('Pruning was requested, but was not enabled');
+		logger.debug('Pruning was requested, but was not enabled');
 	}
 };

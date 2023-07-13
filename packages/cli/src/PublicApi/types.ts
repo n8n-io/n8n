@@ -138,13 +138,13 @@ export type OperationID = 'getUsers' | 'getUser';
 
 type PaginationBase = { limit: number };
 
-type PaginationOffsetDecoded = PaginationBase & { offset: number };
+export type PaginationOffsetDecoded = PaginationBase & { offset: number };
 
-type PaginationCursorDecoded = PaginationBase & { lastId: string };
+export type PaginationCursorDecoded = PaginationBase & { lastId: string };
 
-type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
+export type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
 
-type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
+export type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
 	not?: { required?: string[] };

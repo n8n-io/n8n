@@ -1,23 +1,18 @@
-import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
-import type { User } from '@db/entities/User';
-import { License } from '@/License';
-import * as testDb from '../shared/testDb';
-import * as utils from '../shared/utils';
 import { SOURCE_CONTROL_API_ROOT } from '@/environments/sourceControl/constants';
+import * as testDb from '../shared/testDb';
+import * as utils from '../shared/utils/';
 
-let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
-beforeAll(async () => {
-	Container.get(License).isSourceControlLicensed = () => true;
-	const app = await utils.initTestServer({ endpointGroups: ['sourceControl'] });
-	owner = await testDb.createOwner();
-	authOwnerAgent = utils.createAuthAgent(app)(owner);
+const testServer = utils.setupTestServer({
+	endpointGroups: ['sourceControl'],
+	enabledFeatures: ['feat:sourceControl'],
 });
 
-afterAll(async () => {
-	await testDb.terminate();
+beforeAll(async () => {
+	const owner = await testDb.createOwner();
+	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
 describe('GET /sourceControl/preferences', () => {
