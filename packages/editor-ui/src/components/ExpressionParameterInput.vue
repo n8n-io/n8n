@@ -31,7 +31,6 @@
 				data-test-id="expander"
 			/>
 		</div>
-
 		<InlineExpressionEditorOutput
 			:segments="segments"
 			:value="value"

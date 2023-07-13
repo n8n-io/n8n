@@ -22,12 +22,20 @@ const { i18n } = useI18n();
 const uiStore = useUIStore();
 const toast = useToast();
 
-const actionDropdownOptions = [
+const actionDropdownOptions = computed(() => [
 	{
 		value: 'setup',
 		label: i18n.baseText('settings.externalSecrets.card.actionDropdown.setup'),
 	},
-];
+	...(props.provider.connected
+		? [
+				{
+					value: 'reload',
+					label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
+				},
+		  ]
+		: []),
+]);
 
 const canConnect = computed(() => {
 	return props.provider.connected || Object.keys(props.provider.data).length > 0;
@@ -44,10 +52,28 @@ function openExternalSecretProvider() {
 	});
 }
 
-function onActionDropdownClick(id: string) {
+async function reloadProvider() {
+	try {
+		await externalSecretsStore.reloadProvider(props.provider.name);
+		toast.showMessage({
+			title: i18n.baseText('settings.externalSecrets.card.reload.success.title'),
+			message: i18n.baseText('settings.externalSecrets.card.reload.success.description', {
+				interpolate: { provider: props.provider.displayName },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+	}
+}
+
+async function onActionDropdownClick(id: string) {
 	switch (id) {
 		case 'setup':
 			openExternalSecretProvider();
+			break;
+		case 'reload':
+			await reloadProvider();
 			break;
 	}
 }

@@ -13,6 +13,7 @@ import {
 	splitBaseTail,
 	isPseudoParam,
 	stripExcessParens,
+	isCredentialsModalOpen,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
@@ -37,15 +38,17 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	let options: Completion[] = [];
 
+	const isCredential = isCredentialsModalOpen();
+
 	if (base === 'DateTime') {
 		options = luxonStaticOptions().map(stripExcessParens(context));
 	} else if (base === 'Object') {
 		options = objectGlobalOptions().map(stripExcessParens(context));
-	} else if (base === '$vars') {
+	} else if (base === '$vars' && !isCredential) {
 		options = variablesOptions();
-	} else if (/\$secrets\.[a-zA-Z0-9_\.]+$/.test(base)) {
+	} else if (/\$secrets\.[a-zA-Z0-9_\.]+$/.test(base) && isCredential) {
 		options = secretOptions(base);
-	} else if (base === '$secrets') {
+	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
 	} else {
 		let resolved: Resolved;

@@ -40,6 +40,13 @@ export const updateProvider = async (
 	return makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}`, data);
 };
 
+export const reloadProvider = async (
+	context: IRestApiContext,
+	id: string,
+): Promise<{ updated: boolean }> => {
+	return makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/update`);
+};
+
 export const connectProvider = async (
 	context: IRestApiContext,
 	id: string,

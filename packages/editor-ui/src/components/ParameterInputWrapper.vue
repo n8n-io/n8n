@@ -230,8 +230,12 @@ export default defineComponent({
 		},
 		resolvedAdditionalExpressionData() {
 			return {
-				$vars: this.environmentsStore.variablesAsObject,
-				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled
+				...(this.isForCredential
+					? {}
+					: {
+							$vars: this.environmentsStore.variablesAsObject,
+					  }),
+				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled && this.isForCredential
 					? { $secrets: this.externalSecretsStore.secretsAsObject }
 					: {}),
 				...this.additionalExpressionData,

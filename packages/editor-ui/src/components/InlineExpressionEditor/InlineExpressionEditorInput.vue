@@ -88,6 +88,7 @@ export default defineComponent({
 	},
 	mounted() {
 		const extensions = [
+			n8nLang(),
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			Prec.highest(
 				keymap.of([
@@ -105,7 +106,6 @@ export default defineComponent({
 				]),
 			),
 			autocompletion(),
-			n8nLang(),
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,

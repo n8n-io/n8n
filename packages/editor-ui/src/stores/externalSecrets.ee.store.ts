@@ -4,7 +4,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as externalSecretsApi from '@/api/externalSecrets.ee';
-import { connectProvider } from '@/api/externalSecrets.ee';
+import { connectProvider, reloadProvider } from '@/api/externalSecrets.ee';
 import type { ExternalSecretsProvider } from '@/Interface';
 
 export const useExternalSecretsStore = defineStore('externalSecrets', () => {
@@ -61,6 +61,15 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	async function fetchAllSecrets() {
 		state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.getRestApiContext);
+	}
+
+	async function reloadProvider(id: string) {
+		const { updated } = await externalSecretsApi.reloadProvider(rootStore.getRestApiContext, id);
+		if (updated) {
+			await fetchAllSecrets();
+		}
+
+		return updated;
 	}
 
 	async function getProviders() {
@@ -132,5 +141,6 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		testProviderConnection,
 		updateProvider,
 		updateProviderConnected,
+		reloadProvider,
 	};
 });
