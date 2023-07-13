@@ -5,13 +5,19 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
-import { genericFiltersCollection, returnAllAndLimit, sortCollection } from '../../descriptions';
+import {
+	genericFiltersCollection,
+	returnAllAndLimit,
+	searchOptions,
+	sortCollection,
+} from '../../descriptions';
 import { theHiveApiQuery } from '../../transport';
 
 const properties: INodeProperties[] = [
 	...returnAllAndLimit,
 	genericFiltersCollection,
 	sortCollection,
+	searchOptions,
 ];
 
 const displayOptions = {
@@ -29,6 +35,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const filtersValues = this.getNodeParameter('filters.values', i, []) as IDataObject[];
 	const sortFields = this.getNodeParameter('sort.fields', i, []) as IDataObject[];
 	const returnAll = this.getNodeParameter('returnAll', i);
+	const { returnCount, extraData } = this.getNodeParameter('options', i);
 	let limit;
 
 	if (!returnAll) {
@@ -41,6 +48,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		filtersValues,
 		sortFields,
 		limit,
+		returnCount as boolean,
+		extraData as string[],
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {

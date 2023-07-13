@@ -8,7 +8,7 @@ import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiQuery, theHiveApiRequest } from '../../transport';
-import { genericFiltersCollection, sortCollection } from '../../descriptions';
+import { genericFiltersCollection, searchOptions, sortCollection } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -208,6 +208,14 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		...searchOptions,
+		displayOptions: {
+			show: {
+				useJsonInput: [false],
+			},
+		},
+	},
 ];
 
 const displayOptions = {
@@ -257,6 +265,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const sortFields = this.getNodeParameter('sort.fields', i, []) as IDataObject[];
 		const filtersValues = this.getNodeParameter('filters.values', i, []) as IDataObject[];
 		const returnAll = this.getNodeParameter('returnAll', i);
+		const { returnCount, extraData } = this.getNodeParameter('options', i);
 		let limit;
 
 		if (!returnAll) {
@@ -269,6 +278,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			filtersValues,
 			sortFields,
 			limit,
+			returnCount as boolean,
+			extraData as string[],
 		);
 	}
 

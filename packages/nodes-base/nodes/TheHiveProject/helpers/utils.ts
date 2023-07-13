@@ -1,7 +1,4 @@
 import type { IDataObject } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
-
-import moment from 'moment';
 
 import get from 'lodash/get';
 import set from 'lodash/set';
@@ -44,43 +41,6 @@ export function fixFieldType(fields: IDataObject) {
 	}
 
 	return returnData;
-}
-
-export function prepareOptional(optionals: IDataObject): IDataObject {
-	const response: IDataObject = {};
-	for (const key in optionals) {
-		if (optionals[key] !== undefined && optionals[key] !== null && optionals[key] !== '') {
-			if (['customFieldsJson', 'customFieldsUi'].indexOf(key) > -1) {
-				continue; // Ignore customFields, they need special treatment
-			} else if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
-				response[key] = Date.parse(optionals[key] as string);
-			} else if (key === 'artifacts') {
-				try {
-					response[key] = jsonParse(optionals[key] as string);
-				} catch (error) {
-					throw new Error('Invalid JSON for artifacts');
-				}
-			} else if (key === 'tags') {
-				response[key] = splitTags(optionals[key] as string);
-			} else {
-				response[key] = optionals[key];
-			}
-		}
-	}
-	return response;
-}
-
-export function prepareSortQuery(sort: string, body: IDataObject) {
-	if (sort) {
-		const field = sort.substring(1);
-		const value = sort.charAt(0) === '+' ? 'asc' : 'desc';
-		const sortOption: IDataObject = {};
-		sortOption[field] = value;
-		(body.query as IDataObject[]).push({
-			_name: 'sort',
-			_fields: [sortOption],
-		});
-	}
 }
 
 export function prepareInputItem(item: IDataObject, schema: IDataObject[], i: number) {

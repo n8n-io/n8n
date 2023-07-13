@@ -1,6 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as count from './count.operation';
 import * as create from './create.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
@@ -10,7 +9,7 @@ import * as merge from './merge.operation';
 import * as promote from './promote.operation';
 import * as update from './update.operation';
 
-export { count, create, executeResponder, get, search, status, merge, promote, update };
+export { create, executeResponder, get, search, status, merge, promote, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -20,11 +19,6 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		required: true,
 		options: [
-			{
-				name: 'Count',
-				value: 'count',
-				action: 'Count alerts',
-			},
 			{
 				name: 'Create',
 				value: 'create',
@@ -73,7 +67,6 @@ export const description: INodeProperties[] = [
 		},
 		default: 'create',
 	},
-	...count.description,
 	...create.description,
 	...executeResponder.description,
 	...get.description,

@@ -199,3 +199,278 @@ export const taskStatusOptions: INodeProperties = {
 	],
 	description: 'Status of the task. Default=Waiting.',
 };
+
+export const searchOptions: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	placeholder: 'Add Option',
+	default: {},
+	options: [
+		{
+			displayName: 'Return Count',
+			name: 'returnCount',
+			type: 'boolean',
+			description: 'Whether to return only the count of results',
+			default: false,
+			displayOptions: {
+				hide: {
+					'/returnAll': [false],
+				},
+			},
+		},
+		{
+			displayName: 'Extra Data',
+			name: 'extraData',
+			type: 'multiOptions',
+			description: 'Additional data to include in the response',
+			options: [
+				{
+					name: 'isOwner',
+					value: 'isOwner',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'links',
+					value: 'links',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'permissions',
+					value: 'permissions',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'seen',
+					value: 'seen',
+				},
+				{
+					name: 'shareCount',
+					value: 'shareCount',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'shares',
+					value: 'shares',
+				},
+			],
+			default: [],
+			displayOptions: {
+				show: {
+					'/resource': ['observale'],
+				},
+				hide: {
+					returnCount: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Extra Data',
+			name: 'extraData',
+			type: 'multiOptions',
+			description: 'Additional data to include in the response',
+			options: [
+				{
+					name: 'actionRequired',
+					value: 'actionRequired',
+				},
+				{
+					name: 'actionRequiredMap',
+					value: 'actionRequiredMap',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'case',
+					value: 'case',
+				},
+				{
+					name: 'caseId',
+					value: 'caseId',
+				},
+				{
+					name: 'caseTemplate',
+					value: 'caseTemplate',
+				},
+				{
+					name: 'caseTemplateId',
+					value: 'caseTemplateId',
+				},
+				{
+					name: 'shareCount',
+					value: 'shareCount',
+				},
+			],
+			default: [],
+			displayOptions: {
+				show: {
+					'/resource': ['task'],
+				},
+				hide: {
+					returnCount: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Extra Data',
+			name: 'extraData',
+			type: 'multiOptions',
+			description: 'Additional data to include in the response',
+			options: [
+				{
+					name: 'caseNumber',
+					value: 'caseNumber',
+				},
+				{
+					name: 'importDate',
+					value: 'importDate',
+				},
+				{
+					name: 'procedureCount',
+					value: 'procedureCount',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'status',
+					value: 'status',
+				},
+			],
+			default: [],
+			displayOptions: {
+				show: {
+					'/resource': ['alert'],
+				},
+				hide: {
+					returnCount: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Extra Data',
+			name: 'extraData',
+			type: 'multiOptions',
+			description: 'Additional data to include in the response',
+			options: [
+				{
+					name: 'actionRequired',
+					value: 'actionRequired',
+				},
+				{
+					name: 'alertCount',
+					value: 'alertCount',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'alerts',
+					value: 'alerts',
+				},
+				{
+					name: 'attachmentCount',
+					value: 'attachmentCount',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'contributors',
+					value: 'contributors',
+				},
+				{
+					name: 'handlingDuration',
+					value: 'computed.handlingDuration',
+				},
+				{
+					name: 'handlingDurationInDays',
+					value: 'computed.handlingDurationInDays',
+				},
+				{
+					name: 'handlingDurationInHours',
+					value: 'computed.handlingDurationInHours',
+				},
+				{
+					name: 'handlingDurationInMinutes',
+					value: 'computed.handlingDurationInMinutes',
+				},
+				{
+					name: 'handlingDurationInSeconds',
+					value: 'computed.handlingDurationInSeconds',
+				},
+				{
+					name: 'isOwner',
+					value: 'isOwner',
+				},
+				{
+					name: 'observableStats',
+					value: 'observableStats',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'permissions',
+					value: 'permissions',
+				},
+				{
+					name: 'procedureCount',
+					value: 'procedureCount',
+				},
+				{
+					name: 'shareCount',
+					value: 'shareCount',
+				},
+				{
+					name: 'similarAlerts',
+					value: 'similarAlerts',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'status',
+					value: 'status',
+				},
+				{
+					name: 'taskStats',
+					value: 'taskStats',
+				},
+			],
+			default: [],
+			displayOptions: {
+				show: {
+					'/resource': ['case'],
+				},
+				hide: {
+					returnCount: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Extra Data',
+			name: 'extraData',
+			type: 'multiOptions',
+			description: 'Additional data to include in the response',
+			options: [
+				{
+					name: 'actionCount',
+					value: 'actionCount',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'case',
+					value: 'case',
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'task',
+					value: 'task',
+				},
+				{
+					name: 'taskId',
+					value: 'taskId',
+				},
+			],
+			default: [],
+			displayOptions: {
+				show: {
+					'/resource': ['log'],
+				},
+				hide: {
+					returnCount: [true],
+				},
+			},
+		},
+	],
+};

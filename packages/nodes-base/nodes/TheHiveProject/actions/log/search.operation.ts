@@ -10,6 +10,7 @@ import {
 	genericFiltersCollection,
 	returnAllAndLimit,
 	sortCollection,
+	searchOptions,
 } from '../../descriptions';
 import { theHiveApiQuery } from '../../transport';
 import type { QueryScope } from '../../helpers/interfaces';
@@ -33,6 +34,7 @@ const properties: INodeProperties[] = [
 	...returnAllAndLimit,
 	genericFiltersCollection,
 	sortCollection,
+	searchOptions,
 ];
 
 const displayOptions = {
@@ -51,6 +53,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const filtersValues = this.getNodeParameter('filters.values', i, []) as IDataObject[];
 	const sortFields = this.getNodeParameter('sort.fields', i, []) as IDataObject[];
 	const returnAll = this.getNodeParameter('returnAll', i);
+	const { returnCount, extraData } = this.getNodeParameter('options', i);
 
 	let limit;
 	let scope: QueryScope;
@@ -66,7 +69,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		limit = this.getNodeParameter('limit', i);
 	}
 
-	responseData = await theHiveApiQuery.call(this, scope, filtersValues, sortFields, limit);
+	responseData = await theHiveApiQuery.call(
+		this,
+		scope,
+		filtersValues,
+		sortFields,
+		limit,
+		returnCount as boolean,
+		extraData as string[],
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },

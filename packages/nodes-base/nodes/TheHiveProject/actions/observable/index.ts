@@ -1,6 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as count from './count.operation';
 import * as create from './create.operation';
 import * as executeAnalyzer from './executeAnalyzer.operation';
 import * as executeResponder from './executeResponder.operation';
@@ -8,7 +7,7 @@ import * as get from './get.operation';
 import * as search from './search.operation';
 import * as update from './update.operation';
 
-export { count, create, executeAnalyzer, executeResponder, get, search, update };
+export { create, executeAnalyzer, executeResponder, get, search, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -19,11 +18,6 @@ export const description: INodeProperties[] = [
 		required: true,
 		default: 'getMany',
 		options: [
-			{
-				name: 'Count',
-				value: 'count',
-				action: 'Count observables',
-			},
 			{
 				name: 'Create',
 				value: 'create',
@@ -61,7 +55,6 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
-	...count.description,
 	...create.description,
 	...executeAnalyzer.description,
 	...executeResponder.description,

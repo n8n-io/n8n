@@ -87,6 +87,7 @@ export async function theHiveApiQuery(
 	sortFields?: IDataObject[],
 	limit?: number,
 	returnCount = false,
+	extraData?: string[],
 ) {
 	const query: IDataObject[] = [];
 
@@ -129,23 +130,48 @@ export async function theHiveApiQuery(
 		query.push(sort);
 	}
 
+	let responseData: IDataObject[] = [];
+
 	if (returnCount) {
 		query.push({
 			_name: 'count',
 		});
-	}
 
-	if (limit && !returnCount) {
-		const pagination = {
+		const count = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+
+		responseData.push({ count });
+	} else if (limit) {
+		const pagination: IDataObject = {
 			_name: 'page',
 			from: 0,
 			to: limit,
+			extraData,
 		};
 
 		query.push(pagination);
-	}
+		responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+	} else {
+		let to = 500;
+		let from = 0;
+		let response: IDataObject[] = [];
 
-	const responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+		do {
+			const pagination: IDataObject = {
+				_name: 'page',
+				from,
+				to,
+				extraData,
+			};
+
+			response = await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+				query: [...query, pagination],
+			});
+
+			responseData = responseData.concat(response || []);
+			from = to;
+			to += 500;
+		} while (response?.length);
+	}
 
 	return responseData;
 }

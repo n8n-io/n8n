@@ -2,7 +2,6 @@ import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
 	alert:
-		| 'count'
 		| 'create'
 		| 'executeResponder'
 		| 'get'
@@ -13,7 +12,6 @@ type NodeMap = {
 		| 'update';
 	case:
 		| 'addAttachment'
-		| 'count'
 		| 'create'
 		| 'deleteAttachment'
 		| 'executeResponder'
@@ -24,17 +22,10 @@ type NodeMap = {
 		| 'update';
 	comment: 'add' | 'deleteComment' | 'update';
 	log: 'addAttachment' | 'create' | 'deleteAttachment' | 'executeResponder' | 'get' | 'search';
-	observable:
-		| 'count'
-		| 'create'
-		| 'executeAnalyzer'
-		| 'executeResponder'
-		| 'get'
-		| 'search'
-		| 'update';
+	observable: 'create' | 'executeAnalyzer' | 'executeResponder' | 'get' | 'search' | 'update';
 	page: 'create' | 'deletePage' | 'update';
 	query: 'executeQuery';
-	task: 'count' | 'create' | 'executeResponder' | 'get' | 'search' | 'update';
+	task: 'create' | 'executeResponder' | 'get' | 'search' | 'update';
 };
 
 export type TheHiveType = AllEntities<NodeMap>;

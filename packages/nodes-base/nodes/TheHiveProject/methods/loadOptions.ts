@@ -91,33 +91,6 @@ export async function loadCustomFields(
 	return returnData;
 }
 
-export async function listCustomField(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
-	const body = {
-		query: [
-			{
-				_name: 'listCustomField',
-			},
-		],
-	};
-
-	const requestResult = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
-
-	const returnData: INodePropertyOptions[] = [];
-
-	for (const field of requestResult) {
-		returnData.push({
-			name: field.displayName || field.name,
-			value: field.name,
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-line-break-html-tag
-			description: `${field.description};<br> Type: ${field.type}; Required: ${field.mandatory}`,
-		} as INodePropertyOptions);
-	}
-
-	return returnData;
-}
-
 export async function loadObservableTypes(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
