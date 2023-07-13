@@ -21,7 +21,7 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
@@ -29,13 +29,11 @@ let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
 let owner: User;
-let authlessAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
-let authAgentFor: (user: User) => SuperAgentTest;
+
+const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 
 beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['users'] });
-
 	const [
 		globalOwnerRole,
 		fetchedGlobalMemberRole,
@@ -49,9 +47,7 @@ beforeAll(async () => {
 
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	authlessAgent = utils.createAgent(app);
-	authAgentFor = utils.createAuthAgent(app);
-	authOwnerAgent = authAgentFor(owner);
+	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
 beforeEach(async () => {
@@ -60,13 +56,8 @@ beforeEach(async () => {
 
 	jest.mock('@/config');
 
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', 'smtp');
 	config.set('userManagement.emails.smtp.host', '');
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('GET /users', () => {
@@ -107,7 +98,7 @@ describe('GET /users', () => {
 
 	test('should return all users (for member)', async () => {
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const response = await authAgentFor(member).get('/users');
+		const response = await testServer.authAgentFor(member).get('/users');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(2);
@@ -252,7 +243,9 @@ describe('POST /users/:id', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authlessAgent.post(`/users/${memberShell.id}`).send(memberData);
+		const response = await testServer.authlessAgent
+			.post(`/users/${memberShell.id}`)
+			.send(memberData);
 
 		const {
 			id,
@@ -324,20 +317,20 @@ describe('POST /users/:id', () => {
 			},
 		];
 
-		await Promise.all(
-			invalidPayloads.map(async (invalidPayload) => {
-				const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
-				expect(response.statusCode).toBe(400);
+		for (const invalidPayload of invalidPayloads) {
+			const response = await testServer.authlessAgent
+				.post(`/users/${memberShell.id}`)
+				.send(invalidPayload);
+			expect(response.statusCode).toBe(400);
 
-				const storedUser = await Db.collections.User.findOneOrFail({
-					where: { email: memberShellEmail },
-				});
+			const storedUser = await Db.collections.User.findOneOrFail({
+				where: { email: memberShellEmail },
+			});
 
-				expect(storedUser.firstName).toBeNull();
-				expect(storedUser.lastName).toBeNull();
-				expect(storedUser.password).toBeNull();
-			}),
-		);
+			expect(storedUser.firstName).toBeNull();
+			expect(storedUser.lastName).toBeNull();
+			expect(storedUser.password).toBeNull();
+		}
 	});
 
 	test('should fail with already accepted invite', async () => {
@@ -350,7 +343,7 @@ describe('POST /users/:id', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authlessAgent.post(`/users/${member.id}`).send(newMemberData);
+		const response = await testServer.authlessAgent.post(`/users/${member.id}`).send(newMemberData);
 
 		expect(response.statusCode).toBe(400);
 

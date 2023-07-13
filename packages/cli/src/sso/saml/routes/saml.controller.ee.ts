@@ -1,4 +1,5 @@
 import express from 'express';
+import { Container, Service } from 'typedi';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
@@ -23,9 +24,9 @@ import {
 } from '../serviceProvider.ee';
 import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
-import Container from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
+@Service()
 @RestController('/sso/saml')
 export class SamlController {
 	constructor(private samlService: SamlService) {}

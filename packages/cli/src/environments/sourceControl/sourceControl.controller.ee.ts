@@ -1,3 +1,6 @@
+import express from 'express';
+import { Service } from 'typedi';
+import type { PullResult, PushResult, StatusResult } from 'simple-git';
 import { Authorized, Get, Post, Patch, RestController } from '@/decorators';
 import {
 	sourceControlLicensedMiddleware,
@@ -7,13 +10,12 @@ import { SourceControlService } from './sourceControl.service.ee';
 import { SourceControlRequest } from './types/requests';
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
 import { BadRequestError } from '@/ResponseHelper';
-import type { PullResult, PushResult, StatusResult } from 'simple-git';
-import express from 'express';
 import type { ImportResult } from './types/importResult';
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 
+@Service()
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
 	constructor(

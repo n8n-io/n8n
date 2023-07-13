@@ -4,7 +4,7 @@ import { audit } from '@/audit';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 beforeAll(async () => {
 	await testDb.init();

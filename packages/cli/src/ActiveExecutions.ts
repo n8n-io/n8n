@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Container, Service } from 'typedi';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -19,8 +20,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
-import Container, { Service } from 'typedi';
-import { ExecutionRepository } from './databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 @Service()
 export class ActiveExecutions {
