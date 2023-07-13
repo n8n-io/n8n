@@ -1,14 +1,11 @@
-import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils';
+import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 
-let app: Application;
 let owner: User;
 let user1: User;
 let user2: User;
@@ -17,19 +14,16 @@ let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
 
-beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['publicApi'],
-		applyAuth: false,
-		enablePublicAPI: true,
-	});
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
+beforeAll(async () => {
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	const globalUserRole = await testDb.getGlobalMemberRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	user1 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 	user2 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 
+	// TODO: mock BinaryDataManager instead
 	await utils.initBinaryManager();
 	await utils.initNodeTypes();
 
@@ -46,36 +40,13 @@ beforeEach(async () => {
 		'Settings',
 	]);
 
-	authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	authUser1Agent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: user1,
-		version: 1,
-	});
-
-	authUser2Agent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: user2,
-		version: 1,
-	});
-
-	config.set('userManagement.isInstanceOwnerSetUp', true);
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authUser1Agent = testServer.publicApiAgentFor(user1);
+	authUser2Agent = testServer.publicApiAgentFor(user2);
 });
 
 afterEach(async () => {
 	await workflowRunner?.removeAll();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 const testWithAPIKey =

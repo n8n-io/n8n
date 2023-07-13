@@ -1,11 +1,7 @@
 import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
-
-import cookieParser from 'cookie-parser';
-import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
-import express from 'express';
 import set from 'lodash/set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import type {
@@ -19,276 +15,20 @@ import type {
 	TriggerTime,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { LoggerProxy, NodeHelpers, toCronExpression } from 'n8n-workflow';
-import type superagent from 'superagent';
-import request from 'supertest';
-import { URL } from 'url';
-import { mock } from 'jest-mock-extended';
-import type { DeepPartial } from 'ts-essentials';
+import { NodeHelpers, toCronExpression } from 'n8n-workflow';
+import type request from 'supertest';
+import { v4 as uuid } from 'uuid';
+
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ExternalHooks } from '@/ExternalHooks';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { workflowsController } from '@/workflows/workflows.controller';
-import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
-import { credentialsController } from '@/credentials/credentials.controller';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { User } from '@db/entities/User';
-import { getLogger } from '@/Logger';
-import { loadPublicApiVersions } from '@/PublicApi/';
-import { issueJWT } from '@/auth/jwt';
-import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
-import {
-	AUTHLESS_ENDPOINTS,
-	COMMUNITY_NODE_VERSION,
-	COMMUNITY_PACKAGE_VERSION,
-	PUBLIC_API_REST_PATH_SEGMENT,
-	REST_PATH_SEGMENT,
-} from './constants';
-import { randomName } from './random';
-import type {
-	ApiPath,
-	EndpointGroup,
-	InstalledNodePayload,
-	InstalledPackagePayload,
-} from './types';
-import { licenseController } from '@/license/license.controller';
-import { registerController } from '@/decorators';
-import {
-	AuthController,
-	LdapController,
-	MeController,
-	NodesController,
-	OwnerController,
-	PasswordResetController,
-	UsersController,
-} from '@/controllers';
-import { setupAuthMiddlewares } from '@/middlewares';
-import * as testDb from '../shared/testDb';
+import { AUTH_COOKIE_NAME } from '@/constants';
 
-import { v4 as uuid } from 'uuid';
-import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { PostHogClient } from '@/posthog';
-import { variablesController } from '@/environments/variables/variables.controller';
-import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { handleLdapInit } from '@/Ldap/helpers';
-import { Push } from '@/push';
-import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
-import { SamlService } from '@/sso/saml/saml.service.ee';
-import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
-import { EventBusController } from '@/eventbus/eventBus.controller';
-import { License } from '@/License';
-import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
-import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 
-export const mockInstance = <T>(
-	ctor: new (...args: any[]) => T,
-	data: DeepPartial<T> | undefined = undefined,
-) => {
-	const instance = mock<T>(data);
-	Container.set(ctor, instance);
-	return instance;
-};
-
-/**
- * Initialize a test server.
- */
-export async function initTestServer({
-	applyAuth = true,
-	endpointGroups,
-	enablePublicAPI = false,
-}: {
-	applyAuth?: boolean;
-	endpointGroups?: EndpointGroup[];
-	enablePublicAPI?: boolean;
-}) {
-	await testDb.init();
-	const testServer = {
-		app: express(),
-		restEndpoint: REST_PATH_SEGMENT,
-		publicApiEndpoint: PUBLIC_API_REST_PATH_SEGMENT,
-		externalHooks: {},
-	};
-
-	const logger = getLogger();
-	LoggerProxy.init(logger);
-
-	// Mock all telemetry.
-	mockInstance(InternalHooks);
-	mockInstance(PostHogClient);
-
-	testServer.app.use(bodyParser.json());
-	testServer.app.use(bodyParser.urlencoded({ extended: true }));
-	testServer.app.use(cookieParser());
-
-	config.set('userManagement.jwtSecret', 'My JWT secret');
-	config.set('userManagement.isInstanceOwnerSetUp', false);
-
-	if (applyAuth) {
-		setupAuthMiddlewares(
-			testServer.app,
-			AUTHLESS_ENDPOINTS,
-			REST_PATH_SEGMENT,
-			Db.collections.User,
-		);
-	}
-
-	if (!endpointGroups) return testServer.app;
-
-	if (
-		endpointGroups.includes('credentials') ||
-		endpointGroups.includes('me') ||
-		endpointGroups.includes('users') ||
-		endpointGroups.includes('passwordReset')
-	) {
-		testServer.externalHooks = Container.get(ExternalHooks);
-	}
-
-	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
-
-	if (routerEndpoints.length) {
-		const map: Record<string, express.Router | express.Router[] | any> = {
-			credentials: { controller: credentialsController, path: 'credentials' },
-			workflows: { controller: workflowsController, path: 'workflows' },
-			license: { controller: licenseController, path: 'license' },
-			variables: { controller: variablesController, path: 'variables' },
-		};
-
-		if (enablePublicAPI) {
-			const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
-			map.publicApi = apiRouters;
-		}
-
-		for (const group of routerEndpoints) {
-			if (group === 'publicApi') {
-				testServer.app.use(...(map[group] as express.Router[]));
-			} else {
-				testServer.app.use(`/${testServer.restEndpoint}/${map[group].path}`, map[group].controller);
-			}
-		}
-	}
-
-	if (functionEndpoints.length) {
-		const externalHooks = Container.get(ExternalHooks);
-		const internalHooks = Container.get(InternalHooks);
-		const mailer = Container.get(UserManagementMailer);
-		const repositories = Db.collections;
-
-		for (const group of functionEndpoints) {
-			switch (group) {
-				case 'eventBus':
-					registerController(testServer.app, config, new EventBusController());
-					break;
-				case 'auth':
-					registerController(
-						testServer.app,
-						config,
-						new AuthController({ config, logger, internalHooks, repositories }),
-					);
-					break;
-				case 'ldap':
-					Container.get(License).isLdapEnabled = () => true;
-					await handleLdapInit();
-					const { service, sync } = LdapManager.getInstance();
-					registerController(
-						testServer.app,
-						config,
-						new LdapController(service, sync, internalHooks),
-					);
-					break;
-				case 'saml':
-					await setSamlLoginEnabled(true);
-					const samlService = Container.get(SamlService);
-					registerController(testServer.app, config, new SamlController(samlService));
-					break;
-				case 'sourceControl':
-					const sourceControlService = Container.get(SourceControlService);
-					const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
-					registerController(
-						testServer.app,
-						config,
-						new SourceControlController(sourceControlService, sourceControlPreferencesService),
-					);
-					break;
-				case 'nodes':
-					registerController(
-						testServer.app,
-						config,
-						new NodesController(
-							config,
-							Container.get(LoadNodesAndCredentials),
-							Container.get(Push),
-							internalHooks,
-						),
-					);
-				case 'me':
-					registerController(
-						testServer.app,
-						config,
-						new MeController({ logger, externalHooks, internalHooks, repositories }),
-					);
-					break;
-				case 'passwordReset':
-					registerController(
-						testServer.app,
-						config,
-						new PasswordResetController({
-							config,
-							logger,
-							externalHooks,
-							internalHooks,
-							mailer,
-							repositories,
-						}),
-					);
-					break;
-				case 'owner':
-					registerController(
-						testServer.app,
-						config,
-						new OwnerController({ config, logger, internalHooks, repositories }),
-					);
-					break;
-				case 'users':
-					registerController(
-						testServer.app,
-						config,
-						new UsersController({
-							config,
-							mailer,
-							externalHooks,
-							internalHooks,
-							repositories,
-							activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
-							logger,
-						}),
-					);
-			}
-		}
-	}
-
-	return testServer.app;
-}
-
-/**
- * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
- * and `functionEndpoints` (legacy, namespaced inside a function).
- */
-const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
-	const routerEndpoints: EndpointGroup[] = [];
-	const functionEndpoints: EndpointGroup[] = [];
-
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
-
-	endpointGroups.forEach((group) =>
-		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
-	);
-
-	return [routerEndpoints, functionEndpoints];
-};
+export { mockInstance } from './mocking';
+export { setupTestServer } from './testServer';
 
 // ----------------------------------
 //          initializers
@@ -658,71 +398,14 @@ export async function initBinaryManager() {
 /**
  * Initialize a user settings config file if non-existent.
  */
-export async function initConfigFile() {
+// TODO: this should be mocked
+export async function initEncryptionKey() {
 	const settingsPath = UserSettings.getUserSettingsPath();
 
 	if (!existsSync(settingsPath)) {
 		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
 		await UserSettings.writeUserSettings(userSettings, settingsPath);
 	}
-}
-
-// ----------------------------------
-//           request agent
-// ----------------------------------
-
-/**
- * Create a request agent, optionally with an auth cookie.
- */
-export function createAgent(
-	app: express.Application,
-	options?: { auth: boolean; user: User; apiPath?: ApiPath; version?: string | number },
-) {
-	const agent = request.agent(app);
-
-	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
-		void agent.use(prefix(REST_PATH_SEGMENT));
-		if (options?.auth && options?.user) {
-			try {
-				const { token } = issueJWT(options.user);
-				agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
-			} catch {}
-		}
-	}
-
-	if (options?.apiPath === 'public') {
-		void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
-
-		if (options?.auth && options?.user.apiKey) {
-			void agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
-		}
-	}
-
-	return agent;
-}
-
-export function createAuthAgent(app: express.Application) {
-	return (user: User) => createAgent(app, { auth: true, user });
-}
-
-/**
- * Plugin to prefix a path segment into a request URL pathname.
- *
- * Example: http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
- */
-export function prefix(pathSegment: string) {
-	return async function (request: superagent.SuperAgentRequest) {
-		const url = new URL(request.url);
-
-		// enforce consistency at call sites
-		if (url.pathname[0] !== '/') {
-			throw new Error('Pathname must start with a forward slash');
-		}
-
-		url.pathname = pathSegment + url.pathname;
-		request.url = url.toString();
-		return request;
-	};
 }
 
 /**
@@ -769,29 +452,7 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 //           community nodes
 // ----------------------------------
 
-export function installedPackagePayload(): InstalledPackagePayload {
-	return {
-		packageName: NODE_PACKAGE_PREFIX + randomName(),
-		installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
-	};
-}
-
-export function installedNodePayload(packageName: string): InstalledNodePayload {
-	const nodeName = randomName();
-	return {
-		name: nodeName,
-		type: nodeName,
-		latestVersion: COMMUNITY_NODE_VERSION.CURRENT,
-		package: packageName,
-	};
-}
-
-export const emptyPackage = async () => {
-	const installedPackage = new InstalledPackages();
-	installedPackage.installedNodes = [];
-
-	return installedPackage;
-};
+export * from './communityNodes';
 
 // ----------------------------------
 //           workflow

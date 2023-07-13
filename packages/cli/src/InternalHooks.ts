@@ -30,8 +30,8 @@ import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
-import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
-import { ExecutionRepository } from './databases/repositories';
+import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { ExecutionRepository } from '@db/repositories';
 
 function userToPayload(user: User): {
 	userId: string;
