@@ -119,7 +119,7 @@ export async function loadObservableTypes(
 	}
 	return returnData;
 }
-export async function getCaseAttachments(
+export async function loadCaseAttachments(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
@@ -149,7 +149,7 @@ export async function getCaseAttachments(
 	return returnData;
 }
 
-export async function getLogAttachments(
+export async function loadLogAttachments(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
