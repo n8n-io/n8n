@@ -1,4 +1,6 @@
 import validator from 'validator';
+import { In } from 'typeorm';
+import { Container } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import {
 	AuthError,
@@ -13,7 +15,6 @@ import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type {
 	PublicUser,
@@ -30,7 +31,6 @@ import {
 } from '@/sso/ssoHelpers';
 import type { UserRepository } from '@db/repositories';
 import { InternalHooks } from '../InternalHooks';
-import Container from 'typedi';
 import { License } from '@/License';
 
 @RestController()

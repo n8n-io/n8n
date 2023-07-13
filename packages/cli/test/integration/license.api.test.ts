@@ -4,7 +4,7 @@ import type { User } from '@db/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
 import * as testDb from './shared/testDb';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -14,19 +14,17 @@ let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
-beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['license'] });
+const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 
+beforeAll(async () => {
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	const globalMemberRole = await testDb.getGlobalMemberRole();
 	owner = await testDb.createUserShell(globalOwnerRole);
 	member = await testDb.createUserShell(globalMemberRole);
 
-	const authAgent = utils.createAuthAgent(app);
-	authOwnerAgent = authAgent(owner);
-	authMemberAgent = authAgent(member);
+	authOwnerAgent = testServer.authAgentFor(owner);
+	authMemberAgent = testServer.authAgentFor(member);
 
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);
 	config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
@@ -34,10 +32,6 @@ beforeAll(async () => {
 
 afterEach(async () => {
 	await testDb.truncate(['Settings']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('GET /license', () => {

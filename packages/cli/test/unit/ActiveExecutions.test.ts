@@ -1,11 +1,11 @@
 import { ActiveExecutions } from '@/ActiveExecutions';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
+import { Container } from 'typedi';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { ExecutionRepository } from '@/databases/repositories';
-import Container from 'typedi';
+import { ExecutionRepository } from '@db/repositories';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';

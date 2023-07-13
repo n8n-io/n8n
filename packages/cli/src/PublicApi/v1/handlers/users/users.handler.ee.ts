@@ -1,4 +1,5 @@
 import type express from 'express';
+import { Container } from 'typedi';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 
@@ -10,7 +11,6 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
 
 export = {
 	getUser: [

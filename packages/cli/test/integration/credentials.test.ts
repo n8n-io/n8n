@@ -1,4 +1,3 @@
-import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
 import { UserSettings } from 'n8n-core';
 
@@ -11,14 +10,13 @@ import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
-import * as utils from './shared/utils';
+import type { SaveCredentialFunction } from './shared/types';
+import * as utils from './shared/utils/';
 
 // mock that credentialsSharing is not enabled
-const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
-mockIsCredentialsSharingEnabled.mockReturnValue(false);
+jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
-let app: Application;
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
@@ -26,13 +24,8 @@ let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
-let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['credentials'] });
-
-	await utils.initConfigFile();
-
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
@@ -42,19 +35,12 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
-	authAgent = utils.createAuthAgent(app);
-	authOwnerAgent = authAgent(owner);
-	authMemberAgent = authAgent(member);
-
-	config.set('userManagement.isInstanceOwnerSetUp', true);
+	authOwnerAgent = testServer.authAgentFor(owner);
+	authMemberAgent = testServer.authAgentFor(member);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 // ----------------------------------------
@@ -90,7 +76,7 @@ describe('GET /credentials', () => {
 			saveCredential(randomCredentialPayload(), { user: member2 }),
 		]);
 
-		const response = await authAgent(member1).get('/credentials');
+		const response = await testServer.authAgentFor(member1).get('/credentials');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(1); // member retrieved only own cred

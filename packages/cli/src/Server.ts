@@ -168,9 +168,8 @@ import {
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
-import { ExecutionRepository } from './databases/repositories';
-import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 
 const exec = promisify(callbackExec);
 
@@ -470,9 +469,6 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const samlService = Container.get(SamlService);
-		const sourceControlService = Container.get(SourceControlService);
-		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -500,8 +496,8 @@ export class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new SamlController(samlService),
-			new SourceControlController(sourceControlService, sourceControlPreferencesService),
+			Container.get(SamlController),
+			Container.get(SourceControlController),
 		];
 
 		if (isLdapEnabled()) {

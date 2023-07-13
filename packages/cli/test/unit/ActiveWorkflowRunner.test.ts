@@ -20,7 +20,7 @@ import { mock } from 'jest-mock-extended';
 import type { ExternalHooks } from '@/ExternalHooks';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../integration/shared/utils/';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
