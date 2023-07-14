@@ -4,11 +4,9 @@ import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
-	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import * as Db from '@/Db';
-import glob from 'fast-glob';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
@@ -51,34 +49,6 @@ export class SourceControlExportService {
 
 	getCredentialsPath(credentialsId: string): string {
 		return getCredentialExportPath(credentialsId, this.credentialExportFolder);
-	}
-
-	async cleanWorkFolder() {
-		try {
-			const workflowFiles = await glob('*.json', {
-				cwd: this.workflowExportFolder,
-				absolute: true,
-			});
-			const credentialFiles = await glob('*.json', {
-				cwd: this.credentialExportFolder,
-				absolute: true,
-			});
-			const variablesFile = await glob(SOURCE_CONTROL_VARIABLES_EXPORT_FILE, {
-				cwd: this.gitFolder,
-				absolute: true,
-			});
-			const tagsFile = await glob(SOURCE_CONTROL_TAGS_EXPORT_FILE, {
-				cwd: this.gitFolder,
-				absolute: true,
-			});
-			await Promise.all(tagsFile.map(async (e) => fsRm(e)));
-			await Promise.all(variablesFile.map(async (e) => fsRm(e)));
-			await Promise.all(workflowFiles.map(async (e) => fsRm(e)));
-			await Promise.all(credentialFiles.map(async (e) => fsRm(e)));
-			LoggerProxy.debug('Cleaned work folder.');
-		} catch (error) {
-			LoggerProxy.error(`Failed to clean work folder: ${(error as Error).message}`);
-		}
 	}
 
 	async deleteRepositoryFolder() {
