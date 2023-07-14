@@ -1,4 +1,4 @@
-import { splitAndTrim, fixFieldType, prepareInputItem } from '../helpers/utils';
+import { splitAndTrim, fixFieldType, prepareInputItem, constructFilter } from '../helpers/utils';
 
 describe('Test TheHiveProject, splitAndTrim', () => {
 	it('should split and trim string, removing empty entries', () => {
@@ -103,6 +103,77 @@ describe('Test TheHiveProject, prepareInputItem', () => {
 			b: 2,
 			c: 3,
 			d: 4,
+		});
+	});
+});
+
+describe('Test TheHiveProject, constructFilter', () => {
+	it('should add default operator _eq', () => {
+		const data = {
+			field: 'myField',
+			value: 'myValue',
+		};
+
+		const result = constructFilter(data);
+
+		expect(result).toEqual({
+			_eq: {
+				_field: 'myField',
+				_value: 'myValue',
+			},
+		});
+	});
+
+	it('should return filter _gte', () => {
+		const data = {
+			field: 'myField',
+			value: 'myValue',
+			operator: '_gte',
+		};
+
+		const result = constructFilter(data);
+
+		expect(result).toEqual({
+			_gte: {
+				_field: 'myField',
+				_value: 'myValue',
+			},
+		});
+	});
+
+	it('should return filter _in', () => {
+		const data = {
+			field: 'myField',
+			values: 'a, b,, c, d',
+			operator: '_in',
+		};
+
+		const result = constructFilter(data);
+
+		expect(result).toEqual({
+			_in: {
+				_field: 'myField',
+				_values: ['a', 'b', 'c', 'd'],
+			},
+		});
+	});
+
+	it('should return filter _between', () => {
+		const data = {
+			field: 'myField',
+			from: 'a',
+			to: 'b',
+			operator: '_between',
+		};
+
+		const result = constructFilter(data);
+
+		expect(result).toEqual({
+			_between: {
+				_field: 'myField',
+				_from: 'a',
+				_to: 'b',
+			},
 		});
 	});
 });

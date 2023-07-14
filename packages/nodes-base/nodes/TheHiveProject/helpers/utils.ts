@@ -61,3 +61,40 @@ export function prepareInputItem(item: IDataObject, schema: IDataObject[], i: nu
 
 	return returnData;
 }
+
+export function constructFilter(entry: IDataObject) {
+	const { field, value } = entry;
+	let { operator } = entry;
+
+	if (operator === undefined) {
+		operator = '_eq';
+	}
+
+	if (operator === '_between') {
+		const { from, to } = entry;
+		return {
+			_between: {
+				_field: field,
+				_from: from,
+				_to: to,
+			},
+		};
+	}
+
+	if (operator === '_in') {
+		const { values } = entry;
+		return {
+			_in: {
+				_field: field,
+				_values: typeof values === 'string' ? splitAndTrim(values) : values,
+			},
+		};
+	}
+
+	return {
+		[operator as string]: {
+			_field: field,
+			_value: value,
+		},
+	};
+}
