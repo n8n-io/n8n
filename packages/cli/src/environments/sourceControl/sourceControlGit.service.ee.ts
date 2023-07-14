@@ -262,17 +262,11 @@ export class SourceControlGitService {
 		return;
 	}
 
-	async fetch(options: { depth: number } = { depth: 1 }): Promise<FetchResult> {
+	async fetch(): Promise<FetchResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized (fetch)');
 		}
-		const params = {};
-		if (options.depth > 0) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			Object.assign(params, { '--depth': options.depth });
-		}
-
-		return this.git.fetch(params);
+		return this.git.fetch();
 	}
 
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {

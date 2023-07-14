@@ -3,7 +3,6 @@ import { SOURCE_CONTROL_API_ROOT } from '@/environments/sourceControl/constants'
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils/';
 import type { User } from '@db/entities/User';
-import { createWorkflow } from '../shared/testDb';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import Container from 'typedi';
 import { License } from '@/License';
