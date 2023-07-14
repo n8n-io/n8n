@@ -46,7 +46,6 @@ export const initErrorHandling = async () => {
 
 	process.on('uncaughtException', (error) => {
 		ErrorReporterProxy.error(error);
-		if (error.constructor?.name !== 'AxiosError') throw error;
 	});
 
 	ErrorReporterProxy.init({
