@@ -42,7 +42,6 @@ import {
 	HIRING_BANNER,
 	LOCAL_STORAGE_THEME,
 	VIEWS,
-	BANNERS,
 } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
@@ -229,11 +228,11 @@ export default defineComponent({
 		},
 		async initBanners(): Promise<void> {
 			if (this.cloudPlanStore.userIsTrialing) {
-				await this.uiStore.dismissBanner(BANNERS.V1, 'temporary');
+				await this.uiStore.dismissBanner('V1', 'temporary');
 				if (this.cloudPlanStore.trialExpired) {
-					this.uiStore.showBanner(BANNERS.TRIAL_OVER);
+					this.uiStore.showBanner('TRIAL_OVER');
 				} else {
-					this.uiStore.showBanner(BANNERS.TRIAL);
+					this.uiStore.showBanner('TRIAL');
 				}
 			}
 		},

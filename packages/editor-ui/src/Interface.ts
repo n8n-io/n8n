@@ -1,4 +1,4 @@
-import type { BANNERS, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IMenuItem } from 'n8n-design-system';
 import type {
@@ -34,6 +34,7 @@ import type {
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
+	Banners,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -1069,7 +1070,7 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
-	banners: { [key in BANNERS]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
+	banners: { [key in Banners]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
 }
 
 export type IFakeDoor = {

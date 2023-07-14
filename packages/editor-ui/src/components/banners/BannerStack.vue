@@ -3,13 +3,13 @@ import TrialOverBanner from '@/components/banners/TrialOverBanner.vue';
 import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { BANNERS } from '@/constants';
 import { onMounted, watch } from 'vue';
 import { getBannerRowHeight } from '@/utils';
+import type { Banners } from 'n8n-workflow';
 
 const uiStore = useUIStore();
 
-function shouldShowBanner(bannerName: BANNERS) {
+function shouldShowBanner(bannerName: Banners) {
 	return uiStore.banners[bannerName].dismissed === false;
 }
 
@@ -29,8 +29,8 @@ watch(uiStore.banners, async () => {
 
 <template>
 	<div data-test-id="banner-stack">
-		<trial-over-banner v-if="shouldShowBanner(BANNERS.TRIAL_OVER)" />
-		<trial-banner v-if="shouldShowBanner(BANNERS.TRIAL)" />
-		<v1-banner v-if="shouldShowBanner(BANNERS.V1)" />
+		<trial-over-banner v-if="shouldShowBanner('TRIAL_OVER')" />
+		<trial-banner v-if="shouldShowBanner('TRIAL')" />
+		<v1-banner v-if="shouldShowBanner('V1')" />
 	</div>
 </template>

@@ -2166,3 +2166,5 @@ export interface IN8nUISettings {
 		dismissed: string[];
 	};
 }
+
+export type Banners = 'V1' | 'TRIAL_OVER' | 'TRIAL';

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { BANNERS } from '@/constants';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { computed } from 'vue';
 import { useUIStore } from '@/stores';
@@ -24,7 +23,7 @@ function onUpdatePlanClick() {
 </script>
 
 <template>
-	<base-banner :name="BANNERS.TRIAL" theme="custom">
+	<base-banner name="TRIAL" theme="custom">
 		<template #mainContent>
 			<span>{{ messageText }}</span>
 		</template>

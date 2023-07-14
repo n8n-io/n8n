@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { BANNERS } from '@/constants';
 import { useUIStore } from '@/stores';
 
 function onUpdatePlanClick() {
@@ -10,7 +9,7 @@ function onUpdatePlanClick() {
 </script>
 
 <template>
-	<base-banner customIcon="info-circle" theme="warning" :name="BANNERS.TRIAL_OVER">
+	<base-banner customIcon="info-circle" theme="warning" name="TRIAL_OVER">
 		<template #mainContent>
 			<span>{{ locale.baseText('banners.trialOver.message') }}</span>
 		</template>

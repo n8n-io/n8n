@@ -3,19 +3,18 @@ import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUsersStore } from '@/stores';
 import { useUIStore } from '@/stores/ui.store';
-import { BANNERS } from '@/constants';
 
 const uiStore = useUIStore();
 
 const { isInstanceOwner } = useUsersStore();
 
 async function dismissPermanently() {
-	await uiStore.dismissBanner(BANNERS.V1, 'permanent');
+	await uiStore.dismissBanner('V1', 'permanent');
 }
 </script>
 
 <template>
-	<base-banner customIcon="info-circle" theme="warning" :name="BANNERS.V1">
+	<base-banner customIcon="info-circle" theme="warning" name="V1">
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
 			<a

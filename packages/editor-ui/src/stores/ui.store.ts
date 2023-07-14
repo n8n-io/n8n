@@ -33,7 +33,6 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
-import type { BANNERS } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
@@ -58,6 +57,7 @@ import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils';
 import { dismissBannerPermanently } from '@/api/ui';
+import { Banners } from 'n8n-workflow';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -558,7 +558,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		async dismissBanner(
-			name: BANNERS,
+			name: Banners,
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
@@ -573,7 +573,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.banners[name].dismissed = true;
 			this.banners[name].type = 'temporary';
 		},
-		showBanner(name: BANNERS): void {
+		showBanner(name: Banners): void {
 			this.banners[name].dismissed = false;
 		},
 		updateBannersHeight(newHeight: number): void {

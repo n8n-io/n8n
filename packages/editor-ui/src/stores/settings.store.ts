@@ -9,7 +9,7 @@ import {
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { EnterpriseEditionFeature } from '@/constants';
-import { BANNERS, CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import type {
 	ILdapConfig,
 	IN8nPromptResponse,
@@ -224,13 +224,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
 
-			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes(BANNERS.V1);
+			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes('V1');
 			if (
 				!isV1BannerDismissedPermanently &&
 				useRootStore().versionCli.startsWith('1.') &&
 				!useCloudPlanStore().userIsTrialing
 			) {
-				useUIStore().showBanner(BANNERS.V1);
+				useUIStore().showBanner('V1');
 			}
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
