@@ -192,13 +192,9 @@ export class SourceControlService {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
-		const currentBranch = await this.gitService.getCurrentBranch();
 		await this.sourceControlExportService.cleanWorkFolder();
-		await this.gitService.resetBranch({
-			hard: true,
-			target: currentBranch.remote,
-		});
-		await this.gitService.pull({ ffOnly: false });
+		await this.gitService.fetch();
+		await this.gitService.resetBranch();
 		return;
 	}
 
@@ -396,10 +392,8 @@ export class SourceControlService {
 
 		const sourceControlledFiles: SourceControlledFile[] = [];
 
-		// pull from remore first
-		await this.sourceControlExportService.cleanWorkFolder();
-		await this.gitService.pull({ ffOnly: false });
-		await this.gitService.resetBranch({ hard: true, target: 'HEAD' });
+		// fetch and reset hard first
+		await this.resetWorkfolder();
 
 		//
 		// #region Workflows

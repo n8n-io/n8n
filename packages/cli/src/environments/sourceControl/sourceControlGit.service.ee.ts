@@ -227,13 +227,6 @@ export class SourceControlGitService {
 		return this.getBranches();
 	}
 
-	async fetch(): Promise<FetchResult> {
-		if (!this.git) {
-			throw new Error('Git is not initialized (fetch)');
-		}
-		return this.git.fetch();
-	}
-
 	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
 		if (!this.git) {
 			throw new Error('Git is not initialized (getCurrentBranch)');
@@ -269,15 +262,35 @@ export class SourceControlGitService {
 		return;
 	}
 
-	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
+	async fetch(options: { depth: number } = { depth: 1 }): Promise<FetchResult> {
+		if (!this.git) {
+			throw new Error('Git is not initialized (fetch)');
+		}
+		const params = {};
+		if (options.depth > 0) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Object.assign(params, { '--depth': options.depth });
+		}
+
+		return this.git.fetch(params);
+	}
+
+	async pull(
+		options: { ffOnly: boolean; depth: number } = { ffOnly: false, depth: 1 },
+	): Promise<PullResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized (pull)');
 		}
+		const params = {};
+		if (options.depth > 0) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			Object.assign(params, { '--depth': options.depth });
+		}
 		if (options.ffOnly) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			return this.git.pull(undefined, undefined, { '--ff-only': null });
+			Object.assign(params, { '--ff-only': null });
 		}
-		return this.git.pull();
+		return this.git.pull(params);
 	}
 
 	async push(
@@ -311,7 +324,7 @@ export class SourceControlGitService {
 	}
 
 	async resetBranch(
-		options: { hard?: boolean; target: string } = { hard: false, target: 'HEAD' },
+		options: { hard: boolean; target: string } = { hard: true, target: 'HEAD' },
 	): Promise<string> {
 		if (!this.git) {
 			throw new Error('Git is not initialized (Promise)');
