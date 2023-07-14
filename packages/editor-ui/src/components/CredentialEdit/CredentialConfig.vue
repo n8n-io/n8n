@@ -126,12 +126,16 @@
 			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 		</n8n-text>
 
-		<n8n-info-tip class="mt-s">
-			{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets') }}
-			<n8n-link bold :to="$locale.baseText('settings.externalSecrets.docs')" size="small">
-				{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
-			</n8n-link>
-		</n8n-info-tip>
+		<EnterpriseEdition :features="[EnterpriseEditionFeature.ExternalSecrets]">
+			<template #fallback>
+				<n8n-info-tip class="mt-s">
+					{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets') }}
+					<n8n-link bold :to="$locale.baseText('settings.externalSecrets.docs')" size="small">
+						{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
+					</n8n-link>
+				</n8n-info-tip>
+			</template>
+		</EnterpriseEdition>
 	</div>
 </template>
 
@@ -158,10 +162,12 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ICredentialsResponse } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 
 export default defineComponent({
 	name: 'CredentialConfig',
 	components: {
+		EnterpriseEdition,
 		AuthTypeSelector,
 		Banner,
 		CopyInput,
