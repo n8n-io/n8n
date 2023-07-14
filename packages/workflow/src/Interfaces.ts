@@ -2163,8 +2163,8 @@ export interface IN8nUISettings {
 		limit: number;
 	};
 	banners: {
-		v1: {
-			dismissed: boolean;
-		};
+		dismissed: string[];
 	};
 }
+
+export type Banners = 'V1' | 'TRIAL_OVER' | 'TRIAL';
