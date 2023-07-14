@@ -101,7 +101,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 
 	const originalLocation = Cypress.$(selector)[index].getBoundingClientRect();
 
-	element.trigger('mousedown');
+	element.trigger('mousedown', { force: true });
 	element.trigger('mousemove', {
 		which: 1,
 		pageX: options?.abs ? xDiff : originalLocation.right + xDiff,

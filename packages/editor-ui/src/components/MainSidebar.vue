@@ -29,7 +29,7 @@
 			<template #beforeLowerMenu>
 				<ExecutionsUsage
 					:cloud-plan-data="currentPlanAndUsageData"
-					v-if="!isCollapsed && userIsTrialing"
+					v-if="fullyExpanded && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
 				<div>
