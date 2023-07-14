@@ -275,17 +275,11 @@ export class SourceControlGitService {
 		return this.git.fetch(params);
 	}
 
-	async pull(
-		options: { ffOnly: boolean; depth: number } = { ffOnly: true, depth: 1 },
-	): Promise<PullResult> {
+	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized (pull)');
 		}
 		const params = {};
-		if (options.depth > 0) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			Object.assign(params, { '--depth': options.depth });
-		}
 		if (options.ffOnly) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Object.assign(params, { '--ff-only': true });

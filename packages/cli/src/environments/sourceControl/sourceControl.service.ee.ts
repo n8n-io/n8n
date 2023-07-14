@@ -191,8 +191,15 @@ export class SourceControlService {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
-		await this.gitService.pull();
-		await this.gitService.resetBranch();
+		try {
+			await this.gitService.resetBranch();
+			await this.gitService.pull();
+		} catch (error) {
+			LoggerProxy.error(`Failed to reset workfolder: ${(error as Error).message}`);
+			throw new Error(
+				'Unable to fetch updates from git - your folder might be out of sync. Try reconnecting from the Source Control settings page.',
+			);
+		}
 		return;
 	}
 
@@ -216,8 +223,6 @@ export class SourceControlService {
 				preferLocalVersion: true,
 			})) as SourceControlledFile[];
 		}
-
-		// await this.unstage(); // just in case there are staged files
 
 		if (!options.force) {
 			const possibleConflicts = statusResult?.filter((file) => file.conflict);
@@ -269,7 +274,6 @@ export class SourceControlService {
 			await this.sourceControlExportService.exportVariablesToWorkFolder();
 		}
 
-		await this.gitService.resetBranch();
 		await this.gitService.stage(filesToBePushed, filesToBeDeleted);
 
 		for (let i = 0; i < statusResult.length; i++) {
