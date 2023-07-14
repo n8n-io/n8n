@@ -218,7 +218,7 @@ export class SourceControlController {
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
 			const result = (await this.sourceControlService.getStatus(
-				new SourceControlGetStatus(req.body),
+				new SourceControlGetStatus(req.query),
 			)) as SourceControlledFile[];
 			return result;
 		} catch (error) {
@@ -230,7 +230,7 @@ export class SourceControlController {
 	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
 	async status(req: SourceControlRequest.GetStatus) {
 		try {
-			return await this.sourceControlService.getStatus(new SourceControlGetStatus(req.body));
+			return await this.sourceControlService.getStatus(new SourceControlGetStatus(req.query));
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

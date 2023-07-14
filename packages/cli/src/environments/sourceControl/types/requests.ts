@@ -20,5 +20,5 @@ export declare namespace SourceControlRequest {
 	type Disconnect = AuthenticatedRequest<{}, {}, SourceControlDisconnect, {}>;
 	type PushWorkFolder = AuthenticatedRequest<{}, {}, SourceControlPushWorkFolder, {}>;
 	type PullWorkFolder = AuthenticatedRequest<{}, {}, SourceControlPullWorkFolder, {}>;
-	type GetStatus = AuthenticatedRequest<{}, {}, SourceControlGetStatus, {}>;
+	type GetStatus = AuthenticatedRequest<{}, {}, {}, SourceControlGetStatus>;
 }

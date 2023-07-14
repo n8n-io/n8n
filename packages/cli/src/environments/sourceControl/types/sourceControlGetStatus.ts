@@ -1,5 +1,12 @@
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
+function booleanFromString(value: string | boolean): boolean {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+	return value === 'true';
+}
+
 export class SourceControlGetStatus {
 	@IsString()
 	@IsOptional()
@@ -13,11 +20,13 @@ export class SourceControlGetStatus {
 	@IsOptional()
 	verbose: boolean;
 
-	constructor(sourceControlGetStatus?: SourceControlGetStatus) {
-		if (sourceControlGetStatus) {
-			this.direction = sourceControlGetStatus.direction || 'push';
-			this.preferLocalVersion = sourceControlGetStatus.preferLocalVersion || true;
-			this.verbose = sourceControlGetStatus.verbose || false;
-		}
+	constructor(values: {
+		direction: 'push' | 'pull';
+		preferLocalVersion: string | boolean;
+		verbose: string | boolean;
+	}) {
+		this.direction = values.direction || 'push';
+		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
+		this.verbose = booleanFromString(values.verbose) || false;
 	}
 }

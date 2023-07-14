@@ -193,7 +193,10 @@ describe('Source Control', () => {
 			hasThrown = true;
 		}
 		expect(hasThrown).toBeTruthy();
-		expect(sourceControlFoldersExistCheck([gitFolder, sshFolder])).toBe(true);
+		// create missing folders
+		expect(sourceControlFoldersExistCheck([gitFolder, sshFolder], true)).toBe(false);
+		// find folders this time
+		expect(sourceControlFoldersExistCheck([gitFolder, sshFolder], true)).toBe(true);
 		expect(accessSync(sshFolder, fsConstants.F_OK)).toBeUndefined();
 		expect(accessSync(gitFolder, fsConstants.F_OK)).toBeUndefined();
 	});
@@ -236,5 +239,18 @@ describe('Source Control', () => {
 			workflow_conflicts: 1,
 			workflow_updates: 3,
 		});
+	});
+
+	it('should class validate correct preferences', async () => {
+		const validPreferences = {
+			branchName: 'main',
+			repositoryUrl: 'git@example.com:n8ntest/n8n_testrepo.git',
+			branchReadOnly: false,
+			branchColor: '#5296D6',
+		};
+		const validationResult = await Container.get(
+			SourceControlPreferencesService,
+		).validateSourceControlPreferences(validPreferences);
+		expect(validationResult).toBeTruthy();
 	});
 });
