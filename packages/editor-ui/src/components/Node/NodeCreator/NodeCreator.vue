@@ -5,6 +5,7 @@
 			<div
 				v-if="active"
 				:class="$style.nodeCreator"
+				:style="nodeCreatorInlineStyle"
 				ref="nodeCreator"
 				v-click-outside="onClickOutside"
 				@dragover="onDragOver"
@@ -30,6 +31,7 @@ import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
+import { useUIStore } from '@/stores';
 
 export interface Props {
 	active?: boolean;
@@ -42,6 +44,7 @@ const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void;
 	(event: 'nodeTypeSelected', value: string[]): void;
 }>();
+const uiStore = useUIStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -54,6 +57,10 @@ const state = reactive({
 const showScrim = computed(() => useNodeCreatorStore().showScrim);
 
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
+
+const nodeCreatorInlineStyle = computed(() => {
+	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px` };
+});
 
 function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator

@@ -139,7 +139,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .nodeButtonsWrapper {
-	position: fixed;
+	position: absolute;
 	width: 150px;
 	height: 200px;
 	top: 0;
@@ -164,9 +164,9 @@ export default defineComponent({
 }
 
 .nodeCreatorButton {
-	position: fixed;
+	position: absolute;
 	text-align: center;
-	top: calc(#{$header-height} + var(--spacing-s));
+	top: var(--spacing-s);
 	right: var(--spacing-s);
 	pointer-events: all !important;
 
