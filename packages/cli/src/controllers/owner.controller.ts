@@ -128,7 +128,7 @@ export class OwnerController {
 	@Post('/dismiss-banner')
 	async dismissBanner(req: OwnerRequest.Post) {
 		const bannerName = 'banner' in req.body ? (req.body.banner as string) : '';
-		const response = await this.settingsRepository.dismissNewBanner({ bannerName });
+		const response = await this.settingsRepository.dismissBanner({ bannerName });
 		return response;
 	}
 }

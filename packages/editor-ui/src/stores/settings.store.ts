@@ -172,7 +172,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
 		},
 		permanentlyDismissedBanners(): string[] {
-			return this.settings.banners?.permanentlyDismissed ?? [];
+			return this.settings.banners?.dismissed ?? [];
 		},
 		isBelowUserQuota(): boolean {
 			const userStore = useUsersStore();
@@ -224,9 +224,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
 
-			const isV1BannerDismissedPermanently = settings.banners.permanentlyDismissed.includes(
-				BANNERS.V1,
-			);
+			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes(BANNERS.V1);
 			if (
 				!isV1BannerDismissedPermanently &&
 				useRootStore().versionCli.startsWith('1.') &&

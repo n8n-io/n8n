@@ -2163,6 +2163,6 @@ export interface IN8nUISettings {
 		limit: number;
 	};
 	banners: {
-		permanentlyDismissed: string[];
+		dismissed: string[];
 	};
 }

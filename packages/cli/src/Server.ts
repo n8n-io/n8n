@@ -320,7 +320,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			banners: {
-				permanentlyDismissed: [],
+				dismissed: [],
 			},
 		};
 	}
@@ -422,7 +422,7 @@ export class Server extends AbstractServer {
 			// not yet in DB
 		}
 
-		this.frontendSettings.banners.permanentlyDismissed = dismissedBanners;
+		this.frontendSettings.banners.dismissed = dismissedBanners;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
