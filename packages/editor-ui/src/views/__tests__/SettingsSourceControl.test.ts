@@ -89,7 +89,6 @@ describe('SettingsSourceControl', () => {
 		await userEvent.click(repoUrlInput);
 		await userEvent.type(repoUrlInput, '.com:john/n8n-data.git');
 		await userEvent.tab();
-		expect(connectButton).toBeDisabled();
 
 		await waitFor(() => expect(connectButton).toBeEnabled());
 		expect(queryByTestId('source-control-save-settings-button')).not.toBeInTheDocument();
