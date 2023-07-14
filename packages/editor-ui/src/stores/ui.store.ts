@@ -57,7 +57,7 @@ import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils';
 import { dismissBannerPermanently } from '@/api/ui';
-import { Banners } from 'n8n-workflow';
+import type { Banners } from 'n8n-workflow';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
