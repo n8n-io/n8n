@@ -121,17 +121,17 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 740px; top: 360px;');
+			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 640px; top: 260px;');
+			.should('have.attr', 'style', 'left: 640px; top: 220px;');
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 740px; top: 360px;');
+			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
 	it('should undo/redo deleting a connection by pressing delete button', () => {
@@ -281,7 +281,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.first()
-			.should('have.attr', 'style', 'left: 420px; top: 260px;');
+			.should('have.attr', 'style', 'left: 420px; top: 220px;');
 		// Third undo: Should enable last node
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -294,7 +294,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.first()
-			.should('have.attr', 'style', 'left: 540px; top: 400px;');
+			.should('have.attr', 'style', 'left: 540px; top: 360px;');
 		// Third redo: Should delete the Set node
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);

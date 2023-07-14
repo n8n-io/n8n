@@ -80,7 +80,7 @@ type ExceptionPaths = {
 	'nodes.exclude': string[] | undefined;
 	'nodes.include': string[] | undefined;
 	'userManagement.isInstanceOwnerSetUp': boolean;
-	'ui.banners.v1.dismissed': boolean;
+	'ui.banners.dismissed': string[] | undefined;
 };
 
 // -----------------------------------
