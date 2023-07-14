@@ -12,6 +12,10 @@ import {
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import path from 'path';
 
+export function stringContainsExpression(testString: string): boolean {
+	return /^=.*\{\{.*\}\}/.test(testString);
+}
+
 export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {
 	return path.join(workflowExportFolder, `${workflowId}.json`);
 }
