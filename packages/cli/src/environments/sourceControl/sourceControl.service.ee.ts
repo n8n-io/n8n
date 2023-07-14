@@ -156,13 +156,12 @@ export class SourceControlService {
 				} catch (fileError) {
 					LoggerProxy.error(`Failed to create initial commit: ${(fileError as Error).message}`);
 				}
-			} else {
-				await this.sourceControlPreferencesService.setPreferences({
-					branchName: '',
-					connected: true,
-				});
 			}
 		}
+		await this.sourceControlPreferencesService.setPreferences({
+			branchName: getBranchesResult.currentBranch,
+			connected: true,
+		});
 		return getBranchesResult;
 	}
 
