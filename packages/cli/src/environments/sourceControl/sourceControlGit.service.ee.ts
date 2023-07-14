@@ -276,7 +276,7 @@ export class SourceControlGitService {
 	}
 
 	async pull(
-		options: { ffOnly: boolean; depth: number } = { ffOnly: false, depth: 1 },
+		options: { ffOnly: boolean; depth: number } = { ffOnly: true, depth: 1 },
 	): Promise<PullResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized (pull)');
@@ -288,7 +288,7 @@ export class SourceControlGitService {
 		}
 		if (options.ffOnly) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			Object.assign(params, { '--ff-only': null });
+			Object.assign(params, { '--ff-only': true });
 		}
 		return this.git.pull(params);
 	}

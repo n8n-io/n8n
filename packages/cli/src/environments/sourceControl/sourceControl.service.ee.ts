@@ -193,7 +193,7 @@ export class SourceControlService {
 			await this.initGitService();
 		}
 		await this.sourceControlExportService.cleanWorkFolder();
-		await this.gitService.fetch();
+		await this.gitService.pull();
 		await this.gitService.resetBranch();
 		return;
 	}
