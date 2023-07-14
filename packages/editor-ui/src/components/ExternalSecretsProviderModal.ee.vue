@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
@@ -162,7 +162,9 @@ async function save() {
 	await testConnection();
 
 	if (previousState === 'initializing' && connectionState.value === 'tested') {
-		eventBus.emit('connect', true);
+		setTimeout(() => {
+			eventBus.emit('connect', true);
+		}, 100);
 	}
 
 	saving.value = false;
