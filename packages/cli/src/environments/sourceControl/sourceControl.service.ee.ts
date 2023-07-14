@@ -416,10 +416,16 @@ export class SourceControlService {
 			const mismatchingIds = wfRemoteVersionIds.find(
 				(remote) => remote.id === local.id && remote.versionId !== local.versionId,
 			);
+			let name = (options?.preferLocalVersion ? local?.name : mismatchingIds?.name) ?? 'Workflow';
+			if (local.name && mismatchingIds?.name && local.name !== mismatchingIds.name) {
+				name = options?.preferLocalVersion
+					? `${local.name} (Remote: ${mismatchingIds.name})`
+					: (name = `${mismatchingIds.name} (Local: ${local.name})`);
+			}
 			if (mismatchingIds) {
 				wfModifiedInEither.push({
 					...local,
-					name: options.preferLocalVersion ? local.name : mismatchingIds.name,
+					name,
 					versionId: options.preferLocalVersion ? local.versionId : mismatchingIds.versionId,
 					localId: local.versionId,
 					remoteId: mismatchingIds.versionId,

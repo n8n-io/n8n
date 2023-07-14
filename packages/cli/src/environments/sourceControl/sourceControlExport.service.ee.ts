@@ -20,6 +20,7 @@ import {
 	getVariablesPath,
 	getWorkflowExportPath,
 	sourceControlFoldersExistCheck,
+	stringContainsExpression,
 } from './sourceControlHelper.ee';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
@@ -212,10 +213,7 @@ export class SourceControlExportService {
 				} else if (typeof data[key] === 'object') {
 					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
 				} else if (typeof data[key] === 'string') {
-					data[key] =
-						(data[key] as string)?.startsWith('={{') && (data[key] as string)?.includes('$secret')
-							? data[key]
-							: '';
+					data[key] = stringContainsExpression(data[key] as string) ? data[key] : '';
 				} else if (typeof data[key] === 'number') {
 					// TODO: leaving numbers in for now, but maybe we should remove them
 					continue;
@@ -244,11 +242,6 @@ export class SourceControlExportService {
 				missingIds = credentialIds.filter(
 					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
 				);
-				// throw Error(
-				// 	`Failed to export credentials, could not find credentials with Id(s): ${missingIds.join(
-				// 		',',
-				// 	)}`,
-				// );
 			}
 			const encryptionKey = await UserSettings.getEncryptionKey();
 			await Promise.all(
