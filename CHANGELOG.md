@@ -1,3 +1,12 @@
+## [0.236.2](https://github.com/n8n-io/n8n/compare/n8n@0.236.1...n8n@0.236.2) (2023-07-14)
+
+
+### Bug Fixes
+
+* **core:** Handle all uncaught exception, not just the ones from Axios ([#6666](https://github.com/n8n-io/n8n/issues/6666)) ([97ebd97](https://github.com/n8n-io/n8n/commit/97ebd9760a7f04ad571b709dfeb16225964cee34))
+
+
+
 ## [0.236.1](https://github.com/n8n-io/n8n/compare/n8n@0.236.0...n8n@0.236.1) (2023-07-12)
 
 
