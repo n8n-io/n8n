@@ -18,7 +18,7 @@
 						:disabled="item.disabled"
 						:divided="item.divided"
 					>
-						<div :class="getItemClasses(item)" :data-test-id="`workflow-menu-item-${item.id}`">
+						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
 								<n8n-icon :icon="item.icon" :size="iconSize" />
 							</span>
@@ -65,6 +65,10 @@ export default defineComponent({
 		ElDropdownMenu,
 		ElDropdownItem,
 		N8nIcon,
+	},
+	data() {
+		const testIdPrefix = this.$attrs['data-test-id'];
+		return { testIdPrefix };
 	},
 	props: {
 		items: {

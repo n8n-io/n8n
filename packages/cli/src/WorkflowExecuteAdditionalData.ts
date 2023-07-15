@@ -70,7 +70,7 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
-import { ExecutionRepository } from './databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -1179,6 +1179,7 @@ export async function getBase(
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
 		timezone,
+		instanceBaseUrl: urlBaseWebhook,
 		webhookBaseUrl,
 		webhookWaitingBaseUrl,
 		webhookTestBaseUrl,

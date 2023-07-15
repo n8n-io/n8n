@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount, ref } from 'vue';
+import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
 import { useUIStore, useSourceControlStore } from '@/stores';
@@ -17,6 +17,12 @@ const sourceControlDocsSetupUrl = computed(() =>
 	locale.baseText('settings.sourceControl.docs.setup.url'),
 );
 const isConnected = ref(false);
+const branchNameOptions = computed(() =>
+	sourceControlStore.preferences.branches.map((branch) => ({
+		value: branch,
+		label: branch,
+	})),
+);
 
 const onConnect = async () => {
 	loadingService.startLoading();
@@ -95,17 +101,23 @@ const goToUpgrade = () => {
 	uiStore.goToUpgrade('source-control', 'upgrade-source-control');
 };
 
-onBeforeMount(() => {
+const initialize = async () => {
+	await sourceControlStore.getPreferences();
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
 		void sourceControlStore.getBranches();
 	}
+};
+
+onMounted(async () => {
+	await initialize();
 });
 
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
 	authorName: false,
 	authorEmail: false,
+	branchName: false,
 });
 
 function onValidate(key: string, value: boolean) {
@@ -135,6 +147,8 @@ const authorEmailValidationRules: Array<Rule | RuleGroup> = [
 		},
 	},
 ];
+
+const branchNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
 const validForConnection = computed(
 	() =>
@@ -216,7 +230,7 @@ const refreshBranches = async () => {
 						@validate="(value) => onValidate('repoUrl', value)"
 					/>
 					<n8n-button
-						class="ml-2xs"
+						:class="$style.disconnectButton"
 						type="tertiary"
 						v-if="isConnected"
 						@click="onDisconnect"
@@ -303,21 +317,20 @@ const refreshBranches = async () => {
 					}}</n8n-heading>
 					<label>{{ locale.baseText('settings.sourceControl.branches') }}</label>
 					<div :class="$style.branchSelection">
-						<n8n-select
-							:value="sourceControlStore.preferences.branchName"
+						<n8n-form-input
+							label
+							type="select"
+							id="branchName"
+							name="branchName"
 							class="mb-s"
-							size="medium"
-							filterable
-							@input="onSelect"
 							data-test-id="source-control-branch-select"
-						>
-							<n8n-option
-								v-for="b in sourceControlStore.preferences.branches"
-								:key="b"
-								:value="b"
-								:label="b"
-							/>
-						</n8n-select>
+							validateOnBlur
+							:validationRules="branchNameValidationRules"
+							:options="branchNameOptions"
+							:value="sourceControlStore.preferences.branchName"
+							@validate="(value) => onValidate('branchName', value)"
+							@input="onSelect"
+						/>
 						<n8n-tooltip placement="top">
 							<template #content>
 								<span>
@@ -441,6 +454,11 @@ const refreshBranches = async () => {
 	margin: calc(var(--spacing-2xs) * -1) 0 var(--spacing-2xs);
 }
 
+.disconnectButton {
+	margin: 0 0 0 var(--spacing-2xs);
+	height: 40px;
+}
+
 .actionBox {
 	margin: var(--spacing-2xl) 0 0;
 }
@@ -461,6 +479,14 @@ const refreshBranches = async () => {
 
 .branchSelection {
 	display: flex;
+
+	> div:first-child {
+		flex: 1;
+
+		input {
+			height: 36px;
+		}
+	}
 
 	button.refreshBranches {
 		height: 36px;

@@ -154,7 +154,7 @@ export class NDV extends BasePage {
 		switchOutputBranch: (name: string) => {
 			this.getters.outputBranches().get('span').contains(name).click();
 		},
-		switchIntputBranch: (name: string) => {
+		switchInputBranch: (name: string) => {
 			this.getters.inputBranches().get('span').contains(name).click();
 		},
 		setRLCValue: (paramName: string, value: string) => {

@@ -100,9 +100,8 @@ import pick from 'lodash/pick';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
-import type { RequestCallback, RequiredUriUrl } from 'request';
-import type { OptionsWithUri, OptionsWithUrl, RequestPromiseOptions } from 'request-promise-native';
-import requestPromise from 'request-promise-native';
+import type { OptionsWithUrl } from 'request';
+import type { OptionsWithUri, RequestPromiseOptions } from 'request-promise-native';
 import FileType from 'file-type';
 import { lookup, extension } from 'mime-types';
 import type { IncomingHttpHeaders } from 'http';
@@ -132,6 +131,7 @@ import {
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getUserN8nFolderPath } from './UserSettings';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -144,10 +144,6 @@ axios.defaults.paramsSerializer = (params) => {
 	}
 	return stringify(params, { arrayFormat: 'indices' });
 };
-
-const requestPromiseWithDefaults = requestPromise.defaults({
-	timeout: 300000, // 5 minutes
-});
 
 const pushFormDataValue = (form: FormData, key: string, value: any) => {
 	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
@@ -599,21 +595,12 @@ type ConfigObject = {
 };
 
 export async function proxyRequestToAxios(
-	workflow: Workflow,
-	additionalData: IWorkflowExecuteAdditionalData,
-	node: INode,
-	uriOrObject: string | IDataObject,
-	options?: IDataObject,
+	workflow: Workflow | undefined,
+	additionalData: IWorkflowExecuteAdditionalData | undefined,
+	node: INode | undefined,
+	uriOrObject: string | object,
+	options?: object,
 ): Promise<any> {
-	// Check if there's a better way of getting this config here
-	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
-		return requestPromiseWithDefaults.call(
-			null,
-			uriOrObject as unknown as RequiredUriUrl & RequestPromiseOptions,
-			options as unknown as RequestCallback,
-		);
-	}
-
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
@@ -670,7 +657,7 @@ export async function proxyRequestToAxios(
 					body = undefined;
 				}
 			}
-			await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
+			await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
 			return {
 				body,
 				headers: response.headers,
@@ -687,7 +674,7 @@ export async function proxyRequestToAxios(
 					body = undefined;
 				}
 			}
-			await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
+			await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
 			return body;
 		}
 	} catch (error) {
@@ -1077,13 +1064,13 @@ async function prepareBinaryData(
 /**
  * Makes a request using OAuth data for authentication
  *
- * @param {(OptionsWithUri | requestPromise.RequestPromiseOptions)} requestOptions
+ * @param {(OptionsWithUri | RequestPromiseOptions)} requestOptions
  *
  */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
@@ -1314,11 +1301,7 @@ export async function requestOAuth2(
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions:
-		| OptionsWithUrl
-		| OptionsWithUri
-		| requestPromise.RequestPromiseOptions
-		| IHttpRequestOptions,
+	requestOptions: OptionsWithUrl | OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
 	isN8nRequest = false,
 ) {
 	const credentials = await this.getCredentials(credentialsType);
@@ -1572,7 +1555,7 @@ export function normalizeItems(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+	requestOptions: OptionsWithUri | RequestPromiseOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -1985,7 +1968,6 @@ const validateValueAgainstSchema = (
 			}' [item ${itemIndex}]`,
 			{
 				description: validationResult.errorMessage,
-				failExecution: true,
 				runIndex,
 				itemIndex,
 				nodeCause: node.name,
@@ -2187,6 +2169,7 @@ const getCommonWorkflowFunctions = (
 	getWorkflowStaticData: (type) => workflow.getStaticData(type, node),
 
 	getRestApiUrl: () => additionalData.restApiUrl,
+	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getTimezone: () => getTimezone(workflow, additionalData),
 });
 
@@ -2373,7 +2356,7 @@ const getRequestHelperFunctions = (
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any> {
 			return requestOAuth1.call(this, credentialsType, requestOptions);
 		},
@@ -2381,7 +2364,7 @@ const getRequestHelperFunctions = (
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
 			return requestOAuth2.call(
@@ -2408,6 +2391,9 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				: error;
 		}
 		return createReadStream(filePath);
+	},
+	getStoragePath() {
+		return path.join(getUserN8nFolderPath(), `storage/${node.type}`);
 	},
 });
 
@@ -2878,7 +2864,9 @@ export function getExecuteSingleFunctions(
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
 	return {
 		helpers: {
-			request: requestPromiseWithDefaults,
+			request: async (uriOrObject: string | object, options?: object) => {
+				return proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
+			},
 		},
 	};
 }

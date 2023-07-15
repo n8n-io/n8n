@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,

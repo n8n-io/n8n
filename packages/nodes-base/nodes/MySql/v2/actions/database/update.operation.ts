@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
@@ -50,8 +54,9 @@ const properties: INodeProperties[] = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
@@ -97,8 +102,9 @@ const properties: INodeProperties[] = [
 						displayName: 'Column',
 						name: 'column',
 						type: 'options',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
 							loadOptionsDependsOn: ['schema.value', 'table.value'],

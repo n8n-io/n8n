@@ -1,4 +1,4 @@
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
+import { INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
 import {
 	CredentialsModal,
 	CredentialsPage,
@@ -28,47 +28,12 @@ const workflowPage = new WorkflowPage();
 const workflowSharingModal = new WorkflowSharingModal();
 const ndv = new NDV();
 
-const instanceOwner = {
-	email: `${DEFAULT_USER_EMAIL}one`,
-	password: DEFAULT_USER_PASSWORD,
-	firstName: 'User',
-	lastName: 'U1',
-};
-
-const users = [
-	{
-		email: `${DEFAULT_USER_EMAIL}two`,
-		password: DEFAULT_USER_PASSWORD,
-		firstName: 'User',
-		lastName: 'U2',
-	},
-	{
-		email: `${DEFAULT_USER_EMAIL}three`,
-		password: DEFAULT_USER_PASSWORD,
-		firstName: 'User',
-		lastName: 'U3',
-	},
-];
-
-describe('Sharing', () => {
-	before(() => {
-		cy.setupOwner(instanceOwner);
-	});
-
-	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-			return false;
-		});
-	});
-
-	it('should invite User U2 and User U3 to instance', () => {
-		cy.inviteUsers({ instanceOwner, users });
-	});
+describe('Sharing', { disableAutoLogin: true }, () => {
+	before(() => cy.enableFeature('sharing', true));
 
 	let workflowW2Url = '';
 	it('should create C1, W1, W2, share W1 with U3, as U2', () => {
-		cy.signin(users[0]);
+		cy.signin(INSTANCE_MEMBERS[0]);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
@@ -87,7 +52,7 @@ describe('Sharing', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.openShareModal();
-		workflowSharingModal.actions.addUser(users[1].email);
+		workflowSharingModal.actions.addUser(INSTANCE_MEMBERS[1].email);
 		workflowSharingModal.actions.save();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
@@ -100,7 +65,7 @@ describe('Sharing', () => {
 	});
 
 	it('should create C2, share C2 with U1 and U2, as U3', () => {
-		cy.signin(users[1]);
+		cy.signin(INSTANCE_MEMBERS[1]);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
@@ -109,14 +74,14 @@ describe('Sharing', () => {
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 		credentialsModal.actions.setName('Credential C2');
 		credentialsModal.actions.changeTab('Sharing');
-		credentialsModal.actions.addUser(instanceOwner.email);
-		credentialsModal.actions.addUser(users[0].email);
+		credentialsModal.actions.addUser(INSTANCE_OWNER.email);
+		credentialsModal.actions.addUser(INSTANCE_MEMBERS[0].email);
 		credentialsModal.actions.save();
 		credentialsModal.actions.close();
 	});
 
 	it('should open W1, add node using C2 as U3', () => {
-		cy.signin(users[1]);
+		cy.signin(INSTANCE_MEMBERS[1]);
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 1);
@@ -136,7 +101,7 @@ describe('Sharing', () => {
 	});
 
 	it('should not have access to W2, as U3', () => {
-		cy.signin(users[1]);
+		cy.signin(INSTANCE_MEMBERS[1]);
 
 		cy.visit(workflowW2Url);
 		cy.waitForLoad();
@@ -145,7 +110,7 @@ describe('Sharing', () => {
 	});
 
 	it('should have access to W1, W2, as U1', () => {
-		cy.signin(instanceOwner);
+		cy.signin(INSTANCE_OWNER);
 
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.workflowCards().should('have.length', 2);
@@ -165,7 +130,7 @@ describe('Sharing', () => {
 	});
 
 	it('should automatically test C2 when opened by U2 sharee', () => {
-		cy.signin(users[0]);
+		cy.signin(INSTANCE_MEMBERS[0]);
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.credentialCard('Credential C2').click();

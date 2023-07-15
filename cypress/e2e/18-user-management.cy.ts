@@ -1,6 +1,5 @@
-import { MainSidebar } from './../pages/sidebar/main-sidebar';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { SettingsSidebar, SettingsUsersPage, WorkflowPage, WorkflowsPage } from '../pages';
+import { INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
+import { SettingsUsersPage, WorkflowPage } from '../pages';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 
 /**
@@ -15,28 +14,6 @@ import { PersonalSettingsPage } from '../pages/settings-personal';
  * C2 - Credential owned by User C, shared with User A and User B
  */
 
-const instanceOwner = {
-	email: `${DEFAULT_USER_EMAIL}A`,
-	password: DEFAULT_USER_PASSWORD,
-	firstName: 'User',
-	lastName: 'A',
-};
-
-const users = [
-	{
-		email: `${DEFAULT_USER_EMAIL}B`,
-		password: DEFAULT_USER_PASSWORD,
-		firstName: 'User',
-		lastName: 'B',
-	},
-	{
-		email: `${DEFAULT_USER_EMAIL}C`,
-		password: DEFAULT_USER_PASSWORD,
-		firstName: 'User',
-		lastName: 'C',
-	},
-];
-
 const updatedPersonalData = {
 	newFirstName: 'Something',
 	newLastName: 'Else',
@@ -49,47 +26,38 @@ const usersSettingsPage = new SettingsUsersPage();
 const workflowPage = new WorkflowPage();
 const personalSettingsPage = new PersonalSettingsPage();
 
-describe('User Management', () => {
-	before(() => {
-		cy.setupOwner(instanceOwner);
-	});
-
-	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-			return false;
-		});
-	});
-
-	it(`should invite User B and User C to instance`, () => {
-		cy.inviteUsers({ instanceOwner, users });
-	});
+describe('User Management', { disableAutoLogin: true }, () => {
+	before(() => cy.enableFeature('sharing'));
 
 	it('should prevent non-owners to access UM settings', () => {
-		usersSettingsPage.actions.loginAndVisit(users[0].email, users[0].password, false);
+		usersSettingsPage.actions.loginAndVisit(
+			INSTANCE_MEMBERS[0].email,
+			INSTANCE_MEMBERS[0].password,
+			false,
+		);
 	});
 
 	it('should allow instance owner to access UM settings', () => {
-		usersSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password, true);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 	});
 
 	it('should properly render UM settings page for instance owners', () => {
-		usersSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password, true);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 		// All items in user list should be there
 		usersSettingsPage.getters.userListItems().should('have.length', 3);
 		// List item for current user should have the `Owner` badge
 		usersSettingsPage.getters
-			.userItem(instanceOwner.email)
+			.userItem(INSTANCE_OWNER.email)
 			.find('.n8n-badge:contains("Owner")')
 			.should('exist');
 		// Other users list items should contain action pop-up list
-		usersSettingsPage.getters.userActionsToggle(users[0].email).should('exist');
-		usersSettingsPage.getters.userActionsToggle(users[1].email).should('exist');
+		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[0].email).should('exist');
+		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[1].email).should('exist');
 	});
 
 	it('should delete user and their data', () => {
-		usersSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password, true);
-		usersSettingsPage.actions.opedDeleteDialog(users[0].email);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
+		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[0].email);
 		usersSettingsPage.getters.deleteDataRadioButton().realClick();
 		usersSettingsPage.getters.deleteDataInput().type('delete all data');
 		usersSettingsPage.getters.deleteUserButton().realClick();
@@ -97,8 +65,8 @@ describe('User Management', () => {
 	});
 
 	it('should delete user and transfer their data', () => {
-		usersSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password, true);
-		usersSettingsPage.actions.opedDeleteDialog(users[1].email);
+		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
+		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[1].email);
 		usersSettingsPage.getters.transferDataRadioButton().realClick();
 		usersSettingsPage.getters.userSelectDropDown().realClick();
 		usersSettingsPage.getters.userSelectOptions().first().realClick();
@@ -107,7 +75,7 @@ describe('User Management', () => {
 	});
 
 	it(`should allow user to change their personal data`, () => {
-		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.actions.updateFirstAndLastName(
 			updatedPersonalData.newFirstName,
 			updatedPersonalData.newLastName,
@@ -119,14 +87,14 @@ describe('User Management', () => {
 	});
 
 	it(`shouldn't allow user to set weak password`, () => {
-		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		for (let weakPass of updatedPersonalData.invalidPasswords) {
-			personalSettingsPage.actions.tryToSetWeakPassword(instanceOwner.password, weakPass);
+			personalSettingsPage.actions.tryToSetWeakPassword(INSTANCE_OWNER.password, weakPass);
 		}
 	});
 
 	it(`shouldn't allow user to change password if old password is wrong`, () => {
-		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.actions.updatePassword('iCannotRemember', updatedPersonalData.newPassword);
 		workflowPage.getters
 			.errorToast()
@@ -135,21 +103,21 @@ describe('User Management', () => {
 	});
 
 	it(`should change current user password`, () => {
-		personalSettingsPage.actions.loginAndVisit(instanceOwner.email, instanceOwner.password);
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
 		personalSettingsPage.actions.updatePassword(
-			instanceOwner.password,
+			INSTANCE_OWNER.password,
 			updatedPersonalData.newPassword,
 		);
 		workflowPage.getters.successToast().should('contain', 'Password updated');
 		personalSettingsPage.actions.loginWithNewData(
-			instanceOwner.email,
+			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
 	});
 
 	it(`shouldn't allow users to set invalid email`, () => {
 		personalSettingsPage.actions.loginAndVisit(
-			instanceOwner.email,
+			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
 		// try without @ part
@@ -160,7 +128,7 @@ describe('User Management', () => {
 
 	it(`should change user email`, () => {
 		personalSettingsPage.actions.loginAndVisit(
-			instanceOwner.email,
+			INSTANCE_OWNER.email,
 			updatedPersonalData.newPassword,
 		);
 		personalSettingsPage.actions.updateEmail(updatedPersonalData.newEmail);

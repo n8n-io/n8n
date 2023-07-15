@@ -18,12 +18,13 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: [1, 2, 2.1, 2.2],
+		version: [1, 2, 2.1, 2.2, 2.3],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'main'],
 		inputNames: ['Input A', 'Input B'],
+		requiredInputs: 1,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
 		outputNames: ['In A only', 'Same', 'Different', 'In B only'],

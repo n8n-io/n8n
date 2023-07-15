@@ -16,10 +16,6 @@ const WorkflowPage = new WorkflowPageClass();
 const WorkflowPages = new WorkflowsPageClass();
 
 describe('Workflow Actions', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 	});
