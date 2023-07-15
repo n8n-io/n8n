@@ -246,8 +246,11 @@ export default defineComponent({
 	}
 }
 
+.versionContainer {
+	padding: var(--spacing-xs) var(--spacing-l);
+}
+
 @media screen and (max-height: 420px) {
-	.updatesSubmenu,
 	.versionContainer {
 		display: none;
 	}

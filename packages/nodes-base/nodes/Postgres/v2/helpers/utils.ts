@@ -14,8 +14,6 @@ import type {
 	WhereClause,
 } from './interfaces';
 
-const ENUM_VALUES_REGEX = /\{(.+?)\}/gm;
-
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
 		return [{ json: data }];

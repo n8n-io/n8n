@@ -2,6 +2,35 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.232.0
+
+### What changed?
+
+Due to Node.js/OpenSSL upgrade, the following crypto algorithms are not supported anymore.
+
+- RSA-MD4
+- RSA-MDC2
+- md4
+- md4WithRSAEncryption
+- mdc2
+- mdc2WithRSA
+
+### When is action necessary?
+
+If you're using any of the above mentioned crypto algorithms in Crypto node in any of your workflows, then please update the algorithm property in the node to one of the supported values.
+
+### What changed?
+
+The `LoneScale List` node has been renamed to `LoneScale`.
+
+### When is action necessary?
+
+If you have used the `LoneScale List` node in any of your workflows.
+
+### How to upgrade:
+
+Update any workflows using `LoneScale List` to use the updated node.
+
 ## 0.226.0
 
 ### What changed?

@@ -44,12 +44,12 @@ export class VersionControlPreferences {
 	): VersionControlPreferences {
 		return new VersionControlPreferences({
 			connected: preferences.connected ?? defaultPreferences.connected,
-			authorEmail: preferences.authorEmail ?? defaultPreferences.authorEmail,
-			authorName: preferences.authorName ?? defaultPreferences.authorName,
-			branchName: preferences.branchName ?? defaultPreferences.branchName,
-			branchColor: preferences.branchColor ?? defaultPreferences.branchColor,
-			branchReadOnly: preferences.branchReadOnly ?? defaultPreferences.branchReadOnly,
 			repositoryUrl: preferences.repositoryUrl ?? defaultPreferences.repositoryUrl,
+			authorName: preferences.authorName ?? defaultPreferences.authorName,
+			authorEmail: preferences.authorEmail ?? defaultPreferences.authorEmail,
+			branchName: preferences.branchName ?? defaultPreferences.branchName,
+			branchReadOnly: preferences.branchReadOnly ?? defaultPreferences.branchReadOnly,
+			branchColor: preferences.branchColor ?? defaultPreferences.branchColor,
 		});
 	}
 }

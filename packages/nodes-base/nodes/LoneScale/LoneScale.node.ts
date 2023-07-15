@@ -10,17 +10,17 @@ import type {
 
 import { lonescaleApiRequest } from './GenericFunctions';
 
-export class LoneScaleList implements INodeType {
+export class LoneScale implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LoneScale List',
-		name: 'loneScaleList',
+		displayName: 'LoneScale',
+		name: 'loneScale',
 		group: ['transform'],
 		icon: 'file:lonescale-logo.svg',
 		version: 1,
 		description: 'Create List, add / delete items',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		defaults: {
-			name: 'LoneScale List',
+			name: 'LoneScale',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -209,7 +209,6 @@ export class LoneScaleList implements INodeType {
 						type: 'string',
 						placeholder: 'name@email.com',
 						default: '',
-						description: 'Contact email',
 					},
 					{
 						displayName: 'Company Name',
@@ -379,6 +378,7 @@ export class LoneScaleList implements INodeType {
 
 						responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
 						const executionData = this.helpers.constructExecutionMetaData(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
@@ -459,6 +459,7 @@ export class LoneScaleList implements INodeType {
 							body,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);

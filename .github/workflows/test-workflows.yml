@@ -11,9 +11,6 @@ jobs:
 
     timeout-minutes: 30
 
-    strategy:
-      matrix:
-        node-version: [16.x]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -28,12 +25,11 @@ jobs:
 
       - uses: pnpm/action-setup@v2.2.4
         with:
-          version: 8.1.0
+          version: 8.6.1
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 18.x
           cache: 'pnpm'
           cache-dependency-path: 'n8n/pnpm-lock.yaml'
 
@@ -73,8 +69,9 @@ jobs:
         shell: bash
 
       - name: Run tests
-        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --shortOutput --concurrency=16 --compare=test-workflows/snapshots
+        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --githubWorkflow --shortOutput --concurrency=16 --compare=test-workflows/snapshots
         shell: bash
+        id: tests
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
           SKIP_STATISTICS_EVENTS: true
@@ -102,4 +99,7 @@ jobs:
           status: ${{ job.status }}
           channel: '#updates-build-alerts'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Test workflows failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          message: |
+            🛑 Workflow test failed 🛑:
+            ${{ steps.tests.outputs.slackMessage}}
+            Sent by *Github Action*: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test workflow>
