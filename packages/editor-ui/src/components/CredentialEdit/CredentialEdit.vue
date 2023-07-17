@@ -670,6 +670,9 @@ export default defineComponent({
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		onDataChange({ name, value }: { name: string; value: any }) {
+			// disregard default value being set on component mount
+			if (this.credentialData[name] === value) return;
+
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
@@ -724,6 +727,7 @@ export default defineComponent({
 		},
 
 		async retestCredential() {
+			console.log('[retestCredential]');
 			if (!this.isCredentialTestable) {
 				this.authError = '';
 				this.testedSuccessfully = false;
@@ -750,6 +754,7 @@ export default defineComponent({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
+			console.log('[testCredential]');
 			const result = await this.credentialsStore.testCredential(credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
