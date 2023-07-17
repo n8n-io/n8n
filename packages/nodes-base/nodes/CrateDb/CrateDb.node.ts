@@ -373,7 +373,7 @@ export class CrateDb implements INodeType {
 							returning,
 					);
 				}
-				const _updateItems = await db.multi(pgp.helpers.concat(queries));
+				await db.multi(pgp.helpers.concat(queries));
 				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns));
 			}
 		} else {

@@ -1,4 +1,4 @@
-import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 import nock from 'nock';
 

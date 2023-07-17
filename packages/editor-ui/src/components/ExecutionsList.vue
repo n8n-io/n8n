@@ -1201,7 +1201,7 @@ export default defineComponent({
 }
 
 .link {
-	color: var(--color-text-light);
+	color: var(--color-text-base);
 	text-decoration: underline;
 }
 </style>

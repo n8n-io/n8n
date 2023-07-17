@@ -558,6 +558,14 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add options',
 		options: [
 			{
+				displayName: 'Include Link To Workflow',
+				name: 'includeLinkToWorkflow',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending Slack messages.',
+			},
+			{
 				displayName: 'Custom Bot Profile Photo',
 				name: 'botProfile',
 				type: 'fixedCollection',

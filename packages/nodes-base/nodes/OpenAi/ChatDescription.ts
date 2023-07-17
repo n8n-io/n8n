@@ -386,7 +386,7 @@ const sharedOperations: INodeProperties[] = [
 				name: 'maxTokens',
 				default: 16,
 				description:
-					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 4096).',
+					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
 				type: 'number',
 				displayOptions: {
 					show: {
@@ -394,7 +394,7 @@ const sharedOperations: INodeProperties[] = [
 					},
 				},
 				typeOptions: {
-					maxValue: 4096,
+					maxValue: 32768,
 				},
 				routing: {
 					send: {
