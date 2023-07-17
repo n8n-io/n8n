@@ -12,7 +12,7 @@ import { NodeTypes } from '@/NodeTypes';
 import type { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { ExecutionRepository } from './databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 @Service()
 export class WaitingWebhooks {

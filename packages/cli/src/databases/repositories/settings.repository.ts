@@ -9,6 +9,24 @@ export class SettingsRepository extends Repository<Settings> {
 		super(Settings, dataSource.manager);
 	}
 
+	async dismissBanner({ bannerName }: { bannerName: string }): Promise<{ success: boolean }> {
+		const dismissedBannersSetting = await this.findOneBy({ key: 'ui.banners.dismissed' });
+
+		if (dismissedBannersSetting) {
+			try {
+				const dismissedBanners = JSON.parse(dismissedBannersSetting.value) as string[];
+				await this.saveSetting(
+					'ui.banners.dismissed',
+					JSON.stringify([...dismissedBanners, bannerName]),
+				);
+				return { success: true };
+			} catch (error) {
+				return { success: false };
+			}
+		}
+		return { success: false };
+	}
+
 	async saveSetting(key: string, value: string, loadOnStartup = true) {
 		const setting = await this.findOneBy({ key });
 
@@ -18,6 +36,6 @@ export class SettingsRepository extends Repository<Settings> {
 			await this.save({ key, value, loadOnStartup });
 		}
 
-		if (loadOnStartup) config.set('ui.banners.v1.dismissed', true);
+		if (loadOnStartup) config.set('ui.banners.dismissed', value);
 	}
 }

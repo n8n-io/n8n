@@ -1,5 +1,5 @@
-import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { copyTable } from '@/databases/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
+import { copyTable } from '@db/utils/migrationHelpers';
 
 export class SeparateExecutionData1690000000010 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {

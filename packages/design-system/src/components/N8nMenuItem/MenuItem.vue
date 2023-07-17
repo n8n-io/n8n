@@ -62,9 +62,9 @@
 				<n8n-tooltip
 					v-if="item.secondaryIcon"
 					:class="$style.secondaryIcon"
-					:placement="item.tooltip?.placement || 'right'"
-					:content="item.tooltip?.content"
-					:disabled="compact || !item.tooltip?.content || item.tooltip?.bindTo !== 'secondaryIcon'"
+					:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
+					:content="item.secondaryIcon?.tooltip?.content"
+					:disabled="compact || !item.secondaryIcon?.tooltip?.content"
 					:open-delay="tooltipDelay"
 				>
 					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />

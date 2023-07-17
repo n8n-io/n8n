@@ -169,9 +169,8 @@ import {
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
-import { ExecutionRepository } from './databases/repositories';
-import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 
 const exec = promisify(callbackExec);
 
@@ -321,9 +320,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			banners: {
-				v1: {
-					dismissed: false,
-				},
+				dismissed: [],
 			},
 		};
 	}
@@ -417,15 +414,15 @@ export class Server extends AbstractServer {
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
-		let v1Dismissed = false;
+		let dismissedBanners: string[] = [];
 
 		try {
-			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
 		} catch {
 			// not yet in DB
 		}
 
-		this.frontendSettings.banners.v1.dismissed = v1Dismissed;
+		this.frontendSettings.banners.dismissed = dismissedBanners;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
@@ -471,9 +468,6 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const samlService = Container.get(SamlService);
-		const sourceControlService = Container.get(SourceControlService);
-		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -501,9 +495,9 @@ export class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new SamlController(samlService),
-			new SourceControlController(sourceControlService, sourceControlPreferencesService),
 			new AiController(),
+			Container.get(SamlController),
+			Container.get(SourceControlController),
 		];
 
 		if (isLdapEnabled()) {
