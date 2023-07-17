@@ -24,7 +24,7 @@ export class AddTagEntityUniqueIndex1689593161361 implements ReversibleMigration
 		}
 
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefix}8f949d7a3a984759044054e89b" ON "${tablePrefix}tag_entity" ("name") `,
+			`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_${tablePrefix}8f949d7a3a984759044054e89b" ON "${tablePrefix}tag_entity" ("name") `,
 		);
 	}
 
