@@ -133,20 +133,34 @@ export class ActiveWorkflowRunner {
 					Logger.info('     => Started');
 				} catch (error) {
 					ErrorReporter.error(error);
-					Logger.info(
-						'     => ERROR: Workflow could not be activated on first try, keep on trying',
-					);
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					Logger.info(`               ${error.message}`);
+
+					const activationError = error as WorkflowActivationError & {
+						cause: { httpCode?: string };
+					};
+
+					const workflowName = workflowData.name;
+					const workflowId = workflowData.id;
+					const metadata = { workflowName, workflowId };
+
+					Logger.info('     => ERROR: Workflow could not be activated on first try');
+					Logger.info(`               ${activationError.message}`);
 					Logger.error(
-						`Issue on initial workflow activation try "${workflowData.name}" (startup)`,
-						{
-							workflowName: workflowData.name,
-							workflowId: workflowData.id,
-						},
+						`Issue on initial workflow activation try of "${workflowName}" (startup)`,
+						metadata,
 					);
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					this.executeErrorWorkflow(error, workflowData, 'internal');
+
+					this.executeErrorWorkflow(activationError, workflowData, 'internal');
+
+					if (activationError.cause?.httpCode === '401') {
+						Logger.error(
+							`Activation of workflow "${workflowName}" (${workflowId}) failed due to bad credentials | workflow deactivated, will not retry`,
+							metadata,
+						);
+
+						await Db.collections.Workflow.update(workflowId, { active: false });
+
+						return;
+					}
 
 					// Keep on trying to activate the workflow
 					this.addQueuedWorkflowActivation('init', workflowData);
