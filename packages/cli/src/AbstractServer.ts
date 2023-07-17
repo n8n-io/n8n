@@ -213,6 +213,8 @@ export abstract class AbstractServer {
 				}
 				return 500;
 			},
+			enableReadyCheck: false,
+			maxRetriesPerRequest: null,
 		});
 
 		redis.on('close', () => {

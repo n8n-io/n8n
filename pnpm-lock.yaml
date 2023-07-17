@@ -1,4 +1,4 @@
-lockfileVersion: '6.1'
+lockfileVersion: '6.0'
 
 settings:
   autoInstallPeers: true
@@ -243,6 +243,9 @@ importers:
       bull:
         specifier: ^4.10.2
         version: 4.10.2
+      bullmq:
+        specifier: ^4.4.0
+        version: 4.4.0
       callsites:
         specifier: ^3.1.0
         version: 3.1.0
@@ -310,8 +313,8 @@ importers:
         specifier: ^7.0.1
         version: 7.3.3
       ioredis:
-        specifier: ^5.2.4
-        version: 5.2.4
+        specifier: ^5.3.2
+        version: 5.3.2
       json-diff:
         specifier: ^1.0.6
         version: 1.0.6
@@ -440,7 +443,7 @@ importers:
         version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       typeorm:
         specifier: ^0.3.12
-        version: 0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
+        version: 0.3.12(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -9705,12 +9708,27 @@ packages:
       cron-parser: 4.7.0
       debuglog: 1.0.1
       get-port: 5.1.1
-      ioredis: 5.2.4
+      ioredis: 5.3.2
       lodash: 4.17.21
       msgpackr: 1.8.1
       p-timeout: 3.2.0
       semver: 7.3.8
       uuid: 8.3.2
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /bullmq@4.4.0:
+    resolution: {integrity: sha512-2fpKxT9wQUTaOfAxaVXztYM3krvngi91lG340jz0rHcKADbkl1sSqzELystXFbormW98lhfWo6V72Cqs84biPA==}
+    dependencies:
+      cron-parser: 4.7.0
+      glob: 8.1.0
+      ioredis: 5.3.2
+      lodash: 4.17.21
+      msgpackr: 1.8.1
+      semver: 7.3.8
+      tslib: 2.5.0
+      uuid: 9.0.0
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -14201,8 +14219,8 @@ packages:
       - supports-color
     dev: false
 
-  /ioredis@5.2.4:
-    resolution: {integrity: sha512-qIpuAEt32lZJQ0XyrloCRdlEdUUNGG9i0UOk6zgzK6igyudNWqEBxfH6OlbnOOoBBvr1WB02mm8fR55CnikRng==}
+  /ioredis@5.3.2:
+    resolution: {integrity: sha512-1DKMMzlIHM02eBBVOFQ1+AolGjs6+xEcM4PDL7NqOS6szq7H9jSaEkIUH6/a5Hl241LzW6JLSiAbNvTQjUupUA==}
     engines: {node: '>=12.22.0'}
     dependencies:
       '@ioredis/commands': 1.2.0
@@ -21324,7 +21342,7 @@ packages:
     dev: false
     patched: true
 
-  /typeorm@0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
+  /typeorm@0.3.12(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
     resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}
     engines: {node: '>= 12.9.0'}
     hasBin: true
@@ -21391,7 +21409,7 @@ packages:
       debug: 4.3.4(supports-color@8.1.1)
       dotenv: 16.0.3
       glob: 8.1.0
-      ioredis: 5.2.4
+      ioredis: 5.3.2
       js-yaml: 4.1.0
       mkdirp: 2.1.3
       mysql2: 2.3.3

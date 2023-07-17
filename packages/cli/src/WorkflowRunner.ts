@@ -456,9 +456,9 @@ export class WorkflowRunner {
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.jobQueue.add(jobData, jobOptions);
+			job = await this.jobQueue.add(jobData.executionId, jobData, jobOptions);
 
-			console.log(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
+			console.log(`Started with job ID: ${job.id?.toString()} (Execution ID: ${executionId})`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -505,7 +505,9 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<JobResponse> = job.finished();
+				const jobData: Promise<JobResponse> = job.waitUntilFinished(
+					Container.get(Queue).getBullEventQueueInstance(),
+				);
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
@@ -529,7 +531,7 @@ export class WorkflowRunner {
 
 					const watchDog: Promise<object> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.jobQueue.getJob(job.id);
+							const currentJob = job.id ? await this.jobQueue.getJob(job.id) : null;
 							// When null means job is finished (not found in queue)
 							if (currentJob === null) {
 								// Mimic worker's success message
