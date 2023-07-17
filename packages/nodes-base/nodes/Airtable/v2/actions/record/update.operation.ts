@@ -1,5 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties, NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+	NodeApiError,
+	IExecuteFunctions,
+} from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequestAllItems, batchUpdate } from '../../transport';
 import { findMatches, processAirtableError, removeIgnored } from '../../helpers/utils';

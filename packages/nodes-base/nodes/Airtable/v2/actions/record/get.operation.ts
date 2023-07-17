@@ -1,5 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties, NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+	NodeApiError,
+	IExecuteFunctions,
+} from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest, downloadRecordAttachments } from '../../transport';
 import { flattenOutput, processAirtableError } from '../../helpers/utils';
