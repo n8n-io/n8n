@@ -19,6 +19,10 @@ const props = defineProps({
 		type: Object as PropType<EventBus>,
 		default: undefined,
 	},
+	disabled: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 const loadingService = useLoadingService();
@@ -82,6 +86,7 @@ async function onUpdateConnected(value: boolean) {
 			"
 			:active-color="connectedSwitchColor"
 			inactive-color="#8899AA"
+			:disabled="disabled"
 			data-test-id="settings-external-secrets-connected-switch"
 			@change="onUpdateConnected"
 		>

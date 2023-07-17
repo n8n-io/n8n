@@ -46,6 +46,9 @@ const provider = computed(() =>
 	externalSecretsStore.providers.find((provider) => provider.name === props.data.name),
 );
 
+const initialConnectionState = ref<ExternalSecretsProviderWithProperties['state'] | undefined>(
+	'initializing',
+);
 const connectionState = ref<ExternalSecretsProviderWithProperties['state']>();
 
 const providerData = ref<Record<string, IUpdateInformation['value']>>({});
@@ -92,6 +95,7 @@ onMounted(async () => {
 
 		if (!provider.connected && Object.keys(provider.data).length) {
 			await testConnection();
+			initialConnectionState.value = connectionState.value;
 		}
 	} catch (error) {
 		toast.showError(error, 'Error');
@@ -148,8 +152,6 @@ async function testConnection() {
 }
 
 async function save() {
-	const previousState = connectionState.value;
-
 	try {
 		saving.value = true;
 		await externalSecretsStore.updateProvider(provider.value.name, {
@@ -161,7 +163,7 @@ async function save() {
 
 	await testConnection();
 
-	if (previousState === 'initializing' && connectionState.value === 'tested') {
+	if (initialConnectionState.value === 'initializing' && connectionState.value === 'tested') {
 		setTimeout(() => {
 			eventBus.emit('connect', true);
 		}, 100);
@@ -215,6 +217,7 @@ async function onBeforeClose() {
 					<ExternalSecretsProviderConnectionSwitch
 						v-if="connectionState !== 'initializing'"
 						class="mr-s"
+						:disabled="connectionState === 'error' && !provider.connected"
 						:event-bus="eventBus"
 						:provider="provider"
 						@change="testConnection"
