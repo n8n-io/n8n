@@ -1,5 +1,11 @@
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { ICredentialTestFunctions, IDataObject, IPollFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	ICredentialTestFunctions,
+	IDataObject,
+	IPollFunctions,
+} from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 import moment from 'moment-timezone';

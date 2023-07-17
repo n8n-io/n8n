@@ -30,8 +30,8 @@ import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
-import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
-import { ExecutionRepository } from './databases/repositories';
+import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { ExecutionRepository } from '@db/repositories';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -75,12 +75,10 @@ export class InternalHooks implements IInternalHooksClass {
 			db_type: diagnosticInfo.databaseType,
 			n8n_version_notifications_enabled: diagnosticInfo.notificationsEnabled,
 			n8n_disable_production_main_process: diagnosticInfo.disableProductionWebhooksOnMainProcess,
-			n8n_basic_auth_active: diagnosticInfo.basicAuthActive,
 			system_info: diagnosticInfo.systemInfo,
 			execution_variables: diagnosticInfo.executionVariables,
 			n8n_deployment_type: diagnosticInfo.deploymentType,
 			n8n_binary_data_mode: diagnosticInfo.binaryDataMode,
-			n8n_multi_user_allowed: diagnosticInfo.n8n_multi_user_allowed,
 			smtp_set_up: diagnosticInfo.smtp_set_up,
 			ldap_allowed: diagnosticInfo.ldap_allowed,
 			saml_enabled: diagnosticInfo.saml_enabled,

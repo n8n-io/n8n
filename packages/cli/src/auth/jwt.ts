@@ -4,15 +4,18 @@ import jwt from 'jsonwebtoken';
 import type { Response } from 'express';
 import { createHash } from 'crypto';
 import * as Db from '@/Db';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { JwtPayload, JwtToken } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
+import { License } from '@/License';
+import { Container } from 'typedi';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
 	const expiresIn = 7 * 86400000; // 7 days
+	const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
 	const payload: JwtPayload = {
 		id,
@@ -20,6 +23,13 @@ export function issueJWT(user: User): JwtToken {
 		password: password ?? null,
 	};
 
+	if (
+		config.getEnv('userManagement.isInstanceOwnerSetUp') &&
+		!user.isOwner &&
+		!isWithinUsersLimit
+	) {
+		throw new ResponseHelper.UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+	}
 	if (password) {
 		payload.password = createHash('sha256')
 			.update(password.slice(password.length / 2))

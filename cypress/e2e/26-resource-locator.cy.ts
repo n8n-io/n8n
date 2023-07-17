@@ -8,10 +8,6 @@ const NO_CREDENTIALS_MESSAGE = 'Please add your credential';
 const INVALID_CREDENTIALS_MESSAGE = 'Please check your credential';
 
 describe('Resource Locator', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 	});

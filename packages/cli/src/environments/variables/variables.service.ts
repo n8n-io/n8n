@@ -1,4 +1,4 @@
-import type { Variables } from '@/databases/entities/Variables';
+import type { Variables } from '@db/entities/Variables';
 import { collections } from '@/Db';
 
 export class VariablesService {

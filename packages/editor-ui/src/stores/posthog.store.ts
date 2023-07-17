@@ -10,7 +10,6 @@ import {
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	ONBOARDING_EXPERIMENT,
-	TEMPLATE_EXPERIMENT,
 } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
 import { debounce } from 'lodash-es';
@@ -134,7 +133,6 @@ export const usePostHog = defineStore('posthog', () => {
 			// does not need to be debounced really, but tracking does not fire without delay on page load
 			addExperimentOverrides();
 			trackExperimentsDebounced(featureFlags.value);
-			evaluateExperiments(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
@@ -143,20 +141,9 @@ export const usePostHog = defineStore('posthog', () => {
 
 				// must be debounced because it is called multiple times by posthog
 				trackExperimentsDebounced(featureFlags.value);
-				evaluateExperimentsDebounced(featureFlags.value);
 			});
 		}
 	};
-
-	const evaluateExperiments = (featureFlags: FeatureFlags) => {
-		Object.keys(featureFlags).forEach((name) => {
-			const variant = featureFlags[name];
-			if (name === TEMPLATE_EXPERIMENT.name && variant === TEMPLATE_EXPERIMENT.variant) {
-				settingsStore.disableTemplates();
-			}
-		});
-	};
-	const evaluateExperimentsDebounced = debounce(evaluateExperiments, 2000);
 
 	const trackExperiments = (featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));

@@ -1,10 +1,10 @@
-import Container from 'typedi';
-import { License } from '../../License';
+import { Container } from 'typedi';
 import { generateKeyPairSync } from 'crypto';
 import sshpk from 'sshpk';
-import type { KeyPair } from './types/keyPair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
 import { LoggerProxy } from 'n8n-workflow';
+import { License } from '@/License';
+import type { KeyPair } from './types/keyPair';
 import { SOURCE_CONTROL_GIT_KEY_COMMENT } from './constants';
 
 export function sourceControlFoldersExistCheck(folders: string[]) {
