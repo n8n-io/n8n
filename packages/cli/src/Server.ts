@@ -319,9 +319,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			banners: {
-				v1: {
-					dismissed: false,
-				},
+				dismissed: [],
 			},
 		};
 	}
@@ -415,15 +413,15 @@ export class Server extends AbstractServer {
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
-		let v1Dismissed = false;
+		let dismissedBanners: string[] = [];
 
 		try {
-			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
 		} catch {
 			// not yet in DB
 		}
 
-		this.frontendSettings.banners.v1.dismissed = v1Dismissed;
+		this.frontendSettings.banners.dismissed = dismissedBanners;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {

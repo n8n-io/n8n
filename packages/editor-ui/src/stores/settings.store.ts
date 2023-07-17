@@ -31,6 +31,7 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils';
+import { useCloudPlanStore } from './cloudPlan.store';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -170,6 +171,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isDefaultAuthenticationSaml(): boolean {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
 		},
+		permanentlyDismissedBanners(): string[] {
+			return this.settings.banners?.dismissed ?? [];
+		},
 		isBelowUserQuota(): boolean {
 			const userStore = useUsersStore();
 			return (
@@ -219,8 +223,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-			if (settings.banners.v1.dismissed) {
-				useUIStore().setBanners({ v1: { dismissed: true, mode: 'permanent' } });
+
+			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes('V1');
+			if (
+				!isV1BannerDismissedPermanently &&
+				useRootStore().versionCli.startsWith('1.') &&
+				!useCloudPlanStore().userIsTrialing
+			) {
+				useUIStore().showBanner('V1');
 			}
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);

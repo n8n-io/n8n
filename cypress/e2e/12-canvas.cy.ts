@@ -162,7 +162,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 740px; top: 360px;');
+			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
 	it('should zoom in', () => {
