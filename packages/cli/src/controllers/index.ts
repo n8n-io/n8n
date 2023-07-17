@@ -8,3 +8,4 @@ export { PasswordResetController } from './passwordReset.controller';
 export { TagsController } from './tags.controller';
 export { TranslationController } from './translation.controller';
 export { UsersController } from './users.controller';
+export { AiController } from './ai.controller';

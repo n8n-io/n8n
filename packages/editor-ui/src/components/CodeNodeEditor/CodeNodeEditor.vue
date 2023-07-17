@@ -5,16 +5,21 @@
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
 	>
-		<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture"></div>
-		<n8n-button
-			v-if="aiButtonEnabled && (isEditorHovered || isEditorFocused)"
-			size="small"
-			type="tertiary"
-			:class="$style['ask-ai-button']"
-			@mousedown="onAskAiButtonClick"
+		<el-tabs
+			type="card"
+			ref="tabs"
+			v-model="activeTab"
+			v-if="askAiEnabled && language === 'javaScript'"
 		>
-			{{ $locale.baseText('codeNodeEditor.askAi') }}
-		</n8n-button>
+			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.code')" name="code">
+				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
+			</el-tab-pane>
+			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.askAi')" name="ask-ai">
+				<AskAI @replaceCode="onReplaceCode" />
+			</el-tab-pane>
+		</el-tabs>
+		<!-- If AskAi not enabled, there's no point in rendering tabs -->
+		<div v-else ref="codeNodeEditor" class="code-node-editor-input ph-no-capture" />
 	</div>
 </template>
 
@@ -22,7 +27,6 @@
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-
 import type { LanguageSupport } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
 import { Compartment, EditorState } from '@codemirror/state';
@@ -44,10 +48,14 @@ import { CODE_PLACEHOLDERS } from './constants';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
+import AskAI from './AskAI.vue';
 
 export default defineComponent({
 	name: 'code-node-editor',
 	mixins: [linterExtension, completerExtension, workflowHelpers],
+	components: {
+		AskAI,
+	},
 	props: {
 		aiButtonEnabled: {
 			type: Boolean,
@@ -77,6 +85,9 @@ export default defineComponent({
 			linterCompartment: new Compartment(),
 			isEditorHovered: false,
 			isEditorFocused: false,
+			tabs: ['code', 'ask-ai'],
+			activeTab: 'code',
+			initialValue: this.value,
 		};
 	},
 	watch: {
@@ -105,6 +116,10 @@ export default defineComponent({
 
 			return this.editor.state.doc.toString();
 		},
+		askAiEnabled(): boolean {
+			// TODO: Do this based on ENV?
+			return true;
+		},
 		placeholder(): string {
 			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
 		},
@@ -120,6 +135,32 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		async onReplaceCode(code: string) {
+			const hasChanges = this.initialValue !== this.content;
+
+			if (hasChanges) {
+				const confirmModal = await this.alert(
+					this.$locale.baseText('codeNodeEditor.askAi.areYouSureToReplace'),
+					{
+						title: this.$locale.baseText('codeNodeEditor.askAi.replaceCurrentCode'),
+						confirmButtonText: this.$locale.baseText('codeNodeEditor.askAi.generateCodeAndReplace'),
+						showClose: true,
+					},
+				);
+
+				if (confirmModal === 'cancel') {
+					this.activeTab = 'code';
+					return;
+				}
+			}
+
+			this.editor?.dispatch({
+				changes: { from: 0, to: this.content.length, insert: code },
+			});
+
+			this.initialValue = this.content;
+			this.activeTab = 'code';
+		},
 		onMouseOver(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
 			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
@@ -264,6 +305,29 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+:global(.el-tabs__content) {
+	border: 1px solid var(--color-foreground-base);
+	border-radius: 0px var(--border-radius-base) var(--border-radius-base);
+}
+:global(.el-tabs__header) {
+	border-bottom: 0;
+}
+:global(.el-tabs__nav) {
+	padding: 0;
+}
+:global(.el-tabs__item) {
+	padding: var(--spacing-5xs) var(--spacing-2xs);
+	height: auto;
+	line-height: var(--font-line-height-xloose);
+
+	&:not([aria-selected='true']) {
+		background-color: var(--color-background-base);
+		border-bottom: 1px solid var(--color-foreground-base) !important;
+	}
+}
+:global(.code-editor-tabs .cm-editor) {
+	border: 0;
+}
 .code-node-editor-container {
 	position: relative;
 

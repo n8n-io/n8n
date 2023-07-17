@@ -97,6 +97,7 @@ import {
 	TagsController,
 	TranslationController,
 	UsersController,
+	AiController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
@@ -502,6 +503,7 @@ export class Server extends AbstractServer {
 			}),
 			new SamlController(samlService),
 			new SourceControlController(sourceControlService, sourceControlPreferencesService),
+			new AiController(),
 		];
 
 		if (isLdapEnabled()) {
