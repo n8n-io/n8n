@@ -1,5 +1,5 @@
 <template>
-	<div ref="htmlEditor" class="ph-no-capture"></div>
+	<div ref="htmlEditor"></div>
 </template>
 
 <script lang="ts">

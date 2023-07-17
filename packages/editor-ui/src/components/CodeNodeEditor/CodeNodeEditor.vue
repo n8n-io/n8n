@@ -5,7 +5,7 @@
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
 	>
-		<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture"></div>
+		<div ref="codeNodeEditor" class="code-node-editor-input"></div>
 		<n8n-button
 			v-if="aiButtonEnabled && (isEditorHovered || isEditorFocused)"
 			size="small"

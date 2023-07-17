@@ -28,7 +28,7 @@
 				</div>
 			</div>
 			<template #reference>
-				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: editable }">
+				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
 					{{ value }}
 					<div :class="$style.editIconContainer">
 						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="editable" />
