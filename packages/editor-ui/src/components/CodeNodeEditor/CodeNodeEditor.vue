@@ -305,28 +305,30 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-:global(.el-tabs__content) {
-	border: 1px solid var(--color-foreground-base);
-	border-radius: 0px var(--border-radius-base) var(--border-radius-base);
-}
-:global(.el-tabs__header) {
-	border-bottom: 0;
-}
-:global(.el-tabs__nav) {
-	padding: 0;
-}
-:global(.el-tabs__item) {
-	padding: var(--spacing-5xs) var(--spacing-2xs);
-	height: auto;
-	line-height: var(--font-line-height-xloose);
-
-	&:not([aria-selected='true']) {
-		background-color: var(--color-background-base);
-		border-bottom: 1px solid var(--color-foreground-base) !important;
+:global(.el-tabs) {
+	:global(.el-tabs__content) {
+		border: 1px solid var(--color-foreground-base);
+		border-radius: 0px var(--border-radius-base) var(--border-radius-base);
 	}
-}
-:global(.code-editor-tabs .cm-editor) {
-	border: 0;
+	:global(.el-tabs__header) {
+		border-bottom: 0;
+	}
+	:global(.el-tabs__nav) {
+		padding: 0;
+	}
+	:global(.el-tabs__item) {
+		padding: var(--spacing-5xs) var(--spacing-2xs);
+		height: auto;
+		line-height: var(--font-line-height-xloose);
+
+		&:not([aria-selected='true']) {
+			background-color: var(--color-background-base);
+			border-bottom: 1px solid var(--color-foreground-base) !important;
+		}
+	}
+	:global(.code-editor-tabs .cm-editor) {
+		border: 0;
+	}
 }
 .code-node-editor-container {
 	position: relative;
