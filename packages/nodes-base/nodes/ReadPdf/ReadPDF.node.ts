@@ -112,6 +112,7 @@ export class ReadPDF implements INodeType {
 				}
 
 				returnData.push({
+					binary: items[itemIndex].binary,
 					json: {
 						numpages: document.numPages,
 						numrender: document.numPages,
