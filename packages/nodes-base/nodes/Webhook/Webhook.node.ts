@@ -6,6 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	MultiPartFormData,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
@@ -14,7 +15,6 @@ import stream from 'stream';
 import { promisify } from 'util';
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
-import formidable from 'formidable';
 import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
 
@@ -119,8 +119,7 @@ export class Webhook extends Node {
 			throw error;
 		}
 
-		const mimeType = req.headers['content-type'] ?? 'application/json';
-		if (mimeType.includes('multipart/form-data')) {
+		if (req.contentType === 'multipart/form-data') {
 			return this.handleFormData(context);
 		}
 
@@ -128,6 +127,7 @@ export class Webhook extends Node {
 			return this.handleBinaryData(context);
 		}
 
+		const mimeType = req.headers['content-type'] ?? 'application/json';
 		const response: INodeExecutionData = {
 			json: {
 				headers: req.headers,
@@ -203,60 +203,55 @@ export class Webhook extends Node {
 	}
 
 	private async handleFormData(context: IWebhookFunctions) {
-		const req = context.getRequestObject();
+		const req = context.getRequestObject() as MultiPartFormData.Request;
 		const options = context.getNodeParameter('options', {}) as IDataObject;
+		const { data, files } = req.body;
 
-		const form = new formidable.IncomingForm({ multiples: true });
+		const returnItem: INodeExecutionData = {
+			binary: {},
+			json: {
+				headers: req.headers,
+				params: req.params,
+				query: req.query,
+				body: data,
+			},
+		};
 
-		return new Promise<IWebhookResponseData>((resolve, _reject) => {
-			form.parse(req, async (err, data, files) => {
-				const returnItem: INodeExecutionData = {
-					binary: {},
-					json: {
-						headers: req.headers,
-						params: req.params,
-						query: req.query,
-						body: data,
-					},
-				};
+		let count = 0;
+		for (const xfile of Object.keys(files)) {
+			const processFiles: MultiPartFormData.File[] = [];
+			let multiFile = false;
+			if (Array.isArray(files[xfile])) {
+				processFiles.push(...(files[xfile] as MultiPartFormData.File[]));
+				multiFile = true;
+			} else {
+				processFiles.push(files[xfile] as MultiPartFormData.File);
+			}
 
-				let count = 0;
-				for (const xfile of Object.keys(files)) {
-					const processFiles: formidable.File[] = [];
-					let multiFile = false;
-					if (Array.isArray(files[xfile])) {
-						processFiles.push(...(files[xfile] as formidable.File[]));
-						multiFile = true;
-					} else {
-						processFiles.push(files[xfile] as formidable.File);
-					}
-
-					let fileCount = 0;
-					for (const file of processFiles) {
-						let binaryPropertyName = xfile;
-						if (binaryPropertyName.endsWith('[]')) {
-							binaryPropertyName = binaryPropertyName.slice(0, -2);
-						}
-						if (multiFile) {
-							binaryPropertyName += fileCount++;
-						}
-						if (options.binaryPropertyName) {
-							binaryPropertyName = `${options.binaryPropertyName}${count}`;
-						}
-
-						const fileJson = file.toJSON();
-						returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-							file.path,
-							fileJson.name || fileJson.filename,
-							fileJson.type as string,
-						);
-
-						count += 1;
-					}
+			let fileCount = 0;
+			for (const file of processFiles) {
+				let binaryPropertyName = xfile;
+				if (binaryPropertyName.endsWith('[]')) {
+					binaryPropertyName = binaryPropertyName.slice(0, -2);
 				}
-				resolve({ workflowData: [[returnItem]] });
-			});
-		});
+				if (multiFile) {
+					binaryPropertyName += fileCount++;
+				}
+				if (options.binaryPropertyName) {
+					binaryPropertyName = `${options.binaryPropertyName}${count}`;
+				}
+
+				const fileJson = file.toJSON();
+				returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+					file.path,
+					fileJson.name || fileJson.filename,
+					fileJson.type,
+				);
+
+				count += 1;
+			}
+		}
+		return { workflowData: [[returnItem]] };
 	}
 
 	private async handleBinaryData(context: IWebhookFunctions): Promise<IWebhookResponseData> {

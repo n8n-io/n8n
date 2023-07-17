@@ -50,6 +50,9 @@ export type { DocMetadata, NativeDoc } from './Extensions';
 
 declare module 'http' {
 	export interface IncomingMessage {
+		contentType?: string;
+		encoding: BufferEncoding;
 		rawBody: Buffer;
+		_body: boolean;
 	}
 }

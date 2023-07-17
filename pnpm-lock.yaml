@@ -219,9 +219,6 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
-      body-parser:
-        specifier: ^1.20.1
-        version: 1.20.1
       bull:
         specifier: ^4.10.2
         version: 4.10.2
@@ -291,6 +288,9 @@ importers:
       flatted:
         specifier: ^3.2.4
         version: 3.2.7
+      formidable:
+        specifier: ^3.5.0
+        version: 3.5.0
       google-timezones-json:
         specifier: ^1.1.0
         version: 1.1.0
@@ -484,6 +484,9 @@ importers:
       '@types/express':
         specifier: ^4.17.6
         version: 4.17.14
+      '@types/formidable':
+        specifier: ^3.4.0
+        version: 3.4.0
       '@types/json-diff':
         specifier: ^1.0.0
         version: 1.0.0
@@ -1016,9 +1019,6 @@ importers:
       fflate:
         specifier: ^0.7.0
         version: 0.7.4
-      formidable:
-        specifier: ^1.2.1
-        version: 1.2.6
       get-system-fonts:
         specifier: ^2.0.2
         version: 2.0.2
@@ -1182,9 +1182,6 @@ importers:
       '@types/express':
         specifier: ^4.17.6
         version: 4.17.14
-      '@types/formidable':
-        specifier: ^1.0.31
-        version: 1.2.5
       '@types/gm':
         specifier: ^1.25.0
         version: 1.25.0
@@ -6139,8 +6136,8 @@ packages:
     resolution: {integrity: sha512-frsJrz2t/CeGifcu/6uRo4b+SzAwT4NYCVPu1GN8IB9XTzrpPkGuV0tmh9mN+/L0PklAlsC3u5Fxt0ju00LXIw==}
     dev: true
 
-  /@types/formidable@1.2.5:
-    resolution: {integrity: sha512-zu3mQJa4hDNubEMViSj937602XdDGzK7Q5pJ5QmLUbNxclbo9tZGt5jtwM352ssZ+pqo5V4H14TBvT/ALqQQcA==}
+  /@types/formidable@3.4.0:
+    resolution: {integrity: sha512-JXP+LsspYYBIJJxZ9VJsswb5U1hkUUhLmtAb6EB1SWcDDbJQlWRhGoZYasMSnk2NsqtUEHd3uuaiImmSys+8AQ==}
     dependencies:
       '@types/node': 18.16.16
     dev: true
@@ -10071,7 +10068,6 @@ packages:
     dependencies:
       asap: 2.0.6
       wrappy: 1.0.2
-    dev: true
 
   /diff-sequences@29.4.3:
     resolution: {integrity: sha512-ofrBgwpPhCD85kMKtE9RYFFq6OC1A89oW2vvgWZNCwxrUpRUILopY7lsYyMDSjc8g6U6aiO0Qubg6r4Wgt5ZnA==}
@@ -11806,11 +11802,6 @@ packages:
       combined-stream: 1.0.8
       mime-types: 2.1.35
 
-  /formidable@1.2.6:
-    resolution: {integrity: sha512-KcpbcpuLNOwrEjnbpMC0gS+X8ciDoZE1kkqzat4a8vrprf+s9pKNQ/QIwWfbfs4ltgmFl3MD177SNTkve3BwGQ==}
-    deprecated: 'Please upgrade to latest, formidable@v2 or formidable@v3! Check these notes: https://bit.ly/2ZEqIau'
-    dev: false
-
   /formidable@2.1.2:
     resolution: {integrity: sha512-CM3GuJ57US06mlpQ47YcunuUZ9jpm8Vx+P2CGt2j7HpgkKZO/DJYQ0Bobim8G6PFQmK5lOqOOdUXboU+h73A4g==}
     dependencies:
@@ -11819,6 +11810,14 @@ packages:
       once: 1.4.0
       qs: 6.11.0
     dev: true
+
+  /formidable@3.5.0:
+    resolution: {integrity: sha512-WwsMWvPmY+Kv37C3+KP3A+2Ym1aZoac4nz4ZEe5z0UPBoCg0O/wHay3eeYkZr4KJIbCzpSUeno+STMhde+KCfw==}
+    dependencies:
+      dezalgo: 1.0.4
+      hexoid: 1.0.0
+      once: 1.4.0
+    dev: false
 
   /formstream@1.1.1:
     resolution: {integrity: sha512-yHRxt3qLFnhsKAfhReM4w17jP+U1OlhUjnKPPtonwKbIJO7oBP0MvoxkRUwb8AU9n0MIkYy5X5dK6pQnbj+R2Q==}
@@ -12565,7 +12564,6 @@ packages:
   /hexoid@1.0.0:
     resolution: {integrity: sha512-QFLV0taWQOZtvIRIAdBChesmogZrtuXvVWsFHZTk2SU+anspqZ2vMnoLg7IE1+Uk16N19APic1BuF8bC8c2m5g==}
     engines: {node: '>=8'}
-    dev: true
 
   /highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}

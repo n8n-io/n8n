@@ -1235,6 +1235,22 @@ export interface ITriggerResponse {
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
+export namespace MultiPartFormData {
+	export interface File {
+		path: string;
+		toJSON(): { name: string; filename: string; type: string };
+	}
+
+	export type Request = express.Request<
+		{},
+		{},
+		{
+			data: Record<string, string | string[]>;
+			files: Record<string, File | File[]>;
+		}
+	>;
+}
+
 export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(

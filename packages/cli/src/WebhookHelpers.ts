@@ -7,16 +7,14 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-
 import type express from 'express';
 import { Container } from 'typedi';
 import get from 'lodash/get';
 import stream from 'stream';
 import { promisify } from 'util';
-import { parse as parseContentType } from 'content-type';
 import { parse as parseQueryString } from 'querystring';
-import getRawBody from 'raw-body';
 import { Parser as XmlParser } from 'xml2js';
+import formidable from 'formidable';
 
 import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
 
@@ -47,7 +45,6 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import config from '@/config';
 import type {
 	IExecutionDb,
 	IResponseCallbackData,
@@ -129,7 +126,6 @@ export const webhookRequestHandler =
 
 /**
  * Returns all the webhooks which should be created for the given workflow
- *
  */
 export function getWorkflowWebhooks(
 	workflow: Workflow,
@@ -196,9 +192,6 @@ export function encodeWebhookResponse(
 
 /**
  * Executes a webhook
- *
- * @param {(string | undefined)} sessionId
- * @param {((error: Error | null, data: IResponseCallbackData) => void)} responseCallback
  */
 export async function executeWebhook(
 	workflow: Workflow,
@@ -308,43 +301,37 @@ export async function executeWebhook(
 
 		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
 		if (!binaryData) {
-			const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-			req.rawBody = await getRawBody(req, {
-				length: req.headers['content-length'],
-				limit: `${String(payloadSizeMax)}mb`,
-			});
-
-			if (req.rawBody?.length) {
-				const { type, parameters } = (() => {
-					try {
-						return parseContentType(req);
-					} catch {
-						return { type: undefined, parameters: undefined };
-					}
-				})();
-				const encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
-
+			const { rawBody, contentType, encoding } = req;
+			if (contentType === 'multipart/form-data') {
+				const form = formidable({
+					multiples: true,
+					encoding: encoding as formidable.BufferEncoding,
+					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
+				});
+				req.body = await new Promise((resolve) => {
+					form.parse(req, async (err, data, files) => {
+						resolve({ data, files });
+					});
+				});
+			} else if (rawBody?.length) {
+				// try to parse non-JSON content-types. JSON inputs are already parsed in bodyParser middleware
 				try {
-					if (type === 'application/json') {
-						req.body = jsonParse(req.rawBody.toString(encoding));
-					} else if (type?.endsWith('/xml') || type?.endsWith('+xml')) {
-						req.body = await xmlParser.parseStringPromise(req.rawBody.toString(encoding));
-					} else if (type === 'application/x-www-form-urlencoded') {
-						req.body = parseQueryString(req.rawBody.toString(encoding), undefined, undefined, {
+					if (contentType === 'application/json') {
+						req.body = jsonParse(rawBody.toString(encoding));
+					} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
+						req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
+					} else if (contentType === 'application/x-www-form-urlencoded') {
+						req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
 							maxKeys: 1000,
 						});
-					} else if (type === 'text/plain') {
-						req.body = req.rawBody.toString(encoding);
+					} else if (contentType === 'text/plain') {
+						req.body = rawBody.toString(encoding);
 					}
 				} catch (error) {
 					throw new ResponseHelper.UnprocessableRequestError(
 						'Failed to parse request body',
 						error.message,
 					);
-				}
-
-				if (!req.body) {
-					req.body = {};
 				}
 			}
 		}
@@ -803,7 +790,7 @@ export async function executeWebhook(
 		const error =
 			e instanceof ResponseHelper.UnprocessableRequestError
 				? e
-				: new Error('There was a problem executing the workflow');
+				: new Error('There was a problem executing the workflow', { cause: e });
 		if (!didSendResponse) responseCallback(error, {});
 		else throw error;
 		return;

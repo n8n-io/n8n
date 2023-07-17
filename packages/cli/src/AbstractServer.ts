@@ -2,7 +2,6 @@ import { Container } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
-import bodyParser from 'body-parser';
 import compression from 'compression';
 import type { RedisOptions } from 'ioredis';
 
@@ -14,7 +13,7 @@ import * as Db from '@/Db';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
-import { corsMiddleware } from '@/middlewares';
+import { rawBody, jsonParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { getRedisClusterNodes } from './GenericHelpers';
@@ -85,15 +84,9 @@ export abstract class AbstractServer {
 	private setupCommonMiddlewares() {
 		// Compress the response data
 		this.app.use(compression());
-	}
 
-	private setupBodyParserMiddleware() {
-		const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-		this.app.use(
-			bodyParser.json({
-				limit: `${payloadSizeMax}mb`,
-			}),
-		);
+		// Read incoming data into `rawBody`
+		this.app.use(rawBody);
 	}
 
 	private setupDevMiddlewares() {
@@ -193,46 +186,6 @@ export abstract class AbstractServer {
 		});
 	}
 
-	// ----------------------------------------
-	// Regular Webhooks
-	// ----------------------------------------
-	protected setupWebhookEndpoint() {
-		const endpoint = this.endpointWebhook;
-		const activeWorkflowRunner = this.activeWorkflowRunner;
-
-		// Register all webhook requests
-		this.app.all(`/${endpoint}/:path`, webhookRequestHandler(activeWorkflowRunner));
-	}
-
-	// ----------------------------------------
-	// Waiting Webhooks
-	// ----------------------------------------
-	protected setupWaitingWebhookEndpoint() {
-		const endpoint = this.endpointWebhookWaiting;
-		const waitingWebhooks = Container.get(WaitingWebhooks);
-
-		// Register all webhook-waiting requests
-		this.app.all(`/${endpoint}/:path`, webhookRequestHandler(waitingWebhooks));
-	}
-
-	// ----------------------------------------
-	// Testing Webhooks
-	// ----------------------------------------
-	protected setupTestWebhookEndpoint() {
-		const endpoint = this.endpointWebhookTest;
-		const testWebhooks = Container.get(TestWebhooks);
-
-		// Register all test webhook requests (for testing via the UI)
-		this.app.all(`/${endpoint}/:path`, webhookRequestHandler(testWebhooks));
-
-		// Removes a test webhook
-		// TODO UM: check if this needs validation with user management.
-		this.app.delete(
-			`/${this.restEndpoint}/test-webhook/:id`,
-			send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
-		);
-	}
-
 	async init(): Promise<void> {
 		const { app, protocol, sslKey, sslCert } = this;
 
@@ -282,18 +235,39 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
-			this.setupWebhookEndpoint();
-			this.setupWaitingWebhookEndpoint();
+			// Register a handler for active webhooks
+			this.app.all(
+				`/${this.endpointWebhook}/:path(*)`,
+				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+			);
+
+			// Register a handler for waiting webhooks
+			this.app.all(
+				`/${this.endpointWebhookWaiting}/:path`,
+				webhookRequestHandler(Container.get(WaitingWebhooks)),
+			);
 		}
 
 		if (this.testWebhooksEnabled) {
-			this.setupTestWebhookEndpoint();
+			const testWebhooks = Container.get(TestWebhooks);
+
+			// Register a handler for test webhooks
+			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
+
+			// Removes a test webhook
+			// TODO UM: check if this needs validation with user management.
+			this.app.delete(
+				`/${this.restEndpoint}/test-webhook/:id`,
+				send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
+			);
 		}
 
-		this.setupBodyParserMiddleware();
 		if (inDevelopment) {
 			this.setupDevMiddlewares();
 		}
+
+		// Setup JSON parsing middleware after the webhook handlers are setup
+		this.app.use(jsonParser);
 
 		await this.configure();
 
