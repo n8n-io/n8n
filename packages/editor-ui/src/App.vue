@@ -257,9 +257,6 @@ export default defineComponent({
 		await this.checkForCloudPlanData();
 		await this.initBanners();
 
-		if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
-			await this.sourceControlStore.getPreferences();
-		}
 		void this.checkForCloudPlanData();
 		void this.postAuthenticate();
 
