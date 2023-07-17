@@ -6,6 +6,7 @@ import { useI18n, useLoadingService, useMessage, useToast } from '@/composables'
 import { useUIStore, useSourceControlStore } from '@/stores';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import type { SourceControlAggregatedFile } from '../Interface';
+import { sourceControlEventBus } from '@/event-bus/source-control';
 
 const props = defineProps<{
 	isCollapsed: boolean;
@@ -61,11 +62,9 @@ async function pullWorkfolder() {
 			)) as unknown as SourceControlAggregatedFile[]) || [];
 
 		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
-			if (file.type === 'workflow' && file.status === 'created' && file.location === 'local') {
-				return false;
-			}
-			return true;
+			return !(file.type === 'workflow' && file.status === 'created' && file.location === 'local');
 		});
+
 		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
 			toast.showMessage({
 				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
@@ -96,6 +95,8 @@ async function pullWorkfolder() {
 				});
 			}
 		}
+
+		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		const errorResponse = error.response;
 
