@@ -117,7 +117,7 @@ export class ReadPDF implements INodeType {
 						numpages: document.numPages,
 						numrender: document.numPages,
 						info,
-						metadata,
+						metadata: metadata?.getAll(),
 						text: pages.join('\n\n'),
 						version: pdfJsVersion,
 					},
