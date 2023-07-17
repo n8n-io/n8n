@@ -219,6 +219,7 @@
       "dist/credentials/MindeeInvoiceApi.credentials.js",
       "dist/credentials/MindeeReceiptApi.credentials.js",
       "dist/credentials/MispApi.credentials.js",
+      "dist/credentials/MistApi.credentials.js",
       "dist/credentials/MoceanApi.credentials.js",
       "dist/credentials/MondayComApi.credentials.js",
       "dist/credentials/MondayComOAuth2Api.credentials.js",
