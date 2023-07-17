@@ -21,7 +21,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
@@ -188,7 +188,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
 	async executeWebhook(
-		httpMethod: WebhookHttpMethod,
+		httpMethod: IHttpRequestMethods,
 		path: string,
 		req: express.Request,
 		res: express.Response,
@@ -334,7 +334,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	/**
 	 * Gets all request methods associated with a single webhook
 	 */
-	async getWebhookMethods(path: string): Promise<string[]> {
+	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
 		const webhooks = await this.webhookRepository.find({
 			select: ['method'],
 			where: { webhookPath: path },

@@ -1,4 +1,4 @@
-import type { INode, WebhookHttpMethod } from 'n8n-workflow';
+import type { INode, IHttpRequestMethods } from 'n8n-workflow';
 import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type express from 'express';
@@ -25,7 +25,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	) {}
 
 	async executeWebhook(
-		httpMethod: WebhookHttpMethod,
+		httpMethod: IHttpRequestMethods,
 		fullPath: string,
 		req: express.Request,
 		res: express.Response,
@@ -62,7 +62,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	async startExecution(
-		httpMethod: WebhookHttpMethod,
+		httpMethod: IHttpRequestMethods,
 		path: string,
 		fullExecutionData: IExecutionResponse,
 		req: express.Request,

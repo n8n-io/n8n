@@ -22,7 +22,7 @@ import type {
 	IExecutionsSummary,
 	FeatureFlags,
 	IUserSettings,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -302,9 +302,9 @@ export interface IExternalHooksClass {
 }
 
 export interface IWebhookManager {
-	getWebhookMethods?: (path: string) => Promise<string[]>;
+	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
 	executeWebhook(
-		httpMethod: WebhookHttpMethod,
+		httpMethod: IHttpRequestMethods,
 		path: string,
 		req: Request,
 		res: Response,

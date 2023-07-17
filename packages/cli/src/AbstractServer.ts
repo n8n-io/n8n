@@ -7,7 +7,7 @@ import bodyParser from 'body-parser';
 import compression from 'compression';
 import type { RedisOptions } from 'ioredis';
 
-import type { WebhookHttpMethod } from 'n8n-workflow';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
@@ -352,7 +352,7 @@ export abstract class AbstractServer {
 
 		let response;
 		try {
-			response = await webhookManager.executeWebhook(method as WebhookHttpMethod, path, req, res);
+			response = await webhookManager.executeWebhook(method as IHttpRequestMethods, path, req, res);
 		} catch (error) {
 			return sendErrorResponse(res, error as Error);
 		}
