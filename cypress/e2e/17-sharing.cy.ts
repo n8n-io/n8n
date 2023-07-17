@@ -69,9 +69,9 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
-		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
+		credentialsModal.getters.newCredentialTypeOption('Airtable Personal Access Token API').click();
 		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
+		credentialsModal.getters.connectionParameter('Access Token').type('1234567890');
 		credentialsModal.actions.setName('Credential C2');
 		credentialsModal.actions.changeTab('Sharing');
 		credentialsModal.actions.addUser(INSTANCE_OWNER.email);
