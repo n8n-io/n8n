@@ -5,10 +5,6 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('NDV', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 		workflowPage.actions.renameWorkflow(uuid());
@@ -277,7 +273,11 @@ describe('NDV', () => {
 			.should('equal', 'hovering-item');
 
 		ndv.actions.close();
+
 		workflowPage.actions.openNode('Set5');
+
+		ndv.actions.switchInputBranch('True Branch');
+		ndv.actions.changeOutputRunSelector('1 of 2 (2 items)')
 		ndv.getters.outputTableRow(1)
 			.should('have.text', '8888')
 			.realHover();
@@ -288,16 +288,21 @@ describe('NDV', () => {
 			.realHover();
 		ndv.getters.outputHoveringItem().should('not.exist');
 
-		ndv.actions.switchIntputBranch('False Branch');
+		ndv.actions.switchInputBranch('False Branch');
+		ndv.getters.inputTableRow(1)
+			.should('have.text', '8888')
+			.realHover();
+
+		ndv.actions.changeOutputRunSelector('2 of 2 (4 items)')
+		ndv.getters.outputTableRow(1)
+			.should('have.text', '1111')
+			.realHover();
+
+		ndv.actions.changeOutputRunSelector('1 of 2 (2 items)')
 		ndv.getters.inputTableRow(1)
 			.should('have.text', '8888')
 			.realHover();
 		ndv.getters.outputHoveringItem().should('have.text', '8888');
-
-		ndv.actions.changeOutputRunSelector('1 of 2 (4 items)')
-		ndv.getters.outputTableRow(1)
-			.should('have.text', '1111')
-			.realHover();
 		// todo there's a bug here need to fix ADO-534
 		// ndv.getters.outputHoveringItem().should('not.exist');
 	});

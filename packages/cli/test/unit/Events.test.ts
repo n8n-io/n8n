@@ -13,9 +13,9 @@ import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { getLogger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
 
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../integration/shared/utils/';
 import { UserService } from '@/user/user.service';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 jest.mock('@/Db', () => {
 	return {

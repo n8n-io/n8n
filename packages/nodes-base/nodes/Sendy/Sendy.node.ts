@@ -102,7 +102,7 @@ export class Sendy implements INodeType {
 					};
 
 					if (brandId) {
-						body.brand_id = brandId as string;
+						body.brand_id = brandId;
 					}
 
 					if (additionalFields.plainText) {

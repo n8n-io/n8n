@@ -1,5 +1,6 @@
-import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+import { License } from '@/License';
 import validator from 'validator';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -9,35 +10,25 @@ import type { User } from '@db/entities/User';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent } from './shared/types';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
-let app: Application;
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
-let authAgent: AuthAgent;
-let authlessAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
-beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['auth'] });
-	authAgent = utils.createAuthAgent(app);
+const testServer = utils.setupTestServer({ endpointGroups: ['auth'] });
 
+beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	authlessAgent = utils.createAgent(app);
 	config.set('ldap.disabled', true);
 	await utils.setInstanceOwnerSetUp(true);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('POST /login', () => {
@@ -49,7 +40,7 @@ describe('POST /login', () => {
 	});
 
 	test('should log user in', async () => {
-		const response = await authlessAgent.post('/login').send({
+		const response = await testServer.authlessAgent.post('/login').send({
 			email: owner.email,
 			password: ownerPassword,
 		});
@@ -84,11 +75,31 @@ describe('POST /login', () => {
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
 	});
+
+	test('should throw AuthError for non-owner if not within users limit quota', async () => {
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		const member = await testDb.createUserShell(globalMemberRole);
+
+		const response = await testServer.authAgentFor(member).get('/login');
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should not throw AuthError for owner if not within users limit quota', async () => {
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		const ownerUser = await testDb.createUser({
+			password: randomValidPassword(),
+			globalRole: globalOwnerRole,
+			isOwner: true,
+		});
+
+		const response = await testServer.authAgentFor(ownerUser).get('/login');
+		expect(response.statusCode).toBe(200);
+	});
 });
 
 describe('GET /login', () => {
 	test('should return 401 Unauthorized if no cookie', async () => {
-		const response = await authlessAgent.get('/login');
+		const response = await testServer.authlessAgent.get('/login');
 
 		expect(response.statusCode).toBe(401);
 
@@ -100,7 +111,7 @@ describe('GET /login', () => {
 		await testDb.createUserShell(globalOwnerRole);
 		await utils.setInstanceOwnerSetUp(false);
 
-		const response = await authlessAgent.get('/login');
+		const response = await testServer.authlessAgent.get('/login');
 
 		expect(response.statusCode).toBe(200);
 
@@ -109,9 +120,9 @@ describe('GET /login', () => {
 	});
 
 	test('should return 401 Unauthorized if invalid cookie', async () => {
-		authlessAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+		testServer.authlessAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
 
-		const response = await authlessAgent.get('/login');
+		const response = await testServer.authlessAgent.get('/login');
 
 		expect(response.statusCode).toBe(401);
 
@@ -122,7 +133,7 @@ describe('GET /login', () => {
 	test('should return logged-in owner shell', async () => {
 		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-		const response = await authAgent(ownerShell).get('/login');
+		const response = await testServer.authAgentFor(ownerShell).get('/login');
 
 		expect(response.statusCode).toBe(200);
 
@@ -158,7 +169,7 @@ describe('GET /login', () => {
 	test('should return logged-in member shell', async () => {
 		const memberShell = await testDb.createUserShell(globalMemberRole);
 
-		const response = await authAgent(memberShell).get('/login');
+		const response = await testServer.authAgentFor(memberShell).get('/login');
 
 		expect(response.statusCode).toBe(200);
 
@@ -194,7 +205,7 @@ describe('GET /login', () => {
 	test('should return logged-in owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-		const response = await authAgent(owner).get('/login');
+		const response = await testServer.authAgentFor(owner).get('/login');
 
 		expect(response.statusCode).toBe(200);
 
@@ -230,7 +241,7 @@ describe('GET /login', () => {
 	test('should return logged-in member', async () => {
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-		const response = await authAgent(member).get('/login');
+		const response = await testServer.authAgentFor(member).get('/login');
 
 		expect(response.statusCode).toBe(200);
 
@@ -270,7 +281,7 @@ describe('GET /resolve-signup-token', () => {
 			password: ownerPassword,
 			globalRole: globalOwnerRole,
 		});
-		authOwnerAgent = authAgent(owner);
+		authOwnerAgent = testServer.authAgentFor(owner);
 	});
 
 	test('should validate invite token', async () => {
@@ -290,6 +301,18 @@ describe('GET /resolve-signup-token', () => {
 				},
 			},
 		});
+	});
+
+	test('should return 403 if user quota reached', async () => {
+		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
+		const memberShell = await testDb.createUserShell(globalMemberRole);
+
+		const response = await authOwnerAgent
+			.get('/resolve-signup-token')
+			.query({ inviterId: owner.id })
+			.query({ inviteeId: memberShell.id });
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -327,7 +350,7 @@ describe('POST /logout', () => {
 	test('should log user out', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-		const response = await authAgent(owner).post('/logout');
+		const response = await testServer.authAgentFor(owner).post('/logout');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);
