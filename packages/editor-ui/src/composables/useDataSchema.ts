@@ -78,6 +78,7 @@ export function useDataSchema() {
 		return schemas;
 	}
 	return {
+		getSchema,
 		getSchemaForExecutionData,
 		getWorkflowSchema,
 	};
