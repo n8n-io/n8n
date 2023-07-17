@@ -397,9 +397,69 @@ export class SourceControlService {
 		// fetch and reset hard first
 		await this.resetWorkfolder();
 
-		//
-		// #region Workflows
-		//
+		const {
+			wfRemoteVersionIds,
+			wfLocalVersionIds,
+			wfMissingInLocal,
+			wfMissingInRemote,
+			wfModifiedInEither,
+		} = await this.getStatusWorkflows(options, sourceControlledFiles);
+
+		const { credMissingInLocal, credMissingInRemote, credModifiedInEither } =
+			await this.getStatusCredentials(options, sourceControlledFiles);
+
+		const { varMissingInLocal, varMissingInRemote, varModifiedInEither } =
+			await this.getStatusVariables(options, sourceControlledFiles);
+
+		const {
+			tagsMissingInLocal,
+			tagsMissingInRemote,
+			tagsModifiedInEither,
+			mappingsMissingInLocal,
+			mappingsMissingInRemote,
+		} = await this.getStatusTagsMappings(options, sourceControlledFiles);
+
+		// #region Tracking Information
+		if (options.direction === 'push') {
+			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+				getTrackingInformationFromPrePushResult(sourceControlledFiles),
+			);
+		} else if (options.direction === 'pull') {
+			void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
+				getTrackingInformationFromPullResult(sourceControlledFiles),
+			);
+		}
+		// #endregion
+
+		if (options?.verbose) {
+			return {
+				wfRemoteVersionIds,
+				wfLocalVersionIds,
+				wfMissingInLocal,
+				wfMissingInRemote,
+				wfModifiedInEither,
+				credMissingInLocal,
+				credMissingInRemote,
+				credModifiedInEither,
+				varMissingInLocal,
+				varMissingInRemote,
+				varModifiedInEither,
+				tagsMissingInLocal,
+				tagsMissingInRemote,
+				tagsModifiedInEither,
+				mappingsMissingInLocal,
+				mappingsMissingInRemote,
+				sourceControlledFiles,
+			};
+		} else {
+			return sourceControlledFiles;
+		}
+	}
+
+	private async getStatusWorkflows(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
 		const wfRemoteVersionIds = await this.sourceControlImportService.getRemoteVersionIdsFromFiles();
 		const wfLocalVersionIds = await this.sourceControlImportService.getLocalVersionIdsFromDb();
 
@@ -472,10 +532,19 @@ export class SourceControlService {
 			});
 		});
 
-		// #endregion
-		//
-		// #region Credentials
-		//
+		return {
+			wfRemoteVersionIds,
+			wfLocalVersionIds,
+			wfMissingInLocal,
+			wfMissingInRemote,
+			wfModifiedInEither,
+		};
+	}
+
+	private async getStatusCredentials(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
 		const credRemoteIds = await this.sourceControlImportService.getRemoteCredentialsFromFiles();
 		const credLocalIds = await this.sourceControlImportService.getLocalCredentialsFromDb();
 
@@ -548,11 +617,17 @@ export class SourceControlService {
 				updatedAt: new Date().toISOString(),
 			});
 		});
+		return {
+			credMissingInLocal,
+			credMissingInRemote,
+			credModifiedInEither,
+		};
+	}
 
-		// #endregion
-		//
-		// #region Variables
-		//
+	private async getStatusVariables(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
 		const varRemoteIds = await this.sourceControlImportService.getRemoteVariablesFromFile();
 		const varLocalIds = await this.sourceControlImportService.getLocalVariablesFromDb();
 
@@ -581,21 +656,32 @@ export class SourceControlService {
 			varMissingInRemote.length > 0 ||
 			varModifiedInEither.length > 0
 		) {
-			sourceControlledFiles.push({
-				id: 'variables',
-				name: 'variables',
-				type: 'variables',
-				status: 'modified',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: getVariablesPath(this.gitFolder),
-				updatedAt: new Date().toISOString(),
-			});
+			if (options.direction === 'pull' && varRemoteIds.length === 0) {
+				// if there's nothing to pull, don't show difference as modified
+			} else {
+				sourceControlledFiles.push({
+					id: 'variables',
+					name: 'variables',
+					type: 'variables',
+					status: 'modified',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: getVariablesPath(this.gitFolder),
+					updatedAt: new Date().toISOString(),
+				});
+			}
 		}
-		// #endregion
-		//
-		// #region Tags
-		//
+		return {
+			varMissingInLocal,
+			varMissingInRemote,
+			varModifiedInEither,
+		};
+	}
+
+	private async getStatusTagsMappings(
+		options: SourceControlGetStatus,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
 		const lastUpdatedTag = await Db.collections.Tag.find({
 			order: { updatedAt: 'DESC' },
 			take: 1,
@@ -638,6 +724,7 @@ export class SourceControlService {
 					(remote) => remote.tagId === local.tagId && remote.workflowId === remote.workflowId,
 				) === -1,
 		);
+
 		if (
 			tagsMissingInLocal.length > 0 ||
 			tagsMissingInRemote.length > 0 ||
@@ -645,54 +732,32 @@ export class SourceControlService {
 			mappingsMissingInLocal.length > 0 ||
 			mappingsMissingInRemote.length > 0
 		) {
-			sourceControlledFiles.push({
-				id: 'mappings',
-				name: 'tags',
-				type: 'tags',
-				status: 'modified',
-				location: options.direction === 'push' ? 'local' : 'remote',
-				conflict: false,
-				file: getTagsPath(this.gitFolder),
-				updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
-			});
+			if (
+				options.direction === 'pull' &&
+				tagMappingsRemote.tags.length === 0 &&
+				tagMappingsRemote.mappings.length === 0
+			) {
+				// if there's nothing to pull, don't show difference as modified
+			} else {
+				sourceControlledFiles.push({
+					id: 'mappings',
+					name: 'tags',
+					type: 'tags',
+					status: 'modified',
+					location: options.direction === 'push' ? 'local' : 'remote',
+					conflict: false,
+					file: getTagsPath(this.gitFolder),
+					updatedAt: lastUpdatedTag[0]?.updatedAt.toISOString(),
+				});
+			}
 		}
-		// #endregion
-
-		// #region Tracking Information
-		if (options.direction === 'push') {
-			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
-				getTrackingInformationFromPrePushResult(sourceControlledFiles),
-			);
-		} else if (options.direction === 'pull') {
-			void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
-				getTrackingInformationFromPullResult(sourceControlledFiles),
-			);
-		}
-		// #endregion
-
-		if (options?.verbose) {
-			return {
-				wfRemoteVersionIds,
-				wfLocalVersionIds,
-				wfMissingInLocal,
-				wfMissingInRemote,
-				wfModifiedInEither,
-				credMissingInLocal,
-				credMissingInRemote,
-				credModifiedInEither,
-				varMissingInLocal,
-				varMissingInRemote,
-				varModifiedInEither,
-				tagsMissingInLocal,
-				tagsMissingInRemote,
-				tagsModifiedInEither,
-				mappingsMissingInLocal,
-				mappingsMissingInRemote,
-				sourceControlledFiles,
-			};
-		} else {
-			return sourceControlledFiles;
-		}
+		return {
+			tagsMissingInLocal,
+			tagsMissingInRemote,
+			tagsModifiedInEither,
+			mappingsMissingInLocal,
+			mappingsMissingInRemote,
+		};
 	}
 
 	async setGitUserDetails(
