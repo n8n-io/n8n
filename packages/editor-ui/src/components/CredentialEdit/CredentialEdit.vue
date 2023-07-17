@@ -727,7 +727,6 @@ export default defineComponent({
 		},
 
 		async retestCredential() {
-			console.log('[retestCredential]');
 			if (!this.isCredentialTestable) {
 				this.authError = '';
 				this.testedSuccessfully = false;
@@ -754,7 +753,6 @@ export default defineComponent({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			console.log('[testCredential]');
 			const result = await this.credentialsStore.testCredential(credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
