@@ -327,7 +327,7 @@ const refreshBranches = async () => {
 							validateOnBlur
 							:validationRules="branchNameValidationRules"
 							:options="branchNameOptions"
-							:value="sourceControlStore.preferences.branchName"
+							:modelValue="sourceControlStore.preferences.branchName"
 							@validate="(value) => onValidate('branchName', value)"
 							@update:modelValue="onSelect"
 						/>

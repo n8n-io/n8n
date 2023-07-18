@@ -237,8 +237,8 @@ async function commitAndPush() {
 					<div class="mt-l mb-2xs">
 						<n8n-checkbox
 							:indeterminate="selectAllIndeterminate"
-							:value="selectAll"
-							@input="onToggleSelectAll"
+							:modelValue="selectAll"
+							@update:modelValue="onToggleSelectAll"
 						>
 							<n8n-text bold tag="strong">
 								{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
