@@ -707,7 +707,6 @@ describe('POST /workflows', () => {
 
 		expect(found).toBeUndefined();
 	});
-	// ...
 });
 
 describe('PUT /workflows/:id', () => {
