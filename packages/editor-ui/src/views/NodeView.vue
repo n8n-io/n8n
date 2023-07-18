@@ -850,6 +850,12 @@ export default defineComponent({
 
 			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
 
+			data.workflow.nodes?.forEach((node) => {
+				if (node.credentials) {
+					delete node.credentials;
+				}
+			});
+
 			this.blankRedirect = true;
 			void this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
