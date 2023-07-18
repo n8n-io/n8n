@@ -926,9 +926,6 @@ importers:
       '@testing-library/vue':
         specifier: ^5.8.3
         version: 5.8.3(vue-template-compiler@2.7.14)(vue@2.7.14)
-      '@types/canvas-confetti':
-        specifier: ^1.6.0
-        version: 1.6.0
       '@types/dateformat':
         specifier: ^3.0.0
         version: 3.0.1
@@ -1131,9 +1128,9 @@ importers:
       otpauth:
         specifier: ^9.1.1
         version: 9.1.1
-      pdf-parse:
-        specifier: ^1.1.1
-        version: 1.1.1
+      pdfjs-dist:
+        specifier: ^2.16.105
+        version: 2.16.105
       pg:
         specifier: ^8.3.0
         version: 8.8.0
@@ -1246,9 +1243,6 @@ importers:
       '@types/nodemailer':
         specifier: ^6.4.0
         version: 6.4.6
-      '@types/pdf-parse':
-        specifier: ^1.1.1
-        version: 1.1.1
       '@types/promise-ftp':
         specifier: ^1.3.4
         version: 1.3.4
@@ -7016,10 +7010,6 @@ packages:
       '@types/connect': 3.4.35
       '@types/node': 18.16.16
 
-  /@types/canvas-confetti@1.6.0:
-    resolution: {integrity: sha512-Yq6rIccwcco0TLD5SMUrIM7Fk7Fe/C0jmNRxJJCLtAF6gebDkPuUjK5EHedxecm69Pi/aA+It39Ux4OHmFhjRw==}
-    dev: true
-
   /@types/caseless@0.12.2:
     resolution: {integrity: sha512-6ckxMjBBD8URvjB6J3NcnuAn5Pkl7t3TizAg+xdlzzQGSPSmBcXf8KoIH0ua/i+tio+ZRUHEXp0HEmvaR4kt0w==}
     dev: true
@@ -7441,10 +7431,6 @@ packages:
     resolution: {integrity: sha512-pz1cx9ptZvozyGKKKIPLcVDVHwae4hrH5d6g5J+DkMRRjR3cVETb4jMabhXAUbg3Ov7T22nFHEgaK2jj+5CBpw==}
     dependencies:
       '@types/express': 4.17.14
-    dev: true
-
-  /@types/pdf-parse@1.1.1:
-    resolution: {integrity: sha512-lDBKAslCwvfK2uvS1Uk+UCpGvw+JRy5vnBFANPKFSY92n/iEnunXi0KVBjPJXhsM4jtdcPnS7tuZ0zjA9x6piQ==}
     dev: true
 
   /@types/prettier@2.7.1:
@@ -11469,6 +11455,11 @@ packages:
     engines: {node: '>= 4'}
     dependencies:
       domelementtype: 2.3.0
+
+  /dommatrix@1.0.3:
+    resolution: {integrity: sha512-l32Xp/TLgWb8ReqbVJAFIvXmY7go4nTxxlWiAFyhoQw9RKEOHBZNnyGvJWqDVSPmq3Y9HlM4npqF/T6VMOXhww==}
+    deprecated: dommatrix is no longer maintained. Please use @thednp/dommatrix.
+    dev: false
 
   /domutils@2.8.0:
     resolution: {integrity: sha512-w96Cjofp72M5IIhpjgobBimYEfoPjx1Vx0BSX9P30WBdZW2WIKU0T1Bd0kz2eNZ9ikjKgHbEyKx8BB6H1L3h3A==}
@@ -17046,10 +17037,6 @@ packages:
       minimatch: 3.1.2
     dev: true
 
-  /node-ensure@0.0.0:
-    resolution: {integrity: sha512-DRI60hzo2oKN1ma0ckc6nQWlHU69RH6xN0sjQTjMpChPfTYvKZdcQFfdYK2RWbJcKyUizSIy/l8OTGxMAM1QDw==}
-    dev: false
-
   /node-fetch-native@1.0.1:
     resolution: {integrity: sha512-VzW+TAk2wE4X9maiKMlT+GsPU4OMmR1U9CrHSmd3DFLn2IcZ9VJ6M6BBugGfYUnPCLSYxXdZy17M0BEJyhUTwg==}
     dev: true
@@ -17909,14 +17896,16 @@ packages:
     resolution: {integrity: sha512-KG8UEiEVkR3wGEb4m5yZkVCzigAD+cVEJck2CzYZO37ZGJfctvVptVO192MwrtPhzONn6go8ylnOdMhKqi4nfg==}
     dev: false
 
-  /pdf-parse@1.1.1:
-    resolution: {integrity: sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==}
-    engines: {node: '>=6.8.1'}
+  /pdfjs-dist@2.16.105:
+    resolution: {integrity: sha512-J4dn41spsAwUxCpEoVf6GVoz908IAA3mYiLmNxg8J9kfRXc2jxpbUepcP0ocp0alVNLFthTAM8DZ1RaHh8sU0A==}
+    peerDependencies:
+      worker-loader: ^3.0.8
+    peerDependenciesMeta:
+      worker-loader:
+        optional: true
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
-      node-ensure: 0.0.0
-    transitivePeerDependencies:
-      - supports-color
+      dommatrix: 1.0.3
+      web-streams-polyfill: 3.2.1
     dev: false
 
   /peek-readable@4.1.0:
@@ -22295,6 +22284,11 @@ packages:
       glob-to-regexp: 0.4.1
       graceful-fs: 4.2.10
     dev: true
+
+  /web-streams-polyfill@3.2.1:
+    resolution: {integrity: sha512-e0MO3wdXWKrLbL0DgGnUV7WHVuw9OUvL4hjgnPkIeEvESk74gAITi5G606JtZPp39cd8HA9VQzCIvA49LpPN5Q==}
+    engines: {node: '>= 8'}
+    dev: false
 
   /webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}

@@ -321,6 +321,15 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	const resultNodeData = getResultNodeData(result, testData);
 	resultNodeData.forEach(({ nodeName, resultData }) => {
 		const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
+		resultData.forEach((item) => {
+			item?.forEach(({ binary }) => {
+				if (binary) {
+					// @ts-ignore
+					delete binary.data.data;
+					delete binary.data.directory;
+				}
+			});
+		});
 		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
@@ -345,6 +354,14 @@ export const workflowToTests = (workflowFiles: string[]) => {
 	for (const filePath of workflowFiles) {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
+		const testDir = path.join(baseDir, path.dirname(filePath));
+		workflowData.nodes.forEach((node) => {
+			if (node.parameters) {
+				node.parameters = JSON.parse(
+					JSON.stringify(node.parameters).replace(/"C:\\\\Test\\\\(.*)"/, `"${testDir}/$1"`),
+				);
+			}
+		});
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}
