@@ -366,7 +366,7 @@ import type {
 	EditorType,
 	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -605,6 +605,11 @@ export default defineComponent({
 				// display the user the key instead of the value it
 				// represents
 				return this.$locale.baseText('parameterInput.loadingOptions');
+			}
+
+			// if the value is marked as empty return empty string, to prevent displaying the asterisks
+			if (this.value === CREDENTIAL_EMPTY_VALUE) {
+				return '';
 			}
 
 			let returnValue;

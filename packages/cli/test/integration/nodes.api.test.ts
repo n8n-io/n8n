@@ -16,7 +16,7 @@ import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 
 const mockLoadNodesAndCredentials = utils.mockInstance(LoadNodesAndCredentials);
@@ -44,17 +44,15 @@ jest.mock('@/CommunityNodes/packageModel', () => {
 
 const mockedEmptyPackage = mocked(utils.emptyPackage);
 
+const testServer = utils.setupTestServer({ endpointGroups: ['nodes'] });
+
 let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['nodes'] });
-
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	ownerShell = await testDb.createUserShell(globalOwnerRole);
-	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
-
-	await utils.initConfigFile();
+	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 });
 
 beforeEach(async () => {
@@ -62,10 +60,6 @@ beforeEach(async () => {
 
 	mocked(executeCommand).mockReset();
 	mocked(findInstalledPackage).mockReset();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('GET /nodes', () => {

@@ -56,10 +56,6 @@ export class Reset extends BaseCommand {
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: 'false' },
 		);
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: 'false' },
-		);
 
 		this.logger.info('Successfully reset the database to default user state.');
 	}

@@ -2,6 +2,33 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.0.0
+
+### What changed?
+
+The minimum Node.js version required for n8n is now v18.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v18 or above.
+
+## 0.234.0
+
+### What changed?
+
+This release introduces two irreversible changes:
+
+* The n8n database will use strings instead of numeric values to identify workflows and credentials
+* Execution data is split into a separate database table
+
+### When is action necessary?
+
+It will not be possible to read a n8n@0.234.0 database with older versions of n8n, so we recommend that you take a full backup before migrating.
+
 ## 0.232.0
 
 ### What changed?

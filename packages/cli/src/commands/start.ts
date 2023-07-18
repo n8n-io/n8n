@@ -338,12 +338,6 @@ export class Start extends BaseCommand {
 		const editorUrl = GenericHelpers.getBaseUrl();
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
-		const saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
-
-		if (saveManualExecutions) {
-			this.log('\nManual executions will be visible only for the owner');
-		}
-
 		// Allow to open n8n editor by pressing "o"
 		if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
 			process.stdin.setRawMode(true);

@@ -9,6 +9,7 @@ import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router';
+import dateformat from 'dateformat';
 
 const props = defineProps({
 	data: {
@@ -16,6 +17,8 @@ const props = defineProps({
 		default: () => ({}),
 	},
 });
+
+const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
 
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
@@ -31,8 +34,69 @@ const commitMessage = ref('');
 const loading = ref(true);
 const context = ref<'workflow' | 'workflows' | 'credentials' | string>('');
 
+const statusToBadgeThemeMap = {
+	created: 'success',
+	deleted: 'danger',
+	modified: 'warning',
+	renamed: 'warning',
+};
+
 const isSubmitDisabled = computed(() => {
 	return !commitMessage.value || Object.values(staged.value).every((value) => !value);
+});
+
+const workflowId = computed(() => {
+	if (context.value === 'workflow') {
+		return route.params.name as string;
+	}
+
+	return '';
+});
+
+const sortedFiles = computed(() => {
+	const statusPriority = {
+		deleted: 1,
+		modified: 2,
+		renamed: 3,
+		created: 4,
+	};
+
+	return [...files.value].sort((a, b) => {
+		if (context.value === 'workflow') {
+			if (a.id === workflowId.value) {
+				return -1;
+			} else if (b.id === workflowId.value) {
+				return 1;
+			}
+		}
+
+		if (statusPriority[a.status] < statusPriority[b.status]) {
+			return -1;
+		} else if (statusPriority[a.status] > statusPriority[b.status]) {
+			return 1;
+		}
+
+		return a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0;
+	});
+});
+
+const selectAll = computed(() => {
+	return files.value.every((file) => staged.value[file.file]);
+});
+
+const workflowFiles = computed(() => {
+	return files.value.filter((file) => file.type === 'workflow');
+});
+
+const stagedWorkflowFiles = computed(() => {
+	return workflowFiles.value.filter((workflow) => staged.value[workflow.file]);
+});
+
+const selectAllIndeterminate = computed(() => {
+	return (
+		stagedWorkflowFiles.value.length > 0 &&
+		stagedWorkflowFiles.value.length < workflowFiles.value.length
+	);
 });
 
 onMounted(async () => {
@@ -45,6 +109,22 @@ onMounted(async () => {
 		loading.value = false;
 	}
 });
+
+function onToggleSelectAll() {
+	if (selectAll.value) {
+		files.value.forEach((file) => {
+			if (!defaultStagedFileTypes.includes(file.type)) {
+				staged.value[file.file] = false;
+			}
+		});
+	} else {
+		files.value.forEach((file) => {
+			if (!defaultStagedFileTypes.includes(file.type)) {
+				staged.value[file.file] = true;
+			}
+		});
+	}
+}
 
 function getContext() {
 	if (route.fullPath.startsWith('/workflows')) {
@@ -62,20 +142,24 @@ function getContext() {
 }
 
 function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<string, boolean> {
-	const stagedFiles: SourceControlAggregatedFile[] = [];
-	if (context.value === 'workflows') {
-		stagedFiles.push(...files.filter((file) => file.file.startsWith('workflows')));
-	} else if (context.value === 'credentials') {
-		stagedFiles.push(...files.filter((file) => file.file.startsWith('credentials')));
-	} else if (context.value === 'workflow') {
-		const workflowId = route.params.name as string;
-		stagedFiles.push(...files.filter((file) => file.type === 'workflow' && file.id === workflowId));
-	}
-
-	return stagedFiles.reduce<Record<string, boolean>>((acc, file) => {
-		acc[file.file] = true;
+	const stagedFiles = files.reduce((acc, file) => {
+		acc[file.file] = false;
 		return acc;
 	}, {});
+
+	files.forEach((file) => {
+		if (defaultStagedFileTypes.includes(file.type)) {
+			stagedFiles[file.file] = true;
+		}
+
+		if (context.value === 'workflow' && file.type === 'workflow' && file.id === workflowId.value) {
+			stagedFiles[file.file] = true;
+		} else if (context.value === 'workflows' && file.type === 'workflow') {
+			stagedFiles[file.file] = true;
+		}
+	});
+
+	return stagedFiles;
 }
 
 function setStagedStatus(file: SourceControlAggregatedFile, status: boolean) {
@@ -87,6 +171,20 @@ function setStagedStatus(file: SourceControlAggregatedFile, status: boolean) {
 
 function close() {
 	uiStore.closeModal(SOURCE_CONTROL_PUSH_MODAL_KEY);
+}
+
+function renderUpdatedAt(file: SourceControlAggregatedFile) {
+	const currentYear = new Date().getFullYear();
+
+	return i18n.baseText('settings.sourceControl.lastUpdated', {
+		interpolate: {
+			date: dateformat(
+				file.updatedAt,
+				`d mmm${file.updatedAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+			),
+			time: dateformat(file.updatedAt, 'HH:MM'),
+		},
+	});
 }
 
 async function commitAndPush() {
@@ -135,12 +233,24 @@ async function commitAndPush() {
 					</n8n-link>
 				</n8n-text>
 
-				<div v-if="files.length > 0">
-					<n8n-text bold tag="p" class="mt-l mb-2xs">
-						{{ i18n.baseText('settings.sourceControl.modals.push.filesToCommit') }}
-					</n8n-text>
+				<div v-if="workflowFiles.length > 0">
+					<div class="mt-l mb-2xs">
+						<n8n-checkbox
+							:indeterminate="selectAllIndeterminate"
+							:value="selectAll"
+							@input="onToggleSelectAll"
+						>
+							<n8n-text bold tag="strong">
+								{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
+							</n8n-text>
+							<n8n-text tag="strong" v-show="workflowFiles.length > 0">
+								({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
+							</n8n-text>
+						</n8n-checkbox>
+					</div>
 					<n8n-card
-						v-for="file in files"
+						v-for="file in sortedFiles"
+						v-show="!defaultStagedFileTypes.includes(file.type)"
 						:key="file.file"
 						:class="$style.listItem"
 						@click="setStagedStatus(file, !staged[file.file])"
@@ -151,19 +261,34 @@ async function commitAndPush() {
 								:class="$style.listItemCheckbox"
 								@update:modelValue="setStagedStatus(file, !staged[file.file])"
 							/>
-							<n8n-text bold>
-								<span v-if="file.status === 'deleted'">
-									<span v-if="file.type === 'workflow'"> Workflow </span>
-									<span v-if="file.type === 'credential'"> Credential </span>
-									Id: {{ file.id }}
-								</span>
-								<span v-else>
+							<div>
+								<n8n-text v-if="file.status === 'deleted'" color="text-light">
+									<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
+									<span v-if="file.type === 'credential'"> Deleted Credential: </span>
+									<strong>{{ file.id }}</strong>
+								</n8n-text>
+								<n8n-text bold v-else>
 									{{ file.name }}
-								</span>
-							</n8n-text>
-							<n8n-badge :class="$style.listItemStatus">
-								{{ file.status }}
-							</n8n-badge>
+								</n8n-text>
+								<div v-if="file.updatedAt">
+									<n8n-text color="text-light" size="small">
+										{{ renderUpdatedAt(file) }}
+									</n8n-text>
+								</div>
+								<div v-if="file.conflict">
+									<n8n-text color="danger" size="small">
+										{{ i18n.baseText('settings.sourceControl.modals.push.overrideVersionInGit') }}
+									</n8n-text>
+								</div>
+							</div>
+							<div :class="$style.listItemStatus">
+								<n8n-badge class="mr-2xs" v-if="workflowId === file.id && file.type === 'workflow'">
+									Current workflow
+								</n8n-badge>
+								<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
+									{{ file.status }}
+								</n8n-badge>
+							</div>
 						</div>
 					</n8n-card>
 
@@ -228,22 +353,22 @@ async function commitAndPush() {
 	&:last-child {
 		margin-bottom: 0;
 	}
+}
 
-	.listItemBody {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
+.listItemBody {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
 
-		.listItemCheckbox {
-			display: inline-flex !important;
-			margin-bottom: 0 !important;
-			margin-right: var(--spacing-2xs);
-		}
+.listItemCheckbox {
+	display: inline-flex !important;
+	margin-bottom: 0 !important;
+	margin-right: var(--spacing-2xs) !important;
+}
 
-		.listItemStatus {
-			margin-left: var(--spacing-2xs);
-		}
-	}
+.listItemStatus {
+	margin-left: auto;
 }
 
 .footer {

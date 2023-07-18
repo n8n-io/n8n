@@ -3,6 +3,7 @@ import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
+	SOURCE_CONTROL_OWNERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
@@ -17,7 +18,7 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
-import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
 
 @Service()
@@ -48,6 +49,10 @@ export class SourceControlExportService {
 
 	getTagsPath(): string {
 		return path.join(this.gitFolder, SOURCE_CONTROL_TAGS_EXPORT_FILE);
+	}
+
+	getOwnersPath(): string {
+		return path.join(this.gitFolder, SOURCE_CONTROL_OWNERS_EXPORT_FILE);
 	}
 
 	getVariablesPath(): string {
@@ -160,7 +165,6 @@ export class SourceControlExportService {
 					connections: e.workflow?.connections,
 					settings: e.workflow?.settings,
 					triggerCount: e.workflow?.triggerCount,
-					owner: e.user.email,
 					versionId: e.workflow?.versionId,
 				};
 				LoggerProxy.debug(`Writing workflow ${e.workflowId} to ${fileName}`);
@@ -186,6 +190,11 @@ export class SourceControlExportService {
 			const removedFiles = await this.rmDeletedWorkflowsFromExportFolder(sharedWorkflows);
 			// write the workflows to the export folder as json files
 			await this.writeExportableWorkflowsToExportFolder(sharedWorkflows);
+			// write list of owners to file
+			const ownersFileName = this.getOwnersPath();
+			const owners: Record<string, string> = {};
+			sharedWorkflows.forEach((e) => (owners[e.workflowId] = e.user.email));
+			await fsWriteFile(ownersFileName, JSON.stringify(owners, null, 2));
 			return {
 				count: sharedWorkflows.length,
 				folder: this.workflowExportFolder,
@@ -280,7 +289,10 @@ export class SourceControlExportService {
 				} else if (typeof data[key] === 'object') {
 					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
 				} else if (typeof data[key] === 'string') {
-					data[key] = (data[key] as string)?.startsWith('={{') ? data[key] : '';
+					data[key] =
+						(data[key] as string)?.startsWith('={{') && (data[key] as string)?.includes('$secret')
+							? data[key]
+							: '';
 				} else if (typeof data[key] === 'number') {
 					// TODO: leaving numbers in for now, but maybe we should remove them
 					continue;

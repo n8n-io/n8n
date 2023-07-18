@@ -4,11 +4,15 @@ import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore, useSourceControlStore } from '@/stores';
-import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 
 const props = defineProps<{
 	isCollapsed: boolean;
 }>();
+
+const responseStatuses = {
+	CONFLICT: 409,
+};
 
 const router = useRouter();
 const loadingService = useLoadingService();
@@ -47,28 +51,17 @@ async function pushWorkfolder() {
 async function pullWorkfolder() {
 	loadingService.startLoading();
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
+
 	try {
 		await sourceControlStore.pullWorkfolder(false);
 	} catch (error) {
 		const errorResponse = error.response;
 
-		if (errorResponse?.status === 409) {
-			const confirm = await message.confirm(
-				i18n.baseText('settings.sourceControl.modals.pull.description'),
-				i18n.baseText('settings.sourceControl.modals.pull.title'),
-				{
-					confirmButtonText: i18n.baseText('settings.sourceControl.modals.pull.buttons.save'),
-					cancelButtonText: i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel'),
-				},
-			);
-
-			try {
-				if (confirm === 'confirm') {
-					await sourceControlStore.pullWorkfolder(true);
-				}
-			} catch (error) {
-				toast.showError(error, 'Error');
-			}
+		if (errorResponse?.status === responseStatuses.CONFLICT) {
+			uiStore.openModalWithData({
+				name: SOURCE_CONTROL_PULL_MODAL_KEY,
+				data: { eventBus, status: errorResponse.data.data },
+			});
 		} else {
 			toast.showError(error, 'Error');
 		}
