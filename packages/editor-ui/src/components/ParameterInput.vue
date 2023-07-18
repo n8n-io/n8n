@@ -608,7 +608,7 @@ export default defineComponent({
 			}
 
 			// if the value is marked as empty return empty string, to prevent displaying the asterisks
-			if (this.value === CREDENTIAL_EMPTY_VALUE) {
+			if (this.modelValue === CREDENTIAL_EMPTY_VALUE) {
 				return '';
 			}
 
