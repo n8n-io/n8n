@@ -38,10 +38,6 @@ export const secretsCompletions = (Vue as CodeNodeEditorMixin).extend({
 					`${matcher}.${provider}`,
 					externalSecretsStore.secretsAsObject[provider],
 				);
-				// Object.keys(externalSecretsStore.secretsAsObject[provider]).map((secret) => ({
-				// 	label: `${matcher}.${provider}.${secret}`,
-				// 	info: externalSecretsStore.secretsAsObject[provider][secret],
-				// }));
 			} else {
 				options = Object.keys(externalSecretsStore.secretsAsObject).map((provider) => ({
 					label: `${matcher}.${provider}`,

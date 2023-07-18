@@ -230,11 +230,7 @@ export default defineComponent({
 		},
 		resolvedAdditionalExpressionData() {
 			return {
-				...(this.isForCredential
-					? {}
-					: {
-							$vars: this.environmentsStore.variablesAsObject,
-					  }),
+				$vars: this.environmentsStore.variablesAsObject,
 				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled && this.isForCredential
 					? { $secrets: this.externalSecretsStore.secretsAsObject }
 					: {}),

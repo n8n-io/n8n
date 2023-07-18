@@ -56,6 +56,10 @@ export function dollarOptions() {
 						label: '$secrets',
 						type: 'keyword',
 					},
+					{
+						label: '$vars',
+						type: 'keyword',
+					},
 			  ]
 			: [];
 	}

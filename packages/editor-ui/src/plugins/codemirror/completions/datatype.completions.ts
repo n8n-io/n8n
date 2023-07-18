@@ -44,9 +44,9 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = luxonStaticOptions().map(stripExcessParens(context));
 	} else if (base === 'Object') {
 		options = objectGlobalOptions().map(stripExcessParens(context));
-	} else if (base === '$vars' && !isCredential) {
+	} else if (base === '$vars') {
 		options = variablesOptions();
-	} else if (/\$secrets\.[a-zA-Z0-9_\.]+$/.test(base) && isCredential) {
+	} else if (/\$secrets\.[a-zA-Z0-9_]+\.$/.test(base) && isCredential) {
 		options = secretOptions(base);
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
