@@ -184,7 +184,7 @@ export class SamlController {
 	}
 
 	private async handleInitSSO(res: express.Response, relayState?: string) {
-		const result = this.samlService.getLoginRequestUrl(relayState);
+		const result = await this.samlService.getLoginRequestUrl(relayState);
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {
