@@ -1723,6 +1723,8 @@
 	"variables.empty.heading.userNotSetup": "Set up a variable",
 	"variables.empty.description": "Variables can be used to store data that can be referenced easily across multiple workflows.",
 	"variables.empty.button": "Add first variable",
+	"variables.empty.notAllowedToCreate.heading": "{name}, start using variables",
+	"variables.empty.notAllowedToCreate.description": "Ask your n8n instance owner to create the variables you need. Once configured, you can utilize them in your workflows using the syntax $vars.MY_VAR.",
 	"variables.noResults": "No variables found",
 	"variables.sort.nameAsc": "Sort by name (A-Z)",
 	"variables.sort.nameDesc": "Sort by name (Z-A)",
