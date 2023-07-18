@@ -3,7 +3,7 @@ import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router/composables';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
-import { useUIStore, useSourceControlStore } from '@/stores';
+import { useUIStore, useSourceControlStore, useUsersStore } from '@/stores';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import type { SourceControlAggregatedFile } from '../Interface';
 import { sourceControlEventBus } from '@/event-bus/source-control';
@@ -19,6 +19,7 @@ const responseStatuses = {
 const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const sourceControlStore = useSourceControlStore();
 const message = useMessage();
 const toast = useToast();
@@ -31,6 +32,7 @@ const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
 const featureEnabled = computed(() => window.localStorage.getItem('source-control'));
+const isInstanceOwner = computed(() => usersStore.isInstanceOwner);
 const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
 async function pushWorkfolder() {
@@ -119,7 +121,7 @@ const goToSourceControlSetup = async () => {
 
 <template>
 	<div
-		v-if="featureEnabled"
+		v-if="featureEnabled && isInstanceOwner"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,

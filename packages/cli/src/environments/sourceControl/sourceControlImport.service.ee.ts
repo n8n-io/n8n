@@ -491,7 +491,7 @@ export class SourceControlImportService {
 				});
 				if (findByName && findByName.id !== tag.id) {
 					throw new Error(
-						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please rename the tag with the id <strong>${tag.id}</strong> in the tags.json file in the repository.`,
+						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
 				await Db.collections.Tag.upsert(
