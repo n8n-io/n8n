@@ -554,6 +554,10 @@ export default defineComponent({
 				return false;
 			}
 
+			if (parameter.displayOptions?.hideOnCloud && this.settingsStore.isCloudDeployment) {
+				return false;
+			}
+
 			if (parameter.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
 				return true;
