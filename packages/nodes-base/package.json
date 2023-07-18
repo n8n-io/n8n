@@ -836,7 +836,7 @@
     "request": "^2.88.2",
     "rhea": "^1.0.11",
     "rss-parser": "^3.7.0",
-    "semver": "^7.3.8",
+    "semver": "^7.5.4",
     "showdown": "^2.0.3",
     "simple-git": "^3.17.0",
     "snowflake-sdk": "^1.6.23",
