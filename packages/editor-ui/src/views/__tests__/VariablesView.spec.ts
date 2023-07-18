@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { waitFor } from '@testing-library/vue';
 import { setupServer } from '@/__tests__/server';
 import VariablesView from '@/views/VariablesView.vue';
 import { useSettingsStore, useUsersStore } from '@/stores';
@@ -43,10 +44,13 @@ describe('VariablesView', () => {
 				isOwner: true,
 			});
 
-			const wrapper = renderComponent(VariablesView, { pinia });
+			const { queryByTestId } = renderComponent(VariablesView, { pinia });
 
-			const emptyList = await wrapper.findByTestId('empty-resources-list');
-			expect(emptyList).toBeVisible();
+			await waitFor(() => {
+				expect(queryByTestId('empty-resources-list')).toBeVisible();
+				expect(queryByTestId('unavailable-resources-list')).not.toBeInTheDocument();
+				expect(queryByTestId('cannot-create-variables')).not.toBeInTheDocument();
+			});
 		});
 
 		it('when feature is disabled and logged in user is owner', async () => {
@@ -55,10 +59,13 @@ describe('VariablesView', () => {
 				isOwner: true,
 			});
 
-			const wrapper = renderComponent(VariablesView, { pinia });
+			const { queryByTestId } = renderComponent(VariablesView, { pinia });
 
-			const emptyList = await wrapper.findByTestId('unavailable-resources-list');
-			expect(emptyList).toBeVisible();
+			await waitFor(() => {
+				expect(queryByTestId('empty-resources-list')).not.toBeInTheDocument();
+				expect(queryByTestId('unavailable-resources-list')).toBeVisible();
+				expect(queryByTestId('cannot-create-variables')).not.toBeInTheDocument();
+			});
 		});
 
 		it('when feature is eanbled and logged in user is not owner', async () => {
@@ -67,10 +74,13 @@ describe('VariablesView', () => {
 				isDefaultUser: true,
 			});
 
-			const wrapper = renderComponent(VariablesView, { pinia });
+			const { queryByTestId } = renderComponent(VariablesView, { pinia });
 
-			const emptyList = await wrapper.findByTestId('cannot-create-variables');
-			expect(emptyList).toBeVisible();
+			await waitFor(() => {
+				expect(queryByTestId('empty-resources-list')).not.toBeInTheDocument();
+				expect(queryByTestId('unavailable-resources-list')).not.toBeInTheDocument();
+				expect(queryByTestId('cannot-create-variables')).toBeVisible();
+			});
 		});
 	});
 

@@ -292,7 +292,7 @@ onBeforeUnmount(() => {
 				@click="goToUpgrade"
 			/>
 			<n8n-action-box
-				v-if="!canCreateVariables"
+				v-else-if="!canCreateVariables"
 				data-test-id="cannot-create-variables"
 				emoji="👋"
 				:heading="
