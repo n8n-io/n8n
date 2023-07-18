@@ -485,6 +485,15 @@ export class SourceControlImportService {
 
 		await Promise.all(
 			mappedTags.tags.map(async (tag) => {
+				const findByName = await Db.collections.Tag.findOne({
+					where: { name: tag.name },
+					select: ['id'],
+				});
+				if (findByName && findByName.id !== tag.id) {
+					throw new Error(
+						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please rename the tag with the id <strong>${tag.id}</strong> in the tags.json file in the repository.`,
+					);
+				}
 				await Db.collections.Tag.upsert(
 					{
 						...tag,
