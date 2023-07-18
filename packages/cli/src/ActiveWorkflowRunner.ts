@@ -64,7 +64,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
-import { START_NODES } from './constants';
+import { STARTING_NODES } from './constants';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 
@@ -793,7 +793,7 @@ export class ActiveWorkflowRunner {
 				settings: workflowData.settings,
 			});
 
-			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated(START_NODES);
+			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated(STARTING_NODES);
 			if (!canBeActivated) {
 				Logger.error(`Unable to activate workflow "${workflowData.name}"`);
 				throw new Error(
