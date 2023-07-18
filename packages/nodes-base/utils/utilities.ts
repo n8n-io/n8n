@@ -216,6 +216,20 @@ export const keysToLowercase = <T>(headers: T) => {
 };
 
 /**
+ * Sanitizes a private key string by adding the appropriate header and footer lines and replacing spaces with newlines in the body.
+ *
+ * @param privateKey - The private key string to sanitize.
+ * @returns The sanitized private key string.
+ */
+export function sanitizePrivateKey(privateKey: string) {
+	const [openSshKey, bodySshKey, endSshKey] = privateKey
+		.split('-----')
+		.filter((item) => item !== '');
+
+	return `-----${openSshKey}-----\n${bodySshKey.replace(/ /g, '\n')}\n-----${endSshKey}-----`;
+}
+
+/**
  * @TECH_DEBT Explore replacing with handlebars
  */
 export function getResolvables(expression: string) {

@@ -11,11 +11,13 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
+import { sanitizePrivateKey } from '@utils/utilities';
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
 import type { Readable } from 'stream';
 import { pipeline } from 'stream';
 import { promisify } from 'util';
+import { writeFile } from 'fs/promises';
 import { file as tmpFile } from 'tmp-promise';
 
 import ftpClient from 'promise-ftp';
@@ -459,14 +461,27 @@ export class Ftp implements INodeType {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
 					const sftp = new sftpClient();
-					await sftp.connect({
-						host: credentials.host as string,
-						port: credentials.port as number,
-						username: credentials.username as string,
-						password: credentials.password as string,
-						privateKey: credentials.privateKey as string | undefined,
-						passphrase: credentials.passphrase as string | undefined,
-					});
+					if (credentials.privateKey) {
+						const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
+						const temporaryFiles: string[] = [];
+						temporaryFiles.push(path);
+						await writeFile(path, sanitizePrivateKey(credentials.privateKey as string));
+
+						await sftp.connect({
+							host: credentials.host as string,
+							port: credentials.port as number,
+							username: credentials.username as string,
+							privateKey: path,
+							passphrase: credentials.passphrase as string | undefined,
+						});
+					} else {
+						await sftp.connect({
+							host: credentials.host as string,
+							port: credentials.port as number,
+							username: credentials.username as string,
+							password: credentials.password as string,
+						});
+					}
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -502,14 +517,28 @@ export class Ftp implements INodeType {
 
 			if (protocol === 'sftp') {
 				sftp = new sftpClient();
-				await sftp.connect({
-					host: credentials.host as string,
-					port: credentials.port as number,
-					username: credentials.username as string,
-					password: credentials.password as string,
-					privateKey: credentials.privateKey as string | undefined,
-					passphrase: credentials.passphrase as string | undefined,
-				});
+				if (credentials.privateKey) {
+					const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
+					const temporaryFiles: string[] = [];
+					temporaryFiles.push(path);
+					await writeFile(path, sanitizePrivateKey(credentials.privateKey as string));
+					console.log(path);
+
+					await sftp.connect({
+						host: credentials.host as string,
+						port: credentials.port as number,
+						username: credentials.username as string,
+						privateKey: path,
+						passphrase: credentials.passphrase as string | undefined,
+					});
+				} else {
+					await sftp.connect({
+						host: credentials.host as string,
+						port: credentials.port as number,
+						username: credentials.username as string,
+						password: credentials.password as string,
+					});
+				}
 			} else {
 				ftp = new ftpClient();
 				await ftp.connect({

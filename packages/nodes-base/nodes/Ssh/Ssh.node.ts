@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
+import { sanitizePrivateKey } from '@utils/utilities';
+
 import { rm, writeFile } from 'fs/promises';
 
 import { file as tmpFile } from 'tmp-promise';
@@ -47,13 +49,13 @@ async function resolveHomeDir(
 	return path;
 }
 
-function sanitizePrivateKey(privateKey: string) {
+/*function sanitizePrivateKey(privateKey: string) {
 	const [openSshKey, bodySshKey, endSshKey] = privateKey
 		.split('-----')
 		.filter((item) => item !== '');
 
 	return `-----${openSshKey}-----\n${bodySshKey.replace(/ /g, '\n')}\n-----${endSshKey}-----`;
-}
+}*/
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
