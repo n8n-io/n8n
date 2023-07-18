@@ -27,6 +27,14 @@
 	"pinData": {
 		"Read PDF": [
 			{
+				"binary": {
+					"data": {
+						"fileExtension": "pdf",
+						"fileName": "sample.pdf",
+						"fileSize": "17.8 kB",
+						"mimeType": "application/pdf"
+					}
+				},
 				"json": {
 					"numpages": 1,
 					"numrender": 1,
@@ -43,7 +51,6 @@
 						"Producer": "iLovePDF",
 						"ModDate": "D:20230210122750Z"
 					},
-					"metadata": null,
 					"text": "N8N\nSample PDF\nLorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor\ninvidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et\njusto duo dolores et ea rebum.",
 					"version": "2.16.105"
 				}
