@@ -22,16 +22,13 @@
 				/>
 			</div>
 
-			<import-parameter
+			<!-- Prevent rendering of import buttons as individual parameters -->
+			<template
 				v-else-if="
-					parameter.type === 'curlImport' &&
-					nodeTypeName === 'n8n-nodes-base.httpRequest' &&
-					nodeTypeVersion >= 3
+					['curlImport', 'aiImport'].includes(parameter.type) &&
+					nodeTypeName === 'n8n-nodes-base.httpRequest'
 				"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
 			/>
-
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
@@ -143,6 +140,7 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
+import AiImportParameter from '@/components/AiImportParameter.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { get, set } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -159,6 +157,7 @@ export default defineComponent({
 		FixedCollectionParameter: async () => import('./FixedCollectionParameter.vue'),
 		CollectionParameter: async () => import('./CollectionParameter.vue'),
 		ImportParameter,
+		AiImportParameter,
 		ResourceMapper,
 	},
 	props: {
@@ -467,6 +466,9 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+.inline-parameter {
+	display: inline-block;
+}
 .parameter-input-list-wrapper {
 	.delete-option {
 		display: none;

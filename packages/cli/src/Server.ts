@@ -322,6 +322,9 @@ export class Server extends AbstractServer {
 			banners: {
 				dismissed: [],
 			},
+			ai: {
+				enabled: config.getEnv('ai.enabled'),
+			},
 		};
 	}
 
@@ -495,7 +498,7 @@ export class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new AiController(),
+			new AiController({ logger }),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
 		];

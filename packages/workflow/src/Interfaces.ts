@@ -1020,6 +1020,7 @@ export type NodePropertyTypes =
 	| 'credentialsSelect'
 	| 'resourceLocator'
 	| 'curlImport'
+	| 'aiImport'
 	| 'resourceMapper';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
@@ -2164,6 +2165,9 @@ export interface IN8nUISettings {
 	};
 	banners: {
 		dismissed: string[];
+	};
+	ai: {
+		enabled: boolean;
 	};
 }
 

@@ -100,15 +100,27 @@
 					@activate="onWorkflowActivate"
 					@parameterBlur="onParameterBlur"
 				>
-					<node-credentials
-						:node="node"
-						:readonly="isReadOnly"
-						:showAll="true"
-						@credentialSelected="credentialSelected"
-						@valueChanged="valueChanged"
-						@blur="onParameterBlur"
-						:hide-issues="hiddenIssuesInputs.includes('credentials')"
-					/>
+					<template>
+						<div
+							:class="$style.parametersControls"
+							v-if="
+								nodeTypeName === 'n8n-nodes-base.httpRequest' &&
+								(ndvStore.activeNode?.typeVersion || 1) >= 3
+							"
+						>
+							<ai-import-parameter :isReadOnly="isReadOnly" @valueChanged="valueChanged" />
+							<import-parameter :isReadOnly="isReadOnly" @valueChanged="valueChanged" />
+						</div>
+						<node-credentials
+							:node="node"
+							:readonly="isReadOnly"
+							:showAll="true"
+							@credentialSelected="credentialSelected"
+							@valueChanged="valueChanged"
+							@blur="onParameterBlur"
+							:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						/>
+					</template>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
@@ -179,12 +191,16 @@ import {
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
 	IMPORT_CURL_MODAL_KEY,
+	AI_CONNECT_MODAL_KEY,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
+import AiImportParameter from '@/components/AiImportParameter.vue';
+
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash-es';
 
@@ -213,6 +229,8 @@ export default defineComponent({
 		NodeSettingsTabs,
 		NodeWebhooks,
 		NodeExecuteButton,
+		ImportParameter,
+		AiImportParameter,
 	},
 	computed: {
 		...mapStores(
@@ -225,7 +243,10 @@ export default defineComponent({
 			useWorkflowsEEStore,
 		),
 		isCurlImportModalOpen(): boolean {
-			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
+			return (
+				this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY) ||
+				this.uiStore.isModalOpen(AI_CONNECT_MODAL_KEY)
+			);
 		},
 		isReadOnly(): boolean {
 			return this.readOnly || this.hasForeignCredential;
@@ -465,7 +486,10 @@ export default defineComponent({
 		},
 		isCurlImportModalOpen(newValue, oldValue) {
 			if (newValue === false) {
-				let parameters = this.uiStore.getHttpNodeParameters || '';
+				let parameters =
+					this.uiStore.getHttpNodeParameters(IMPORT_CURL_MODAL_KEY) ||
+					this.uiStore.getHttpNodeParameters(AI_CONNECT_MODAL_KEY) ||
+					'';
 
 				if (!parameters) return;
 
@@ -483,6 +507,7 @@ export default defineComponent({
 					});
 
 					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
+					this.uiStore.setHttpNodeParameters({ name: AI_CONNECT_MODAL_KEY, parameters: '' });
 				} catch {}
 			}
 		},
@@ -971,6 +996,12 @@ export default defineComponent({
 .descriptionContainer {
 	display: flex;
 	flex-direction: column;
+}
+.parametersControls {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing-xs);
+	margin-top: var(--spacing-xs);
 }
 </style>
 

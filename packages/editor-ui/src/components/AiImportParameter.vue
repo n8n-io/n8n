@@ -1,7 +1,7 @@
 <template>
 	<n8n-button
 		type="secondary"
-		:label="$locale.baseText('importParameter.label')"
+		:label="$locale.baseText('aiImportParameter.label')"
 		:disabled="isReadOnly"
 		size="mini"
 		@click="onImportCurlClicked"
@@ -10,12 +10,12 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { IMPORT_CURL_MODAL_KEY } from '@/constants';
+import { AI_CONNECT_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 
 export default defineComponent({
-	name: 'import-parameter',
+	name: 'ai-import-parameter',
 	props: {
 		isReadOnly: {
 			type: Boolean,
@@ -27,7 +27,7 @@ export default defineComponent({
 	},
 	methods: {
 		onImportCurlClicked() {
-			this.uiStore.openModal(IMPORT_CURL_MODAL_KEY);
+			this.uiStore.openModal(AI_CONNECT_MODAL_KEY);
 		},
 	},
 });

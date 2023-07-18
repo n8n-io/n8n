@@ -1095,4 +1095,25 @@ export const schema = {
 			},
 		},
 	},
+
+	ai: {
+		enabled: {
+			doc: 'Whether AI features are enabled.',
+			format: Boolean,
+			default: false,
+			env: 'N8N_AI_ENABLED',
+		},
+		endpoint: {
+			doc: 'Endpoint to retrieve AI information from.',
+			format: String,
+			default: '',
+			env: 'N8N_AI_ENDPOINT',
+		},
+		authorization: {
+			doc: 'Authorization header to use for AI endpoint.',
+			format: String,
+			default: '',
+			env: 'N8N_AI_AUTHORIZATION',
+		},
+	},
 };

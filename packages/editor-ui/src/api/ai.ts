@@ -11,3 +11,13 @@ export async function generateCodeForPrompt(
 		schema: JSON.stringify(schema),
 	} as IDataObject);
 }
+
+export async function generateCurlCommand(
+	context: IRestApiContext,
+	{ prompt, service }: { prompt: string; service: string },
+): Promise<{ curl: string }> {
+	return makeRestApiRequest(context, 'POST', '/ai/generate-curl', {
+		prompt,
+		service,
+	} as IDataObject);
+}

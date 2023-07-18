@@ -10,11 +10,10 @@
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
-						:value="curlCommand"
 						type="textarea"
 						:rows="5"
 						:placeholder="$locale.baseText('importCurlModal.input.placeholder')"
-						@input="onInput"
+						v-model="curlCommand"
 						@focus="$event.target.select()"
 						ref="input"
 					/>
@@ -29,7 +28,7 @@
 				/>
 				<div>
 					<n8n-button
-						@click="importCurlCommand"
+						@click="onSubmit"
 						float="right"
 						:label="$locale.baseText('importCurlModal.button.label')"
 					/>
@@ -39,149 +38,39 @@
 	</Modal>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import Modal from '@/components/Modal.vue';
-import {
-	IMPORT_CURL_MODAL_KEY,
-	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
-	CURL_IMPORT_NODES_PROTOCOLS,
-} from '@/constants';
-import { useToast } from '@/composables';
-import { defineComponent } from 'vue';
-import type { INodeUi } from '@/Interface';
-import { mapStores } from 'pinia';
+
+import { onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/stores/ndv.store';
 import { createEventBus } from 'n8n-design-system';
+import { useImportCurl } from '@/composables';
+import { IMPORT_CURL_MODAL_KEY } from '@/constants';
+import { useTelemetry } from '@/composables';
 
-export default defineComponent({
-	name: 'ImportCurlModal',
-	components: {
-		Modal,
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			IMPORT_CURL_MODAL_KEY,
-			curlCommand: '',
-			modalBus: createEventBus(),
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore, useUIStore),
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
-	},
-	methods: {
-		closeDialog(): void {
-			this.modalBus.emit('close');
-		},
-		onInput(value: string): void {
-			this.curlCommand = value;
-		},
-		async importCurlCommand(): Promise<void> {
-			const curlCommand = this.curlCommand;
-			if (curlCommand === '') return;
+const uiStore = useUIStore();
+const { track } = useTelemetry();
+const { importCurlCommand } = useImportCurl(track, IMPORT_CURL_MODAL_KEY);
 
-			try {
-				const parameters = await this.uiStore.getCurlToJson(curlCommand);
-				const url = parameters['parameters.url'];
+const modalBus = createEventBus();
+const curlCommand = ref('');
+const input = ref();
 
-				const invalidProtocol = CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS.find((p) =>
-					url.includes(`${p}://`),
-				);
+function closeDialog() {
+	modalBus.emit('close');
+}
 
-				if (!invalidProtocol) {
-					this.uiStore.setHttpNodeParameters({
-						name: IMPORT_CURL_MODAL_KEY,
-						parameters: JSON.stringify(parameters),
-					});
+async function onSubmit() {
+	if (await importCurlCommand(curlCommand.value)) {
+		closeDialog();
+	}
+}
 
-					this.closeDialog();
-
-					this.sendTelemetry();
-
-					return;
-					// if we have a node that supports the invalid protocol
-					// suggest that one
-				} else if (CURL_IMPORT_NODES_PROTOCOLS[invalidProtocol]) {
-					const useNode = CURL_IMPORT_NODES_PROTOCOLS[invalidProtocol];
-
-					this.showProtocolErrorWithSupportedNode(invalidProtocol, useNode);
-					// we do not have a node that supports the use protocol
-				} else {
-					this.showProtocolError(invalidProtocol);
-				}
-				this.sendTelemetry({ success: false, invalidProtocol: true, protocol: invalidProtocol });
-			} catch (e) {
-				this.showInvalidcURLCommandError();
-
-				this.sendTelemetry({ success: false, invalidProtocol: false });
-			} finally {
-				this.uiStore.setCurlCommand({ name: IMPORT_CURL_MODAL_KEY, command: this.curlCommand });
-			}
-		},
-		showProtocolErrorWithSupportedNode(protocol: string, node: string): void {
-			this.showToast({
-				title: this.$locale.baseText('importParameter.showError.invalidProtocol1.title', {
-					interpolate: {
-						node,
-					},
-				}),
-				message: this.$locale.baseText('importParameter.showError.invalidProtocol.message', {
-					interpolate: {
-						protocol: protocol.toUpperCase(),
-					},
-				}),
-				type: 'error',
-				duration: 0,
-			});
-		},
-		showProtocolError(protocol: string): void {
-			this.showToast({
-				title: this.$locale.baseText('importParameter.showError.invalidProtocol2.title'),
-				message: this.$locale.baseText('importParameter.showError.invalidProtocol.message', {
-					interpolate: {
-						protocol,
-					},
-				}),
-				type: 'error',
-				duration: 0,
-			});
-		},
-		showInvalidcURLCommandError(): void {
-			this.showToast({
-				title: this.$locale.baseText('importParameter.showError.invalidCurlCommand.title'),
-				message: this.$locale.baseText('importParameter.showError.invalidCurlCommand.message'),
-				type: 'error',
-				duration: 0,
-			});
-		},
-		sendTelemetry(
-			data: { success: boolean; invalidProtocol: boolean; protocol?: string } = {
-				success: true,
-				invalidProtocol: false,
-				protocol: '',
-			},
-		): void {
-			this.$telemetry.track('User imported curl command', {
-				success: data.success,
-				invalidProtocol: data.invalidProtocol,
-				protocol: data.protocol,
-			});
-		},
-	},
-	mounted() {
-		this.curlCommand = this.uiStore.getCurlCommand || '';
-		setTimeout(() => {
-			(this.$refs.input as HTMLTextAreaElement).focus();
-		});
-	},
+onMounted(() => {
+	curlCommand.value = uiStore.getCurlCommand(IMPORT_CURL_MODAL_KEY) || '';
+	setTimeout(() => {
+		(input.value as HTMLTextAreaElement)?.focus();
+	});
 });
 </script>
 

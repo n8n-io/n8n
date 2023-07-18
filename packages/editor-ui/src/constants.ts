@@ -46,6 +46,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const AI_CONNECT_MODAL_KEY = 'aiImport';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
