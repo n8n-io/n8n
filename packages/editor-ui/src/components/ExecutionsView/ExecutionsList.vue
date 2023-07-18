@@ -126,8 +126,10 @@ export default defineComponent({
 	},
 	watch: {
 		$route(to: Route, from: Route) {
-			const workflowChanged = from.params.name !== to.params.name;
-			void this.initView(workflowChanged);
+			if (to.params.name) {
+				const workflowChanged = from.params.name !== to.params.name;
+				void this.initView(workflowChanged);
+			}
 
 			if (to.params.executionId) {
 				const execution = this.workflowsStore.getExecutionDataById(to.params.executionId);
@@ -545,6 +547,7 @@ export default defineComponent({
 			}
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
+			console.log('openWorkflow', workflowId);
 			await this.loadActiveWorkflows();
 
 			let data: IWorkflowDb | undefined;
