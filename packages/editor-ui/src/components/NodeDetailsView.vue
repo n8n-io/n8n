@@ -47,7 +47,7 @@
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
-				<template #input>
+				<template #input v-if="showTriggerPanel || !isTriggerNode">
 					<TriggerPanel
 						v-if="showTriggerPanel"
 						:nodeName="activeNode.name"
