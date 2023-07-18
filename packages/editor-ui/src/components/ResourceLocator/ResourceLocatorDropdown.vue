@@ -4,7 +4,7 @@
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
-		:modelValue="show"
+		:visible="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
 		v-on-click-outside="onClickOutside"
