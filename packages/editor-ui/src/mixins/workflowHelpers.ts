@@ -748,6 +748,8 @@ export const workflowHelpers = defineComponent({
 
 				return true;
 			} catch (error) {
+				console.error(error);
+
 				this.uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 100) {

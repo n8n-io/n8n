@@ -291,10 +291,10 @@ export default defineComponent({
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.node.type);
+			return isCommunityPackageName(this.node?.type);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node?.type);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
@@ -614,7 +614,7 @@ export default defineComponent({
 			}
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
-			const nodeNameBefore = parameterData.node || this.node.name;
+			const nodeNameBefore = parameterData.node || this.node?.name;
 			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
 
 			if (node === null) {
@@ -935,8 +935,8 @@ export default defineComponent({
 		onMissingNodeLearnMoreLinkClick() {
 			this.$telemetry.track('user clicked cnr docs link', {
 				source: 'missing node modal source',
-				package_name: this.node.type.split('.')[0],
-				node_type: this.node.type,
+				package_name: this.node?.type.split('.')[0],
+				node_type: this.node?.type,
 			});
 		},
 		onStopExecution() {

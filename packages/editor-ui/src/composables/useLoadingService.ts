@@ -38,6 +38,7 @@ export function useLoadingService() {
 	}
 
 	return {
+		loadingService,
 		startLoading,
 		setLoadingText,
 		stopLoading,

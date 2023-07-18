@@ -694,7 +694,7 @@ export default defineComponent({
 
 <style lang="scss">
 .ndv-wrapper {
-	overflow: hidden;
+	overflow: visible;
 }
 
 .data-display-wrapper {
@@ -711,7 +711,7 @@ export default defineComponent({
 		padding: 0 !important;
 		height: 100%;
 		min-height: 400px;
-		overflow: hidden;
+		overflow: visible;
 		border-radius: 8px;
 	}
 }

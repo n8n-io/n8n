@@ -197,10 +197,8 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const loadingService = useLoadingService();
-
 		return {
-			loadingService,
+			...useLoadingService(),
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
