@@ -1,3 +1,19 @@
+## [0.236.3](https://github.com/n8n-io/n8n/compare/n8n@0.236.2...n8n@0.236.3) (2023-07-18)
+
+
+### Bug Fixes
+
+* **API:** Do not add starting node on workflow creation ([#6686](https://github.com/n8n-io/n8n/issues/6686)) ([36d549f](https://github.com/n8n-io/n8n/commit/36d549f30845bd008c10f9800128bccb3668785f))
+* **core:** Deleting manual executions should defer deleting binary data ([#6680](https://github.com/n8n-io/n8n/issues/6680)) ([5488f24](https://github.com/n8n-io/n8n/commit/5488f24f705f592f6d88456f68139e277e48906d))
+* **core:** Filter out workflows that failed to activate on startup ([#6676](https://github.com/n8n-io/n8n/issues/6676)) ([fcd1bdc](https://github.com/n8n-io/n8n/commit/fcd1bdcd1a5d4fd43d655b1c554eb19cffe7a73b))
+* **core:** Upgrade semver to address CVE-2022-25883 ([#6689](https://github.com/n8n-io/n8n/issues/6689)) ([47bc673](https://github.com/n8n-io/n8n/commit/47bc673c063dc40059cc47dca6850c59956a75eb))
+* **editor:** Hide Execute Node button for unknown nodes ([#6684](https://github.com/n8n-io/n8n/issues/6684)) ([aa0f917](https://github.com/n8n-io/n8n/commit/aa0f917b6110e7ae35317211b5385b6912b13e11))
+* **FileMaker Node:** Improve returned error responses ([#6585](https://github.com/n8n-io/n8n/issues/6585)) ([834e727](https://github.com/n8n-io/n8n/commit/834e727f59b38db50bb20be6288bff1883f6f6a6))
+* **Microsoft Outlook Node:** Fix issue with category not correctly applying ([#6583](https://github.com/n8n-io/n8n/issues/6583)) ([5d50ee0](https://github.com/n8n-io/n8n/commit/5d50ee062f3dc0f70b37289ad1431b79b168e1cc))
+* Stop n8n from complaining about credentials when saving a new workflow form a template ([#6671](https://github.com/n8n-io/n8n/issues/6671)) ([a8a406e](https://github.com/n8n-io/n8n/commit/a8a406ee7e52ddcde0350e29b64a177bfbea41c2))
+
+
+
 ## [0.236.2](https://github.com/n8n-io/n8n/compare/n8n@0.236.1...n8n@0.236.2) (2023-07-14)
 
 
