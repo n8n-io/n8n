@@ -315,6 +315,8 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
+import type { ElNotificationComponent } from 'element-ui/types/notification';
+import { sourceControlEventBus } from '@/event-bus/source-control';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -622,6 +624,7 @@ export default defineComponent({
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
+			readOnlyNotification: null as null | ElNotificationComponent,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -639,8 +642,11 @@ export default defineComponent({
 	},
 	methods: {
 		editAllowedCheck(): boolean {
+			if (this.readOnlyNotification?.visible) {
+				return;
+			}
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
-				this.showMessage({
+				this.readOnlyNotification = this.showMessage({
 					title: this.$locale.baseText(
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${this.isReadOnlyRoute ? 'executions' : 'workflows'}.title`
@@ -3842,6 +3848,28 @@ export default defineComponent({
 			}
 		},
 	},
+	async onSourceControlPull() {
+		let workflowId = null as string | null;
+		if (this.$route.params.name) {
+			workflowId = this.$route.params.name;
+		}
+
+		try {
+			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
+
+			if (workflowId !== null && !this.uiStore.stateIsDirty) {
+				const workflow: IWorkflowDb | undefined = await this.workflowsStore.fetchWorkflow(
+					workflowId,
+				);
+				if (workflow) {
+					this.titleSet(workflow.name, 'IDLE');
+					await this.openWorkflow(workflow);
+				}
+			}
+		} catch (error) {
+			console.error(error);
+		}
+	},
 	async mounted() {
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
@@ -3870,6 +3898,7 @@ export default defineComponent({
 			);
 			return;
 		}
+
 		ready(async () => {
 			try {
 				try {
@@ -3933,6 +3962,8 @@ export default defineComponent({
 				}, promptTimeout);
 			}
 		}
+
+		sourceControlEventBus.on('pull', this.onSourceControlPull);
 
 		this.readOnlyEnvRouteCheck();
 	},
@@ -3998,6 +4029,7 @@ export default defineComponent({
 		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		sourceControlEventBus.off('pull', this.onSourceControlPull);
 	},
 });
 </script>

@@ -9,6 +9,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores';
 import { useRoute, useRouter } from 'vue-router/composables';
 import { computed, nextTick, ref } from 'vue';
+import { sourceControlEventBus } from '@/event-bus/source-control';
 
 const props = defineProps({
 	data: {
@@ -73,6 +74,7 @@ async function pullWorkfolder() {
 				});
 			});
 		}
+		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
