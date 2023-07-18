@@ -2,10 +2,16 @@ import Vue from 'vue';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription, IPinData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils';
-import { MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST } from '@/constants';
+import {
+	MAX_EXPECTED_REQUEST_SIZE,
+	MAX_WORKFLOW_PINNED_DATA_SIZE,
+	MAX_WORKFLOW_SIZE,
+	PIN_DATA_NODE_TYPES_DENYLIST,
+} from '@/constants';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables';
+import { deepCopy, jsonStringify } from 'n8n-workflow';
 
 export interface IPinDataContext {
 	node: INodeUi;
@@ -86,6 +92,11 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 		isValidPinDataSize(data: string | object): boolean {
 			if (typeof data === 'object') data = JSON.stringify(data);
 
+			const workflow = deepCopy(useWorkflowsStore().getCurrentWorkflow(true));
+			const workflowJson = jsonStringify(workflow, { replaceCircularRefs: true });
+
+			console.log(stringSizeInBytes(data) + stringSizeInBytes(workflowJson));
+
 			if (
 				this.workflowsStore.pinDataSize + stringSizeInBytes(data) >
 				MAX_WORKFLOW_PINNED_DATA_SIZE
@@ -93,6 +104,16 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
+				);
+
+				return false;
+			} else if (
+				stringSizeInBytes(workflowJson) + stringSizeInBytes(data) >
+				MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
+			) {
+				this.showError(
+					new Error(this.$locale.baseText('ndv.pinData.error.tooLargeWorkflow.description')),
+					this.$locale.baseText('ndv.pinData.error.tooLargeWorkflow.title'),
 				);
 
 				return false;

@@ -703,6 +703,8 @@
 	"ndv.pinData.beforeClosing.confirm": "Save",
 	"ndv.pinData.error.tooLarge.title": "Output data is too large to pin",
 	"ndv.pinData.error.tooLarge.description": "You can pin at most 12MB of output per workflow.",
+	"ndv.pinData.error.tooLargeWorkflow.title": "Output data is too large to pin",
+	"ndv.pinData.error.tooLargeWorkflow.description": "Workflow with data exceeds maximum size of 16MB.",
 	"noTagsView.readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
 	"noTagsView.withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows",
 	"node.thisIsATriggerNode": "This is a Trigger node. <a target=\"_blank\" href=\"https://docs.n8n.io/workflows/components/nodes/\">Learn more</a>",
