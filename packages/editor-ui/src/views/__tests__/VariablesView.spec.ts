@@ -1,13 +1,15 @@
-import { afterAll, beforeAll } from 'vitest';
+import { afterAll, beforeAll, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
 import VariablesView from '@/views/VariablesView.vue';
 import { useSettingsStore, useUsersStore } from '@/stores';
 import { renderComponent } from '@/__tests__/utils';
 
-describe('store', () => {
+describe('VariablesView', () => {
 	let server: ReturnType<typeof setupServer>;
 	let pinia: ReturnType<typeof createPinia>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let usersStore: ReturnType<typeof useUsersStore>;
 
 	beforeAll(() => {
 		server = setupServer();
@@ -17,9 +19,11 @@ describe('store', () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 
-		await useSettingsStore().getSettings();
-		await useUsersStore().fetchUsers();
-		await useUsersStore().loginWithCookie();
+		settingsStore = useSettingsStore();
+		usersStore = useUsersStore();
+		await settingsStore.getSettings();
+		await usersStore.fetchUsers();
+		await usersStore.loginWithCookie();
 	});
 
 	afterAll(() => {
@@ -32,11 +36,42 @@ describe('store', () => {
 		expect(wrapper.container.querySelectorAll('.n8n-loading')).toHaveLength(3);
 	});
 
-	it('should render empty state', async () => {
-		const wrapper = renderComponent(VariablesView, { pinia });
+	describe('should render empty state', () => {
+		it('when feature is enabled and logged in user is owner', async () => {
+			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
+				isOwner: true,
+			});
 
-		await wrapper.findByTestId('empty-resources-list');
-		expect(wrapper.getByTestId('empty-resources-list')).toBeVisible();
+			const wrapper = renderComponent(VariablesView, { pinia });
+
+			const emptyList = await wrapper.findByTestId('empty-resources-list');
+			expect(emptyList).toBeVisible();
+		});
+
+		it('when feature is disabled and logged in user is owner', async () => {
+			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(false);
+			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
+				isOwner: true,
+			});
+
+			const wrapper = renderComponent(VariablesView, { pinia });
+
+			const emptyList = await wrapper.findByTestId('unavailable-resources-list');
+			expect(emptyList).toBeVisible();
+		});
+
+		it('when feature is eanbled and logged in user is not owner', async () => {
+			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
+				isDefaultUser: true,
+			});
+
+			const wrapper = renderComponent(VariablesView, { pinia });
+
+			const emptyList = await wrapper.findByTestId('cannot-create-variables');
+			expect(emptyList).toBeVisible();
+		});
 	});
 
 	it('should render variable entries', async () => {
@@ -44,8 +79,8 @@ describe('store', () => {
 
 		const wrapper = renderComponent(VariablesView, { pinia });
 
-		await wrapper.findByTestId('resources-table');
-		expect(wrapper.getByTestId('resources-table')).toBeVisible();
+		const table = await wrapper.findByTestId('resources-table');
+		expect(table).toBeVisible();
 		expect(wrapper.container.querySelectorAll('tr')).toHaveLength(4);
 	});
 });
