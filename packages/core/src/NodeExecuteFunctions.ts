@@ -861,6 +861,10 @@ async function httpRequest(
 	return result.data;
 }
 
+export function getBinaryPath(binaryDataId: string): string {
+	return BinaryDataManager.getInstance().getBinaryPath(binaryDataId);
+}
+
 /**
  * Returns binary file metadata
  */
@@ -2262,6 +2266,7 @@ const getNodeHelperFunctions = ({
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
+	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
 	binaryToBuffer,
