@@ -7,7 +7,7 @@ import type { SourceControlStatus } from '@/Interface';
 import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores';
-import { useRoute } from 'vue-router/composables';
+import { useRoute } from 'vue-router';
 
 const props = defineProps({
 	data: {

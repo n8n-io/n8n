@@ -96,13 +96,6 @@
 			/>
 			<Suspense>
 				<NodeCreation
-					v-if="!isReadOnly && !readOnlyEnv"
-					:create-node-active="createNodeActive"
-					:node-view-scale="nodeViewScale"
-					@toggleNodeCreator="onToggleNodeCreator"
-					@addNode="onAddNode"
-				/>
-				<node-creation
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
