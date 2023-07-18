@@ -95,8 +95,6 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 			const workflow = deepCopy(useWorkflowsStore().getCurrentWorkflow(true));
 			const workflowJson = jsonStringify(workflow, { replaceCircularRefs: true });
 
-			console.log(stringSizeInBytes(data) + stringSizeInBytes(workflowJson));
-
 			if (
 				this.workflowsStore.pinDataSize + stringSizeInBytes(data) >
 				MAX_WORKFLOW_PINNED_DATA_SIZE
