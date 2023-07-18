@@ -274,5 +274,4 @@ describe('ResourceMapper.vue', () => {
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
-
 });
