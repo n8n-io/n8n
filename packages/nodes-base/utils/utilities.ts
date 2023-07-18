@@ -10,7 +10,7 @@ import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 
 import { isEqual, isNull, merge } from 'lodash';
 
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 
 import {
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
@@ -283,7 +283,7 @@ export function checkFilePathAccess(filePath: string): void {
 		const userFolder = UserSettings.getUserHome();
 
 		if (userFolder) {
-			restrictedPaths.push(`${userFolder}/.n8n/`);
+			restrictedPaths.push(join(userFolder, '.n8n'));
 		}
 
 		if (process.env[CONFIG_FILES]) {
