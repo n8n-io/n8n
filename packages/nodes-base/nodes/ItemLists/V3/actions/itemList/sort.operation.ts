@@ -7,15 +7,12 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
-
 import get from 'lodash/get';
 
 import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 
-import { shuffleArray } from '../../helpers/utils';
+import { shuffleArray, sortByCode } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -272,36 +269,7 @@ export async function execute(
 			return result;
 		});
 	} else {
-		const code = this.getNodeParameter('code', 0) as string;
-		const regexCheck = /\breturn\b/g.exec(code);
-
-		if (regexCheck?.length) {
-			const sandbox = {
-				newItems: returnData,
-			};
-			const mode = this.getMode();
-			const options = {
-				console: mode === 'manual' ? 'redirect' : 'inherit',
-				sandbox,
-			};
-			const vm = new NodeVM(options as unknown as NodeVMOptions);
-
-			returnData = await vm.run(
-				`
-			module.exports = async function() {
-				newItems.sort( (a,b) => {
-					${code}
-				})
-				return newItems;
-			}()`,
-				__dirname,
-			);
-		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				"Sort code doesn't return. Please add a 'return' statement to your code",
-			);
-		}
+		returnData = sortByCode.call(this, returnData);
 	}
 	return returnData;
 }

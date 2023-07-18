@@ -1,6 +1,3 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -61,6 +58,7 @@ const shuffleArray = (array: any[]) => {
 };
 
 import * as summarize from './summarize.operation';
+import { sortByCode } from '../V3/helpers/utils';
 
 export class ItemListsV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -1369,36 +1367,7 @@ return 0;`,
 						return result;
 					});
 				} else {
-					const code = this.getNodeParameter('code', 0) as string;
-					const regexCheck = /\breturn\b/g.exec(code);
-
-					if (regexCheck?.length) {
-						const sandbox = {
-							newItems,
-						};
-						const mode = this.getMode();
-						const options = {
-							console: mode === 'manual' ? 'redirect' : 'inherit',
-							sandbox,
-						};
-						const vm = new NodeVM(options as unknown as NodeVMOptions);
-
-						newItems = await vm.run(
-							`
-						module.exports = async function() {
-							newItems.sort( (a,b) => {
-								${code}
-							})
-							return newItems;
-						}()`,
-							__dirname,
-						);
-					} else {
-						throw new NodeOperationError(
-							this.getNode(),
-							"Sort code doesn't return. Please add a 'return' statement to your code",
-						);
-					}
+					newItems = sortByCode.call(this, newItems);
 				}
 				return this.prepareOutputData(newItems);
 			} else if (operation === 'limit') {
