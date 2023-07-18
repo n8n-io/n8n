@@ -134,7 +134,7 @@ export class ActiveWorkflowRunner {
 				} catch (error) {
 					ErrorReporter.error(error);
 					Logger.info(
-						'     => ERROR: Workflow could not be activated on first try, keep on trying',
+						'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
 					);
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.info(`               ${error.message}`);
@@ -148,8 +148,10 @@ export class ActiveWorkflowRunner {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					this.executeErrorWorkflow(error, workflowData, 'internal');
 
-					// Keep on trying to activate the workflow
-					this.addQueuedWorkflowActivation('init', workflowData);
+					if (!error.message.includes('Authorization')) {
+						// Keep on trying to activate the workflow if not an auth issue
+						this.addQueuedWorkflowActivation('init', workflowData);
+					}
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -350,7 +352,9 @@ export class ActiveWorkflowRunner {
 				select: ['id'],
 				where: { active: true },
 			});
-			return activeWorkflows.map((workflow) => workflow.id.toString());
+			return activeWorkflows
+				.map((workflow) => workflow.id)
+				.filter((workflowId) => !this.activationErrors[workflowId]);
 		} else {
 			const active = await Db.collections.Workflow.find({
 				select: ['id'],
@@ -366,7 +370,9 @@ export class ActiveWorkflowRunner {
 				select: ['workflowId'],
 				where,
 			});
-			return shared.map((id) => id.workflowId.toString());
+			return shared
+				.map((id) => id.workflowId)
+				.filter((workflowId) => !this.activationErrors[workflowId]);
 		}
 	}
 
