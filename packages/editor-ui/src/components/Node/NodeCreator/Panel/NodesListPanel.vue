@@ -149,14 +149,14 @@ function onBackButton() {
 	right: 0;
 }
 
-:global(.panel-slide-out-enter),
+:global(.panel-slide-out-enter-from),
 :global(.panel-slide-in-leave-to) {
 	transform: translateX(0);
 	z-index: -1;
 }
 
 :global(.panel-slide-out-leave-to),
-:global(.panel-slide-in-enter) {
+:global(.panel-slide-in-enter-from) {
 	transform: translateX(100%);
 	// Make sure the leaving panel stays on top
 	// for the slide-out panel effect
