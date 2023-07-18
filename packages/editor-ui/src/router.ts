@@ -579,6 +579,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
+							// TODO: remove this for release
 							shouldDeny: () => !window.localStorage.getItem('source-control'),
 						},
 					},

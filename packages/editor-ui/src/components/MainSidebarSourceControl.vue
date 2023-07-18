@@ -32,6 +32,10 @@ const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
 const featureEnabled = computed(() => window.localStorage.getItem('source-control'));
+// TODO: use this for release
+// const featureEnabled = computed(
+// 	() => sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName,
+// );
 const isInstanceOwner = computed(() => usersStore.isInstanceOwner);
 const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
@@ -125,8 +129,7 @@ const goToSourceControlSetup = async () => {
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
-			[$style.isConnected]:
-				sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName,
+			[$style.isConnected]: featureEnabled,
 		}"
 		:style="{ borderLeftColor: sourceControlStore.preferences.branchColor }"
 		data-test-id="main-sidebar-source-control"
