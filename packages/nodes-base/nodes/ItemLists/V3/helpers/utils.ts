@@ -1,4 +1,4 @@
-import { NodeVM } from 'vm2';
+import { createContext, Script } from 'vm';
 import {
 	NodeOperationError,
 	type IDataObject,
@@ -66,6 +66,8 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 };
 
 const returnRegExp = /\breturn\b/g;
+const noOp = () => {};
+const fakeConsole = { log: noOp, debug: noOp, info: noOp, warn: noOp, error: noOp };
 
 export function sortByCode(
 	this: IExecuteFunctions,
@@ -79,11 +81,8 @@ export function sortByCode(
 		);
 	}
 
-	const mode = this.getMode();
-	const vm = new NodeVM({
-		console: mode === 'manual' ? 'redirect' : 'inherit',
-		sandbox: { items },
-	});
-
-	return vm.run(`module.exports = items.sort((a, b) => { ${code} })`);
+	const script = new Script(`items.sort((a, b) => { ${code} })`);
+	const console = this.getMode() === 'manual' ? global.console : fakeConsole;
+	const context = createContext({ items, console });
+	return script.runInContext(context);
 }
