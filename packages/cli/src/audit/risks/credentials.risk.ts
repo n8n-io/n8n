@@ -1,13 +1,13 @@
 import type { FindOperator } from 'typeorm';
 import { MoreThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
+import { Container } from 'typedi';
 import * as Db from '@/Db';
 import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
-import Container from 'typedi';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 	const credsInAnyUse = new Set<string>();

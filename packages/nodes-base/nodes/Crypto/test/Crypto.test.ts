@@ -1,11 +1,7 @@
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import { Readable } from 'stream';
-import {
-	testWorkflows,
-	getWorkflowFilenames,
-	initBinaryDataManager,
-} from '../../../test/nodes/Helpers';
+import { testWorkflows, getWorkflowFilenames, initBinaryDataManager } from '@test/nodes/Helpers';
 
 const workflows = getWorkflowFilenames(__dirname);
 

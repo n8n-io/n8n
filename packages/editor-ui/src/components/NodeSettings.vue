@@ -17,7 +17,7 @@
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI"
+						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -800,6 +800,7 @@ export default defineComponent({
 
 				this.updateNodeParameterIssues(node, nodeType);
 				this.updateNodeCredentialIssues(node);
+				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
 

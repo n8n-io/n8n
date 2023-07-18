@@ -1,7 +1,4 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
-
-// eslint-disable-next-line unused-imports/no-unused-imports
-import * as _transport from '../../../../v2/transport';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 import nock from 'nock';
 

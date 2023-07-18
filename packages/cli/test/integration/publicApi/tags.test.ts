@@ -1,26 +1,19 @@
-import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
 import * as Db from '@/Db';
-import config from '@/config';
 import type { User } from '@db/entities/User';
 
 import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils';
+import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 
-let app: Application;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
-beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['publicApi'],
-		applyAuth: false,
-		enablePublicAPI: true,
-	});
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
+beforeAll(async () => {
 	const [globalOwnerRole, globalMemberRole] = await testDb.getAllRoles();
 
 	owner = await testDb.createUser({
@@ -33,38 +26,14 @@ beforeAll(async () => {
 		apiKey: randomApiKey(),
 	});
 
-	utils.initConfigFile();
+	utils.initEncryptionKey();
 });
 
 beforeEach(async () => {
-	await testDb.truncate([
-		'SharedCredentials',
-		'SharedWorkflow',
-		'Tag',
-		'Workflow',
-		'Credentials',
-	]);
+	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Tag', 'Workflow', 'Credentials']);
 
-	authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	authMemberAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: member,
-		version: 1,
-	});
-
-	config.set('userManagement.disabled', false);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authMemberAgent = testServer.publicApiAgentFor(member);
 });
 
 const testWithAPIKey =

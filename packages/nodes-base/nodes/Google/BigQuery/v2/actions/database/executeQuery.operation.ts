@@ -1,6 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import { NodeOperationError, sleep } from 'n8n-workflow';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
@@ -232,7 +235,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					qs,
 				);
 
-				returnData.push(...prepareOutput(queryResponse, i, raw, includeSchema));
+				returnData.push(...prepareOutput.call(this, queryResponse, i, raw, includeSchema));
 			} else {
 				jobs.push({ jobId, projectId, i, raw, includeSchema, location: options.location });
 			}
@@ -271,7 +274,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				if (response.jobComplete) {
 					completedJobs.push(job.jobId);
 
-					returnData.push(...prepareOutput(response, job.i, job.raw, job.includeSchema));
+					returnData.push(...prepareOutput.call(this, response, job.i, job.raw, job.includeSchema));
 				}
 				if ((response?.errors as IDataObject[])?.length) {
 					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);

@@ -247,7 +247,7 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	min-width: $sidebar-expanded-width;
-	height: 100vh;
+	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;

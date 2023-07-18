@@ -126,13 +126,13 @@
 						</td>
 						<td>
 							<span v-if="execution.id">#{{ execution.id }}</span>
-							<span v-if="execution.retryOf !== undefined">
+							<span v-if="execution.retryOf">
 								<br />
 								<small>
 									({{ $locale.baseText('executionsList.retryOf') }} #{{ execution.retryOf }})
 								</small>
 							</span>
-							<span v-else-if="execution.retrySuccessId !== undefined">
+							<span v-else-if="execution.retrySuccessId">
 								<br />
 								<small>
 									({{ $locale.baseText('executionsList.successRetry') }} #{{
@@ -1201,7 +1201,7 @@ export default defineComponent({
 }
 
 .link {
-	color: var(--color-text-light);
+	color: var(--color-text-base);
 	text-decoration: underline;
 }
 </style>

@@ -12,7 +12,7 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service.ee';
+import { getWorkflowOwnerRole } from '../users/users.service';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -105,7 +105,7 @@ export = {
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') })
 			};
 
-			if (isInstanceOwner(req.user)) {
+			if (req.user.isOwner) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					where.id = In(workflowIds);

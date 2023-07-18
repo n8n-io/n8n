@@ -18,7 +18,6 @@ import { validateEntity } from '@/GenericHelpers';
 
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
-import { QueryFailedError } from 'typeorm';
 
 export = {
 	createTag: [
