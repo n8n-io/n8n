@@ -1189,7 +1189,7 @@ export default defineComponent({
 			// Make sure to load the parameter options
 			// directly and whenever the credentials change
 			this.$watch(
-				() => this.node!.credentials,
+				() => this.node?.credentials,
 				() => {
 					void this.loadRemoteParameterOptions();
 				},
