@@ -133,37 +133,25 @@ export class ActiveWorkflowRunner {
 					Logger.info('     => Started');
 				} catch (error) {
 					ErrorReporter.error(error);
-
-					const activationError = error as WorkflowActivationError & {
-						cause: { httpCode?: string };
-					};
-
-					const workflowName = workflowData.name;
-					const workflowId = workflowData.id;
-					const metadata = { workflowName, workflowId };
-
-					Logger.info('     => ERROR: Workflow could not be activated on first try');
-					Logger.info(`               ${activationError.message}`);
-					Logger.error(
-						`Issue on initial workflow activation try of "${workflowName}" (startup)`,
-						metadata,
+					Logger.info(
+						'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
 					);
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+					Logger.info(`               ${error.message}`);
+					Logger.error(
+						`Issue on initial workflow activation try "${workflowData.name}" (startup)`,
+						{
+							workflowName: workflowData.name,
+							workflowId: workflowData.id,
+						},
+					);
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					this.executeErrorWorkflow(error, workflowData, 'internal');
 
-					this.executeErrorWorkflow(activationError, workflowData, 'internal');
-
-					if (activationError.cause?.httpCode === '401') {
-						Logger.error(
-							`Activation of workflow "${workflowName}" (${workflowId}) failed due to bad credentials | workflow deactivated, will not retry`,
-							metadata,
-						);
-
-						await Db.collections.Workflow.update(workflowId, { active: false });
-
-						return;
+					if (!error.message.includes('Authorization')) {
+						// Keep on trying to activate the workflow if not an auth issue
+						this.addQueuedWorkflowActivation('init', workflowData);
 					}
-
-					// Keep on trying to activate the workflow
-					this.addQueuedWorkflowActivation('init', workflowData);
 				}
 			}
 			Logger.verbose('Finished initializing active workflows (startup)');
@@ -364,7 +352,9 @@ export class ActiveWorkflowRunner {
 				select: ['id'],
 				where: { active: true },
 			});
-			return activeWorkflows.map((workflow) => workflow.id.toString());
+			return activeWorkflows
+				.map((workflow) => workflow.id)
+				.filter((workflowId) => !this.activationErrors[workflowId]);
 		} else {
 			const active = await Db.collections.Workflow.find({
 				select: ['id'],
@@ -380,7 +370,9 @@ export class ActiveWorkflowRunner {
 				select: ['workflowId'],
 				where,
 			});
-			return shared.map((id) => id.workflowId.toString());
+			return shared
+				.map((id) => id.workflowId)
+				.filter((workflowId) => !this.activationErrors[workflowId]);
 		}
 	}
 
