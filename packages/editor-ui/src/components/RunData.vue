@@ -13,7 +13,7 @@
 					size="small"
 					underline
 					bold
-					@click="onTogglePinData({ source: 'banner-link' })"
+					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
