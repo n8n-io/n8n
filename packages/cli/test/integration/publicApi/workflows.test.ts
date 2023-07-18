@@ -10,7 +10,8 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
-// import { generateNanoId } from '@/databases/utils/generators';
+import type { INode } from 'n8n-workflow';
+import { STARTING_NODES } from '@/constants';
 
 let app: Application;
 let workflowOwnerRole: Role;
@@ -701,6 +702,35 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
 		expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
+	});
+
+	test('should not add a starting node if the payload has no starting nodes', async () => {
+		const response = await authMemberAgent.post('/workflows').send({
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Hacker News',
+					type: 'n8n-nodes-base.hackerNews',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		});
+
+		const found = response.body.nodes.find((node: INode) => STARTING_NODES.includes(node.type));
+
+		expect(found).toBeUndefined();
 	});
 });
 

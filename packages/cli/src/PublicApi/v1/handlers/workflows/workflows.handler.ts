@@ -18,8 +18,6 @@ import {
 	setWorkflowAsActive,
 	setWorkflowAsInactive,
 	updateWorkflow,
-	hasStartNode,
-	getStartNode,
 	getSharedWorkflows,
 	createWorkflow,
 	getWorkflowIdsViaTags,
@@ -36,10 +34,6 @@ export = {
 			const workflow = req.body;
 
 			workflow.active = false;
-
-			if (!hasStartNode(workflow)) {
-				workflow.nodes.push(getStartNode());
-			}
 
 			await replaceInvalidCredentials(workflow);
 
@@ -162,10 +156,6 @@ export = {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
-			}
-
-			if (!hasStartNode(updateData)) {
-				updateData.nodes.push(getStartNode());
 			}
 
 			await replaceInvalidCredentials(updateData);
