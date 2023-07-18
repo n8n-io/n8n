@@ -33,6 +33,7 @@
 				>
 					{{ executionUIDetails.label }}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {

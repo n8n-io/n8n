@@ -5,7 +5,7 @@
 		v-on-click-outside="onClickOutside"
 	>
 		<n8n-select
-			:teleported="false"
+			:teleported="true"
 			:modelValue="appliedTags"
 			:loading="tagsStore.isLoading"
 			:placeholder="placeholder"
