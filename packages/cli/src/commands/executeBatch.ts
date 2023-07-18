@@ -15,7 +15,6 @@ import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
-import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import type {
@@ -183,9 +182,6 @@ export class ExecuteBatch extends BaseCommand {
 		await super.init();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
-
-		// Add event handlers
-		initEvents();
 	}
 
 	async run() {
