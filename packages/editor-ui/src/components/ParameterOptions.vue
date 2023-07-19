@@ -210,6 +210,8 @@ export default defineComponent({
 
 .controlsContainer {
 	display: flex;
+	align-items: center;
+	flex-direction: row;
 }
 
 .noExpressionSelector {
