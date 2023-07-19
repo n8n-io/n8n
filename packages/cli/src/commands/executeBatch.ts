@@ -229,7 +229,12 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.ids !== undefined) {
 			if (fs.existsSync(flags.ids)) {
 				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
-				ids.push(...contents.split(',').filter((id) => re.exec(id)));
+				ids.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				const paramIds = flags.ids.split(',');
 				const matchedIds = paramIds.filter((id) => re.exec(id));
@@ -248,7 +253,12 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(...contents.split(',').filter((id) => re.exec(id)));
+				skipIds.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				console.log('Skip list file not found. Exiting.');
 				return;
