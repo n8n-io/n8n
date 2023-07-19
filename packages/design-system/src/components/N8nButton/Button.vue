@@ -95,69 +95,34 @@ const classes = computed(() => {
 });
 </script>
 
+<style lang="scss">
+@import './Button';
+
+.el-button {
+	@include n8n-button(true);
+
+	--button-padding-vertical: var(--spacing-2xs);
+	--button-padding-horizontal: var(--spacing-xs);
+	--button-font-size: var(--font-size-2xs);
+
+	+ .el-button {
+		margin-left: var(--spacing-2xs);
+	}
+
+	&.btn--cancel,
+	&.el-color-dropdown__link-btn {
+		@include n8n-button-secondary;
+	}
+}
+</style>
+
 <style lang="scss" module>
+@import './Button';
 @import '../../css/mixins/utils';
 @import '../../css/common/var';
 
 .button {
-	display: inline-block;
-	line-height: 1;
-	white-space: nowrap;
-	cursor: pointer;
-
-	border: var(--border-width-base) $button-border-color var(--border-style-base);
-	color: $button-font-color;
-	background-color: $button-background-color;
-	font-weight: var(--font-weight-bold);
-	border-radius: $button-border-radius;
-	padding: $button-padding-vertical $button-padding-horizontal;
-	font-size: $button-font-size;
-
-	-webkit-appearance: none;
-	text-align: center;
-	box-sizing: border-box;
-	outline: none;
-	margin: 0;
-	transition: 0.3s;
-
-	@include utils-user-select(none);
-
-	&:hover {
-		color: $button-hover-color;
-		border-color: $button-hover-border-color;
-		background-color: $button-hover-background-color;
-	}
-
-	&:focus {
-		border-color: $button-focus-outline-color;
-		outline: $focus-outline-width solid $button-focus-outline-color;
-	}
-
-	&:active,
-	&.active {
-		color: $button-active-color;
-		border-color: $button-active-border-color;
-		background-color: $button-active-background-color;
-		outline: none;
-	}
-
-	&::-moz-focus-inner {
-		border: 0;
-	}
-
-	> i {
-		display: none;
-	}
-
-	> span {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	span + span {
-		margin-left: var(--spacing-3xs);
-	}
+	@include n8n-button;
 }
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0);
@@ -166,21 +131,8 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  * Colors
  */
 
-.secondary,
-.btn--cancel {
-	--button-color: var(--color-primary);
-	--button-border-color: var(--color-primary);
-	--button-background-color: var(--color-background-xlight);
-
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: var(--color-primary);
-
-	--button-hover-background-color: var(--color-primary-tint-3);
-	--button-hover-color: var(--color-primary);
-	--button-hover-border-color: var(--color-primary);
-
-	--button-focus-outline-color: var(--color-primary-tint-1);
+.secondary {
+	@include n8n-button-secondary;
 }
 
 .tertiary {

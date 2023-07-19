@@ -2,20 +2,22 @@
 
 exports[`components > N8nActionDropdown > should render custom styling correctly 1`] = `
 "<div class=\\"action-dropdown-container actionDropdownContainer\\">
-  <el-dropdown-stub trigger=\\"click\\" size=\\"\\" hideonclick=\\"true\\" placement=\\"bottom\\" visiblearrow=\\"true\\" showtimeout=\\"250\\" hidetimeout=\\"150\\" tabindex=\\"0\\">
-    <div class=\\"activator\\">
-      <n8n-icon-stub icon=\\"ellipsis-v\\" size=\\"medium\\"></n8n-icon-stub>
-    </div>
-  </el-dropdown-stub>
+  <div class=\\"el-dropdown\\">
+    <div class=\\"activator el-tooltip__trigger el-tooltip__trigger\\" id=\\"el-id-7552-4\\" role=\\"button\\" tabindex=\\"0\\" aria-controls=\\"el-id-7552-5\\" aria-expanded=\\"false\\" aria-haspopup=\\"menu\\"><span class=\\"n8n-text compact size-medium regular n8n-icon n8n-icon\\"><!----></span></div>
+    <!--teleport start-->
+    <!--teleport end-->
+    <!--v-if-->
+  </div>
 </div>"
 `;
 
 exports[`components > N8nActionDropdown > should render default styling correctly 1`] = `
 "<div class=\\"action-dropdown-container actionDropdownContainer\\">
-  <el-dropdown-stub trigger=\\"click\\" size=\\"\\" hideonclick=\\"true\\" placement=\\"bottom\\" visiblearrow=\\"true\\" showtimeout=\\"250\\" hidetimeout=\\"150\\" tabindex=\\"0\\">
-    <div class=\\"activator\\">
-      <n8n-icon-stub icon=\\"ellipsis-v\\" size=\\"medium\\"></n8n-icon-stub>
-    </div>
-  </el-dropdown-stub>
+  <div class=\\"el-dropdown\\">
+    <div class=\\"activator el-tooltip__trigger el-tooltip__trigger\\" id=\\"el-id-7552-0\\" role=\\"button\\" tabindex=\\"0\\" aria-controls=\\"el-id-7552-1\\" aria-expanded=\\"false\\" aria-haspopup=\\"menu\\"><span class=\\"n8n-text compact size-medium regular n8n-icon n8n-icon\\"><!----></span></div>
+    <!--teleport start-->
+    <!--teleport end-->
+    <!--v-if-->
+  </div>
 </div>"
 `;
