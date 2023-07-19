@@ -120,6 +120,7 @@ export const usePostHog = defineStore('posthog', () => {
 			debug: config.debug,
 			session_recording: {
 				maskAllInputs: false,
+				recordCrossOriginIframes: true,
 			},
 		};
 
