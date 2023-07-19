@@ -1,3 +1,24 @@
+## [1.0.4](https://github.com/n8n-io/n8n/compare/n8n@1.0.3...n8n@1.0.4) (2023-07-19)
+
+
+### Bug Fixes
+
+* **API:** Do not add starting node on workflow creation ([#6686](https://github.com/n8n-io/n8n/issues/6686)) ([597f2c7](https://github.com/n8n-io/n8n/commit/597f2c75d688697f68b91f0b79edc7d5e79282f1))
+* **API:** Fix issue with workflow setting not supporting newer nanoids ([#6699](https://github.com/n8n-io/n8n/issues/6699)) ([1a3a90f](https://github.com/n8n-io/n8n/commit/1a3a90fef9b92343ed50c15a93001026b03c12a2))
+* **core:** Deleting manual executions should defer deleting binary data ([#6680](https://github.com/n8n-io/n8n/issues/6680)) ([d8970db](https://github.com/n8n-io/n8n/commit/d8970dbe0bbd04e8fb58fa0ebdd6c9673d3ffe7a))
+* **core:** Filter out workflows that failed to activate on startup ([#6676](https://github.com/n8n-io/n8n/issues/6676)) ([bc16afd](https://github.com/n8n-io/n8n/commit/bc16afd5beca2c0588ae3d9f49dab72af42b514a))
+* **core:** Handle all uncaught exception, not just the ones from Axios ([#6666](https://github.com/n8n-io/n8n/issues/6666)) ([975fc05](https://github.com/n8n-io/n8n/commit/975fc0515c8c259acd139712ef1fab2f4e8517df))
+* **core:** Load SAML libraries dynamically ([#6690](https://github.com/n8n-io/n8n/issues/6690)) ([4cf62a6](https://github.com/n8n-io/n8n/commit/4cf62a67b0e67a3ae17e0833d332e4fe11d6e540))
+* **core:** Upgrade semver to address CVE-2022-25883 ([#6689](https://github.com/n8n-io/n8n/issues/6689)) ([db6567f](https://github.com/n8n-io/n8n/commit/db6567f89e040f83dbb9a291b57bada6a5f6496d))
+* **editor:** Ensure default credential values are not detected as dirty state ([#6677](https://github.com/n8n-io/n8n/issues/6677)) ([ff8a2c5](https://github.com/n8n-io/n8n/commit/ff8a2c5704f6a93e505044469d00e46e070306c9))
+* **editor:** Hide Execute Node button for unknown nodes ([#6684](https://github.com/n8n-io/n8n/issues/6684)) ([95f3f8b](https://github.com/n8n-io/n8n/commit/95f3f8b5a52359ac12b38fd7e936afa5fc56c2e2))
+* **editor:** Prevent RMC from loading schema if it's already cached ([#6695](https://github.com/n8n-io/n8n/issues/6695)) ([e0d6237](https://github.com/n8n-io/n8n/commit/e0d6237182ef355aef16f20cd4389248809b84fd))
+* **FileMaker Node:** Improve returned error responses ([#6585](https://github.com/n8n-io/n8n/issues/6585)) ([272cf56](https://github.com/n8n-io/n8n/commit/272cf56d0b5788b52a6a3ccbdf8c43cee39c8dea))
+* **Microsoft Outlook Node:** Fix issue with category not correctly applying ([#6583](https://github.com/n8n-io/n8n/issues/6583)) ([60b39a7](https://github.com/n8n-io/n8n/commit/60b39a71c1edf80558a9f654b73d8869886fc801))
+* Stop n8n from complaining about credentials when saving a new workflow form a template ([#6671](https://github.com/n8n-io/n8n/issues/6671)) ([ed6a674](https://github.com/n8n-io/n8n/commit/ed6a674568142a24d58baf6a78f012d5b9ca5f74))
+
+
+
 ## [1.0.3](https://github.com/n8n-io/n8n/compare/n8n@1.0.2...n8n@1.0.3) (2023-07-13)
 
 
