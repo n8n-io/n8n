@@ -1,7 +1,7 @@
 <template>
 	<el-drawer
 		:direction="direction"
-		:visible="uiStore.isModalOpen(this.name)"
+		:modelValue="uiStore.isModalOpen(this.name)"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
@@ -22,9 +22,13 @@ import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system';
+import { ElDrawer } from 'element-plus';
 
 export default defineComponent({
 	name: 'ModalDrawer',
+	components: {
+		ElDrawer,
+	},
 	props: {
 		name: {
 			type: String,
