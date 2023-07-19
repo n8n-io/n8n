@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // eslint-disable-next-line max-classes-per-file
 import type * as express from 'express';
-import type * as FormData from 'form-data';
+import type FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
