@@ -20,7 +20,11 @@
 					</div>
 
 					<div class="variable-selector">
-						<variable-selector :path="path" @itemSelected="itemSelected"></variable-selector>
+						<variable-selector
+							:path="path"
+							:redactValues="redactValues"
+							@itemSelected="itemSelected"
+						></variable-selector>
 					</div>
 				</el-col>
 				<el-col :span="16" class="right-side">
@@ -42,11 +46,12 @@
 								</n8n-link>
 							</div>
 						</div>
-						<div class="expression-editor ph-no-capture">
+						<div class="expression-editor">
 							<ExpressionEditorModalInput
 								:value="value"
 								:isReadOnly="isReadOnlyRoute"
 								:path="path"
+								:class="{ 'ph-no-capture': redactValues }"
 								@change="valueChanged"
 								@close="closeDialog"
 								ref="inputFieldExpression"
@@ -59,7 +64,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
-						<div class="ph-no-capture">
+						<div :class="{ 'ph-no-capture': redactValues }">
 							<ExpressionEditorModalOutput
 								:segments="segments"
 								ref="expressionResult"
@@ -97,7 +102,7 @@ import type { Segment } from '@/types/expressions';
 export default defineComponent({
 	name: 'ExpressionEdit',
 	mixins: [externalHooks, genericHelpers, debounceHelper],
-	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
+	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource', 'redactValues'],
 	components: {
 		ExpressionEditorModalInput,
 		ExpressionEditorModalOutput,
