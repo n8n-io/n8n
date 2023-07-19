@@ -44,7 +44,7 @@ export async function contentfulApiRequest(
 	}
 }
 
-export async function contenfulApiRequestAllItems(
+export async function contentfulApiRequestAllItems(
 	this: ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: string,
