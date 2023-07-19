@@ -118,6 +118,9 @@ export const usePostHog = defineStore('posthog', () => {
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
 			debug: config.debug,
+			session_recording: {
+				maskAllInputs: false,
+			},
 		};
 
 		window.posthog?.init(config.apiKey, options);

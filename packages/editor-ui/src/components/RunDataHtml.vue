@@ -1,5 +1,5 @@
 <template>
-	<iframe class="__html-display ph-no-capture" :srcdoc="html" />
+	<iframe class="__html-display" :srcdoc="html" />
 </template>
 
 <script lang="ts">
