@@ -111,7 +111,10 @@ onMounted(async () => {
 			matchingColumns: nodeValues.matchingColumns,
 		};
 	}
-	await initFetching(hasSchema);
+	if (!hasSchema) {
+		// Only fetch a schema if it's not already set
+		await initFetching();
+	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
 		setDefaultFieldValues();
