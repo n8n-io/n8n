@@ -975,7 +975,7 @@ export default defineComponent({
 }
 </style>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .node-settings {
 	display: flex;
 	flex-direction: column;

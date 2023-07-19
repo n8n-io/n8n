@@ -3,7 +3,6 @@
 		<el-dialog
 			:modelValue="dialogVisible"
 			class="expression-dialog classic"
-			append-to-body
 			width="80%"
 			:title="$locale.baseText('expressionEdit.editExpression')"
 			:before-close="closeDialog"
@@ -312,7 +311,7 @@ export default defineComponent({
 }
 
 .header-side-menu {
-	padding: 1em 0 0.5em 1.8em;
+	padding: 1em 0 0.5em var(--spacing-s);
 	border-top-left-radius: 8px;
 
 	background-color: var(--color-background-base);
@@ -337,6 +336,6 @@ export default defineComponent({
 }
 
 .variable-selector {
-	margin: 0 1em;
+	margin: 0 var(--spacing-s);
 }
 </style>
