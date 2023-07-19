@@ -17,12 +17,7 @@
 			@resizestart="onResizeStart"
 		>
 			<template>
-				<div
-					v-show="!editMode"
-					class="ph-no-capture"
-					:class="$style.wrapper"
-					@dblclick.stop="onDoubleClick"
-				>
+				<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
 					<n8n-markdown
 						theme="sticky"
 						:content="content"
@@ -38,8 +33,7 @@
 					@keydown.esc="onInputBlur"
 					@keydown.stop
 					@wheel.stop
-					class="sticky-textarea ph-no-capture"
-					:class="{ 'full-height': !shouldShowFooter }"
+					:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
 				>
 					<n8n-input
 						:value="content"

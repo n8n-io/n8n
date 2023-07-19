@@ -36,12 +36,13 @@
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
-				<div class="ph-no-capture">
+				<div>
 					<CopyInput
 						:label="$locale.baseText('settings.api.view.myKey')"
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+						:redactValue="true"
 						@copy="onCopy"
 					/>
 				</div>
