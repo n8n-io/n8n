@@ -127,7 +127,9 @@ export class OwnerController {
 
 	@Post('/dismiss-v1')
 	async dismissBanner() {
-		await this.settingsRepository.saveSetting('ui.banners.v1.dismissed', JSON.stringify(true));
+		const value = JSON.stringify(['V1']);
+		await this.settingsRepository.saveSetting('ui.banners.dismissed', value);
+		this.config.set('ui.banners.dismissed', value);
 
 		return { success: true };
 	}

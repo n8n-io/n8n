@@ -17,7 +17,5 @@ export class SettingsRepository extends Repository<Settings> {
 		} else {
 			await this.save({ key, value, loadOnStartup });
 		}
-
-		if (loadOnStartup) config.set('ui.banners.v1.dismissed', true);
 	}
 }
