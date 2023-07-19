@@ -79,7 +79,7 @@
 							/>
 						</td>
 						<td>
-							<span class="ph-no-capture" @click.stop="displayExecution(execution)"
+							<span @click.stop="displayExecution(execution)"
 								><a href="#" :class="$style.link">{{
 									execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
 								}}</a></span

@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container" v-on="$listeners">
+	<div :class="$style.container" v-on="$listeners" data-test-id="input-label">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
