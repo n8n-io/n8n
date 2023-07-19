@@ -208,6 +208,7 @@ export function configureQueryRunner(
 ) {
 	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
+		const emptyReturnData = options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
 
@@ -220,10 +221,7 @@ export function configureQueryRunner(
 						});
 					})
 					.flat();
-				returnData =
-					options.operation === 'select' || returnData.length
-						? returnData
-						: [{ json: { success: true } }];
+				returnData = returnData.length ? returnData : emptyReturnData;
 			} catch (err) {
 				const error = parsePostgresError(node, err, queries);
 				if (!continueOnFail) throw error;
@@ -250,11 +248,7 @@ export function configureQueryRunner(
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(
-								options.operation === 'select' || transactionResult.length
-									? transactionResult
-									: [{ success: true }],
-							),
+							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
 							{ itemData: { item: i } },
 						);
 
@@ -281,11 +275,7 @@ export function configureQueryRunner(
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(
-								options.operation === 'select' || transactionResult.length
-									? transactionResult
-									: [{ success: true }],
-							),
+							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
 							{ itemData: { item: i } },
 						);
 
