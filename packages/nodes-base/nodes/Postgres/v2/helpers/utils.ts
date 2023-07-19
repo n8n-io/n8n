@@ -220,7 +220,10 @@ export function configureQueryRunner(
 						});
 					})
 					.flat();
-				returnData = returnData.length ? returnData : [{ json: { success: true } }];
+				returnData =
+					options.operation === 'select' || returnData.length
+						? returnData
+						: [{ json: { success: true } }];
 			} catch (err) {
 				const error = parsePostgresError(node, err, queries);
 				if (!continueOnFail) throw error;
@@ -247,7 +250,11 @@ export function configureQueryRunner(
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : [{ success: true }]),
+							wrapData(
+								options.operation === 'select' || transactionResult.length
+									? transactionResult
+									: [{ success: true }],
+							),
 							{ itemData: { item: i } },
 						);
 
@@ -274,7 +281,11 @@ export function configureQueryRunner(
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : [{ success: true }]),
+							wrapData(
+								options.operation === 'select' || transactionResult.length
+									? transactionResult
+									: [{ success: true }],
+							),
 							{ itemData: { item: i } },
 						);
 
