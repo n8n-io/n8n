@@ -4,7 +4,7 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 export class ContentfulApi implements ICredentialType {
 	name = 'contentfulApi';
 
-	displayName = 'Contenful API';
+	displayName = 'Contentful API';
 
 	documentationUrl = 'contentful';
 
