@@ -36,7 +36,7 @@
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
-				<div>
+				<div class="ph-no-capture">
 					<CopyInput
 						:label="$locale.baseText('settings.api.view.myKey')"
 						:value="apiKey"
