@@ -12,8 +12,10 @@ import { waitAllPromises } from '@/__tests__/utils';
 import * as workflowHelpers from '@/mixins/workflowHelpers';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
+import type { SpyInstance } from 'vitest';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
+let fetchFieldsSpy: SpyInstance, resolveParameterSpy: SpyInstance;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 	render(ResourceMapper, merge(DEFAULT_SETUP, renderOptions), (vue) => {
@@ -21,10 +23,14 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 	});
 
 describe('ResourceMapper.vue', () => {
-	beforeEach(() => {
+	beforeAll(() => {
 		nodeTypeStore = useNodeTypesStore();
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(NODE_PARAMETER_VALUES);
-		vi.spyOn(nodeTypeStore, 'getResourceMapperFields').mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
+		fetchFieldsSpy = vi
+			.spyOn(nodeTypeStore, 'getResourceMapperFields')
+			.mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
+		resolveParameterSpy = vi
+			.spyOn(workflowHelpers, 'resolveParameter')
+			.mockReturnValue(NODE_PARAMETER_VALUES);
 	});
 
 	afterEach(() => {
@@ -199,11 +205,11 @@ describe('ResourceMapper.vue', () => {
 			},
 		});
 		await waitAllPromises();
-		// There should be 5 fields rendered and only 2 of them should have remove button
+		// There should be 4 fields rendered and only 1 of them should have remove button
 		expect(
 			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
-		).toBe(5);
-		expect(queryAllByTestId('remove-field-button').length).toBe(2);
+		).toBe(4);
+		expect(queryAllByTestId('remove-field-button').length).toBe(1);
 	});
 
 	it('should render correct options based on saved schema', async () => {
@@ -228,5 +234,44 @@ describe('ResourceMapper.vue', () => {
 		await waitAllPromises();
 		// Should have one option in the bottom dropdown for one removed field
 		expect(getByTestId('add-fields-select').querySelectorAll('li').length).toBe(1);
+	});
+
+	it('should fetch fields if there is no cached schema', async () => {
+		renderComponent({
+			props: {
+				node: {
+					parameters: {
+						columns: {
+							schema: null,
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not fetch fields if schema is already fetched', async () => {
+		renderComponent({
+			props: {
+				node: {
+					parameters: {
+						columns: {
+							schema: UPDATED_SCHEMA,
+						},
+					},
+				},
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 });
