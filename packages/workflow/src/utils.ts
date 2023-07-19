@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import type { BinaryFileType, JsonObject } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
@@ -5,6 +6,7 @@ const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {
+		if (obj instanceof FormData) return obj.getLengthSync() === 0;
 		if (Array.isArray(obj)) return obj.length === 0;
 		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
 		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
