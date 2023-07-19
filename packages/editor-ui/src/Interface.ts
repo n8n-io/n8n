@@ -65,7 +65,6 @@ declare global {
 					session_recording?: {
 						maskAllInputs?: boolean;
 						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
-						recordCrossOriginIframes?: boolean;
 					};
 				},
 			): void;
