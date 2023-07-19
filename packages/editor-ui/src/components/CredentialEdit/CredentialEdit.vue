@@ -670,7 +670,7 @@ export default defineComponent({
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		onDataChange({ name, value }: { name: string; value: any }) {
-			// disregard default value being set on component mount
+			// skip update if new value matches the current
 			if (this.credentialData[name] === value) return;
 
 			this.hasUnsavedChanges = true;
