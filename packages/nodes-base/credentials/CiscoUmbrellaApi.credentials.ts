@@ -12,7 +12,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 
 	displayName = 'Cisco Umbrella API';
 
-	icon = 'file:Cisco.svg';
+	icon = 'file:icons/Cisco.svg';
 
 	properties: INodeProperties[] = [
 		{

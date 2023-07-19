@@ -7,7 +7,7 @@ export class AzureIAMOAuth2Api implements ICredentialType {
 
 	extends = ['microsoftOAuth2Api'];
 
-	icon = 'file:Azure.svg';
+	icon = 'file:icons/Azure.svg';
 
 	documentationUrl = 'microsoft';
 

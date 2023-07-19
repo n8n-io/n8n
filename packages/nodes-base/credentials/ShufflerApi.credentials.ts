@@ -10,7 +10,7 @@ export class ShufflerApi implements ICredentialType {
 
 	displayName = 'Shuffler API';
 
-	icon = 'file:Shuffler.svg';
+	icon = 'file:icons/Shuffler.svg';
 
 	documentationUrl = 'shuffler';
 

@@ -10,7 +10,7 @@ export class MistApi implements ICredentialType {
 
 	displayName = 'Mist API';
 
-	icon = 'file:Mist.svg';
+	icon = 'file:icons/Mist.svg';
 
 	documentationUrl = 'mist';
 

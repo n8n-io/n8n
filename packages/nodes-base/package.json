@@ -101,6 +101,7 @@
       "dist/credentials/ERPNextApi.credentials.js",
       "dist/credentials/EventbriteApi.credentials.js",
       "dist/credentials/EventbriteOAuth2Api.credentials.js",
+      "dist/credentials/F5BigIpApi.credentials.js",
       "dist/credentials/FacebookGraphApi.credentials.js",
       "dist/credentials/FacebookGraphAppApi.credentials.js",
       "dist/credentials/FigmaApi.credentials.js",

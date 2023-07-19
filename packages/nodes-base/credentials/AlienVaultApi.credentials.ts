@@ -10,7 +10,7 @@ export class AlienVaultApi implements ICredentialType {
 
 	displayName = 'AlienVault API';
 
-	icon = 'file:AlienVault.png';
+	icon = 'file:icons/AlienVault.png';
 
 	properties: INodeProperties[] = [
 		{

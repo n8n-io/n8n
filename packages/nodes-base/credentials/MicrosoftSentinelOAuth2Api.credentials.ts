@@ -7,7 +7,7 @@ export class MicrosoftSentinelOAuth2Api implements ICredentialType {
 
 	extends = ['microsoftOAuth2Api'];
 
-	icons = 'file:Microsoft.svg';
+	icon = 'file:icons/Microsoft.svg';
 
 	documentationUrl = 'microsoft';
 
