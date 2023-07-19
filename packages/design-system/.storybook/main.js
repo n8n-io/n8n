@@ -28,9 +28,12 @@ module.exports = {
 						find: /^@n8n-design-system\//,
 						replacement: `${resolve(__dirname, '..')}/src/`,
 					},
+					{
+						find: /^n8n-design-system$/,
+						replacement: `${resolve(__dirname, '..')}/src/main.ts`,
+					},
 				],
 			},
-			define: { 'process.env': {} },
 		});
 	},
 	docs: {

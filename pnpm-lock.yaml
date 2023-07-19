@@ -31,7 +31,7 @@ patchedDependencies:
     hash: nchnoezkq6p37qaiku3vrpwraq
     path: patches/@sentry__cli@2.17.0.patch
   element-plus@2.3.6:
-    hash: 43j4rcrsuthfakksgtflxlcgeq
+    hash: vqiqyej2nyy35ezfz6ceffygha
     path: patches/element-plus@2.3.6.patch
   pkce-challenge@3.0.0:
     hash: dypouzb3lve7vncq25i5fuanki
@@ -646,7 +646,7 @@ importers:
     dependencies:
       element-plus:
         specifier: ^2.3.6
-        version: 2.3.6(patch_hash=43j4rcrsuthfakksgtflxlcgeq)(vue@3.3.4)
+        version: 2.3.6(patch_hash=vqiqyej2nyy35ezfz6ceffygha)(vue@3.3.4)
       markdown-it:
         specifier: ^13.0.1
         version: 13.0.1
@@ -10497,7 +10497,7 @@ packages:
     resolution: {integrity: sha512-M8WEXFuKXMYMVr45fo8mq0wUrrJHheiKZf6BArTKk9ZBYCKJEOU5H8cdWgDT+qCVZf7Na4lVUaZsA+h6uA9+PA==}
     dev: true
 
-  /element-plus@2.3.6(patch_hash=43j4rcrsuthfakksgtflxlcgeq)(vue@3.3.4):
+  /element-plus@2.3.6(patch_hash=vqiqyej2nyy35ezfz6ceffygha)(vue@3.3.4):
     resolution: {integrity: sha512-GLz0pXUYI2zRfIgyI6W7SWmHk6dSEikP9yR++hsQUyy63+WjutoiGpA3SZD4cGPSXUzRFeKfVr8CnYhK5LqXZw==}
     peerDependencies:
       vue: ^3.2.0
