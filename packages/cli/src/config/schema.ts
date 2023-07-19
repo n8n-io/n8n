@@ -395,6 +395,18 @@ export const schema = {
 					default: '',
 					env: 'QUEUE_BULL_REDIS_USERNAME',
 				},
+				prefix: {
+					doc: 'Redis Bull Queue Prefix (wrap in {} for cluster mode)',
+					format: String,
+					default: 'bull',
+					env: 'QUEUE_BULL_REDIS_PREFIX',
+				},
+				clusterNodes: {
+					doc: 'Redis Cluster startup nodes (comma separated list of host:port pairs)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
