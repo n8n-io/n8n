@@ -1,5 +1,5 @@
 import { PiniaVuePlugin } from 'pinia';
-import { render, within } from '@testing-library/vue';
+import { render } from '@testing-library/vue';
 import { merge } from 'lodash-es';
 
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
