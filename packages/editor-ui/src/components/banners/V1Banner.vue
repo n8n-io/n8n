@@ -14,7 +14,7 @@ async function dismissPermanently() {
 </script>
 
 <template>
-	<base-banner customIcon="info-circle" theme="warning" name="V1">
+	<base-banner customIcon="info-circle" theme="warning" name="V1" :class="$style.v1container">
 		<template #mainContent>
 			<span v-html="locale.baseText('banners.v1.message')"></span>
 			<a
@@ -30,9 +30,11 @@ async function dismissPermanently() {
 </template>
 
 <style lang="scss" module>
-a,
-.link {
-	font-weight: var(--font-weight-bold);
-	text-decoration: underline;
+.v1container {
+	a,
+	.link {
+		font-weight: var(--font-weight-bold);
+		text-decoration: underline;
+	}
 }
 </style>
