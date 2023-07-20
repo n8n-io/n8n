@@ -1,19 +1,17 @@
-import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { createWorkflow, getGlobalMemberRole, getGlobalOwnerRole } from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
-import { makeWorkflow } from './shared/utils';
+import { makeWorkflow } from './shared/utils/';
 import { randomCredentialPayload } from './shared/random';
-import { License } from '@/License';
-import { getSharedWorkflowIds } from '../../src/WorkflowHelpers';
 
 let owner: User;
 let member: User;
@@ -22,12 +20,14 @@ let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
-let sharingSpy: jest.SpyInstance<boolean>;
+
+const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+const testServer = utils.setupTestServer({
+	endpointGroups: ['workflows'],
+	enabledFeatures: ['feat:sharing'],
+});
 
 beforeAll(async () => {
-	Container.get(License).isSharingEnabled = () => true;
-	const app = await utils.initTestServer({ endpointGroups: ['workflows'] });
-
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	const globalMemberRole = await testDb.getGlobalMemberRole();
 	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
@@ -36,23 +36,17 @@ beforeAll(async () => {
 	member = await testDb.createUser({ globalRole: globalMemberRole });
 	anotherMember = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const authAgent = utils.createAuthAgent(app);
-	authOwnerAgent = authAgent(owner);
-	authMemberAgent = authAgent(member);
-	authAnotherMemberAgent = authAgent(anotherMember);
+	authOwnerAgent = testServer.authAgentFor(owner);
+	authMemberAgent = testServer.authAgentFor(member);
+	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
-	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
 	await utils.initNodeTypes();
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['Workflow', 'SharedWorkflow']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('router should switch based on flag', () => {
@@ -193,6 +187,23 @@ describe('GET /workflows', () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe('GET /workflows/new', () => {
+	[true, false].forEach((sharingEnabled) => {
+		test(`should return an auto-incremented name, even when sharing is ${
+			sharingEnabled ? 'enabled' : 'disabled'
+		}`, async () => {
+			sharingSpy.mockReturnValueOnce(sharingEnabled);
+
+			await createWorkflow({ name: 'My workflow' }, owner);
+			await createWorkflow({ name: 'My workflow 7' }, owner);
+
+			const response = await authOwnerAgent.get('/workflows/new');
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.name).toEqual('My workflow 8');
+		});
 	});
 });
 
@@ -586,7 +597,6 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 				},
 			],
 		});
-
 		expect(response.statusCode).toBe(400);
 	});
 

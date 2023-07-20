@@ -214,3 +214,23 @@ export const keysToLowercase = <T>(headers: T) => {
 		return acc;
 	}, {} as IDataObject);
 };
+
+/**
+ * @TECH_DEBT Explore replacing with handlebars
+ */
+export function getResolvables(expression: string) {
+	if (!expression) return [];
+
+	const resolvables = [];
+	const resolvableRegex = /({{[\s\S]*?}})/g;
+
+	let match;
+
+	while ((match = resolvableRegex.exec(expression)) !== null) {
+		if (match[1]) {
+			resolvables.push(match[1]);
+		}
+	}
+
+	return resolvables;
+}

@@ -1,4 +1,5 @@
 import express from 'express';
+import { Container, Service } from 'typedi';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
@@ -23,9 +24,9 @@ import {
 } from '../serviceProvider.ee';
 import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
-import Container from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
+@Service()
 @RestController('/sso/saml')
 export class SamlController {
 	constructor(private samlService: SamlService) {}
@@ -183,7 +184,7 @@ export class SamlController {
 	}
 
 	private async handleInitSSO(res: express.Response, relayState?: string) {
-		const result = this.samlService.getLoginRequestUrl(relayState);
+		const result = await this.samlService.getLoginRequestUrl(relayState);
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {

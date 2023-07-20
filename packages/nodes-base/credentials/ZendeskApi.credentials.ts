@@ -34,6 +34,9 @@ export class ZendeskApi implements ICredentialType {
 			name: 'apiToken',
 			type: 'string',
 			default: '',
+			typeOptions: {
+				password: true,
+			},
 		},
 	];
 

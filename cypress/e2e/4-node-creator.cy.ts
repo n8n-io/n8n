@@ -7,10 +7,6 @@ const WorkflowPage = new WorkflowPageClass();
 const NDVModal = new NDV();
 
 describe('Node Creator', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 	});
@@ -271,7 +267,7 @@ describe('Node Creator', () => {
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Item Lists')
+			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Item Lists', 'Summarize')
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		})
 	});

@@ -1,4 +1,4 @@
-import type { Variables } from '@/databases/entities/Variables';
+import type { Variables } from '@db/entities/Variables';
 import { collections } from '@/Db';
 
 export class VariablesService {
@@ -10,11 +10,11 @@ export class VariablesService {
 		return collections.Variables.count();
 	}
 
-	static async get(id: number): Promise<Variables | null> {
+	static async get(id: string): Promise<Variables | null> {
 		return collections.Variables.findOne({ where: { id } });
 	}
 
-	static async delete(id: number): Promise<void> {
+	static async delete(id: string): Promise<void> {
 		await collections.Variables.delete(id);
 	}
 }

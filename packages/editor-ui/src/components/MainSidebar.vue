@@ -29,7 +29,7 @@
 			<template #beforeLowerMenu>
 				<ExecutionsUsage
 					:cloud-plan-data="currentPlanAndUsageData"
-					v-if="!isCollapsed && userIsTrialing"
+					v-if="fullyExpanded && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
 				<div>
@@ -46,7 +46,7 @@
 							}}
 						</n8n-text>
 					</div>
-					<MainSidebarVersionControl :is-collapsed="isCollapsed" />
+					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -89,6 +89,7 @@
 						<n8n-action-dropdown
 							:items="userMenuItems"
 							placement="top-start"
+							data-test-id="user-menu"
 							@select="onUserActionToggle"
 						/>
 					</div>
@@ -120,18 +121,18 @@ import {
 	useRootStore,
 	useVersionsStore,
 	useCloudPlanStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores/';
 import { isNavigationFailure } from 'vue-router';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
-import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
+import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
 		ExecutionsUsage,
-		MainSidebarVersionControl,
+		MainSidebarSourceControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
 	setup(props) {
@@ -155,7 +156,7 @@ export default defineComponent({
 			useVersionsStore,
 			useWorkflowsStore,
 			useCloudPlanStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
@@ -171,11 +172,7 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return (
-				this.settingsStore.isUserManagementEnabled &&
-				this.usersStore.canUserAccessSidebarUserInfo &&
-				this.usersStore.currentUser !== null
-			);
+			return this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -196,6 +193,23 @@ export default defineComponent({
 			const items: IMenuItem[] = [];
 			const injectedItems = this.uiStore.sidebarMenuItems;
 
+			const workflows: IMenuItem = {
+				id: 'workflows',
+				icon: 'network-wired',
+				label: this.$locale.baseText('mainSidebar.workflows'),
+				position: 'top',
+				activateOnRouteNames: [VIEWS.WORKFLOWS],
+			};
+
+			if (this.sourceControlStore.preferences.branchReadOnly) {
+				workflows.secondaryIcon = {
+					name: 'lock',
+					tooltip: {
+						content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
+					},
+				};
+			}
+
 			if (injectedItems && injectedItems.length > 0) {
 				for (const item of injectedItems) {
 					items.push({
@@ -212,16 +226,7 @@ export default defineComponent({
 			}
 
 			const regularItems: IMenuItem[] = [
-				{
-					id: 'workflows',
-					icon: 'network-wired',
-					secondaryIcon: this.versionControlStore.preferences.branchReadOnly
-						? { name: 'lock' }
-						: undefined,
-					label: this.$locale.baseText('mainSidebar.workflows'),
-					position: 'top',
-					activateOnRouteNames: [VIEWS.WORKFLOWS],
-				},
+				workflows,
 				{
 					id: 'templates',
 					icon: 'box-open',

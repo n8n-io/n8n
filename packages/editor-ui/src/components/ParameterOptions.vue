@@ -107,7 +107,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (this.parameter.typeOptions?.editor === 'codeNodeEditor') {
+			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor)) {
 				return false;
 			}
 
@@ -199,10 +199,14 @@ export default defineComponent({
 .container {
 	display: flex;
 }
-.loader > span {
-	line-height: 1em;
-}
 
+.loader {
+	padding-bottom: var(--spacing-4xs);
+
+	& > span {
+		line-height: 1em;
+	}
+}
 .controlsContainer {
 	display: flex;
 }

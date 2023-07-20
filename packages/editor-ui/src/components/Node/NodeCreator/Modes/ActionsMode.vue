@@ -13,10 +13,8 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	CUSTOM_API_CALL_KEY,
-	AUTO_INSERT_ACTION_EXPERIMENT,
 } from '@/constants';
 
-import { usePostHog } from '@/stores/posthog.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWebhooksStore } from '@/stores/webhooks.store';
 import { runExternalHook } from '@/utils';
@@ -143,12 +141,8 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	const isPlaceholderTriggerAction = placeholderTriggerActions.some(
 		(p) => p.key === actionCreateElement.key,
 	);
-	const includeNodeWithPlaceholderTrigger = usePostHog().isVariantEnabled(
-		AUTO_INSERT_ACTION_EXPERIMENT.name,
-		AUTO_INSERT_ACTION_EXPERIMENT.variant,
-	);
 
-	if (includeNodeWithPlaceholderTrigger && isPlaceholderTriggerAction && isTriggerRootView) {
+	if (isPlaceholderTriggerAction && isTriggerRootView.value) {
 		const actionNode = actions.value[0].key;
 
 		emit('nodeTypeSelected', [actionData.key as string, actionNode]);

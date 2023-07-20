@@ -1,29 +1,24 @@
-import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
-import type { User } from '@db/entities/User';
-import { License } from '@/License';
+import { SOURCE_CONTROL_API_ROOT } from '@/environments/sourceControl/constants';
 import * as testDb from '../shared/testDb';
-import * as utils from '../shared/utils';
-import { VERSION_CONTROL_API_ROOT } from '@/environments/versionControl/constants';
+import * as utils from '../shared/utils/';
 
-let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
+const testServer = utils.setupTestServer({
+	endpointGroups: ['sourceControl'],
+	enabledFeatures: ['feat:sourceControl'],
+});
+
 beforeAll(async () => {
-	Container.get(License).isVersionControlLicensed = () => true;
-	const app = await utils.initTestServer({ endpointGroups: ['versionControl'] });
-	owner = await testDb.createOwner();
-	authOwnerAgent = utils.createAuthAgent(app)(owner);
+	const owner = await testDb.createOwner();
+	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
-describe('GET /versionControl/preferences', () => {
-	test('should return Version Control preferences', async () => {
+describe('GET /sourceControl/preferences', () => {
+	test('should return Source Control preferences', async () => {
 		await authOwnerAgent
-			.get(`/${VERSION_CONTROL_API_ROOT}/preferences`)
+			.get(`/${SOURCE_CONTROL_API_ROOT}/preferences`)
 			.expect(200)
 			.expect((res) => {
 				return 'repositoryUrl' in res.body && 'branchName' in res.body;

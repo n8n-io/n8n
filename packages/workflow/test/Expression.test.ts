@@ -10,7 +10,10 @@ import type { ExpressionTestEvaluation, ExpressionTestTransform } from './Expres
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { INodeExecutionData } from '@/Interfaces';
 import { extendSyntax } from '@/Extensions/ExpressionExtension';
-import { setEvaluator } from '@/ExpressionEvaluatorProxy';
+import { ExpressionError } from '@/ExpressionError';
+import { setDifferEnabled, setEvaluator } from '@/ExpressionEvaluatorProxy';
+
+setDifferEnabled(true);
 
 for (const evaluator of ['tmpl', 'tournament'] as const) {
 	setEvaluator(evaluator);
@@ -157,7 +160,9 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 			it('should not able to do arbitrary code execution', () => {
 				const testFn = jest.fn();
 				Object.assign(global, { testFn });
-				evaluate("={{ Date['constructor']('testFn()')()}}");
+				expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
+					new ExpressionError('Arbitrary code execution detected'),
+				);
 				expect(testFn).not.toHaveBeenCalled();
 			});
 		});
@@ -183,7 +188,18 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 			const expression = new Expression(workflow);
 
 			const evaluate = (value: string, data: INodeExecutionData[]) => {
-				return expression.getParameterValue(value, null, 0, 0, 'node', data, 'manual', '', {});
+				const itemIndex = data.length === 0 ? -1 : 0;
+				return expression.getParameterValue(
+					value,
+					null,
+					0,
+					itemIndex,
+					'node',
+					data,
+					'manual',
+					'',
+					{},
+				);
 			};
 
 			for (const t of baseFixtures) {

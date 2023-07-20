@@ -177,7 +177,7 @@ export class WorkflowPage extends BasePage {
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
-			cy.get('body').type('{meta}', { release: false }).type('s');
+			cy.get('body').type(META_KEY, { release: false }).type('s');
 		},
 		deleteNode: (name: string) => {
 			this.getters.canvasNodeByName(name).first().click();
@@ -241,14 +241,15 @@ export class WorkflowPage extends BasePage {
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
 		},
-		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string) => {
+		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string, action?: string) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters
 				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
 				.find('.add')
 				.first()
 				.click({ force: true });
-			this.actions.addNodeToCanvas(newNodeName, false);
+
+			this.actions.addNodeToCanvas(newNodeName, false, false, action);
 		},
 		deleteNodeBetweenNodes: (
 			sourceNodeName: string,
@@ -279,24 +280,6 @@ export class WorkflowPage extends BasePage {
 				.clear()
 				.type(content)
 				.type('{esc}');
-		},
-		turnOnManualExecutionSaving: () => {
-			this.getters.workflowMenu().click();
-			this.getters.workflowMenuItemSettings().click();
-			cy.get('.el-loading-mask').should('not.be.visible');
-			this.getters
-				.workflowSettingsSaveManualExecutionsSelect()
-				.find('li:contains("Yes")')
-				.click({ force: true });
-
-			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
-			this.getters.workflowSettingsSaveButton().click();
-			this.getters.successToast().should('exist');
-
-			this.getters.workflowMenu().click();
-			this.getters.workflowMenuItemSettings().click();
-			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
-			this.getters.workflowSettingsSaveButton().click();
 		},
 	};
 }

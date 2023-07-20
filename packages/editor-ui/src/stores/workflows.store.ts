@@ -82,24 +82,29 @@ import {
 } from '@/utils';
 import { useNDVStore } from './ndv.store';
 import { useNodeTypesStore } from './nodeTypes.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { NodeMetadataMap } from '@/Interface';
 
-const createEmptyWorkflow = (): IWorkflowDb => ({
-	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
 	active: false,
 	createdAt: -1,
 	updatedAt: -1,
 	connections: {},
 	nodes: [],
-	settings: {},
+	settings: {
+		executionOrder: 'v1',
+	},
 	tags: [],
 	pinData: {},
 	versionId: '',
 	usedCredentials: [],
+};
+
+const createEmptyWorkflow = (): IWorkflowDb => ({
+	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	...defaults,
 });
 
 let cachedWorkflowKey: string | null = '';
@@ -135,10 +140,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return this.workflow.versionId;
 		},
 		workflowSettings(): IWorkflowSettings {
-			if (this.workflow.settings === undefined) {
-				return {};
-			}
-			return this.workflow.settings;
+			return this.workflow.settings ?? { ...defaults.settings };
 		},
 		workflowTags(): string[] {
 			return this.workflow.tags as string[];
@@ -318,7 +320,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// This has the advantage that it is very fast and does not cause problems with vuex
 		// when the workflow replaces the node-parameters.
 		getNodes(): INodeUi[] {
-			const nodes = useWorkflowsStore().allNodes;
+			const nodes = this.allNodes;
 			const returnNodes: INodeUi[] = [];
 
 			for (const node of nodes) {
@@ -331,23 +333,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Returns a workflow instance.
 		getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 			const nodeTypes = this.getNodeTypes();
-			let workflowId: string | undefined = useWorkflowsStore().workflowId;
+			let workflowId: string | undefined = this.workflowId;
 			if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				workflowId = undefined;
 			}
 
-			const workflowName = useWorkflowsStore().workflowName;
-
 			cachedWorkflow = new Workflow({
 				id: workflowId,
-				name: workflowName,
+				name: this.workflowName,
 				nodes: copyData ? deepCopy(nodes) : nodes,
 				connections: copyData ? deepCopy(connections) : connections,
 				active: false,
 				nodeTypes,
-				settings: useWorkflowsStore().workflowSettings,
+				settings: this.workflowSettings,
 				// @ts-ignore
-				pinData: useWorkflowsStore().getPinData,
+				pinData: this.getPinData,
 			});
 
 			return cachedWorkflow;
@@ -393,11 +393,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
-			const workflowsEEStore = useWorkflowsEEStore();
-
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
+				settings: { ...defaults.settings },
 			};
 			try {
 				const rootStore = useRootStore();
@@ -424,6 +423,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					ownedBy: usersStore.currentUser as IUser,
 				};
 			}
+		},
+
+		resetState(): void {
+			this.removeAllConnections({ setStateDirty: false });
+			this.removeAllNodes({ setStateDirty: false, removePinData: true });
+
+			// Reset workflow execution data
+			this.setWorkflowExecutionData(null);
+			this.resetAllNodesIssues();
+
+			this.setActive(defaults.active);
+			this.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			this.setWorkflowName({ newName: '', setStateDirty: false });
+			this.setWorkflowSettings({ ...defaults.settings });
+			this.setWorkflowTagIds([]);
+
+			this.activeExecutionId = null;
+			this.executingNode = null;
+			this.executionWaitingForWebhook = false;
 		},
 
 		setWorkflowId(id: string): void {
@@ -632,7 +650,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				...(!this.workflow.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
 				...(!this.workflow.hasOwnProperty('id') ? { id: PLACEHOLDER_EMPTY_WORKFLOW_ID } : {}),
 				...(!this.workflow.hasOwnProperty('nodes') ? { nodes: [] } : {}),
-				...(!this.workflow.hasOwnProperty('settings') ? { settings: {} } : {}),
+				...(!this.workflow.hasOwnProperty('settings')
+					? { settings: { ...defaults.settings } }
+					: {}),
 			};
 		},
 

@@ -2,11 +2,12 @@ import type _Vue from 'vue';
 import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { Route } from 'vue-router';
 
-import type { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { SLACK_NODE_TYPE } from '@/constants';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: Route }>;
@@ -191,6 +192,23 @@ export class Telemetry {
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);
 					break;
+				default:
+					break;
+			}
+		}
+	}
+
+	// We currently do not support tracking directly from within node implementation
+	// so we are using this method as centralized way to track node parameters changes
+	trackNodeParametersValuesChange(nodeType: string, change: IUpdateInformation) {
+		if (this.rudderStack) {
+			switch (nodeType) {
+				case SLACK_NODE_TYPE:
+					if (change.name === 'parameters.includeLinkToWorkflow') {
+						this.track('User toggled n8n reference option');
+					}
+					break;
+
 				default:
 					break;
 			}

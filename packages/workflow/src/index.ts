@@ -32,6 +32,7 @@ export {
 	sleep,
 	fileTypeFromMimeType,
 	assert,
+	removeCircularRefs,
 } from './utils';
 export {
 	isINodeProperties,

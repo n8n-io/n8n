@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Container, Service } from 'typedi';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -11,19 +12,15 @@ import type {
 import { createDeferredPromise, LoggerProxy } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
-import { stringify } from 'flatted';
 import type PCancelable from 'p-cancelable';
-import * as Db from '@/Db';
 import type {
 	IExecutingWorkflowData,
 	IExecutionDb,
-	IExecutionFlattedDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
 import { isWorkflowIdValid } from '@/utils';
-import { Service } from 'typedi';
+import { ExecutionRepository } from '@db/repositories';
 
 @Service()
 export class ActiveExecutions {
@@ -61,15 +58,10 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-			const executionResult = await Db.collections.Execution.save(execution as IExecutionFlattedDb);
-			// TODO: what is going on here?
-			executionId =
-				typeof executionResult.id === 'object'
-					? // @ts-ignore
-					  executionResult.id!.toString()
-					: executionResult.id + '';
+			const executionResult = await Container.get(ExecutionRepository).createNewExecution(
+				fullExecutionData,
+			);
+			executionId = executionResult.id;
 			if (executionId === undefined) {
 				throw new Error('There was an issue assigning an execution id to the execution');
 			}
@@ -77,14 +69,14 @@ export class ActiveExecutions {
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
-			const execution: Pick<IExecutionFlattedDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
-				data: stringify(executionData.executionData!),
+				data: executionData.executionData!,
 				waitTill: null,
 				status: executionStatus,
 			};
 
-			await Db.collections.Execution.update(executionId, execution);
+			await Container.get(ExecutionRepository).updateExistingExecution(executionId, execution);
 		}
 
 		this.activeExecutions[executionId] = {

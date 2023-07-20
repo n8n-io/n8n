@@ -19,7 +19,7 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleRepository } from '@db/repositories';
 import type { ICredentialsDb } from '@/Interfaces';
 
@@ -32,6 +32,8 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import type { ExecutionData } from '@db/entities/ExecutionData';
+import { generateNanoId } from '@db/utils/generators';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -59,9 +61,7 @@ export async function init() {
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
 		await Db.init(getSqliteOptions({ name: testDbName }));
-	}
-
-	if (dbType === 'postgresdb') {
+	} else if (dbType === 'postgresdb') {
 		let bootstrapPostgres;
 		const pgOptions = getBootstrapDBOptions('postgres');
 
@@ -90,9 +90,7 @@ export async function init() {
 		await bootstrapPostgres.destroy();
 
 		await Db.init(getDBOptions('postgres', testDbName));
-	}
-
-	if (dbType === 'mysqldb') {
+	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapMysql.destroy();
@@ -183,6 +181,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
+		globalRole,
 		...rest,
 	};
 
@@ -332,17 +331,26 @@ export async function createManyExecutions(
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-async function createExecution(attributes: Partial<ExecutionEntity>, workflow: WorkflowEntity) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
+async function createExecution(
+	attributes: Partial<ExecutionEntity & ExecutionData>,
+	workflow: WorkflowEntity,
+) {
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
 
 	const execution = await Db.collections.Execution.save({
-		data: data ?? '[]',
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id }),
+		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
+		status,
+	});
+
+	await Db.collections.ExecutionData.save({
+		data: data ?? '[]',
+		workflowData: workflow ?? {},
+		executionId: execution.id,
 	});
 
 	return execution;
@@ -352,21 +360,21 @@ async function createExecution(attributes: Partial<ExecutionEntity>, workflow: W
  * Store a successful execution in the DB and assign it to a workflow.
  */
 export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true }, workflow);
+	return createExecution({ finished: true, status: 'success' }, workflow);
 }
 
 /**
  * Store an error execution in the DB and assign it to a workflow.
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date() }, workflow);
+	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
 }
 
 /**
  * Store a waiting execution in the DB and assign it to a workflow.
  */
 export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date() }, workflow);
+	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
 }
 
 // ----------------------------------
@@ -377,6 +385,7 @@ export async function createTag(attributes: Partial<TagEntity> = {}) {
 	const { name } = attributes;
 
 	return Db.collections.Tag.save({
+		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,
 	});
@@ -403,7 +412,7 @@ export async function createManyWorkflows(
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
 	const { active, name, nodes, connections } = attributes;
 
-	const workflow = await Db.collections.Workflow.save({
+	const workflowEntity = new WorkflowEntity({
 		active: active ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
@@ -419,6 +428,8 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		connections: connections ?? {},
 		...attributes,
 	});
+
+	const workflow = await Db.collections.Workflow.save(workflowEntity);
 
 	if (user) {
 		await Db.collections.SharedWorkflow.save({
@@ -505,6 +516,7 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 
 export async function createVariable(key: string, value: string) {
 	return Db.collections.Variables.save({
+		id: generateNanoId(),
 		key,
 		value,
 	});
@@ -518,7 +530,7 @@ export async function getVariableByKey(key: string) {
 	});
 }
 
-export async function getVariableById(id: number) {
+export async function getVariableById(id: string) {
 	return Db.collections.Variables.findOne({
 		where: {
 			id,

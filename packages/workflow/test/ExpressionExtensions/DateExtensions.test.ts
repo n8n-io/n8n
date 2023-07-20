@@ -16,6 +16,10 @@ describe('Data Transformation Functions', () => {
 
 		test('.beginningOf("week") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 20).beginningOf("week") }}')).toEqual(
+				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }),
+			);
+
+			expect(evaluate('={{ new Date(2023, 0, 20).beginningOf("week") }}')).toEqual(
 				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }).toJSDate(),
 			);
 		});
@@ -49,6 +53,9 @@ describe('Data Transformation Functions', () => {
 
 		test('.endOfMonth() should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 16).endOfMonth() }}')).toEqual(
+				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }),
+			);
+			expect(evaluate('={{ new Date(2023, 0, 16).endOfMonth() }}')).toEqual(
 				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }).toJSDate(),
 			);
 		});

@@ -83,12 +83,12 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.AUDIT_LOGS],
 				},
 				{
-					id: 'settings-version-control',
+					id: 'settings-source-control',
 					icon: 'code-branch',
-					label: this.$locale.baseText('settings.versionControl.title'),
+					label: this.$locale.baseText('settings.sourceControl.title'),
 					position: 'top',
-					available: this.canAccessVersionControl(),
-					activateOnRouteNames: [VIEWS.VERSION_CONTROL],
+					available: this.canAccessSourceControl(),
+					activateOnRouteNames: [VIEWS.SOURCE_CONTROL],
 				},
 				{
 					id: 'settings-sso',
@@ -164,8 +164,8 @@ export default defineComponent({
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
-		canAccessVersionControl(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
+		canAccessSourceControl(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.SOURCE_CONTROL);
 		},
 		canAccessAuditLogs(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.AUDIT_LOGS);
@@ -226,9 +226,9 @@ export default defineComponent({
 						void this.$router.push({ name: VIEWS.SSO_SETTINGS });
 					}
 					break;
-				case 'settings-version-control':
-					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
-						void this.$router.push({ name: VIEWS.VERSION_CONTROL });
+				case 'settings-source-control':
+					if (this.$router.currentRoute.name !== VIEWS.SOURCE_CONTROL) {
+						void this.$router.push({ name: VIEWS.SOURCE_CONTROL });
 					}
 					break;
 				case 'settings-audit-logs':
@@ -247,7 +247,7 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	min-width: $sidebar-expanded-width;
-	height: 100vh;
+	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;

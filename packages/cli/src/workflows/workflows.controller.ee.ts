@@ -86,7 +86,8 @@ EEWorkflowController.put(
 );
 
 EEWorkflowController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
+	(req, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
@@ -215,7 +216,7 @@ EEWorkflowController.get(
 );
 
 EEWorkflowController.patch(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
@@ -247,7 +248,7 @@ EEWorkflowController.post(
 		const workflow = new WorkflowEntity();
 		Object.assign(workflow, req.body.workflowData);
 
-		if (workflow.id !== undefined) {
+		if (req.body.workflowData.id !== undefined) {
 			const safeWorkflow = await EEWorkflows.preventTampering(workflow, workflow.id, req.user);
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}

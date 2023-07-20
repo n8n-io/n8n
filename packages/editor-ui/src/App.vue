@@ -9,6 +9,9 @@
 				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
+			<div id="banners" :class="$style.banners">
+				<banner-stack v-if="!isDemoMode" />
+			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
@@ -30,6 +33,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
+import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -46,7 +50,7 @@ import {
 	useTemplatesStore,
 	useNodeTypesStore,
 	useCloudPlanStore,
-	useVersionControlStore,
+	useSourceControlStore,
 	useUsageStore,
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
@@ -57,6 +61,7 @@ import { useExternalHooks } from '@/composables';
 export default defineComponent({
 	name: 'App',
 	components: {
+		BannerStack,
 		LoadingView,
 		Telemetry,
 		Modals,
@@ -79,16 +84,20 @@ export default defineComponent({
 			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
-			useVersionControlStore,
+			useSourceControlStore,
 			useCloudPlanStore,
 			useUsageStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
 		},
+		isDemoMode(): boolean {
+			return this.$route.name === VIEWS.DEMO;
+		},
 	},
 	data() {
 		return {
+			postAuthenticateDone: false,
 			loading: true,
 		};
 	},
@@ -122,7 +131,7 @@ export default defineComponent({
 			} catch (e) {}
 		},
 		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
+			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -142,7 +151,7 @@ export default defineComponent({
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
+			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
@@ -212,6 +221,31 @@ export default defineComponent({
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
+		async initBanners(): Promise<void> {
+			if (this.cloudPlanStore.userIsTrialing) {
+				await this.uiStore.dismissBanner('V1', 'temporary');
+				if (this.cloudPlanStore.trialExpired) {
+					this.uiStore.showBanner('TRIAL_OVER');
+				} else {
+					this.uiStore.showBanner('TRIAL');
+				}
+			}
+		},
+		async postAuthenticate() {
+			if (this.postAuthenticateDone) {
+				return;
+			}
+
+			if (!this.usersStore.currentUser) {
+				return;
+			}
+
+			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
+				await this.sourceControlStore.getPreferences();
+			}
+
+			this.postAuthenticateDone = true;
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -220,14 +254,11 @@ export default defineComponent({
 		this.authenticate();
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		void this.checkForCloudPlanData();
+		await this.checkForCloudPlanData();
+		await this.initBanners();
 
-		if (
-			this.versionControlStore.isEnterpriseVersionControlEnabled &&
-			this.usersStore.isInstanceOwner
-		) {
-			await this.versionControlStore.getPreferences();
-		}
+		void this.checkForCloudPlanData();
+		void this.postAuthenticate();
 
 		this.loading = false;
 
@@ -239,6 +270,11 @@ export default defineComponent({
 		}
 	},
 	watch: {
+		'usersStore.currentUser'(currentValue, previousValue) {
+			if (currentValue && !previousValue) {
+				void this.postAuthenticate();
+			}
+		},
 		$route(route) {
 			this.authenticate();
 			this.redirectIfNecessary();
@@ -261,29 +297,36 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
+		'banners banners'
 		'sidebar header'
 		'sidebar content';
 	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-	grid-template-rows: fit-content($sidebar-width) 1fr;
+	grid-template-rows: auto fit-content($header-height) 1fr;
+	height: 100vh;
+}
+
+.banners {
+	grid-area: banners;
+	z-index: 999;
 }
 
 .content {
 	display: flex;
 	grid-area: content;
 	overflow: auto;
-	height: 100vh;
+	height: 100%;
 	width: 100%;
 	justify-content: center;
 }
 
 .header {
 	grid-area: header;
-	z-index: 999;
+	z-index: 99;
 }
 
 .sidebar {
 	grid-area: sidebar;
-	height: 100vh;
+	height: 100%;
 	z-index: 999;
 }
 </style>

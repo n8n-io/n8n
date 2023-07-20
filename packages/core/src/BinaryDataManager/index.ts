@@ -121,7 +121,7 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
+	async getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer> {
 		if (binaryData.id) {
 			return this.retrieveBinaryDataByIdentifier(binaryData.id);
 		}
@@ -178,9 +178,9 @@ export class BinaryDataManager {
 		}
 	}
 
-	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
+	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
+			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionIds(executionIds);
 		}
 	}
 

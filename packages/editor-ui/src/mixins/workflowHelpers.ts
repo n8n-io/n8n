@@ -44,6 +44,7 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
@@ -334,7 +335,7 @@ function executeData(
 }
 
 export const workflowHelpers = defineComponent({
-	mixins: [externalHooks, nodeHelpers],
+	mixins: [externalHooks, nodeHelpers, genericHelpers],
 	setup() {
 		return {
 			...useToast(),
@@ -704,6 +705,7 @@ export const workflowHelpers = defineComponent({
 			forceSave = false,
 		): Promise<boolean> {
 			const currentWorkflow = id || this.$route.params.name;
+			const isLoading = this.loadingService !== null;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 				return this.saveAsNewWorkflow({ name, tags }, redirect);
@@ -711,6 +713,9 @@ export const workflowHelpers = defineComponent({
 
 			// Workflow exists already so update it
 			try {
+				if (!forceSave && isLoading) {
+					return true;
+				}
 				this.uiStore.addActiveAction('workflowSaving');
 
 				const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
