@@ -25,6 +25,8 @@ import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuc
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
 import Container from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import url from 'url';
+import querystring from 'querystring';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -137,7 +139,8 @@ export class SamlController {
 					if (loginResult.onboardingRequired) {
 						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {
-						return res.redirect(getInstanceBaseUrl() + SamlUrls.defaultRedirect);
+						const redirectUrl = req.body?.RelayState ?? SamlUrls.defaultRedirect;
+						return res.redirect(getInstanceBaseUrl() + redirectUrl);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
@@ -168,7 +171,22 @@ export class SamlController {
 	@NoAuthRequired()
 	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async initSsoGet(req: express.Request, res: express.Response) {
-		return this.handleInitSSO(res);
+		let redirectUrl = '';
+		try {
+			const refererUrl = req.headers.referer;
+			if (refererUrl) {
+				const parsedUrl = url.parse(refererUrl);
+				if (parsedUrl?.query) {
+					const parsedQueryParams = querystring.parse(parsedUrl.query);
+					if (parsedQueryParams.redirect && typeof parsedQueryParams.redirect === 'string') {
+						redirectUrl = querystring.unescape(parsedQueryParams.redirect);
+					}
+				}
+			}
+		} catch {
+			// ignore
+		}
+		return this.handleInitSSO(res, redirectUrl);
 	}
 
 	/**
