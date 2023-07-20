@@ -1103,5 +1103,11 @@ export const schema = {
 			default: 'tmpl',
 			env: 'N8N_EXPRESSION_EVALUATOR',
 		},
+		reportDifference: {
+			doc: 'Expression evaluator to use',
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+		},
 	},
 };
