@@ -211,7 +211,7 @@ export function getRedisClusterNodes(): Array<{ host: string; port: number }> {
 }
 
 export function getRedisPrefix(): string {
-	let prefix = config.getEnv('queue.bull.redis.prefix');
+	let prefix = config.getEnv('queue.bull.prefix');
 	if (prefix && getRedisClusterNodes().length > 0) {
 		if (!prefix.startsWith('{')) {
 			prefix = '{' + prefix;

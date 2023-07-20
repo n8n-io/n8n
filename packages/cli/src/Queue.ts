@@ -1,7 +1,7 @@
 import type Bull from 'bull';
 import { type RedisOptions } from 'ioredis';
 import { Service } from 'typedi';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { LoggerProxy, type IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -34,42 +34,50 @@ export class Queue {
 	async init() {
 		const prefix = getRedisPrefix();
 		const clusterNodes = getRedisClusterNodes();
+		const usesRedisCluster = clusterNodes.length > 0;
 		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Redis } = await import('ioredis');
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize
 		// redis is back up and resume working.
 		// More here: https://github.com/OptimalBits/bull/issues/890
-		// @ts-ignore
+
+		LoggerProxy.debug(
+			usesRedisCluster
+				? `Initialising Redis cluster connection with nodes: ${clusterNodes
+						.map((e) => `${e.host}:${e.port}`)
+						.join(',')}`
+				: `Initialising Redis client connection with host: ${host ?? 'localhost'} and port: ${
+						port ?? '6379'
+				  }`,
+		);
+		const sharedRedisOptions: RedisOptions = {
+			username,
+			password,
+			db,
+			enableReadyCheck: false,
+			maxRetriesPerRequest: null,
+		};
 		this.jobQueue = new Bull('jobs', {
 			prefix,
-			createClient: (type, config) =>
-				clusterNodes.length > 0
+			createClient: (type, clientConfig) =>
+				usesRedisCluster
 					? new Redis.Cluster(
 							clusterNodes.map((node) => ({ host: node.host, port: node.port })),
 							{
-								...config,
-								redisOptions: {
-									username,
-									password,
-									db,
-									enableReadyCheck: false,
-									maxRetriesPerRequest: null,
-								},
+								...clientConfig,
+								redisOptions: sharedRedisOptions,
 							},
 					  )
 					: new Redis({
-							...config,
+							...clientConfig,
 							host,
 							port,
-							username,
-							password,
-							db,
-							enableReadyCheck: false,
-							maxRetriesPerRequest: null,
+							...sharedRedisOptions,
 					  }),
 		});
 
