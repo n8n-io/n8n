@@ -28,6 +28,7 @@ import {
 	NodesController,
 	OwnerController,
 	PasswordResetController,
+	TagsController,
 	UsersController,
 } from '@/controllers';
 import { setupAuthMiddlewares } from '@/middlewares';
@@ -261,6 +262,14 @@ export const setupTestServer = ({
 								logger,
 							}),
 						);
+						break;
+					case 'tags':
+						registerController(
+							app,
+							config,
+							new TagsController({ config, externalHooks, repositories }),
+						);
+						break;
 				}
 			}
 		}
