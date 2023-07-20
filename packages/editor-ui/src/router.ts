@@ -560,7 +560,7 @@ export const routes = [
 				},
 			},
 			{
-				path: 'source-control',
+				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
 				components: {
 					settingsView: SettingsSourceControl,
@@ -570,17 +570,13 @@ export const routes = [
 						pageCategory: 'settings',
 						getProperties(route: Route) {
 							return {
-								feature: 'vc',
+								feature: 'environments',
 							};
 						},
 					},
 					permissions: {
 						allow: {
 							role: [ROLE.Owner],
-						},
-						deny: {
-							// TODO: remove this for release
-							shouldDeny: () => !window.localStorage.getItem('source-control'),
 						},
 					},
 				},
