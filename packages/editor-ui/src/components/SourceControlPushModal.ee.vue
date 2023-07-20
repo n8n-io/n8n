@@ -284,13 +284,6 @@ async function commitAndPush() {
 											{{ renderUpdatedAt(file) }}
 										</n8n-text>
 									</div>
-									<div v-if="file.conflict">
-										<n8n-text color="danger" size="small">
-											{{
-												locale.baseText('settings.sourceControl.modals.push.overrideVersionInGit')
-											}}
-										</n8n-text>
-									</div>
 								</div>
 								<div :class="$style.listItemStatus">
 									<n8n-badge

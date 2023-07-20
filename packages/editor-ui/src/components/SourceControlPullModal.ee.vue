@@ -100,9 +100,6 @@ async function pullWorkfolder() {
 				</n8n-text>
 
 				<div v-if="modifiedWorkflowFiles.length > 0" class="mt-l">
-					<n8n-text bold>
-						{{ i18n.baseText('settings.sourceControl.modals.pull.workflowsWithChanges') }}
-					</n8n-text>
 					<ul :class="$style.filesList">
 						<li v-for="file in modifiedWorkflowFiles" :key="file.id">
 							<n8n-link :class="$style.fileLink" new-window :to="`/workflow/${file.id}`">
