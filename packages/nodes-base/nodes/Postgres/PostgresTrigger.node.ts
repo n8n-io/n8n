@@ -34,7 +34,7 @@ export class PostgresTrigger implements INodeType {
 					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			},
 			activationHint:
-				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
+				"Once you've finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won't see those executions here).",
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -222,10 +222,12 @@ export class PostgresTrigger implements INodeType {
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
-		const db = await initDB.call(this);
+		const { db, pgp } = await initDB.call(this);
+
 		if (triggerMode === 'createTrigger') {
 			await pgTriggerFunction.call(this, db);
 		}
+
 		const channelName =
 			triggerMode === 'createTrigger'
 				? additionalFields.channelName || `n8n_channel_${this.getNode().id.replace(/-/g, '_')}`
@@ -252,11 +254,39 @@ export class PostgresTrigger implements INodeType {
 			if (triggerMode === 'createTrigger') {
 				await dropTriggerFunction.call(this, db);
 			}
-			await db.$pool.end();
+			pgp.end();
+		};
+
+		const manualTriggerFunction = async () => {
+			await new Promise((resolve, reject) => {
+				const timeoutHandler = setTimeout(() => {
+					reject(
+						new Error(
+							'Aborted, no data received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+						),
+					);
+				}, 30000);
+				connection.client.on('notification', (data: any) => {
+					if (data.payload) {
+						try {
+							data.payload = JSON.parse(data.payload as string);
+						} catch (error) {}
+					}
+					this.emit([
+						this.helpers.returnJsonArray([
+							data,
+							{ listeners: connection.client.listeners('notification') },
+						]),
+					]);
+					clearTimeout(timeoutHandler);
+					resolve(true);
+				});
+			});
 		};
 
 		return {
 			closeFunction,
+			manualTriggerFunction,
 		};
 	}
 }

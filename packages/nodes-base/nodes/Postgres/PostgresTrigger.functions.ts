@@ -16,23 +16,34 @@ export async function pgTriggerFunction(
 	const tableName = this.getNodeParameter('tableName', undefined, {
 		extractValue: true,
 	}) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+
 	const target = `${schema}."${tableName}"`;
+
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
+
 	const functionReplace =
 		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$;";
+
 	const dropIfExist = 'DROP TRIGGER IF EXISTS $1:raw ON $2:raw';
+
 	const functionExists =
 		"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$";
+
 	const trigger =
 		'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw';
+
 	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
-	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+
 	const nodeId = this.getNode().id.replace(/-/g, '_');
+
 	let functionName =
 		(additionalFields.functionName as string) || `n8n_trigger_function_${nodeId}()`;
-	if (!functionName.includes('()')) {
-		functionName = functionName.concat('()');
+
+	if (!(functionName.includes('(') && functionName.includes(')'))) {
+		functionName = `${functionName}()`;
 	}
+
 	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${nodeId}`;
 	if (channelName.includes('-')) {
@@ -77,23 +88,25 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
 		config.sslmode = (credentials.ssl as string) || 'disable';
 	}
-	return pgp(config);
+
+	const db = pgp(config);
+	return { db, pgp };
 }
 
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const db = await initDB.call(this);
+	const { db, pgp } = await initDB.call(this);
 	const schemaList = await db.any('SELECT schema_name FROM information_schema.schemata');
 	const results: INodeListSearchItems[] = schemaList.map((s) => ({
 		name: s.schema_name as string,
 		value: s.schema_name as string,
 	}));
-	await db.$pool.end();
+	pgp.end();
 	return { results };
 }
 
 export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const schema = this.getNodeParameter('schema', 0) as IDataObject;
-	const db = await initDB.call(this);
+	const { db, pgp } = await initDB.call(this);
 	let tableList = [];
 	try {
 		tableList = await db.any(
@@ -107,7 +120,7 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 		name: s.table_name as string,
 		value: s.table_name as string,
 	}));
-	await db.$pool.end();
+	pgp.end();
 	return { results };
 }
 
@@ -119,18 +132,21 @@ export async function dropTriggerFunction(
 	const tableName = this.getNodeParameter('tableName', undefined, {
 		extractValue: true,
 	}) as string;
-	const target = `${schema}."${tableName}"`;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+
 	const nodeId = this.getNode().id.replace(/-/g, '_');
-	let functionName =
-		(additionalFields.functionName as string) || `n8n_trigger_function_${nodeId}()`;
-	if (!functionName.includes('()')) {
-		functionName = functionName.concat('()');
-	}
+
+	const functionName =
+		(additionalFields.functionName as string) || `n8n_trigger_function_${nodeId}`;
+
 	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
+
 	try {
-		await db.any('DROP FUNCTION IF EXISTS $1:raw CASCADE', [functionName]);
-		await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw CASCADE', [triggerName, target]);
+		await db.any('DROP FUNCTION IF EXISTS quote_ident($1) CASCADE', [functionName]);
+		await db.any(
+			"DROP TRIGGER IF EXISTS quote_ident($1) ON (quote_ident($2) || '.' || quote_ident($3)) CASCADE",
+			[triggerName, schema, tableName],
+		);
 	} catch (error) {
 		throw new Error(error as string);
 	}
