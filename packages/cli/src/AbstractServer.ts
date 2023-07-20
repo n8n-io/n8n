@@ -271,6 +271,7 @@ export abstract class AbstractServer {
 				}
 
 				res.header('Access-Control-Allow-Origin', '*');
+				res.header('Access-Control-Allow-Headers', req.header('Access-Control-Request-Headers'));
 
 				sendSuccessResponse(res, {}, true, 204);
 				return;
