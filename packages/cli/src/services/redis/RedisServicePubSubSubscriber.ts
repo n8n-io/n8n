@@ -24,7 +24,7 @@ export class RedisServicePubSubSubscriber {
 			return RedisServicePubSubSubscriber.redisClient;
 		}
 
-		RedisServicePubSubSubscriber.redisClient = await getDefaultRedisClient();
+		RedisServicePubSubSubscriber.redisClient = await getDefaultRedisClient(undefined, 'subscriber');
 
 		RedisServicePubSubSubscriber.redisClient.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');

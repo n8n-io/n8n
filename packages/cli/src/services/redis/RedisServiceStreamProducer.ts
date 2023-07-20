@@ -31,7 +31,7 @@ export class RedisServiceStreamProducer {
 			return RedisServiceStreamProducer.redisClient;
 		}
 		RedisServiceStreamProducer.producerId = producerId;
-		RedisServiceStreamProducer.redisClient = await getDefaultRedisClient();
+		RedisServiceStreamProducer.redisClient = await getDefaultRedisClient(undefined, 'producer');
 		RedisServiceStreamProducer.redisClient.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');
 		});

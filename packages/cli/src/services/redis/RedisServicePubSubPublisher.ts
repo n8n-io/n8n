@@ -28,7 +28,7 @@ export class RedisServicePubSubPublisher {
 		if (RedisServicePubSubPublisher.redisClient && RedisServicePubSubPublisher.isInitialized) {
 			return RedisServicePubSubPublisher.redisClient;
 		}
-		RedisServicePubSubPublisher.redisClient = await getDefaultRedisClient();
+		RedisServicePubSubPublisher.redisClient = await getDefaultRedisClient(undefined, 'publisher');
 		RedisServicePubSubPublisher.redisClient.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');
 		});

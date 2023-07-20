@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { type IExecuteResponsePromiseData } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import type { RedisClientType } from './services/redis/RedisServiceHelper';
 import {
 	getRedisClusterClient,
 	getRedisClusterNodes,
@@ -51,8 +52,8 @@ export class Queue {
 			prefix,
 			createClient: (type, clientConfig) =>
 				usesRedisCluster
-					? getRedisClusterClient(Redis, clientConfig)
-					: getRedisStandardClient(Redis, clientConfig),
+					? getRedisClusterClient(Redis, clientConfig, (type + '(bull)') as RedisClientType)
+					: getRedisStandardClient(Redis, clientConfig, (type + '(bull)') as RedisClientType),
 		});
 
 		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {

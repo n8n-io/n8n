@@ -10,6 +10,17 @@ export const EVENT_BUS_REDIS_CHANNEL = 'n8n.events';
 export const COMMAND_REDIS_CHANNEL = 'n8n.commands';
 export const WORKER_RESPONSE_REDIS_CHANNEL = 'n8n.worker-response';
 
+export type RedisClientType =
+	| 'subscriber'
+	| 'client'
+	| 'bclient'
+	| 'subscriber(bull)'
+	| 'client(bull)'
+	| 'bclient(bull)'
+	| 'publisher'
+	| 'consumer'
+	| 'producer';
+
 export function getRedisClusterNodes(): Array<{ host: string; port: number }> {
 	const clusterNodePairs = config
 		.getEnv('queue.bull.redis.clusterNodes')
@@ -37,6 +48,7 @@ export function getRedisPrefix(): string {
 export function getRedisStandardClient(
 	redis: typeof Redis,
 	redisOptions?: RedisOptions,
+	redisType?: RedisClientType,
 ): Redis | Cluster {
 	let lastTimer = 0;
 	let cumulativeTimeout = 0;
@@ -51,9 +63,9 @@ export function getRedisStandardClient(
 		maxRetriesPerRequest: null,
 	};
 	LoggerProxy.debug(
-		`Initialising Redis client connection with host: ${host ?? 'localhost'} and port: ${
-			port ?? '6379'
-		}`,
+		`Initialising Redis client${redisType ? ` of type ${redisType}` : ''} connection with host: ${
+			host ?? 'localhost'
+		} and port: ${port ?? '6379'}`,
 	);
 	return new redis({
 		...sharedRedisOptions,
@@ -78,7 +90,11 @@ export function getRedisStandardClient(
 	});
 }
 
-export function getRedisClusterClient(redis: typeof Redis, redisOptions?: RedisOptions): Cluster {
+export function getRedisClusterClient(
+	redis: typeof Redis,
+	redisOptions?: RedisOptions,
+	redisType?: RedisClientType,
+): Cluster {
 	const clusterNodes = getRedisClusterNodes();
 	const { username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
 	const sharedRedisOptions: RedisOptions = {
@@ -90,9 +106,9 @@ export function getRedisClusterClient(redis: typeof Redis, redisOptions?: RedisO
 		maxRetriesPerRequest: null,
 	};
 	LoggerProxy.debug(
-		`Initialising Redis cluster connection with nodes: ${clusterNodes
-			.map((e) => `${e.host}:${e.port}`)
-			.join(',')}`,
+		`Initialising Redis cluster${
+			redisType ? ` of type ${redisType}` : ''
+		} connection with nodes: ${clusterNodes.map((e) => `${e.host}:${e.port}`).join(',')}`,
 	);
 	return new redis.Cluster(
 		clusterNodes.map((node) => ({ host: node.host, port: node.port })),
@@ -104,12 +120,13 @@ export function getRedisClusterClient(redis: typeof Redis, redisOptions?: RedisO
 
 export async function getDefaultRedisClient(
 	additionalRedisOptions?: RedisOptions,
+	redisType?: RedisClientType,
 ): Promise<Redis | Cluster> {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const { default: Redis } = await import('ioredis');
 	const clusterNodes = getRedisClusterNodes();
 	const usesRedisCluster = clusterNodes.length > 0;
 	return usesRedisCluster
-		? getRedisClusterClient(Redis, additionalRedisOptions)
-		: getRedisStandardClient(Redis, additionalRedisOptions);
+		? getRedisClusterClient(Redis, additionalRedisOptions, redisType)
+		: getRedisStandardClient(Redis, additionalRedisOptions, redisType);
 }
