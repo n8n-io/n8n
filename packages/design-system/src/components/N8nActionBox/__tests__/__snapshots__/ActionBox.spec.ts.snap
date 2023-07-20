@@ -3,10 +3,13 @@
 exports[`N8NActionBox > should render correctly 1`] = `
 "<div class=\\"n8n-action-box container\\" data-test-id=\\"action-box\\">
   <div class=\\"emoji\\">😿</div>
-  <div class=\\"heading\\"><span class=\\"n8n-heading align-center size-xlarge regular\\">Headline you need to know</span></div>
-  <div class=\\"description\\"><span class=\\"n8n-text text-base size-medium regular\\"><span>Long description that you should know something is the way it is because of how it is. </span></span></div><button class=\\"button button primary large\\" aria-live=\\"polite\\">
-    <!--v-if--><span>Do something</span>
-  </button>
+  <div class=\\"heading\\">
+    <n8n-heading-stub align=\\"center\\" tag=\\"span\\" bold=\\"false\\" size=\\"xlarge\\"></n8n-heading-stub>
+  </div>
+  <div class=\\"description\\">
+    <n8n-text-stub color=\\"text-base\\" bold=\\"false\\" size=\\"medium\\" compact=\\"false\\" tag=\\"span\\"></n8n-text-stub>
+  </div>
+  <n8n-button-stub label=\\"Do something\\" type=\\"primary\\" size=\\"large\\" loading=\\"false\\" disabled=\\"false\\" outline=\\"false\\" text=\\"false\\" block=\\"false\\" active=\\"false\\" square=\\"false\\"></n8n-button-stub>
   <!--v-if-->
 </div>"
 `;

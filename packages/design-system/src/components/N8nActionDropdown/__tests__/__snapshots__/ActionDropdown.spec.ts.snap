@@ -2,22 +2,12 @@
 
 exports[`components > N8nActionDropdown > should render custom styling correctly 1`] = `
 "<div class=\\"action-dropdown-container actionDropdownContainer\\">
-  <div class=\\"el-dropdown\\">
-    <div class=\\"activator el-tooltip__trigger el-tooltip__trigger\\" id=\\"el-id-7552-4\\" role=\\"button\\" tabindex=\\"0\\" aria-controls=\\"el-id-7552-5\\" aria-expanded=\\"false\\" aria-haspopup=\\"menu\\"><span class=\\"n8n-text compact size-medium regular n8n-icon n8n-icon\\"><!----></span></div>
-    <!--teleport start-->
-    <!--teleport end-->
-    <!--v-if-->
-  </div>
+  <el-dropdown-stub trigger=\\"click\\" effect=\\"light\\" placement=\\"bottom\\" popperoptions=\\"[object Object]\\" size=\\"\\" splitbutton=\\"false\\" hideonclick=\\"true\\" loop=\\"true\\" showtimeout=\\"150\\" hidetimeout=\\"150\\" tabindex=\\"0\\" maxheight=\\"\\" popperclass=\\"\\" disabled=\\"false\\" role=\\"menu\\" teleported=\\"true\\"></el-dropdown-stub>
 </div>"
 `;
 
 exports[`components > N8nActionDropdown > should render default styling correctly 1`] = `
-"<div class=\\"action-dropdown-container actionDropdownContainer\\">
-  <div class=\\"el-dropdown\\">
-    <div class=\\"activator el-tooltip__trigger el-tooltip__trigger\\" id=\\"el-id-7552-0\\" role=\\"button\\" tabindex=\\"0\\" aria-controls=\\"el-id-7552-1\\" aria-expanded=\\"false\\" aria-haspopup=\\"menu\\"><span class=\\"n8n-text compact size-medium regular n8n-icon n8n-icon\\"><!----></span></div>
-    <!--teleport start-->
-    <!--teleport end-->
-    <!--v-if-->
-  </div>
+"<div class=\\"action-dropdown-container actionDropdownContainer\\" teleported=\\"false\\">
+  <el-dropdown-stub trigger=\\"click\\" effect=\\"light\\" placement=\\"bottom\\" popperoptions=\\"[object Object]\\" size=\\"\\" splitbutton=\\"false\\" hideonclick=\\"true\\" loop=\\"true\\" showtimeout=\\"150\\" hidetimeout=\\"150\\" tabindex=\\"0\\" maxheight=\\"\\" popperclass=\\"\\" disabled=\\"false\\" role=\\"menu\\" teleported=\\"true\\"></el-dropdown-stub>
 </div>"
 `;

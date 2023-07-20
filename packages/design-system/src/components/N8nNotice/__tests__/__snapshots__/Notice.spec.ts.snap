@@ -8,18 +8,24 @@ exports[`components > N8nNotice > props > content > should render HTML 1`] = `
 
 exports[`components > N8nNotice > props > content > should render correctly with content prop 1`] = `
 "<div id=\\"notice\\" class=\\"notice notice warning\\" role=\\"alert\\">
-  <div class=\\"notice-content\\"><span class=\\"n8n-text compact size-small regular\\"><span class=\\"truncated\\" id=\\"notice-content\\" role=\\"region\\">This is a notice.</span></span></div>
+  <div class=\\"notice-content\\">
+    <n8n-text-stub bold=\\"false\\" size=\\"small\\" compact=\\"true\\" tag=\\"span\\"></n8n-text-stub>
+  </div>
 </div>"
 `;
 
 exports[`components > N8nNotice > props > content > should sanitize rendered HTML 1`] = `
 "<div id=\\"notice\\" class=\\"notice notice warning\\" role=\\"alert\\">
-  <div class=\\"notice-content\\"><span class=\\"n8n-text compact size-small regular\\"><span class=\\"truncated\\" id=\\"notice-content\\" role=\\"region\\"> This is a notice.</span></span></div>
+  <div class=\\"notice-content\\">
+    <n8n-text-stub bold=\\"false\\" size=\\"small\\" compact=\\"true\\" tag=\\"span\\"></n8n-text-stub>
+  </div>
 </div>"
 `;
 
 exports[`components > N8nNotice > should render correctly 1`] = `
 "<div id=\\"notice\\" class=\\"notice notice warning\\" role=\\"alert\\">
-  <div class=\\"notice-content\\"><span class=\\"n8n-text compact size-small regular\\">This is a notice.</span></div>
+  <div class=\\"notice-content\\">
+    <n8n-text-stub bold=\\"false\\" size=\\"small\\" compact=\\"true\\" tag=\\"span\\"></n8n-text-stub>
+  </div>
 </div>"
 `;

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import { uid } from '@/utils';
 import { ElColorPicker } from 'element-plus';
 import N8nInput from '../N8nInput';
 
@@ -12,6 +13,7 @@ export type Props = {
 	predefine?: string[];
 	modelValue?: string;
 	showInput?: boolean;
+	name?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -22,6 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 	popperClass: '',
 	showInput: true,
 	modelValue: null,
+	name: uid('color-picker'),
 });
 
 const color = ref(props.modelValue);
@@ -73,6 +76,7 @@ const onActiveChange = (value: string) => {
 			:disabled="props.disabled"
 			:size="props.size"
 			:modelValue="color"
+			:name="name"
 			@update:modelValue="onInput"
 			type="text"
 		/>

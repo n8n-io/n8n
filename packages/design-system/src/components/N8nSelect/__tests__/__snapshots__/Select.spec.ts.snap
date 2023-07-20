@@ -3,10 +3,24 @@
 exports[`components > N8nSelect > should render correctly 1`] = `
 "<div class=\\"n8n-select container\\">
   <!--v-if-->
-  <el-select autocomplete=\\"off\\" automaticdropdown=\\"false\\" size=\\"large\\" effect=\\"light\\" disabled=\\"false\\" clearable=\\"false\\" filterable=\\"false\\" allowcreate=\\"false\\" loading=\\"false\\" popperoptions=\\"[object Object]\\" remote=\\"false\\" multiple=\\"false\\" multiplelimit=\\"0\\" defaultfirstoption=\\"false\\" reservekeyword=\\"true\\" valuekey=\\"value\\" collapsetags=\\"false\\" collapsetagstooltip=\\"false\\" maxcollapsetags=\\"1\\" teleported=\\"true\\" persistent=\\"true\\" clearicon=\\"[object Object]\\" fitinputwidth=\\"false\\" suffixicon=\\"[object Object]\\" tagtype=\\"info\\" validateevent=\\"true\\" remoteshowsuffix=\\"false\\" suffixtransition=\\"true\\" placement=\\"bottom-start\\" popperappendtobody=\\"false\\" limitpopperwidth=\\"false\\" class=\\"\\">
-    <n8n-option value=\\"1\\">1</n8n-option>
-    <n8n-option value=\\"2\\">2</n8n-option>
-    <n8n-option value=\\"3\\">3</n8n-option>
-  </el-select>
+  <div class=\\"el-select el-select--large\\" popperappendtobody=\\"false\\" limitpopperwidth=\\"false\\">
+    <div class=\\"select-trigger el-tooltip__trigger el-tooltip__trigger\\">
+      <!--v-if-->
+      <!-- fix: https://github.com/element-plus/element-plus/issues/11415 -->
+      <!--v-if-->
+      <div class=\\"el-input el-input--large el-input--suffix\\">
+        <!-- input -->
+        <!-- prepend slot -->
+        <!--v-if-->
+        <div class=\\"el-input__wrapper\\">
+          <!-- prefix slot -->
+          <!--v-if--><input class=\\"el-input__inner\\" type=\\"text\\" readonly=\\"\\" autocomplete=\\"off\\" tabindex=\\"0\\" placeholder=\\"Select\\"><!-- suffix slot --><span class=\\"el-input__suffix\\"><span class=\\"el-input__suffix-inner\\"><i class=\\"el-icon el-select__caret el-select__icon\\"><svg xmlns=\\"http://www.w3.org/2000/svg\\" viewBox=\\"0 0 1024 1024\\"><path fill=\\"currentColor\\" d=\\"M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z\\"></path></svg></i><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--><!--v-if--></span></span>
+        </div><!-- append slot -->
+        <!--v-if-->
+      </div>
+    </div>
+    <!--teleport start-->
+    <!--teleport end-->
+  </div>
 </div>"
 `;
