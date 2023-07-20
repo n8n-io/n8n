@@ -140,8 +140,6 @@ export class SamlService {
 		const sp = this.getServiceProviderInstance();
 		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
 		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
-		//TODO:SAML: debug logging
-		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
 
@@ -152,8 +150,6 @@ export class SamlService {
 			this.getIdentityProviderInstance(),
 			'post',
 		) as PostBindingContext;
-		//TODO:SAML: debug logging
-		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
 
