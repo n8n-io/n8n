@@ -1,4 +1,4 @@
-import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
+import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import {
@@ -29,7 +29,7 @@ import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import jwt, { TokenExpiredError } from 'jsonwebtoken';
-import config from '@/config';
+import type { JwtService } from '@/services/jwt.service';
 
 @RestController()
 export class PasswordResetController {
@@ -45,6 +45,8 @@ export class PasswordResetController {
 
 	private readonly userRepository: UserRepository;
 
+	private readonly jwtService: JwtService;
+
 	constructor({
 		config,
 		logger,
@@ -52,6 +54,7 @@ export class PasswordResetController {
 		internalHooks,
 		mailer,
 		repositories,
+		jwtService,
 	}: {
 		config: Config;
 		logger: ILogger;
@@ -59,6 +62,7 @@ export class PasswordResetController {
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
 		repositories: Pick<IDatabaseCollections, 'User'>;
+		jwtService: JwtService;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -66,6 +70,7 @@ export class PasswordResetController {
 		this.internalHooks = internalHooks;
 		this.mailer = mailer;
 		this.userRepository = repositories.User;
+		this.jwtService = jwtService;
 	}
 
 	/**
@@ -141,7 +146,14 @@ export class PasswordResetController {
 
 		const baseUrl = getInstanceBaseUrl();
 		const { id, firstName, lastName } = user;
-		const url = await UserService.generatePasswordResetUrl(user);
+
+		const jwtTokenSecret = this.config.getEnv('userManagement.jwtSecret');
+
+		const resetPasswordToken = this.jwtService.sign({ sub: id }, jwtTokenSecret, {
+			expiresIn: '1d',
+		});
+
+		const url = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
 
 		try {
 			await this.mailer.passwordReset({
@@ -189,25 +201,11 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		let decodedToken: jwt.JwtPayload;
-
-		try {
-			decodedToken = jwt.verify(resetPasswordToken, config.getEnv('userManagement.jwtSecret'), {
-				ignoreExpiration: false,
-			}) as jwt.JwtPayload;
-		} catch (e) {
-			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', {
-					resetPasswordToken,
-				});
-				throw new NotFoundError('');
-			}
-			throw new BadRequestError('');
-		}
+		const decodedToken: jwt.JwtPayload = this.verifyResetPasswordToken(resetPasswordToken);
 
 		const user = await this.userRepository.findOne({
 			where: {
-				id: decodedToken.id,
+				id: decodedToken.sub,
 			},
 			relations: ['globalRole'],
 		});
@@ -215,7 +213,7 @@ export class PasswordResetController {
 		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
-				{ userId: user.id },
+				{ userId: decodedToken.sub },
 			);
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
@@ -254,21 +252,7 @@ export class PasswordResetController {
 
 		const validPassword = validatePassword(password);
 
-		let decodedToken: jwt.JwtPayload;
-
-		try {
-			decodedToken = jwt.verify(resetPasswordToken, config.getEnv('userManagement.jwtSecret'), {
-				ignoreExpiration: false,
-			}) as jwt.JwtPayload;
-		} catch (e) {
-			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', {
-					resetPasswordToken,
-				});
-				throw new NotFoundError('');
-			}
-			throw new BadRequestError('');
-		}
+		const decodedToken: jwt.JwtPayload = this.verifyResetPasswordToken(resetPasswordToken);
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
@@ -310,5 +294,28 @@ export class PasswordResetController {
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
+	}
+
+	private verifyResetPasswordToken(resetPasswordToken: string) {
+		const jwtSecret = this.config.getEnv('userManagement.jwtSecret');
+
+		let decodedToken: jwt.JwtPayload;
+		try {
+			decodedToken = this.jwtService.verify(resetPasswordToken, jwtSecret, {
+				ignoreExpiration: false,
+			}) as jwt.JwtPayload;
+			return decodedToken;
+		} catch (e) {
+			if (e instanceof TokenExpiredError) {
+				this.logger.debug('Reset password token expired', {
+					resetPasswordToken,
+				});
+				throw new NotFoundError('');
+			}
+			this.logger.debug('Error verifying token', {
+				resetPasswordToken,
+			});
+			throw new BadRequestError('');
+		}
 	}
 }
