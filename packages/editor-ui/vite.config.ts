@@ -121,10 +121,10 @@ export default mergeConfig(
 			include: [
 				// 'src/components/__tests__/SQLEditor.test.ts',
 				// 'src/components/__tests__/BannersStack.test.ts',
-				'src/components/__tests__/ExecutionFilter.test.ts',
+				// 'src/components/__tests__/ExecutionFilter.test.ts',
 				// 'src/components/__tests__/ExecutionsList.test.ts',
 				// 'src/components/__tests__/MainSidebarSourceControl.test.ts',
-				// 'src/components/__tests__/PersonalizationModal.spec.ts',
+				'src/components/__tests__/PersonalizationModal.spec.ts',
 				// 'src/components/__tests__/ResourceMapper.test.ts',
 				// 'src/components/__tests__/RunData.test.ts',
 				// 'src/components/__tests__/RunDataJson.test.ts',

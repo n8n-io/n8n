@@ -1,6 +1,6 @@
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import { retry } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
@@ -8,12 +8,12 @@ import { fireEvent } from '@testing-library/vue';
 const renderComponent = createComponentRenderer(PersonalizationModal, {
 	pinia: createTestingPinia({
 		initialState: {
-			ui: {
+			[STORES.UI]: {
 				modals: {
 					[PERSONALIZATION_MODAL_KEY]: { open: true },
 				},
 			},
-			settings: {
+			[STORES.SETTINGS]: {
 				settings: {
 					templates: {
 						host: '',
