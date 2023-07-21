@@ -16,7 +16,8 @@ import {
 import * as testDb from './shared/testDb';
 import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-import jwt from 'jsonwebtoken';
+import { JwtService } from '@/services/jwt.service';
+import { Container } from 'typedi';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
@@ -26,6 +27,7 @@ let owner: User;
 
 const externalHooks = utils.mockInstance(ExternalHooks);
 const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
+const jwtService = Container.get(JwtService);
 
 beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
@@ -131,7 +133,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should succeed with valid inputs', async () => {
-		const resetPasswordToken = jwt.sign(
+		const resetPasswordToken = jwtService.sign(
 			{ sub: owner.id },
 			config.getEnv('userManagement.jwtSecret'),
 		);
@@ -158,7 +160,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if user is not found', async () => {
-		const token = jwt.sign({ sub: 'test' }, config.getEnv('userManagement.jwtSecret'));
+		const token = jwtService.sign({ sub: 'test' }, config.getEnv('userManagement.jwtSecret'));
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
@@ -168,7 +170,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if token is expired', async () => {
-		const resetPasswordToken = jwt.sign(
+		const resetPasswordToken = jwtService.sign(
 			{ sub: owner.id },
 			config.getEnv('userManagement.jwtSecret'),
 			{ expiresIn: '-1h' },
@@ -186,7 +188,7 @@ describe('POST /change-password', () => {
 	const passwordToStore = randomValidPassword();
 
 	test('should succeed with valid inputs', async () => {
-		const resetPasswordToken = jwt.sign(
+		const resetPasswordToken = jwtService.sign(
 			{ sub: owner.id },
 			config.getEnv('userManagement.jwtSecret'),
 		);
@@ -216,7 +218,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		const resetPasswordToken = jwt.sign(
+		const resetPasswordToken = jwtService.sign(
 			{ sub: owner.id },
 			config.getEnv('userManagement.jwtSecret'),
 		);
@@ -252,7 +254,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('should fail when token has expired', async () => {
-		const resetPasswordToken = jwt.sign(
+		const resetPasswordToken = jwtService.sign(
 			{ sub: owner.id },
 			config.getEnv('userManagement.jwtSecret'),
 			{ expiresIn: '-1h' },

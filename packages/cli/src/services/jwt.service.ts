@@ -11,3 +11,5 @@ export class JwtService {
 		return jwt.verify(token, secret, options);
 	}
 }
+
+export type JwtPayload = jwt.JwtPayload;

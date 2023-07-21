@@ -28,8 +28,8 @@ import { UserService } from '@/user/user.service';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import jwt, { TokenExpiredError } from 'jsonwebtoken';
-import type { JwtService } from '@/services/jwt.service';
+import { TokenExpiredError } from 'jsonwebtoken';
+import type { JwtService, JwtPayload } from '@/services/jwt.service';
 
 @RestController()
 export class PasswordResetController {
@@ -201,7 +201,7 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		const decodedToken: jwt.JwtPayload = this.verifyResetPasswordToken(resetPasswordToken);
+		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
 		const user = await this.userRepository.findOne({
 			where: {
@@ -252,7 +252,7 @@ export class PasswordResetController {
 
 		const validPassword = validatePassword(password);
 
-		const decodedToken: jwt.JwtPayload = this.verifyResetPasswordToken(resetPasswordToken);
+		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
@@ -299,11 +299,11 @@ export class PasswordResetController {
 	private verifyResetPasswordToken(resetPasswordToken: string) {
 		const jwtSecret = this.config.getEnv('userManagement.jwtSecret');
 
-		let decodedToken: jwt.JwtPayload;
+		let decodedToken: JwtPayload;
 		try {
 			decodedToken = this.jwtService.verify(resetPasswordToken, jwtSecret, {
 				ignoreExpiration: false,
-			}) as jwt.JwtPayload;
+			}) as JwtPayload;
 			return decodedToken;
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
