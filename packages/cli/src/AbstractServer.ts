@@ -10,7 +10,7 @@ import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
 
 import type { WebhookHttpMethod } from 'n8n-workflow';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -27,6 +27,7 @@ import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { getRedisClusterNodes } from './GenericHelpers';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -187,42 +188,64 @@ export abstract class AbstractServer {
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
 		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+		const clusterNodes = getRedisClusterNodes();
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-
-		const redis = new Redis({
-			host,
-			port,
-			db,
+		const usesRedisCluster = clusterNodes.length > 0;
+		LoggerProxy.debug(
+			usesRedisCluster
+				? `Initialising Redis cluster connection with nodes: ${clusterNodes
+						.map((e) => `${e.host}:${e.port}`)
+						.join(',')}`
+				: `Initialising Redis client connection with host: ${host ?? 'localhost'} and port: ${
+						port ?? '6379'
+				  }`,
+		);
+		const sharedRedisOptions: RedisOptions = {
 			username,
 			password,
-			retryStrategy: (): number | null => {
-				const now = Date.now();
-				if (now - lastTimer > 30000) {
-					// Means we had no timeout at all or last timeout was temporary and we recovered
-					lastTimer = now;
-					cumulativeTimeout = 0;
-				} else {
-					cumulativeTimeout += now - lastTimer;
-					lastTimer = now;
-					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-						Logger.error(
-							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-						);
-						process.exit(1);
-					}
-				}
-				return 500;
-			},
-		});
+			db,
+			enableReadyCheck: false,
+			maxRetriesPerRequest: null,
+		};
+		const redis = usesRedisCluster
+			? new Redis.Cluster(
+					clusterNodes.map((node) => ({ host: node.host, port: node.port })),
+					{
+						redisOptions: sharedRedisOptions,
+					},
+			  )
+			: new Redis({
+					host,
+					port,
+					...sharedRedisOptions,
+					retryStrategy: (): number | null => {
+						const now = Date.now();
+						if (now - lastTimer > 30000) {
+							// Means we had no timeout at all or last timeout was temporary and we recovered
+							lastTimer = now;
+							cumulativeTimeout = 0;
+						} else {
+							cumulativeTimeout += now - lastTimer;
+							lastTimer = now;
+							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
+								LoggerProxy.error(
+									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+								);
+								process.exit(1);
+							}
+						}
+						return 500;
+					},
+			  });
 
 		redis.on('close', () => {
-			Logger.warn('Redis unavailable - trying to reconnect...');
+			LoggerProxy.warn('Redis unavailable - trying to reconnect...');
 		});
 
 		redis.on('error', (error) => {
 			if (!String(error).includes('ECONNREFUSED')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				Logger.warn('Error with Redis: ', error);
+				LoggerProxy.warn('Error with Redis: ', error);
 			}
 		});
 	}
