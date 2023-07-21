@@ -1,6 +1,6 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
-import { BASE_URL, N8N_AUTH_COOKIE } from '../constants';
+import { BACKEND_BASE_URL, N8N_AUTH_COOKIE } from '../constants';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
@@ -41,11 +41,15 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	Cypress.session.clearAllSavedSessions();
-	cy.session([email, password], () => cy.request('POST', '/rest/login', { email, password }), {
-		validate() {
-			cy.getCookie(N8N_AUTH_COOKIE).should('exist');
+	cy.session(
+		[email, password],
+		() => cy.request('POST', `${BACKEND_BASE_URL}/rest/login`, { email, password }),
+		{
+			validate() {
+				cy.getCookie(N8N_AUTH_COOKIE).should('exist');
+			},
 		},
-	});
+	);
 });
 
 Cypress.Commands.add('signout', () => {
@@ -58,7 +62,10 @@ Cypress.Commands.add('interceptREST', (method, url) => {
 });
 
 const setFeature = (feature: string, enabled: boolean) =>
-	cy.request('PATCH', `${BASE_URL}/rest/e2e/feature`, { feature: `feat:${feature}`, enabled });
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/feature`, {
+		feature: `feat:${feature}`,
+		enabled,
+	});
 
 Cypress.Commands.add('enableFeature', (feature: string) => setFeature(feature, true));
 Cypress.Commands.add('disableFeature', (feature): string => setFeature(feature, false));
