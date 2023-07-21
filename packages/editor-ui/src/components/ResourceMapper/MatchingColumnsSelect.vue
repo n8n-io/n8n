@@ -19,7 +19,9 @@ interface Props {
 	teleported?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 const {
 	resourceMapperTypeOptions,
 	singularFieldWord,

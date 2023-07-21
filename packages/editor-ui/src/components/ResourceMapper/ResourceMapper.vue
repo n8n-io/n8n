@@ -32,7 +32,9 @@ type Props = {
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 
 const emit = defineEmits<{
 	(event: 'valueChanged', value: IUpdateInformation): void;
@@ -483,6 +485,7 @@ defineExpose({
 			:showMatchingColumnsSelector="showMatchingColumnsSelector"
 			:showMappingModeSelect="showMappingModeSelect"
 			:loading="state.loading"
+			:teleported="teleported"
 			:refreshInProgress="state.refreshInProgress"
 			@fieldValueChanged="fieldValueChanged"
 			@removeField="removeField"
