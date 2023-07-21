@@ -18,6 +18,7 @@
 					:inputs="survey"
 					:columnView="true"
 					:eventBus="formBus"
+					:teleported="teleported"
 					@submit="onSubmit"
 				/>
 			</div>
@@ -141,6 +142,12 @@ export default defineComponent({
 	name: 'PersonalizationModal',
 	mixins: [workflowHelpers],
 	components: { Modal },
+	props: {
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
 			isSaving: false,
