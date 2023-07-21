@@ -5,6 +5,8 @@ import * as Db from '@/Db';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
+import jwt from 'jsonwebtoken';
+import config from '@/config';
 
 export class UserService {
 	static async get(where: FindOptionsWhere<User>): Promise<User | null> {
@@ -26,15 +28,14 @@ export class UserService {
 	}
 
 	static async generatePasswordResetUrl(user: User): Promise<string> {
-		user.resetPasswordToken = uuid();
-		const { id, resetPasswordToken } = user;
-		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
-		await Db.collections.User.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
-
+		const { id } = user;
+		const token = jwt.sign({ sub: id }, config.getEnv('userManagement.jwtSecret'), {
+			expiresIn: '1h',
+		});
 		const baseUrl = getInstanceBaseUrl();
 		const url = new URL(`${baseUrl}/change-password`);
 		url.searchParams.append('userId', id);
-		url.searchParams.append('token', resetPasswordToken);
+		url.searchParams.append('token', token);
 		return url.toString();
 	}
 }

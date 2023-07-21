@@ -28,6 +28,8 @@ import { UserService } from '@/user/user.service';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import jwt, { TokenExpiredError } from 'jsonwebtoken';
+import config from '@/config';
 
 @RestController()
 export class PasswordResetController {
@@ -187,17 +189,41 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		// Timestamp is saved in seconds
-		const currentTimestamp = Math.floor(Date.now() / 1000);
+		let decodedToken: jwt.JwtPayload;
+
+		try {
+			decodedToken = jwt.verify(resetPasswordToken, config.getEnv('userManagement.jwtSecret'), {
+				ignoreExpiration: false,
+			}) as jwt.JwtPayload;
+		} catch (e) {
+			if (e instanceof TokenExpiredError) {
+				this.logger.debug('Reset password token expired', {
+					userId: id,
+					resetPasswordToken,
+				});
+				throw new NotFoundError('');
+			}
+			throw new BadRequestError('');
+		}
+
+		if (id !== decodedToken.sub) {
+			this.logger.debug(
+				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				{
+					userId: id,
+					resetPasswordToken,
+				},
+			);
+			throw new NotFoundError('');
+		}
 
 		const user = await this.userRepository.findOne({
 			where: {
 				id,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
 			},
 			relations: ['globalRole'],
 		});
+
 		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
@@ -205,9 +231,10 @@ export class PasswordResetController {
 			);
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
+
 		if (!user) {
 			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				'Request to resolve password token failed because no user was found for the provided user ID',
 				{
 					userId: id,
 					resetPasswordToken,
@@ -239,21 +266,42 @@ export class PasswordResetController {
 
 		const validPassword = validatePassword(password);
 
-		// Timestamp is saved in seconds
-		const currentTimestamp = Math.floor(Date.now() / 1000);
+		let decodedToken: jwt.JwtPayload;
+
+		try {
+			decodedToken = jwt.verify(resetPasswordToken, config.getEnv('userManagement.jwtSecret'), {
+				ignoreExpiration: false,
+			}) as jwt.JwtPayload;
+		} catch (e) {
+			if (e instanceof TokenExpiredError) {
+				this.logger.debug('Reset password token expired', {
+					userId,
+					resetPasswordToken,
+				});
+				throw new NotFoundError('');
+			}
+			throw new BadRequestError('');
+		}
+
+		if (userId !== decodedToken.sub) {
+			this.logger.debug(
+				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				{
+					userId,
+					resetPasswordToken,
+				},
+			);
+			throw new NotFoundError('');
+		}
 
 		const user = await this.userRepository.findOne({
-			where: {
-				id: userId,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			},
+			where: { id: userId },
 			relations: ['authIdentities'],
 		});
 
 		if (!user) {
 			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				'Request to resolve password token failed because no user was found for the provided user ID',
 				{
 					userId,
 					resetPasswordToken,
@@ -266,8 +314,6 @@ export class PasswordResetController {
 
 		await this.userRepository.update(userId, {
 			password: passwordHash,
-			resetPasswordToken: null,
-			resetPasswordTokenExpiration: null,
 		});
 
 		this.logger.info('User password updated successfully', { userId });
