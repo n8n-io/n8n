@@ -234,7 +234,7 @@ export class PasswordResetController {
 	}
 
 	/**
-	 * Verify password reset token and user ID and update password.
+	 * Verify password reset token and update password.
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
