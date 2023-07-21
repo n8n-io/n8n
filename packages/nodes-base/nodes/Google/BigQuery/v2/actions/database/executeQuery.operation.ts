@@ -299,6 +299,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 				throw new NodeOperationError(this.getNode(), error as Error, {
 					itemIndex: job.i,
+					description: error.description,
 				});
 			}
 		}
