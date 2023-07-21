@@ -1,6 +1,6 @@
-import * as Helpers from '../../../test/nodes/Helpers';
-import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
-import type { WorkflowTestData } from '../../../test/nodes/types';
+import * as Helpers from '@test/nodes/Helpers';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
+import type { WorkflowTestData } from '@test/nodes/types';
 
 jest.mock('otpauth', () => {
 	return {

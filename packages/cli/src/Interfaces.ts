@@ -61,6 +61,7 @@ import type {
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
+import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 
 export interface IActivationError {
 	time: number;
@@ -306,7 +307,6 @@ export interface IDiagnosticInfo {
 	databaseType: DatabaseType;
 	notificationsEnabled: boolean;
 	disableProductionWebhooksOnMainProcess: boolean;
-	basicAuthActive: boolean;
 	systemInfo: {
 		os: {
 			type?: string;
@@ -324,7 +324,6 @@ export interface IDiagnosticInfo {
 	};
 	deploymentType: string;
 	binaryDataMode: string;
-	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
@@ -656,22 +655,8 @@ export interface IWorkflowExecuteProcess {
 	workflowExecute: WorkflowExecute;
 }
 
-export interface IWorkflowStatisticsCounts {
-	productionSuccess: number;
-	productionError: number;
-	manualSuccess: number;
-	manualError: number;
-}
-
 export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
-}
-
-export interface IWorkflowStatisticsTimestamps {
-	productionSuccess: Date | null;
-	productionError: Date | null;
-	manualSuccess: Date | null;
-	manualError: Date | null;
 }
 
 export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
@@ -717,6 +702,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 // ----------------------------------
 //               license
 // ----------------------------------
+
+type ValuesOf<T> = T[keyof T];
+
+export type BooleanLicenseFeature = ValuesOf<typeof LICENSE_FEATURES>;
+export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
 
 export interface ILicenseReadResponse {
 	usage: {

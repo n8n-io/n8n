@@ -4,6 +4,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -15,7 +16,6 @@ import { NodeOperationError } from 'n8n-workflow';
 import type mysql2 from 'mysql2/promise';
 
 import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
-import type { IExecuteFunctions } from 'n8n-core';
 
 import { oldVersionNotice } from '@utils/descriptions';
 

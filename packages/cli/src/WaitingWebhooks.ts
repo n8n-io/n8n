@@ -12,7 +12,7 @@ import { NodeTypes } from '@/NodeTypes';
 import type { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { ExecutionRepository } from './databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 @Service()
 export class WaitingWebhooks {
@@ -106,13 +106,13 @@ export class WaitingWebhooks {
 			workflow,
 			workflow.getNode(lastNodeExecuted) as INode,
 			additionalData,
-		).filter((webhook) => {
+		).find((webhook) => {
 			return (
 				webhook.httpMethod === httpMethod &&
 				webhook.path === path &&
 				webhook.webhookDescription.restartWebhook === true
 			);
-		})[0];
+		});
 
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.

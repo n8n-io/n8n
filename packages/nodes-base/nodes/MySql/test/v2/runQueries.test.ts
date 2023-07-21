@@ -1,4 +1,4 @@
-import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 import { configureQueryRunner } from '../../v2/helpers/utils';
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';

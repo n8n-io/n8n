@@ -92,7 +92,7 @@ export async function strapiApiRequestAllItems(
 	let responseData;
 	if (apiVersion === 'v4') {
 		query['pagination[pageSize]'] = 20;
-		query['pagination[page]'] = 0;
+		query['pagination[page]'] = 1;
 		do {
 			({ data: responseData } = await strapiApiRequest.call(
 				this,
@@ -103,7 +103,7 @@ export async function strapiApiRequestAllItems(
 				undefined,
 				headers,
 			));
-			query['pagination[page]'] += query['pagination[pageSize]'];
+			query['pagination[page]']++;
 			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	} else {

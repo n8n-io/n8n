@@ -9,6 +9,7 @@
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
 			:isReadOnly="isReadOnly"
+			:redactValues="shouldRedactValue"
 			@closeDialog="closeExpressionEditDialog"
 			@valueChanged="expressionUpdated"
 		></expression-edit>
@@ -41,6 +42,7 @@
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@valueChanged="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -114,11 +116,7 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
-				<div
-					v-else-if="editorType"
-					class="readonly-code clickable ph-no-capture"
-					@click="displayEditDialog()"
-				>
+				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
 					<code-node-editor
 						v-if="!codeEditDialogVisible"
 						:value="value"
@@ -131,7 +129,7 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
-					class="input-with-opener"
+					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
@@ -204,6 +202,7 @@
 						: $locale.baseText('parameterInput.selectDateAndTime')
 				"
 				:picker-options="dateTimePickerOptions"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@change="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -220,6 +219,7 @@
 				:min="getArgument('minValue')"
 				:precision="getArgument('numberPrecision')"
 				:disabled="isReadOnly"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@change="valueChanged"
 				@input="onTextInputChange"
 				@focus="setFocus"
@@ -274,7 +274,7 @@
 				>
 					<div class="list-option">
 						<div
-							class="option-headline ph-no-capture"
+							class="option-headline"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
 							{{ getOptionsOptionDisplayName(option) }}
@@ -331,7 +331,7 @@
 			/>
 			<el-switch
 				v-else-if="parameter.type === 'boolean'"
-				class="switch-input"
+				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
 				ref="inputField"
 				active-color="#13ce66"
 				:value="displayValue"
@@ -829,6 +829,9 @@ export default defineComponent({
 		},
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
+		},
+		shouldRedactValue(): boolean {
+			return this.getStringInputType === 'password' || this.isForCredential;
 		},
 	},
 	methods: {

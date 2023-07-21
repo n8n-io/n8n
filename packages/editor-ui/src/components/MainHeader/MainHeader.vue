@@ -172,6 +172,7 @@ export default defineComponent({
 }
 
 .top-menu {
+	position: relative;
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;

@@ -1,18 +1,31 @@
+import { statSync } from 'fs';
+import path from 'path';
+import { UserSettings } from 'n8n-core';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
+import config from '@/config';
+import { copyTable } from '@db/utils/migrationHelpers';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
+	transaction = false as const;
+
+	async up(context: MigrationContext) {
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+		await pruneExecutionsData(context);
+
+		const { queryRunner, tablePrefix } = context;
+
 		await queryRunner.query(`
-CREATE TABLE "${tablePrefix}TMP_workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36), "triggerCount" integer NOT NULL DEFAULT 0);`);
+			CREATE TABLE "${tablePrefix}TMP_workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text, "connections" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "settings" text, "staticData" text, "pinData" text, "versionId" varchar(36), "triggerCount" integer NOT NULL DEFAULT 0);`);
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}TMP_workflow_entity" (id, name, active, nodes, connections, createdAt, updatedAt, settings, staticData, pinData, triggerCount, versionId) SELECT id, name, active, nodes, connections, createdAt, updatedAt, settings, staticData, pinData, triggerCount, versionId FROM "${tablePrefix}workflow_entity";`,
 		);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}workflow_entity";`);
-		await queryRunner.query(`ALTER TABLE "${tablePrefix}TMP_workflow_entity" RENAME TO "${tablePrefix}workflow_entity";
-`);
+		await queryRunner.query(
+			`ALTER TABLE "${tablePrefix}TMP_workflow_entity" RENAME TO "${tablePrefix}workflow_entity"`,
+		);
 
 		await queryRunner.query(`
-CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(24) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')));`);
+			CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(24) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')));`);
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}TMP_tag_entity" SELECT * FROM "${tablePrefix}tag_entity";`,
 		);
@@ -22,7 +35,7 @@ CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NU
 		);
 
 		await queryRunner.query(`
-CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NULL, "tagId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}workflows_tags_workflow_entity" FOREIGN KEY ("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}workflows_tags_tag_entity" FOREIGN KEY ("tagId") REFERENCES "${tablePrefix}tag_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("workflowId", "tagId"));`);
+			CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NULL, "tagId" integer NOT NULL, CONSTRAINT "FK_${tablePrefix}workflows_tags_workflow_entity" FOREIGN KEY ("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_${tablePrefix}workflows_tags_tag_entity" FOREIGN KEY ("tagId") REFERENCES "${tablePrefix}tag_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("workflowId", "tagId"));`);
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}TMP_workflows_tags" SELECT * FROM "${tablePrefix}workflows_tags";`,
 		);
@@ -105,9 +118,7 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 				"data" text NOT NULL, "status" varchar,
 				FOREIGN KEY("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE
 			);`);
-		await queryRunner.query(
-			`INSERT INTO "${tablePrefix}TMP_execution_entity" SELECT * FROM "${tablePrefix}execution_entity";`,
-		);
+		await copyTable({ tablePrefix, queryRunner }, 'execution_entity', 'TMP_execution_entity');
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_entity";`);
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_execution_entity" RENAME TO "${tablePrefix}execution_entity";`,
@@ -175,3 +186,44 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 		);
 	}
 }
+
+const DESIRED_DATABASE_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1 GB
+const migrationsPruningEnabled = process.env.MIGRATIONS_PRUNING_ENABLED === 'true';
+
+function getSqliteDbFileSize(): number {
+	const filename = path.resolve(
+		UserSettings.getUserN8nFolderPath(),
+		config.getEnv('database.sqlite.database'),
+	);
+	const { size } = statSync(filename);
+	return size;
+}
+
+const pruneExecutionsData = async ({ queryRunner, tablePrefix, logger }: MigrationContext) => {
+	if (migrationsPruningEnabled) {
+		const dbFileSize = getSqliteDbFileSize();
+		if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
+			logger.debug(`DB Size not large enough to prune: ${dbFileSize}`);
+			return;
+		}
+
+		console.time('pruningData');
+		const counting = (await queryRunner.query(
+			`select count(id) as rows from "${tablePrefix}execution_entity";`,
+		)) as Array<{ rows: number }>;
+
+		const averageExecutionSize = dbFileSize / counting[0].rows;
+		const numberOfExecutionsToKeep = Math.floor(DESIRED_DATABASE_FILE_SIZE / averageExecutionSize);
+
+		const query = `SELECT id FROM "${tablePrefix}execution_entity" ORDER BY id DESC limit ${numberOfExecutionsToKeep}, 1`;
+		const idToKeep = await queryRunner
+			.query(query)
+			.then((rows: Array<{ id: number }>) => rows[0].id);
+
+		const removalQuery = `DELETE FROM "${tablePrefix}execution_entity" WHERE id < ${idToKeep} and status IN ('success')`;
+		await queryRunner.query(removalQuery);
+		console.timeEnd('pruningData');
+	} else {
+		logger.debug('Pruning was requested, but was not enabled');
+	}
+};

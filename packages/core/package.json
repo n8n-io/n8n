@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.173.0",
+  "version": "1.0.1",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -60,8 +60,6 @@
     "p-cancelable": "^2.0.0",
     "pretty-bytes": "^5.6.0",
     "qs": "^6.10.1",
-    "request": "^2.88.2",
-    "request-promise-native": "^1.0.7",
     "uuid": "^8.3.2"
   }
 }

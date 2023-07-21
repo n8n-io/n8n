@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { ServiceProviderInstance } from 'samlify';
-import { ServiceProvider } from 'samlify';
 import { SamlUrls } from './constants';
 import type { SamlPreferences } from './types/samlPreferences';
 
@@ -20,9 +19,13 @@ export function getServiceProviderConfigTestReturnUrl(): string {
 }
 
 // TODO:SAML: make these configurable for the end user
-export function getServiceProviderInstance(prefs: SamlPreferences): ServiceProviderInstance {
+export function getServiceProviderInstance(
+	prefs: SamlPreferences,
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	samlify: typeof import('samlify'),
+): ServiceProviderInstance {
 	if (serviceProviderInstance === undefined) {
-		serviceProviderInstance = ServiceProvider({
+		serviceProviderInstance = samlify.ServiceProvider({
 			entityID: getServiceProviderEntityId(),
 			authnRequestsSigned: prefs.authnRequestsSigned,
 			wantAssertionsSigned: prefs.wantAssertionsSigned,
