@@ -69,7 +69,7 @@ describe('SettingsSourceControl', () => {
 
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
 
-		const { container, getByTestId, queryByTestId, getByRole } = renderComponent({
+		const { html, container, getByTestId, getByText, queryByTestId, getByRole } = renderComponent({
 			pinia,
 			global: {
 				stubs: ['teleport'],
@@ -120,10 +120,10 @@ describe('SettingsSourceControl', () => {
 		expect(saveSettingsButton).toBeDisabled();
 
 		const branchSelect = getByTestId('source-control-branch-select');
-		await userEvent.click(branchSelect);
+		await userEvent.click(within(branchSelect).getByRole('textbox'));
 
-		await waitFor(() => expect(within(branchSelect).getByText('main')).toBeVisible());
-		await userEvent.click(within(branchSelect).getByText('main'));
+		await waitFor(() => expect(getByText('main')).toBeVisible());
+		await userEvent.click(getByText('main'));
 
 		await waitFor(() => expect(saveSettingsButton).toBeEnabled());
 		await userEvent.click(saveSettingsButton);
