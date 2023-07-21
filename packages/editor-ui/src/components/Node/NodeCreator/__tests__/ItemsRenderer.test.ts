@@ -1,6 +1,6 @@
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { render, fireEvent } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import {
 	mockSubcategoryCreateElement,
 	mockLabelCreateElement,
@@ -9,6 +9,9 @@ import {
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import { mockActionCreateElement } from './utils';
 import { mockViewCreateElement } from './utils';
+import { createComponentRenderer } from '@/__tests__/render';
+
+const renderComponent = createComponentRenderer(ItemsRenderer);
 
 describe('ItemsRenderer', () => {
 	it('should render items', async () => {
@@ -24,8 +27,8 @@ describe('ItemsRenderer', () => {
 			mockSubcategoryCreateElement({ title: 'Subcategory 2' }),
 		];
 
-		const { container } = render(ItemsRenderer, {
-			store: createTestingPinia(),
+		const { container } = renderComponent({
+			pinia: createTestingPinia(),
 			props: { elements: items },
 			global: {
 				stubs: ['n8n-loading'],
@@ -50,7 +53,7 @@ describe('ItemsRenderer', () => {
 			mockActionCreateElement(),
 			mockViewCreateElement(),
 		];
-		const { container, emitted } = render(ItemsRenderer, {
+		const { container, emitted } = renderComponent({
 			pinia: createTestingPinia(),
 			props: { elements: items },
 		});

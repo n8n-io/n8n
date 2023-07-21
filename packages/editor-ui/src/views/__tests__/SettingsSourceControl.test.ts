@@ -1,40 +1,33 @@
 import { vi } from 'vitest';
-import { screen, render, waitFor, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createPinia, setActivePinia, PiniaVuePlugin } from 'pinia';
-import { merge } from 'lodash-es';
+import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { i18nInstance } from '@/plugins/i18n';
 import { useSettingsStore, useSourceControlStore } from '@/stores';
 import SettingsSourceControl from '@/views/SettingsSourceControl.vue';
+import { createComponentRenderer } from '@/__tests__/render';
+import { EnterpriseEditionFeature } from '@/constants';
+import { nextTick } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;
 let server: ReturnType<typeof setupServer>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(
-		SettingsSourceControl,
-		merge(
-			{
-				pinia,
-				i18n: i18nInstance,
-			},
-			renderOptions,
-		),
-	);
+const renderComponent = createComponentRenderer(SettingsSourceControl);
 
 describe('SettingsSourceControl', () => {
 	beforeAll(() => {
 		server = setupServer();
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
 		sourceControlStore = useSourceControlStore();
+
+		await settingsStore.getSettings();
 	});
 
 	afterEach(() => {
@@ -45,19 +38,25 @@ describe('SettingsSourceControl', () => {
 		server.shutdown();
 	});
 
-	it('should render paywall state when there is no license', () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(false);
+	it('should render paywall state when there is no license', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = false;
+		await nextTick();
 
-		const { getByTestId, queryByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia,
+		});
 
 		expect(queryByTestId('source-control-content-licensed')).not.toBeInTheDocument();
 		expect(getByTestId('source-control-content-unlicensed')).toBeInTheDocument();
 	});
 
-	it('should render licensed content', () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+	it('should render licensed content', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
 
-		const { getByTestId, queryByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia,
+		});
 
 		expect(getByTestId('source-control-content-licensed')).toBeInTheDocument();
 		expect(queryByTestId('source-control-content-unlicensed')).not.toBeInTheDocument();
@@ -65,11 +64,17 @@ describe('SettingsSourceControl', () => {
 	});
 
 	it('should render user flow happy path', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		await nextTick();
 
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
 
-		const { container, getByTestId, queryByTestId, getByRole } = renderComponent();
+		const { container, getByTestId, queryByTestId, getByRole } = renderComponent({
+			pinia,
+			global: {
+				stubs: ['teleport'],
+			},
+		});
 
 		await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
@@ -115,7 +120,7 @@ describe('SettingsSourceControl', () => {
 		expect(saveSettingsButton).toBeDisabled();
 
 		const branchSelect = getByTestId('source-control-branch-select');
-		await userEvent.click(within(branchSelect).getByRole('textbox'));
+		await userEvent.click(branchSelect);
 
 		await waitFor(() => expect(within(branchSelect).getByText('main')).toBeVisible());
 		await userEvent.click(within(branchSelect).getByText('main'));

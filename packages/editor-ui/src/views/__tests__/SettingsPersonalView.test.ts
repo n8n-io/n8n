@@ -1,60 +1,59 @@
-import { PiniaVuePlugin } from 'pinia';
-import { render } from '@testing-library/vue';
-import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
+import { createPinia } from 'pinia';
 import type { IN8nUISettings } from 'n8n-workflow';
-import { STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { i18n } from '@/plugins/i18n';
 import SettingsPersonalView from '@/views/SettingsPersonalView.vue';
 import { useSettingsStore } from '@/stores';
 import { useUsersStore } from '@/stores/users.store';
+import { createComponentRenderer } from '@/__tests__/render';
+import { setupServer } from '@/__tests__/server';
+import { EnterpriseEditionFeature } from '@/constants';
+import { UserManagementAuthenticationMethod } from '@/Interface';
+import { nextTick } from 'vue';
 
-let pinia: ReturnType<typeof createTestingPinia>;
+let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
+let server: ReturnType<typeof setupServer>;
 
 const DEFAULT_SETTINGS: IN8nUISettings = SETTINGS_STORE_DEFAULT_STATE.settings;
 
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(
-		SettingsPersonalView,
-		merge(
-			{
-				pinia,
-				i18n,
-			},
-			renderOptions,
-		),
-	);
+const renderComponent = createComponentRenderer(SettingsPersonalView);
+
+const currentUser = {
+	id: '1',
+	firstName: 'John',
+	lastName: 'Doe',
+	email: 'joh.doe@example.com',
+	createdAt: Date().toString(),
+	isOwner: true,
+	isDefaultUser: false,
+	isPendingUser: false,
+	isPending: false,
+};
 
 describe('SettingsPersonalView', () => {
-	beforeEach(() => {
-		pinia = createTestingPinia({
-			initialState: {
-				[STORES.SETTINGS]: {
-					settings: DEFAULT_SETTINGS,
-				},
-			},
-		});
+	beforeAll(() => {
+		server = setupServer();
+	});
+
+	beforeEach(async () => {
+		pinia = createPinia();
+
 		settingsStore = useSettingsStore(pinia);
 		usersStore = useUsersStore(pinia);
 
-		vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-			id: '1',
-			firstName: 'John',
-			lastName: 'Doe',
-			email: 'joh.doe@example.com',
-			createdAt: Date().toString(),
-			isOwner: true,
-			isDefaultUser: false,
-			isPendingUser: false,
-			isPending: false,
-		});
+		usersStore.users[currentUser.id] = currentUser;
+		usersStore.currentUserId = currentUser.id;
+
+		await settingsStore.getSettings();
+	});
+
+	afterAll(() => {
+		server.shutdown();
 	});
 
 	it('should enable email and pw change', async () => {
-		const { getByTestId, getAllByRole } = renderComponent();
+		const { getByTestId, getAllByRole } = renderComponent({ pinia });
 		await waitAllPromises();
 
 		expect(getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')).toBeEnabled();
@@ -65,7 +64,7 @@ describe('SettingsPersonalView', () => {
 		vi.spyOn(settingsStore, 'isSamlLoginEnabled', 'get').mockReturnValue(true);
 		vi.spyOn(settingsStore, 'isDefaultAuthenticationSaml', 'get').mockReturnValue(true);
 
-		const { queryByTestId, getAllByRole } = renderComponent();
+		const { queryByTestId, getAllByRole } = renderComponent({ pinia });
 		await waitAllPromises();
 
 		expect(

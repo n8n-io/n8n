@@ -8,6 +8,7 @@ import { mockSimplifiedNodeType } from './utils';
 import NodesListPanel from '../Panel/NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
 import type { NodeFilterType } from '@/Interface';
+import { createComponentRenderer } from '@/__tests__/render';
 
 function getWrapperComponent(setup: () => void) {
 	const wrapperComponent = defineComponent({
@@ -24,11 +25,11 @@ function getWrapperComponent(setup: () => void) {
 		template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 	});
 
-	return render(wrapperComponent, {
+	return createComponentRenderer(wrapperComponent, {
 		global: {
 			plugins: [createPinia()],
 		},
-	});
+	})();
 }
 
 describe('NodesListPanel', () => {
@@ -123,7 +124,9 @@ describe('NodesListPanel', () => {
 				template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 			});
 
-			render(wrapperComponent, {
+			const renderComponent = createComponentRenderer(wrapperComponent);
+
+			renderComponent({
 				pinia: createPinia(),
 				props: {
 					nodeTypes: mockedNodes,
@@ -176,14 +179,12 @@ describe('NodesListPanel', () => {
 			template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 		});
 
-		function renderComponent() {
-			return render(wrapperComponent, {
-				pinia: createPinia(),
-				props: {
-					nodeTypes: mockedNodes,
-				},
-			});
-		}
+		const renderComponent = createComponentRenderer(wrapperComponent, {
+			pinia: createPinia(),
+			props: {
+				nodeTypes: mockedNodes,
+			},
+		});
 
 		it('should be visible in the root view', async () => {
 			renderComponent();
@@ -201,7 +202,7 @@ describe('NodesListPanel', () => {
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(8);
 		});
 		it('should be visible if subcategory contains 9 or more items', async () => {
-			const { updateProps } = renderComponent();
+			const { rerender } = renderComponent();
 			await nextTick();
 
 			mockedNodes.push(
@@ -212,7 +213,7 @@ describe('NodesListPanel', () => {
 				}),
 			);
 
-			await updateProps({ nodeTypes: [...mockedNodes] });
+			await rerender({ nodeTypes: [...mockedNodes] });
 			await nextTick();
 
 			screen.getByText('On app event').click();

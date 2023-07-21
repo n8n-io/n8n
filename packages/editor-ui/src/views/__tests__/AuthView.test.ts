@@ -3,24 +3,18 @@ import { render } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
 import AuthView from '@/views/AuthView.vue';
+import { createComponentRenderer } from '@/__tests__/render';
 
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(
-		AuthView,
-		merge(
-			{
-				pinia: createTestingPinia(),
-				global: {
-					stubs: {
-						SSOLogin: {
-							template: '<div data-test-id="sso-login"></div>',
-						},
-					},
-				},
+const renderComponent = createComponentRenderer(AuthView, {
+	pinia: createTestingPinia(),
+	global: {
+		stubs: {
+			SSOLogin: {
+				template: '<div data-test-id="sso-login"></div>',
 			},
-			renderOptions,
-		),
-	);
+		},
+	},
+});
 
 describe('AuthView', () => {
 	it('should render with subtitle', () => {
