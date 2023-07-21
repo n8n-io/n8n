@@ -2,6 +2,7 @@ import type Redis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import config from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
+import type { RedisClientType } from './RedisServiceBaseClasses';
 
 export const EVENT_BUS_REDIS_STREAM = 'n8n:eventstream';
 export const COMMAND_REDIS_STREAM = 'n8n:commandstream';
@@ -9,17 +10,7 @@ export const WORKER_RESPONSE_REDIS_STREAM = 'n8n:workerstream';
 export const EVENT_BUS_REDIS_CHANNEL = 'n8n.events';
 export const COMMAND_REDIS_CHANNEL = 'n8n.commands';
 export const WORKER_RESPONSE_REDIS_CHANNEL = 'n8n.worker-response';
-
-export type RedisClientType =
-	| 'subscriber'
-	| 'client'
-	| 'bclient'
-	| 'subscriber(bull)'
-	| 'client(bull)'
-	| 'bclient(bull)'
-	| 'publisher'
-	| 'consumer'
-	| 'producer';
+export const WORKER_RESPONSE_REDIS_LIST = 'n8n:list:worker-response';
 
 export function getRedisClusterNodes(): Array<{ host: string; port: number }> {
 	const clusterNodePairs = config

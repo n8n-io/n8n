@@ -8,7 +8,7 @@ export type RedisServiceCommand = 'getStatus' | 'restartEventBus' | 'stopWorker'
  */
 type RedisServiceBaseCommand = {
 	command: RedisServiceCommand;
-	args?: {
+	payload?: {
 		[key: string]: string | number | boolean | string[] | number[] | boolean[];
 	};
 };

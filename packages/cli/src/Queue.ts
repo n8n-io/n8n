@@ -3,13 +3,13 @@ import { Service } from 'typedi';
 import { type IExecuteResponsePromiseData } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import type { RedisClientType } from './services/redis/RedisServiceHelper';
 import {
 	getRedisClusterClient,
 	getRedisClusterNodes,
 	getRedisPrefix,
 	getRedisStandardClient,
 } from './services/redis/RedisServiceHelper';
+import type { RedisClientType } from './services/redis/RedisServiceBaseClasses';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;

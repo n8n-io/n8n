@@ -38,6 +38,7 @@ import {
 	WORKER_RESPONSE_REDIS_STREAM,
 } from './services/redis/RedisServiceHelper';
 import { RedisServiceStreamConsumer } from './services/redis/RedisServiceStreamConsumer';
+import { RedisServiceListReceiver } from './services/redis/RedisServiceListReceiver';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -246,6 +247,12 @@ export abstract class AbstractServer {
 				}
 			},
 		);
+		const redisListReceiver = Container.get(RedisServiceListReceiver);
+		await redisListReceiver.init();
+
+		setInterval(async () => {
+			await redisListReceiver.popLatestWorkerResponse();
+		}, 1000);
 		// #endregion
 	}
 

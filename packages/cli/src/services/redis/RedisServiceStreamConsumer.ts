@@ -1,8 +1,5 @@
-import type Redis from 'ioredis';
-import type { Cluster } from 'ioredis';
 import { Service } from 'typedi';
-import { LoggerProxy as Logger, LoggerProxy } from 'n8n-workflow';
-import { getDefaultRedisClient } from './RedisServiceHelper';
+import { LoggerProxy } from 'n8n-workflow';
 import { RedisServiceBaseReceiver } from './RedisServiceBaseClasses';
 
 type LastId = string;
@@ -15,23 +12,8 @@ export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
 	// removing the entry will stop the listener
 	static listeningState: Map<StreamName, LastId> = new Map();
 
-	async init(): Promise<Redis | Cluster> {
-		if (RedisServiceStreamConsumer.redisClient && RedisServiceStreamConsumer.isInitialized) {
-			return RedisServiceStreamConsumer.redisClient;
-		}
-		RedisServiceStreamConsumer.redisClient = await getDefaultRedisClient(undefined, 'consumer');
-		RedisServiceStreamConsumer.redisClient.on('close', () => {
-			Logger.warn('Redis unavailable - trying to reconnect...');
-		});
-
-		RedisServiceStreamConsumer.redisClient.on('error', (error) => {
-			if (!String(error).includes('ECONNREFUSED')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				Logger.warn('Error with Redis: ', error);
-			}
-		});
-
-		return RedisServiceStreamConsumer.redisClient;
+	async init(): Promise<void> {
+		await super.init('consumer');
 	}
 
 	async listenToStream(stream: StreamName, lastId = '$'): Promise<void> {
