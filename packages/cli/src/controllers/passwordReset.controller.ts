@@ -177,11 +177,11 @@ export class PasswordResetController {
 	 */
 	@Get('/resolve-password-token')
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
-		const { token: resetPasswordToken, userId: id } = req.query;
+		const { token: resetPasswordToken } = req.query;
 
-		if (!resetPasswordToken || !id) {
+		if (!resetPasswordToken) {
 			this.logger.debug(
-				'Request to resolve password token failed because of missing password reset token or user ID in query string',
+				'Request to resolve password token failed because of missing password reset token',
 				{
 					queryString: req.query,
 				},
@@ -198,7 +198,6 @@ export class PasswordResetController {
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired', {
-					userId: id,
 					resetPasswordToken,
 				});
 				throw new NotFoundError('');
@@ -206,20 +205,9 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		if (id !== decodedToken.sub) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
-				{
-					userId: id,
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
-		}
-
 		const user = await this.userRepository.findOne({
 			where: {
-				id,
+				id: decodedToken.id,
 			},
 			relations: ['globalRole'],
 		});
@@ -227,7 +215,7 @@ export class PasswordResetController {
 		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
-				{ userId: id },
+				{ userId: user.id },
 			);
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
@@ -236,14 +224,14 @@ export class PasswordResetController {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
 				{
-					userId: id,
+					userId: decodedToken.sub,
 					resetPasswordToken,
 				},
 			);
 			throw new NotFoundError('');
 		}
 
-		this.logger.info('Reset-password token resolved successfully', { userId: id });
+		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
 		void this.internalHooks.onUserPasswordResetEmailClick({ user });
 	}
 
@@ -252,9 +240,9 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, userId, password } = req.body;
+		const { token: resetPasswordToken, password } = req.body;
 
-		if (!resetPasswordToken || !userId || !password) {
+		if (!resetPasswordToken || !password) {
 			this.logger.debug(
 				'Request to change password failed because of missing user ID or password or reset password token in payload',
 				{
@@ -275,7 +263,6 @@ export class PasswordResetController {
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired', {
-					userId,
 					resetPasswordToken,
 				});
 				throw new NotFoundError('');
@@ -283,19 +270,8 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		if (userId !== decodedToken.sub) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
-				{
-					userId,
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
-		}
-
 		const user = await this.userRepository.findOne({
-			where: { id: userId },
+			where: { id: decodedToken.sub },
 			relations: ['authIdentities'],
 		});
 
@@ -303,7 +279,6 @@ export class PasswordResetController {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
 				{
-					userId,
 					resetPasswordToken,
 				},
 			);
@@ -312,11 +287,11 @@ export class PasswordResetController {
 
 		const passwordHash = await hashPassword(validPassword);
 
-		await this.userRepository.update(userId, {
+		await this.userRepository.update(user.id, {
 			password: passwordHash,
 		});
 
-		this.logger.info('User password updated successfully', { userId });
+		this.logger.info('User password updated successfully', { userId: user.id });
 
 		await issueCookie(res, user);
 
