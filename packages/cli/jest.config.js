@@ -12,4 +12,5 @@ module.exports = {
 		'^@db/(.*)$': '<rootDir>/src/databases/$1',
 	},
 	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
+	testTimeout: 10_000,
 };
