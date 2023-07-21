@@ -30,11 +30,10 @@ export class UserService {
 	static async generatePasswordResetUrl(user: User): Promise<string> {
 		const { id } = user;
 		const token = jwt.sign({ sub: id }, config.getEnv('userManagement.jwtSecret'), {
-			expiresIn: '1h',
+			expiresIn: '1d',
 		});
 		const baseUrl = getInstanceBaseUrl();
 		const url = new URL(`${baseUrl}/change-password`);
-		url.searchParams.append('userId', id);
 		url.searchParams.append('token', token);
 		return url.toString();
 	}
