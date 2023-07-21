@@ -7,7 +7,6 @@
 				:class="$style.nodeCreator"
 				:style="nodeCreatorInlineStyle"
 				ref="nodeCreator"
-				v-on-click-outside="onClickOutside"
 				@dragover="onDragOver"
 				@drop="onDrop"
 				@mousedown="onMouseDown"
@@ -62,13 +61,7 @@ const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 const nodeCreatorInlineStyle = computed(() => {
 	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px` };
 });
-
-function onClickOutside(event: Event) {
-	// We need to prevent cases where user would click inside the node creator
-	// and try to drag non-draggable element. In that case the click event would
-	// be fired and the node creator would be closed. So we stop that if we detect
-	// that the click event originated from inside the node creator. And fire click even on the
-	// original target.
+function onMouseUpOutside() {
 	if (state.mousedownInsideEvent) {
 		const clickEvent = new MouseEvent('click', {
 			bubbles: true,
@@ -76,18 +69,19 @@ function onClickOutside(event: Event) {
 		});
 		state.mousedownInsideEvent.target?.dispatchEvent(clickEvent);
 		state.mousedownInsideEvent = null;
-		return;
-	}
-
-	if (event.type === 'click') {
-		emit('closeNodeCreator');
+		document.removeEventListener('mouseup', onMouseUpOutside);
+		document.removeEventListener('touchstart', onMouseUpOutside);
 	}
 }
 function onMouseUp() {
 	state.mousedownInsideEvent = null;
+	document.removeEventListener('mouseup', onMouseUpOutside);
+	document.removeEventListener('touchstart', onMouseUpOutside);
 }
 function onMouseDown(event: MouseEvent) {
 	state.mousedownInsideEvent = event;
+	document.addEventListener('mouseup', onMouseUpOutside);
+	document.addEventListener('touchstart', onMouseUpOutside);
 }
 function onDragOver(event: DragEvent) {
 	event.preventDefault();
