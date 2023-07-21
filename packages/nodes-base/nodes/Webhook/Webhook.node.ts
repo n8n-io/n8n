@@ -701,7 +701,8 @@ export class Webhook implements INodeType {
 		// request body, query, params validation
 		if (swagger) {
 			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-			const endpointPaths = JSON.parse(swagger as unknown as string)?.paths as Record<string, any>;
+			const parsedSwaggerDoc = JSON.parse(swagger as unknown as string);
+			const endpointPaths = parsedSwaggerDoc?.paths as Record<string, any>;
 			const endpoints = Object.keys(endpointPaths || {});
 			const endpointPath = endpoints[0] || '';
 			const method = (this.getNodeParameter('httpMethod') as string)?.toLowerCase();
@@ -709,10 +710,15 @@ export class Webhook implements INodeType {
 				?.parameters as OpenAPIRequestValidatorArgs['parameters'];
 			const requestBody = endpointPaths?.[endpointPath]?.[method]
 				?.requestBody as OpenAPIRequestValidatorArgs['requestBody'];
+
 			if (parameters?.length || requestBody) {
+				const componentSchemas = (parsedSwaggerDoc?.components?.schemas ||
+					{}) as OpenAPIRequestValidatorArgs['componentSchemas'];
+
 				const requestValidator = new OpenAPIRequestValidator({
 					requestBody,
 					parameters,
+					componentSchemas,
 				});
 				const errors = requestValidator.validateRequest(response.json);
 				if (errors) {
