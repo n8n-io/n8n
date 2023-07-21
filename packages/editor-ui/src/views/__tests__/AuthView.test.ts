@@ -10,17 +10,16 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 		merge(
 			{
 				pinia: createTestingPinia(),
-				stubs: {
-					SSOLogin: {
-						template: '<div data-test-id="sso-login"></div>',
+				global: {
+					stubs: {
+						SSOLogin: {
+							template: '<div data-test-id="sso-login"></div>',
+						},
 					},
 				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('AuthView', () => {

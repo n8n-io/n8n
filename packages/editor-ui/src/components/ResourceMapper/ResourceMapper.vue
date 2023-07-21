@@ -26,6 +26,7 @@ type Props = {
 	inputSize: string;
 	labelSize: string;
 	dependentParametersValues?: string | null;
+	teleported: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
@@ -445,6 +446,7 @@ defineExpose({
 			:loading="state.loading"
 			:loadingError="state.loadingError"
 			:fieldsToMap="state.paramValue.schema"
+			:teleported="teleported"
 			@modeChanged="onModeChanged"
 			@retryFetch="initFetching"
 		/>
@@ -457,6 +459,7 @@ defineExpose({
 			:loading="state.loading"
 			:initialValue="matchingColumns"
 			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
+			:teleported="teleported"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">

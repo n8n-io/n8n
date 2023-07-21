@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, ref } from 'vue';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
@@ -82,7 +82,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
+import { nonExistingJsonPath } from '@/constants';
 
 const RunDataJsonActions = defineAsyncComponent(
 	async () => import('@/components/RunDataJsonActions.vue'),
@@ -126,11 +126,15 @@ export default defineComponent({
 			type: Number,
 		},
 	},
-	data() {
+	setup() {
+		const selectedJsonPath = ref(nonExistingJsonPath);
+		const draggingPath = ref<null | string>(null);
+		const displayMode = ref('json');
+
 		return {
-			selectedJsonPath: nonExistingJsonPath,
-			draggingPath: null as null | string,
-			displayMode: 'json',
+			selectedJsonPath,
+			draggingPath,
+			displayMode,
 		};
 	},
 	computed: {

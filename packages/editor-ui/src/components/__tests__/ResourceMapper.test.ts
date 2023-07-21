@@ -1,6 +1,4 @@
-import { PiniaVuePlugin } from 'pinia';
 import { render, within } from '@testing-library/vue';
-import { merge } from 'lodash-es';
 import {
 	DEFAULT_SETUP,
 	MAPPING_COLUMNS_RESPONSE,
@@ -12,13 +10,11 @@ import { waitAllPromises } from '@/__tests__/utils';
 import * as workflowHelpers from '@/mixins/workflowHelpers';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
+import { createComponentRenderer } from '@/__tests__/render';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(ResourceMapper, merge(DEFAULT_SETUP, renderOptions), (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
+const renderComponent = createComponentRenderer(ResourceMapper, DEFAULT_SETUP);
 
 describe('ResourceMapper.vue', () => {
 	beforeEach(() => {
@@ -44,18 +40,21 @@ describe('ResourceMapper.vue', () => {
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
 	});
 
-	it('renders add mode  properly', async () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: {
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							mode: 'add',
+	it('renders add mode properly', async () => {
+		const { getByTestId, queryByTestId } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
 		// This mode doesn't render matching column selector
@@ -63,54 +62,63 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('renders multi-key match selector properly', async () => {
-		const { container, getByTestId } = renderComponent({
-			props: {
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							mode: 'upsert',
-							multiKeyMatch: true,
+		const { container, getByTestId } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								mode: 'upsert',
+								multiKeyMatch: true,
+							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
 		expect(container.querySelector('.el-select__tags')).toBeInTheDocument();
 	});
 
 	it('does not render mapping mode selector if it is disabled', async () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: {
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							supportAutoMap: false,
+		const { getByTestId, queryByTestId } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: false,
+							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
 		expect(queryByTestId('mapping-mode-select')).not.toBeInTheDocument();
 	});
 
 	it('renders field on top of the list when they are selected for matching', async () => {
-		const { container, getByTestId } = renderComponent({
-			props: {
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							supportAutoMap: true,
-							mode: 'upsert',
-							multiKeyMatch: false,
+		const { container, getByTestId } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: false,
+							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
 		// Id should be the first field in the list
@@ -124,19 +132,22 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('renders selected matching columns properly when multiple key matching is enabled', async () => {
-		const { getByTestId, getByText, queryByText } = renderComponent({
-			props: {
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							supportAutoMap: true,
-							mode: 'upsert',
-							multiKeyMatch: true,
+		const { getByTestId, getByText, queryByText } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: true,
+							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
 		const matchingColumnDropdown = getByTestId('matching-column-select');
@@ -156,20 +167,23 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('uses field words defined in node definition', async () => {
-		const { getByText } = renderComponent({
-			props: {
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							fieldWords: {
-								singular: 'foo',
-								plural: 'foos',
+		const { getByText } = renderComponent(
+			{
+				props: {
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								fieldWords: {
+									singular: 'foo',
+									plural: 'foos',
+								},
 							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		expect(getByText('Set the value for each foo')).toBeInTheDocument();
 		expect(
@@ -180,24 +194,27 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('should render correct fields based on saved schema', async () => {
-		const { getByTestId, queryAllByTestId } = renderComponent({
-			props: {
-				node: {
-					parameters: {
-						columns: {
-							schema: UPDATED_SCHEMA,
+		const { getByTestId, queryAllByTestId } = renderComponent(
+			{
+				props: {
+					node: {
+						parameters: {
+							columns: {
+								schema: UPDATED_SCHEMA,
+							},
 						},
 					},
-				},
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							mode: 'add',
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		// There should be 5 fields rendered and only 2 of them should have remove button
 		expect(
@@ -207,24 +224,27 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('should render correct options based on saved schema', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				node: {
-					parameters: {
-						columns: {
-							schema: UPDATED_SCHEMA,
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: {
+						parameters: {
+							columns: {
+								schema: UPDATED_SCHEMA,
+							},
 						},
 					},
-				},
-				parameter: {
-					typeOptions: {
-						resourceMapper: {
-							mode: 'add',
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							},
 						},
 					},
 				},
 			},
-		});
+			{ merge: true },
+		);
 		await waitAllPromises();
 		// Should have one option in the bottom dropdown for one removed field
 		expect(getByTestId('add-fields-select').querySelectorAll('li').length).toBe(1);

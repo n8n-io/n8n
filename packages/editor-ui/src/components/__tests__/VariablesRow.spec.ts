@@ -1,24 +1,38 @@
 import VariablesRow from '../VariablesRow.vue';
 import type { EnvironmentVariable } from '@/Interface';
 import { fireEvent } from '@testing-library/vue';
-import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
 import { afterAll, beforeAll } from 'vitest';
 import { useSettingsStore, useUsersStore } from '@/stores';
-import { renderComponent } from '@/__tests__/utils';
+import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import { STORES } from '@/constants';
+
+const renderComponent = createComponentRenderer(VariablesRow, {
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.SETTINGS]: {
+				settings: {
+					enterprise: {
+						variables: true,
+					},
+				},
+			},
+		},
+	}),
+	global: {
+		stubs: ['n8n-tooltip'],
+	},
+});
 
 describe('VariablesRow', () => {
 	let server: ReturnType<typeof setupServer>;
-	let pinia: ReturnType<typeof createPinia>;
 
 	beforeAll(() => {
 		server = setupServer();
 	});
 
 	beforeEach(async () => {
-		pinia = createPinia();
-		setActivePinia(pinia);
-
 		await useSettingsStore().getSettings();
 		await useUsersStore().loginWithCookie();
 	});
@@ -27,8 +41,6 @@ describe('VariablesRow', () => {
 		server.shutdown();
 	});
 
-	const stubs = ['n8n-tooltip'];
-
 	const environmentVariable: EnvironmentVariable = {
 		id: 1,
 		key: 'key',
@@ -36,12 +48,10 @@ describe('VariablesRow', () => {
 	};
 
 	it('should render correctly', () => {
-		const wrapper = renderComponent(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 			},
-			stubs,
-			pinia,
 		});
 
 		expect(wrapper.html()).toMatchSnapshot();
@@ -49,12 +59,10 @@ describe('VariablesRow', () => {
 	});
 
 	it('should show edit and delete buttons on hover', async () => {
-		const wrapper = renderComponent(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 			},
-			stubs,
-			pinia,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -64,13 +72,11 @@ describe('VariablesRow', () => {
 	});
 
 	it('should show key and value inputs in edit mode', async () => {
-		const wrapper = renderComponent(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 				editing: true,
 			},
-			stubs,
-			pinia,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -88,13 +94,11 @@ describe('VariablesRow', () => {
 	});
 
 	it('should show cancel and save buttons in edit mode', async () => {
-		const wrapper = renderComponent(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 				editing: true,
 			},
-			stubs,
-			pinia,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);

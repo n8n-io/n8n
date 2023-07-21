@@ -525,7 +525,7 @@ export default defineComponent({
 				}
 			}
 
-			// Set the value via Vue.set that everything updates correctly in the UI
+			// Set the value so that everything updates correctly in the UI
 			if (nameParts.length === 0) {
 				// Data is on top level
 				if (value === null) {

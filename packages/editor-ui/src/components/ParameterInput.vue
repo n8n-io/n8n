@@ -63,7 +63,7 @@
 					append-to-body
 					:close-on-click-modal="false"
 					width="80%"
-					:title="`${$locale.baseText('codeEdit.edit')} ${$locale
+					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
@@ -157,7 +157,7 @@
 								focused: isFocused,
 								invalid: !isFocused && getIssues.length > 0 && !isValueExpression,
 							}"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 							@focus="setFocus"
 						/>
@@ -201,7 +201,7 @@
 				:placeholder="
 					parameter.placeholder
 						? getPlaceholder()
-						: $locale.baseText('parameterInput.selectDateAndTime')
+						: i18n.baseText('parameterInput.selectDateAndTime')
 				"
 				:picker-options="dateTimePickerOptions"
 				@update:modelValue="valueChanged"
@@ -255,7 +255,7 @@
 				filterable
 				:modelValue="displayValue"
 				:placeholder="
-					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
+					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
 				"
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
@@ -297,7 +297,7 @@
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
-				:placeholder="$locale.baseText('parameterInput.select')"
+				:placeholder="i18n.baseText('parameterInput.select')"
 				@update:modelValue="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
@@ -392,6 +392,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useI18n } from '@/composables';
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -466,6 +467,13 @@ export default defineComponent({
 			type: Object as PropType<EventBus>,
 			default: () => createEventBus(),
 		},
+	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+		};
 	},
 	data() {
 		return {
@@ -586,17 +594,14 @@ export default defineComponent({
 			const interpolation = { interpolate: { shortPath: this.shortPath } };
 
 			if (this.getIssues.length && this.isValueExpression) {
-				return this.$locale.baseText(
-					'parameterInput.parameterHasIssuesAndExpression',
-					interpolation,
-				);
+				return this.i18n.baseText('parameterInput.parameterHasIssuesAndExpression', interpolation);
 			} else if (this.getIssues.length && !this.isValueExpression) {
-				return this.$locale.baseText('parameterInput.parameterHasIssues', interpolation);
+				return this.i18n.baseText('parameterInput.parameterHasIssues', interpolation);
 			} else if (!this.getIssues.length && this.isValueExpression) {
-				return this.$locale.baseText('parameterInput.parameterHasExpression', interpolation);
+				return this.i18n.baseText('parameterInput.parameterHasExpression', interpolation);
 			}
 
-			return this.$locale.baseText('parameterInput.parameter', interpolation);
+			return this.i18n.baseText('parameterInput.parameter', interpolation);
 		},
 		displayValue(): string | number | boolean | null {
 			if (this.remoteParameterOptionsLoading === true) {
@@ -604,7 +609,7 @@ export default defineComponent({
 				// to user that the data is loading. If not it would
 				// display the user the key instead of the value it
 				// represents
-				return this.$locale.baseText('parameterInput.loadingOptions');
+				return this.i18n.baseText('parameterInput.loadingOptions');
 			}
 
 			// if the value is marked as empty return empty string, to prevent displaying the asterisks
@@ -690,7 +695,7 @@ export default defineComponent({
 			if (this.parameter.type === 'credentialsSelect' && this.displayValue === '') {
 				issues.parameters = issues.parameters || {};
 
-				const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
+				const issue = this.i18n.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
 
 				issues.parameters[this.parameter.name] = [issue];
 			} else if (
@@ -723,7 +728,7 @@ export default defineComponent({
 							issues.parameters = {};
 						}
 
-						const issue = this.$locale.baseText('parameterInput.theValueIsNotSupported', {
+						const issue = this.i18n.baseText('parameterInput.theValueIsNotSupported', {
 							interpolate: { checkValue },
 						});
 
@@ -856,18 +861,18 @@ export default defineComponent({
 		},
 		getPlaceholder(): string {
 			return this.isForCredential
-				? this.$locale.credText().placeholder(this.parameter)
-				: this.$locale.nodeText().placeholder(this.parameter, this.path);
+				? this.i18n.credText().placeholder(this.parameter)
+				: this.i18n.nodeText().placeholder(this.parameter, this.path);
 		},
 		getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 			return this.isForCredential
-				? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
-				: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
+				? this.i18n.credText().optionsOptionDisplayName(this.parameter, option)
+				: this.i18n.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
 		},
 		getOptionsOptionDescription(option: INodePropertyOptions): string {
 			return this.isForCredential
-				? this.$locale.credText().optionsOptionDescription(this.parameter, option)
-				: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
+				? this.i18n.credText().optionsOptionDescription(this.parameter, option)
+				: this.i18n.nodeText().optionsOptionDescription(this.parameter, option, this.path);
 		},
 
 		async loadRemoteParameterOptions() {

@@ -1,17 +1,15 @@
 import { vi, describe, it, expect } from 'vitest';
 import { merge } from 'lodash-es';
-import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { STORES } from '@/constants';
 import ExecutionsList from '@/components/ExecutionsList.vue';
-import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores';
+import { RenderOptions, createComponentRenderer } from '@/__tests__/render';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 
@@ -65,27 +63,18 @@ const generateExecutionsData = () =>
 		estimated: false,
 	}));
 
-const renderComponent = async () => {
-	const renderResult = render(
-		ExecutionsList,
-		{
-			pinia,
-			propsData: {
-				autoRefreshEnabled: false,
-			},
-			i18n: i18nInstance,
+const defaultRenderOptions: RenderOptions = {
+	props: {
+		autoRefreshEnabled: false,
+	},
+	global: {
+		stubs: {
 			stubs: ['font-awesome-icon'],
 		},
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-			vue.prototype.$telemetry = {
-				track: () => {},
-			};
-		},
-	);
-	await waitAllPromises();
-	return renderResult;
+	},
 };
+
+const renderComponent = createComponentRenderer(ExecutionsList, defaultRenderOptions);
 
 describe('ExecutionsList.vue', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -123,7 +112,13 @@ describe('ExecutionsList.vue', () => {
 			results: [],
 			estimated: false,
 		});
-		const { queryAllByTestId, queryByTestId, getByTestId } = await renderComponent();
+		const { queryAllByTestId, queryByTestId, getByTestId } = renderComponent({
+			global: {
+				plugins: [pinia],
+			},
+		});
+		await waitAllPromises();
+
 		await userEvent.click(getByTestId('execution-auto-refresh-checkbox'));
 
 		expect(queryAllByTestId('select-execution-checkbox').length).toBe(0);
@@ -138,7 +133,12 @@ describe('ExecutionsList.vue', () => {
 			.mockResolvedValueOnce(executionsData[0])
 			.mockResolvedValueOnce(executionsData[1]);
 
-		const { getByTestId, getAllByTestId, queryByTestId } = await renderComponent();
+		const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+			global: {
+				plugins: [pinia],
+			},
+		});
+		await waitAllPromises();
 
 		expect(storeSpy).toHaveBeenCalledTimes(1);
 
@@ -192,7 +192,12 @@ describe('ExecutionsList.vue', () => {
 			(execution) => !execution.retryOf && execution.retrySuccessId,
 		);
 
-		const { queryAllByText } = await renderComponent();
+		const { queryAllByText } = renderComponent({
+			global: {
+				plugins: [pinia],
+			},
+		});
+		await waitAllPromises();
 
 		expect(queryAllByText(/Retry of/).length).toBe(retryOf.length);
 		expect(queryAllByText(/Success retry/).length).toBe(retrySuccessId.length);

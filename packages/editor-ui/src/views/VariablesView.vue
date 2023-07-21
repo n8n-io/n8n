@@ -26,7 +26,7 @@ const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
 let sourceControlStoreUnsubscribe = () => {};

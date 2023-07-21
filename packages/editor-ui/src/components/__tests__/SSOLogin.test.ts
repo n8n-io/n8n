@@ -1,4 +1,3 @@
-import { PiniaVuePlugin } from 'pinia';
 import { render } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
@@ -16,18 +15,17 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 		SSOLogin,
 		merge(
 			{
-				pinia,
-				stubs: {
-					'n8n-button': {
-						template: '<button data-test-id="sso-button"></button>',
+				store: pinia,
+				global: {
+					stubs: {
+						'n8n-button': {
+							template: '<button data-test-id="sso-button"></button>',
+						},
 					},
 				},
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('SSOLogin', () => {

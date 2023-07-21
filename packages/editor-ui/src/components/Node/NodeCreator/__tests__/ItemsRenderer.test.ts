@@ -1,5 +1,4 @@
-import Vue from 'vue';
-import { PiniaVuePlugin } from 'pinia';
+import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { render, fireEvent } from '@testing-library/vue';
 import {
@@ -24,18 +23,16 @@ describe('ItemsRenderer', () => {
 			mockNodeCreateElement('subcategory', { displayName: 'Node 3', name: 'node3' }),
 			mockSubcategoryCreateElement({ title: 'Subcategory 2' }),
 		];
-		const { container } = render(
-			ItemsRenderer,
-			{
-				pinia: createTestingPinia(),
-				props: { elements: items },
+
+		const { container } = render(ItemsRenderer, {
+			store: createTestingPinia(),
+			props: { elements: items },
+			global: {
+				stubs: ['n8n-loading'],
 			},
-			(vue) => {
-				vue.use(PiniaVuePlugin);
-			},
-		);
-		//
-		await Vue.nextTick();
+		});
+
+		await nextTick();
 
 		const nodeItems = container.querySelectorAll('.iteratorItem .nodeItem');
 		const labels = container.querySelectorAll('.iteratorItem .label');
@@ -53,18 +50,12 @@ describe('ItemsRenderer', () => {
 			mockActionCreateElement(),
 			mockViewCreateElement(),
 		];
-		const { container, emitted } = render(
-			ItemsRenderer,
-			{
-				pinia: createTestingPinia(),
-				props: { elements: items },
-			},
-			(vue) => {
-				vue.use(PiniaVuePlugin);
-			},
-		);
+		const { container, emitted } = render(ItemsRenderer, {
+			pinia: createTestingPinia(),
+			props: { elements: items },
+		});
 		//
-		await Vue.nextTick();
+		await nextTick();
 
 		const itemTypes = {
 			node: container.querySelector('.iteratorItem .nodeItem'),

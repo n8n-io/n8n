@@ -3,7 +3,8 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
-import { useUIStore, useSourceControlStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 
 const props = defineProps<{
@@ -20,7 +21,7 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const message = useMessage();
 const toast = useToast();
-const { i18n } = useI18n();
+const i18n = useI18n();
 
 const eventBus = createEventBus();
 const tooltipOpenDelay = ref(300);

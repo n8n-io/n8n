@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getCurrentInstance, computed, onMounted, onUnmounted, watch } from 'vue';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
@@ -11,8 +11,9 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
+import { useI18n } from '@/composables';
 
-const instance = getCurrentInstance();
+const i18n = useI18n();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
@@ -25,10 +26,10 @@ const viewStacks = computed(() => useViewStacks().viewStacks);
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
 const searchPlaceholder = computed(() =>
 	isActionsMode.value
-		? instance?.proxy?.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
+		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 				interpolate: { node: activeViewStack.value.title as string },
 		  })
-		: instance?.proxy?.$locale.baseText('nodeCreator.searchBar.searchNodes'),
+		: i18n.baseText('nodeCreator.searchBar.searchNodes'),
 );
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
@@ -58,10 +59,7 @@ onUnmounted(() => {
 watch(
 	() => nodeCreatorView.value,
 	(selectedView) => {
-		const view =
-			selectedView === TRIGGER_NODE_CREATOR_VIEW
-				? TriggerView(instance?.proxy?.$locale)
-				: RegularView(instance?.proxy?.$locale);
+		const view = selectedView === TRIGGER_NODE_CREATOR_VIEW ? TriggerView() : RegularView();
 
 		pushViewStack({
 			title: view.title,

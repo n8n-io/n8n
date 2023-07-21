@@ -348,14 +348,16 @@ export default defineComponent({
 		CanvasControls,
 	},
 	setup(props) {
+		const locale = useI18n();
+
 		return {
+			locale,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
-			...useI18n(),
 			...workflowRun.setup?.(props),
 		};
 	},

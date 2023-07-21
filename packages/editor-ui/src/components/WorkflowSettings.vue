@@ -381,7 +381,7 @@ import {
 	useWorkflowsEEStore,
 	useUsersStore,
 } from '@/stores';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'WorkflowSettings',

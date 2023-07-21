@@ -16,6 +16,7 @@ interface Props {
 	inputSize: string;
 	loading: boolean;
 	serviceName: string;
+	teleported?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -134,6 +135,7 @@ defineExpose({
 				:modelValue="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"
+				:teleported="teleported"
 				@update:modelValue="onSelectionChange"
 			>
 				<n8n-option v-for="field in availableMatchingFields" :key="field.id" :value="field.id">

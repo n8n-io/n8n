@@ -2,7 +2,7 @@
 import { useI18n } from '@/composables';
 import { useUIStore, useAuditLogsStore } from '@/stores';
 
-const { i18n: locale } = useI18n();
+const locale = useI18n();
 const uiStore = useUIStore();
 const auditLogsStore = useAuditLogsStore();
 

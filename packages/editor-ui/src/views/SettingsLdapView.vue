@@ -162,7 +162,7 @@ import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import type { N8nFormInputs } from 'n8n-design-system';
 import type { CellStyle } from 'element-plus';
 

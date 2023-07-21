@@ -26,9 +26,6 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 			},
 			renderOptions,
 		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
 	);
 
 describe('SettingsPersonalView', () => {

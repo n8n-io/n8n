@@ -21,7 +21,7 @@ const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const toast = useToast();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 

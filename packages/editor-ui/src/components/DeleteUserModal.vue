@@ -84,7 +84,7 @@ import Modal from '@/components/Modal.vue';
 import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'DeleteUserModal',

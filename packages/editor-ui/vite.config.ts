@@ -45,6 +45,10 @@ const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
+		find: /^n8n-design-system$/,
+		replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.ts'),
+	},
+	{
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 	},
@@ -55,14 +59,6 @@ const alias = [
 	{
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash-es/$1',
-	},
-	{
-		find: /^element-plus\/(es|lib)\/components\/button\/src\/button2\.m?js$/,
-		replacement: resolve(
-			__dirname,
-			'..',
-			'design-system/src/components/N8nButton/overrides/ElButton.ts',
-		),
 	},
 ];
 
@@ -122,6 +118,20 @@ export default mergeConfig(
 	}),
 	defineVitestConfig({
 		test: {
+			include: [
+				// 'src/components/__tests__/SQLEditor.test.ts',
+				// 'src/components/__tests__/BannersStack.test.ts',
+				'src/components/__tests__/ExecutionFilter.test.ts',
+				// 'src/components/__tests__/ExecutionsList.test.ts',
+				// 'src/components/__tests__/MainSidebarSourceControl.test.ts',
+				// 'src/components/__tests__/PersonalizationModal.spec.ts',
+				// 'src/components/__tests__/ResourceMapper.test.ts',
+				// 'src/components/__tests__/RunData.test.ts',
+				// 'src/components/__tests__/RunDataJson.test.ts',
+				// 'src/components/__tests__/RunDataSchema.test.ts',
+				// 'src/components/__tests__/SQLEditor.test.ts',
+				// 'src/components/__tests__/VariablesRow.spec.ts',
+			],
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],

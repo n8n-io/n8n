@@ -13,6 +13,7 @@ interface Props {
 	serviceName: string;
 	loading: boolean;
 	loadingError: boolean;
+	teleported?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -112,6 +113,7 @@ defineExpose({
 			<div class="mt-5xs">
 				<n8n-select
 					:modelValue="selected"
+					:teleported="teleported"
 					:size="props.inputSize"
 					@update:modelValue="onModeChanged"
 				>

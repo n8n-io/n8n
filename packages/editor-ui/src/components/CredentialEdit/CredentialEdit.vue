@@ -144,7 +144,7 @@ import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
