@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed } from 'vue';
+import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -69,14 +69,16 @@ function onMouseUpOutside() {
 		});
 		state.mousedownInsideEvent.target?.dispatchEvent(clickEvent);
 		state.mousedownInsideEvent = null;
-		document.removeEventListener('mouseup', onMouseUpOutside);
-		document.removeEventListener('touchstart', onMouseUpOutside);
+		unBindOnMouseUpOutside();
 	}
+}
+function unBindOnMouseUpOutside() {
+	document.removeEventListener('mouseup', onMouseUpOutside);
+	document.removeEventListener('touchstart', onMouseUpOutside);
 }
 function onMouseUp() {
 	state.mousedownInsideEvent = null;
-	document.removeEventListener('mouseup', onMouseUpOutside);
-	document.removeEventListener('touchstart', onMouseUpOutside);
+	unBindOnMouseUpOutside();
 }
 function onMouseDown(event: MouseEvent) {
 	state.mousedownInsideEvent = event;
@@ -142,6 +144,10 @@ watch(
 	{ immediate: true },
 );
 const { nodeCreator } = toRefs(state);
+
+onBeforeUnmount(() => {
+	unBindOnMouseUpOutside();
+});
 </script>
 
 <style module lang="scss">
