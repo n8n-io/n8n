@@ -8,17 +8,10 @@ import {
 	WORKER_RESPONSE_REDIS_CHANNEL,
 	getDefaultRedisClient,
 } from './RedisServiceHelper';
-
-type MessageHandler = (channel: string, message: string) => void;
+import { RedisServiceBaseReceiver } from './RedisServiceBaseClasses';
 
 @Service()
-export class RedisServicePubSubSubscriber {
-	static redisClient: Redis | Cluster | undefined;
-
-	static messageHandlers: Map<string, MessageHandler> = new Map();
-
-	static isInitialized = false;
-
+export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 	async init(): Promise<Redis | Cluster> {
 		if (RedisServicePubSubSubscriber.redisClient && RedisServicePubSubSubscriber.isInitialized) {
 			return RedisServicePubSubSubscriber.redisClient;
@@ -38,18 +31,12 @@ export class RedisServicePubSubSubscriber {
 		});
 
 		RedisServicePubSubSubscriber.redisClient.on('message', (channel: string, message: string) => {
-			RedisServicePubSubSubscriber.messageHandlers.forEach((handler) => handler(channel, message));
+			RedisServicePubSubSubscriber.messageHandlers.forEach(
+				(handler: (channel: string, message: string) => void) => handler(channel, message),
+			);
 		});
 
 		return RedisServicePubSubSubscriber.redisClient;
-	}
-
-	static async close(): Promise<void> {
-		if (!RedisServicePubSubSubscriber.redisClient) {
-			return;
-		}
-		await RedisServicePubSubSubscriber.redisClient.quit();
-		RedisServicePubSubSubscriber.redisClient = undefined;
 	}
 
 	async subscribe(channel: string): Promise<void> {
@@ -75,13 +62,5 @@ export class RedisServicePubSubSubscriber {
 
 	async subscribeToWorkerResponseChannel(): Promise<void> {
 		await this.subscribe(WORKER_RESPONSE_REDIS_CHANNEL);
-	}
-
-	addMessageHandler(handlerName: string, handler: MessageHandler): void {
-		RedisServicePubSubSubscriber.messageHandlers.set(handlerName, handler);
-	}
-
-	removeMessageHandler(handlerName: string): void {
-		RedisServicePubSubSubscriber.messageHandlers.delete(handlerName);
 	}
 }

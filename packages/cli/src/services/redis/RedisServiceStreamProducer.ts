@@ -13,24 +13,15 @@ import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,
 } from './RedisServiceCommands';
-
-type MessageHandler = (channel: string, message: string) => void;
+import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 
 @Service()
-export class RedisServiceStreamProducer {
-	static producerId = '';
-
-	static redisClient: Redis | Cluster | undefined;
-
-	static messageHandlers: Map<string, MessageHandler> = new Map();
-
-	static isInitialized = false;
-
-	async init(producerId: string): Promise<Redis | Cluster> {
+export class RedisServiceStreamProducer extends RedisServiceBaseSender {
+	async init(senderId: string): Promise<Redis | Cluster> {
 		if (RedisServiceStreamProducer.redisClient && RedisServiceStreamProducer.isInitialized) {
 			return RedisServiceStreamProducer.redisClient;
 		}
-		RedisServiceStreamProducer.producerId = producerId;
+		RedisServiceStreamProducer.senderId = senderId;
 		RedisServiceStreamProducer.redisClient = await getDefaultRedisClient(undefined, 'producer');
 		RedisServiceStreamProducer.redisClient.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');
@@ -46,20 +37,12 @@ export class RedisServiceStreamProducer {
 		return RedisServiceStreamProducer.redisClient;
 	}
 
-	static async close(): Promise<void> {
-		if (!RedisServiceStreamProducer.redisClient) {
-			return;
-		}
-		await RedisServiceStreamProducer.redisClient.quit();
-		RedisServiceStreamProducer.redisClient = undefined;
-	}
-
 	async add(streamName: string, values: RedisValue[]): Promise<void> {
 		await RedisServiceStreamProducer.redisClient?.xadd(
 			streamName,
 			'*',
-			'producerId',
-			RedisServiceStreamProducer.producerId,
+			'senderId',
+			RedisServiceStreamProducer.senderId,
 			...values,
 		);
 	}

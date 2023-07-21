@@ -13,22 +13,16 @@ import type {
 	RedisServiceCommandObject,
 	RedisServiceWorkerResponseObject,
 } from './RedisServiceCommands';
-
-type MessageHandler = (channel: string, message: string) => void;
+import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 
 @Service()
-export class RedisServicePubSubPublisher {
-	static redisClient: Redis | Cluster | undefined;
-
-	static messageHandlers: Map<string, MessageHandler> = new Map();
-
-	static isInitialized = false;
-
-	async init(): Promise<Redis | Cluster> {
+export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
+	async init(senderId?: string): Promise<Redis | Cluster> {
 		if (RedisServicePubSubPublisher.redisClient && RedisServicePubSubPublisher.isInitialized) {
 			return RedisServicePubSubPublisher.redisClient;
 		}
 		RedisServicePubSubPublisher.redisClient = await getDefaultRedisClient(undefined, 'publisher');
+		RedisServicePubSubPublisher.senderId = senderId ?? '';
 		RedisServicePubSubPublisher.redisClient.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');
 		});
@@ -41,14 +35,6 @@ export class RedisServicePubSubPublisher {
 		});
 
 		return RedisServicePubSubPublisher.redisClient;
-	}
-
-	static async close(): Promise<void> {
-		if (!RedisServicePubSubPublisher.redisClient) {
-			return;
-		}
-		await RedisServicePubSubPublisher.redisClient.quit();
-		RedisServicePubSubPublisher.redisClient = undefined;
 	}
 
 	async publish(channel: string, message: string): Promise<void> {

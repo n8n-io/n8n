@@ -1,36 +1,24 @@
 import type Redis from 'ioredis';
-import type { Cluster, RedisValue } from 'ioredis';
+import type { Cluster } from 'ioredis';
 import { Service } from 'typedi';
-import { LoggerProxy as Logger } from 'n8n-workflow';
-import type { AbstractEventMessage } from '@/eventbus/EventMessageClasses/AbstractEventMessage';
-import {
-	COMMAND_REDIS_STREAM,
-	EVENT_BUS_REDIS_STREAM,
-	WORKER_RESPONSE_REDIS_STREAM,
-	getDefaultRedisClient,
-} from './RedisServiceHelper';
-import type {
-	RedisServiceCommandObject,
-	RedisServiceWorkerResponseObject,
-} from './RedisServiceCommands';
+import { LoggerProxy as Logger, LoggerProxy } from 'n8n-workflow';
+import { getDefaultRedisClient } from './RedisServiceHelper';
+import { RedisServiceBaseReceiver } from './RedisServiceBaseClasses';
 
-type MessageHandler = (channel: string, message: string) => void;
+type LastId = string;
+
+type StreamName = string;
 
 @Service()
-export class RedisServiceStreamConsumer {
-	static producerId = '';
+export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
+	// while actively listening, the stream name and last id are stored here
+	// removing the entry will stop the listener
+	static listeningState: Map<StreamName, LastId> = new Map();
 
-	static redisClient: Redis | Cluster | undefined;
-
-	static messageHandlers: Map<string, MessageHandler> = new Map();
-
-	static isInitialized = false;
-
-	async init(producerId: string): Promise<Redis | Cluster> {
+	async init(): Promise<Redis | Cluster> {
 		if (RedisServiceStreamConsumer.redisClient && RedisServiceStreamConsumer.isInitialized) {
 			return RedisServiceStreamConsumer.redisClient;
 		}
-		RedisServiceStreamConsumer.producerId = producerId;
 		RedisServiceStreamConsumer.redisClient = await getDefaultRedisClient(undefined, 'consumer');
 		RedisServiceStreamConsumer.redisClient.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');
@@ -46,15 +34,45 @@ export class RedisServiceStreamConsumer {
 		return RedisServiceStreamConsumer.redisClient;
 	}
 
-	static async close(): Promise<void> {
+	async listenToStream(stream: StreamName, lastId = '$'): Promise<void> {
 		if (!RedisServiceStreamConsumer.redisClient) {
-			return;
+			await this.init();
 		}
-		await RedisServiceStreamConsumer.redisClient.quit();
-		RedisServiceStreamConsumer.redisClient = undefined;
+		LoggerProxy.debug(`Redis client now listening to stream ${stream} starting with id ${lastId}`);
+		RedisServiceStreamConsumer.listeningState.set(stream, lastId);
+		let failedRuns = 0;
+		while (RedisServiceStreamConsumer.listeningState.has(stream)) {
+			const results = await RedisServiceStreamConsumer.redisClient?.xread(
+				'BLOCK',
+				0,
+				'STREAMS',
+				stream,
+				lastId,
+			);
+			if (results) {
+				const [_key, messages] = results[0];
+				messages.forEach(([id, message]) => {
+					RedisServiceStreamConsumer.messageHandlers.forEach((handler) =>
+						handler(stream, id, message),
+					);
+				});
+				// Pass the last id of the results to the next round.
+				lastId = messages[messages.length - 1][0];
+				RedisServiceStreamConsumer.listeningState.set(stream, lastId);
+			} else {
+				failedRuns++;
+			}
+			if (failedRuns > 10) {
+				LoggerProxy.warn(
+					`Redis stream ${stream} is not available (failed ${failedRuns} times). Stopping listening.`,
+				);
+				RedisServiceStreamConsumer.listeningState.delete(stream);
+			}
+		}
 	}
 
-	async subscribe(channel: string): Promise<void> {
-		// tbd
+	stopListening(stream: StreamName): void {
+		LoggerProxy.debug(`Redis client stopped listening to stream ${stream}`);
+		RedisServiceStreamConsumer.listeningState.delete(stream);
 	}
 }

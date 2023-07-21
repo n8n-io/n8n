@@ -199,28 +199,4 @@ export async function createErrorExecution(
 	await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 }
 
-// export function getRedisClusterNodes(): Array<{ host: string; port: number }> {
-// 	const clusterNodePairs = config
-// 		.getEnv('queue.bull.redis.clusterNodes')
-// 		.split(',')
-// 		.filter((e) => e);
-// 	return clusterNodePairs.map((pair) => {
-// 		const [host, port] = pair.split(':');
-// 		return { host, port: parseInt(port) };
-// 	});
-// }
-
-// export function getRedisPrefix(): string {
-// 	let prefix = config.getEnv('queue.bull.prefix');
-// 	if (prefix && getRedisClusterNodes().length > 0) {
-// 		if (!prefix.startsWith('{')) {
-// 			prefix = '{' + prefix;
-// 		}
-// 		if (!prefix.endsWith('}')) {
-// 			prefix += '}';
-// 		}
-// 	}
-// 	return prefix;
-// }
-
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;
