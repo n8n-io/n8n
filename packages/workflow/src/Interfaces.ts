@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // eslint-disable-next-line max-classes-per-file
 import type * as express from 'express';
-import type * as FormData from 'form-data';
+import type FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
@@ -690,6 +690,7 @@ export interface BinaryHelperFunctions {
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
+	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
 	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 }
@@ -1105,6 +1106,8 @@ export interface IDisplayOptions {
 	show?: {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
+
+	hideOnCloud?: boolean;
 }
 
 export interface INodeProperties {
@@ -2026,6 +2029,7 @@ export interface ResourceMapperField {
 	type?: FieldType;
 	removed?: boolean;
 	options?: INodePropertyOptions[];
+	readOnly?: boolean;
 }
 
 export type FieldType =

@@ -735,7 +735,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
 
-	const axiosRequest = {
+	const axiosRequest: AxiosRequestConfig = {
 		headers: headers ?? {},
 		method,
 		timeout,
@@ -862,6 +862,10 @@ async function httpRequest(
 	}
 
 	return result.data;
+}
+
+export function getBinaryPath(binaryDataId: string): string {
+	return BinaryDataManager.getInstance().getBinaryPath(binaryDataId);
 }
 
 /**
@@ -2407,6 +2411,7 @@ const getNodeHelperFunctions = ({
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
+	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
 	binaryToBuffer,

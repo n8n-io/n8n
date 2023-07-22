@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import type { Socket } from 'net';
@@ -16,7 +17,7 @@ import type { IPushDataType } from '@/Interfaces';
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
 @Service()
-export class Push {
+export class Push extends EventEmitter {
 	private backend = useWebSockets ? new WebSocketPush() : new SSEPush();
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
@@ -27,6 +28,7 @@ export class Push {
 		} else {
 			res.status(401).send('Unauthorized');
 		}
+		this.emit('editorUiConnected', req.query.sessionId);
 	}
 
 	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
