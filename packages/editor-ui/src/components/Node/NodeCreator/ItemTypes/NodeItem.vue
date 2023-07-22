@@ -76,7 +76,7 @@ const description = computed<string>(() => {
 });
 const showActionArrow = computed(() => hasActions.value);
 const dataTestId = computed(() =>
-	hasActions.value ? 'node-creator-item-action' : 'node-creator-item-node',
+	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
 );
 
 const hasActions = computed(() => {
