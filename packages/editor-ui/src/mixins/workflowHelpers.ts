@@ -7,6 +7,7 @@ import {
 	VIEWS,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
+	HTTP_REQUEST_NODE_TYPE,
 } from '@/constants';
 
 import type {
@@ -46,7 +47,7 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast, useMessage } from '@/composables';
 
-import { isEqual } from 'lodash-es';
+import { get, isEqual } from 'lodash-es';
 
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
@@ -147,6 +148,16 @@ export function resolveParameter(
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	};
+
+	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
+		// Add $response for HTTP Request-Nodes as it is used
+		// in pagination expressions
+		additionalKeys.$response = get(
+			executionData,
+			`data.executionData.contextData['node:${activeNode!.name}'].response`,
+			{},
+		);
+	}
 
 	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
 	if (

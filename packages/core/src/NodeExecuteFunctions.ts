@@ -13,6 +13,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
 import type {
+	ContextType,
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -123,7 +124,7 @@ import { BinaryDataManager } from './BinaryDataManager';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
+import { HTTP_REQUEST_NODE_TYPE, PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
 import { binaryToBuffer } from './BinaryDataManager/utils';
 import {
 	getAllWorkflowExecutionMetadata,
@@ -1746,7 +1747,7 @@ export async function getCredentials(
 
 	// Hardcode for now for security reasons that only a single node can access
 	// all credentials
-	const fullAccess = ['n8n-nodes-base.httpRequest'].includes(node.type);
+	const fullAccess = [HTTP_REQUEST_NODE_TYPE].includes(node.type);
 
 	let nodeCredentialDescription: INodeCredentialDescription | undefined;
 	if (!fullAccess) {
@@ -2252,6 +2253,7 @@ const getRequestHelperFunctions = (
 				source: null,
 			};
 
+			let count = 0;
 			do {
 				paginateRequestData = getResolvedValue(
 					paginationOptions.request as unknown as NodeParameterValueType,
@@ -2297,6 +2299,15 @@ const getRequestHelperFunctions = (
 				tempResponseData.body = newResponse.body;
 
 				additionalKeys.$response = newResponse;
+
+				if (this.getMode() === 'manual' && count++ === 0 && node.type === HTTP_REQUEST_NODE_TYPE) {
+					// For manual executions of the HTTP Request node save the first
+					// response in the context so that we can use it in the frontend
+					// and so make it easier for the users to create the required
+					// pagination expressions
+					const nodeContext = this.getContext('node');
+					nodeContext.response = newResponse;
+				}
 
 				responseData.push(tempResponseData);
 
@@ -2608,7 +2619,7 @@ export function getExecuteFunctions(
 						),
 					);
 			},
-			getContext(type: string): IContextObject {
+			getContext(type: ContextType): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
@@ -2763,7 +2774,7 @@ export function getExecuteSingleFunctions(
 					executeData,
 				);
 			},
-			getContext(type: string): IContextObject {
+			getContext(type: ContextType): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			getCredentials: async (type) =>
