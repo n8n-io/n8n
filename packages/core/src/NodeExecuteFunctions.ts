@@ -2290,11 +2290,14 @@ const getRequestHelperFunctions = (
 					newResponse[key] = tempResponseData[key];
 				}
 
-				const data = await this.helpers
-					.binaryToBuffer(newResponse.body as Buffer | Readable)
-					.then((body) => body.toString());
-				// TODO: Clean up, current always assumes it is parsable
-				newResponse.body = jsonParse(data);
+				if (newResponse.body?.constructor.name === 'IncomingMessage') {
+					const data = await this.helpers
+						.binaryToBuffer(newResponse.body as Buffer | Readable)
+						.then((body) => body.toString());
+					// TODO: Clean up, current always assumes it is parsable
+					newResponse.body = jsonParse(data);
+				}
+
 				// TODO: Check what really to do here
 				tempResponseData.body = newResponse.body;
 
