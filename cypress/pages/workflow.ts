@@ -96,6 +96,8 @@ export class WorkflowPage extends BasePage {
 		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
 		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
 		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
+		nodeCreatorNodeItems: () => cy.getByTestId('node-creator-item-node'),
+		nodeCreatorActionItems: () => cy.getByTestId('node-creator-item-action'),
 		ndvParameters: () => cy.getByTestId('parameter-item'),
 		nodeCredentialsLabel: () => cy.getByTestId('credentials-label'),
 		getConnectionBetweenNodes: (sourceNodeName: string, targetNodeName: string) =>
