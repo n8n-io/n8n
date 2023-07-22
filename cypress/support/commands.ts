@@ -108,17 +108,21 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 
 	element.then(([$el]) => {
 		const originalLocation = $el.getBoundingClientRect();
+		const newPosition = {
+			x: options?.abs ? xDiff : originalLocation.x + xDiff,
+			y: options?.abs ? yDiff : originalLocation.y + yDiff,
+		}
 
 		if(options?.realMouse) {
 			element.realMouseDown();
-			element.realMouseMove(options?.abs ? xDiff : originalLocation.x + xDiff, options?.abs ? yDiff : originalLocation.y + yDiff);
+			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
 			element.trigger('mousedown', {force: true});
 			element.trigger('mousemove', {
 				which: 1,
-				pageX: options?.abs ? xDiff : originalLocation.x + xDiff,
-				pageY: options?.abs ? yDiff : originalLocation.y + yDiff,
+				pageX: newPosition.x,
+				pageY: newPosition.y,
 				force: true,
 			});
 			element.trigger('mouseup', {force: true});
