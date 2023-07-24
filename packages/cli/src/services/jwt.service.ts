@@ -1,15 +1,18 @@
 import { Service } from 'typedi';
-import * as jwt from 'jsonwebtoken';
+import config from '@/config';
+import { JwtBaseService } from '@/services/jwt-base.service';
+import type { SignInOptions, VerifyOptions } from '@/services/jwt-base.service';
+export type * from '@/services/jwt-base.service';
 
 @Service()
-export class JwtService {
-	public sign(payload: object, secret: string, options: jwt.SignOptions = {}): string {
-		return jwt.sign(payload, secret, options);
+export class JwtService extends JwtBaseService {
+	private readonly userManagementSecret = config.getEnv('userManagement.jwtSecret');
+
+	public signData(payload: object, options: SignInOptions = {}): string {
+		return this.sign(payload, this.userManagementSecret, options);
 	}
 
-	public verify(token: string, secret: string, options: jwt.VerifyOptions = {}) {
-		return jwt.verify(token, secret, options) as JwtPayload;
+	public verifyToken(token: string, options: VerifyOptions = {}) {
+		return this.verify(token, this.userManagementSecret, options);
 	}
 }
-
-export type JwtPayload = jwt.JwtPayload;

@@ -147,11 +147,12 @@ export class PasswordResetController {
 		const baseUrl = getInstanceBaseUrl();
 		const { id, firstName, lastName } = user;
 
-		const jwtTokenSecret = this.config.getEnv('userManagement.jwtSecret');
-
-		const resetPasswordToken = this.jwtService.sign({ sub: id }, jwtTokenSecret, {
-			expiresIn: '1d',
-		});
+		const resetPasswordToken = this.jwtService.signData(
+			{ sub: id },
+			{
+				expiresIn: '1d',
+			},
+		);
 
 		const url = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
 
@@ -297,13 +298,9 @@ export class PasswordResetController {
 	}
 
 	private verifyResetPasswordToken(resetPasswordToken: string) {
-		const jwtSecret = this.config.getEnv('userManagement.jwtSecret');
-
 		let decodedToken: JwtPayload;
 		try {
-			decodedToken = this.jwtService.verify(resetPasswordToken, jwtSecret, {
-				ignoreExpiration: false,
-			});
+			decodedToken = this.jwtService.verifyToken(resetPasswordToken);
 			return decodedToken;
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
