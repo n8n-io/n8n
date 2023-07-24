@@ -10,13 +10,17 @@ import {
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
+	randomString,
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
+import { JwtService } from '@/services/jwt.service';
+import { Container } from 'typedi';
 
 jest.mock('@/UserManagement/email/NodeMailer');
+config.set('userManagement.jwtSecret', randomString(5, 10));
 
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
@@ -24,6 +28,7 @@ let owner: User;
 
 const externalHooks = utils.mockInstance(ExternalHooks);
 const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
+const jwtService = Container.get(JwtService);
 
 beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
@@ -51,10 +56,6 @@ describe('POST /forgot-password', () => {
 
 				expect(response.statusCode).toBe(200);
 				expect(response.body).toEqual({});
-
-				const user = await Db.collections.User.findOneByOrFail({ email: payload.email });
-				expect(user.resetPasswordToken).toBeDefined();
-				expect(user.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
 			}),
 		);
 	});
@@ -66,9 +67,6 @@ describe('POST /forgot-password', () => {
 			.post('/forgot-password')
 			.send({ email: owner.email })
 			.expect(500);
-
-		const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
-		expect(storedOwner.resetPasswordToken).toBeNull();
 	});
 
 	test('should fail if SAML is authentication method', async () => {
@@ -84,8 +82,6 @@ describe('POST /forgot-password', () => {
 			.send({ email: member.email })
 			.expect(403);
 
-		const storedOwner = await Db.collections.User.findOneByOrFail({ email: member.email });
-		expect(storedOwner.resetPasswordToken).toBeNull();
 		await setCurrentAuthenticationMethod('email');
 	});
 
@@ -100,8 +96,6 @@ describe('POST /forgot-password', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({});
 
-		const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
-		expect(storedOwner.resetPasswordToken).not.toBeNull();
 		await setCurrentAuthenticationMethod('email');
 	});
 
@@ -119,9 +113,6 @@ describe('POST /forgot-password', () => {
 		for (const invalidPayload of invalidPayloads) {
 			const response = await testServer.authlessAgent.post('/forgot-password').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
-
-			const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
-			expect(storedOwner.resetPasswordToken).toBeNull();
 		}
 	});
 
@@ -142,13 +133,7 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should succeed with valid inputs', async () => {
-		const resetPasswordToken = uuid();
-		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
-
-		await Db.collections.User.update(owner.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration,
-		});
+		const resetPasswordToken = jwtService.signData({ sub: owner.id });
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
@@ -172,21 +157,17 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if user is not found', async () => {
+		const token = jwtService.signData({ sub: 'test' });
+
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
-			.query({ userId: owner.id, token: uuid() });
+			.query({ userId: owner.id, token });
 
 		expect(response.statusCode).toBe(404);
 	});
 
 	test('should fail if token is expired', async () => {
-		const resetPasswordToken = uuid();
-		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;
-
-		await Db.collections.User.update(owner.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration,
-		});
+		const resetPasswordToken = jwtService.signData({ sub: owner.id }, { expiresIn: '-1h' });
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
@@ -197,17 +178,10 @@ describe('GET /resolve-password-token', () => {
 });
 
 describe('POST /change-password', () => {
-	const resetPasswordToken = uuid();
 	const passwordToStore = randomValidPassword();
 
 	test('should succeed with valid inputs', async () => {
-		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
-
-		await Db.collections.User.update(owner.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration,
-		});
-
+		const resetPasswordToken = jwtService.signData({ sub: owner.id });
 		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
 			userId: owner.id,
@@ -234,12 +208,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 100;
-
-		await Db.collections.User.update(owner.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration,
-		});
+		const resetPasswordToken = jwtService.signData({ sub: owner.id });
 
 		const invalidPayloads = [
 			{ token: uuid() },
@@ -272,12 +241,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('should fail when token has expired', async () => {
-		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) - 1;
-
-		await Db.collections.User.update(owner.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration,
-		});
+		const resetPasswordToken = jwtService.signData({ sub: owner.id }, { expiresIn: '-1h' });
 
 		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
