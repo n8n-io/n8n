@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -21,8 +20,8 @@ import {
 
 import moment from 'moment';
 
-import map from 'lodash.map';
-import isEmpty from 'lodash.isempty';
+import map from 'lodash/map';
+import isEmpty from 'lodash/isEmpty';
 
 interface Attachments {
 	type: string;
@@ -686,7 +685,7 @@ export class Mandrill implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available templates to display them to user so that he can
+			// Get all the available templates to display them to user so that they can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

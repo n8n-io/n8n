@@ -7,9 +7,8 @@ import { getLogger } from '@/Logger';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { LicenseService } from './License.service';
-import { getLicense } from '@/License';
+import { License } from '@/License';
 import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
-import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
@@ -34,7 +33,7 @@ licenseController.use((req, res, next) => {
  */
 licenseController.use((req: AuthenticatedRequest, res, next) => {
 	if (OWNER_ROUTES.includes(req.path) && req.user) {
-		if (!isInstanceOwner(req.user)) {
+		if (!req.user.isOwner) {
 			LoggerProxy.info('Non-owner attempted to activate or renew a license', {
 				userId: req.user.id,
 			});
@@ -69,30 +68,35 @@ licenseController.post(
 	'/activate',
 	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<ILicensePostResponse> => {
 		// Call the license manager activate function and tell it to throw an error
-		const license = getLicense();
+		const license = Container.get(License);
 		try {
 			await license.activate(req.body.activationKey);
 		} catch (e) {
 			const error = e as Error & { errorId?: string };
 
+			let message = 'Failed to activate license';
+
+			//override specific error messages (to map License Server vocabulary to n8n terms)
 			switch (error.errorId ?? 'UNSPECIFIED') {
 				case 'SCHEMA_VALIDATION':
-					error.message = 'Activation key is in the wrong format';
+					message = 'Activation key is in the wrong format';
 					break;
 				case 'RESERVATION_EXHAUSTED':
-					error.message =
+					message =
 						'Activation key has been used too many times. Please contact sales@n8n.io if you would like to extend it';
 					break;
 				case 'RESERVATION_EXPIRED':
-					error.message = 'Activation key has expired';
+					message = 'Activation key has expired';
 					break;
 				case 'NOT_FOUND':
 				case 'RESERVATION_CONFLICT':
-					error.message = 'Activation key not found';
+					message = 'Activation key not found';
 					break;
+				default:
+					getLogger().error(message, { stack: error.stack ?? 'n/a' });
 			}
 
-			throw new ResponseHelper.BadRequestError((e as Error).message);
+			throw new ResponseHelper.BadRequestError(message);
 		}
 
 		// Return the read data, plus the management JWT
@@ -111,14 +115,16 @@ licenseController.post(
 	'/renew',
 	ResponseHelper.send(async (): Promise<ILicensePostResponse> => {
 		// Call the license manager activate function and tell it to throw an error
-		const license = getLicense();
+		const license = Container.get(License);
 		try {
 			await license.renew();
 		} catch (e) {
+			const error = e as Error & { errorId?: string };
+
 			// not awaiting so as not to make the endpoint hang
 			void Container.get(InternalHooks).onLicenseRenewAttempt({ success: false });
-			if (e instanceof Error) {
-				throw new ResponseHelper.BadRequestError(e.message);
+			if (error instanceof Error) {
+				throw new ResponseHelper.BadRequestError(error.message);
 			}
 		}
 

@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
+import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
 import { createHash } from 'crypto';
 
@@ -236,7 +236,7 @@ export class HubspotTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available contacts to display them to user so that he can
+			// Get all the available contacts to display them to user so that they can
 			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -252,7 +252,7 @@ export class HubspotTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available companies to display them to user so that he can
+			// Get all the available companies to display them to user so that they can
 			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -268,7 +268,7 @@ export class HubspotTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available deals to display them to user so that he can
+			// Get all the available deals to display them to user so that they can
 			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -287,7 +287,6 @@ export class HubspotTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

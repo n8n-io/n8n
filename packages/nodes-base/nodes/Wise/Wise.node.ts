@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -34,7 +33,7 @@ import type {
 } from './GenericFunctions';
 import { wiseApiRequest } from './GenericFunctions';
 
-import omit from 'lodash.omit';
+import omit from 'lodash/omit';
 
 import moment from 'moment-timezone';
 

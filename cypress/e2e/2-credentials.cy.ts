@@ -6,21 +6,14 @@ import {
 	NEW_QUERY_AUTH_ACCOUNT_NAME,
 } from './../constants';
 import {
-	DEFAULT_USER_EMAIL,
-	DEFAULT_USER_PASSWORD,
 	GMAIL_NODE_NAME,
 	NEW_GOOGLE_ACCOUNT_NAME,
 	NEW_TRELLO_ACCOUNT_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	TRELLO_NODE_NAME,
 } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 import { CredentialsPage, CredentialsModal, WorkflowPage, NDV } from '../pages';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 const workflowPage = new WorkflowPage();
@@ -29,27 +22,7 @@ const nodeDetailsView = new NDV();
 const NEW_CREDENTIAL_NAME = 'Something else';
 
 describe('Credentials', () => {
-	before(() => {
-		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
-
-		// Always intercept the request to test credentials and return a success
-		cy.intercept('POST', '/rest/credentials/test', {
-			statusCode: 200,
-			body: {
-				data: { status: 'success', message: 'Tested successfully' },
-			}
-		});
-	});
-
 	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-
-			return false;
-		});
-
-		cy.signin({ email, password });
 		cy.visit(credentialsPage.url);
 	});
 
@@ -112,7 +85,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with multiple auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -129,7 +101,6 @@ describe('Credentials', () => {
 
 	it('should show multiple credential types in the same dropdown', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -155,7 +126,6 @@ describe('Credentials', () => {
 
 	it('should correctly render required and optional credentials', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
 		cy.get('body').type('{downArrow}');
 		cy.get('body').type('{enter}');
@@ -180,7 +150,6 @@ describe('Credentials', () => {
 
 	it('should create credentials from NDV for node with no auth options', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -194,7 +163,6 @@ describe('Credentials', () => {
 
 	it('should delete credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -214,7 +182,6 @@ describe('Credentials', () => {
 
 	it('should rename credentials from NDV', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -235,7 +202,6 @@ describe('Credentials', () => {
 
 	it('should setup generic authentication for HTTP node', () => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
@@ -256,25 +222,5 @@ describe('Credentials', () => {
 		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
 		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_QUERY_AUTH_ACCOUNT_NAME);
-	});
-
-	it('should render custom node with n8n credential', () => {
-		workflowPage.actions.visit();
-		workflowPage.actions.addNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('E2E Node with native n8n credential', true, true);
-		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
-		credentialsModal.getters.editCredentialModal().should('be.visible');
-		credentialsModal.getters.editCredentialModal().should('contain.text', 'Notion API');
-	});
-
-	it('should render custom node with custom credential', () => {
-		workflowPage.actions.visit();
-		workflowPage.actions.addNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('E2E Node with custom credential', true, true);
-		workflowPage.getters.nodeCredentialsLabel().click();
-		cy.contains('Create New Credential').click();
-		credentialsModal.getters.editCredentialModal().should('be.visible');
-		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
 	});
 });

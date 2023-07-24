@@ -5,7 +5,7 @@
 		:class="{
 			'n8n-radio-button': true,
 			[$style.container]: true,
-			[$style.hoverable]: !this.disabled,
+			[$style.hoverable]: !disabled,
 		}"
 		aria-checked="true"
 	>
@@ -26,9 +26,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-radio-button',
 	props: {
 		label: {

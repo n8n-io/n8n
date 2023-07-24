@@ -4,7 +4,7 @@
 			<n8n-heading size="2xlarge">{{
 				$locale.baseText('settings.personal.personalSettings')
 			}}</n8n-heading>
-			<div class="ph-no-capture" :class="$style.user">
+			<div :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
 				</span>
@@ -32,7 +32,7 @@
 				/>
 			</div>
 		</div>
-		<div v-if="!signInWithLdap">
+		<div v-if="!signInWithLdap && !signInWithSaml">
 			<div :class="$style.sectionHeader">
 				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
@@ -58,23 +58,28 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
-import { IFormInputs, IUser } from '@/Interface';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useToast } from '@/composables';
+import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
+import type { IFormInputs, IUser } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsPersonalView',
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
-			formBus: new Vue(),
+			formBus: createEventBus(),
 			readyToSubmit: false,
 		};
 	},
@@ -114,7 +119,7 @@ export default mixins(showMessage).extend({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: (this.isLDAPFeatureEnabled && this.signInWithLdap) || this.signInWithSaml,
 				},
 			},
 		];
@@ -129,6 +134,11 @@ export default mixins(showMessage).extend({
 		},
 		isLDAPFeatureEnabled(): boolean {
 			return this.settingsStore.settings.enterprise.ldap === true;
+		},
+		signInWithSaml(): boolean {
+			return (
+				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
+			);
 		},
 	},
 	methods: {
@@ -149,18 +159,18 @@ export default mixins(showMessage).extend({
 					lastName: form.lastName,
 					email: form.email,
 				});
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('settings.personal.personalSettingsUpdated'),
 					message: '',
 					type: 'success',
 				});
 				this.hasAnyChanges = false;
 			} catch (e) {
-				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
+				this.showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
 			}
 		},
 		onSaveClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		openPasswordModal() {
 			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);

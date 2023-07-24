@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -73,7 +72,7 @@ export class MicrosoftToDo implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the team's channels to display them to user so that he can
+			// Get all the team's channels to display them to user so that they can
 			// select them easily
 			async getTaskLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -220,6 +219,14 @@ export class MicrosoftToDo implements INodeType {
 								dateTime: moment.tz(body.dueDateTime, timezone).format(),
 								timeZone: timezone,
 							};
+						}
+
+						if (body.reminderDateTime) {
+							body.reminderDateTime = {
+								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								timeZone: timezone,
+							};
+							body.isReminderOn = true;
 						}
 
 						responseData = await microsoftApiRequest.call(

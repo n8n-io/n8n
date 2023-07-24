@@ -1,7 +1,7 @@
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -13,8 +13,8 @@ import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.int
 
 import { capitalCase } from 'change-case';
 
-import omit from 'lodash.omit';
-import pickBy from 'lodash.pickby';
+import omit from 'lodash/omit';
+import pickBy from 'lodash/pickBy';
 
 import type { OptionsWithUri } from 'request';
 

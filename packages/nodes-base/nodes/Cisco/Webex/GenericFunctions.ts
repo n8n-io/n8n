@@ -1,17 +1,18 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	INodeProperties,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import upperFirst from 'lodash.upperfirst';
+import upperFirst from 'lodash/upperFirst';
 
 import { createHash } from 'crypto';
 

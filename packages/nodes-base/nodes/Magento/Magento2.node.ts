@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -36,7 +35,7 @@ import type {
 	NewCustomer,
 	NewProduct,
 	Search,
-} from './Types';
+} from './types';
 
 import { capitalCase } from 'change-case';
 

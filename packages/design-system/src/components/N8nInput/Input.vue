@@ -25,9 +25,11 @@
 
 <script lang="ts">
 import { Input as ElInput } from 'element-ui';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+type InputRef = InstanceType<typeof ElInput>;
+
+export default defineComponent({
 	name: 'n8n-input',
 	components: {
 		ElInput,
@@ -83,16 +85,19 @@ export default Vue.extend({
 			return this.size;
 		},
 		classes(): string[] {
+			const classes = [];
 			if (this.size === 'xlarge') {
-				return ['xlarge'];
+				classes.push('xlarge');
 			}
-
-			return [];
+			if (this.type === 'password') {
+				classes.push('ph-no-capture');
+			}
+			return classes;
 		},
 	},
 	methods: {
 		focus() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 
@@ -105,7 +110,7 @@ export default Vue.extend({
 			inputElement.focus();
 		},
 		blur() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 
@@ -118,7 +123,7 @@ export default Vue.extend({
 			inputElement.blur();
 		},
 		select() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 

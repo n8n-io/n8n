@@ -6,9 +6,10 @@ import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
-import { mockInstance } from '../shared/utils';
+import { mockInstance } from '../shared/utils/';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
@@ -32,11 +33,10 @@ test('should report risky official nodes', async () => {
 	}, {});
 
 	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
-		const details = {
+		const details = new WorkflowEntity({
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},
-			nodeTypes: {},
 			nodes: [
 				{
 					id: nodeId,
@@ -44,9 +44,10 @@ test('should report risky official nodes', async () => {
 					type: nodeType,
 					typeVersion: 1,
 					position: [0, 0] as [number, number],
+					parameters: {},
 				},
 			],
-		};
+		});
 
 		return Db.collections.Workflow.save(details);
 	});

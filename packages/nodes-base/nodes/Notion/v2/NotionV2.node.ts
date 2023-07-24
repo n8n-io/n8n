@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -208,7 +207,7 @@ export class NotionV2 implements INodeType {
 				}));
 			},
 
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -601,6 +600,16 @@ export class NotionV2 implements INodeType {
 					if (properties.length !== 0) {
 						body.properties = mapProperties.call(this, properties, timezone, 2) as IDataObject;
 					}
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { type: 'external', external: { url: options.icon } };
+						} else {
+							body.icon = { type: 'emoji', emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple) {
 						responseData = simplifyObjects(responseData, false);
@@ -757,11 +766,6 @@ export class NotionV2 implements INodeType {
 					returnData.push(...executionData);
 				}
 			}
-		}
-
-		if (download) {
-			const rawData = returnData.map((data) => data.json);
-			return this.prepareOutputData(rawData as INodeExecutionData[]);
 		}
 
 		return this.prepareOutputData(returnData);

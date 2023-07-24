@@ -7,7 +7,8 @@ import type {
 	INodeCredentialTestResult,
 	INodeProperties,
 } from 'n8n-workflow';
-import { deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 
@@ -20,11 +21,10 @@ import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-
 import type { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
-import { Container } from 'typedi';
 
 export class CredentialsService {
 	static async get(
@@ -116,9 +116,7 @@ export class CredentialsService {
 
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
-		const newCredentials = Db.collections.Credentials.create(
-			rest as ICredentialsDb,
-		) as CredentialsEntity;
+		const newCredentials = Db.collections.Credentials.create(rest as ICredentialsDb);
 
 		await validateEntity(newCredentials);
 
@@ -140,10 +138,8 @@ export class CredentialsService {
 		}
 
 		// This saves us a merge but requires some type casting. These
-		// types are compatiable for this case.
-		const updateData = Db.collections.Credentials.create(
-			mergedData as ICredentialsDb,
-		) as CredentialsEntity;
+		// types are compatible for this case.
+		const updateData = Db.collections.Credentials.create(mergedData as ICredentialsDb);
 
 		await validateEntity(updateData);
 
@@ -227,10 +223,7 @@ export class CredentialsService {
 
 		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
+		const role = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
 
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
@@ -307,7 +300,11 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData') {
-				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
 				continue;
 			}
 			const prop = properties.find((v) => v.name === dataKey);
@@ -315,8 +312,11 @@ export class CredentialsService {
 				continue;
 			}
 			if (prop.typeOptions?.password) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
 			}
 		}
 
@@ -328,7 +328,7 @@ export class CredentialsService {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (value === CREDENTIAL_BLANKING_VALUE) {
+			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (

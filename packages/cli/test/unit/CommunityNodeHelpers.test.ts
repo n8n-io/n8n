@@ -22,7 +22,7 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { randomName } from '../integration/shared/random';
 import config from '@/config';
-import { installedPackagePayload, installedNodePayload } from '../integration/shared/utils';
+import { installedPackagePayload, installedNodePayload } from '../integration/shared/utils/';
 
 import type { CommunityPackages } from '@/Interfaces';
 
@@ -145,7 +145,7 @@ describe('executeCommand', () => {
 			);
 		});
 
-		await expect(async () => await executeCommand('ls')).rejects.toThrow(
+		await expect(async () => executeCommand('ls')).rejects.toThrow(
 			RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND,
 		);
 

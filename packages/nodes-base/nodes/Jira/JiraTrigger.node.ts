@@ -1,8 +1,8 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,

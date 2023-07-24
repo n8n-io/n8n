@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -23,10 +22,10 @@ import type {
 } from './GoogleSheet';
 import { GoogleSheet } from './GoogleSheet';
 
-import type { IGoogleAuthCredentials } from './GenericFunctions';
-import { getAccessToken, googleApiRequest, hexToRgb } from './GenericFunctions';
+import { googleApiRequest, hexToRgb } from './GenericFunctions';
 
 import { versionDescription } from './versionDescription';
+import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export class GoogleSheetsV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -72,10 +71,8 @@ export class GoogleSheetsV1 implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				try {
-					const tokenRequest = await getAccessToken.call(
-						this,
-						credential.data! as unknown as IGoogleAuthCredentials,
-					);
+					const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, 'sheetV1');
+
 					if (!tokenRequest.access_token) {
 						return {
 							status: 'Error',
@@ -133,7 +130,7 @@ export class GoogleSheetsV1 implements INodeType {
 					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
 
 					// Convert data into array format
-					const _data = await sheet.appendSheetData(
+					await sheet.appendSheetData(
 						setData,
 						sheet.encodeRange(range),
 						keyRow,
@@ -245,7 +242,7 @@ export class GoogleSheetsV1 implements INodeType {
 						}
 					}
 
-					const _data = await sheet.spreadsheetBatchUpdate(requests);
+					await sheet.spreadsheetBatchUpdate(requests);
 
 					const items = this.getInputData();
 					return await this.prepareOutputData(items);
@@ -398,7 +395,7 @@ export class GoogleSheetsV1 implements INodeType {
 							});
 						}
 
-						const _data = await sheet.batchUpdate(updateData, valueInputMode);
+						await sheet.batchUpdate(updateData, valueInputMode);
 					} else {
 						const keyName = this.getNodeParameter('key', 0) as string;
 						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
@@ -409,7 +406,7 @@ export class GoogleSheetsV1 implements INodeType {
 							setData.push(item.json);
 						});
 
-						const _data = await sheet.updateSheetData(
+						await sheet.updateSheetData(
 							setData,
 							keyName,
 							range,

@@ -5,6 +5,8 @@
 		:popper-class="$style.popover"
 		:value="show"
 		trigger="manual"
+		data-test-id="resource-locator-dropdown"
+		v-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
@@ -15,7 +17,6 @@
 				:value="filter"
 				:clearable="true"
 				@input="onFilterInput"
-				@blur="onSearchBlur"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 			>
@@ -36,7 +37,7 @@
 		<div
 			v-else-if="!errorView"
 			ref="resultsContainer"
-			:class="{ [$style.container]: true, [$style.pushDownResults]: filterable }"
+			:class="$style.container"
 			@scroll="onResultsEnd"
 		>
 			<div
@@ -65,7 +66,7 @@
 				</div>
 			</div>
 			<div v-if="loading && !errorView">
-				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
+				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
 					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				</div>
 			</div>
@@ -77,13 +78,16 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
 		value: {
@@ -117,6 +121,10 @@ export default Vue.extend({
 		width: {
 			type: Number,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	data() {
 		return {
@@ -125,7 +133,10 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		this.$on('keyDown', this.onKeyDown);
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeDestroy() {
+		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
@@ -166,18 +177,21 @@ export default Vue.extend({
 			window.open(url, '_blank');
 		},
 		onKeyDown(e: KeyboardEvent) {
-			const container = this.$refs.resultsContainer as HTMLElement;
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
 
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
 					this.hoverIndex++;
 
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop + item.clientHeight > container.scrollTop + container.offsetHeight) {
-							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
-							container.scrollTo({ top });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (
+							item.offsetTop + item.clientHeight >
+							containerRef.scrollTop + containerRef.offsetHeight
+						) {
+							const top = item.offsetTop - containerRef.offsetHeight + item.clientHeight;
+							containerRef.scrollTo({ top });
 						}
 					}
 				}
@@ -186,11 +200,11 @@ export default Vue.extend({
 					this.hoverIndex--;
 
 					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop <= container.scrollTop + searchOffset) {
-							container.scrollTo({ top: item.offsetTop - searchOffset });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (item.offsetTop <= containerRef.scrollTop + searchOffset) {
+							containerRef.scrollTo({ top: item.offsetTop - searchOffset });
 						}
 					}
 				}
@@ -201,7 +215,7 @@ export default Vue.extend({
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onSearchBlur() {
+		onClickOutside() {
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
@@ -224,9 +238,10 @@ export default Vue.extend({
 				return;
 			}
 
-			const container = this.$refs.resultsContainer as HTMLElement;
-			if (container) {
-				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
+			if (containerRef) {
+				const diff =
+					containerRef.offsetHeight - (containerRef.scrollHeight - containerRef.scrollTop);
 				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
 					this.$emit('loadMore');
 				}
@@ -253,19 +268,32 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.popover {
+:root .popover {
+	--content-height: 236px;
 	padding: 0;
 	border: var(--border-base);
-}
+	display: flex;
+	max-height: calc(var(--content-height) + var(--spacing-xl));
+	flex-direction: column;
 
-.pushDownResults {
-	padding-top: 36px;
+	& ::-webkit-scrollbar {
+		width: 12px;
+	}
+
+	& ::-webkit-scrollbar-thumb {
+		border-radius: 12px;
+		background: var(--color-foreground-dark);
+		border: 3px solid white;
+	}
+
+	& ::-webkit-scrollbar-thumb:hover {
+		background: var(--color-foreground-xdark);
+	}
 }
 
 .container {
 	position: relative;
-	max-height: 236px;
-	overflow: scroll;
+	overflow: auto;
 }
 
 .messageContainer {
@@ -279,8 +307,6 @@ export default Vue.extend({
 	border-bottom: var(--border-base);
 	--input-border-color: none;
 	--input-font-size: var(--font-size-2xs);
-	position: absolute;
-	top: 0;
 	width: 100%;
 	z-index: 1;
 }

@@ -5,6 +5,7 @@ import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
 
 export * from './Authentication';
+export * from './Constants';
 export * from './Cron';
 export * from './DeferredPromise';
 export * from './Interfaces';
@@ -22,7 +23,16 @@ export * from './WorkflowErrors';
 export * from './WorkflowHooks';
 export * from './VersionedNodeType';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
-export { deepCopy, jsonParse, sleep, fileTypeFromMimeType, assert } from './utils';
+export {
+	isObjectEmpty,
+	deepCopy,
+	jsonParse,
+	jsonStringify,
+	sleep,
+	fileTypeFromMimeType,
+	assert,
+	removeCircularRefs,
+} from './utils';
 export {
 	isINodeProperties,
 	isINodePropertyOptions,
@@ -30,9 +40,16 @@ export {
 	isINodePropertiesList,
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
+	isResourceMapperValue,
 } from './type-guards';
 
 export { ExpressionExtensions } from './Extensions';
 export { NativeMethods } from './NativeMethods';
 
-export type { DocMetadata } from './Extensions';
+export type { DocMetadata, NativeDoc } from './Extensions';
+
+declare module 'http' {
+	export interface IncomingMessage {
+		rawBody: Buffer;
+	}
+}

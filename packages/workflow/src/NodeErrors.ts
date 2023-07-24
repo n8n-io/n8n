@@ -7,7 +7,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // eslint-disable-next-line max-classes-per-file
 import { parseString } from 'xml2js';
+import { removeCircularRefs, isTraversableObject } from './utils';
 import type { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
+
+type Severity = 'warning' | 'error';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -103,8 +106,10 @@ export abstract class ExecutionBaseError extends Error {
  * Base class for specific NodeError-types, with functionality for finding
  * a value recursively inside an error object.
  */
-abstract class NodeError extends ExecutionBaseError {
+export abstract class NodeError extends ExecutionBaseError {
 	node: INode;
+
+	severity: Severity = 'error';
 
 	constructor(node: INode, error: Error | JsonObject) {
 		const message = error instanceof Error ? error.message : '';
@@ -152,7 +157,7 @@ abstract class NodeError extends ExecutionBaseError {
 						.map((jsonError) => {
 							if (typeof jsonError === 'string') return jsonError;
 							if (typeof jsonError === 'number') return jsonError.toString();
-							if (this.isTraversableObject(jsonError)) {
+							if (isTraversableObject(jsonError)) {
 								return this.findProperty(jsonError, potentialKeys);
 							}
 							return null;
@@ -164,7 +169,7 @@ abstract class NodeError extends ExecutionBaseError {
 					}
 					return resolvedErrors.join(' | ');
 				}
-				if (this.isTraversableObject(value)) {
+				if (isTraversableObject(value)) {
 					const property = this.findProperty(value, potentialKeys);
 					if (property) {
 						return property;
@@ -176,7 +181,7 @@ abstract class NodeError extends ExecutionBaseError {
 		// eslint-disable-next-line no-restricted-syntax
 		for (const key of traversalKeys) {
 			const value = jsonError[key];
-			if (this.isTraversableObject(value)) {
+			if (isTraversableObject(value)) {
 				const property = this.findProperty(value, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
@@ -186,47 +191,6 @@ abstract class NodeError extends ExecutionBaseError {
 
 		return null;
 	}
-
-	/**
-	 * Check if a value is an object with at least one key, i.e. it can be traversed.
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	protected isTraversableObject(value: any): value is JsonObject {
-		return (
-			value &&
-			typeof value === 'object' &&
-			!Array.isArray(value) &&
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			!!Object.keys(value).length
-		);
-	}
-
-	/**
-	 * Remove circular references from objects.
-	 */
-	protected removeCircularRefs(obj: JsonObject, seen = new Set()) {
-		seen.add(obj);
-		Object.entries(obj).forEach(([key, value]) => {
-			if (this.isTraversableObject(value)) {
-				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-				seen.has(value)
-					? (obj[key] = { circularReference: true })
-					: this.removeCircularRefs(value, seen);
-				return;
-			}
-			if (Array.isArray(value)) {
-				value.forEach((val, index) => {
-					if (seen.has(val)) {
-						value[index] = { circularReference: true };
-						return;
-					}
-					if (this.isTraversableObject(val)) {
-						this.removeCircularRefs(val, seen);
-					}
-				});
-			}
-		});
-	}
 }
 
 interface NodeOperationErrorOptions {
@@ -234,6 +198,7 @@ interface NodeOperationErrorOptions {
 	description?: string;
 	runIndex?: number;
 	itemIndex?: number;
+	severity?: Severity;
 }
 
 /**
@@ -248,9 +213,8 @@ export class NodeOperationError extends NodeError {
 		}
 		super(node, error);
 
-		if (options.message) {
-			this.message = options.message;
-		}
+		if (options.message) this.message = options.message;
+		if (options.severity) this.severity = options.severity;
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
@@ -270,7 +234,8 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'5XX': 'The service failed to process your request',
 	'500': 'The service was not able to process your request',
 	'502': 'Bad gateway - the service failed to handle your request',
-	'503': 'Service unavailable - perhaps try again later?',
+	'503':
+		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
 	'504': 'Gateway timed out - perhaps try again later?',
 
 	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
@@ -295,18 +260,70 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: JsonObject,
-		{ message, description, httpCode, parseXml, runIndex, itemIndex }: NodeApiErrorOptions = {},
+		{
+			message,
+			description,
+			httpCode,
+			parseXml,
+			runIndex,
+			itemIndex,
+			severity,
+		}: NodeApiErrorOptions = {},
 	) {
 		super(node, error);
+
+		if (severity) this.severity = severity;
+		else if (httpCode?.charAt(0) !== '5') this.severity = 'warning';
+
 		if (error.error) {
 			// only for request library error
-			this.removeCircularRefs(error.error as JsonObject);
+			removeCircularRefs(error.error as JsonObject);
+		}
+
+		if ((!message && (error.message || (error?.reason as IDataObject)?.message)) || description) {
+			this.message = (error.message ??
+				(error?.reason as IDataObject)?.message ??
+				description) as string;
+		}
+
+		if (!description && (error.description || (error?.reason as IDataObject)?.description)) {
+			this.description = (error.description ??
+				(error?.reason as IDataObject)?.description) as string;
+		}
+
+		if (
+			!httpCode &&
+			!message &&
+			this.message &&
+			this.message.toUpperCase().includes('ECONNREFUSED')
+		) {
+			httpCode = 'ECONNREFUSED';
+
+			const originalMessage = this.message;
+			if (!description) {
+				this.description = `${originalMessage}; ${this.description ?? ''}`;
+			}
+		}
+
+		if (
+			!httpCode &&
+			!message &&
+			this.message &&
+			this.message.toLowerCase().includes('bad gateway')
+		) {
+			httpCode = '502';
+
+			const originalMessage = this.message;
+			if (!description) {
+				this.description = `${originalMessage}; ${this.description ?? ''}`;
+			}
 		}
 
 		// if it's an error generated by axios
 		// look for descriptions in the response object
 		if (error.reason) {
 			const reason: IDataObject = error.reason as unknown as IDataObject;
+
 			if (reason.isAxiosError && reason.response) {
 				error = reason.response as JsonObject;
 			}
@@ -319,7 +336,12 @@ export class NodeApiError extends NodeError {
 			return;
 		}
 
-		this.httpCode = this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES);
+		if (httpCode) {
+			this.httpCode = httpCode;
+		} else {
+			this.httpCode = this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES);
+		}
+
 		this.setMessage();
 
 		if (parseXml) {
@@ -356,7 +378,8 @@ export class NodeApiError extends NodeError {
 	private setMessage() {
 		if (!this.httpCode) {
 			this.httpCode = null;
-			this.message = UNKNOWN_ERROR_MESSAGE;
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
 			return;
 		}
 
@@ -373,10 +396,17 @@ export class NodeApiError extends NodeError {
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				this.message = UNKNOWN_ERROR_MESSAGE;
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
 		}
 		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
 		}
+	}
+}
+
+export class NodeSSLError extends ExecutionBaseError {
+	constructor(cause: Error) {
+		super("SSL Issue: consider using the 'Ignore SSL issues' option", { cause });
 	}
 }

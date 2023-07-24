@@ -1,6 +1,10 @@
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type {
@@ -12,7 +16,7 @@ import type {
 
 import type { OptionsWithUri } from 'request';
 
-import omit from 'lodash.omit';
+import { omit } from 'lodash';
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,

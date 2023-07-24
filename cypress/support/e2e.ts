@@ -1,43 +1,25 @@
-// ***********************************************************
-// This example support/e2e.js is processed and
-// loaded automatically before your test files.
-//
-// This is a great place to put global configuration and
-// behavior that modifies Cypress.
-//
-// You can change the location of this file or turn off
-// automatically serving support files with the
-// 'supportFile' configuration option.
-//
-// You can read more here:
-// https://on.cypress.io/configuration
-// ***********************************************************
-
+import { BACKEND_BASE_URL, INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
 import './commands';
-import CustomNodeFixture from '../fixtures/Custom_node.json';
-import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
-import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
-import CustomCredential from '../fixtures/Custom_credential.json';
 
-// Load custom nodes and credentials fixtures
+before(() => {
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
+		owner: INSTANCE_OWNER,
+		members: INSTANCE_MEMBERS,
+	});
+});
+
 beforeEach(() => {
-	cy.intercept('GET', '/types/nodes.json', (req) => {
-		req.continue((res) => {
-			const nodes = res.body;
+	if (!cy.config('disableAutoLogin')) {
+		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+	}
 
-			res.headers['cache-control'] = 'no-cache, no-store';
-			nodes.push(CustomNodeFixture, CustomNodeWithN8nCredentialFixture, CustomNodeWithCustomCredentialFixture);
-			res.send(nodes);
-		});
-	}).as('nodesIntercept');
+	cy.intercept('GET', '/rest/settings').as('loadSettings');
 
-	cy.intercept('GET', '/types/credentials.json', (req) => {
-		req.continue((res) => {
-			const credentials = res.body;
-
-			res.headers['cache-control'] = 'no-cache, no-store';
-			credentials.push(CustomCredential);
-			res.send(credentials);
-		});
-	}).as('credentialsIntercept');
-})
+	// Always intercept the request to test credentials and return a success
+	cy.intercept('POST', '/rest/credentials/test', {
+		statusCode: 200,
+		body: {
+			data: { status: 'success', message: 'Tested successfully' },
+		},
+	});
+});

@@ -10,7 +10,7 @@ import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
 
 import type { WebhookHttpMethod } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -27,6 +27,7 @@ import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { getRedisClusterNodes } from './GenericHelpers';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -54,6 +55,8 @@ export abstract class AbstractServer {
 	protected endpointWebhookTest: string;
 
 	protected endpointWebhookWaiting: string;
+
+	protected instanceId = '';
 
 	abstract configure(): Promise<void>;
 
@@ -157,33 +160,17 @@ export abstract class AbstractServer {
 	protected setupPushServer() {}
 
 	private async setupHealthCheck() {
-		this.app.use((req, res, next) => {
-			if (!Db.isInitialized) {
-				sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
-			} else next();
+		// health check should not care about DB connections
+		this.app.get('/healthz', async (req, res) => {
+			res.send({ status: 'ok' });
 		});
 
-		// Does very basic health check
-		this.app.get('/healthz', async (req, res) => {
-			Logger.debug('Health check started!');
-
-			const connection = Db.getConnection();
-
-			try {
-				if (!connection.isInitialized) {
-					// Connection is not active
-					throw new ServiceUnavailableError('No active database connection!');
-				}
-				// DB ping
-				await connection.query('SELECT 1');
-			} catch (error) {
-				ErrorReporter.error(error);
-				Logger.error('No Database connection!');
-				return sendErrorResponse(res, new ServiceUnavailableError('No Database connection!'));
-			}
-
-			Logger.debug('Health check completed successfully!');
-			sendSuccessResponse(res, { status: 'ok' }, true, 200);
+		const { connectionState } = Db;
+		this.app.use((req, res, next) => {
+			if (connectionState.connected) {
+				if (connectionState.migrated) next();
+				else res.send('n8n is starting up. Please wait');
+			} else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
 		});
 
 		if (config.getEnv('executions.mode') === 'queue') {
@@ -201,42 +188,64 @@ export abstract class AbstractServer {
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
 		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+		const clusterNodes = getRedisClusterNodes();
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-
-		const redis = new Redis({
-			host,
-			port,
-			db,
+		const usesRedisCluster = clusterNodes.length > 0;
+		LoggerProxy.debug(
+			usesRedisCluster
+				? `Initialising Redis cluster connection with nodes: ${clusterNodes
+						.map((e) => `${e.host}:${e.port}`)
+						.join(',')}`
+				: `Initialising Redis client connection with host: ${host ?? 'localhost'} and port: ${
+						port ?? '6379'
+				  }`,
+		);
+		const sharedRedisOptions: RedisOptions = {
 			username,
 			password,
-			retryStrategy: (): number | null => {
-				const now = Date.now();
-				if (now - lastTimer > 30000) {
-					// Means we had no timeout at all or last timeout was temporary and we recovered
-					lastTimer = now;
-					cumulativeTimeout = 0;
-				} else {
-					cumulativeTimeout += now - lastTimer;
-					lastTimer = now;
-					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-						Logger.error(
-							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-						);
-						process.exit(1);
-					}
-				}
-				return 500;
-			},
-		});
+			db,
+			enableReadyCheck: false,
+			maxRetriesPerRequest: null,
+		};
+		const redis = usesRedisCluster
+			? new Redis.Cluster(
+					clusterNodes.map((node) => ({ host: node.host, port: node.port })),
+					{
+						redisOptions: sharedRedisOptions,
+					},
+			  )
+			: new Redis({
+					host,
+					port,
+					...sharedRedisOptions,
+					retryStrategy: (): number | null => {
+						const now = Date.now();
+						if (now - lastTimer > 30000) {
+							// Means we had no timeout at all or last timeout was temporary and we recovered
+							lastTimer = now;
+							cumulativeTimeout = 0;
+						} else {
+							cumulativeTimeout += now - lastTimer;
+							lastTimer = now;
+							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
+								LoggerProxy.error(
+									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+								);
+								process.exit(1);
+							}
+						}
+						return 500;
+					},
+			  });
 
 		redis.on('close', () => {
-			Logger.warn('Redis unavailable - trying to reconnect...');
+			LoggerProxy.warn('Redis unavailable - trying to reconnect...');
 		});
 
 		redis.on('error', (error) => {
 			if (!String(error).includes('ECONNREFUSED')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				Logger.warn('Error with Redis: ', error);
+				LoggerProxy.warn('Error with Redis: ', error);
 			}
 		});
 	}
@@ -302,7 +311,7 @@ export abstract class AbstractServer {
 	// ----------------------------------------
 	protected setupWaitingWebhookEndpoint() {
 		const endpoint = this.endpointWebhookWaiting;
-		const waitingWebhooks = new WaitingWebhooks();
+		const waitingWebhooks = Container.get(WaitingWebhooks);
 
 		// Register all webhook-waiting requests
 		this.app.all(`/${endpoint}/*`, async (req, res) => {
@@ -398,8 +407,8 @@ export abstract class AbstractServer {
 		);
 	}
 
-	async start(): Promise<void> {
-		const { app, externalHooks, protocol, sslKey, sslCert } = this;
+	async init(): Promise<void> {
+		const { app, protocol, sslKey, sslCert } = this;
 
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
@@ -429,6 +438,12 @@ export abstract class AbstractServer {
 
 		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
 
+		await this.setupHealthCheck();
+
+		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
+	}
+
+	async start(): Promise<void> {
 		await this.setupErrorHandlers();
 		this.setupPushServer();
 		await this.setupCommonMiddlewares();
@@ -436,11 +451,7 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
-		await this.setupHealthCheck();
-
 		await this.configure();
-
-		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${N8N_VERSION}`);
 
 		const defaultLocale = config.getEnv('defaultLocale');
@@ -448,7 +459,7 @@ export abstract class AbstractServer {
 			console.log(`Locale: ${defaultLocale}`);
 		}
 
-		await externalHooks.run('n8n.ready', [this, config]);
+		await this.externalHooks.run('n8n.ready', [this, config]);
 	}
 }
 

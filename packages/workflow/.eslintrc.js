@@ -1,4 +1,4 @@
-const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n_io/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
@@ -9,7 +9,6 @@ module.exports = {
 	...sharedOptions(__dirname),
 
 	rules: {
-		'@typescript-eslint/consistent-type-imports': 'error',
 		'import/order': 'off', // TODO: remove this
 	},
 };

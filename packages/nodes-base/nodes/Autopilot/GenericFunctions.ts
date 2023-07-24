@@ -1,8 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function autopilotApiRequest(
@@ -65,7 +70,8 @@ export async function autopilotApiRequestAllItems(
 		responseData = await autopilotApiRequest.call(this, method, endpoint, body, query);
 		endpoint = `${base}/${responseData.bookmark}`;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		if (query.limit && returnData.length >= query.limit && !returnAll) {
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit && !returnAll) {
 			return returnData;
 		}
 	} while (responseData.bookmark !== undefined);

@@ -1,8 +1,10 @@
 import { SettingsSidebar } from './sidebar/settings-sidebar';
 import { MainSidebar } from './sidebar/main-sidebar';
+import { WorkflowPage } from './workflow';
 import { WorkflowsPage } from './workflows';
 import { BasePage } from './base';
 
+const workflowPage =  new WorkflowPage();
 const workflowsPage =  new WorkflowsPage();
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
@@ -30,7 +32,7 @@ export class SettingsUsersPage extends BasePage {
 		goToOwnerSetup: () => this.getters.setUpOwnerButton().click(),
 		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
 			cy.signin({ email, password });
-			cy.visit(workflowsPage.url);
+			workflowPage.actions.visit();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {
 				settingsSidebar.getters.menuItem('Users').click();

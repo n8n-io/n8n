@@ -1,7 +1,7 @@
-import * as Helpers from '../../../test/nodes/Helpers';
-import type { WorkflowTestData } from '../../../test/nodes/types';
+import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
 
-import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import path from 'path';
 
 describe('Execute Spreadsheet File Node', () => {
@@ -87,9 +87,9 @@ describe('Execute Spreadsheet File Node', () => {
 										mimeType: 'text/csv',
 										fileType: 'text',
 										fileExtension: 'csv',
-										data: '77u/QSxCLEMKMSwyLDMKNCw1LDYK',
+										data: '77u/QSxCLEMKMSwyLDMKNCw1LDY=',
 										fileName: 'spreadsheet.csv',
-										fileSize: '21 B',
+										fileSize: '20 B',
 									},
 								},
 							},

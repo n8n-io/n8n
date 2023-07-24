@@ -4,7 +4,7 @@ import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -12,6 +12,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { RoleNames } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
@@ -111,7 +112,7 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
+	static async getWorkflowIdsForUser(user: User, roles?: RoleNames[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
@@ -186,7 +187,7 @@ export class WorkflowsService {
 		user: User,
 		workflow: WorkflowEntity,
 		workflowId: string,
-		tags?: string[],
+		tagIds?: string[],
 		forceSave?: boolean,
 		roles?: string[],
 	): Promise<WorkflowEntity> {
@@ -245,30 +246,25 @@ export class WorkflowsService {
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
-		if (workflow.settings) {
-			if (workflow.settings.timezone === 'DEFAULT') {
-				// Do not save the default timezone
-				delete workflow.settings.timezone;
+		const workflowSettings = workflow.settings ?? {};
+
+		const keysAllowingDefault = [
+			'timezone',
+			'saveDataErrorExecution',
+			'saveDataSuccessExecution',
+			'saveManualExecutions',
+			'saveExecutionProgress',
+		] as const;
+		for (const key of keysAllowingDefault) {
+			// Do not save the default value
+			if (workflowSettings[key] === 'DEFAULT') {
+				delete workflowSettings[key];
 			}
-			if (workflow.settings.saveDataErrorExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveDataErrorExecution;
-			}
-			if (workflow.settings.saveDataSuccessExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveDataSuccessExecution;
-			}
-			if (workflow.settings.saveManualExecutions === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveManualExecutions;
-			}
-			if (
-				parseInt(workflow.settings.executionTimeout as string, 10) ===
-				config.get('executions.timeout')
-			) {
-				// Do not save when default got set
-				delete workflow.settings.executionTimeout;
-			}
+		}
+
+		if (workflowSettings.executionTimeout === config.get('executions.timeout')) {
+			// Do not save when default got set
+			delete workflowSettings.executionTimeout;
 		}
 
 		if (workflow.name) {
@@ -290,13 +286,11 @@ export class WorkflowsService {
 			]),
 		);
 
-		if (tags && !config.getEnv('workflowTagsDisabled')) {
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			await TagHelpers.removeRelations(workflowId, tablePrefix);
-
-			if (tags.length) {
-				await TagHelpers.createRelations(workflowId, tags, tablePrefix);
-			}
+		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
+			await Db.collections.WorkflowTagMapping.delete({ workflowId });
+			await Db.collections.WorkflowTagMapping.insert(
+				tagIds.map((tagId) => ({ tagId, workflowId })),
+			);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
@@ -314,9 +308,9 @@ export class WorkflowsService {
 			);
 		}
 
-		if (updatedWorkflow.tags?.length && tags?.length) {
+		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
-				requestOrder: tags,
+				requestOrder: tagIds,
 			});
 		}
 

@@ -1,14 +1,15 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, IOAuth2Options, JsonObject } from 'n8n-workflow';
+	IOAuth2Options,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function clickupApiRequest(
@@ -78,7 +79,8 @@ export async function clickupApiRequestAllItems(
 		responseData = await clickupApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.page++;
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);

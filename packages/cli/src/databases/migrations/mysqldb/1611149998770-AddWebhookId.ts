@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddWebhookId1611149998770 implements MigrationInterface {
-	name = 'AddWebhookId1611149998770';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class AddWebhookId1611149998770 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'ALTER TABLE `' + tablePrefix + 'webhook_entity` ADD `webhookId` varchar(255) NULL',
 		);
@@ -22,9 +17,7 @@ export class AddWebhookId1611149998770 implements MigrationInterface {
 		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'DROP INDEX `IDX_' +
 				tablePrefix +

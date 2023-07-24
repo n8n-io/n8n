@@ -1,15 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
-} from 'n8n-core';
+} from 'n8n-workflow';
 
-import type { IDataObject } from 'n8n-workflow';
-
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,

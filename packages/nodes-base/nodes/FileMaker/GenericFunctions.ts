@@ -1,6 +1,11 @@
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, INodePropertyOptions, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -65,13 +70,22 @@ export async function getToken(
 		if (typeof response === 'string') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
+				'DataAPI response body is not valid JSON. Is the DataAPI enabled?',
 			);
 		}
 
 		return response.response.token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		let message
+		if ( error.statusCode === 502 ) {
+			message = 'The server is not responding. Is the DataAPI enabled?'
+		}
+		else if (error.error ) {
+			message = error.error.messages[0].code + ' - ' + error.error.messages[0].message
+		} else {
+			message = error.message;
+		}
+		throw new Error(message);
 	}
 }
 
@@ -252,25 +266,8 @@ export async function logout(
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 
-	try {
-		const response = await this.helpers.request(requestOptions);
-
-		if (typeof response === 'string') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
-			);
-		}
-
-		return response;
-	} catch (error) {
-		const errorMessage = `${error.response.body.messages[0].message}'(' + ${error.response.body.messages[0].message}')'`;
-
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		}
-		throw error.response.body;
-	}
+	const response = await this.helpers.request(requestOptions);
+	return response
 }
 
 export function parseSort(this: IExecuteFunctions, i: number): object | null {

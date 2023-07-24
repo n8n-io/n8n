@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -161,14 +160,6 @@ export class Strava implements INodeType {
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
-
-						if (updateFields.trainer === true) {
-							updateFields.trainer = 1;
-						}
-
-						if (updateFields.commute === true) {
-							updateFields.commute = 1;
-						}
 
 						const body: IDataObject = {};
 

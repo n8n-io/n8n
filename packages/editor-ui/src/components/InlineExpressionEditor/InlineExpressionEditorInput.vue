@@ -1,16 +1,16 @@
 <template>
-	<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-input"></div>
+	<div ref="root" data-test-id="inline-expression-editor-input"></div>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
-import { EditorState, Prec } from '@codemirror/state';
-import { history } from '@codemirror/commands';
-import { autocompletion, completionStatus } from '@codemirror/autocomplete';
+import { Compartment, EditorState, Prec } from '@codemirror/state';
+import { history, redo } from '@codemirror/commands';
+import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
@@ -19,8 +19,11 @@ import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionManager } from '@/mixins/completionManager';
 
-export default mixins(completionManager, expressionManager, workflowHelpers).extend({
+const editableConf = new Compartment();
+
+export default defineComponent({
 	name: 'InlineExpressionEditorInput',
+	mixins: [completionManager, expressionManager, workflowHelpers],
 	props: {
 		value: {
 			type: String,
@@ -38,6 +41,11 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 		},
 	},
 	watch: {
+		isReadOnly(newValue: boolean) {
+			this.editor?.dispatch({
+				effects: editableConf.reconfigure(EditorView.editable.of(!newValue)),
+			});
+		},
 		value(newValue) {
 			const isInternalChange = newValue === this.editor?.state.doc.toString();
 
@@ -78,6 +86,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			Prec.highest(
 				keymap.of([
+					{ key: 'Tab', run: acceptCompletion },
 					{
 						any(view: EditorView, event: KeyboardEvent) {
 							if (event.key === 'Escape' && completionStatus(view.state) !== null) {
@@ -87,6 +96,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 							return false;
 						},
 					},
+					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
 			autocompletion(),
@@ -94,7 +104,8 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,
-			EditorView.editable.of(!this.isReadOnly),
+			editableConf.of(EditorView.editable.of(!this.isReadOnly)),
+			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({
 				focus: () => {
 					this.$emit('focus');

@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-param-description-excess-final-period */
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -500,6 +500,11 @@ export class StripeTrigger implements INodeType {
 						name: 'Payment Intent.succeeded',
 						value: 'payment_intent.succeeded',
 						description: 'Occurs when a PaymentIntent has been successfully fulfilled.',
+					},
+					{
+						name: 'Payment Intent.requires_action',
+						value: 'payment_intent.requires_action',
+						description: 'Occurs when a PaymentIntent requires an action.',
 					},
 					{
 						name: 'Payment Method.attached',

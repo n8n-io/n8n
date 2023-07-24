@@ -28,7 +28,7 @@
 				</div>
 			</div>
 			<template #reference>
-				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: editable }">
+				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
 					{{ value }}
 					<div :class="$style.editIconContainer">
 						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="editable" />
@@ -40,10 +40,14 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'NodeTitle',
+	components: {
+		NodeIcon,
+	},
 	props: {
 		value: {
 			type: String,
@@ -70,9 +74,9 @@ export default Vue.extend({
 			this.newName = this.value;
 			this.editName = true;
 			this.$nextTick(() => {
-				const input = this.$refs.input;
-				if (input) {
-					(input as HTMLInputElement).focus();
+				const inputRef = this.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			});
 		},

@@ -1,78 +1,55 @@
-import express from 'express';
-
-import * as utils from './shared/utils';
-import * as testDb from './shared/testDb';
+import type { SuperAgentTest } from 'supertest';
+import type { IPinData } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 
-import type { Role } from '@db/entities/Role';
-import type { IPinData } from 'n8n-workflow';
-import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
+import * as utils from './shared/utils/';
+import * as testDb from './shared/testDb';
+import { makeWorkflow, MOCK_PINDATA } from './shared/utils/';
 
-let app: express.Application;
-let globalOwnerRole: Role;
+let authOwnerAgent: SuperAgentTest;
 
-// mock whether sharing is enabled or not
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['workflows'] });
-
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
+	const globalOwnerRole = await testDb.getGlobalOwnerRole();
+	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+	authOwnerAgent = testServer.authAgentFor(ownerShell);
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow']);
+	await testDb.truncate(['Workflow', 'SharedWorkflow']);
 });
 
-afterAll(async () => {
-	await testDb.terminate();
+describe('POST /workflows', () => {
+	const testWithPinData = async (withPinData: boolean) => {
+		const workflow = makeWorkflow({ withPinData });
+		const response = await authOwnerAgent.post('/workflows').send(workflow);
+		expect(response.statusCode).toBe(200);
+		return (response.body.data as { pinData: IPinData }).pinData;
+	};
+
+	test('should store pin data for node in workflow', async () => {
+		const pinData = await testWithPinData(true);
+		expect(pinData).toMatchObject(MOCK_PINDATA);
+	});
+
+	test('should set pin data to null if no pin data', async () => {
+		const pinData = await testWithPinData(false);
+		expect(pinData).toBeNull();
+	});
 });
 
-test('POST /workflows should store pin data for node in workflow', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
+describe('GET /workflows/:id', () => {
+	test('should return pin data', async () => {
+		const workflow = makeWorkflow({ withPinData: true });
+		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
 
-	const workflow = makeWorkflow({ withPinData: true });
+		const { id } = workflowCreationResponse.body.data as { id: string };
+		const workflowRetrievalResponse = await authOwnerAgent.get(`/workflows/${id}`);
 
-	const response = await authOwnerAgent.post('/workflows').send(workflow);
-
-	expect(response.statusCode).toBe(200);
-
-	const { pinData } = response.body.data as { pinData: IPinData };
-
-	expect(pinData).toMatchObject(MOCK_PINDATA);
-});
-
-test('POST /workflows should set pin data to null if no pin data', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-
-	const workflow = makeWorkflow({ withPinData: false });
-
-	const response = await authOwnerAgent.post('/workflows').send(workflow);
-
-	expect(response.statusCode).toBe(200);
-
-	const { pinData } = response.body.data as { pinData: IPinData };
-
-	expect(pinData).toBeNull();
-});
-
-test('GET /workflows/:id should return pin data', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
-
-	const workflow = makeWorkflow({ withPinData: true });
-
-	const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
-
-	const { id } = workflowCreationResponse.body.data as { id: string };
-
-	const workflowRetrievalResponse = await authOwnerAgent.get(`/workflows/${id}`);
-
-	expect(workflowRetrievalResponse.statusCode).toBe(200);
-
-	const { pinData } = workflowRetrievalResponse.body.data as { pinData: IPinData };
-
-	expect(pinData).toMatchObject(MOCK_PINDATA);
+		expect(workflowRetrievalResponse.statusCode).toBe(200);
+		const { pinData } = workflowRetrievalResponse.body.data as { pinData: IPinData };
+		expect(pinData).toMatchObject(MOCK_PINDATA);
+	});
 });

@@ -1,10 +1,9 @@
 import dateformat from 'dateformat';
-import { IDataObject, jsonParse } from 'n8n-workflow';
-import { Schema, Optional, Primitives } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { Schema, Optional, Primitives } from '@/Interface';
 import { isObj } from '@/utils/typeGuards';
 import { generatePath } from '@/utils/mappingUtils';
-import { DateTime } from 'luxon';
-import { useWorkflowsStore } from '@/stores/workflows';
 
 /*
 	Constants and utility functions than can be used to manipulate different data types and objects
@@ -163,54 +162,6 @@ export const isValidDate = (input: string | number | Date): boolean => {
 
 export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 	Object.keys(o) as K[];
-
-export const mergeDeep = <T extends object | Primitives>(
-	sources: T[],
-	options?: Partial<Record<'overwriteArrays' | 'concatArrays', boolean>>,
-): T =>
-	sources.reduce((target, source) => {
-		if (Array.isArray(target) && Array.isArray(source)) {
-			const tLength = target.length;
-			const sLength = source.length;
-
-			if (tLength === 0 || options?.overwriteArrays) {
-				return source;
-			}
-
-			if (sLength === 0) {
-				return target;
-			}
-
-			if (options?.concatArrays) {
-				return [...target, ...source];
-			}
-
-			if (tLength === sLength) {
-				return target.map((item, index) => mergeDeep([item, source[index]], options));
-			} else if (tLength < sLength) {
-				return source.map((item, index) => mergeDeep([target[index], item], options));
-			} else {
-				return [...source, ...target.slice(sLength)];
-			}
-		} else if (isObj(target) && isObj(source)) {
-			const targetKeys = getObjectKeys(target);
-			const sourceKeys = getObjectKeys(source);
-			const allKeys = [...new Set([...targetKeys, ...sourceKeys])];
-			const mergedObject = Object.create(Object.prototype);
-			for (const key of allKeys) {
-				if (targetKeys.includes(key) && sourceKeys.includes(key)) {
-					mergedObject[key] = mergeDeep([target[key] as T, source[key] as T], options);
-				} else if (targetKeys.includes(key)) {
-					mergedObject[key] = target[key];
-				} else {
-					mergedObject[key] = source[key];
-				}
-			}
-			return mergedObject;
-		} else {
-			return source;
-		}
-	}, (Array.isArray(sources[0]) ? [] : {}) as T);
 
 export const getSchema = (input: Optional<Primitives | object>, path = ''): Schema => {
 	let schema: Schema = { type: 'undefined', value: 'undefined', path };

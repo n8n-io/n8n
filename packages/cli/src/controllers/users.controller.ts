@@ -1,30 +1,32 @@
 import validator from 'validator';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
 import {
 	addInviteLinkToUser,
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
-	isUserManagementEnabled,
 	sanitizeUser,
 	validatePassword,
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
-import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
-import { UserRequest } from '@/requests';
+import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
-import type { Role } from '@db/entities/Role';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -35,7 +37,20 @@ import type {
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
+import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import type {
+	RoleRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@db/repositories';
+import { UserService } from '@/user/user.service';
+import { plainToInstance } from 'class-transformer';
+import { License } from '@/License';
+import { Container } from 'typedi';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
+@Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
 	private config: Config;
@@ -46,13 +61,13 @@ export class UsersController {
 
 	private internalHooks: IInternalHooksClass;
 
-	private userRepository: Repository<User>;
+	private userRepository: UserRepository;
 
-	private roleRepository: Repository<Role>;
+	private roleRepository: RoleRepository;
 
-	private sharedCredentialsRepository: Repository<SharedCredentials>;
+	private sharedCredentialsRepository: SharedCredentialsRepository;
 
-	private sharedWorkflowRepository: Repository<SharedWorkflow>;
+	private sharedWorkflowRepository: SharedWorkflowRepository;
 
 	private activeWorkflowRunner: ActiveWorkflowRunner;
 
@@ -100,12 +115,22 @@ export class UsersController {
 	 */
 	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
-		// TODO: this should be checked in the middleware rather than here
-		if (!isUserManagementEnabled()) {
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because user management is disabled',
+				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
-			throw new BadRequestError('User management is disabled');
+			throw new BadRequestError(
+				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+			);
+		}
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -145,7 +170,7 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findOneBy({ scope: 'global', name: 'member' });
+		const role = await this.roleRepository.findGlobalMemberRole();
 
 		if (!role) {
 			this.logger.error(
@@ -276,6 +301,7 @@ export class UsersController {
 	/**
 	 * Fill out user shell with first name, last name, and password.
 	 */
+	@NoAuthRequired()
 	@Post('/:id')
 	async updateUser(req: UserRequest.Update, res: Response) {
 		const { id: inviteeId } = req.params;
@@ -337,6 +363,7 @@ export class UsersController {
 		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
 	}
 
+	@Authorized('any')
 	@Get('/')
 	async listUsers(req: UserRequest.List) {
 		const users = await this.userRepository.find({ relations: ['globalRole', 'authIdentities'] });
@@ -344,6 +371,38 @@ export class UsersController {
 			(user): PublicUser =>
 				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
 		);
+	}
+
+	@Authorized(['global', 'owner'])
+	@Get('/:id/password-reset-link')
+	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: req.params.id },
+		});
+		if (!user) {
+			throw new NotFoundError('User not found');
+		}
+		const link = await UserService.generatePasswordResetUrl(user);
+		return {
+			link,
+		};
+	}
+
+	@Authorized(['global', 'owner'])
+	@Patch('/:id/settings')
+	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+
+		const id = req.params.id;
+
+		await UserService.updateUserSettings(id, payload);
+
+		const user = await this.userRepository.findOneOrFail({
+			select: ['settings'],
+			where: { id },
+		});
+
+		return user.settings;
 	}
 
 	/**
@@ -394,8 +453,8 @@ export class UsersController {
 		}
 
 		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'workflow' }),
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'credential' }),
+			this.roleRepository.findWorkflowOwnerRole(),
+			this.roleRepository.findCredentialOwnerRole(),
 		]);
 
 		if (transferId) {
@@ -509,6 +568,14 @@ export class UsersController {
 	@Post('/:id/reinvite')
 	async reinviteUser(req: UserRequest.Reinvite) {
 		const { id: idToReinvite } = req.params;
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 
 		if (!isEmailSetUp()) {
 			this.logger.error('Request to reinvite a user failed because email sending was not set up');

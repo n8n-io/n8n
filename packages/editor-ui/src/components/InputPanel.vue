@@ -45,7 +45,7 @@
 						:label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`"
 						data-test-id="ndv-input-option"
 					>
-						{{ truncate(node.name) }}&nbsp;
+						<span>{{ truncate(node.name) }}&nbsp;</span>
 						<span v-if="getMultipleNodesText(node.name)">{{
 							getMultipleNodesText(node.name)
 						}}</span>
@@ -117,7 +117,7 @@
 			}}</n8n-text>
 		</template>
 
-		<template #recovered-artifical-output-data>
+		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
@@ -131,11 +131,12 @@
 </template>
 
 <script lang="ts">
-import { INodeUi } from '@/Interface';
-import { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { INodeUi } from '@/Interface';
+import type { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
 import {
@@ -144,13 +145,13 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 } from '@/constants';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'InputPanel',
+	mixins: [workflowHelpers],
 	components: { RunData, NodeExecuteButton, WireMeUp },
 	props: {
 		currentNodeName: {

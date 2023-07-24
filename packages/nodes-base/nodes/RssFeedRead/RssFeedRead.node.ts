@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -14,7 +14,7 @@ import { URL } from 'url';
 
 function validateURL(url: string) {
 	try {
-		const _parseUrl = new URL(url);
+		new URL(url);
 		return true;
 	} catch (err) {
 		return false;

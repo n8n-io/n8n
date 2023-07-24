@@ -8,15 +8,12 @@ import type { OptionsWithUri } from 'request';
 import { parseString } from 'xml2js';
 
 import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IHttpRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';

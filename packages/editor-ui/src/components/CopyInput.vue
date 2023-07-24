@@ -2,7 +2,12 @@
 	<div>
 		<n8n-input-label :label="label">
 			<div
-				:class="{ [$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse }"
+				:class="{
+					[$style.copyText]: true,
+					[$style[size]]: true,
+					[$style.collapsed]: collapse,
+					'ph-no-capture': redactValue,
+				}"
 				@click="copy"
 				data-test-id="copy-input"
 			>
@@ -17,11 +22,12 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
-export default mixins(copyPaste, showMessage).extend({
+export default defineComponent({
+	mixins: [copyPaste],
 	props: {
 		label: {
 			type: String,
@@ -55,13 +61,22 @@ export default mixins(copyPaste, showMessage).extend({
 			type: String,
 			default: 'large',
 		},
+		redactValue: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	methods: {
 		copy(): void {
 			this.$emit('copy');
 			this.copyToClipboard(this.value);
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.toastTitle,
 				message: this.toastMessage,
 				type: 'success',
@@ -102,7 +117,7 @@ export default mixins(copyPaste, showMessage).extend({
 
 .medium {
 	span {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size-xs);
 		line-height: 1;
 	}
 }

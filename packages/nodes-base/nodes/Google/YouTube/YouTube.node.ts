@@ -1,4 +1,3 @@
-import { BINARY_ENCODING } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
@@ -97,7 +96,7 @@ export class YouTube implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the languages to display them to user so that he can
+			// Get all the languages to display them to user so that they can
 			// select them easily
 			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -117,7 +116,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the countries codes to display them to user so that he can
+			// Get all the countries codes to display them to user so that they can
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -131,7 +130,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the video categories to display them to user so that he can
+			// Get all the video categories to display them to user so that they can
 			// select them easily
 			async getVideoCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('regionCode') as string;
@@ -158,7 +157,7 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the playlists to display them to user so that he can
+			// Get all the playlists to display them to user so that they can
 			// select them easily
 			async getPlaylists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

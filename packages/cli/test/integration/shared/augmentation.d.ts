@@ -1,5 +1,4 @@
 import superagent = require('superagent');
-import type { ObjectLiteral } from 'typeorm';
 
 /**
  * Make `SuperTest<T>` string-indexable.

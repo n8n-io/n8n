@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.list" v-if="loading || workflows.length">
-		<div :class="$style.header">
+		<div :class="$style.header" v-if="!simpleView">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
@@ -12,6 +12,7 @@
 				:key="workflow.id"
 				:workflow="workflow"
 				:firstItem="index === 0"
+				:simple-view="simpleView"
 				:lastItem="index === workflows.length - 1 && !loading"
 				:useWorkflowButton="useWorkflowButton"
 				@click="(e) => onCardClick(e, workflow.id)"
@@ -32,12 +33,13 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 import TemplateCard from './TemplateCard.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateList',
+	mixins: [genericHelpers],
 	props: {
 		infiniteScrollEnabled: {
 			type: Boolean,
@@ -55,6 +57,10 @@ export default mixins(genericHelpers).extend({
 		},
 		totalWorkflows: {
 			type: Number,
+		},
+		simpleView: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	mounted() {
@@ -76,12 +82,12 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		onScroll() {
-			const el = this.$refs.loader;
-			if (!el || this.loading) {
+			const loaderRef = this.$refs.loader as HTMLElement | undefined;
+			if (!loaderRef || this.loading) {
 				return;
 			}
 
-			const rect = (el as Element).getBoundingClientRect();
+			const rect = loaderRef.getBoundingClientRect();
 			const inView =
 				rect.top >= 0 &&
 				rect.left >= 0 &&

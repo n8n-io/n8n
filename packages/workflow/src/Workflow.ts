@@ -49,12 +49,14 @@ import type {
 	IRunNodeResponse,
 	NodeParameterValueType,
 } from './Interfaces';
+import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
+import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -405,21 +407,18 @@ export class Workflow {
 		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 
-	/**
-	 * Renames nodes in expressions
-	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue The parameters to check for expressions
-	 * @param {string} currentName The current name of the node
-	 * @param {string} newName The new name
-	 */
-	renameNodeInExpressions(
+	renameNodeInParameterValue(
 		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
+		{ hasRenamableContent } = { hasRenamableContent: false },
 	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
-			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+			if (
+				typeof parameterValue === 'string' &&
+				(parameterValue.charAt(0) === '=' || hasRenamableContent)
+			) {
 				// Is expression so has to be rewritten
 				// To not run the "expensive" regex stuff when it is not needed
 				// make a simple check first if it really contains the the node-name
@@ -467,7 +466,13 @@ export class Workflow {
 			const returnArray: any[] = [];
 
 			for (const currentValue of parameterValue) {
-				returnArray.push(this.renameNodeInExpressions(currentValue, currentName, newName));
+				returnArray.push(
+					this.renameNodeInParameterValue(
+						currentValue as NodeParameterValueType,
+						currentName,
+						newName,
+					),
+				);
 			}
 
 			return returnArray;
@@ -478,10 +483,11 @@ export class Workflow {
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			returnData[parameterName] = this.renameNodeInExpressions(
+			returnData[parameterName] = this.renameNodeInParameterValue(
 				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,
 				newName,
+				{ hasRenamableContent },
 			);
 		}
 
@@ -505,11 +511,20 @@ export class Workflow {
 		// Update the expressions which reference the node
 		// with its old name
 		for (const node of Object.values(this.nodes)) {
-			node.parameters = this.renameNodeInExpressions(
+			node.parameters = this.renameNodeInParameterValue(
 				node.parameters,
 				currentName,
 				newName,
 			) as INodeParameters;
+
+			if (NODES_WITH_RENAMABLE_CONTENT.has(node.type)) {
+				node.parameters.jsCode = this.renameNodeInParameterValue(
+					node.parameters.jsCode,
+					currentName,
+					newName,
+					{ hasRenamableContent: true },
+				);
+			}
 		}
 
 		// Change all source connections
@@ -982,17 +997,8 @@ export class Workflow {
 		const node = this.getNode(webhookData.node) as INode;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		if (nodeType.webhookMethods === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name] === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name][method] === undefined) {
-			return;
-		}
+		const webhookFn = nodeType.webhookMethods?.[webhookData.webhookDescription.name]?.[method];
+		if (webhookFn === undefined) return;
 
 		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(
 			this,
@@ -1003,8 +1009,8 @@ export class Workflow {
 			isTest,
 			webhookData,
 		);
-		// eslint-disable-next-line consistent-return
-		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
+
+		return webhookFn.call(thisArgs);
 	}
 
 	/**
@@ -1132,14 +1138,14 @@ export class Workflow {
 			throw new Error(`The node "${node.name}" does not have any webhooks defined.`);
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteWebhookFunctions(
+		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
 			this,
 			node,
 			additionalData,
 			mode,
 			webhookData,
 		);
-		return nodeType.webhook.call(thisArgs);
+		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
 	}
 
 	/**
@@ -1176,18 +1182,26 @@ export class Workflow {
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (
-			nodeType.execute ||
-			nodeType.executeSingle ||
-			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
-		) {
-			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
+		if (nodeType.execute || (!nodeType.poll && !nodeType.trigger && !nodeType.webhook)) {
+			// Only stop if first input is empty for execute runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
 
-			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
-				// We always use the data of main input and the first input for executeSingle
+			if (inputData.main?.length > 0) {
+				// We always use the data of main input and the first input for execute
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
+			}
+
+			const forceInputNodeExecution = this.settings.executionOrder !== 'v1';
+			if (!forceInputNodeExecution) {
+				// If the nodes do not get force executed data of some inputs may be missing
+				// for that reason do we use the data of the first one that contains any
+				for (const mainData of inputData.main) {
+					if (mainData?.length) {
+						connectionInputData = mainData;
+						break;
+					}
+				}
 			}
 
 			if (connectionInputData.length === 0) {
@@ -1221,42 +1235,8 @@ export class Workflow {
 			inputData = newInputData;
 		}
 
-		if (nodeType.executeSingle) {
-			const returnPromises: Array<Promise<INodeExecutionData>> = [];
-
-			for (let itemIndex = 0; itemIndex < connectionInputData.length; itemIndex++) {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
-					this,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					inputData,
-					node,
-					itemIndex,
-					additionalData,
-					executionData,
-					mode,
-				);
-
-				returnPromises.push(nodeType.executeSingle.call(thisArgs));
-			}
-
-			if (returnPromises.length === 0) {
-				return { data: null };
-			}
-
-			let promiseResults;
-			try {
-				promiseResults = await Promise.all(returnPromises);
-			} catch (error) {
-				return Promise.reject(error);
-			}
-
-			if (promiseResults) {
-				return { data: [promiseResults] };
-			}
-		} else if (nodeType.execute) {
-			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(
+		if (nodeType.execute) {
+			const context = nodeExecuteFunctions.getExecuteFunctions(
 				this,
 				runExecutionData,
 				runIndex,
@@ -1267,7 +1247,11 @@ export class Workflow {
 				executionData,
 				mode,
 			);
-			return { data: await nodeType.execute.call(thisArgs) };
+			const data =
+				nodeType instanceof Node
+					? await nodeType.execute(context)
+					: await nodeType.execute.call(context);
+			return { data };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function

@@ -50,10 +50,11 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		 * - Complete `$input.item.` to `.json .binary`.
 		 */
 		inputMethodCompletions(context: CompletionContext): CompletionResult | null {
+			const prefix = this.language === 'python' ? '_' : '$';
 			const patterns = {
-				first: /\$input\.first\(\)\..*/,
-				last: /\$input\.last\(\)\..*/,
-				item: /\$input\.item\..*/,
+				first: new RegExp(`\\${prefix}input\\.first\\(\\)\\..*`),
+				last: new RegExp(`\\${prefix}input\\.last\\(\\)\\..*`),
+				item: new RegExp(`\\${prefix}item\\.first\\(\\)\\..*`),
 				all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
 			};
 
@@ -64,11 +65,11 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 				let replacementBase = '';
 
-				if (name === 'item') replacementBase = '$input.item';
+				if (name === 'item') replacementBase = `${prefix}input.item`;
 
-				if (name === 'first') replacementBase = '$input.first()';
+				if (name === 'first') replacementBase = `${prefix}input.first()`;
 
-				if (name === 'last') replacementBase = '$input.last()';
+				if (name === 'last') replacementBase = `${prefix}input.last()`;
 
 				if (name === 'all') {
 					const match = preCursor.text.match(regex);
@@ -77,7 +78,7 @@ export const itemFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					const { index } = match.groups;
 
-					replacementBase = `$input.all()[${index}]`;
+					replacementBase = `${prefix}input.all()[${index}]`;
 				}
 
 				const options: Completion[] = [

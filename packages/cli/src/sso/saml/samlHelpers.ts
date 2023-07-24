@@ -1,16 +1,25 @@
+import { Container } from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
-import { AuthIdentity } from '../../databases/entities/AuthIdentity';
-import { User } from '../../databases/entities/User';
-import { getLicense } from '../../License';
-import { AuthError } from '../../ResponseHelper';
-import { hashPassword, isUserManagementEnabled } from '../../UserManagement/UserManagementHelper';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
+import { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
+import { License } from '@/License';
+import { AuthError, InternalServerError } from '@/ResponseHelper';
+import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
-import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
-import { isSamlCurrentAuthenticationMethod } from '../ssoHelpers';
+import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
+import {
+	getCurrentAuthenticationMethod,
+	isEmailCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '../ssoHelpers';
+import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
+import type { SamlConfiguration } from './types/requests';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -22,8 +31,21 @@ export function getSamlLoginLabel(): string {
 	return config.getEnv(SAML_LOGIN_LABEL);
 }
 
-export function setSamlLoginEnabled(enabled: boolean): void {
-	config.set(SAML_LOGIN_ENABLED, enabled);
+// can only toggle between email and saml, not directly to e.g. ldap
+export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
+	if (isEmailCurrentAuthenticationMethod() || isSamlCurrentAuthenticationMethod()) {
+		if (enabled) {
+			config.set(SAML_LOGIN_ENABLED, true);
+			await setCurrentAuthenticationMethod('saml');
+		} else if (!enabled) {
+			config.set(SAML_LOGIN_ENABLED, false);
+			await setCurrentAuthenticationMethod('email');
+		}
+	} else {
+		throw new InternalServerError(
+			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${getCurrentAuthenticationMethod()})`,
+		);
+	}
 }
 
 export function setSamlLoginLabel(label: string): void {
@@ -31,11 +53,7 @@ export function setSamlLoginLabel(label: string): void {
 }
 
 export function isSamlLicensed(): boolean {
-	const license = getLicense();
-	return (
-		isUserManagementEnabled() &&
-		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))
-	);
+	return Container.get(License).isSamlEnabled();
 }
 
 export function isSamlLicensedAndEnabled(): boolean {
@@ -79,12 +97,11 @@ export function generatePassword(): string {
 export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
 	const user = new User();
 	const authIdentity = new AuthIdentity();
-	user.email = attributes.email;
+	const lowerCasedEmail = attributes.email?.toLowerCase() ?? '';
+	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Db.collections.Role.findOneOrFail({
-		where: { name: 'member', scope: 'global' },
-	});
+	user.globalRole = await Container.get(RoleRepository).findGlobalMemberRoleOrFail();
 	// generates a password that is not used or known to the user
 	user.password = await hashPassword(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;
@@ -157,4 +174,8 @@ export function getMappedSamlAttributesFromFlowResult(
 		if (!lastName) result.missingAttributes.push(attributeMapping.lastName);
 	}
 	return result;
+}
+
+export function isConnectionTestRequest(req: SamlConfiguration.AcsRequest): boolean {
+	return req.body.RelayState === getServiceProviderConfigTestReturnUrl();
 }

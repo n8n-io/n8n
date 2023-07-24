@@ -47,14 +47,17 @@
 	</div>
 </template>
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { abbreviateNumber, filterTemplateNodes } from '@/utils';
-import { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
-export default Vue.extend({
+import { useTemplatesStore } from '@/stores/templates.store';
+import TimeAgo from '@/components/TimeAgo.vue';
+
+export default defineComponent({
 	name: 'TemplateDetails',
 	props: {
 		blockTitle: {
@@ -70,6 +73,7 @@ export default Vue.extend({
 	components: {
 		NodeIcon,
 		TemplateDetailsBlock,
+		TimeAgo,
 	},
 	computed: {
 		...mapStores(useTemplatesStore),
@@ -79,11 +83,11 @@ export default Vue.extend({
 		filterTemplateNodes,
 		redirectToCategory(id: string) {
 			this.templatesStore.resetSessionId();
-			this.$router.push(`/templates?categories=${id}`);
+			void this.$router.push(`/templates?categories=${id}`);
 		},
 		redirectToSearchPage(node: ITemplatesNode) {
 			this.templatesStore.resetSessionId();
-			this.$router.push(`/templates?search=${node.displayName}`);
+			void this.$router.push(`/templates?search=${node.displayName}`);
 		},
 	},
 });

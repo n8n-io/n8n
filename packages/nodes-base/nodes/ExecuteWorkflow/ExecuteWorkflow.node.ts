@@ -1,7 +1,7 @@
 import { readFile as fsReadFile } from 'fs/promises';
 
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,

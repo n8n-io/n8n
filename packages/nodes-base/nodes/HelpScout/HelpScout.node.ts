@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -88,7 +87,7 @@ export class HelpScout implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the countries codes to display them to user so that he can
+			// Get all the countries codes to display them to user so that they can
 			// select them easily
 			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -102,7 +101,7 @@ export class HelpScout implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -114,7 +113,6 @@ export class HelpScout implements INodeType {
 				);
 				for (const tag of tags) {
 					const tagName = tag.name;
-					const _tagId = tag.id;
 					returnData.push({
 						name: tagName,
 						value: tagName,
@@ -122,7 +120,7 @@ export class HelpScout implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the mailboxes to display them to user so that he can
+			// Get all the mailboxes to display them to user so that they can
 			// select them easily
 			async getMailboxes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -458,7 +456,6 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/chat
 					if (operation === 'create') {
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
-						const _type = this.getNodeParameter('type', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
