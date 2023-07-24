@@ -18,6 +18,7 @@
 					:inputs="survey"
 					:columnView="true"
 					:eventBus="formBus"
+					:teleported="teleported"
 					@submit="onSubmit"
 				/>
 			</div>
@@ -135,12 +136,18 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
 	mixins: [workflowHelpers],
 	components: { Modal },
+	props: {
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
 			isSaving: false,

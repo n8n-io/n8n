@@ -164,7 +164,7 @@ import {
 } from '@/stores';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useCloudPlanStore } from '@/stores';
 import { nodeViewEventBus } from '@/event-bus';
 

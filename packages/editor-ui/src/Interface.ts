@@ -62,6 +62,10 @@ declare global {
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
 					};
+					session_recording?: {
+						maskAllInputs?: boolean;
+						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
+					};
 				},
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;

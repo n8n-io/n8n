@@ -144,7 +144,7 @@ import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -553,6 +553,10 @@ export default defineComponent({
 				return false;
 			}
 
+			if (parameter.displayOptions?.hideOnCloud && this.settingsStore.isCloudDeployment) {
+				return false;
+			}
+
 			if (parameter.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
 				return true;
@@ -669,6 +673,9 @@ export default defineComponent({
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		onDataChange({ name, value }: { name: string; value: any }) {
+			// skip update if new value matches the current
+			if (this.credentialData[name] === value) return;
+
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;

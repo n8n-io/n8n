@@ -65,7 +65,7 @@ import ModalDrawer from '@/components/ModalDrawer.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useToast } from '@/composables';
 
 const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';

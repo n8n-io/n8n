@@ -3,7 +3,6 @@
 		<el-dialog
 			:modelValue="dialogVisible"
 			class="expression-dialog classic"
-			append-to-body
 			width="80%"
 			:title="$locale.baseText('expressionEdit.editExpression')"
 			:before-close="closeDialog"
@@ -20,7 +19,11 @@
 					</div>
 
 					<div class="variable-selector">
-						<variable-selector :path="path" @itemSelected="itemSelected"></variable-selector>
+						<variable-selector
+							:path="path"
+							:redactValues="redactValues"
+							@itemSelected="itemSelected"
+						></variable-selector>
 					</div>
 				</el-col>
 				<el-col :span="16" class="right-side">
@@ -43,11 +46,12 @@
 								</n8n-link>
 							</div>
 						</div>
-						<div class="expression-editor ph-no-capture">
+						<div class="expression-editor">
 							<ExpressionEditorModalInput
 								:modelValue="modelValue"
 								:isReadOnly="isReadOnlyRoute"
 								:path="path"
+								:class="{ 'ph-no-capture': redactValues }"
 								@change="valueChanged"
 								@close="closeDialog"
 								ref="inputFieldExpression"
@@ -60,7 +64,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
-						<div class="ph-no-capture">
+						<div :class="{ 'ph-no-capture': redactValues }">
 							<ExpressionEditorModalOutput
 								:segments="segments"
 								ref="expressionResult"
@@ -98,7 +102,7 @@ import type { Segment } from '@/types/expressions';
 export default defineComponent({
 	name: 'ExpressionEdit',
 	mixins: [externalHooks, genericHelpers, debounceHelper],
-	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource'],
+	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
 	components: {
 		ExpressionEditorModalInput,
 		ExpressionEditorModalOutput,
@@ -312,7 +316,7 @@ export default defineComponent({
 }
 
 .header-side-menu {
-	padding: 1em 0 0.5em 1.8em;
+	padding: 1em 0 0.5em var(--spacing-s);
 	border-top-left-radius: 8px;
 
 	background-color: var(--color-background-base);
@@ -337,6 +341,6 @@ export default defineComponent({
 }
 
 .variable-selector {
-	margin: 0 1em;
+	margin: 0 var(--spacing-s);
 }
 </style>

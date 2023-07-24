@@ -10,7 +10,7 @@ const IdentityProviderSettingsType = {
 	XML: 'xml',
 };
 
-const { i18n } = useI18n();
+const i18n = useI18n();
 const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const message = useMessage();

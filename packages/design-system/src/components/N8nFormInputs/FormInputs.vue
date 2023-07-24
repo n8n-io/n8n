@@ -25,6 +25,7 @@
 						:modelValue="values[input.name]"
 						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
+						:teleported="teleported"
 						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
 						@enter="onSubmit"
@@ -67,6 +68,10 @@ export default defineComponent({
 			type: String,
 			default: '',
 			validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
+		},
+		teleported: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	data() {

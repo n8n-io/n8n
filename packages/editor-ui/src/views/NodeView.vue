@@ -348,14 +348,16 @@ export default defineComponent({
 		CanvasControls,
 	},
 	setup(props) {
+		const locale = useI18n();
+
 		return {
+			locale,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
-			...useI18n(),
 			...workflowRun.setup?.(props),
 		};
 	},
@@ -494,7 +496,7 @@ export default defineComponent({
 			useHistoryStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
-			return this.rootStore.nativelyNumberSuffixedDefaults;
+			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -861,6 +863,12 @@ export default defineComponent({
 			}
 
 			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
+
+			data.workflow.nodes?.forEach((node) => {
+				if (node.credentials) {
+					delete node.credentials;
+				}
+			});
 
 			this.blankRedirect = true;
 			void this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
@@ -1908,7 +1916,7 @@ export default defineComponent({
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
 
-			const localizedName = this.localizeNodeName(newNodeData.name, newNodeData.type);
+			const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
 
 			newNodeData.name = this.uniqueNodeName(localizedName);
 
@@ -2720,7 +2728,7 @@ export default defineComponent({
 				const newNodeData = deepCopy(this.getNodeDataToSave(node));
 				newNodeData.id = uuid();
 
-				const localizedName = this.localizeNodeName(newNodeData.name, newNodeData.type);
+				const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
 
 				newNodeData.name = this.uniqueNodeName(localizedName);
 
@@ -3372,7 +3380,7 @@ export default defineComponent({
 
 				oldName = node.name;
 
-				const localized = this.localizeNodeName(node.name, node.type);
+				const localized = this.locale.localizeNodeName(node.name, node.type);
 
 				newName = this.uniqueNodeName(localized, newNodeNames);
 

@@ -88,10 +88,11 @@
 				:toastTitle="
 					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 				"
+				:redactValue="true"
 			/>
 		</template>
 		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
-			<div class="ph-no-capture">
+			<div>
 				<n8n-info-tip :bold="false">
 					{{
 						$locale.baseText('credentialEdit.credentialEdit.info.sharee', {

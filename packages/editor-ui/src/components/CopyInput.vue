@@ -2,7 +2,12 @@
 	<div>
 		<n8n-input-label :label="label">
 			<div
-				:class="{ [$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse }"
+				:class="{
+					[$style.copyText]: true,
+					[$style[size]]: true,
+					[$style.collapsed]: collapse,
+					'ph-no-capture': redactValue,
+				}"
 				@click="copy"
 				data-test-id="copy-input"
 			>
@@ -56,6 +61,10 @@ export default defineComponent({
 		size: {
 			type: String,
 			default: 'large',
+		},
+		redactValue: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	setup() {

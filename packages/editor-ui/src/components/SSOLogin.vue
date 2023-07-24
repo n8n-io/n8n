@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { useSSOStore } from '@/stores/sso.store';
-import { useToast } from '@/composables';
+import { useI18n, useToast } from '@/composables';
 
+const i18n = useI18n();
 const ssoStore = useSSOStore();
 const toast = useToast();
 
@@ -17,14 +18,14 @@ const onSSOLogin = async () => {
 <template>
 	<div v-if="ssoStore.showSsoLoginButton" :class="$style.ssoLogin">
 		<div :class="$style.divider">
-			<span>{{ $locale.baseText('sso.login.divider') }}</span>
+			<span>{{ i18n.baseText('sso.login.divider') }}</span>
 		</div>
 		<n8n-button
 			@click="onSSOLogin"
 			size="large"
 			type="primary"
 			outline
-			:label="$locale.baseText('sso.login.button')"
+			:label="i18n.baseText('sso.login.button')"
 		/>
 	</div>
 </template>

@@ -3,7 +3,7 @@
 		<template #aside v-if="showAside">
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(`${resourceKey}.heading`) }}
+					{{ i18n.baseText(`${resourceKey}.heading`) }}
 				</n8n-heading>
 			</div>
 
@@ -16,7 +16,7 @@
 						@click="$emit('click:add', $event)"
 						data-test-id="resources-list-add"
 					>
-						{{ $locale.baseText(`${resourceKey}.add`) }}
+						{{ i18n.baseText(`${resourceKey}.add`) }}
 					</n8n-button>
 				</slot>
 			</div>
@@ -24,8 +24,8 @@
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
 				<resource-ownership-select
 					v-model="isOwnerSubview"
-					:my-resources-label="$locale.baseText(`${resourceKey}.menu.my`)"
-					:all-resources-label="$locale.baseText(`${resourceKey}.menu.all`)"
+					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
+					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
 				/>
 			</enterprise-edition>
 		</template>
@@ -42,7 +42,7 @@
 						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="
-							$locale.baseText(
+							i18n.baseText(
 								usersStore.currentUser.firstName
 									? `${resourceKey}.empty.heading`
 									: `${resourceKey}.empty.heading.userNotSetup`,
@@ -51,8 +51,8 @@
 								},
 							)
 						"
-						:description="$locale.baseText(`${resourceKey}.empty.description`)"
-						:buttonText="$locale.baseText(`${resourceKey}.empty.button`)"
+						:description="i18n.baseText(`${resourceKey}.empty.description`)"
+						:buttonText="i18n.baseText(`${resourceKey}.empty.button`)"
 						buttonType="secondary"
 						@click:button="$emit('click:add', $event)"
 					/>
@@ -65,7 +65,7 @@
 							<n8n-input
 								:modelValue="filtersModel.search"
 								:class="[$style['search'], 'mr-2xs']"
-								:placeholder="$locale.baseText(`${resourceKey}.search.placeholder`)"
+								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder`)"
 								clearable
 								ref="search"
 								data-test-id="resources-list-search"
@@ -82,7 +82,7 @@
 										data-test-id="resources-list-sort-item"
 										:key="sortOption"
 										:value="sortOption"
-										:label="$locale.baseText(`${resourceKey}.sort.${sortOption}`)"
+										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}`)"
 									/>
 								</n8n-select>
 								<resource-filters-dropdown
@@ -106,9 +106,9 @@
 
 					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
 						<n8n-info-tip :bold="false">
-							{{ $locale.baseText(`${resourceKey}.filters.active`) }}
+							{{ i18n.baseText(`${resourceKey}.filters.active`) }}
 							<n8n-link @click="resetFilters" size="small">
-								{{ $locale.baseText(`${resourceKey}.filters.active.reset`) }}
+								{{ i18n.baseText(`${resourceKey}.filters.active.reset`) }}
 							</n8n-link>
 						</n8n-info-tip>
 					</div>
@@ -153,22 +153,20 @@
 				</div>
 
 				<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
-					{{ $locale.baseText(`${resourceKey}.noResults`) }}
+					{{ i18n.baseText(`${resourceKey}.noResults`) }}
 					<template v-if="shouldSwitchToAllSubview">
 						<span v-if="!filtersModel.search">
-							({{ $locale.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
+							({{ i18n.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
 							<n8n-link @click="setOwnerSubview(false)">
-								{{ $locale.baseText(`${resourceKey}.noResults.switchToShared.link`) }} </n8n-link
+								{{ i18n.baseText(`${resourceKey}.noResults.switchToShared.link`) }} </n8n-link
 							>)
 						</span>
 
 						<span v-else>
-							({{
-								$locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.preamble`)
-							}}
+							({{ i18n.baseText(`${resourceKey}.noResults.withSearch.switchToShared.preamble`) }}
 							<n8n-link @click="setOwnerSubview(false)">
 								{{
-									$locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.link`)
+									i18n.baseText(`${resourceKey}.noResults.withSearch.switchToShared.link`)
 								}} </n8n-link
 							>)
 						</span>
@@ -197,6 +195,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput } from 'n8n-design-system';
 import type { DatatableColumn } from 'n8n-design-system';
+import { useI18n } from '@/composables';
 
 export interface IResource {
 	id: string;
@@ -285,6 +284,13 @@ export default defineComponent({
 				itemSize: 80,
 			}),
 		},
+	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+		};
 	},
 	data() {
 		return {
@@ -413,7 +419,7 @@ export default defineComponent({
 			this.isOwnerSubview = active;
 		},
 		getTelemetrySubview(): string {
-			return this.$locale.baseText(
+			return this.i18n.baseText(
 				`${this.resourceKey as IResourceKeyType}.menu.${this.isOwnerSubview ? 'my' : 'all'}`,
 			);
 		},

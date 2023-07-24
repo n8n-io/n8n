@@ -9,6 +9,7 @@ import { useSSOStore } from '@/stores/sso.store';
 import { STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { i18nInstance } from '@/plugins/i18n';
+import { createComponentRenderer } from '@/__tests__/render';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -23,20 +24,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let ssoStore: ReturnType<typeof useSSOStore>;
 let router: ReturnType<typeof useRouter>;
 
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(
-		SamlOnboarding,
-		merge(
-			{
-				pinia,
-				i18n: i18nInstance,
-			},
-			renderOptions,
-		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
-	);
+const renderComponent = createComponentRenderer(SamlOnboarding);
 
 describe('SamlOnboarding', () => {
 	beforeEach(() => {
@@ -61,7 +49,7 @@ describe('SamlOnboarding', () => {
 			isPending: false,
 		});
 
-		const { getByRole, getAllByRole } = renderComponent();
+		const { getByRole, getAllByRole } = renderComponent({ pinia });
 
 		const inputs = getAllByRole('textbox');
 		const submit = getByRole('button');

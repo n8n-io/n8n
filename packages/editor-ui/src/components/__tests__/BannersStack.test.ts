@@ -1,5 +1,4 @@
-import { PiniaVuePlugin } from 'pinia';
-import { render, within } from '@testing-library/vue';
+import { within } from '@testing-library/vue';
 import { merge } from 'lodash-es';
 import userEvent from '@testing-library/user-event';
 
@@ -10,53 +9,51 @@ import { createTestingPinia } from '@pinia/testing';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
+import { createComponentRenderer, RenderOptions } from '@/__tests__/render';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
 
-const DEFAULT_SETUP = {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: {
-				settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
-			},
-			[STORES.UI]: {
-				banners: {
-					V1: { dismissed: false },
-					TRIAL: { dismissed: false },
-					TRIAL_OVER: { dismissed: false },
+const initialState = {
+	[STORES.SETTINGS]: {
+		settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
+	},
+	[STORES.UI]: {
+		banners: {
+			V1: { dismissed: false },
+			TRIAL: { dismissed: false },
+			TRIAL_OVER: { dismissed: false },
+		},
+	},
+	[STORES.USERS]: {
+		currentUserId: 'aaa-bbb',
+		users: {
+			'aaa-bbb': {
+				id: 'aaa-bbb',
+				globalRole: {
+					id: '1',
+					name: 'owner',
+					scope: 'global',
 				},
 			},
-			[STORES.USERS]: {
-				currentUserId: 'aaa-bbb',
-				users: {
-					'aaa-bbb': {
-						id: 'aaa-bbb',
-						globalRole: {
-							id: '1',
-							name: 'owner',
-							scope: 'global',
-						},
-					},
-					'bbb-bbb': {
-						id: 'bbb-bbb',
-						globalRoleId: 2,
-						globalRole: {
-							id: '2',
-							name: 'member',
-							scope: 'global',
-						},
-					},
+			'bbb-bbb': {
+				id: 'bbb-bbb',
+				globalRoleId: 2,
+				globalRole: {
+					id: '2',
+					name: 'member',
+					scope: 'global',
 				},
 			},
 		},
-	}),
+	},
 };
 
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(BannerStack, merge(DEFAULT_SETUP, renderOptions), (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
+const defaultRenderOptions: RenderOptions = {
+	pinia: createTestingPinia({ initialState }),
+};
+
+const renderComponent = createComponentRenderer(BannerStack, defaultRenderOptions);
 
 describe('BannerStack', () => {
 	beforeEach(() => {
@@ -82,19 +79,17 @@ describe('BannerStack', () => {
 	it('should not render dismissed banners', async () => {
 		const { getByTestId } = renderComponent({
 			pinia: createTestingPinia({
-				initialState: merge(
-					{
-						[STORES.UI]: {
-							banners: {
-								V1: { dismissed: true },
-								TRIAL: { dismissed: true },
-							},
+				initialState: merge(initialState, {
+					[STORES.UI]: {
+						banners: {
+							V1: { dismissed: true },
+							TRIAL: { dismissed: true },
 						},
 					},
-					DEFAULT_SETUP.pinia,
-				),
+				}),
 			}),
 		});
+
 		const bannerStack = getByTestId('banner-stack');
 		expect(bannerStack).toBeInTheDocument();
 
@@ -117,7 +112,7 @@ describe('BannerStack', () => {
 	it('should permanently dismiss banner on click', async () => {
 		const { getByTestId } = renderComponent({
 			pinia: createTestingPinia({
-				initialState: merge(DEFAULT_SETUP.pinia, {
+				initialState: merge(initialState, {
 					[STORES.UI]: {
 						banners: {
 							V1: { dismissed: false },
@@ -139,7 +134,7 @@ describe('BannerStack', () => {
 	it('should not render permanent dismiss link if user is not owner', async () => {
 		const { queryByTestId } = renderComponent({
 			pinia: createTestingPinia({
-				initialState: merge(DEFAULT_SETUP.pinia, {
+				initialState: merge(initialState, {
 					[STORES.USERS]: {
 						currentUserId: 'bbb-bbb',
 					},

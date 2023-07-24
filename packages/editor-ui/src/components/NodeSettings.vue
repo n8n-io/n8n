@@ -18,7 +18,7 @@
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI"
+						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -525,7 +525,7 @@ export default defineComponent({
 				}
 			}
 
-			// Set the value via Vue.set that everything updates correctly in the UI
+			// Set the value so that everything updates correctly in the UI
 			if (nameParts.length === 0) {
 				// Data is on top level
 				if (value === null) {
@@ -975,7 +975,7 @@ export default defineComponent({
 }
 </style>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .node-settings {
 	display: flex;
 	flex-direction: column;

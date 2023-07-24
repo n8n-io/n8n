@@ -45,6 +45,10 @@ const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
+		find: /^n8n-design-system$/,
+		replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.ts'),
+	},
+	{
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 	},
@@ -55,14 +59,6 @@ const alias = [
 	{
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash-es/$1',
-	},
-	{
-		find: /^element-plus\/(es|lib)\/components\/button\/src\/button2\.m?js$/,
-		replacement: resolve(
-			__dirname,
-			'..',
-			'design-system/src/components/N8nButton/overrides/ElButton.ts',
-		),
 	},
 ];
 

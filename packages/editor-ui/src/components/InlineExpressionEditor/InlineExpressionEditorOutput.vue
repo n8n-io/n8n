@@ -1,18 +1,18 @@
 <template>
 	<div :class="visible ? $style.dropdown : $style.hidden">
 		<n8n-text size="small" compact :class="$style.header">
-			{{ $locale.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
+			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 		</n8n-text>
 		<n8n-text :class="$style.body">
-			<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-output"></div>
+			<div ref="root" data-test-id="inline-expression-editor-output"></div>
 		</n8n-text>
 		<div :class="$style.footer">
 			<n8n-text size="small" compact>
-				{{ $locale.baseText('parameterInput.anythingInside') }}
+				{{ i18n.baseText('parameterInput.anythingInside') }}
 			</n8n-text>
 			<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
 			<n8n-text size="small" compact>
-				{{ $locale.baseText('parameterInput.isJavaScript') }}
+				{{ i18n.baseText('parameterInput.isJavaScript') }}
 			</n8n-text>
 			{{ ' ' }}
 			<n8n-link
@@ -22,7 +22,7 @@
 				theme="text"
 				:to="expressionsDocsUrl"
 			>
-				{{ $locale.baseText('parameterInput.learnMore') }}
+				{{ i18n.baseText('parameterInput.learnMore') }}
 			</n8n-link>
 		</div>
 	</div>
@@ -40,6 +40,7 @@ import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { useI18n } from '@/composables';
 
 export default defineComponent({
 	name: 'InlineExpressionEditorOutput',
@@ -72,6 +73,13 @@ export default defineComponent({
 			highlighter.addColor(this.editor, this.resolvedSegments);
 			highlighter.removeColor(this.editor, this.plaintextSegments);
 		},
+	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+		};
 	},
 	data() {
 		return {

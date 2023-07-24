@@ -6,7 +6,7 @@ import { useUIStore, useSourceControlStore } from '@/stores';
 import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
-const { i18n: locale } = useI18n();
+const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
 const toast = useToast();

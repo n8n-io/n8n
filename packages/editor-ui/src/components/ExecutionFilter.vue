@@ -19,6 +19,7 @@ import type { Placement } from '@floating-ui/core';
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
 	popoverPlacement?: Placement;
+	teleported?: boolean;
 };
 
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
@@ -31,6 +32,7 @@ const telemetry = useTelemetry();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	popoverPlacement: 'bottom' as Placement,
+	teleported: true,
 });
 const emit = defineEmits<{
 	(event: 'filterChanged', value: ExecutionFilterType): void;
@@ -165,7 +167,7 @@ onBeforeMount(() => {
 				</n8n-button>
 			</template>
 			<div data-test-id="execution-filter-form">
-				<div v-if="workflows?.length" :class="$style.group">
+				<div v-if="workflows && workflows.length > 0" :class="$style.group">
 					<label for="execution-filter-workflows">{{ locale.baseText('workflows.heading') }}</label>
 					<n8n-select
 						id="execution-filter-workflows"
@@ -173,8 +175,9 @@ onBeforeMount(() => {
 						:placeholder="locale.baseText('executionsFilter.selectWorkflow')"
 						filterable
 						data-test-id="executions-filter-workflows-select"
+						:teleported="teleported"
 					>
-						<div class="ph-no-capture">
+						<div>
 							<n8n-option
 								v-for="(item, idx) in props.workflows"
 								:key="idx"
@@ -205,6 +208,7 @@ onBeforeMount(() => {
 						:placeholder="locale.baseText('executionsFilter.selectStatus')"
 						filterable
 						data-test-id="executions-filter-status-select"
+						:teleported="teleported"
 					>
 						<n8n-option
 							v-for="(item, idx) in statuses"

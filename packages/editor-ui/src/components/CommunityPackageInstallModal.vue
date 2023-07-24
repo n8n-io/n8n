@@ -91,7 +91,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import Modal from '@/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,

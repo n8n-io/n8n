@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="hideLabel ? '' : $locale.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel ? '' : $locale.nodeText().inputLabelDescription(parameter, path)"
+		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
+		:tooltipText="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
@@ -36,7 +36,7 @@
 					<template #content>
 						<span
 							v-html="
-								$locale.baseText(`dataMapping.${displayMode}Hint`, {
+								i18n.baseText(`dataMapping.${displayMode}Hint`, {
 									interpolate: { name: parameter.displayName },
 								})
 							"
@@ -77,7 +77,7 @@ import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } fro
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import { useToast } from '@/composables';
+import { useI18n, useToast } from '@/composables';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -110,8 +110,10 @@ export default defineComponent({
 	},
 	setup() {
 		const eventBus = createEventBus();
+		const i18n = useI18n();
 
 		return {
+			i18n,
 			eventBus,
 			...useToast(),
 		};
@@ -158,12 +160,12 @@ export default defineComponent({
 			}),
 		},
 	},
-	created() {
+	mounted() {
 		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
 		this.dataMappingTooltipButtons = [
 			{
 				attrs: {
-					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					label: this.i18n.baseText('_reusableBaseText.dismiss' as BaseTextKey),
 					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
@@ -178,7 +180,7 @@ export default defineComponent({
 			return this.ndvStore.activeNode;
 		},
 		hint(): string | null {
-			return this.$locale.nodeText().hint(this.parameter, this.path);
+			return this.i18n.nodeText().hint(this.parameter, this.path);
 		},
 		isInputTypeString(): boolean {
 			return this.parameter.type === 'string';
@@ -300,8 +302,8 @@ export default defineComponent({
 
 					if (!this.ndvStore.isMappingOnboarded) {
 						this.showMessage({
-							title: this.$locale.baseText('dataMapping.success.title'),
-							message: this.$locale.baseText('dataMapping.success.moreInfo'),
+							title: this.i18n.baseText('dataMapping.success.title'),
+							message: this.i18n.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
 							dangerouslyUseHTMLString: true,
 						});

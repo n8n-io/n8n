@@ -29,9 +29,12 @@ interface Props {
 	showMappingModeSelect: boolean;
 	loading: boolean;
 	refreshInProgress: boolean;
+	teleported?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
 const {
@@ -364,6 +367,7 @@ defineExpose({
 					})
 				"
 				size="small"
+				:teleported="teleported"
 				:disabled="addFieldOptions.length == 0"
 				@update:modelValue="addField"
 			>

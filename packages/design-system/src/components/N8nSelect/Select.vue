@@ -10,7 +10,7 @@
 			<slot name="prepend" />
 		</div>
 		<el-select
-			v-bind="{ ...$props, ...$attrs }"
+			v-bind="{ ...$props, ...listeners }"
 			:modelValue="modelValue"
 			:size="computedSize"
 			:class="$style[classes]"
@@ -92,6 +92,15 @@ export default defineComponent({
 		},
 	},
 	computed: {
+		listeners() {
+			return Object.entries(this.$attrs).reduce<Record<string, () => {}>>((acc, [key, value]) => {
+				if (/^on[A-Z]/.test(key)) {
+					acc[key] = value;
+				}
+
+				return acc;
+			}, {});
+		},
 		computedSize(): string | undefined {
 			if (this.size === 'medium') {
 				return 'default';
