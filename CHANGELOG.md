@@ -1,3 +1,23 @@
+## [1.0.5](https://github.com/n8n-io/n8n/compare/n8n@1.0.4...n8n@1.0.5) (2023-07-24)
+
+
+### Bug Fixes
+
+* Add missing indices on sqlite ([#6673](https://github.com/n8n-io/n8n/issues/6673)) ([f9c24c9](https://github.com/n8n-io/n8n/commit/f9c24c96f855f5cf5ff07694c1b72d845af16493))
+* **core:** Redirect user to previous url after SSO signin ([#6710](https://github.com/n8n-io/n8n/issues/6710)) ([982f6f5](https://github.com/n8n-io/n8n/commit/982f6f5e0fbf7390e109ec00d605b07a17b082a5))
+* **core:** Support redis cluster in queue mode ([#6708](https://github.com/n8n-io/n8n/issues/6708)) ([0b9ae37](https://github.com/n8n-io/n8n/commit/0b9ae37ce95c76aec853388c76d56f5ced0afcbe))
+* **core:** Use lower cased email for SAML email attribute ([#6663](https://github.com/n8n-io/n8n/issues/6663)) ([7b390ae](https://github.com/n8n-io/n8n/commit/7b390aed43bdf0a173e56dd70c718492a07e7ca7))
+* **editor:** Add paywall state to non owner users for Variables ([#6679](https://github.com/n8n-io/n8n/issues/6679)) ([1aa1484](https://github.com/n8n-io/n8n/commit/1aa1484e8654a36ef85b8bda13b5fe605d48fa1f))
+* **editor:** Extend menu item and use it as a recursive component ([#6618](https://github.com/n8n-io/n8n/issues/6618)) ([ee602bb](https://github.com/n8n-io/n8n/commit/ee602bbd5fa7deb4f9443c3270b6aa2b63ca742f))
+* **editor:** Increase contrast ratio in execution list workflow names ([#6661](https://github.com/n8n-io/n8n/issues/6661)) ([77f2cfc](https://github.com/n8n-io/n8n/commit/77f2cfc36e4a3bae16ed66508f993238664e0326))
+* **editor:** Show appropriate empty workflow list content when instance environment is readonly ([#6610](https://github.com/n8n-io/n8n/issues/6610)) ([0a87198](https://github.com/n8n-io/n8n/commit/0a87198bd8abbe38df9c0b1baebb57fa2c0ed6cf))
+* **editor:** Update design system menu item component ([#6659](https://github.com/n8n-io/n8n/issues/6659)) ([902eb85](https://github.com/n8n-io/n8n/commit/902eb85057799582905e9c039b2bc40d61cc2ebb))
+* **FTP Node:** List recursive ignore . and .. to prevent infinite loops ([#6707](https://github.com/n8n-io/n8n/issues/6707)) ([da89668](https://github.com/n8n-io/n8n/commit/da8966832ea5c41ffef62122f542ff48496b5828))
+* **GitLab Trigger Node:** Fix trigger activation 404 error  ([#6711](https://github.com/n8n-io/n8n/issues/6711)) ([f463ded](https://github.com/n8n-io/n8n/commit/f463dede0256779d047d2a6f830d5b56f2cf5a7b))
+* **Google BigQuery Node:** Error description improvement ([#6715](https://github.com/n8n-io/n8n/issues/6715)) ([7c8e534](https://github.com/n8n-io/n8n/commit/7c8e534fb2f4012831fef98ac2281789c66d1f6f))
+
+
+
 ## [1.0.4](https://github.com/n8n-io/n8n/compare/n8n@1.0.3...n8n@1.0.4) (2023-07-19)
 
 
