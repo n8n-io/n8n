@@ -2,7 +2,7 @@ import type express from 'express';
 import { Container } from 'typedi';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
-
+import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -34,6 +34,7 @@ export = {
 			const workflow = req.body;
 
 			workflow.active = false;
+			workflow.versionId = uuid();
 
 			await replaceInvalidCredentials(workflow);
 
