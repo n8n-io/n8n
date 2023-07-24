@@ -8,15 +8,42 @@ import type {
 import pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
+export function prepareNames(id: string, mode: string, additionalFields: IDataObject) {
+	let suffix = id.replace(/-/g, '_');
+
+	if (mode === 'manual') {
+		suffix = `${suffix}_manual`;
+	}
+
+	let functionName =
+		(additionalFields.functionName as string) || `n8n_trigger_function_${suffix}()`;
+
+	if (!(functionName.includes('(') && functionName.includes(')'))) {
+		functionName = `${functionName}()`;
+	}
+
+	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${suffix}`;
+	const channelName = (additionalFields.channelName as string) || `n8n_channel_${suffix}`;
+
+	if (channelName.includes('-')) {
+		throw new Error('Channel name cannot contain hyphens (-)');
+	}
+
+	return { functionName, triggerName, channelName };
+}
+
 export async function pgTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
+	additionalFields: IDataObject,
+	functionName: string,
+	triggerName: string,
+	channelName: string,
 ): Promise<void> {
 	const schema = this.getNodeParameter('schema', 'public', { extractValue: true }) as string;
 	const tableName = this.getNodeParameter('tableName', undefined, {
 		extractValue: true,
 	}) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 	const target = `${schema}."${tableName}"`;
 
@@ -35,21 +62,12 @@ export async function pgTriggerFunction(
 
 	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
 
-	const nodeId = this.getNode().id.replace(/-/g, '_');
-
-	let functionName =
-		(additionalFields.functionName as string) || `n8n_trigger_function_${nodeId}()`;
-
-	if (!(functionName.includes('(') && functionName.includes(')'))) {
-		functionName = `${functionName}()`;
-	}
-
-	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
-	const channelName = (additionalFields.channelName as string) || `n8n_channel_${nodeId}`;
 	if (channelName.includes('-')) {
 		throw new Error('Channel name cannot contain hyphens (-)');
 	}
+
 	const replaceIfExists = additionalFields.replaceIfExists || false;
+
 	try {
 		if (replaceIfExists || !(additionalFields.triggerName || additionalFields.functionName)) {
 			await db.any(functionReplace, [functionName, channelName, whichData]);
@@ -122,32 +140,4 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 	}));
 	pgp.end();
 	return { results };
-}
-
-export async function dropTriggerFunction(
-	this: ITriggerFunctions,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
-): Promise<void> {
-	const schema = this.getNodeParameter('schema', undefined, { extractValue: true }) as string;
-	const tableName = this.getNodeParameter('tableName', undefined, {
-		extractValue: true,
-	}) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-
-	const nodeId = this.getNode().id.replace(/-/g, '_');
-
-	const functionName =
-		(additionalFields.functionName as string) || `n8n_trigger_function_${nodeId}`;
-
-	const triggerName = (additionalFields.triggerName as string) || `n8n_trigger_${nodeId}`;
-
-	try {
-		await db.any('DROP FUNCTION IF EXISTS quote_ident($1) CASCADE', [functionName]);
-		await db.any(
-			"DROP TRIGGER IF EXISTS quote_ident($1) ON (quote_ident($2) || '.' || quote_ident($3)) CASCADE",
-			[triggerName, schema, tableName],
-		);
-	} catch (error) {
-		throw new Error(error as string);
-	}
 }

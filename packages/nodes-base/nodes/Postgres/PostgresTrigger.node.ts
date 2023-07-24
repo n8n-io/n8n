@@ -1,16 +1,17 @@
-import type {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerFunctions,
-	ITriggerResponse,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type ITriggerFunctions,
+	type ITriggerResponse,
 } from 'n8n-workflow';
 import {
-	dropTriggerFunction,
 	pgTriggerFunction,
 	initDB,
 	searchSchema,
 	searchTables,
+	prepareNames,
 } from './PostgresTrigger.functions';
 
 export class PostgresTrigger implements INodeType {
@@ -222,17 +223,11 @@ export class PostgresTrigger implements INodeType {
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
+		// initialize and connect to database
 		const { db, pgp } = await initDB.call(this);
+		const connection = await db.connect({ direct: true });
 
-		if (triggerMode === 'createTrigger') {
-			await pgTriggerFunction.call(this, db);
-		}
-
-		const channelName =
-			triggerMode === 'createTrigger'
-				? additionalFields.channelName || `n8n_channel_${this.getNode().id.replace(/-/g, '_')}`
-				: (this.getNodeParameter('channelName', 0) as string);
-
+		// prepare and set up listener
 		const onNotification = async (data: any) => {
 			if (data.payload) {
 				try {
@@ -242,42 +237,83 @@ export class PostgresTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([data])]);
 		};
 
-		const connection = await db.connect({ direct: true });
+		// create trigger, funstion and channel or use existing channel
+		const pgNames = prepareNames(this.getNode().id, this.getMode(), additionalFields);
+		if (triggerMode === 'createTrigger') {
+			await pgTriggerFunction.call(
+				this,
+				db,
+				additionalFields,
+				pgNames.functionName,
+				pgNames.triggerName,
+				pgNames.channelName,
+			);
+		} else {
+			pgNames.channelName = this.getNodeParameter('channelName', '') as string;
+		}
+
+		// listen to channel
+		await connection.none(`LISTEN ${pgNames.channelName}`);
+
+		const cleanUpDb = async () => {
+			try {
+				await connection.none('UNLISTEN $1:name', [pgNames.channelName]);
+				if (triggerMode === 'createTrigger') {
+					try {
+						await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [pgNames.functionName]);
+
+						const schema = this.getNodeParameter('schema', undefined, {
+							extractValue: true,
+						}) as string;
+						const table = this.getNodeParameter('tableName', undefined, {
+							extractValue: true,
+						}) as string;
+
+						await connection.any('DROP TRIGGER IF EXISTS $1:name ON $2:name.$3:name CASCADE', [
+							pgNames.triggerName,
+							schema,
+							table,
+						]);
+					} catch (error) {
+						console.log(error);
+					}
+				}
+				connection.client.removeListener('notification', onNotification);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), `Postgres Trigger Error: ${error.message}`);
+			} finally {
+				pgp.end();
+			}
+		};
+
 		connection.client.on('notification', onNotification);
-		await connection.none(`LISTEN ${channelName}`);
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		const closeFunction = async () => {
-			connection.client.removeListener('notification', onNotification);
-			await connection.none(`UNLISTEN ${channelName}`);
-			if (triggerMode === 'createTrigger') {
-				await dropTriggerFunction.call(this, db);
-			}
-			pgp.end();
+			await cleanUpDb();
 		};
 
 		const manualTriggerFunction = async () => {
-			await new Promise((resolve, reject) => {
-				const timeoutHandler = setTimeout(() => {
+			await new Promise(async (resolve, reject) => {
+				const timeoutHandler = setTimeout(async () => {
 					reject(
 						new Error(
-							'Aborted, no data received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+							await (async () => {
+								await cleanUpDb();
+								return 'Aborted, no data received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.';
+							})(),
 						),
 					);
-				}, 30000);
-				connection.client.on('notification', (data: any) => {
+				}, 10000);
+				connection.client.on('notification', async (data: any) => {
 					if (data.payload) {
 						try {
 							data.payload = JSON.parse(data.payload as string);
 						} catch (error) {}
 					}
-					this.emit([
-						this.helpers.returnJsonArray([
-							data,
-							{ listeners: connection.client.listeners('notification') },
-						]),
-					]);
+
+					this.emit([this.helpers.returnJsonArray([data])]);
 					clearTimeout(timeoutHandler);
 					resolve(true);
 				});
