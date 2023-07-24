@@ -96,7 +96,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
-	it('should open a category when it is dropped on the canvas', () => {
+	it('should open a category when trying to drag and drop it on the canvas', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		cy.get('.plus-endpoint').should('be.visible').click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
