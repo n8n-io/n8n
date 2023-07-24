@@ -1101,4 +1101,41 @@ export const schema = {
 			},
 		},
 	},
+
+	cache: {
+		enabled: {
+			doc: 'Whether caching is enabled',
+			format: Boolean,
+			default: true,
+			env: 'N8N_CACHE_ENABLED',
+		},
+		backend: {
+			doc: 'Backend to use for caching',
+			format: ['memory', 'redis', 'auto'] as const,
+			default: 'auto',
+			env: 'N8N_CACHE_BACKEND',
+		},
+		memory: {
+			max: {
+				doc: 'Maximum number of items to cache in memory',
+				format: Number,
+				default: 1000,
+				env: 'N8N_CACHE_MEMORY_MAX',
+			},
+			ttl: {
+				doc: 'Time to live for cached items in memory (in ms)',
+				format: Number,
+				default: 10 * 1000, // 10 seconds
+				env: 'N8N_CACHE_MEMORY_TTL',
+			},
+		},
+		redis: {
+			ttl: {
+				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
+				format: Number,
+				default: 0,
+				env: 'N8N_CACHE_REDIS_TTL',
+			},
+		},
+	},
 };
