@@ -68,12 +68,13 @@ export async function execute(
 		if (typeof queryReplacement === 'string') {
 			const node = this.getNode();
 
-			const rawReplacements = (node.parameters.options as IDataObject).queryReplacement as string;
+			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
 			if (rawReplacements) {
 				const rawValues = rawReplacements
 					.replace(/^=+/, '')
 					.split(',')
+					.filter((entry) => entry)
 					.map((entry) => entry.trim());
 
 				for (const rawValue of rawValues) {
