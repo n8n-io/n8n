@@ -259,24 +259,20 @@ export class PostgresTrigger implements INodeType {
 			try {
 				await connection.none('UNLISTEN $1:name', [pgNames.channelName]);
 				if (triggerMode === 'createTrigger') {
-					try {
-						await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [pgNames.functionName]);
+					await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [pgNames.functionName]);
 
-						const schema = this.getNodeParameter('schema', undefined, {
-							extractValue: true,
-						}) as string;
-						const table = this.getNodeParameter('tableName', undefined, {
-							extractValue: true,
-						}) as string;
+					const schema = this.getNodeParameter('schema', undefined, {
+						extractValue: true,
+					}) as string;
+					const table = this.getNodeParameter('tableName', undefined, {
+						extractValue: true,
+					}) as string;
 
-						await connection.any('DROP TRIGGER IF EXISTS $1:name ON $2:name.$3:name CASCADE', [
-							pgNames.triggerName,
-							schema,
-							table,
-						]);
-					} catch (error) {
-						console.log(error);
-					}
+					await connection.any('DROP TRIGGER IF EXISTS $1:name ON $2:name.$3:name CASCADE', [
+						pgNames.triggerName,
+						schema,
+						table,
+					]);
 				}
 				connection.client.removeListener('notification', onNotification);
 			} catch (error) {
@@ -305,7 +301,7 @@ export class PostgresTrigger implements INodeType {
 							})(),
 						),
 					);
-				}, 10000);
+				}, 30000);
 				connection.client.on('notification', async (data: any) => {
 					if (data.payload) {
 						try {
@@ -322,7 +318,7 @@ export class PostgresTrigger implements INodeType {
 
 		return {
 			closeFunction,
-			manualTriggerFunction,
+			manualTriggerFunction: this.getMode() === 'manual' ? manualTriggerFunction : undefined,
 		};
 	}
 }
