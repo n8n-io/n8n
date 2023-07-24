@@ -28,14 +28,17 @@ describe('NDV', () => {
 
 		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
 
-		cy.readClipboard().then((url) => {
-			cy.request({
-				method: 'GET',
-				url,
-			}).then((resp) => {
-				expect(resp.status).to.eq(200);
+		cy.window()
+			.focus()
+			.readClipboard()
+			.then((url) => {
+				cy.request({
+					method: 'GET',
+					url,
+				}).then((resp) => {
+					expect(resp.status).to.eq(200);
+				});
 			});
-		});
 
 		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});

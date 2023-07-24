@@ -984,8 +984,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						nodes: [...this.workflow.nodes.slice(0, i), ...this.workflow.nodes.slice(i + 1)],
 					};
 
-					console.log(this.workflow);
-
 					uiStore.stateIsDirty = true;
 					return;
 				}

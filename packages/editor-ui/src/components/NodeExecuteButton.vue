@@ -5,6 +5,7 @@
 		</template>
 		<div>
 			<n8n-button
+				v-bind="$attrs"
 				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
 				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"
@@ -32,6 +33,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast, useMessage } from '@/composables';
 
 export default defineComponent({
+	inheritAttrs: false,
 	mixins: [workflowRun, pinData],
 	props: {
 		nodeName: {
