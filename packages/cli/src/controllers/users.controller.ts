@@ -389,11 +389,12 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		const jwtSecret = this.config.getEnv('userManagement.jwtSecret');
-
-		const resetPasswordToken = this.jwtService.sign({ sub: user.id }, jwtSecret, {
-			expiresIn: '1d',
-		});
+		const resetPasswordToken = this.jwtService.signData(
+			{ sub: user.id },
+			{
+				expiresIn: '1d',
+			},
+		);
 
 		const baseUrl = getInstanceBaseUrl();
 
