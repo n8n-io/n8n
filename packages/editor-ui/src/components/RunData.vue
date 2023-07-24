@@ -153,14 +153,12 @@
 					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 				</template>
 				<n8n-icon-button
-					v-if="linkedRuns"
-					icon="unlink"
+					:icon="linkedRuns ? 'unlink' : 'link'"
 					text
 					type="tertiary"
 					size="small"
-					@click="unlinkRun"
+					@click="toggleLinkRuns"
 				/>
-				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
@@ -1129,6 +1127,9 @@ export default defineComponent({
 				pane: this.paneType,
 				type: 'showTooMuchData',
 			});
+		},
+		toggleLinkRuns() {
+			this.linkedRuns ? this.unlinkRun() : this.linkRun();
 		},
 		linkRun() {
 			this.$emit('linkRun');

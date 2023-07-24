@@ -114,7 +114,7 @@
 
 	&[data-popper-placement^='left'] .el-popper__arrow {
 		top: 50%;
-		//right: -(var.$popover-arrow-size);
+		right: -(var.$popover-arrow-size);
 		margin-bottom: #{var.$tooltip-arrow-size * 0.5};
 		border-right-width: 0;
 		border-left-color: var.$popover-border-color;
