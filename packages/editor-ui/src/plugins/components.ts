@@ -7,12 +7,14 @@ import { ElLoading, ElMessageBox } from 'element-plus';
 import { N8nPlugin } from 'n8n-design-system';
 import { useMessage } from '@/composables/useMessage';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import Fragment from '@/components/Fragment.vue';
 
 export const GlobalComponentsPlugin: Plugin<{}> = {
 	install(app) {
 		const messageService = useMessage();
 
 		app.component('enterprise-edition', EnterpriseEdition);
+		app.component('fragment', Fragment);
 
 		app.use(ElementPlus);
 		app.use(N8nPlugin);

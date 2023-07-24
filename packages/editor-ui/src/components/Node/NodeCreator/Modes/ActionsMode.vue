@@ -206,14 +206,13 @@ const OrderSwitcher = defineComponent({
 		},
 	},
 	setup(props, { slots }) {
-		const triggers = slots.triggers?.();
-		const actions = slots.actions?.();
-
 		return () =>
 			h(
 				'div',
 				{},
-				props.rootView === REGULAR_NODE_CREATOR_VIEW ? [actions, triggers] : [triggers, actions],
+				props.rootView === REGULAR_NODE_CREATOR_VIEW
+					? [slots.actions?.(), slots.triggers?.()]
+					: [slots.triggers?.(), slots.actions?.()],
 			);
 	},
 });
@@ -237,32 +236,30 @@ onMounted(() => {
 					@selected="onSelected"
 				>
 					<!-- Empty state -->
-					<template #empty>
-						<template v-if="hasNoTriggerActions">
-							<n8n-callout
-								theme="info"
-								iconless
-								slim
-								data-test-id="actions-panel-no-triggers-callout"
-							>
-								<span
-									v-html="
-										$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
-											interpolate: { nodeName: subcategory },
-										})
-									"
-								/>
-							</n8n-callout>
-							<ItemsRenderer @selected="onSelected" :elements="placeholderTriggerActions" />
-						</template>
-
-						<template v-else>
-							<p
-								:class="$style.resetSearch"
-								v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
-								@click="resetSearch"
+					<template #empty v-if="hasNoTriggerActions">
+						<n8n-callout
+							v-if="hasNoTriggerActions"
+							theme="info"
+							iconless
+							slim
+							data-test-id="actions-panel-no-triggers-callout"
+						>
+							<span
+								v-html="
+									$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
+										interpolate: { nodeName: subcategory },
+									})
+								"
 							/>
-						</template>
+						</n8n-callout>
+						<ItemsRenderer @selected="onSelected" :elements="placeholderTriggerActions" />
+					</template>
+					<template #empty v-else>
+						<p
+							:class="$style.resetSearch"
+							v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
+							@click="resetSearch"
+						/>
 					</template>
 				</CategorizedItemsRenderer>
 			</template>
@@ -295,14 +292,13 @@ onMounted(() => {
 								"
 							/>
 						</n8n-info-tip>
-						<template v-else>
-							<p
-								:class="$style.resetSearch"
-								v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')"
-								@click="resetSearch"
-								data-test-id="actions-panel-no-matching-actions"
-							/>
-						</template>
+						<p
+							v-else
+							:class="$style.resetSearch"
+							v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')"
+							@click="resetSearch"
+							data-test-id="actions-panel-no-matching-actions"
+						/>
 					</template>
 				</CategorizedItemsRenderer>
 			</template>

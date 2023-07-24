@@ -1916,7 +1916,7 @@ export default defineComponent({
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
 
-			const localizedName = this.localizeNodeName(newNodeData.name, newNodeData.type);
+			const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
 
 			newNodeData.name = this.uniqueNodeName(localizedName);
 
@@ -2728,7 +2728,7 @@ export default defineComponent({
 				const newNodeData = deepCopy(this.getNodeDataToSave(node));
 				newNodeData.id = uuid();
 
-				const localizedName = this.localizeNodeName(newNodeData.name, newNodeData.type);
+				const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
 
 				newNodeData.name = this.uniqueNodeName(localizedName);
 
@@ -3380,7 +3380,7 @@ export default defineComponent({
 
 				oldName = node.name;
 
-				const localized = this.localizeNodeName(node.name, node.type);
+				const localized = this.locale.localizeNodeName(node.name, node.type);
 
 				newName = this.uniqueNodeName(localized, newNodeNames);
 
