@@ -2,13 +2,11 @@ import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 
 export class CreateLdapEntities1674509946020 implements ReversibleMigration {
-	async up({ escape, dbType, isMysql, executeQuery }: MigrationContext) {
+	async up({ escape, dbType, isMysql, runQuery }: MigrationContext) {
 		const userTable = escape.tableName('user');
-		await executeQuery(
-			`ALTER TABLE ${userTable} ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
-		);
+		await runQuery(`ALTER TABLE ${userTable} ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`);
 
-		await executeQuery(`
+		await runQuery(`
 			INSERT INTO ${escape.tableName('settings')} (${escape.columnName(
 			'key',
 		)}, value, ${escape.columnName('loadOnStartup')})
@@ -17,7 +15,7 @@ export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 
 		const uuidColumnType = dbType === 'postgresdb' ? 'UUID' : 'VARCHAR(36)';
 
-		await executeQuery(
+		await runQuery(
 			`CREATE TABLE IF NOT EXISTS ${escape.tableName('auth_identity')} (
 				${escape.columnName('userId')} ${uuidColumnType} REFERENCES ${userTable} (id),
 				${escape.columnName('providerId')} VARCHAR(64) NOT NULL,
@@ -42,7 +40,7 @@ export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 				? 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP'
 				: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP';
 
-		await executeQuery(
+		await runQuery(
 			`CREATE TABLE IF NOT EXISTS ${escape.tableName('auth_provider_sync_history')} (
 				${escape.columnName('id')} ${idColumn},
 				${escape.columnName('providerType')} VARCHAR(32) NOT NULL,
@@ -60,12 +58,12 @@ export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 		);
 	}
 
-	async down({ escape, executeQuery }: MigrationContext) {
-		await executeQuery(`DROP TABLE "${escape.tableName('auth_provider_sync_history')}`);
-		await executeQuery(`DROP TABLE "${escape.tableName('auth_identity')}`);
-		await executeQuery(`DELETE FROM ${escape.tableName('settings')} WHERE key = :key`, {
+	async down({ escape, runQuery }: MigrationContext) {
+		await runQuery(`DROP TABLE "${escape.tableName('auth_provider_sync_history')}`);
+		await runQuery(`DROP TABLE "${escape.tableName('auth_identity')}`);
+		await runQuery(`DELETE FROM ${escape.tableName('settings')} WHERE key = :key`, {
 			key: LDAP_FEATURE_NAME,
 		});
-		await executeQuery(`ALTER TABLE ${escape.tableName('user')} DROP COLUMN disabled`);
+		await runQuery(`ALTER TABLE ${escape.tableName('user')} DROP COLUMN disabled`);
 	}
 }

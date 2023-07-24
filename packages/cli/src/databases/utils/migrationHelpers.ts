@@ -8,6 +8,7 @@ import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 import { getLogger } from '@/Logger';
 import { NodeTypes } from '@/NodeTypes';
+import { jsonParse } from 'n8n-workflow';
 
 const logger = getLogger();
 
@@ -83,10 +84,7 @@ const runDisablingForeignKeys = async (
 };
 
 function parseJson<T>(data: string | T): T {
-	return typeof data === 'string'
-		? // eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-		  (JSON.parse(data) as T)
-		: data;
+	return typeof data === 'string' ? jsonParse<T>(data) : data;
 }
 
 const dbType = config.getEnv('database.type');
@@ -110,7 +108,7 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		tableName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 		indexName: (name) => queryRunner.connection.driver.escape(`IDX_${tablePrefix}${name}`),
 	},
-	executeQuery: async <T>(
+	runQuery: async <T>(
 		sql: string,
 		unsafeParameters?: ObjectLiteral,
 		safeParameters?: ObjectLiteral,
@@ -149,24 +147,25 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 	copyTable: async (
 		fromTable: string,
 		toTable: string,
-		fromFields: string[] = [],
-		toFields: string[] = [],
-		batchSize = 10,
+		fromFields?: string[],
+		toFields?: string[],
+		batchSize?: number,
 	) => {
-		const driver = queryRunner.connection.driver;
+		const { driver } = queryRunner.connection;
 		fromTable = driver.escape(`${tablePrefix}${fromTable}`);
 		toTable = driver.escape(`${tablePrefix}${toTable}`);
-		const fromFieldsStr = fromFields.length
+		const fromFieldsStr = fromFields?.length
 			? fromFields.map((f) => driver.escape(f)).join(', ')
 			: '*';
-		const toFieldsStr = toFields.length
+		const toFieldsStr = toFields?.length
 			? `(${toFields.map((f) => driver.escape(f)).join(', ')})`
 			: '';
 
 		const total = await queryRunner
-			.query(`SELECT COUNT(*) as count from ${fromTable}`)
+			.query(`SELECT COUNT(*) AS count FROM ${fromTable}`)
 			.then((rows: Array<{ count: number }>) => rows[0].count);
 
+		batchSize = batchSize ?? 10;
 		let migrated = 0;
 		while (migrated < total) {
 			await queryRunner.query(

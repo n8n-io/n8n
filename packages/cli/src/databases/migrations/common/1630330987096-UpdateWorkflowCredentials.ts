@@ -11,14 +11,14 @@ type Workflow = Pick<WorkflowEntity, 'id'> & { nodes: string | WorkflowEntity['n
 // `nodeType: name` changes to `nodeType: { id, name }`
 
 export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigration {
-	async up({ dbType, escape, parseJson, executeQuery, runInBatches }: MigrationContext) {
+	async up({ dbType, escape, parseJson, runQuery, runInBatches }: MigrationContext) {
 		const credentialsTable = escape.tableName('credentials_entity');
 		const workflowsTable = escape.tableName('workflow_entity');
 		const executionsTable = escape.tableName('execution_entity');
 		const dataColumn = escape.columnName('workflowData');
 		const waitTillColumn = escape.columnName('waitTill');
 
-		const credentialsEntities: Credential[] = await executeQuery(
+		const credentialsEntities: Credential[] = await runQuery(
 			`SELECT id, name, type FROM ${credentialsTable}`,
 		);
 
@@ -42,7 +42,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					}
 				});
 				if (credentialsUpdated) {
-					await executeQuery(
+					await runQuery(
 						`UPDATE ${workflowsTable} SET nodes = :nodes WHERE id = :id`,
 						{ nodes: JSON.stringify(nodes) },
 						{ id: workflow.id },
@@ -76,7 +76,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					}
 				});
 				if (credentialsUpdated) {
-					await executeQuery(
+					await runQuery(
 						`UPDATE ${executionsTable}
 						 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
 						{ data: JSON.stringify(workflowData) },
@@ -86,7 +86,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 			});
 		});
 
-		const retryableExecutions: ExecutionWithData[] = await executeQuery(`
+		const retryableExecutions: ExecutionWithData[] = await runQuery(`
 			SELECT id, ${dataColumn}
 			FROM ${executionsTable}
 			WHERE ${waitTillColumn} IS NULL AND finished = ${finishedValue} AND mode != 'retry'
@@ -111,7 +111,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 				}
 			});
 			if (credentialsUpdated) {
-				await executeQuery(
+				await runQuery(
 					`UPDATE ${executionsTable}
 					 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
 					{ data: JSON.stringify(workflowData) },
@@ -121,14 +121,14 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 		});
 	}
 
-	async down({ dbType, escape, parseJson, executeQuery, runInBatches }: MigrationContext) {
+	async down({ dbType, escape, parseJson, runQuery, runInBatches }: MigrationContext) {
 		const credentialsTable = escape.tableName('credentials_entity');
 		const workflowsTable = escape.tableName('workflow_entity');
 		const executionsTable = escape.tableName('execution_entity');
 		const dataColumn = escape.columnName('workflowData');
 		const waitTillColumn = escape.columnName('waitTill');
 
-		const credentialsEntities: Credential[] = await executeQuery(
+		const credentialsEntities: Credential[] = await runQuery(
 			`SELECT id, name, type FROM ${credentialsTable}`,
 		);
 
@@ -160,7 +160,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					}
 				});
 				if (credentialsUpdated) {
-					await executeQuery(
+					await runQuery(
 						`UPDATE ${workflowsTable} SET nodes = :nodes WHERE id = :id`,
 						{ nodes: JSON.stringify(nodes) },
 						{ id: workflow.id },
@@ -203,7 +203,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					}
 				});
 				if (credentialsUpdated) {
-					await executeQuery(
+					await runQuery(
 						`UPDATE ${executionsTable}
 						 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
 						{ data: JSON.stringify(workflowData) },
@@ -213,7 +213,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 			});
 		});
 
-		const retryableExecutions: ExecutionWithData[] = await executeQuery(`
+		const retryableExecutions: ExecutionWithData[] = await runQuery(`
 			SELECT id, ${dataColumn}
 			FROM ${executionsTable}
 			WHERE ${waitTillColumn} IS NULL AND finished = ${finishedValue} AND mode != 'retry'
@@ -246,7 +246,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 				}
 			});
 			if (credentialsUpdated) {
-				await executeQuery(
+				await runQuery(
 					`UPDATE ${executionsTable}
 					 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
 					{ data: JSON.stringify(workflowData) },

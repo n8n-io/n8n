@@ -20,7 +20,7 @@ export interface MigrationContext {
 		tableName(name: string): string;
 		indexName(name: string): string;
 	};
-	executeQuery<T>(
+	runQuery<T>(
 		sql: string,
 		unsafeParameters?: ObjectLiteral,
 		nativeParameters?: ObjectLiteral,
@@ -30,6 +30,7 @@ export interface MigrationContext {
 		operation: (results: T[]) => Promise<void>,
 		limit?: number,
 	): Promise<void>;
+	copyTable(fromTable: string, toTable: string): Promise<void>;
 	copyTable(
 		fromTable: string,
 		toTable: string,

@@ -4,15 +4,15 @@ import { v4 as uuidv4 } from 'uuid';
 type Workflow = { id: number };
 
 export class AddWorkflowVersionIdColumn1669739707124 implements ReversibleMigration {
-	async up({ escape, executeQuery }: MigrationContext) {
+	async up({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName('workflow_entity');
 		const columnName = escape.columnName('versionId');
 
-		await executeQuery(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} CHAR(36)`);
+		await runQuery(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} CHAR(36)`);
 
-		const workflowIds: Workflow[] = await executeQuery(`SELECT id FROM ${tableName}`);
+		const workflowIds: Workflow[] = await runQuery(`SELECT id FROM ${tableName}`);
 		for (const { id } of workflowIds) {
-			await executeQuery(
+			await runQuery(
 				`UPDATE ${tableName} SET ${columnName} = :versionId WHERE id = :id`,
 				{ versionId: uuidv4() },
 				{ id },
@@ -20,9 +20,9 @@ export class AddWorkflowVersionIdColumn1669739707124 implements ReversibleMigrat
 		}
 	}
 
-	async down({ escape, executeQuery }: MigrationContext) {
+	async down({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName('workflow_entity');
 		const columnName = escape.columnName('versionId');
-		await executeQuery(`ALTER TABLE ${tableName} DROP COLUMN ${columnName}`);
+		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${columnName}`);
 	}
 }

@@ -8,9 +8,9 @@ interface Workflow {
 }
 
 export class PurgeInvalidWorkflowConnections1675940580449 implements IrreversibleMigration {
-	async up({ escape, parseJson, executeQuery, nodeTypes }: MigrationContext) {
+	async up({ escape, parseJson, runQuery, nodeTypes }: MigrationContext) {
 		const workflowsTable = escape.tableName('workflow_entity');
-		const workflows: Workflow[] = await executeQuery(
+		const workflows: Workflow[] = await runQuery(
 			`SELECT id, nodes, connections FROM ${workflowsTable}`,
 		);
 
@@ -19,7 +19,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements Irreversibl
 				const connections = parseJson(workflow.connections);
 				const nodes = parseJson(workflow.nodes);
 
-				const nodesThatCannotReceiveInput: string[] = nodes.reduce((acc, node) => {
+				const nodesThatCannotReceiveInput = nodes.reduce<string[]>((acc, node) => {
 					try {
 						const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 						if ((nodeType.description.inputs?.length ?? []) === 0) {
@@ -27,7 +27,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements Irreversibl
 						}
 					} catch (error) {}
 					return acc;
-				}, [] as string[]);
+				}, []);
 
 				Object.keys(connections).forEach((sourceNodeName) => {
 					const connection = connections[sourceNodeName];
@@ -47,7 +47,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements Irreversibl
 				});
 
 				// Update database with new connections
-				return executeQuery(
+				return runQuery(
 					`UPDATE ${workflowsTable} SET connections = :connections WHERE id = :id`,
 					{ connections: JSON.stringify(connections) },
 					{ id: workflow.id },

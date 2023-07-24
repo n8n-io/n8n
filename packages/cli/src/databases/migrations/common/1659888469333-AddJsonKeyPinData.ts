@@ -22,7 +22,7 @@ function isJsonKeyObject(item: unknown): item is {
  * `{ [nodeName: string]: IDataObject[] }` to `{ [nodeName: string]: INodeExecutionData[] }`
  */
 export class AddJsonKeyPinData1659888469333 implements IrreversibleMigration {
-	async up({ escape, executeQuery, runInBatches }: MigrationContext) {
+	async up({ escape, runQuery, runInBatches }: MigrationContext) {
 		const tableName = escape.tableName('workflow_entity');
 		const columnName = escape.columnName('pinData');
 
@@ -30,7 +30,7 @@ export class AddJsonKeyPinData1659888469333 implements IrreversibleMigration {
 		await runInBatches<Workflow>(selectQuery, async (workflows) => {
 			await Promise.all(
 				this.makeUpdateParams(workflows).map(async (workflow) =>
-					executeQuery(`UPDATE ${tableName} SET ${columnName} = :pinData WHERE id = :id;`, {
+					runQuery(`UPDATE ${tableName} SET ${columnName} = :pinData WHERE id = :id;`, {
 						pinData: workflow.pinData,
 						id: workflow.id,
 					}),
