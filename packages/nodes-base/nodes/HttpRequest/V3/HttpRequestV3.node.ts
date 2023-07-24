@@ -19,6 +19,7 @@ import {
 	NodeOperationError,
 	sleep,
 	removeCircularRefs,
+	ErrorReporterProxy,
 } from 'n8n-workflow';
 
 import { keysToLowercase } from '@utils/utilities';
@@ -1434,7 +1435,22 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
+					const error = new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
+					if (response.reason instanceof Error) {
+						const { name, type, typeVersion, parameters } = error.node;
+						ErrorReporterProxy.error(response.reason, {
+							level: 'error',
+							tags: {
+								node_type: type,
+							},
+							extra: {
+								node_name: name,
+								node_params: parameters,
+								node_version: typeVersion,
+							},
+						});
+					}
+					throw error;
 				} else {
 					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
