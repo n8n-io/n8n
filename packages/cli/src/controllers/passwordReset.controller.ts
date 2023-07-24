@@ -303,7 +303,7 @@ export class PasswordResetController {
 		try {
 			decodedToken = this.jwtService.verify(resetPasswordToken, jwtSecret, {
 				ignoreExpiration: false,
-			}) as JwtPayload;
+			});
 			return decodedToken;
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {

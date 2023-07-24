@@ -8,7 +8,7 @@ export class JwtService {
 	}
 
 	public verify(token: string, secret: string, options: jwt.VerifyOptions = {}) {
-		return jwt.verify(token, secret, options);
+		return jwt.verify(token, secret, options) as JwtPayload;
 	}
 }
 
