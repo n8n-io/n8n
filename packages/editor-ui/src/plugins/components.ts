@@ -14,7 +14,7 @@ export const GlobalComponentsPlugin: Plugin<{}> = {
 		const messageService = useMessage();
 
 		app.component('enterprise-edition', EnterpriseEdition);
-		app.component('fragment', Fragment);
+		app.component('Fragment', Fragment);
 
 		app.use(ElementPlus);
 		app.use(N8nPlugin);

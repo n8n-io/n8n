@@ -965,6 +965,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		removeNode(node: INodeUi): void {
+			const uiStore = useUIStore();
 			const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = this.nodeMetadata;
 			this.nodeMetadata = remainingNodeMetadata;
 
@@ -978,8 +979,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			for (let i = 0; i < this.workflow.nodes.length; i++) {
 				if (this.workflow.nodes[i].name === node.name) {
-					this.workflow.nodes.splice(i, 1);
-					const uiStore = useUIStore();
+					this.workflow = {
+						...this.workflow,
+						nodes: [...this.workflow.nodes.slice(0, i), ...this.workflow.nodes.slice(i + 1)],
+					};
+
+					console.log(this.workflow);
+
 					uiStore.stateIsDirty = true;
 					return;
 				}

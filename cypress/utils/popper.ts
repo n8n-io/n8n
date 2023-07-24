@@ -5,3 +5,7 @@ export function getVisiblePopper() {
 export function getVisibleSelect() {
 	return getVisiblePopper().filter('.el-select__popper');
 }
+
+export function getVisibleDropdown() {
+	return getVisiblePopper().filter('.el-select__dropdown');
+}

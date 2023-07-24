@@ -1,6 +1,7 @@
 import { NodeCreator } from '../pages/features/node-creator';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
+import { getVisibleSelect } from '../utils';
 
 const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
@@ -88,14 +89,14 @@ describe('Node Creator', () => {
 		NDVModal.getters.parameterInput('operation').find('input').should('have.value', 'Crop');
 	});
 
-	it.only('should search through actions and confirm added action', () => {
+	it('should search through actions and confirm added action', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('ftp');
 		nodeCreatorFeature.getters.searchBar().find('input').type('{rightarrow}');
 		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'FTP');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('file');
 		// Navigate to rename action which should be the 4th item
-		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{uparrow}{rightarrow}');
+		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{rightarrow}');
 		NDVModal.getters.parameterInput('operation').find('input').should('have.value', 'Rename');
 	});
 
@@ -137,7 +138,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters
 			.getCategoryItem('Triggers')
 			.parent()
-			.should('not.have.attr', 'data-category-collapsed');
+			.should('have.attr', 'data-category-collapsed', 'false');
 		nodeCreatorFeature.getters
 			.getCategoryItem('Actions')
 			.parent()
@@ -146,7 +147,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters
 			.getCategoryItem('Actions')
 			.parent()
-			.should('not.have.attr', 'data-category-collapsed');
+			.should('have.attr', 'data-category-collapsed', 'false');
 	});
 
 	it('should have "Triggers" section collapsed when opening actions view from Regular root view', () => {
@@ -160,21 +161,21 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters
 			.getCategoryItem('Actions')
 			.parent()
-			.should('not.have.attr', 'data-category-collapsed');
+			.should('have.attr', 'data-category-collapsed', 'false');
 		nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 		nodeCreatorFeature.getters
 			.getCategoryItem('Actions')
 			.parent()
-			.should('have.attr', 'data-category-collapsed');
+			.should('have.attr', 'data-category-collapsed', 'true');
 		nodeCreatorFeature.getters
 			.getCategoryItem('Triggers')
 			.parent()
-			.should('have.attr', 'data-category-collapsed');
+			.should('have.attr', 'data-category-collapsed', 'true');
 		nodeCreatorFeature.getters.getCategoryItem('Triggers').click();
 		nodeCreatorFeature.getters
 			.getCategoryItem('Triggers')
 			.parent()
-			.should('not.have.attr', 'data-category-collapsed');
+			.should('have.attr', 'data-category-collapsed', 'false');
 	});
 
 	it('should show callout and two suggested nodes if node has no trigger actions', () => {
@@ -208,11 +209,7 @@ describe('Node Creator', () => {
 
 		// Setup 1s interval execution
 		cy.getByTestId('parameter-input-field').click();
-		cy.getByTestId('parameter-input-field')
-			.find('.el-select-dropdown')
-			.find('.option-headline')
-			.contains('Seconds')
-			.click();
+		getVisibleSelect().find('.option-headline').contains('Seconds').click();
 		cy.getByTestId('parameter-input-secondsInterval').clear().type('1');
 
 		NDVModal.actions.close();
@@ -296,6 +293,7 @@ describe('Node Creator', () => {
 			});
 		});
 
+		// @TODO FIX ADDING 2 NODES IN ONE GO
 		it('should not append manual trigger when source is canvas related', () => {
 			nodeCreatorFeature.getters.canvasAddButton().click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
