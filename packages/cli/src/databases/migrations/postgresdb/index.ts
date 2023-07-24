@@ -39,7 +39,7 @@ import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserAc
 import { MigrateIntegerKeysToString1690000000000 } from './1690000000000-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExecutionData';
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
-import { RemoveResetPasswordColumns1690000000030 } from './1690000000030-RemoveResetPasswordColumns';
+import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,

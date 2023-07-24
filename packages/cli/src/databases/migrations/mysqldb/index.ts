@@ -42,7 +42,7 @@ import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-Migrate
 import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
 import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
-import { RemoveResetPasswordColumns1690000000032 } from './1690000000032-RemoveResetPasswordColumns';
+import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -88,5 +88,5 @@ export const mysqlMigrations: Migration[] = [
 	SeparateExecutionData1690000000030,
 	FixExecutionDataType1690000000031,
 	RemoveSkipOwnerSetup1681134145997,
-	RemoveResetPasswordColumns1690000000032,
+	RemoveResetPasswordColumns1690000000030,
 ];
