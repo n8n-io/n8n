@@ -7,19 +7,11 @@ export class JwtService {
 	private readonly userManagementSecret = config.getEnv('userManagement.jwtSecret');
 
 	public signData(payload: object, options: jwt.SignOptions = {}): string {
-		return this.sign(payload, this.userManagementSecret, options);
+		return jwt.sign(payload, this.userManagementSecret, options);
 	}
 
 	public verifyToken(token: string, options: jwt.VerifyOptions = {}) {
-		return this.verify(token, this.userManagementSecret, options);
-	}
-
-	private sign(payload: object, secret: string, options: jwt.SignOptions = {}) {
-		return jwt.sign(payload, secret, options);
-	}
-
-	private verify(token: string, secret: string, options: jwt.VerifyOptions = {}) {
-		return jwt.verify(token, secret, options) as jwt.JwtPayload;
+		return jwt.verify(token, this.userManagementSecret, options) as jwt.JwtPayload;
 	}
 }
 
