@@ -9,10 +9,12 @@ import { i18nInstance } from '@/plugins/i18n';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 import { useSourceControlStore, useUIStore } from '@/stores';
+import { useUsersStore } from '@/stores/users.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 let uiStore: ReturnType<typeof useUIStore>;
+let usersStore: ReturnType<typeof useUsersStore>;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
 	return render(
@@ -40,6 +42,10 @@ describe('MainSidebarSourceControl', () => {
 				},
 			},
 		});
+
+		usersStore = useUsersStore(pinia);
+
+		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
 
 		sourceControlStore = useSourceControlStore();
 		uiStore = useUIStore();
