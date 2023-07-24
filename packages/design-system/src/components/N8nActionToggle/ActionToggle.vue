@@ -1,10 +1,9 @@
 <template>
-	<span :class="$style.container" data-test-id="action-toggle">
+	<span @click.stop.prevent :class="$style.container" data-test-id="action-toggle">
 		<el-dropdown
 			:placement="placement"
 			:size="size"
 			trigger="click"
-			@click.stop
 			@command="onCommand"
 			@visible-change="onVisibleChange"
 		>
