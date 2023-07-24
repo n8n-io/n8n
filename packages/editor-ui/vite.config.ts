@@ -118,23 +118,6 @@ export default mergeConfig(
 	}),
 	defineVitestConfig({
 		test: {
-			include: [
-				// 	'src/components/__tests__/SQLEditor.test.ts',
-				// 	'src/components/__tests__/BannersStack.test.ts',
-				// 	'src/components/__tests__/ExecutionFilter.test.ts',
-				// 	'src/components/__tests__/ExecutionsList.test.ts',
-				// 	'src/components/__tests__/MainSidebarSourceControl.test.ts',
-				// 	'src/components/__tests__/PersonalizationModal.spec.ts',
-				// 	'src/components/__tests__/ResourceMapper.test.ts',
-				// 	'src/components/__tests__/RunData.test.ts',
-				// 	'src/components/__tests__/RunDataJson.test.ts',
-				// 	'src/components/__tests__/RunDataSchema.test.ts',
-				// 	'src/components/__tests__/SQLEditor.test.ts',
-				// 	'src/components/__tests__/VariablesRow.spec.ts',
-				'src/components/Node/**/*.test.ts',
-				'src/views/**/*.test.ts',
-				'src/views/**/*.spec.ts',
-			],
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],

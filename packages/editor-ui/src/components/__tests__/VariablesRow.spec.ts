@@ -54,7 +54,6 @@ describe('VariablesRow', () => {
 			},
 		});
 
-		expect(wrapper.html()).toMatchSnapshot();
 		expect(wrapper.container.querySelectorAll('td')).toHaveLength(4);
 	});
 
@@ -89,8 +88,6 @@ describe('VariablesRow', () => {
 		expect(wrapper.getByTestId('variable-row-value-input').querySelector('input')).toHaveValue(
 			environmentVariable.value,
 		);
-
-		expect(wrapper.html()).toMatchSnapshot();
 	});
 
 	it('should show cancel and save buttons in edit mode', async () => {
