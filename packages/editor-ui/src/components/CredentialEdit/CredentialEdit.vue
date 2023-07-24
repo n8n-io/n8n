@@ -553,6 +553,10 @@ export default defineComponent({
 				return false;
 			}
 
+			if (parameter.displayOptions?.hideOnCloud && this.settingsStore.isCloudDeployment) {
+				return false;
+			}
+
 			if (parameter.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
 				return true;
@@ -669,6 +673,9 @@ export default defineComponent({
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		onDataChange({ name, value }: { name: string; value: any }) {
+			// skip update if new value matches the current
+			if (this.credentialData[name] === value) return;
+
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;

@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
 
-import type { ICredentialTypes, INodesAndCredentials } from 'n8n-workflow';
-import { LoggerProxy, NodeOperationError, Workflow } from 'n8n-workflow';
+import type { ICredentialTypes, INode, INodesAndCredentials } from 'n8n-workflow';
+import { LoggerProxy, NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -51,7 +51,7 @@ const generateWorkflows = (count: number): WorkflowEntity[] => {
 	for (let i = 0; i < count; i++) {
 		const workflow = new WorkflowEntity();
 		Object.assign(workflow, {
-			id: i + 1,
+			id: (i + 1).toString(),
 			name: randomName(),
 			active: true,
 			createdAt: new Date(),
@@ -259,5 +259,36 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		activeWorkflowRunner.executeErrorWorkflow(error, workflowData, 'trigger');
 		expect(workflowExecuteAdditionalDataExecuteErrorWorkflowSpy).toHaveBeenCalledTimes(1);
+	});
+
+	describe('init()', () => {
+		it('should execute error workflow on failure to activate due to 401', async () => {
+			databaseActiveWorkflowsCount = 1;
+
+			jest.spyOn(ActiveWorkflowRunner.prototype, 'add').mockImplementation(() => {
+				throw new NodeApiError(
+					{
+						id: 'a75dcd1b-9fed-4643-90bd-75933d67936c',
+						name: 'Github Trigger',
+						type: 'n8n-nodes-base.githubTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					} as INode,
+					{
+						httpCode: '401',
+						message: 'Authorization failed - please check your credentials',
+					},
+				);
+			});
+
+			const executeSpy = jest.spyOn(ActiveWorkflowRunner.prototype, 'executeErrorWorkflow');
+
+			await activeWorkflowRunner.init();
+
+			const [error, workflow] = executeSpy.mock.calls[0];
+
+			expect(error.message).toContain('Authorization');
+			expect(workflow.id).toBe('1');
+		});
 	});
 });

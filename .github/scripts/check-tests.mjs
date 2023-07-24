@@ -60,7 +60,7 @@ const main = async () => {
 		.then(({stdout}) => stdout.trim().split('\n').filter(Boolean));
 
   // Get all .spec.ts and .test.ts files from the packages
-	const specAndTestTsFiles = await glob('packages/*/**/{test,__tests__}/*.{spec,test}.ts');
+	const specAndTestTsFiles = await glob('packages/*/**/{test,__tests__}/**/*.{spec,test}.ts');
 	const specAndTestTsFilesNames = specAndTestTsFiles.map(file => path.parse(file).name.replace(/\.(test|spec)/, ''));
 
   // Filter out the .ts and .vue files from the changed files

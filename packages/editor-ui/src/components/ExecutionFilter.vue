@@ -177,7 +177,7 @@ onBeforeMount(() => {
 						data-test-id="executions-filter-workflows-select"
 						:teleported="teleported"
 					>
-						<div class="ph-no-capture">
+						<div>
 							<n8n-option
 								v-for="(item, idx) in props.workflows"
 								:key="idx"

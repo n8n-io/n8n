@@ -4,7 +4,7 @@
 			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 		</n8n-text>
 		<n8n-text :class="$style.body">
-			<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-output"></div>
+			<div ref="root" data-test-id="inline-expression-editor-output"></div>
 		</n8n-text>
 		<div :class="$style.footer">
 			<n8n-text size="small" compact>

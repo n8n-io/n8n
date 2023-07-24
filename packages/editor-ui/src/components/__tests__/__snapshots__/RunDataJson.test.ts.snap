@@ -372,9 +372,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span
-                class="ph-no-capture"
-              >
+              <span>
                 "Joe"
               </span>
               
@@ -458,9 +456,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-number"
             >
               
-              <span
-                class="ph-no-capture"
-              >
+              <span>
                 123
               </span>
               
@@ -515,9 +511,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span
-                class="ph-no-capture"
-              >
+              <span>
                 "456"
               </span>
               
@@ -572,9 +566,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span
-                class="ph-no-capture"
-              >
+              <span>
                 "abc"
               </span>
               
@@ -629,9 +621,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-null"
             >
               
-              <span
-                class="ph-no-capture"
-              >
+              <span>
                 null
               </span>
               
@@ -686,9 +676,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-undefined"
             >
               
-              <span
-                class="ph-no-capture"
-              />
+              <span />
               
             </span>
             <!---->

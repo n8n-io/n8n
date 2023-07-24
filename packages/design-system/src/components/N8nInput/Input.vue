@@ -97,11 +97,14 @@ export default defineComponent({
 			return this.size;
 		},
 		classes(): string[] {
+			const classes = [];
 			if (this.size === 'xlarge') {
-				return ['xlarge'];
+				classes.push('xlarge');
 			}
-
-			return [];
+			if (this.type === 'password') {
+				classes.push('ph-no-capture');
+			}
+			return classes;
 		},
 	},
 	methods: {

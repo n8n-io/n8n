@@ -279,8 +279,9 @@ onBeforeUnmount(() => {
 				@click:button="goToUpgrade"
 			/>
 		</template>
-		<template v-if="!isFeatureEnabled" #empty>
+		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
 			<n8n-action-box
+				v-if="!isFeatureEnabled"
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
@@ -290,6 +291,18 @@ onBeforeUnmount(() => {
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
 				@click:button="goToUpgrade"
+			/>
+			<n8n-action-box
+				v-else-if="!canCreateVariables"
+				data-test-id="cannot-create-variables"
+				emoji="👋"
+				:heading="
+					$locale.baseText('variables.empty.notAllowedToCreate.heading', {
+						interpolate: { name: usersStore.currentUser.firstName },
+					})
+				"
+				:description="$locale.baseText('variables.empty.notAllowedToCreate.description')"
+				@click="goToUpgrade"
 			/>
 		</template>
 		<template #default="{ data }">

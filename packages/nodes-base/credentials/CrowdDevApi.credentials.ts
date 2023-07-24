@@ -10,7 +10,7 @@ export class CrowdDevApi implements ICredentialType {
 
 	displayName = 'crowd.dev API';
 
-	documentationUrl = 'crowdDev';
+	documentationUrl = 'crowddev';
 
 	properties: INodeProperties[] = [
 		{
