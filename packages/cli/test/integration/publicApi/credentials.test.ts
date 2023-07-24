@@ -82,12 +82,10 @@ describe('POST /credentials', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		await Promise.all(
-			INVALID_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
-				expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
-			}),
-		);
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
+			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
+		}
 	});
 
 	test('should fail with missing encryption key', async () => {
