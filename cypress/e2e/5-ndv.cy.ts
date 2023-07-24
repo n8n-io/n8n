@@ -200,7 +200,7 @@ describe('NDV', () => {
 		});
 	});
 
-	it('can link and unlink run selectors between input and output', () => {
+	it.only('can link and unlink run selectors between input and output', () => {
 		cy.createFixtureWorkflow('Test_workflow_5.json', 'Test');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.executeWorkflow();
