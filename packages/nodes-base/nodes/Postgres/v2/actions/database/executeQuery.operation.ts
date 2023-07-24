@@ -94,7 +94,7 @@ export async function execute(
 			} else {
 				throw new NodeOperationError(
 					this.getNode(),
-					'Query Replacement must be a string of comma-separated values, or an array of values',
+					'Query Parameters must be a string of comma-separated values or an array of values',
 					{ itemIndex: i },
 				);
 			}
