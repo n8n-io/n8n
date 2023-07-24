@@ -1,4 +1,5 @@
 import { BasePage } from './base';
+import { getVisibleSelect } from '../utils';
 
 export class NDV extends BasePage {
 	getters = {
@@ -139,11 +140,11 @@ export class NDV extends BasePage {
 		},
 		changeInputRunSelector: (runName: string) => {
 			this.getters.inputRunSelector().click();
-			cy.get('.el-select-dropdown:visible .el-select-dropdown__item').contains(runName).click();
+			getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 		},
 		changeOutputRunSelector: (runName: string) => {
 			this.getters.outputRunSelector().click();
-			cy.get('.el-select-dropdown:visible .el-select-dropdown__item').contains(runName).click();
+			getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 		},
 		toggleOutputRunLinking: () => {
 			this.getters.outputRunSelector().find('button').click();

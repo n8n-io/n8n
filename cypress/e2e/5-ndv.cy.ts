@@ -28,17 +28,14 @@ describe('NDV', () => {
 
 		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
 
-		cy.window()
-			.focus()
-			.readClipboard()
-			.then((url) => {
-				cy.request({
-					method: 'GET',
-					url,
-				}).then((resp) => {
-					expect(resp.status).to.eq(200);
-				});
+		cy.readClipboard().then((url) => {
+			cy.request({
+				method: 'GET',
+				url,
+			}).then((resp) => {
+				expect(resp.status).to.eq(200);
 			});
+		});
 
 		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
@@ -120,7 +117,7 @@ describe('NDV', () => {
 			setupSchemaWorkflow();
 			ndv.getters.outputDisplayMode().children().should('have.length', 3);
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
 
 			schemaKeys.forEach((key) => {
@@ -133,7 +130,7 @@ describe('NDV', () => {
 		});
 		it('should preserve schema view after execution', () => {
 			setupSchemaWorkflow();
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.actions.execute();
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
 		});
@@ -145,7 +142,7 @@ describe('NDV', () => {
 					.outputPanel()
 					.find('[data-test-id=run-data-schema-item]')
 					.filter(':contains("objectValue")');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 
 			expandedObjectProps.forEach((key) => {
 				ndv.getters
@@ -176,9 +173,9 @@ describe('NDV', () => {
 			ndv.actions.execute();
 			ndv.getters.outputPanel().contains('25 items').should('exist');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
-			ndv.getters.outputDisplayMode().contains('JSON').click();
+			ndv.actions.switchOutputMode('JSON');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
 		});
 		it('should display large schema', () => {
@@ -191,7 +188,7 @@ describe('NDV', () => {
 
 			ndv.getters.outputPanel().contains('20 items').should('exist');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
 			ndv.getters
 				.outputPanel()
@@ -200,7 +197,7 @@ describe('NDV', () => {
 		});
 	});
 
-	it.only('can link and unlink run selectors between input and output', () => {
+	it('can link and unlink run selectors between input and output', () => {
 		cy.createFixtureWorkflow('Test_workflow_5.json', 'Test');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.executeWorkflow();
