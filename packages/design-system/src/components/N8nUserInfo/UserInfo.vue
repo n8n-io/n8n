@@ -1,5 +1,5 @@
 <template>
-	<div class="ph-no-capture" :class="classes">
+	<div :class="classes">
 		<div :class="$style.avatarContainer">
 			<n8n-avatar :firstName="firstName" :lastName="lastName" />
 		</div>

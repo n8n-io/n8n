@@ -97,10 +97,10 @@ import {
 	TagsController,
 	TranslationController,
 	UsersController,
+	WorkflowStatisticsController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
-import { workflowStatsController } from '@/api/workflowStats.api';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
 	getInstanceBaseUrl,
@@ -136,7 +136,6 @@ import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBu
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
-import { initEvents } from './events';
 import {
 	getLdapLoginLabel,
 	handleLdapInit,
@@ -319,9 +318,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			banners: {
-				v1: {
-					dismissed: false,
-				},
+				dismissed: [],
 			},
 		};
 	}
@@ -385,9 +382,6 @@ export class Server extends AbstractServer {
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 		};
 
-		// Set up event handling
-		initEvents();
-
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
 			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
@@ -415,15 +409,15 @@ export class Server extends AbstractServer {
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
-		let v1Dismissed = false;
+		let dismissedBanners: string[] = [];
 
 		try {
-			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
 		} catch {
 			// not yet in DB
 		}
 
-		this.frontendSettings.banners.v1.dismissed = v1Dismissed;
+		this.frontendSettings.banners.dismissed = dismissedBanners;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
@@ -498,6 +492,7 @@ export class Server extends AbstractServer {
 			}),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
+			Container.get(WorkflowStatisticsController),
 		];
 
 		if (isLdapEnabled()) {
@@ -605,11 +600,6 @@ export class Server extends AbstractServer {
 		// License
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/license`, licenseController);
-
-		// ----------------------------------------
-		// Workflow Statistics
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
 		// SAML

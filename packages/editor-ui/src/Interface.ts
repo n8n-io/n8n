@@ -34,6 +34,7 @@ import type {
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
+	Banners,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -60,6 +61,10 @@ declare global {
 						distinctId?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+					};
+					session_recording?: {
+						maskAllInputs?: boolean;
+						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
 					};
 				},
 			): void;
@@ -1045,12 +1050,6 @@ export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
-	banners: {
-		v1: {
-			dismissed: boolean;
-			mode: 'temporary' | 'permanent';
-		};
-	};
 	modalStack: string[];
 	modals: Modals;
 	isPageLoading: boolean;
@@ -1074,7 +1073,10 @@ export interface UIState {
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
+	bannersHeight: number;
+	banners: { [key in Banners]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
 }
+
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;
@@ -1526,3 +1528,35 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
+
+export type CloudUpdateLinkSourceType =
+	| 'canvas-nav'
+	| 'custom-data-filter'
+	| 'workflow_sharing'
+	| 'credential_sharing'
+	| 'settings-n8n-api'
+	| 'audit-logs'
+	| 'ldap'
+	| 'log-streaming'
+	| 'source-control'
+	| 'sso'
+	| 'usage_page'
+	| 'settings-users'
+	| 'variables';
+
+export type UTMCampaign =
+	| 'upgrade-custom-data-filter'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-workflow-sharing'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-credentials-sharing'
+	| 'upgrade-workflow-sharing'
+	| 'upgrade-api'
+	| 'upgrade-audit-logs'
+	| 'upgrade-ldap'
+	| 'upgrade-log-streaming'
+	| 'upgrade-source-control'
+	| 'upgrade-sso'
+	| 'open'
+	| 'upgrade-users'
+	| 'upgrade-variables';

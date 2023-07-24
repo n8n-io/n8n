@@ -156,7 +156,7 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 		);
 
 		await queryRunner.query(
-			`INSERT INTO ${tablePrefix}settings (\`key\`, value, loadOnStartup) VALUES ("ui.banners.v1.dismissed", "true", 1)`,
+			`INSERT INTO ${tablePrefix}settings (\`key\`, value, loadOnStartup) VALUES ("ui.banners.dismissed", JSON_ARRAY('V1'), 1)`,
 		);
 	}
 
