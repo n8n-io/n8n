@@ -38,7 +38,6 @@ export function issueJWT(user: User): JwtToken {
 
 	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,
-		algorithm: 'HS256',
 	});
 
 	return {
