@@ -131,14 +131,14 @@
 
 				<n8n-input
 					v-else
-					:modelValue="tempValue"
+					v-model="tempValue"
 					ref="inputField"
 					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
 					:disabled="isReadOnly"
-					@update:modelValue="onUpdateTextInput"
+					@update:modelValue="valueChanged($event) && onUpdateTextInput($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"

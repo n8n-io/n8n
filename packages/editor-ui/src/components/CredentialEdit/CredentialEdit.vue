@@ -73,7 +73,7 @@
 						:mode="mode"
 						:selectedCredential="selectedCredential"
 						:showAuthTypeSelector="requiredCredentials"
-						@change="onDataChange"
+						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scrollToTop="scrollToTop"

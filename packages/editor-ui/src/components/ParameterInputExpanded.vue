@@ -35,7 +35,7 @@
 			@focus="onFocus"
 			@blur="onBlur"
 			@textInput="valueChanged"
-			@update:modelValue="valueChanged"
+			@update="valueChanged"
 		/>
 		<div :class="$style.errors" v-if="showRequiredErrors">
 			<n8n-text color="danger" size="small">
