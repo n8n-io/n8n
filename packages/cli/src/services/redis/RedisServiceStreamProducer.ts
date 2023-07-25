@@ -16,17 +16,11 @@ import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 export class RedisServiceStreamProducer extends RedisServiceBaseSender {
 	async init(senderId?: string): Promise<void> {
 		await super.init('producer');
-		RedisServiceStreamProducer.setSenderId(senderId);
+		this.setSenderId(senderId);
 	}
 
 	async add(streamName: string, values: RedisValue[]): Promise<void> {
-		await RedisServiceStreamProducer.redisClient?.xadd(
-			streamName,
-			'*',
-			'senderId',
-			RedisServiceStreamProducer.senderId,
-			...values,
-		);
+		await this.redisClient?.xadd(streamName, '*', 'senderId', this.senderId, ...values);
 	}
 
 	async addToEventStream(message: AbstractEventMessage): Promise<void> {
@@ -38,11 +32,11 @@ export class RedisServiceStreamProducer extends RedisServiceBaseSender {
 		]);
 	}
 
-	async publishToCommandChannel(message: RedisServiceCommandObject): Promise<void> {
+	async addToCommandChannel(message: RedisServiceCommandObject): Promise<void> {
 		await this.add(COMMAND_REDIS_STREAM, ['command', JSON.stringify(message)]);
 	}
 
-	async publishToWorkerChannel(message: RedisServiceWorkerResponseObject): Promise<void> {
+	async addToWorkerChannel(message: RedisServiceWorkerResponseObject): Promise<void> {
 		await this.add(WORKER_RESPONSE_REDIS_STREAM, ['response', JSON.stringify(message)]);
 	}
 }

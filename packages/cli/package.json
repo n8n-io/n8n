@@ -94,6 +94,7 @@
     "@types/yamljs": "^0.2.31",
     "chokidar": "^3.5.2",
     "concurrently": "^5.1.0",
+    "ioredis-mock": "^8.8.1",
     "mock-jwks": "^1.0.9",
     "nodemon": "^2.0.2",
     "run-script-os": "^1.0.7",

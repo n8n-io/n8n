@@ -12,18 +12,18 @@ export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 	async init(): Promise<void> {
 		await super.init('subscriber');
 
-		RedisServicePubSubSubscriber.redisClient?.on('message', (channel: string, message: string) => {
-			RedisServicePubSubSubscriber.messageHandlers.forEach(
-				(handler: (channel: string, message: string) => void) => handler(channel, message),
+		this.redisClient?.on('message', (channel: string, message: string) => {
+			this.messageHandlers.forEach((handler: (channel: string, message: string) => void) =>
+				handler(channel, message),
 			);
 		});
 	}
 
 	async subscribe(channel: string): Promise<void> {
-		if (!RedisServicePubSubSubscriber.redisClient) {
+		if (!this.redisClient) {
 			await this.init();
 		}
-		await RedisServicePubSubSubscriber.redisClient?.subscribe(channel, (error, count: number) => {
+		await this.redisClient?.subscribe(channel, (error, count: number) => {
 			if (error) {
 				Logger.error(`Error subscribing to channel ${channel}`);
 			} else {

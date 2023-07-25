@@ -7,21 +7,21 @@ import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 export class RedisServiceListSender extends RedisServiceBaseSender {
 	async init(senderId?: string): Promise<void> {
 		await super.init('list-sender');
-		RedisServiceListSender.setSenderId(senderId);
+		this.setSenderId(senderId);
 	}
 
 	async pushToFront(list: string, message: string): Promise<void> {
-		if (!RedisServiceListSender.redisClient) {
+		if (!this.redisClient) {
 			await this.init();
 		}
-		await RedisServiceListSender.redisClient?.lpush(list, message);
+		await this.redisClient?.lpush(list, message);
 	}
 
 	async pushToBack(list: string, message: string): Promise<void> {
-		if (!RedisServiceListSender.redisClient) {
+		if (!this.redisClient) {
 			await this.init();
 		}
-		await RedisServiceListSender.redisClient?.rpush(list, message);
+		await this.redisClient?.rpush(list, message);
 	}
 
 	async appendWorkerResponse(message: RedisServiceWorkerResponseObject): Promise<void> {

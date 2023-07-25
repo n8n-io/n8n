@@ -10,6 +10,7 @@ export type RedisClientType =
 	| 'subscriber(bull)'
 	| 'client(bull)'
 	| 'bclient(bull)'
+	| 'client(cache)'
 	| 'publisher'
 	| 'consumer'
 	| 'producer'
@@ -21,21 +22,21 @@ export type RedisServiceMessageHandler =
 	| ((stream: string, id: string, message: string[]) => void);
 
 class RedisServiceBase {
-	static redisClient: Redis | Cluster | undefined;
+	redisClient: Redis | Cluster | undefined;
 
-	static isInitialized = false;
+	isInitialized = false;
 
 	async init(type: RedisClientType = 'client'): Promise<void> {
-		if (RedisServiceBase.redisClient && RedisServiceBase.isInitialized) {
+		if (this.redisClient && this.isInitialized) {
 			return;
 		}
-		RedisServiceBase.redisClient = await getDefaultRedisClient(undefined, type);
+		this.redisClient = await getDefaultRedisClient(undefined, type);
 
-		RedisServiceBase.redisClient.on('close', () => {
+		this.redisClient.on('close', () => {
 			LoggerProxy.warn('Redis unavailable - trying to reconnect...');
 		});
 
-		RedisServiceBase.redisClient.on('error', (error) => {
+		this.redisClient.on('error', (error) => {
 			if (!String(error).includes('ECONNREFUSED')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				LoggerProxy.warn('Error with Redis: ', error);
@@ -43,31 +44,31 @@ class RedisServiceBase {
 		});
 	}
 
-	static async close(): Promise<void> {
-		if (!RedisServiceBase.redisClient) {
+	async destroy(): Promise<void> {
+		if (!this.redisClient) {
 			return;
 		}
-		await RedisServiceBase.redisClient.quit();
-		RedisServiceBase.redisClient = undefined;
+		await this.redisClient.quit();
+		this.redisClient = undefined;
 	}
 }
 
 export abstract class RedisServiceBaseSender extends RedisServiceBase {
-	static senderId: string;
+	senderId: string;
 
-	static setSenderId(senderId?: string): void {
-		RedisServiceBaseSender.senderId = senderId ?? '';
+	setSenderId(senderId?: string): void {
+		this.senderId = senderId ?? '';
 	}
 }
 
 export abstract class RedisServiceBaseReceiver extends RedisServiceBase {
-	static messageHandlers: Map<string, RedisServiceMessageHandler> = new Map();
+	messageHandlers: Map<string, RedisServiceMessageHandler> = new Map();
 
 	addMessageHandler(handlerName: string, handler: RedisServiceMessageHandler): void {
-		RedisServiceBaseReceiver.messageHandlers.set(handlerName, handler);
+		this.messageHandlers.set(handlerName, handler);
 	}
 
 	removeMessageHandler(handlerName: string): void {
-		RedisServiceBaseReceiver.messageHandlers.delete(handlerName);
+		this.messageHandlers.delete(handlerName);
 	}
 }

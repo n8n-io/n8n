@@ -3,89 +3,28 @@ import config from '@/config';
 import { caching } from 'cache-manager';
 import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
-import type { RedisOptions } from 'ioredis';
-import { getRedisClusterNodes } from '../GenericHelpers';
-import { LoggerProxy, jsonStringify } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
+import { getDefaultRedisClient } from './redis/RedisServiceHelper';
 
 @Service()
 export class CacheService {
 	private cache: RedisCache | MemoryCache | undefined;
 
+	isRedisCache(): boolean {
+		return (this.cache as RedisCache)?.store?.isCacheable !== undefined;
+	}
+
 	async init() {
 		if (!config.getEnv('cache.enabled')) {
 			throw new Error('Cache is disabled');
 		}
-
 		const backend = config.getEnv('cache.backend');
-
 		if (
 			backend === 'redis' ||
 			(backend === 'auto' && config.getEnv('executions.mode') === 'queue')
 		) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { redisInsStore } = await import('cache-manager-ioredis-yet');
-
-			// #region TEMPORARY Redis Client Code
-			/*
-			 * TODO: remove once redis service is ready
-			 * this code is just temporary
-			 */
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { default: Redis } = await import('ioredis');
-			let lastTimer = 0;
-			let cumulativeTimeout = 0;
-			const { host, port, username, password, db }: RedisOptions =
-				config.getEnv('queue.bull.redis');
-			const clusterNodes = getRedisClusterNodes();
-			const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-			const usesRedisCluster = clusterNodes.length > 0;
-			LoggerProxy.debug(
-				usesRedisCluster
-					? `(Cache Service) Initialising Redis cluster connection with nodes: ${clusterNodes
-							.map((e) => `${e.host}:${e.port}`)
-							.join(',')}`
-					: `(Cache Service) Initialising Redis client connection with host: ${
-							host ?? 'localhost'
-					  } and port: ${port ?? '6379'}`,
-			);
-			const sharedRedisOptions: RedisOptions = {
-				username,
-				password,
-				db,
-				enableReadyCheck: false,
-				maxRetriesPerRequest: null,
-			};
-			const redisClient = usesRedisCluster
-				? new Redis.Cluster(
-						clusterNodes.map((node) => ({ host: node.host, port: node.port })),
-						{
-							redisOptions: sharedRedisOptions,
-						},
-				  )
-				: new Redis({
-						host,
-						port,
-						...sharedRedisOptions,
-						retryStrategy: (): number | null => {
-							const now = Date.now();
-							if (now - lastTimer > 30000) {
-								// Means we had no timeout at all or last timeout was temporary and we recovered
-								lastTimer = now;
-								cumulativeTimeout = 0;
-							} else {
-								cumulativeTimeout += now - lastTimer;
-								lastTimer = now;
-								if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-									LoggerProxy.error(
-										`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-									);
-									process.exit(1);
-								}
-							}
-							return 500;
-						},
-				  });
-			// #endregion TEMPORARY Redis Client Code
+			const redisClient = await getDefaultRedisClient(undefined, 'client(cache)');
 			const redisStore = redisInsStore(redisClient, {
 				ttl: config.getEnv('cache.redis.ttl'),
 			});
@@ -124,9 +63,14 @@ export class CacheService {
 		return this.cache?.store.get(key) as T;
 	}
 
-	async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+	async set<T = unknown>(key: string, value: T, ttl?: number): Promise<void> {
 		if (!this.cache) {
 			await this.init();
+		}
+		if (this.isRedisCache()) {
+			if (!(this.cache as RedisCache)?.store?.isCacheable(value)) {
+				throw new Error('Value is not cacheable');
+			}
 		}
 		return this.cache?.store.set(key, value, ttl);
 	}
@@ -152,9 +96,17 @@ export class CacheService {
 		return this.cache?.store.keys() ?? [];
 	}
 
-	async setMany<T>(values: Array<[string, T]>, ttl?: number): Promise<void> {
+	async setMany<T = unknown>(values: Array<[string, T]>, ttl?: number): Promise<void> {
 		if (!this.cache) {
 			await this.init();
+		}
+		if (this.isRedisCache()) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			values.forEach(([_key, value]) => {
+				if (!(this.cache as RedisCache)?.store?.isCacheable(value)) {
+					throw new Error('Value is not cacheable');
+				}
+			});
 		}
 		return this.cache?.store.mset(values, ttl);
 	}

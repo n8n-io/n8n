@@ -15,14 +15,14 @@ import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 	async init(senderId?: string): Promise<void> {
 		await super.init('publisher');
-		RedisServicePubSubPublisher.setSenderId(senderId);
+		this.setSenderId(senderId);
 	}
 
 	async publish(channel: string, message: string): Promise<void> {
-		if (!RedisServicePubSubPublisher.redisClient) {
+		if (!this.redisClient) {
 			await this.init();
 		}
-		await RedisServicePubSubPublisher.redisClient?.publish(channel, message);
+		await this.redisClient?.publish(channel, message);
 	}
 
 	async publishToEventLog(message: AbstractEventMessage): Promise<void> {

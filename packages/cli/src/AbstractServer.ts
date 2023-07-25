@@ -8,7 +8,7 @@ import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
 import type { WebhookHttpMethod } from 'n8n-workflow';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -25,20 +25,15 @@ import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
-import { RedisServicePubSubSubscriber } from './services/redis/RedisServicePubSubSubscriber';
-import { eventBus } from './eventbus';
-import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
-import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
-import type { RedisServiceWorkerResponseObject } from './services/redis/RedisServiceCommands';
+import { eventBus } from '@/eventbus';
+import type { AbstractEventMessageOptions } from '@/eventbus/EventMessageClasses/AbstractEventMessageOptions';
+import { getEventMessageObjectByType } from '@/eventbus/EventMessageClasses/Helpers';
+import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
 import {
-	COMMAND_REDIS_STREAM,
 	EVENT_BUS_REDIS_CHANNEL,
-	EVENT_BUS_REDIS_STREAM,
 	WORKER_RESPONSE_REDIS_CHANNEL,
-	WORKER_RESPONSE_REDIS_STREAM,
-} from './services/redis/RedisServiceHelper';
-import { RedisServiceStreamConsumer } from './services/redis/RedisServiceStreamConsumer';
-import { RedisServiceListReceiver } from './services/redis/RedisServiceListReceiver';
+} from '@/services/redis/RedisServiceHelper';
+import { RedisService } from './services/redis.service';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -194,8 +189,8 @@ export abstract class AbstractServer {
 	// We will be using a retryStrategy to control how and when to exit.
 	// We are also subscribing to the event log channel to receive events from workers
 	private async setupRedis() {
-		const redisSubscriber = Container.get(RedisServicePubSubSubscriber);
-		await redisSubscriber.init();
+		const redisService = Container.get(RedisService);
+		const redisSubscriber = await redisService.getPubSubSubscriber();
 
 		// TODO: these are all proof of concept implementations for the moment
 		// until worker communication is implemented
@@ -226,33 +221,33 @@ export abstract class AbstractServer {
 				}
 			},
 		);
-		const redisStreamListener = Container.get(RedisServiceStreamConsumer);
-		await redisStreamListener.init();
-		void redisStreamListener.listenToStream('teststream');
-		redisStreamListener.addMessageHandler(
-			'MessageLogger',
-			async (stream: string, id: string, message: string[]) => {
-				// TODO: this is a proof of concept implementation of a stream consumer
-				switch (stream) {
-					case EVENT_BUS_REDIS_STREAM:
-					case COMMAND_REDIS_STREAM:
-					case WORKER_RESPONSE_REDIS_STREAM:
-					default:
-						LoggerProxy.debug(
-							`Received message from stream ${stream} with id ${id} and message ${message.join(
-								',',
-							)}`,
-						);
-						break;
-				}
-			},
-		);
-		const redisListReceiver = Container.get(RedisServiceListReceiver);
-		await redisListReceiver.init();
+		// const redisStreamListener = await redisService.getStreamConsumer();
+		// void redisStreamListener.listenToStream('teststream');
+		// redisStreamListener.addMessageHandler(
+		// 	'MessageLogger',
+		// 	async (stream: string, id: string, message: string[]) => {
+		// 		// TODO: this is a proof of concept implementation of a stream consumer
+		// 		switch (stream) {
+		// 			case EVENT_BUS_REDIS_STREAM:
+		// 			case COMMAND_REDIS_STREAM:
+		// 			case WORKER_RESPONSE_REDIS_STREAM:
+		// 			default:
+		// 				LoggerProxy.debug(
+		// 					`Received message from stream ${stream} with id ${id} and message ${message.join(
+		// 						',',
+		// 					)}`,
+		// 				);
+		// 				break;
+		// 		}
+		// 	},
+		// );
 
-		setInterval(async () => {
-			await redisListReceiver.popLatestWorkerResponse();
-		}, 1000);
+		// const redisListReceiver = await redisService.getListReceiver();
+		// await redisListReceiver.init();
+
+		// setInterval(async () => {
+		// 	await redisListReceiver.popLatestWorkerResponse();
+		// }, 1000);
 		// #endregion
 	}
 

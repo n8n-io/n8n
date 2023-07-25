@@ -11,17 +11,17 @@ export class RedisServiceListReceiver extends RedisServiceBaseReceiver {
 	}
 
 	async popFromFront(list: string): Promise<string | null | undefined> {
-		if (!RedisServiceListReceiver.redisClient) {
+		if (!this.redisClient) {
 			await this.init();
 		}
-		return RedisServiceListReceiver.redisClient?.lpop(list);
+		return this.redisClient?.lpop(list);
 	}
 
 	async popFromBack(list: string): Promise<string | null | undefined> {
-		if (!RedisServiceListReceiver.redisClient) {
+		if (!this.redisClient) {
 			await this.init();
 		}
-		return RedisServiceListReceiver.redisClient?.rpop(list);
+		return this.redisClient?.rpop(list);
 	}
 
 	private poppedResultToWorkerResponse(
