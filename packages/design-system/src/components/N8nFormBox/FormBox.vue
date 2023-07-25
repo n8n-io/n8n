@@ -10,7 +10,7 @@
 				:inputs="inputs"
 				:eventBus="formBus"
 				:columnView="true"
-				@update:modelValue="onUpdateModelValue"
+				@update="onUpdateModelValue"
 				@submit="onSubmit"
 			/>
 		</div>
@@ -88,7 +88,7 @@ export default defineComponent({
 	},
 	methods: {
 		onUpdateModelValue(e: { name: string; value: string }) {
-			this.$emit('change', e);
+			this.$emit('update', e);
 		},
 		onSubmit(e: { [key: string]: string }) {
 			this.$emit('submit', e);

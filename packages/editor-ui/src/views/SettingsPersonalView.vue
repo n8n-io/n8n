@@ -26,7 +26,7 @@
 					v-if="formInputs"
 					:inputs="formInputs"
 					:eventBus="formBus"
-					@change="onInput"
+					@update="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
