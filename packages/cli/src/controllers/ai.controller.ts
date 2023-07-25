@@ -23,13 +23,6 @@ type GenerateCurlRequest = Request<
 	}
 >;
 
-if (!config.getEnv('ai.enabled')) {
-	console.error('AI endpoints only allowed when AI is enabled');
-	process.exit(1);
-} else {
-	console.log('AI endpoints enabled');
-}
-
 @Authorized()
 @RestController('/ai')
 export class AiController {
@@ -48,33 +41,31 @@ export class AiController {
 	@Post('/generate-code')
 	async generatePrompt(req: GenerateCodeRequest) {
 		console.log('Received: ', req.body.prompt, req.body.schema);
-		const generatedCode = 'console.log("Hello world!")';
+		const { prompt, schema } = req.body;
 
-		return {
-			code: generatedCode,
-			isValid: this.validateGeneratedCode(generatedCode),
-		};
-	}
-
-	@Post('/generate-curl')
-	async generateCurl(req: GenerateCurlRequest) {
 		try {
-			const { prompt, service } = req.body;
 			const resp = await axios({
 				method: 'post',
-				url: `${this.endpoint}/generate-curl`,
+				url: this.endpoint,
 				data: {
 					prompt,
-					service,
+					schema,
 				},
 				headers: {
 					authorization: this.authorization,
 				},
 			});
 
-			return resp.data as { curl: string };
+			const code = (resp.data as { code: string }).code;
+			const mode = (resp.data as { mode: string }).mode;
+
+			return {
+				code,
+				mode,
+				isValid: this.validateGeneratedCode(code),
+			};
 		} catch (error) {
-			throw new Error(`Failed to generate curl: ${error}`);
+			throw new Error(`Failed to generate code: ${error}`);
 		}
 	}
 

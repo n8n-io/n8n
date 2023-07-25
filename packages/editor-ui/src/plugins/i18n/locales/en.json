@@ -276,6 +276,7 @@
 	"codeNodeEditor.askAi.intro": "Hey AI, generate JavaScript code that...",
 	"codeNodeEditor.askAi.help": "Help",
 	"codeNodeEditor.askAi.generateCode": "Generate Code",
+	"codeNodeEditor.askAi.noInputData": "No input data yet. Please execute the input node first",
 	"codeNodeEditor.askAi.generateCodeAndReplace": "Generate and Replace Code",
 	"codeNodeEditor.askAi.replaceCurrentCode": "Replace current code?",
 	"codeNodeEditor.askAi.areYouSureToReplace": "Are you sure you want to generate new code? Your current code will be replaced.",

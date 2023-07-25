@@ -1,11 +1,11 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { IDataObject } from 'n8n-workflow';
+import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
 
 export async function generateCodeForPrompt(
 	context: IRestApiContext,
 	{ prompt, schema }: { prompt: string; schema: IDataObject },
-): Promise<{ code: string }> {
+): Promise<{ code: string; mode: CodeExecutionMode }> {
 	return makeRestApiRequest(context, 'POST', '/ai/generate-code', {
 		prompt,
 		schema: JSON.stringify(schema),

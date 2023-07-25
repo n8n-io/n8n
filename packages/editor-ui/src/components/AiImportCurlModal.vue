@@ -37,6 +37,7 @@
 				<n8n-button
 					@click="onSubmit"
 					float="right"
+					:disabled="service.length === 0 || prompt.length === 0"
 					:loading="loading"
 					:label="$locale.baseText('aiImportCurlModal.button.label')"
 				/>
@@ -80,12 +81,6 @@ function closeDialog() {
 			prompt: prompt.value,
 		},
 	});
-
-	showToast({
-		type: 'success',
-		title: i18n.baseText('aiImportCurlModal.toast.success.title'),
-		message: i18n.baseText('aiImportCurlModal.toast.success.message'),
-	});
 }
 
 async function onSubmit() {
@@ -97,8 +92,13 @@ async function onSubmit() {
 			prompt: prompt.value,
 		});
 
-		if (await importCurlCommand(curl)) {
+		if ((await importCurlCommand(curl)) === true) {
 			closeDialog();
+			showToast({
+				type: 'success',
+				title: i18n.baseText('aiImportCurlModal.toast.success.title'),
+				message: i18n.baseText('aiImportCurlModal.toast.success.message'),
+			});
 		}
 	} catch (error) {
 		showError(

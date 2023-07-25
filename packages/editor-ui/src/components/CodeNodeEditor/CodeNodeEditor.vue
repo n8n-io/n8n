@@ -9,7 +9,7 @@
 			type="card"
 			ref="tabs"
 			v-model="activeTab"
-			v-if="askAiEnabled && language === 'javaScript'"
+			v-if="aiEnabled && language === 'javaScript'"
 		>
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.code')" name="code">
 				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
@@ -26,6 +26,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import jsParser from 'prettier/parser-babel';
+import prettier from 'prettier/standalone';
 import { mapStores } from 'pinia';
 import type { LanguageSupport } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
@@ -116,13 +118,13 @@ export default defineComponent({
 
 			return this.editor.state.doc.toString();
 		},
-		askAiEnabled(): boolean {
-			// TODO: Do this based on ENV?
-			return true;
+		aiEnabled(): boolean {
+			return this.settingsStore.settings.ai.enabled === true;
 		},
 		placeholder(): string {
 			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
 		},
+		// eslint-disable-next-line vue/return-in-computed-property
 		languageExtensions(): [LanguageSupport, ...Extension[]] {
 			switch (this.language) {
 				case 'json':
@@ -135,7 +137,7 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onReplaceCode(code: string) {
+		async onReplaceCode({ code, mode }: { code: string; mode: CodeExecutionMode }) {
 			const hasChanges = this.initialValue !== this.content;
 
 			if (hasChanges) {
@@ -154,12 +156,24 @@ export default defineComponent({
 				}
 			}
 
+			this.workflowsStore.updateNodeProperties({
+				name: this.ndvStore.activeNode.name,
+				properties: { parameters: { mode } },
+			});
+
 			this.editor?.dispatch({
 				changes: { from: 0, to: this.content.length, insert: code },
 			});
 
 			this.initialValue = this.content;
 			this.activeTab = 'code';
+			this.formatCode();
+		},
+		switchMode(mode: string) {
+			this.workflowsStore.updateNodeProperties({
+				name: this.ndvStore.activeNode.name,
+				properties: { parameters: { mode } },
+			});
 		},
 		onMouseOver(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
@@ -207,6 +221,16 @@ export default defineComponent({
 
 			this.editor.dispatch({
 				selection: { anchor: this.editor.state.doc.line(line).from },
+			});
+		},
+		formatCode() {
+			const formattedCode = prettier.format(this.content, {
+				parser: 'babel',
+				plugins: [jsParser],
+			});
+
+			this.editor?.dispatch({
+				changes: { from: 0, to: this.content.length, insert: formattedCode },
 			});
 		},
 		trackCompletion(viewUpdate: ViewUpdate) {

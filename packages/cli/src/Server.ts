@@ -498,10 +498,14 @@ export class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
-			new AiController({ logger }),
+
 			Container.get(SamlController),
 			Container.get(SourceControlController),
 		];
+
+		if (config.getEnv('ai.enabled')) {
+			controllers.push(new AiController({ logger }));
+		}
 
 		if (isLdapEnabled()) {
 			const { service, sync } = LdapManager.getInstance();
