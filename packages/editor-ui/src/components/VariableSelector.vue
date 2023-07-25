@@ -16,6 +16,7 @@
 				v-for="option in currentResults"
 				:key="option.key"
 				:extendAll="extendAll"
+				:redactValues="redactValues"
 				@itemSelected="forwardItemSelected"
 			></variable-selector-item>
 		</div>
@@ -59,7 +60,7 @@ export default defineComponent({
 	components: {
 		VariableSelectorItem,
 	},
-	props: ['path'],
+	props: ['path', 'redactValues'],
 	data() {
 		return {
 			variableFilter: '',
