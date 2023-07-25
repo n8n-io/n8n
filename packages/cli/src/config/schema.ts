@@ -1122,4 +1122,40 @@ export const schema = {
 			env: 'N8N_AI_AUTHORIZATION',
 		},
 	},
+	cache: {
+		enabled: {
+			doc: 'Whether caching is enabled',
+			format: Boolean,
+			default: true,
+			env: 'N8N_CACHE_ENABLED',
+		},
+		backend: {
+			doc: 'Backend to use for caching',
+			format: ['memory', 'redis', 'auto'] as const,
+			default: 'auto',
+			env: 'N8N_CACHE_BACKEND',
+		},
+		memory: {
+			maxSize: {
+				doc: 'Maximum size of memory cache in bytes',
+				format: Number,
+				default: 3 * 1024 * 1024, // 3 MB
+				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
+			},
+			ttl: {
+				doc: 'Time to live for cached items in memory (in ms)',
+				format: Number,
+				default: 3600 * 1000, // 1 hour
+				env: 'N8N_CACHE_MEMORY_TTL',
+			},
+		},
+		redis: {
+			ttl: {
+				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
+				format: Number,
+				default: 0,
+				env: 'N8N_CACHE_REDIS_TTL',
+			},
+		},
+	},
 };
