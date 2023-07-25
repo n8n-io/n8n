@@ -41,49 +41,45 @@
 						@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
 						data-test-id="canvas-add-button"
 					/>
-					<template v-for="nodeData in nodes">
-						<node
-							v-if="nodeData.type !== STICKY_NODE_TYPE"
-							@duplicateNode="duplicateNode"
-							@deselectAllNodes="deselectAllNodes"
-							@deselectNode="nodeDeselectedByName"
-							@nodeSelected="nodeSelectedByName"
-							@removeNode="(name) => removeNode(name, true)"
-							@runWorkflow="onRunNode"
-							@moved="onNodeMoved"
-							@run="onNodeRun"
-							:key="`${nodeData.id}_node`"
-							:name="nodeData.name"
-							:isReadOnly="isReadOnlyRoute || readOnlyEnv"
-							:instance="instance"
-							:isActive="!!activeNode && activeNode.name === nodeData.name"
-							:hideActions="pullConnActive"
-							:isProductionExecutionPreview="isProductionExecutionPreview"
-						>
-							<template #custom-tooltip>
-								<span
-									v-text="
-										$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')
-									"
-								/>
-							</template>
-						</node>
-						<sticky
-							v-else
-							@deselectAllNodes="deselectAllNodes"
-							@deselectNode="nodeDeselectedByName"
-							@nodeSelected="nodeSelectedByName"
-							@removeNode="(name) => removeNode(name, true)"
-							:key="`${nodeData.id}_sticky`"
-							:name="nodeData.name"
-							:isReadOnly="isReadOnlyRoute || readOnlyEnv"
-							:instance="instance"
-							:isActive="!!activeNode && activeNode.name === nodeData.name"
-							:nodeViewScale="nodeViewScale"
-							:gridSize="GRID_SIZE"
-							:hideActions="pullConnActive"
-						/>
-					</template>
+					<node
+						v-for="nodeData in nodesToRender"
+						@duplicateNode="duplicateNode"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="(name) => removeNode(name, true)"
+						@runWorkflow="onRunNode"
+						@moved="onNodeMoved"
+						@run="onNodeRun"
+						:key="`${nodeData.id}_node`"
+						:name="nodeData.name"
+						:isReadOnly="isReadOnlyRoute || readOnlyEnv"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:hideActions="pullConnActive"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
+					>
+						<template #custom-tooltip>
+							<span
+								v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
+							/>
+						</template>
+					</node>
+					<sticky
+						v-for="stickyData in stickiesToRender"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="(name) => removeNode(name, true)"
+						:key="`${stickyData.id}_sticky`"
+						:name="stickyData.name"
+						:isReadOnly="isReadOnlyRoute || readOnlyEnv"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === stickyData.name"
+						:nodeViewScale="nodeViewScale"
+						:gridSize="GRID_SIZE"
+						:hideActions="pullConnActive"
+					/>
 				</div>
 			</div>
 			<node-details-view
@@ -172,7 +168,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 
 import type {
@@ -520,6 +516,12 @@ export default defineComponent({
 		},
 		nodes(): INodeUi[] {
 			return this.workflowsStore.allNodes;
+		},
+		nodesToRender(): INodeUi[] {
+			return this.workflowsStore.allNodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+		},
+		stickiesToRender(): INodeUi[] {
+			return this.workflowsStore.allNodes.filter((node) => node.type === STICKY_NODE_TYPE);
 		},
 		runButtonText(): string {
 			if (!this.workflowRunning) {
@@ -3026,7 +3028,7 @@ export default defineComponent({
 				}
 			}
 
-			setTimeout(() => {
+			void nextTick(() => {
 				// Suspend drawing
 				this.instance?.setSuspendDrawing(true);
 				(this.instance?.endpointsByElement[node.id] || [])
@@ -3048,7 +3050,8 @@ export default defineComponent({
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node));
 				}
-			}, 0); // allow other events to finish like drag stop
+			}); // allow other events to finish like drag stop
+
 			if (trackHistory && trackBulk) {
 				const recordingTimeout = waitForNewConnection ? 100 : 0;
 				setTimeout(() => {

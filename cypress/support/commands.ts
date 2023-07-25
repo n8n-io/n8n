@@ -111,21 +111,21 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 		const newPosition = {
 			x: options?.abs ? xDiff : originalLocation.x + xDiff,
 			y: options?.abs ? yDiff : originalLocation.y + yDiff,
-		}
+		};
 
-		if(options?.realMouse) {
+		if (options?.realMouse) {
 			element.realMouseDown();
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
-			element.trigger('mousedown', {force: true});
+			element.trigger('mousedown', { force: true });
 			element.trigger('mousemove', {
 				which: 1,
 				pageX: newPosition.x,
 				pageY: newPosition.y,
 				force: true,
 			});
-			element.trigger('mouseup', {force: true});
+			element.trigger('mouseup', { force: true });
 		}
 	});
 });
