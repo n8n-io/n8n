@@ -5,7 +5,7 @@ import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
 import type { RedisOptions } from 'ioredis';
 import { getRedisClusterNodes } from '../GenericHelpers';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, jsonStringify } from 'n8n-workflow';
 
 @Service()
 export class CacheService {
@@ -91,9 +91,14 @@ export class CacheService {
 			});
 			this.cache = await caching(redisStore);
 		} else {
+			// using TextEncoder to get the byte length of the string even if it contains unicode characters
+			const textEncoder = new TextEncoder();
 			this.cache = await caching('memory', {
-				ttl: config.getEnv('cache.memory.ttl') ?? 10 * 1000,
-				max: config.getEnv('cache.memory.max') ?? 100 * 1024 * 1024,
+				ttl: config.getEnv('cache.memory.ttl'),
+				maxSize: config.getEnv('cache.memory.maxSize'),
+				sizeCalculation: (item) => {
+					return textEncoder.encode(jsonStringify(item, { replaceCircularRefs: true })).length;
+				},
 			});
 		}
 	}

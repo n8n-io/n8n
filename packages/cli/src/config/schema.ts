@@ -1116,11 +1116,11 @@ export const schema = {
 			env: 'N8N_CACHE_BACKEND',
 		},
 		memory: {
-			max: {
-				doc: 'Maximum number of items to cache in memory',
+			maxSize: {
+				doc: 'Maximum size of memory cache in bytes',
 				format: Number,
-				default: 1000,
-				env: 'N8N_CACHE_MEMORY_MAX',
+				default: 3 * 1024 * 1024, // 3 MB
+				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
 			},
 			ttl: {
 				doc: 'Time to live for cached items in memory (in ms)',

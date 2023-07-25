@@ -9,6 +9,7 @@ const cacheService = Container.get(CacheService);
 function setDefaultConfig() {
 	config.set('executions.mode', 'regular');
 	config.set('cache.backend', 'auto');
+	config.set('cache.memory.maxSize', 1 * 1024 * 1024);
 }
 
 describe('cacheService', () => {
@@ -64,6 +65,21 @@ describe('cacheService', () => {
 		await cacheService.set<string>('testString', 'test');
 		await expect(cacheService.get<string>('testString')).resolves.toBe('test');
 		await cacheService.delete('testString');
+		await expect(cacheService.get<string>('testString')).resolves.toBeUndefined();
+	});
+
+	test('should calculate maxSize', async () => {
+		config.set('cache.memory.maxSize', 16);
+		await cacheService.destroy();
+
+		// 16 bytes because stringify wraps the string in quotes, so 2 bytes for the quotes
+		await cacheService.set<string>('testString', 'withoutUnicode');
+		await expect(cacheService.get<string>('testString')).resolves.toBe('withoutUnicode');
+
+		await cacheService.destroy();
+
+		// should not fit!
+		await cacheService.set<string>('testString', 'withUnicodeԱԲԳ');
 		await expect(cacheService.get<string>('testString')).resolves.toBeUndefined();
 	});
 
