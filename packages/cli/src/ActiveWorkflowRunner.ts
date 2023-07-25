@@ -67,6 +67,7 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { STARTING_NODES } from './constants';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
+import { WebhookRepository } from '@db/repositories';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -87,6 +88,7 @@ export class ActiveWorkflowRunner {
 		private activeExecutions: ActiveExecutions,
 		private externalHooks: ExternalHooks,
 		private nodeTypes: NodeTypes,
+		private webhookRepository: WebhookRepository,
 	) {}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -110,7 +112,7 @@ export class ActiveWorkflowRunner {
 			// This is not officially supported but there is no reason
 			// it should not work.
 			// Clear up active workflow table
-			await Db.collections.Webhook.clear();
+			await this.webhookRepository.clear();
 		}
 
 		if (workflowsData.length !== 0) {
@@ -201,7 +203,7 @@ export class ActiveWorkflowRunner {
 			path = path.slice(0, -1);
 		}
 
-		let webhook = await Db.collections.Webhook.findOneBy({
+		let webhook = await this.webhookRepository.findOneBy({
 			webhookPath: path,
 			method: httpMethod,
 		});
@@ -212,7 +214,7 @@ export class ActiveWorkflowRunner {
 			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
-			const dynamicWebhooks = await Db.collections.Webhook.findBy({
+			const dynamicWebhooks = await this.webhookRepository.findBy({
 				webhookId,
 				method: httpMethod,
 				pathLength: pathElements.length,
@@ -333,7 +335,7 @@ export class ActiveWorkflowRunner {
 	 * Gets all request methods associated with a single webhook
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhooks = await Db.collections.Webhook.find({
+		const webhooks = await this.webhookRepository.find({
 			select: ['method'],
 			where: { webhookPath: path },
 		});
@@ -442,7 +444,7 @@ export class ActiveWorkflowRunner {
 			try {
 				// eslint-disable-next-line no-await-in-loop
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await Db.collections.Webhook.insert(webhook);
+				await this.webhookRepository.insert(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
 					'checkExists',
 					webhookData,
@@ -552,7 +554,7 @@ export class ActiveWorkflowRunner {
 
 		await WorkflowHelpers.saveStaticData(workflow);
 
-		await Db.collections.Webhook.delete({
+		await this.webhookRepository.delete({
 			workflowId: workflowData.id,
 		});
 	}
