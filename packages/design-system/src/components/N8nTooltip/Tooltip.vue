@@ -1,15 +1,22 @@
 <template>
 	<el-tooltip v-bind="{ ...$props, ...$attrs }">
-		<template #content>
-			<n8n-button
-				v-for="button in buttons"
-				:key="button.attrs.label"
-				v-bind="button.attrs"
-				v-on="button.listeners"
-			/>
-			<slot name="content"></slot>
-		</template>
 		<slot />
+		<template #content>
+			<slot name="content">
+				{{ content }}
+			</slot>
+			<div
+				v-if="buttons.length"
+				:class="$style.buttons"
+				:style="{ justifyContent: justifyButtons }"
+			>
+				<n8n-button
+					v-for="button in buttons"
+					:key="button.attrs.label"
+					v-bind="{ ...button.attrs, ...button.listeners }"
+				/>
+			</div>
+		</template>
 	</el-tooltip>
 </template>
 
@@ -29,6 +36,10 @@ export default defineComponent({
 	},
 	props: {
 		...ElTooltip.props,
+		content: {
+			type: String,
+			default: '',
+		},
 		justifyButtons: {
 			type: String,
 			default: 'flex-end',
@@ -59,5 +70,6 @@ export default defineComponent({
 	display: flex;
 	align-items: center;
 	margin-top: var(--spacing-s);
+	gap: var(--spacing-2xs);
 }
 </style>

@@ -41,11 +41,35 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nTooltip,
 	},
-	template:
-		'<n8n-tooltip v-bind="args"><div style="margin:50px; display: inline-block;"><span>yo</span></div></n8n-tooltip>',
+	template: '<n8n-tooltip v-bind="args"><button>Hover me</button></n8n-tooltip>',
 });
 
 export const Tooltip = Template.bind({});
 Tooltip.args = {
 	content: '...',
+};
+
+export const TooltipWithButtons = Template.bind({});
+TooltipWithButtons.args = {
+	content: 'Hello world!',
+	buttons: [
+		{
+			attrs: {
+				label: 'Button 1',
+				'data-test-id': 'tooltip-button',
+			},
+			listeners: {
+				click: () => alert('Clicked 1'),
+			},
+		},
+		{
+			attrs: {
+				label: 'Button 2',
+				'data-test-id': 'tooltip-button',
+			},
+			listeners: {
+				click: () => alert('Clicked 2'),
+			},
+		},
+	],
 };
