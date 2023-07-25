@@ -1125,7 +1125,7 @@ export const schema = {
 			ttl: {
 				doc: 'Time to live for cached items in memory (in ms)',
 				format: Number,
-				default: 10 * 1000, // 10 seconds
+				default: 3600 * 1000, // 1 hour
 				env: 'N8N_CACHE_MEMORY_TTL',
 			},
 		},

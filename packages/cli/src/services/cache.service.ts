@@ -98,14 +98,17 @@ export class CacheService {
 		}
 	}
 
-	async uninit() {
+	async destroy() {
 		if (this.cache) {
 			await this.reset();
 			this.cache = undefined;
 		}
 	}
 
-	getCacheInstance(): RedisCache | MemoryCache | undefined {
+	async getCache(): Promise<RedisCache | MemoryCache | undefined> {
+		if (!this.cache) {
+			await this.init();
+		}
 		return this.cache;
 	}
 
@@ -123,7 +126,7 @@ export class CacheService {
 		return this.cache?.store.set(key, value, ttl);
 	}
 
-	async del(key: string): Promise<void> {
+	async delete(key: string): Promise<void> {
 		if (!this.cache) {
 			await this.init();
 		}
@@ -144,21 +147,21 @@ export class CacheService {
 		return this.cache?.store.keys() ?? [];
 	}
 
-	async mset<T>(values: Array<[string, T]>, ttl?: number): Promise<void> {
+	async setMany<T>(values: Array<[string, T]>, ttl?: number): Promise<void> {
 		if (!this.cache) {
 			await this.init();
 		}
 		return this.cache?.store.mset(values, ttl);
 	}
 
-	async mget<T>(keys: string[]): Promise<Array<[string, T]>> {
+	async getMany<T>(keys: string[]): Promise<Array<[string, T]>> {
 		if (!this.cache) {
 			await this.init();
 		}
 		return this.cache?.store.mget(...keys) as Promise<Array<[string, T]>>;
 	}
 
-	async mdel(keys: string[]): Promise<void> {
+	async deleteMany(keys: string[]): Promise<void> {
 		if (!this.cache) {
 			await this.init();
 		}

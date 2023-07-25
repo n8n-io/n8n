@@ -6,71 +6,68 @@ import config from '@/config';
 
 const cacheService = Container.get(CacheService);
 
+function setDefaultConfig() {
+	config.set('executions.mode', 'regular');
+	config.set('cache.backend', 'auto');
+}
+
 describe('cacheService', () => {
 	beforeEach(async () => {
-		await Container.get(CacheService).uninit();
+		setDefaultConfig();
+		await Container.get(CacheService).destroy();
 	});
 
 	test('should create a memory cache by default', async () => {
-		config.set('executions.mode', 'regular');
-		config.set('cache.backend', 'auto');
 		await cacheService.init();
-		expect(cacheService.getCacheInstance()).toBeDefined();
-		const candidate = cacheService.getCacheInstance() as MemoryCache;
+		await expect(cacheService.getCache()).resolves.toBeDefined();
+		const candidate = (await cacheService.getCache()) as MemoryCache;
+		// type guard to check that a MemoryCache is returned and not a RedisCache (which does not have a size property)
 		expect(candidate.store.size).toBeDefined();
 	});
 
 	test('should cache and retrieve a value', async () => {
-		config.set('executions.mode', 'regular');
-		config.set('cache.backend', 'auto');
 		await cacheService.init();
-		expect(cacheService.getCacheInstance()).toBeDefined();
+		await expect(cacheService.getCache()).resolves.toBeDefined();
 		await cacheService.set<string>('testString', 'test');
 		await cacheService.set<number>('testNumber', 123);
 
-		expect(await cacheService.get<string>('testString')).toBe('test');
+		await expect(cacheService.get<string>('testString')).resolves.toBe('test');
 		expect(typeof (await cacheService.get<string>('testString'))).toBe('string');
-		expect(await cacheService.get<number>('testNumber')).toBe(123);
+		await expect(cacheService.get<number>('testNumber')).resolves.toBe(123);
 		expect(typeof (await cacheService.get<number>('testNumber'))).toBe('number');
 	});
 
 	test('should honour ttl values', async () => {
-		config.set('executions.mode', 'regular');
-		config.set('cache.backend', 'auto');
 		// set default TTL to 10ms
 		config.set('cache.memory.ttl', 10);
 
 		await cacheService.set<string>('testString', 'test');
 		await cacheService.set<number>('testNumber', 123, 1000);
 
-		expect(await cacheService.getCacheInstance()?.store.ttl('testString')).toBeLessThanOrEqual(100);
-		expect(await cacheService.getCacheInstance()?.store.ttl('testNumber')).toBeLessThanOrEqual(
-			1000,
-		);
+		const store = (await cacheService.getCache())?.store;
 
-		expect(await cacheService.get<string>('testString')).toBe('test');
-		expect(await cacheService.get<number>('testNumber')).toBe(123);
+		expect(store).toBeDefined();
+
+		await expect(store!.ttl('testString')).resolves.toBeLessThanOrEqual(100);
+		await expect(store!.ttl('testNumber')).resolves.toBeLessThanOrEqual(1000);
+
+		await expect(cacheService.get<string>('testString')).resolves.toBe('test');
+		await expect(cacheService.get<number>('testNumber')).resolves.toBe(123);
 
 		await new Promise((resolve) => setTimeout(resolve, 20));
 
-		expect(await cacheService.get<string>('testString')).toBeUndefined();
-		expect(await cacheService.get<number>('testNumber')).toBe(123);
+		await expect(cacheService.get<string>('testString')).resolves.toBeUndefined();
+		await expect(cacheService.get<number>('testNumber')).resolves.toBe(123);
 	});
 
 	test('should set and remove values', async () => {
-		config.set('executions.mode', 'regular');
-		config.set('cache.backend', 'auto');
-
 		await cacheService.set<string>('testString', 'test');
-		expect(await cacheService.get<string>('testString')).toBe('test');
-		await cacheService.del('testString');
-		expect(await cacheService.get<string>('testString')).toBeUndefined();
+		await expect(cacheService.get<string>('testString')).resolves.toBe('test');
+		await cacheService.delete('testString');
+		await expect(cacheService.get<string>('testString')).resolves.toBeUndefined();
 	});
 
 	test('should set and get complex objects', async () => {
-		config.set('executions.mode', 'regular');
-		config.set('cache.backend', 'auto');
-
 		interface TestObject {
 			test: string;
 			test2: number;
@@ -91,28 +88,27 @@ describe('cacheService', () => {
 		};
 
 		await cacheService.set<TestObject>('testObject', testObject);
-		expect(await cacheService.get<TestObject>('testObject')).toMatchObject(testObject);
+		await expect(cacheService.get<TestObject>('testObject')).resolves.toMatchObject(testObject);
 	});
 
 	test('should set and get multiple values', async () => {
 		config.set('executions.mode', 'regular');
 		config.set('cache.backend', 'auto');
 
-		await cacheService.mset<string>([
+		await cacheService.setMany<string>([
 			['testString', 'test'],
 			['testString2', 'test2'],
 		]);
-		await cacheService.mset<number>([
+		await cacheService.setMany<number>([
 			['testNumber', 123],
 			['testNumber2', 456],
 		]);
-		expect(await cacheService.mget<string>(['testString', 'testString2'])).toStrictEqual([
-			'test',
-			'test2',
-		]);
-		expect(await cacheService.mget<number>(['testNumber', 'testNumber2'])).toStrictEqual([
-			123, 456,
-		]);
+		await expect(
+			cacheService.getMany<string>(['testString', 'testString2']),
+		).resolves.toStrictEqual(['test', 'test2']);
+		await expect(
+			cacheService.getMany<number>(['testNumber', 'testNumber2']),
+		).resolves.toStrictEqual([123, 456]);
 	});
 	// This test is skipped because it requires the Redis service
 	// test('should create a redis cache if asked', async () => {
