@@ -170,7 +170,7 @@ export class VaultProvider extends SecretsProvider {
 		},
 	];
 
-	displayName = 'Hashicorp Vault';
+	displayName = 'HashiCorp Vault';
 
 	name = 'vault';
 
@@ -231,6 +231,7 @@ export class VaultProvider extends SecretsProvider {
 				this.#tokenInfo = await this.getTokenInfo();
 				this.setupTokenRefresh();
 			}
+			await this.update();
 		} catch {
 			this.state = 'error';
 		}
@@ -314,7 +315,7 @@ export class VaultProvider extends SecretsProvider {
 			validateStatus: () => true,
 		});
 
-		if (resp.status !== 200) {
+		if (resp.status !== 200 || !resp.data.data) {
 			return null;
 		}
 		return resp.data.data;
