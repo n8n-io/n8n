@@ -1,14 +1,15 @@
-import Container, { Service } from 'typedi';
-import * as Db from '@/Db';
+import { Service } from 'typedi';
 import { CacheService } from './cache.service';
-import { RoleRepository } from '@/databases/repositories';
+import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositories';
 import type { User } from '@/databases/entities/User';
 
 @Service()
 export class OwnershipService {
-	private cacheService = Container.get(CacheService);
-
-	private roleRepository = Container.get(RoleRepository);
+	constructor(
+		private cacheService: CacheService,
+		private roleRepository: RoleRepository,
+		private sharedWorkflowRepository: SharedWorkflowRepository,
+	) {}
 
 	/**
 	 * Retrieve the user who owns the workflow. Note that workflow ownership **cannot** be changed.
@@ -24,7 +25,7 @@ export class OwnershipService {
 
 		if (!workflowOwnerRole) throw new Error('Failed to find workflow owner role');
 
-		const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
+		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
 			where: { workflowId, roleId: workflowOwnerRole.id },
 			relations: ['user', 'user.globalRole'],
 		});
