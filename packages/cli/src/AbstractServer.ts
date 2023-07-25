@@ -221,6 +221,7 @@ export abstract class AbstractServer {
 				}
 			},
 		);
+		// TODO: Leave comments for now as implementation example
 		// const redisStreamListener = await redisService.getStreamConsumer();
 		// void redisStreamListener.listenToStream('teststream');
 		// redisStreamListener.addMessageHandler(
