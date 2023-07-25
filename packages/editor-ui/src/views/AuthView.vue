@@ -13,7 +13,7 @@
 				:buttonLoading="formLoading"
 				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"
-				@change="onChange"
+				@update="onUpdate"
 			>
 				<SSOLogin v-if="withSso" />
 			</n8n-form-box>
@@ -48,8 +48,8 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onChange(e: { name: string; value: string }) {
-			this.$emit('change', e);
+		onUpdate(e: { name: string; value: string }) {
+			this.$emit('update', e);
 		},
 		onSubmit(values: { [key: string]: string }) {
 			this.$emit('submit', values);

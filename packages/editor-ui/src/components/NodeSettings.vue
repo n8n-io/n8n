@@ -605,6 +605,8 @@ export default defineComponent({
 		valueChanged(parameterData: IUpdateInformation) {
 			let newValue: NodeParameterValue;
 
+			console.log(parameterData);
+
 			if (parameterData.hasOwnProperty('value')) {
 				// New value is given
 				newValue = parameterData.value as string | number;
@@ -768,6 +770,8 @@ export default defineComponent({
 					}
 				}
 
+				console.log('after set', nodeParameters);
+
 				// Get the parameters with the now new defaults according to the
 				// from the user actually defined parameters
 				nodeParameters = NodeHelpers.getNodeParameters(
@@ -777,6 +781,8 @@ export default defineComponent({
 					false,
 					node,
 				);
+
+				console.log('after getNodeParameters', nodeParameters);
 
 				for (const key of Object.keys(nodeParameters as object)) {
 					if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {

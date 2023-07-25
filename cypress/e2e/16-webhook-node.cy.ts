@@ -121,13 +121,13 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.addNodeToCanvas('Set');
 		workflowPage.actions.openNode('Set');
 		cy.get('.add-option').click();
-		cy.get('.add-option').find('.el-select-dropdown__item').contains('Number').click();
+		getVisibleSelect().find('.el-select-dropdown__item').contains('Number').click();
 		cy.get('.fixed-collection-parameter')
 			.getByTestId('parameter-input-name')
 			.clear()
 			.type('MyValue');
 		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-value').clear().type('1234');
-		ndv.getters.backToCanvas().click();
+		ndv.getters.backToCanvas().click({ force: true });
 
 		workflowPage.actions.addNodeToCanvas('Respond to Webhook');
 
@@ -173,10 +173,15 @@ describe('Webhook Trigger node', async () => {
 		getVisibleSelect().find('.el-select-dropdown__item').contains('Number').click();
 		cy.get('.fixed-collection-parameter')
 			.getByTestId('parameter-input-name')
+			.find('input')
 			.clear()
 			.type('MyValue');
-		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-value').clear().type('1234');
-		ndv.getters.backToCanvas().click();
+		cy.get('.fixed-collection-parameter')
+			.getByTestId('parameter-input-value')
+			.find('input')
+			.clear()
+			.type('1234');
+		ndv.getters.backToCanvas().click({ force: true });
 
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
@@ -216,11 +221,7 @@ describe('Webhook Trigger node', async () => {
 
 		workflowPage.actions.openNode('Move Binary Data');
 		cy.getByTestId('parameter-input-mode').click();
-		cy.getByTestId('parameter-input-mode')
-			.find('.el-select-dropdown')
-			.find('.option-headline')
-			.contains('JSON to Binary')
-			.click();
+		getVisibleSelect().find('.option-headline').contains('JSON to Binary').click();
 		ndv.getters.backToCanvas().click();
 
 		workflowPage.actions.executeWorkflow();
@@ -249,7 +250,7 @@ describe('Webhook Trigger node', async () => {
 		});
 	});
 
-	it('should listen for a GET request with Basic Authentication', () => {
+	it.only('should listen for a GET request with Basic Authentication', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',

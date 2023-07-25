@@ -117,7 +117,7 @@ export default defineComponent({
 				...this.values,
 				[name]: value,
 			};
-			this.$emit('change', { name, value });
+			this.$emit('update', { name, value });
 		},
 		onValidate(name: string, valid: boolean) {
 			this.validity = {

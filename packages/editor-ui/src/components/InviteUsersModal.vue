@@ -35,7 +35,7 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@change="onInput"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
 		</template>
