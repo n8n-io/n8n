@@ -2,8 +2,6 @@ import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { TableColumn } from 'typeorm';
 
 export class RemoveResetPasswordColumns1690000000030 implements ReversibleMigration {
-	transaction = false as const;
-
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.dropColumns(`${tablePrefix}user`, [
 			'resetPasswordToken',
