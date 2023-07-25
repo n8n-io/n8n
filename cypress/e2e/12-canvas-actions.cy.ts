@@ -66,7 +66,6 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeViewBackground().click({ force: true });
 	});
 
-
 	it('should add a connected node using plus endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		cy.get('.plus-endpoint').should('be.visible').click();
@@ -83,14 +82,10 @@ describe('Canvas Actions', () => {
 		cy.get('.plus-endpoint').should('be.visible').click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
-		cy.drag(
-			WorkflowPage.getters.nodeCreatorNodeItems().first(),
-			[100, 100],
-			{
-				realMouse: true,
-				abs: true
-			}
-		);
+		cy.drag(WorkflowPage.getters.nodeCreatorNodeItems().first(), [100, 100], {
+			realMouse: true,
+			abs: true,
+		});
 		cy.get('body').type('{esc}');
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -101,14 +96,10 @@ describe('Canvas Actions', () => {
 		cy.get('.plus-endpoint').should('be.visible').click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
-		cy.drag(
-			WorkflowPage.getters.nodeCreatorActionItems().first(),
-			[100, 100],
-			{
-				realMouse: true,
-				abs: true
-			}
-		);
+		cy.drag(WorkflowPage.getters.nodeCreatorActionItems().first(), [100, 100], {
+			realMouse: true,
+			abs: true,
+		});
 		WorkflowPage.getters.nodeCreatorCategoryItems().its('length').should('be.gt', 0);
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);

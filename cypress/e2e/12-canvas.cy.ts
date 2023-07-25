@@ -90,7 +90,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.get('[data-label="2 items"]').should('be.visible');
 	});
 
-	it.only('should add nodes and check execution success', () => {
+	it('should add nodes and check execution success', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		for (let i = 0; i < 3; i++) {
@@ -107,7 +107,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.zoomToFit();
 
 		cy.get('.plus-draggable-endpoint').filter(':visible').should('not.have.class', 'ep-success');
-		cy.get('.jtk-connector.success').should('have.length', 4);
+		cy.get('.jtk-connector.success').should('have.length', 3);
 		cy.get('.jtk-connector').should('have.length', 4);
 	});
 

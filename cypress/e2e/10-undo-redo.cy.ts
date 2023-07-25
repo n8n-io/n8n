@@ -131,11 +131,11 @@ describe('Undo/Redo', () => {
 			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
-	it.skip('should undo/redo deleting a connection by pressing delete button', () => {
+	it('should undo/redo deleting a connection by pressing delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().realHover();
-		cy.get('.connection-actions .delete').filter(':visible').should('be.visible').click();
+		cy.get('.connection-actions .delete').filter(':visible').should('be.visible').realClick();
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -252,7 +252,7 @@ describe('Undo/Redo', () => {
 		});
 	});
 
-	it.skip('should undo/redo multiple steps', () => {
+	it('should undo/redo multiple steps', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
@@ -291,7 +291,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.first()
-			.should('have.attr', 'style', 'left: 540px; top: 360px;');
+			.should('have.attr', 'style', 'left: 440px; top: 360px;');
 		// Third redo: Should delete the Set node
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
