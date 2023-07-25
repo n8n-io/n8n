@@ -123,7 +123,7 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#activities
 
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);
@@ -132,11 +132,11 @@ export class Lemlist implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
-
-						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0);
-							responseData = responseData.slice(0, limit);
+						if (returnAll) {
+							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/activities');
+						} else {
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 						}
 					}
 				} else if (resource === 'campaign') {
@@ -151,13 +151,15 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#list-all-campaigns
 
-						responseData = await lemlistApiRequest.call(this, 'GET', '/campaigns');
-
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i);
-							responseData = responseData.slice(0, limit);
+						if (returnAll) {
+							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/campaigns');
+						} else {
+							const qs = {
+								limit: this.getNodeParameter('limit', i),
+							};
+							responseData = await lemlistApiRequest.call(this, 'GET', '/campaigns', {}, qs);
 						}
 					}
 				} else if (resource === 'lead') {
