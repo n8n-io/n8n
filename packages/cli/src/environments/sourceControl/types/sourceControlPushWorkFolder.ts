@@ -7,7 +7,6 @@ export class SourceControlPushWorkFolder {
 	force?: boolean;
 
 	@IsString({ each: true })
-	// @IsOptional()
 	fileNames: SourceControlledFile[];
 
 	@IsString()
