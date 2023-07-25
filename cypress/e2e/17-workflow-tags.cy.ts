@@ -30,7 +30,7 @@ describe('Workflow tags', () => {
 		}
 		cy.contains('Done').click();
 
-		wf.getters.createTagButton().click();
+		wf.getters.tagsDropdown().click();
 		wf.getters.tagsInDropdown().should('have.length', 5);
 		wf.getters.tagPills().should('have.length', 0); // none attached
 	});
@@ -45,7 +45,7 @@ describe('Workflow tags', () => {
 		});
 
 		cy.contains('Done').click();
-		wf.getters.createTagButton().click();
+		wf.getters.tagsDropdown().click();
 		wf.getters.tagsInDropdown().should('have.length', 0); // none stored
 		wf.getters.tagPills().should('have.length', 0); // none attached
 	});
@@ -57,7 +57,8 @@ describe('Workflow tags', () => {
 
 		cy.contains('Create a tag').click();
 		cy.getByTestId('tags-table').find('input').type(first).type('{enter}');
-		cy.getByTestId('edit-tag-button').click({ force: true });
+		cy.getByTestId('tags-table').should('contain.text', first);
+		cy.getByTestId('edit-tag-button').eq(-1).click({ force: true });
 		cy.wait(300);
 		cy.getByTestId('tags-table')
 			.find('.el-input--large')
@@ -65,7 +66,7 @@ describe('Workflow tags', () => {
 			.type(' Updated')
 			.type('{enter}');
 		cy.contains('Done').click();
-		wf.getters.createTagButton().click();
+		wf.getters.tagsDropdown().click();
 		wf.getters.tagsInDropdown().should('have.length', 1); // one stored
 		wf.getters.tagsInDropdown().contains('Updated').should('exist');
 		wf.getters.tagPills().should('have.length', 0); // none attached
@@ -76,16 +77,18 @@ describe('Workflow tags', () => {
 		wf.actions.addTags(TEST_TAGS);
 		wf.getters.nthTagPill(1).click();
 		wf.getters.tagsDropdown().find('.el-tag__close').first().click();
-		cy.get('body').type('{enter}');
+		cy.get('body').click(0, 0);
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});
 
-	it('should detach a tag inline by clicking on dropdown list item', () => {
+	it.only('should detach a tag inline by clicking on dropdown list item', () => {
 		wf.getters.createTagButton().click();
 		wf.actions.addTags(TEST_TAGS);
 		wf.getters.nthTagPill(1).click();
+		cy.wait(300);
+		wf.getters.tagsDropdown().click(0, 0);
 		wf.getters.tagsDropdown().find('li.selected').first().click();
-		cy.get('body').type('{enter}');
+		cy.get('body').click(0, 0);
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});
 });

@@ -1,7 +1,11 @@
 <template>
-	<div :class="{ 'tags-container': true, focused }" @keydown.stop>
+	<div
+		:class="{ 'tags-container': true, focused }"
+		@keydown.stop
+		v-on-click-outside="onClickOutside"
+	>
 		<n8n-select
-			:teleported="true"
+			:teleported="false"
 			:modelValue="appliedTags"
 			:loading="isLoading"
 			:placeholder="placeholder"
@@ -260,6 +264,15 @@ export default defineComponent({
 			});
 		}
 
+		function onClickOutside(e: Event) {
+			const tagsModal = document.querySelector('#tags-manager-modal');
+			const clickInsideTagsModal = tagsModal?.contains(e.target as Node);
+
+			if (!clickInsideTagsModal && e.type === 'click') {
+				emit('blur');
+			}
+		}
+
 		return {
 			i18n,
 			tags,
@@ -280,6 +293,7 @@ export default defineComponent({
 			filterOptions,
 			onVisibleChange,
 			onRemoveTag,
+			onClickOutside,
 			...useToast(),
 		};
 	},

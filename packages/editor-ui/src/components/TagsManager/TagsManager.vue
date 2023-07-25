@@ -1,5 +1,6 @@
 <template>
 	<Modal
+		id="tags-manager-modal"
 		:title="$locale.baseText('tagsManager.manageTags')"
 		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
