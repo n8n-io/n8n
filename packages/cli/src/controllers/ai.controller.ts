@@ -14,15 +14,6 @@ type GenerateCodeRequest = Request<
 	}
 >;
 
-type GenerateCurlRequest = Request<
-	{},
-	{},
-	{
-		prompt: string;
-		service: string;
-	}
->;
-
 @Authorized()
 @RestController('/ai')
 export class AiController {

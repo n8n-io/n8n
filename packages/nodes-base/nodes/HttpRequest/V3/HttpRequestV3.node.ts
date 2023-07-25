@@ -64,12 +64,6 @@ export class HttpRequestV3 implements INodeType {
 					default: '',
 				},
 				{
-					displayName: '',
-					name: 'aiImport',
-					type: 'aiImport',
-					default: '',
-				},
-				{
 					displayName: 'Method',
 					name: 'method',
 					type: 'options',

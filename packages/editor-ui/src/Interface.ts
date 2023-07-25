@@ -1,4 +1,4 @@
-import type { AI_CONNECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IMenuItem } from 'n8n-design-system';
 import type {
@@ -979,7 +979,6 @@ export interface ITagsState {
 
 export type Modals = {
 	[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
-	[AI_CONNECT_MODAL_KEY]: AiConnectModal;
 	[key: string]: ModalState;
 };
 
@@ -990,11 +989,6 @@ export type ModalState = {
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
-};
-
-export type AiConnectModal = ModalState & {
-	prompt: string;
-	service: string;
 };
 
 export type NewCredentialsModal = ModalState & {

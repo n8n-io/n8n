@@ -1,11 +1,13 @@
 <template>
-	<n8n-button
-		type="secondary"
-		:label="$locale.baseText('importParameter.label')"
-		:disabled="isReadOnly"
-		size="mini"
-		@click="onImportCurlClicked"
-	/>
+	<div :class="$style.importSection">
+		<n8n-button
+			type="secondary"
+			:label="$locale.baseText('importParameter.label')"
+			:disabled="isReadOnly"
+			size="mini"
+			@click="onImportCurlClicked"
+		/>
+	</div>
 </template>
 
 <script lang="ts">
@@ -32,3 +34,11 @@ export default defineComponent({
 	},
 });
 </script>
+
+<style module lang="scss">
+.importSection {
+	display: flex;
+	flex-direction: row-reverse;
+	margin-top: 10px;
+}
+</style>

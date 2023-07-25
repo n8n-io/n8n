@@ -91,10 +91,6 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
-		<ModalRoot :name="AI_CONNECT_MODAL_KEY">
-			<AiImportCurlModal />
-		</ModalRoot>
-
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -153,7 +149,6 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
-	AI_CONNECT_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	ASK_AI_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -181,7 +176,6 @@ import DeleteUserModal from './DeleteUserModal.vue';
 import ExecutionsModal from './ExecutionsModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
-import AiImportCurlModal from './AiImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
@@ -215,7 +209,6 @@ export default defineComponent({
 		EventDestinationSettingsModal,
 		SourceControlPushModal,
 		SourceControlPullModal,
-		AiImportCurlModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -239,7 +232,6 @@ export default defineComponent({
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
-		AI_CONNECT_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
 		SOURCE_CONTROL_PUSH_MODAL_KEY,
 		SOURCE_CONTROL_PULL_MODAL_KEY,

@@ -32,7 +32,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
-	AI_CONNECT_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -129,13 +128,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 				curlCommand: '',
 				httpNodeParameters: '',
-			},
-			[AI_CONNECT_MODAL_KEY]: {
-				open: false,
-				curlCommand: '',
-				httpNodeParameters: '',
-				prompt: '',
-				service: '',
 			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
@@ -268,11 +260,11 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 			return null;
 		},
-		getCurlCommand() {
-			return (modalKey: string) => this.modals[modalKey].curlCommand;
+		getCurlCommand(): string | undefined {
+			return this.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
 		},
-		getHttpNodeParameters() {
-			return (modalKey: string) => this.modals[modalKey].httpNodeParameters;
+		getHttpNodeParameters(): string | undefined {
+			return this.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
 		areExpressionsDisabled(): boolean {
 			return this.currentView === VIEWS.DEMO;
@@ -383,10 +375,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			} as NewCredentialsModal;
 		},
 		setModalData(payload: { name: keyof Modals; data: Record<string, unknown> }) {
-			console.log(
-				'🚀 ~ file: ui.store.ts:387 ~ setModalData ~ this.modals[payload.name]:',
-				this.modals[payload.name],
-			);
 			this.modals[payload.name] = {
 				...this.modals[payload.name],
 				data: payload.data,
