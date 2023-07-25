@@ -18,11 +18,11 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import config from '@/config';
 import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
+import { OwnershipService } from '@/services/ownership.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -112,7 +112,7 @@ export class Worker extends BaseCommand {
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
-		const workflowOwner = await getWorkflowOwner(workflowId);
+		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwner(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {

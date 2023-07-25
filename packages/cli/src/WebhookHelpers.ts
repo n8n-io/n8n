@@ -60,8 +60,8 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ActiveExecutions } from '@/ActiveExecutions';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { EventsService } from '@/services/events.service';
+import { OwnershipService } from './services/ownership.service';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -177,7 +177,7 @@ export async function executeWebhook(
 		user = (workflowData as WorkflowEntity).shared[0].user;
 	} else {
 		try {
-			user = await getWorkflowOwner(workflowData.id);
+			user = await Container.get(OwnershipService).getWorkflowOwner(workflowData.id);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Cannot find workflow');
 		}

@@ -1,11 +1,11 @@
 import { EventEmitter } from 'events';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { UserService } from '@/user/user.service';
+import { OwnershipService } from './ownership.service';
 
 @Service()
 export class EventsService extends EventEmitter {
@@ -41,7 +41,7 @@ export class EventsService extends EventEmitter {
 			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
 
 			if (name === 'production_success' && upsertResult === 'insert') {
-				const owner = await getWorkflowOwner(workflowId);
+				const owner = await Container.get(OwnershipService).getWorkflowOwner(workflowId);
 				const metrics = {
 					user_id: owner.id,
 					workflow_id: workflowId,
@@ -72,7 +72,7 @@ export class EventsService extends EventEmitter {
 		if (insertResult === 'failed') return;
 
 		// Compile the metrics since this was a new data loaded event
-		const owner = await getWorkflowOwner(workflowId);
+		const owner = await Container.get(OwnershipService).getWorkflowOwner(workflowId);
 
 		let metrics = {
 			user_id: owner.id,
