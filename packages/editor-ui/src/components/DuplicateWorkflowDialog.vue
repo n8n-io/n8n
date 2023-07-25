@@ -17,12 +17,11 @@
 				/>
 				<TagsDropdown
 					v-if="settingsStore.areTagsEnabled"
+					v-model="currentTagIds"
 					:createEnabled="true"
-					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
-					@update="onTagsUpdate"
 					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
@@ -132,9 +131,6 @@ export default defineComponent({
 		onTagsEsc() {
 			// revert last changes
 			this.currentTagIds = this.prevTagIds;
-		},
-		onTagsUpdate(tagIds: string[]) {
-			this.currentTagIds = tagIds;
 		},
 		async save(): Promise<void> {
 			const name = this.name.trim();

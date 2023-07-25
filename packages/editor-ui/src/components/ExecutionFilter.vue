@@ -192,9 +192,9 @@ onBeforeMount(() => {
 					<TagsDropdown
 						id="execution-filter-tags"
 						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-						:currentTagIds="filter.tags"
+						:modelValue="filter.tags"
 						:createEnabled="false"
-						@update="onTagsChange"
+						@update:modelValue="onTagsChange"
 						data-test-id="executions-filter-tags-select"
 					/>
 				</div>

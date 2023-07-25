@@ -28,16 +28,15 @@
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
 			<div v-if="isTagsEditEnabled && !readOnly">
 				<TagsDropdown
+					v-model="appliedTagIds"
 					:createEnabled="true"
-					:currentTagIds="appliedTagIds"
 					:eventBus="tagsEditBus"
-					@blur="onTagsBlur"
-					@update="onTagsUpdate"
-					@esc="onTagsEditEsc"
 					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 					ref="dropdown"
 					class="tags-edit"
 					data-test-id="workflow-tags-dropdown"
+					@blur="onTagsBlur"
+					@esc="onTagsEditEsc"
 				/>
 			</div>
 			<div v-else-if="currentWorkflowTagIds.length === 0 && !readOnly">
@@ -372,9 +371,6 @@ export default defineComponent({
 				this.isNameEditEnabled = false;
 				this.tagsEditBus.emit('focus');
 			}, 0);
-		},
-		async onTagsUpdate(tags: string[]) {
-			this.appliedTagIds = tags;
 		},
 
 		async onTagsBlur() {
