@@ -364,31 +364,31 @@ export default defineComponent({
 			});
 		},
 		onTagsEditEnable() {
-			this.$data.appliedTagIds = this.currentWorkflowTagIds;
-			this.$data.isTagsEditEnabled = true;
+			this.appliedTagIds = this.currentWorkflowTagIds;
+			this.isTagsEditEnabled = true;
 
 			setTimeout(() => {
 				// allow name update to occur before disabling name edit
-				this.$data.isNameEditEnabled = false;
-				this.$data.tagsEditBus.emit('focus');
+				this.isNameEditEnabled = false;
+				this.tagsEditBus.emit('focus');
 			}, 0);
 		},
 		async onTagsUpdate(tags: string[]) {
-			this.$data.appliedTagIds = tags;
+			this.appliedTagIds = tags;
 		},
 
 		async onTagsBlur() {
 			const current = this.currentWorkflowTagIds;
-			const tags = this.$data.appliedTagIds;
+			const tags = this.appliedTagIds;
 			if (!hasChanged(current, tags)) {
-				this.$data.isTagsEditEnabled = false;
+				this.isTagsEditEnabled = false;
 
 				return;
 			}
-			if (this.$data.tagsSaving) {
+			if (this.tagsSaving) {
 				return;
 			}
-			this.$data.tagsSaving = true;
+			this.tagsSaving = true;
 
 			const saved = await this.saveCurrentWorkflow({ tags });
 			this.$telemetry.track('User edited workflow tags', {
@@ -396,23 +396,23 @@ export default defineComponent({
 				new_tag_count: tags.length,
 			});
 
-			this.$data.tagsSaving = false;
+			this.tagsSaving = false;
 			if (saved) {
-				this.$data.isTagsEditEnabled = false;
+				this.isTagsEditEnabled = false;
 			}
 		},
 		onTagsEditEsc() {
-			this.$data.isTagsEditEnabled = false;
+			this.isTagsEditEnabled = false;
 		},
 		onNameToggle() {
-			this.$data.isNameEditEnabled = !this.$data.isNameEditEnabled;
-			if (this.$data.isNameEditEnabled) {
-				if (this.$data.isTagsEditEnabled) {
+			this.isNameEditEnabled = !this.isNameEditEnabled;
+			if (this.isNameEditEnabled) {
+				if (this.isTagsEditEnabled) {
 					// @ts-ignore
 					void this.onTagsBlur();
 				}
 
-				this.$data.isTagsEditEnabled = false;
+				this.isTagsEditEnabled = false;
 			}
 		},
 		async onNameSubmit(name: string, cb: (saved: boolean) => void) {
@@ -429,7 +429,7 @@ export default defineComponent({
 			}
 
 			if (newName === this.workflowName) {
-				this.$data.isNameEditEnabled = false;
+				this.isNameEditEnabled = false;
 
 				cb(true);
 				return;
@@ -437,7 +437,7 @@ export default defineComponent({
 
 			const saved = await this.saveCurrentWorkflow({ name });
 			if (saved) {
-				this.$data.isNameEditEnabled = false;
+				this.isNameEditEnabled = false;
 			}
 			cb(saved);
 		},
@@ -602,8 +602,8 @@ export default defineComponent({
 	},
 	watch: {
 		currentWorkflowId() {
-			this.$data.isTagsEditEnabled = false;
-			this.$data.isNameEditEnabled = false;
+			this.isTagsEditEnabled = false;
+			this.isNameEditEnabled = false;
 		},
 	},
 });

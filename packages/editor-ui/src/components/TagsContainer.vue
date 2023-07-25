@@ -79,7 +79,7 @@ export default defineComponent({
 			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
 			toDisplay = toDisplay.map((tag: ITag) => ({
 				...tag,
-				hidden: this.responsive && !this.$data.visibility[tag.id],
+				hidden: this.responsive && !this.visibility[tag.id],
 			}));
 
 			let visibleCount = toDisplay.length;
@@ -111,7 +111,7 @@ export default defineComponent({
 	methods: {
 		onObserved({ el, isIntersecting }: { el: HTMLElement; isIntersecting: boolean }) {
 			if (el.dataset.id) {
-				this.$data.visibility = { ...this.$data.visibility, [el.dataset.id]: isIntersecting };
+				this.visibility = { ...this.visibility, [el.dataset.id]: isIntersecting };
 			}
 		},
 		onClick(e: MouseEvent, tag: TagEl) {

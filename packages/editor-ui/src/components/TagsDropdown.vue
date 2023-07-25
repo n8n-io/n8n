@@ -118,7 +118,7 @@ export default defineComponent({
 					if (keyboardEvent.key === 'Escape') {
 						this.$emit('esc');
 					} else if (keyboardEvent.key === 'Enter' && this.filter.length === 0) {
-						this.$data.preventUpdate = true;
+						this.preventUpdate = true;
 						this.$emit('blur');
 
 						if (typeof selectRef?.blur === 'function') {
@@ -146,7 +146,7 @@ export default defineComponent({
 		},
 		options(): ITag[] {
 			return this.allTags.filter(
-				(tag: ITag) => tag && tag.name.toLowerCase().includes(this.$data.filter.toLowerCase()),
+				(tag: ITag) => tag && tag.name.toLowerCase().includes(this.filter.toLowerCase()),
 			);
 		},
 		appliedTags(): string[] {
@@ -159,17 +159,17 @@ export default defineComponent({
 			this.focusOnTopOption();
 		},
 		filterOptions(filter = '') {
-			this.$data.filter = filter.trim();
+			this.filter = filter.trim();
 			this.$nextTick(() => this.focusOnTopOption());
 		},
 		async onCreate() {
-			const name = this.$data.filter;
+			const name = this.filter;
 			try {
 				const newTag = await this.tagsStore.create(name);
 				this.$emit('update', [...this.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
-				this.$data.filter = '';
+				this.filter = '';
 			} catch (error) {
 				this.showError(
 					error,
@@ -181,16 +181,16 @@ export default defineComponent({
 		onTagsUpdated(selected: string[]) {
 			const ops = selected.find((value) => value === MANAGE_KEY || value === CREATE_KEY);
 			if (ops === MANAGE_KEY) {
-				this.$data.filter = '';
+				this.filter = '';
 				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
 				void this.onCreate();
 			} else {
 				setTimeout(() => {
-					if (!this.$data.preventUpdate) {
+					if (!this.preventUpdate) {
 						this.$emit('update', selected);
 					}
-					this.$data.preventUpdate = false;
+					this.preventUpdate = false;
 				}, 0);
 			}
 		},
@@ -221,7 +221,7 @@ export default defineComponent({
 		},
 		onVisibleChange(visible: boolean) {
 			if (!visible) {
-				this.$data.filter = '';
+				this.filter = '';
 				this.focused = false;
 			} else {
 				this.focused = true;
