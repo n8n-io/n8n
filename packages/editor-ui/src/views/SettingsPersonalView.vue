@@ -4,7 +4,7 @@
 			<n8n-heading size="2xlarge">{{
 				$locale.baseText('settings.personal.personalSettings')
 			}}</n8n-heading>
-			<div class="ph-no-capture" :class="$style.user">
+			<div :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
 				</span>

@@ -91,7 +91,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Location',
+				displayName: 'Location (Region)',
 				name: 'location',
 				type: 'string',
 				default: '',
@@ -248,9 +248,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error.message as string, {
+			if ((error.message as string).includes('location')) {
+				error.description =
+					"Are you sure your table is in that region? You can specify the region using the 'Location' parameter from options.";
+			}
+			throw new NodeOperationError(this.getNode(), error as Error, {
 				itemIndex: i,
-				description: error?.description,
+				description: error.description,
 			});
 		}
 	}
@@ -293,9 +297,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					returnData.push(...executionErrorData);
 					continue;
 				}
-				throw new NodeOperationError(this.getNode(), error.message as string, {
+				throw new NodeOperationError(this.getNode(), error as Error, {
 					itemIndex: job.i,
-					description: error?.description,
+					description: error.description,
 				});
 			}
 		}

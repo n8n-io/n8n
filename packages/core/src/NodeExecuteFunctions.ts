@@ -732,7 +732,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
 
-	const axiosRequest = {
+	const axiosRequest: AxiosRequestConfig = {
 		headers: headers ?? {},
 		method,
 		timeout,
