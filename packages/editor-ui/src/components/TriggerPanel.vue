@@ -95,7 +95,7 @@
 					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
 					:description="executionsHelp"
 					:eventBus="executionsHelpEventBus"
-					@click="onLinkClick"
+					@click:body="onLinkClick"
 				></n8n-info-accordion>
 			</div>
 		</transition>
@@ -119,7 +119,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { N8nInfoAccordion } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 type HelpRef = InstanceType<typeof N8nInfoAccordion>;
 

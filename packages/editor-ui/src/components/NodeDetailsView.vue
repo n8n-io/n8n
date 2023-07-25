@@ -47,7 +47,7 @@
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
-				<template #input>
+				<template #input v-if="showTriggerPanel || !isTriggerNode">
 					<TriggerPanel
 						v-if="showTriggerPanel"
 						:nodeName="activeNode.name"
@@ -126,7 +126,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeConnections,
 	INodeTypeDescription,
@@ -418,7 +418,7 @@ export default defineComponent({
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(this.ndvStore.setNDVSessionId, 0);
+				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
 				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
@@ -694,7 +694,7 @@ export default defineComponent({
 
 <style lang="scss">
 .ndv-wrapper {
-	overflow: hidden;
+	overflow: visible;
 }
 
 .data-display-wrapper {
@@ -711,7 +711,7 @@ export default defineComponent({
 		padding: 0 !important;
 		height: 100%;
 		min-height: 400px;
-		overflow: hidden;
+		overflow: visible;
 		border-radius: 8px;
 	}
 }

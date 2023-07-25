@@ -4,7 +4,7 @@
 			<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
 		</template>
 		<template #header>
-			<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style['card-heading']">
+			<n8n-heading tag="h2" bold :class="$style['card-heading']">
 				{{ data.name }}
 			</n8n-heading>
 		</template>
@@ -24,7 +24,7 @@
 						{{ $locale.baseText('credentials.item.owner') }}
 					</n8n-badge>
 				</enterprise-edition>
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
 		</template>
 	</n8n-card>

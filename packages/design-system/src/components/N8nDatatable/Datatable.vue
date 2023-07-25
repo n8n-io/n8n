@@ -157,7 +157,7 @@ export default defineComponent({
 			<div :class="$style.pageSizeSelector">
 				<n8n-select
 					size="mini"
-					:value="rowsPerPage"
+					:modelValue="rowsPerPage"
 					@update:modelValue="onRowsPerPageChange"
 					teleported
 				>

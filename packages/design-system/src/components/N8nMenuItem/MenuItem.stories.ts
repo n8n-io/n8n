@@ -32,6 +32,33 @@ defaultMenuItem.args = {
 	},
 };
 
+export const withSecondaryIcon = template.bind({});
+withSecondaryIcon.args = {
+	item: {
+		id: 'workflows',
+		icon: 'heart',
+		label: 'Workflows',
+		secondaryIcon: { name: 'lock', size: 'small' },
+	},
+};
+
+export const withSecondaryIconTooltip = template.bind({});
+withSecondaryIconTooltip.args = {
+	item: {
+		id: 'workflows',
+		icon: 'heart',
+		label: 'Workflows',
+		secondaryIcon: {
+			name: 'lock',
+			size: 'small',
+			tooltip: {
+				content: 'Locked secret',
+				bindTo: 'secondaryIcon',
+			},
+		},
+	},
+};
+
 export const compact = template.bind({});
 compact.args = {
 	item: {

@@ -15,8 +15,33 @@
 			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
 				<el-row>
 					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.executionOrder') + ':' }}
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.executionOrder"
+							placeholder="Select Execution Order"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-execution-order"
+						>
+							<n8n-option
+								v-for="option in executionOrderOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+
+				<el-row>
+					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-html="helpTexts.errorWorkflow"></div>
 							</template>
@@ -46,7 +71,7 @@
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
-							<n8n-tooltip class="setting-info" placement="top">
+							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
 								</template>
@@ -75,7 +100,7 @@
 					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerIds') + ':' }}
-							<n8n-tooltip class="setting-info" placement="top">
+							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
 								</template>
@@ -96,7 +121,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timezone') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
 							</template>
@@ -125,7 +150,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
 							</template>
@@ -154,7 +179,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
 							</template>
@@ -183,7 +208,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveManualExecutions') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
 							</template>
@@ -212,7 +237,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveExecutionProgress') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
 							</template>
@@ -241,7 +266,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
 							</template>
@@ -268,7 +293,7 @@
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}
-							<n8n-tooltip class="setting-info" placement="top">
+							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
 								</template>
@@ -355,9 +380,8 @@ import {
 	useRootStore,
 	useWorkflowsEEStore,
 	useUsersStore,
-	useSourceControlStore,
 } from '@/stores';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
@@ -410,9 +434,14 @@ export default defineComponent({
 			saveDataSuccessExecutionOptions: [] as Array<{ key: string; value: string }>,
 			saveExecutionProgressOptions: [] as Array<{ key: string | boolean; value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean; value: string }>,
+			executionOrderOptions: [
+				{ key: 'v0', value: 'v0 (legacy)' },
+				{ key: 'v1', value: 'v1 (recommended)' },
+			] as Array<{ key: string; value: string }>,
 			timezones: [] as Array<{ key: string; value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
+			executionOrder: 'v0',
 			executionTimeout: 0,
 			maxExecutionTimeout: 0,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
@@ -428,7 +457,6 @@ export default defineComponent({
 			useSettingsStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
-			useSourceControlStore,
 		),
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
@@ -451,9 +479,6 @@ export default defineComponent({
 			);
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
-		},
-		readOnlyEnv(): boolean {
-			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	async mounted() {
@@ -523,6 +548,9 @@ export default defineComponent({
 		}
 		if (workflowSettings.maxExecutionTimeout === undefined) {
 			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
+		}
+		if (workflowSettings.executionOrder === undefined) {
+			workflowSettings.executionOrder = 'v0';
 		}
 
 		this.workflowSettings = workflowSettings;
@@ -867,17 +895,19 @@ export default defineComponent({
 	}
 }
 
-.setting-info {
-	display: none;
-}
-
 .setting-name {
 	line-height: 32px;
-}
 
-.setting-name:hover {
-	.setting-info {
-		display: inline;
+	svg {
+		display: inline-flex;
+		opacity: 0;
+		transition: opacity 0.3s ease;
+	}
+
+	&:hover {
+		svg {
+			opacity: 1;
+		}
 	}
 }
 

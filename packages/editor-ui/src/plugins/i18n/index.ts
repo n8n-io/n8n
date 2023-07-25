@@ -14,6 +14,7 @@ import englishBaseText from './locales/en.json';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import { useRootStore } from '@/stores';
 
 export const i18nInstance = createI18n({
 	locale: 'en',
@@ -311,6 +312,19 @@ export class I18nClass {
 		};
 	}
 
+	localizeNodeName(nodeName: string, type: string) {
+		const isEnglishLocale = useRootStore().defaultLocale === 'en';
+
+		if (isEnglishLocale) return nodeName;
+
+		const nodeTypeName = this.shortNodeType(type);
+
+		return this.headerText({
+			key: `headers.${nodeTypeName}.displayName`,
+			fallback: nodeName,
+		});
+	}
+
 	rootVars: Record<string, string | undefined> = {
 		$binary: this.baseText('codeNodeEditor.completer.binary'),
 		$execution: this.baseText('codeNodeEditor.completer.$execution'),
@@ -595,25 +609,19 @@ export const i18n: I18nClass = new I18nClass();
 
 export const I18nPlugin: Plugin<{}> = {
 	async install(app) {
-		await locale.use('en');
-
 		locale.i18n((key: string, options?: { interpolate: Record<string, unknown> }) =>
 			i18nInstance.global.t(key, options?.interpolate || {}),
 		);
 
 		app.config.globalProperties.$locale = i18n;
+
+		await locale.use('en');
 	},
 };
 
 // ----------------------------------
 //             typings
 // ----------------------------------
-
-declare module '@vue/runtime-core' {
-	interface ComponentCustomProperties {
-		$locale: I18nClass;
-	}
-}
 
 type GetBaseTextKey<T> = T extends `_${string}` ? never : T;
 

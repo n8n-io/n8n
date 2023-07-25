@@ -134,11 +134,11 @@ const openPricingPage = () => {
 			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
 			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
 			:buttonText="locale.baseText('settings.usageAndPlan.button.plans')"
-			@click="openPricingPage"
+			@click:button="openPricingPage"
 		/>
 		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
 			<n8n-heading :class="$style.title" size="large">
-				<i18n-t keypath="settings.usageAndPlan.description">
+				<i18n-t keypath="settings.usageAndPlan.description" tag="span">
 					<template #name>{{ usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
@@ -160,7 +160,11 @@ const openPricingPage = () => {
 							:style="{ width: `${usageStore.executionPercentage}%` }"
 						></span>
 					</span>
-					<i18n-t :class="$style.count" keypath="settings.usageAndPlan.activeWorkflows.count">
+					<i18n-t
+						tag="span"
+						:class="$style.count"
+						keypath="settings.usageAndPlan.activeWorkflows.count"
+					>
 						<template #count>{{ usageStore.executionCount }}</template>
 						<template #limit>
 							<span v-if="usageStore.executionLimit < 0">{{

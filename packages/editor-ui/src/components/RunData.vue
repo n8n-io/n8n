@@ -7,13 +7,13 @@
 			:class="$style.pinnedDataCallout"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs" v-if="!isReadOnly">
+			<span class="ml-4xs" v-if="!isReadOnlyRoute">
 				<n8n-link
 					theme="secondary"
 					size="small"
 					underline
 					bold
-					@click="onTogglePinData({ source: 'banner-link' })"
+					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
@@ -59,7 +59,7 @@
 					@update:modelValue="onDisplayModeChange"
 				/>
 				<n8n-icon-button
-					v-if="canPinData && !isReadOnly"
+					v-if="canPinData && !isReadOnlyRoute"
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
@@ -102,7 +102,9 @@
 						type="tertiary"
 						:active="hasPinData"
 						icon="thumbtack"
-						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
+						:disabled="
+							editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnlyRoute
+						"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 						data-test-id="ndv-pin-data"
 					/>
@@ -151,14 +153,12 @@
 					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 				</template>
 				<n8n-icon-button
-					v-if="linkedRuns"
-					icon="unlink"
+					:icon="linkedRuns ? 'unlink' : 'link'"
 					text
 					type="tertiary"
 					size="small"
-					@click="unlinkRun"
+					@click="toggleLinkRuns"
 				/>
-				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
@@ -449,11 +449,11 @@
 			<el-pagination
 				background
 				:hide-on-single-page="true"
-				:current-page.sync="currentPage"
+				:current-page="currentPage"
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				@current-change="onCurrentPageChange"
+				@update:current-page="onCurrentPageChange"
 				:total="dataCount"
 			>
 			</el-pagination>
@@ -930,7 +930,7 @@ export default defineComponent({
 			if (
 				value &&
 				value.length > 0 &&
-				!this.isReadOnly &&
+				!this.isReadOnlyRoute &&
 				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
 			) {
 				this.pinDataDiscoveryComplete();
@@ -1128,13 +1128,17 @@ export default defineComponent({
 				type: 'showTooMuchData',
 			});
 		},
+		toggleLinkRuns() {
+			this.linkedRuns ? this.unlinkRun() : this.linkRun();
+		},
 		linkRun() {
 			this.$emit('linkRun');
 		},
 		unlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onCurrentPageChange() {
+		onCurrentPageChange(value) {
+			this.currentPage = value;
 			this.$telemetry.track('User changed ndv page', {
 				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,

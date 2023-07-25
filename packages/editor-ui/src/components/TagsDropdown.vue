@@ -5,19 +5,19 @@
 		v-on-click-outside="onClickOutside"
 	>
 		<n8n-select
-			:popperAppendToBody="false"
+			:teleported="true"
 			:modelValue="appliedTags"
 			:loading="tagsStore.isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
-			@update:modelValue="onTagsUpdated"
-			@visible-change="onVisibleChange"
-			@remove-tag="onRemoveTag"
 			filterable
 			multiple
 			ref="select"
 			loading-text="..."
 			popper-class="tags-dropdown"
+			@update:modelValue="onTagsUpdated"
+			@visible-change="onVisibleChange"
+			@remove-tag="onRemoveTag"
 		>
 			<n8n-option
 				v-if="options.length === 0 && filter && createEnabled"
@@ -253,8 +253,8 @@ export default defineComponent({
 .tags-container {
 	$--max-input-height: 60px;
 
-	:deep(.el-select) {
-		.el-select__tags {
+	.el-select-tags-wrapper {
+		.el-tag {
 			max-height: $--max-input-height;
 			overflow-y: scroll;
 			overflow-x: hidden;

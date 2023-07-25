@@ -9,7 +9,6 @@ import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { LicenseService } from './License.service';
 import { License } from '@/License';
 import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
-import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service.ee';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
@@ -34,7 +33,7 @@ licenseController.use((req, res, next) => {
  */
 licenseController.use((req: AuthenticatedRequest, res, next) => {
 	if (OWNER_ROUTES.includes(req.path) && req.user) {
-		if (!isInstanceOwner(req.user)) {
+		if (!req.user.isOwner) {
 			LoggerProxy.info('Non-owner attempted to activate or renew a license', {
 				userId: req.user.id,
 			});

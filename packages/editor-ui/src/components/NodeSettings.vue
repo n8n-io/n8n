@@ -18,7 +18,7 @@
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI"
+						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -291,10 +291,10 @@ export default defineComponent({
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.node.type);
+			return isCommunityPackageName(this.node?.type);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node?.type);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
@@ -525,7 +525,7 @@ export default defineComponent({
 				}
 			}
 
-			// Set the value via Vue.set that everything updates correctly in the UI
+			// Set the value so that everything updates correctly in the UI
 			if (nameParts.length === 0) {
 				// Data is on top level
 				if (value === null) {
@@ -605,6 +605,8 @@ export default defineComponent({
 		valueChanged(parameterData: IUpdateInformation) {
 			let newValue: NodeParameterValue;
 
+			console.log(parameterData);
+
 			if (parameterData.hasOwnProperty('value')) {
 				// New value is given
 				newValue = parameterData.value as string | number;
@@ -614,7 +616,7 @@ export default defineComponent({
 			}
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
-			const nodeNameBefore = parameterData.node || this.node.name;
+			const nodeNameBefore = parameterData.node || this.node?.name;
 			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
 
 			if (node === null) {
@@ -768,6 +770,8 @@ export default defineComponent({
 					}
 				}
 
+				console.log('after set', nodeParameters);
+
 				// Get the parameters with the now new defaults according to the
 				// from the user actually defined parameters
 				nodeParameters = NodeHelpers.getNodeParameters(
@@ -777,6 +781,8 @@ export default defineComponent({
 					false,
 					node,
 				);
+
+				console.log('after getNodeParameters', nodeParameters);
 
 				for (const key of Object.keys(nodeParameters as object)) {
 					if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
@@ -801,6 +807,7 @@ export default defineComponent({
 
 				this.updateNodeParameterIssues(node, nodeType);
 				this.updateNodeCredentialIssues(node);
+				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
 
@@ -934,8 +941,8 @@ export default defineComponent({
 		onMissingNodeLearnMoreLinkClick() {
 			this.$telemetry.track('user clicked cnr docs link', {
 				source: 'missing node modal source',
-				package_name: this.node.type.split('.')[0],
-				node_type: this.node.type,
+				package_name: this.node?.type.split('.')[0],
+				node_type: this.node?.type,
 			});
 		},
 		onStopExecution() {
@@ -974,7 +981,7 @@ export default defineComponent({
 }
 </style>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .node-settings {
 	display: flex;
 	flex-direction: column;

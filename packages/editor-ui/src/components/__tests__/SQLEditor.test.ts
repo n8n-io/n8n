@@ -1,5 +1,3 @@
-import { render } from '@testing-library/vue';
-import { PiniaVuePlugin } from 'pinia';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
@@ -7,6 +5,10 @@ import { createTestingPinia } from '@pinia/testing';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { expressionManager } from '@/mixins/expressionManager';
 import type { TargetItem } from '@/Interface';
+import { N8nPlugin } from 'n8n-design-system/plugin';
+import { PiniaVuePlugin } from 'pinia';
+import { GlobalDirectivesPlugin } from '@/plugins/directives';
+import { renderComponent } from '@/__tests__/render';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
@@ -19,23 +21,22 @@ const RESOLVABLES: { [key: string]: string | number | boolean } = {
 };
 
 const DEFAULT_SETUP = {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: {
-				settings: SETTINGS_STORE_DEFAULT_STATE.settings,
-			},
-		},
-	}),
 	props: {
 		dialect: 'PostgreSQL',
 		isReadOnly: false,
 	},
+	global: {
+		plugins: [
+			createTestingPinia({
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: SETTINGS_STORE_DEFAULT_STATE.settings,
+					},
+				},
+			}),
+		],
+	},
 };
-
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(SqlEditor, { ...DEFAULT_SETUP, ...renderOptions }, (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
 
 describe('SQL Editor Preview Tests', () => {
 	beforeEach(() => {
@@ -51,9 +52,11 @@ describe('SQL Editor Preview Tests', () => {
 	});
 
 	it('renders basic query', async () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId } = renderComponent(SqlEditor, {
+			...DEFAULT_SETUP,
 			props: {
-				query: 'SELECT * FROM users',
+				...DEFAULT_SETUP.props,
+				modelValue: 'SELECT * FROM users',
 			},
 		});
 		await waitAllPromises();
@@ -61,9 +64,11 @@ describe('SQL Editor Preview Tests', () => {
 	});
 
 	it('renders basic query with expression', async () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId } = renderComponent(SqlEditor, {
+			...DEFAULT_SETUP,
 			props: {
-				query: 'SELECT * FROM {{ $json.table }}',
+				...DEFAULT_SETUP.props,
+				modelValue: 'SELECT * FROM {{ $json.table }}',
 			},
 		});
 		await waitAllPromises();
@@ -71,9 +76,11 @@ describe('SQL Editor Preview Tests', () => {
 	});
 
 	it('renders resolved expressions with dot between resolvables', async () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId } = renderComponent(SqlEditor, {
+			...DEFAULT_SETUP,
 			props: {
-				query: 'SELECT * FROM {{ $json.schema }}.{{ $json.table }}',
+				...DEFAULT_SETUP.props,
+				modelValue: 'SELECT * FROM {{ $json.schema }}.{{ $json.table }}',
 			},
 		});
 		await waitAllPromises();
@@ -81,9 +88,11 @@ describe('SQL Editor Preview Tests', () => {
 	});
 
 	it('renders resolved expressions which resolve to 0', async () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId } = renderComponent(SqlEditor, {
+			...DEFAULT_SETUP,
 			props: {
-				query:
+				...DEFAULT_SETUP.props,
+				modelValue:
 					'SELECT * FROM {{ $json.schema }}.{{ $json.table }} WHERE {{ $json.id }} > {{ $json.limit - 10 }}',
 			},
 		});
@@ -94,9 +103,11 @@ describe('SQL Editor Preview Tests', () => {
 	});
 
 	it('keeps query formatting in rendered output', async () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId } = renderComponent(SqlEditor, {
+			...DEFAULT_SETUP,
 			props: {
-				query:
+				...DEFAULT_SETUP.props,
+				modelValue:
 					'SELECT * FROM {{ $json.schema }}.{{ $json.table }}\n  WHERE id > {{ $json.limit - 10 }}\n  AND active = {{ $json.active }};',
 			},
 		});

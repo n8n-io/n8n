@@ -26,12 +26,15 @@ type Props = {
 	inputSize: string;
 	labelSize: string;
 	dependentParametersValues?: string | null;
+	teleported: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 
 const emit = defineEmits<{
 	(event: 'valueChanged', value: IUpdateInformation): void;
@@ -111,7 +114,10 @@ onMounted(async () => {
 			matchingColumns: nodeValues.matchingColumns,
 		};
 	}
-	await initFetching(hasSchema);
+	if (!hasSchema) {
+		// Only fetch a schema if it's not already set
+		await initFetching();
+	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
 		setDefaultFieldValues();
@@ -167,7 +173,9 @@ const hasAvailableMatchingColumns = computed<boolean>(() => {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
-					field.canBeUsedToMatch !== false && field.display !== false && field.removed !== true,
+					(field.canBeUsedToMatch || field.defaultMatch) &&
+					field.display !== false &&
+					field.removed !== true,
 			).length > 0
 		);
 	}
@@ -178,7 +186,7 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 	return state.paramValue.schema.length === 1
 		? [state.paramValue.schema[0].id]
 		: state.paramValue.schema.reduce((acc, field) => {
-				if (field.defaultMatch && field.canBeUsedToMatch === true) {
+				if (field.defaultMatch) {
 					acc.push(field.id);
 				}
 				return acc;
@@ -443,6 +451,7 @@ defineExpose({
 			:loading="state.loading"
 			:loadingError="state.loadingError"
 			:fieldsToMap="state.paramValue.schema"
+			:teleported="teleported"
 			@modeChanged="onModeChanged"
 			@retryFetch="initFetching"
 		/>
@@ -455,6 +464,7 @@ defineExpose({
 			:loading="state.loading"
 			:initialValue="matchingColumns"
 			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
+			:teleported="teleported"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
@@ -478,6 +488,7 @@ defineExpose({
 			:showMatchingColumnsSelector="showMatchingColumnsSelector"
 			:showMappingModeSelect="showMappingModeSelect"
 			:loading="state.loading"
+			:teleported="teleported"
 			:refreshInProgress="state.refreshInProgress"
 			@fieldValueChanged="fieldValueChanged"
 			@removeField="removeField"

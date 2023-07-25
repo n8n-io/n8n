@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<n8n-popover placement="right" width="200" :modelValue="editName" :disabled="!editable">
+		<n8n-popover placement="right" width="200" :visible="editName" :disabled="!editable">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
@@ -28,7 +28,7 @@
 				</div>
 			</div>
 			<template #reference>
-				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: editable }">
+				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
 					{{ modelValue }}
 					<div :class="$style.editIconContainer">
 						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="editable" />

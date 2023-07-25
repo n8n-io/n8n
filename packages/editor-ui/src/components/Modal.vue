@@ -12,7 +12,7 @@
 		:close-on-click-modal="closeOnClickModal"
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
-		append-to-body
+		:append-to-body="appendToBody"
 		:data-test-id="`${this.name}-modal`"
 	>
 		<template #header v-if="$slots.header">
@@ -46,6 +46,7 @@
 </template>
 
 <script lang="ts">
+import { ElDialog } from 'element-plus';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -55,6 +56,7 @@ import { useUIStore } from '@/stores/ui.store';
 export default defineComponent({
 	name: 'Modal',
 	props: {
+		...ElDialog.props,
 		name: {
 			type: String,
 		},
@@ -118,6 +120,10 @@ export default defineComponent({
 			default: true,
 		},
 		closeOnPressEscape: {
+			type: Boolean,
+			default: true,
+		},
+		appendToBody: {
 			type: Boolean,
 			default: true,
 		},
@@ -200,7 +206,7 @@ export default defineComponent({
 
 <style lang="scss">
 .dialog-wrapper {
-	.el-dialog {
+	&.el-dialog {
 		display: flex;
 		flex-direction: column;
 		max-width: var(--dialog-max-width, 80%);

@@ -2,7 +2,7 @@
 	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
 		<template #header>
 			<div>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+				<n8n-heading tag="h2" bold :class="$style.cardHeading">
 					{{ destination.label }}
 				</n8n-heading>
 				<div :class="$style.cardDescription">

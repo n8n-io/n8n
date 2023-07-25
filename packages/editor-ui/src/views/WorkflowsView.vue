@@ -23,7 +23,7 @@
 				:readOnly="readOnlyEnv"
 			/>
 		</template>
-		<template v-if="!readOnlyEnv" #empty>
+		<template #empty>
 			<div class="text-center mt-s">
 				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
 					{{
@@ -36,10 +36,16 @@
 					}}
 				</n8n-heading>
 				<n8n-text size="large" color="text-base">
-					{{ $locale.baseText('workflows.empty.description') }}
+					{{
+						$locale.baseText(
+							readOnlyEnv
+								? 'workflows.empty.description.readOnlyEnv'
+								: 'workflows.empty.description',
+						)
+					}}
 				</n8n-text>
 			</div>
-			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
 					:class="$style.emptyStateCard"
 					hoverable
@@ -105,6 +111,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -116,6 +123,7 @@ const StatusFilter = {
 
 const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
+	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
@@ -166,9 +174,6 @@ const WorkflowsView = defineComponent({
 					value: StatusFilter.DEACTIVATED,
 				},
 			];
-		},
-		readOnlyEnv(): boolean {
-			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {

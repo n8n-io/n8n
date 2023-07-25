@@ -44,7 +44,7 @@
 				<div data-test-id="action-box-licensed">
 					<n8n-action-box
 						:buttonText="$locale.baseText(`settings.log-streaming.add`)"
-						@click="addDestination"
+						@click:button="addDestination"
 					>
 						<template #heading>
 							<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
@@ -63,7 +63,7 @@
 				<n8n-action-box
 					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
 					:buttonText="$locale.baseText('settings.log-streaming.actionBox.button')"
-					@click="goToUpgrade"
+					@click:button="goToUpgrade"
 				>
 					<template #heading>
 						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
@@ -88,7 +88,7 @@ import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '../constants';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',

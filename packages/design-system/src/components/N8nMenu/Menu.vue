@@ -97,7 +97,7 @@ export default defineComponent({
 			default: (): IMenuItem[] => [],
 		},
 		modelValue: {
-			type: String,
+			type: [String, Boolean],
 			default: '',
 		},
 	},

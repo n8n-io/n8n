@@ -38,7 +38,7 @@
 				:buttonText="getEmptyStateButtonText"
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
-				@click="onClickEmptyStateButton"
+				@click:button="onClickEmptyStateButton"
 			/>
 		</div>
 		<div :class="$style.cardsContainer" v-else>

@@ -42,6 +42,7 @@
 				@focus="onFocus"
 				@blur="onBlur"
 				:name="name"
+				:teleported="teleported"
 				ref="inputRef"
 			>
 				<n8n-option
@@ -125,6 +126,7 @@ export interface Props {
 	activeColor?: string;
 	inactiveLabel?: string;
 	inactiveColor?: string;
+	teleported?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -133,6 +135,7 @@ const props = withDefaults(defineProps<Props>(), {
 	type: 'text',
 	showRequiredAsterisk: true,
 	validateOnBlur: true,
+	teleported: true,
 });
 
 const emit = defineEmits<{

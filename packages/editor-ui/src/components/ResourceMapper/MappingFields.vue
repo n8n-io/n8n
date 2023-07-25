@@ -29,9 +29,12 @@ interface Props {
 	showMappingModeSelect: boolean;
 	loading: boolean;
 	refreshInProgress: boolean;
+	teleported?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
 const {
@@ -51,7 +54,16 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 
-const fieldsUi = computed<INodeProperties[]>(() => {
+function markAsReadOnly(field: ResourceMapperField): boolean {
+	if (
+		isMatchingField(field.id, props.paramValue.matchingColumns, props.showMatchingColumnsSelector)
+	) {
+		return false;
+	}
+	return field.readOnly || false;
+}
+
+const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	return props.fieldsToMap
 		.filter((field) => field.display !== false && field.removed !== true)
 		.map((field) => {
@@ -64,11 +76,12 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				required: field.required,
 				description: getFieldDescription(field),
 				options: field.options,
+				readOnly: markAsReadOnly(field),
 			};
 		});
 });
 
-const orderedFields = computed<INodeProperties[]>(() => {
+const orderedFields = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	// Sort so that matching columns are first
 	if (props.paramValue.matchingColumns) {
 		fieldsUi.value.forEach((field, i) => {
@@ -333,7 +346,7 @@ defineExpose({
 					:value="getParameterValue(field.name)"
 					:displayOptions="true"
 					:path="`${props.path}.${field.name}`"
-					:isReadOnly="refreshInProgress"
+					:isReadOnly="refreshInProgress || field.readOnly"
 					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"
@@ -354,6 +367,7 @@ defineExpose({
 					})
 				"
 				size="small"
+				:teleported="teleported"
 				:disabled="addFieldOptions.length == 0"
 				@update:modelValue="addField"
 			>

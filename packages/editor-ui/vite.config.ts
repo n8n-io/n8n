@@ -11,9 +11,9 @@ const { coverageReporters } = require('../../jest.config.js');
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
-	'vue-template-compiler',
 	'@fontsource/open-sans',
 	'normalize-wheel',
+	'@vueuse/components',
 	// TODO: remove this. It's currently required by xml2js in NodeErrors
 	'stream-browserify',
 ];
@@ -45,24 +45,20 @@ const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
+		find: /^n8n-design-system$/,
+		replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.ts'),
+	},
+	{
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 	},
-	...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
+	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
 		replacement: require.resolve(`lodash-es/${name}`),
 	})),
 	{
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash-es/$1',
-	},
-	{
-		find: /^element-plus\/(es|lib)\/components\/button\/src\/button2\.m?js$/,
-		replacement: resolve(
-			__dirname,
-			'..',
-			'design-system/src/components/N8nButton/overrides/ElButton.ts',
-		),
 	},
 ];
 

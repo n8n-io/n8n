@@ -1,5 +1,5 @@
 <template>
-	<div class="ph-no-capture" :class="$style.container">
+	<div :class="$style.container">
 		<span v-if="readonly" :class="$style.headline">
 			{{ modelValue }}
 		</span>

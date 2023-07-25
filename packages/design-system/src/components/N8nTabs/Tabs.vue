@@ -88,7 +88,7 @@ export default defineComponent({
 			this.canScrollRight = scrollWidth - width > this.scrollPosition;
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.resizeObserver) {
 			this.resizeObserver.disconnect();
 		}

@@ -65,7 +65,7 @@
 						<n8n-tooltip placement="bottom-end">
 							<template #content>
 								<div>
-									<i18n-t keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
@@ -120,7 +120,6 @@
 						<span
 							v-if="isSimple(data)"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-							class="ph-no-capture"
 							>{{ getValueToRender(data) }}</span
 						>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
@@ -142,11 +141,9 @@
 								>
 							</template>
 							<template #value="{ value }">
-								<span
-									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-									class="ph-no-capture"
-									>{{ getValueToRender(value) }}</span
-								>
+								<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">
+									{{ getValueToRender(value) }}
+								</span>
 							</template>
 						</n8n-tree>
 					</td>

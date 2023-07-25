@@ -2,26 +2,35 @@ import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import * as vcApi from '@/api/sourceControl';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUsersStore } from '@/stores/users.store';
+import * as vcApi from '@/api/sourceControl';
 import type { SourceControlPreferences } from '@/Interface';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 
 	const isEnterpriseSourceControlEnabled = computed(() =>
 		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.SourceControl),
 	);
+	const defaultAuthor = computed(() => {
+		const user = usersStore.currentUser;
+		return {
+			name: user?.fullName ?? `${user?.firstName} ${user?.lastName}`.trim(),
+			email: user?.email ?? '',
+		};
+	});
 
 	const preferences = reactive<SourceControlPreferences>({
 		branchName: '',
 		branches: [],
-		authorName: '',
-		authorEmail: '',
+		authorName: defaultAuthor.value.name,
+		authorEmail: defaultAuthor.value.email,
 		repositoryUrl: '',
 		branchReadOnly: false,
-		branchColor: '#F4A6DC',
+		branchColor: '#5296D6',
 		connected: false,
 		publicKey: '',
 	});

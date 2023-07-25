@@ -12,7 +12,7 @@
 		<n8n-action-box
 			:description="$locale.baseText('settings.ldap.disabled.description')"
 			:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
@@ -39,7 +39,7 @@
 					:eventBus="formBus"
 					:columnView="true"
 					verticalSpacing="l"
-					@change="onInput"
+					@update="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
@@ -162,7 +162,7 @@ import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import type { N8nFormInputs } from 'n8n-design-system';
 import type { CellStyle } from 'element-plus';
 

@@ -23,7 +23,7 @@
 			v-if="!loading && template?.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
-			<n8n-tags :tags="template.categories" @click="redirectToCategory" />
+			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
 		</template-details-block>
 
 		<template-details-block v-if="!loading" :title="$locale.baseText('template.details.details')">
@@ -55,6 +55,7 @@ import { abbreviateNumber, filterTemplateNodes } from '@/utils';
 import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates.store';
+import TimeAgo from '@/components/TimeAgo.vue';
 
 export default defineComponent({
 	name: 'TemplateDetails',
@@ -72,6 +73,7 @@ export default defineComponent({
 	components: {
 		NodeIcon,
 		TemplateDetailsBlock,
+		TimeAgo,
 	},
 	computed: {
 		...mapStores(useTemplatesStore),

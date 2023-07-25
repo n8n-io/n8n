@@ -32,6 +32,7 @@
 					:users="ownedByUsers"
 					:currentUserId="usersStore.currentUser.id"
 					:modelValue="modelValue.ownedBy"
+					size="medium"
 					@update:modelValue="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
@@ -47,6 +48,7 @@
 					:users="sharedWithUsers"
 					:currentUserId="usersStore.currentUser.id"
 					:modelValue="modelValue.sharedWith"
+					size="medium"
 					@update:modelValue="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>

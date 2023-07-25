@@ -22,7 +22,7 @@ import {
 import * as testDb from '../integration/shared/testDb';
 import { mockNodeTypesData } from './Helpers';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../integration/shared/utils/';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;

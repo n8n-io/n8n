@@ -100,10 +100,11 @@
 	}
 }
 
-@include drawer-animation(rtl);
-@include drawer-animation(ltr);
-@include drawer-animation(ttb);
-@include drawer-animation(btt);
+// @TODO Fix drawer animations
+//@include drawer-animation(rtl);
+//@include drawer-animation(ltr);
+//@include drawer-animation(ttb);
+//@include drawer-animation(btt);
 
 $directions: rtl, ltr, ttb, btt;
 

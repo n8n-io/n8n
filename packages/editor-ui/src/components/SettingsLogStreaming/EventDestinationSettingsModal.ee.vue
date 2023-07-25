@@ -189,7 +189,7 @@ import {
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables';
@@ -206,7 +206,7 @@ import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import type { EventBus } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'event-destination-settings-modal',
@@ -375,9 +375,12 @@ export default defineComponent({
 					);
 					break;
 			}
+
 			if (newDestination) {
 				this.headerLabel = newDestination?.label ?? this.headerLabel;
-				this.setupNode(newDestination);
+				nextTick(() => {
+					this.setupNode(newDestination);
+				});
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {

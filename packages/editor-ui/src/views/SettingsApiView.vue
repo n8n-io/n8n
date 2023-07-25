@@ -36,12 +36,13 @@
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
-				<div class="ph-no-capture">
+				<div>
 					<CopyInput
 						:label="$locale.baseText('settings.api.view.myKey')"
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+						:redactValue="true"
 						@copy="onCopy"
 					/>
 				</div>
@@ -52,6 +53,7 @@
 						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
 					}}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-link :to="apiDocsURL" :newWindow="true" size="small">
 					{{
 						$locale.baseText(
@@ -66,7 +68,7 @@
 			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
 			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
 			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
-			@click="onUpgrade"
+			@click:button="onUpgrade"
 		/>
 		<n8n-action-box
 			v-else-if="mounted && !isLoadingCloudPlans"
@@ -76,7 +78,7 @@
 				)
 			"
 			:description="$locale.baseText('settings.api.create.description')"
-			@click="createApiKey"
+			@click:button="createApiKey"
 		/>
 	</div>
 </template>

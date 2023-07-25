@@ -1,9 +1,4 @@
-import {
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-} from '../../../../test/nodes/Helpers';
+import { setup, equalityTest, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 import nock from 'nock';
 

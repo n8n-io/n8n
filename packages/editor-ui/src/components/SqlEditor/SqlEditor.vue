@@ -1,6 +1,6 @@
 <template>
-	<div :class="$style.sqlEditor" v-click-outside="onBlur">
-		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
+	<div :class="$style.sqlEditor" v-on-click-outside="onBlur">
+		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
 			:isReadOnly="isReadOnly"
@@ -16,6 +16,7 @@ import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocompl
 import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
+import type { Line } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
 import {
 	dropCursor,
@@ -24,8 +25,8 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	MSSQL,
 	MySQL,
@@ -192,18 +193,29 @@ export default defineComponent({
 		onBlur() {
 			this.isFocused = false;
 		},
-		highlightLine(line: number | 'final') {
+		line(lineNumber: number): Line | null {
+			try {
+				return this.editor?.state.doc.line(lineNumber) ?? null;
+			} catch {
+				return null;
+			}
+		},
+		highlightLine(lineNumber: number | 'final') {
 			if (!this.editor) return;
 
-			if (line === 'final') {
+			if (lineNumber === 'final') {
 				this.editor.dispatch({
 					selection: { anchor: this.modelValue.length },
 				});
 				return;
 			}
 
+			const line = this.line(lineNumber);
+
+			if (!line) return;
+
 			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(line).from },
+				selection: { anchor: line.from },
 			});
 		},
 	},

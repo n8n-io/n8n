@@ -12,7 +12,9 @@ describe('components', () => {
 		it('should render correctly', () => {
 			const wrapper = render(N8nButton, {
 				slots,
-				stubs,
+				global: {
+					stubs,
+				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
@@ -25,7 +27,9 @@ describe('components', () => {
 							loading: true,
 						},
 						slots,
-						stubs,
+						global: {
+							stubs,
+						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
@@ -38,7 +42,9 @@ describe('components', () => {
 							icon: 'plus-circle',
 						},
 						slots,
-						stubs,
+						global: {
+							stubs,
+						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
@@ -51,7 +57,9 @@ describe('components', () => {
 							square: true,
 							label: '48',
 						},
-						stubs,
+						global: {
+							stubs,
+						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
@@ -65,7 +73,9 @@ describe('components', () => {
 						icon: 'plus-circle',
 					},
 					slots,
-					stubs,
+					global: {
+						stubs,
+					},
 				});
 
 				expect(wrapper.html()).toMatchSnapshot();
@@ -78,7 +88,9 @@ describe('components', () => {
 						type: 'secondary',
 					},
 					slots,
-					stubs,
+					global: {
+						stubs,
+					},
 				});
 
 				expect(wrapper.html()).toMatchSnapshot();
@@ -91,7 +103,9 @@ describe('components', () => {
 						type: 'text',
 					},
 					slots,
-					stubs,
+					global: {
+						stubs,
+					},
 				});
 
 				expect(wrapper.html()).toMatchSnapshot();
@@ -104,7 +118,9 @@ describe('components', () => {
 						type: 'info',
 					},
 					slots,
-					stubs,
+					global: {
+						stubs,
+					},
 				});
 
 				expect(wrapper.html()).toMatchSnapshot();

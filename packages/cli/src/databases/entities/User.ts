@@ -55,13 +55,6 @@ export class User extends AbstractEntity implements IUser {
 	@IsString({ message: 'Password must be of type string.' })
 	password: string;
 
-	@Column({ type: String, nullable: true })
-	resetPasswordToken?: string | null;
-
-	// Expiration timestamp saved in seconds
-	@Column({ type: Number, nullable: true })
-	resetPasswordTokenExpiration?: number | null;
-
 	@Column({
 		type: jsonColumnType,
 		nullable: true,
@@ -112,5 +105,15 @@ export class User extends AbstractEntity implements IUser {
 	@AfterUpdate()
 	computeIsPending(): void {
 		this.isPending = this.password === null;
+	}
+
+	/**
+	 * Whether the user is instance owner
+	 */
+	isOwner: boolean;
+
+	@AfterLoad()
+	computeIsOwner(): void {
+		this.isOwner = this.globalRole?.name === 'owner';
 	}
 }

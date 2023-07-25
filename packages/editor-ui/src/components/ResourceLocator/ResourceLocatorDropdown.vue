@@ -1,9 +1,10 @@
 <template>
 	<n8n-popover
+		:teleported="false"
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
-		:modelValue="show"
+		:visible="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
 		v-on-click-outside="onClickOutside"
@@ -47,7 +48,6 @@
 					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
-				class="ph-no-capture"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -261,7 +261,7 @@ export default defineComponent({
 			}, 0);
 		},
 		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
 		},
 	},
 });

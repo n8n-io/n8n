@@ -16,9 +16,12 @@ interface Props {
 	inputSize: string;
 	loading: boolean;
 	serviceName: string;
+	teleported?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 const {
 	resourceMapperTypeOptions,
 	singularFieldWord,
@@ -48,7 +51,7 @@ const emit = defineEmits<{
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => {
-		return field.canBeUsedToMatch !== false && field.display !== false;
+		return (field.canBeUsedToMatch || field.defaultMatch) && field.display !== false;
 	});
 });
 
@@ -134,6 +137,7 @@ defineExpose({
 				:modelValue="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"
+				:teleported="teleported"
 				@update:modelValue="onSelectionChange"
 			>
 				<n8n-option v-for="field in availableMatchingFields" :key="field.id" :value="field.id">

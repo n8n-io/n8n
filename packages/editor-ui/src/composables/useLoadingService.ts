@@ -8,7 +8,7 @@ interface LoadingService {
 }
 
 export function useLoadingService() {
-	const { i18n } = useI18n();
+	const i18n = useI18n();
 	const loadingService = ref<LoadingService | null>(null);
 
 	function startLoading(text?: string) {
@@ -38,6 +38,7 @@ export function useLoadingService() {
 	}
 
 	return {
+		loadingService,
 		startLoading,
 		setLoadingText,
 		stopLoading,

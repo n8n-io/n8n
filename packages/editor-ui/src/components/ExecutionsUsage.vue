@@ -6,7 +6,7 @@
 			</n8n-text>
 		</div>
 		<div v-else-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
-			<i18n-t keypath="executionUsage.currentUsage">
+			<i18n-t tag="span" keypath="executionUsage.currentUsage">
 				<template #text>
 					<n8n-text size="small" color="text-dark">
 						{{ locale.baseText('executionUsage.currentUsage.text') }}

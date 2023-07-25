@@ -5,8 +5,8 @@ const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Code node', () => {
-	before(() => {
-		cy.skipSetup();
+	beforeEach(() => {
+		WorkflowPage.actions.visit();
 	});
 
 	it('should execute the placeholder in all-items mode successfully', () => {
@@ -20,7 +20,6 @@ describe('Code node', () => {
 	});
 
 	it('should execute the placeholder in each-item mode successfully', () => {
-		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Code');
 		WorkflowPage.actions.openNode('Code');

@@ -1,15 +1,12 @@
 import { WorkflowPage, WorkflowsPage, NDV } from '../pages';
 import { BACKEND_BASE_URL } from '../constants';
+import { getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Schedule Trigger node', async () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 	});
@@ -28,11 +25,7 @@ describe('Schedule Trigger node', async () => {
 		workflowPage.actions.openNode('Schedule Trigger');
 
 		cy.getByTestId('parameter-input-field').click();
-		cy.getByTestId('parameter-input-field')
-			.find('.el-select-dropdown')
-			.find('.option-headline')
-			.contains('Seconds')
-			.click();
+		getVisibleSelect().find('.option-headline').contains('Seconds').click();
 		cy.getByTestId('parameter-input-secondsInterval').clear().type('1');
 
 		ndv.getters.backToCanvas().click();

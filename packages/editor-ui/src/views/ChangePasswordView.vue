@@ -4,7 +4,7 @@
 		:form="config"
 		:formLoading="loading"
 		@submit="onSubmit"
-		@change="onInput"
+		@update="onInput"
 	/>
 </template>
 
@@ -75,23 +75,15 @@ export default defineComponent({
 				},
 			],
 		};
-		const token =
-			!this.$route.query.token || typeof this.$route.query.token !== 'string'
-				? null
-				: this.$route.query.token;
-		const userId =
-			!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
-				? null
-				: this.$route.query.userId;
+
+		const token = this.getResetToken();
+
 		try {
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
 			}
-			if (!userId) {
-				throw new Error(this.$locale.baseText('auth.changePassword.missingUserIdError'));
-			}
 
-			await this.usersStore.validatePasswordToken({ token, userId });
+			await this.usersStore.validatePasswordToken({ token });
 		} catch (e) {
 			this.showMessage({
 				title: this.$locale.baseText('auth.changePassword.tokenValidationError'),
@@ -118,20 +110,18 @@ export default defineComponent({
 				this.password = e.value;
 			}
 		},
+		getResetToken(): string | null {
+			return !this.$route.query.token || typeof this.$route.query.token !== 'string'
+				? null
+				: this.$route.query.token;
+		},
 		async onSubmit() {
 			try {
 				this.loading = true;
-				const token =
-					!this.$route.query.token || typeof this.$route.query.token !== 'string'
-						? null
-						: this.$route.query.token;
-				const userId =
-					!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
-						? null
-						: this.$route.query.userId;
+				const token = this.getResetToken();
 
-				if (token && userId) {
-					await this.usersStore.changePassword({ token, userId, password: this.password });
+				if (token) {
+					await this.usersStore.changePassword({ token, password: this.password });
 
 					this.showMessage({
 						type: 'success',
