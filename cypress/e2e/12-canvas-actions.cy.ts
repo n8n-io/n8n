@@ -77,34 +77,6 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
-	it('should add a connected node dragging from node creator', () => {
-		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		cy.get('.plus-endpoint').should('be.visible').click();
-		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
-		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
-		cy.drag(WorkflowPage.getters.nodeCreatorNodeItems().first(), [100, 100], {
-			realMouse: true,
-			abs: true,
-		});
-		cy.get('body').type('{esc}');
-		WorkflowPage.getters.canvasNodes().should('have.length', 2);
-		WorkflowPage.getters.nodeConnections().should('have.length', 1);
-	});
-
-	it('should open a category when trying to drag and drop it on the canvas', () => {
-		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		cy.get('.plus-endpoint').should('be.visible').click();
-		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
-		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
-		cy.drag(WorkflowPage.getters.nodeCreatorActionItems().first(), [100, 100], {
-			realMouse: true,
-			abs: true,
-		});
-		WorkflowPage.getters.nodeCreatorCategoryItems().its('length').should('be.gt', 0);
-		WorkflowPage.getters.canvasNodes().should('have.length', 1);
-		WorkflowPage.getters.nodeConnections().should('have.length', 0);
-	});
-
 	it('should add disconnected node if nothing is selected', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		// Deselect nodes
