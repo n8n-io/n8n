@@ -363,13 +363,14 @@ export default defineComponent({
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
-		$route(to: Route, from: Route) {
+		async $route(to: Route, from: Route) {
 			const currentTab = getNodeViewTab(to);
 			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
 			let workflowChanged =
 				from.params.name !== to.params.name &&
 				// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
 				!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) &&
+				!(from.name === VIEWS.NEW_WORKFLOW) &&
 				// Also ignore if workflow id changes when saving new workflow
 				to.params.action !== 'workflowSave';
 			const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
@@ -3540,14 +3541,11 @@ export default defineComponent({
 			// Reset nodes
 			this.deleteEveryEndpoint();
 
+			// Make sure that if there is a waiting test-webhook that it gets removed
 			if (this.executionWaitingForWebhook) {
-				// Make sure that if there is a waiting test-webhook that
-				// it gets removed
-				this.restApi()
-					.removeTestWebhook(this.workflowsStore.workflowId)
-					.catch(() => {
-						// Ignore all errors
-					});
+				try {
+					void this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
+				} catch (error) {}
 			}
 			this.workflowsStore.resetState();
 			this.uiStore.removeActiveAction('workflowRunning');

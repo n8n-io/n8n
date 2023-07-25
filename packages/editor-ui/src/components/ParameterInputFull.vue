@@ -243,7 +243,6 @@ export default defineComponent({
 			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			console.log('onTextInput', parameterData);
 			if (isValueExpression(this.parameter, parameterData.value)) {
 				this.eventBus.emit('optionSelected', 'addExpression');
 			}
