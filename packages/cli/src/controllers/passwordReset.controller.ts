@@ -1,4 +1,4 @@
-import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
+import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import {
@@ -28,6 +28,8 @@ import { UserService } from '@/user/user.service';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { TokenExpiredError } from 'jsonwebtoken';
+import type { JwtService, JwtPayload } from '@/services/jwt.service';
 
 @RestController()
 export class PasswordResetController {
@@ -43,6 +45,8 @@ export class PasswordResetController {
 
 	private readonly userRepository: UserRepository;
 
+	private readonly jwtService: JwtService;
+
 	constructor({
 		config,
 		logger,
@@ -50,6 +54,7 @@ export class PasswordResetController {
 		internalHooks,
 		mailer,
 		repositories,
+		jwtService,
 	}: {
 		config: Config;
 		logger: ILogger;
@@ -57,6 +62,7 @@ export class PasswordResetController {
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
 		repositories: Pick<IDatabaseCollections, 'User'>;
+		jwtService: JwtService;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -64,6 +70,7 @@ export class PasswordResetController {
 		this.internalHooks = internalHooks;
 		this.mailer = mailer;
 		this.userRepository = repositories.User;
+		this.jwtService = jwtService;
 	}
 
 	/**
@@ -139,7 +146,15 @@ export class PasswordResetController {
 
 		const baseUrl = getInstanceBaseUrl();
 		const { id, firstName, lastName } = user;
-		const url = await UserService.generatePasswordResetUrl(user);
+
+		const resetPasswordToken = this.jwtService.signData(
+			{ sub: id },
+			{
+				expiresIn: '1d',
+			},
+		);
+
+		const url = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
 
 		try {
 			await this.mailer.passwordReset({
@@ -175,11 +190,11 @@ export class PasswordResetController {
 	 */
 	@Get('/resolve-password-token')
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
-		const { token: resetPasswordToken, userId: id } = req.query;
+		const { token: resetPasswordToken } = req.query;
 
-		if (!resetPasswordToken || !id) {
+		if (!resetPasswordToken) {
 			this.logger.debug(
-				'Request to resolve password token failed because of missing password reset token or user ID in query string',
+				'Request to resolve password token failed because of missing password reset token',
 				{
 					queryString: req.query,
 				},
@@ -187,47 +202,46 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		// Timestamp is saved in seconds
-		const currentTimestamp = Math.floor(Date.now() / 1000);
+		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
 		const user = await this.userRepository.findOne({
 			where: {
-				id,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+				id: decodedToken.sub,
 			},
 			relations: ['globalRole'],
 		});
+
 		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
-				{ userId: id },
+				{ userId: decodedToken.sub },
 			);
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
+
 		if (!user) {
 			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				'Request to resolve password token failed because no user was found for the provided user ID',
 				{
-					userId: id,
+					userId: decodedToken.sub,
 					resetPasswordToken,
 				},
 			);
 			throw new NotFoundError('');
 		}
 
-		this.logger.info('Reset-password token resolved successfully', { userId: id });
+		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
 		void this.internalHooks.onUserPasswordResetEmailClick({ user });
 	}
 
 	/**
-	 * Verify password reset token and user ID and update password.
+	 * Verify password reset token and update password.
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, userId, password } = req.body;
+		const { token: resetPasswordToken, password } = req.body;
 
-		if (!resetPasswordToken || !userId || !password) {
+		if (!resetPasswordToken || !password) {
 			this.logger.debug(
 				'Request to change password failed because of missing user ID or password or reset password token in payload',
 				{
@@ -239,23 +253,17 @@ export class PasswordResetController {
 
 		const validPassword = validatePassword(password);
 
-		// Timestamp is saved in seconds
-		const currentTimestamp = Math.floor(Date.now() / 1000);
+		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
 		const user = await this.userRepository.findOne({
-			where: {
-				id: userId,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			},
+			where: { id: decodedToken.sub },
 			relations: ['authIdentities'],
 		});
 
 		if (!user) {
 			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID and reset password token',
+				'Request to resolve password token failed because no user was found for the provided user ID',
 				{
-					userId,
 					resetPasswordToken,
 				},
 			);
@@ -264,13 +272,11 @@ export class PasswordResetController {
 
 		const passwordHash = await hashPassword(validPassword);
 
-		await this.userRepository.update(userId, {
+		await this.userRepository.update(user.id, {
 			password: passwordHash,
-			resetPasswordToken: null,
-			resetPasswordTokenExpiration: null,
 		});
 
-		this.logger.info('User password updated successfully', { userId });
+		this.logger.info('User password updated successfully', { userId: user.id });
 
 		await issueCookie(res, user);
 
@@ -289,5 +295,24 @@ export class PasswordResetController {
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
+	}
+
+	private verifyResetPasswordToken(resetPasswordToken: string) {
+		let decodedToken: JwtPayload;
+		try {
+			decodedToken = this.jwtService.verifyToken(resetPasswordToken);
+			return decodedToken;
+		} catch (e) {
+			if (e instanceof TokenExpiredError) {
+				this.logger.debug('Reset password token expired', {
+					resetPasswordToken,
+				});
+				throw new NotFoundError('');
+			}
+			this.logger.debug('Error verifying token', {
+				resetPasswordToken,
+			});
+			throw new BadRequestError('');
+		}
 	}
 }
