@@ -258,7 +258,7 @@ describe('Data mapping', () => {
 			.should('have.value', "input[0]['hello.world']['my count']");
 	});
 
-	it.only('maps expressions to updated fields correctly', () => {
+	it('maps expressions to updated fields correctly', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
