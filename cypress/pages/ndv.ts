@@ -160,7 +160,7 @@ export class NDV extends BasePage {
 		},
 		setRLCValue: (paramName: string, value: string) => {
 			this.getters.resourceLocatorModeSelector(paramName).click();
-			this.getters.resourceLocatorModeSelector(paramName).find('li').last().click();
+			getVisibleSelect().find('li').last().click();
 			this.getters.resourceLocatorInput(paramName).type(value);
 		},
 		validateExpressionPreview: (paramName: string, value: string) => {

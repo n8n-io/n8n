@@ -19,7 +19,7 @@
 			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
 				<n8n-markdown
 					theme="sticky"
-					:content="content"
+					:content="modelValue"
 					:withMultiBreaks="true"
 					@markdown-click="onMarkdownClick"
 				/>
@@ -35,11 +35,11 @@
 				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
 			>
 				<n8n-input
-					:modelValue="content"
+					:modelValue="modelValue"
 					type="textarea"
 					:rows="5"
 					@blur="onInputBlur"
-					@update:modelValue="onInput"
+					@update:modelValue="onUpdateModelValue"
 					ref="input"
 				/>
 			</div>
@@ -64,7 +64,7 @@ export default defineComponent({
 	name: 'n8n-sticky',
 	mixins: [Locale],
 	props: {
-		content: {
+		modelValue: {
 			type: String,
 		},
 		height: {
@@ -152,8 +152,8 @@ export default defineComponent({
 				this.$emit('edit', false);
 			}
 		},
-		onInput(value: string) {
-			this.$emit('input', value);
+		onUpdateModelValue(value: string) {
+			this.$emit('update:modelValue', value);
 		},
 		onMarkdownClick(link: string, event: Event) {
 			this.$emit('markdown-click', link, event);
@@ -175,7 +175,7 @@ export default defineComponent({
 			setTimeout(() => {
 				if (newMode && !prevMode && this.$refs.input) {
 					const textarea = this.$refs.input as HTMLTextAreaElement;
-					if (this.defaultText === this.content) {
+					if (this.defaultText === this.modelValue) {
 						textarea.select();
 					}
 					textarea.focus();

@@ -23,7 +23,7 @@
 				v-touch:end="touchEnd"
 			>
 				<n8n-sticky
-					:content="node.parameters.content"
+					:modelValue="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
@@ -32,12 +32,12 @@
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
 					:gridSize="gridSize"
-					@input="onInputChange"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
 					@markdown-click="onMarkdownClick"
+					@update:modelValue="onInputChange"
 				/>
 			</div>
 

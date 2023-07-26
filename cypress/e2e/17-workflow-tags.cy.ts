@@ -81,7 +81,7 @@ describe('Workflow tags', () => {
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});
 
-	it.only('should detach a tag inline by clicking on dropdown list item', () => {
+	it('should detach a tag inline by clicking on dropdown list item', () => {
 		wf.getters.createTagButton().click();
 		wf.actions.addTags(TEST_TAGS);
 		wf.getters.nthTagPill(1).click();

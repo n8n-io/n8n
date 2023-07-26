@@ -411,7 +411,13 @@ export default defineComponent({
 				this.isTagsEditEnabled = false;
 			}
 		},
-		async onNameSubmit(name: string, cb: (saved: boolean) => void) {
+		async onNameSubmit({
+			name,
+			onSubmit: cb,
+		}: {
+			name: string;
+			onSubmit: (saved: boolean) => void;
+		}) {
 			const newName = name.trim();
 			if (!newName) {
 				this.showMessage({

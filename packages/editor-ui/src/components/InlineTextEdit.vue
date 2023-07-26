@@ -1,6 +1,6 @@
 <template>
 	<span @keydown.stop class="inline-edit">
-		<span v-if="isEditEnabled && !disabled">
+		<span v-if="isEditEnabled && !isDisabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
 				:modelValue="newValue"
@@ -57,6 +57,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			isDisabled: this.disabled,
 			newValue: '',
 			escPressed: false,
 			inputBus: createEventBus(),
@@ -94,15 +95,15 @@ export default defineComponent({
 			}
 
 			const onSubmit = (updated: boolean) => {
-				this.disabled = false;
+				this.isDisabled = false;
 
 				if (!updated) {
 					this.inputBus.emit('focus');
 				}
 			};
 
-			this.disabled = true;
-			this.$emit('submit', this.newValue, onSubmit);
+			this.isDisabled = true;
+			this.$emit('submit', { name: this.newValue, onSubmit });
 		},
 		onEscape() {
 			if (this.disabled) {
@@ -111,6 +112,11 @@ export default defineComponent({
 
 			this.escPressed = true;
 			this.$emit('toggle');
+		},
+	},
+	watch: {
+		disabled(value) {
+			this.isDisabled = value;
 		},
 	},
 });
