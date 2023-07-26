@@ -11,39 +11,42 @@ import { RedisServiceStreamProducer } from './redis/RedisServiceStreamProducer';
  */
 @Service()
 export class RedisService {
+	constructor(
+		private redisServicePubSubSubscriber: RedisServicePubSubSubscriber,
+		private redisServicePubSubPublisher: RedisServicePubSubPublisher,
+		private redisServiceListReceiver: RedisServiceListReceiver,
+		private redisServiceListSender: RedisServiceListSender,
+		private redisServiceStreamConsumer: RedisServiceStreamConsumer,
+		private redisServiceStreamProducer: RedisServiceStreamProducer,
+	) {}
+
 	async getPubSubSubscriber() {
-		const client = Container.get(RedisServicePubSubSubscriber);
-		await client.init();
-		return client;
+		await this.redisServicePubSubSubscriber.init();
+		return this.redisServicePubSubSubscriber;
 	}
 
 	async getPubSubPublisher() {
-		const client = Container.get(RedisServicePubSubPublisher);
-		await client.init();
-		return client;
+		await this.redisServicePubSubPublisher.init();
+		return this.redisServicePubSubPublisher;
 	}
 
 	async getListSender() {
-		const client = Container.get(RedisServiceListSender);
-		await client.init();
-		return client;
+		await this.redisServiceListSender.init();
+		return this.redisServiceListSender;
 	}
 
 	async getListReceiver() {
-		const client = Container.get(RedisServiceListReceiver);
-		await client.init();
-		return client;
+		await this.redisServiceListReceiver.init();
+		return this.redisServiceListReceiver;
 	}
 
 	async getStreamProducer() {
-		const client = Container.get(RedisServiceStreamProducer);
-		await client.init();
-		return client;
+		await this.redisServiceStreamProducer.init();
+		return this.redisServiceStreamProducer;
 	}
 
 	async getStreamConsumer() {
-		const client = Container.get(RedisServiceStreamConsumer);
-		await client.init();
-		return client;
+		await this.redisServiceStreamConsumer.init();
+		return this.redisServiceStreamConsumer;
 	}
 }
