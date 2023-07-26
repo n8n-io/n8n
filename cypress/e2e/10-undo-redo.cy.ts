@@ -117,7 +117,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [150, 150]);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
 			.should('have.attr', 'style', 'left: 740px; top: 320px;');
