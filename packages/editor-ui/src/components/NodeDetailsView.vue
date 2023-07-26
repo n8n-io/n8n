@@ -188,13 +188,12 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	async setup(props) {
-		const workflowActivateSetup = await workflowActivate.setup?.(props);
-
+	setup(props) {
 		return {
 			...useDeviceSupport(),
 			...useMessage(),
-			...workflowActivateSetup,
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...workflowActivate.setup?.(props),
 		};
 	},
 	data() {
