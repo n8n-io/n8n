@@ -223,7 +223,7 @@ describe('Workflow Actions', () => {
 				.find('.el-select__tags input')
 				.type(DUPLICATE_WORKFLOW_TAG);
 			WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
-			WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{enter}');
+			WorkflowPage.getters.duplicateWorkflowModal().find('.el-select__tags input').type('{esc}');
 			WorkflowPage.getters
 				.duplicateWorkflowModal()
 				.find('button')
