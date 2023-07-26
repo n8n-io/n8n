@@ -76,10 +76,12 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	setup(props) {
+	async setup(props) {
+		const pushConnectionSetup = await pushConnection.setup?.(props);
+
 		return {
 			...useToast(),
-			...pushConnection.setup?.(props),
+			...pushConnectionSetup,
 		};
 	},
 	data() {

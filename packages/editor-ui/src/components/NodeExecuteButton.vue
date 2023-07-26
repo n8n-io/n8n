@@ -60,11 +60,12 @@ export default defineComponent({
 			type: String,
 		},
 	},
-	setup(props) {
+	async setup(props) {
+		const workflowRunSetup = await workflowRun.setup?.(props);
 		return {
 			...useToast(),
 			...useMessage(),
-			...workflowRun.setup?.(props),
+			...workflowRunSetup,
 		};
 	},
 	computed: {

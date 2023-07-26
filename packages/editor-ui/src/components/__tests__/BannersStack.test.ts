@@ -9,7 +9,8 @@ import { createTestingPinia } from '@pinia/testing';
 import BannerStack from '@/components/banners/BannerStack.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { createComponentRenderer, RenderOptions } from '@/__tests__/render';
+import type { RenderOptions } from '@/__tests__/render';
+import { createComponentRenderer } from '@/__tests__/render';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let usersStore: ReturnType<typeof useUsersStore>;

@@ -1,7 +1,4 @@
-import { PiniaVuePlugin } from 'pinia';
-import { render } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
 import AuthView from '@/views/AuthView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 

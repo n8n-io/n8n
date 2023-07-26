@@ -135,10 +135,11 @@ export default defineComponent({
 		MainSidebarSourceControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
-	setup(props) {
+	async setup(props) {
+		const workflowRunSetup = await workflowRun.setup?.(props);
 		return {
 			...useMessage(),
-			...workflowRun.setup?.(props),
+			...workflowRunSetup,
 		};
 	},
 	data() {
@@ -481,12 +482,11 @@ export default defineComponent({
 			const browserWidth = (event.target as Window).outerWidth;
 			this.checkWidthAndAdjustSidebar(browserWidth);
 		},
-		checkWidthAndAdjustSidebar(width: number) {
+		async checkWidthAndAdjustSidebar(width: number) {
 			if (width < 900) {
 				this.uiStore.sidebarMenuCollapsed = true;
-				this.$nextTick(() => {
-					this.fullyExpanded = !this.isCollapsed;
-				});
+				await this.$nextTick();
+				this.fullyExpanded = !this.isCollapsed;
 			}
 		},
 	},

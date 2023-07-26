@@ -1,7 +1,7 @@
 import { defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
 import { createPinia } from 'pinia';
-import { render, screen, fireEvent } from '@testing-library/vue';
+import { screen, fireEvent } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { mockSimplifiedNodeType } from './utils';

@@ -89,7 +89,8 @@ export default defineComponent({
 	},
 	async mounted() {
 		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
-		this.$nextTick(() => this.focusOnNameInput());
+		await this.$nextTick();
+		this.focusOnNameInput();
 	},
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),

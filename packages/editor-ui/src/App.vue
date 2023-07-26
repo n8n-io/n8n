@@ -69,13 +69,15 @@ export default defineComponent({
 		Modals,
 	},
 	mixins: [newVersions, userHelpers],
-	setup(props) {
+	async setup(props) {
+		const newVersionsSetup = await newVersions.setup?.(props);
+
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
-			...newVersions.setup?.(props),
+			...newVersionsSetup,
 		};
 	},
 	computed: {

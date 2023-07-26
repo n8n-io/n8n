@@ -343,8 +343,9 @@ export default defineComponent({
 		NodeCreation,
 		CanvasControls,
 	},
-	setup(props) {
+	async setup(props) {
 		const locale = useI18n();
+		const workflowRunSetup = await workflowRun.setup?.(props);
 
 		return {
 			locale,
@@ -354,7 +355,7 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
-			...workflowRun.setup?.(props),
+			...workflowRunSetup,
 		};
 	},
 	errorCaptured: (err, vm, info) => {
@@ -452,7 +453,7 @@ export default defineComponent({
 				if (from.name === VIEWS.NEW_WORKFLOW) {
 					// Replace the current route with the new workflow route
 					// before navigating to the new route when saving new workflow.
-					this.$router.replace(
+					await this.$router.replace(
 						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
 						() => {
 							// We can't use next() here since vue-router
@@ -764,10 +765,9 @@ export default defineComponent({
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
 			);
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-				this.uiStore.stateIsDirty = false;
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = false;
 			void this.$externalHooks().run('execution.open', {
 				workflowId: data.workflowData.id,
 				workflowName: data.workflowData.name,
@@ -835,9 +835,8 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
 
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.startLoading();
@@ -878,10 +877,9 @@ export default defineComponent({
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
 			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-				this.uiStore.stateIsDirty = true;
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = true;
 
 			void this.$externalHooks().run('template.open', {
 				templateId,
@@ -3744,13 +3742,12 @@ export default defineComponent({
 				// exist
 				const actionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
 					if (name === 'addNode' && args[0].type === nodeTypeName) {
-						after(() => {
+						after(async () => {
 							const lastAddedNode = this.nodes[this.nodes.length - 1];
 							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
 
-							this.$nextTick(() =>
-								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0),
-							);
+							await this.$nextTick();
+							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
 
 							// Position the added node to the right side of the previously added one
 							lastAddedNode.position = [

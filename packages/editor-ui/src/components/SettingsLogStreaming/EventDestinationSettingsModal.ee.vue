@@ -355,7 +355,7 @@ export default defineComponent({
 		onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
 			this.typeSelectValue = destinationType;
 		},
-		onContinueAddClicked() {
+		async onContinueAddClicked() {
 			let newDestination;
 			switch (this.typeSelectValue) {
 				case MessageEventBusDestinationTypeNames.syslog:
@@ -378,9 +378,8 @@ export default defineComponent({
 
 			if (newDestination) {
 				this.headerLabel = newDestination?.label ?? this.headerLabel;
-				nextTick(() => {
-					this.setupNode(newDestination);
-				});
+				await nextTick();
+				this.setupNode(newDestination);
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {

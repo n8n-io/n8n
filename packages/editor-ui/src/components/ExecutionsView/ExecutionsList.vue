@@ -194,7 +194,7 @@ export default defineComponent({
 		}
 
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
-		this.startAutoRefreshInterval();
+		await this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
 		this.loading = false;
@@ -453,7 +453,7 @@ export default defineComponent({
 				return [];
 			}
 			try {
-				return this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
 			} catch (error) {
 				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 					this.showMessage(

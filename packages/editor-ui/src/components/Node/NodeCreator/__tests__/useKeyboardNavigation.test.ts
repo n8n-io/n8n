@@ -2,7 +2,6 @@ import userEvent from '@testing-library/user-event';
 import { defineComponent, computed } from 'vue';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestingPinia } from '@pinia/testing';
 import { createPinia } from 'pinia';
 
 const eventHookSpy = vi.fn();

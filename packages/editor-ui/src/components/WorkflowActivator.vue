@@ -62,10 +62,11 @@ export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
 	mixins: [workflowActivate],
-	setup(props) {
+	async setup(props) {
+		const workflowActivateSetup = await workflowActivate.setup?.(props);
 		return {
 			...useToast(),
-			...workflowActivate.setup?.(props),
+			...workflowActivateSetup,
 		};
 	},
 	computed: {

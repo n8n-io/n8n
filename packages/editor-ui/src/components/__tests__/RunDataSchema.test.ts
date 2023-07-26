@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { render, cleanup } from '@testing-library/vue';
+import { cleanup } from '@testing-library/vue';
 import RunDataJsonSchema from '@/components/RunDataSchema.vue';
 import { STORES } from '@/constants';
 import { createComponentRenderer } from '@/__tests__/render';

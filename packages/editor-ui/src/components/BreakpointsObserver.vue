@@ -41,12 +41,12 @@ export default defineComponent({
 		onResize() {
 			void this.callDebounced('onResizeEnd', { debounceTime: 50 });
 		},
-		onResizeEnd() {
+		async onResizeEnd() {
 			this.width = window.innerWidth;
-			this.$nextTick(async () => {
-				const bannerHeight = await getBannerRowHeight();
-				useUIStore().updateBannersHeight(bannerHeight);
-			});
+			await this.$nextTick();
+
+			const bannerHeight = await getBannerRowHeight();
+			useUIStore().updateBannersHeight(bannerHeight);
 		},
 	},
 	computed: {

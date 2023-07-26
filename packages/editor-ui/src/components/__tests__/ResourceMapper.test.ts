@@ -1,4 +1,4 @@
-import { render, within } from '@testing-library/vue';
+import { within } from '@testing-library/vue';
 import {
 	DEFAULT_SETUP,
 	MAPPING_COLUMNS_RESPONSE,

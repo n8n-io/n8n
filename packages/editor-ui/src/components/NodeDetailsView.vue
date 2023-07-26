@@ -188,11 +188,13 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	setup(props) {
+	async setup(props) {
+		const workflowActivateSetup = await workflowActivate.setup?.(props);
+
 		return {
 			...useDeviceSupport(),
 			...useMessage(),
-			...workflowActivate.setup?.(props),
+			...workflowActivateSetup,
 		};
 	},
 	data() {

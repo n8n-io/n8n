@@ -39,10 +39,13 @@ export default defineComponent({
 		TabBar,
 	},
 	mixins: [pushConnection, workflowHelpers],
-	setup(props) {
+	async setup(props) {
+		const pushConnectionSetup = await pushConnection.setup?.(props);
+		const workflowHelpersSetup = await workflowHelpers.setup?.(props);
+
 		return {
-			...pushConnection.setup?.(props),
-			...workflowHelpers.setup?.(props),
+			...pushConnectionSetup,
+			...workflowHelpersSetup,
 		};
 	},
 	data() {

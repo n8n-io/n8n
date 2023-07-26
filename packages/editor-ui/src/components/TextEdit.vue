@@ -62,11 +62,10 @@ export default defineComponent({
 		this.tempValue = this.modelValue as string;
 	},
 	watch: {
-		dialogVisible() {
+		async dialogVisible() {
 			if (this.dialogVisible === true) {
-				nextTick(() => {
-					(this.$refs.inputField as HTMLInputElement).focus();
-				});
+				await nextTick();
+				(this.$refs.inputField as HTMLInputElement).focus();
 			}
 		},
 		modelValue(value: string) {

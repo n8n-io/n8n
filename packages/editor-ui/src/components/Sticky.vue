@@ -162,11 +162,10 @@ export default defineComponent({
 		};
 	},
 	methods: {
-		deleteNode() {
-			this.$nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('removeNode', this.data.name);
-			});
+		async deleteNode() {
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('removeNode', this.data.name);
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
