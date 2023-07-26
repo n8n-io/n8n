@@ -1,5 +1,4 @@
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import {
 	deleteDestinationFromDb,
