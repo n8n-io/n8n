@@ -13,7 +13,7 @@
 					class="node-name"
 					:modelValue="node.name"
 					:nodeType="nodeType"
-					:isReadOnly="isReadOnly"
+					:readOnly="isReadOnly"
 					@update:modelValue="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">

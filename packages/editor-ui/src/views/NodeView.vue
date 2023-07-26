@@ -315,6 +315,8 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
+import type { ElNotificationComponent } from 'element-ui/types/notification';
+import { sourceControlEventBus } from '@/event-bus/source-control';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -364,7 +366,9 @@ export default defineComponent({
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
-		async $route(to: Route, from: Route) {
+		$route(to: Route, from: Route) {
+			this.readOnlyEnvRouteCheck();
+
 			const currentTab = getNodeViewTab(to);
 			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
 			let workflowChanged =
@@ -426,7 +430,7 @@ export default defineComponent({
 			next();
 			return;
 		}
-		if (this.uiStore.stateIsDirty) {
+		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
 			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 				{
@@ -630,6 +634,7 @@ export default defineComponent({
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
+			readOnlyNotification: null as null | ElNotificationComponent,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -639,13 +644,24 @@ export default defineComponent({
 	},
 	methods: {
 		editAllowedCheck(): boolean {
+			if (this.readOnlyNotification?.visible) {
+				return;
+			}
 			if (this.isReadOnlyRoute || this.readOnlyEnv) {
-				this.showMessage({
-					// title: 'Workflow can not be changed!',
-					title: this.$locale.baseText('genericHelpers.showMessage.title'),
-					message: this.$locale.baseText('genericHelpers.showMessage.message'),
+				this.readOnlyNotification = this.showMessage({
+					title: this.$locale.baseText(
+						this.readOnlyEnv
+							? `readOnlyEnv.showMessage.${this.isReadOnlyRoute ? 'executions' : 'workflows'}.title`
+							: 'readOnly.showMessage.executions.title',
+					),
+					message: this.$locale.baseText(
+						this.readOnlyEnv
+							? `readOnlyEnv.showMessage.${
+									this.isReadOnlyRoute ? 'executions' : 'workflows'
+							  }.message`
+							: 'readOnly.showMessage.executions.message',
+					),
 					type: 'info',
-					duration: 0,
 					dangerouslyUseHTMLString: true,
 				});
 
@@ -1467,6 +1483,10 @@ export default defineComponent({
 		 * This method gets called when data got pasted into the window
 		 */
 		async receivedCopyPasteData(plainTextData: string): Promise<void> {
+			if (this.readOnlyEnv) {
+				return;
+			}
+
 			const currentTab = getNodeViewTab(this.$route);
 			if (currentTab === MAIN_HEADER_TABS.WORKFLOW) {
 				let workflowData: IWorkflowDataUpdate | undefined;
@@ -2552,8 +2572,7 @@ export default defineComponent({
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId);
 			} else {
-				const result = this.uiStore.stateIsDirty;
-				if (result) {
+				if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
 					const confirmModal = await this.confirm(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 						{
@@ -3821,6 +3840,41 @@ export default defineComponent({
 				this.stopLoading();
 			}
 		},
+		readOnlyEnvRouteCheck() {
+			if (
+				this.readOnlyEnv &&
+				[VIEWS.NEW_WORKFLOW, VIEWS.TEMPLATE_IMPORT].includes(this.$route.name)
+			) {
+				this.$nextTick(async () => {
+					this.resetWorkspace();
+					this.uiStore.stateIsDirty = false;
+
+					await this.$router.replace({ name: VIEWS.WORKFLOWS });
+				});
+			}
+		},
+	},
+	async onSourceControlPull() {
+		let workflowId = null as string | null;
+		if (this.$route.params.name) {
+			workflowId = this.$route.params.name;
+		}
+
+		try {
+			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
+
+			if (workflowId !== null && !this.uiStore.stateIsDirty) {
+				const workflow: IWorkflowDb | undefined = await this.workflowsStore.fetchWorkflow(
+					workflowId,
+				);
+				if (workflow) {
+					this.titleSet(workflow.name, 'IDLE');
+					await this.openWorkflow(workflow);
+				}
+			}
+		} catch (error) {
+			console.error(error);
+		}
 	},
 	async mounted() {
 		this.resetWorkspace();
@@ -3850,6 +3904,7 @@ export default defineComponent({
 			);
 			return;
 		}
+
 		ready(async () => {
 			try {
 				try {
@@ -3913,6 +3968,10 @@ export default defineComponent({
 				}, promptTimeout);
 			}
 		}
+
+		sourceControlEventBus.on('pull', this.onSourceControlPull);
+
+		this.readOnlyEnvRouteCheck();
 	},
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
@@ -3982,6 +4041,7 @@ export default defineComponent({
 		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		sourceControlEventBus.off('pull', this.onSourceControlPull);
 	},
 });
 </script>
