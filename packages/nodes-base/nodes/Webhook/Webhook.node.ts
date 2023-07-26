@@ -10,9 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
-import fs from 'fs';
-import stream from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
+import { createWriteStream } from 'fs';
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
 import isbot from 'isbot';
@@ -30,8 +29,6 @@ import {
 	responseModeProperty,
 } from './description';
 import { WebhookAuthorizationError } from './error';
-
-const pipeline = promisify(stream.pipeline);
 
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
@@ -256,10 +253,11 @@ export class Webhook extends Node {
 		const req = context.getRequestObject();
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 
+		// TODO: create empty binaryData placeholder, stream into that path, and then finalize the binaryData
 		const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
 
 		try {
-			await pipeline(req, fs.createWriteStream(binaryFile.path));
+			await pipeline(req, createWriteStream(binaryFile.path));
 
 			const returnItem: INodeExecutionData = {
 				binary: {},

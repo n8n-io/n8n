@@ -54,6 +54,7 @@ declare module 'http' {
 		encoding: BufferEncoding;
 		contentDisposition?: { type: string; filename?: string };
 		rawBody: Buffer;
+		readRawBody(): Promise<void>;
 		_body: boolean;
 	}
 }

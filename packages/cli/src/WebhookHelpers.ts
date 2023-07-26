@@ -301,7 +301,7 @@ export async function executeWebhook(
 
 		// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
 		if (!binaryData) {
-			const { rawBody, contentType, encoding } = req;
+			const { contentType, encoding } = req;
 			if (contentType === 'multipart/form-data') {
 				const form = formidable({
 					multiples: true,
@@ -313,24 +313,28 @@ export async function executeWebhook(
 						resolve({ data, files });
 					});
 				});
-			} else if (rawBody?.length) {
-				try {
-					if (contentType === 'application/json') {
-						req.body = jsonParse(rawBody.toString(encoding));
-					} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
-						req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
-					} else if (contentType === 'application/x-www-form-urlencoded') {
-						req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
-							maxKeys: 1000,
-						});
-					} else if (contentType === 'text/plain') {
-						req.body = rawBody.toString(encoding);
+			} else {
+				await req.readRawBody();
+				const { rawBody } = req;
+				if (rawBody?.length) {
+					try {
+						if (contentType === 'application/json') {
+							req.body = jsonParse(rawBody.toString(encoding));
+						} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
+							req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
+						} else if (contentType === 'application/x-www-form-urlencoded') {
+							req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
+								maxKeys: 1000,
+							});
+						} else if (contentType === 'text/plain') {
+							req.body = rawBody.toString(encoding);
+						}
+					} catch (error) {
+						throw new ResponseHelper.UnprocessableRequestError(
+							'Failed to parse request body',
+							error.message,
+						);
 					}
-				} catch (error) {
-					throw new ResponseHelper.UnprocessableRequestError(
-						'Failed to parse request body',
-						error.message,
-					);
 				}
 			}
 		}

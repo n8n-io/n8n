@@ -28,20 +28,23 @@ export const rawBody: RequestHandler = async (req, res, next) => {
 		}
 	}
 
-	if (req.contentType !== 'multipart/form-data') {
-		req.rawBody = await getRawBody(req, {
-			length: req.headers['content-length'],
-			limit: `${String(payloadSizeMax)}mb`,
-		});
-	}
+	req.readRawBody = async () => {
+		if (!req.rawBody) {
+			req.rawBody = await getRawBody(req, {
+				length: req.headers['content-length'],
+				limit: `${String(payloadSizeMax)}mb`,
+			});
+			req._body = true;
+		}
+	};
 
 	next();
 };
 
 export const jsonParser: RequestHandler = async (req, res, next) => {
-	if (Buffer.isBuffer(req.rawBody)) {
-		req._body = true;
+	await req.readRawBody();
 
+	if (Buffer.isBuffer(req.rawBody)) {
 		if (req.contentType === 'application/json') {
 			try {
 				req.body = jsonParse<unknown>(req.rawBody.toString(req.encoding));
