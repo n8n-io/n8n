@@ -8,7 +8,7 @@
 			</div>
 
 			<div class="mt-xs mb-l">
-				<slot name="add-button">
+				<slot name="add-button" :disabled="disabled">
 					<n8n-button
 						size="large"
 						block
