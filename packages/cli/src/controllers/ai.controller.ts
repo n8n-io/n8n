@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { Authorized, Post, RestController } from '@/decorators';
-import type { IDataObject, ILogger } from 'n8n-workflow';
+import type { CodeExecutionMode, IDataObject, ILogger } from 'n8n-workflow';
 import { Script } from 'vm';
 import config from '@/config';
 import axios from 'axios';
@@ -10,9 +10,15 @@ type GenerateCodeRequest = Request<
 	{},
 	{
 		prompt: string;
+		model: 'gpt-3.5-turbo-16k' | 'gpt-4';
 		schema: IDataObject;
 	}
 >;
+
+type GenerateCodeResponse = {
+	code: string;
+	mode: CodeExecutionMode;
+};
 
 @Authorized()
 @RestController('/ai')
@@ -32,28 +38,27 @@ export class AiController {
 	@Post('/generate-code')
 	async generatePrompt(req: GenerateCodeRequest) {
 		console.log('Received: ', req.body.prompt, req.body.schema);
-		const { prompt, schema } = req.body;
+		const { prompt, schema, model } = req.body;
 
 		try {
-			const resp = await axios({
+			const response: { data: GenerateCodeResponse } = await axios({
 				method: 'post',
-				url: this.endpoint,
+				url: this.endpoint + '/generate-code',
 				data: {
 					prompt,
+					model,
 					schema,
 				},
 				headers: {
 					authorization: this.authorization,
 				},
 			});
+			const { code, mode } = response.data;
 
-			const code = (resp.data as { code: string }).code;
-			const mode = (resp.data as { mode: string }).mode;
-
+			// TODO: Validate the generated code and retry if invalid?
 			return {
 				code,
 				mode,
-				isValid: this.validateGeneratedCode(code),
 			};
 		} catch (error) {
 			throw new Error(`Failed to generate code: ${error}`);

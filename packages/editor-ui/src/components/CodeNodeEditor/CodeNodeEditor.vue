@@ -41,9 +41,9 @@ import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
-import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
+import { ASK_AI_EXPERIMENT, ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore, usePostHog } from '@/stores';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { CODE_PLACEHOLDERS } from './constants';
@@ -112,14 +112,18 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useRootStore),
+		...mapStores(useRootStore, usePostHog),
 		content(): string {
 			if (!this.editor) return '';
 
 			return this.editor.state.doc.toString();
 		},
 		aiEnabled(): boolean {
-			return this.settingsStore.settings.ai.enabled === true;
+			const isAiExperimentDisabled = this.posthogStore.isVariantEnabled(
+				ASK_AI_EXPERIMENT.name,
+				ASK_AI_EXPERIMENT.control,
+			);
+			return !isAiExperimentDisabled && this.settingsStore.settings.ai.enabled === true;
 		},
 		placeholder(): string {
 			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';

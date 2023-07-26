@@ -1,47 +1,48 @@
 <script setup lang="ts">
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { ref, defineEmits, computed } from 'vue';
-import { useDataSchema } from '@/composables';
+import { useDataSchema, useI18n } from '@/composables';
 import { generateCodeForPrompt } from '@/api/ai';
-import { useNDVStore, useRootStore } from '@/stores';
+import { useNDVStore, usePostHog, useRootStore } from '@/stores';
 import CircleLoader from './CircleLoader.vue';
+import { ASK_AI_EXPERIMENT } from '@/constants';
 
 const emit = defineEmits<{
 	submit: (code: string) => void;
 }>();
 const { getWorkflowSchema, getSchemaForExecutionData } = useDataSchema();
+const { i18n } = useI18n();
 const maxLength = 600;
 const loadingDurationMs = 10000;
-const loadingPhrase = ref([
-	'AI cogs whirring, almost there…',
-	'up up down down left right b a start…',
-	'Consulting Jan Oberhauser…',
-	'Gathering bytes and pieces…',
-	'Checking if another AI knows the answer…',
-	'Checking on Stack Overflow…',
-	'Crunching data, AI-style…',
-	'Stand by, AI magic at work…',
-]);
+
 const loadingPhraseIndex = ref(0);
 const loaderProgress = ref(0);
 
 const isLoading = ref(false);
 const prompt = ref('');
 
-const hasExecutionData = computed(() => useNDVStore().ndvInputData.length > 0);
+const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
+const loadingString = computed(() =>
+	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}`),
+);
 async function onSubmit() {
 	startLoading();
 	const schema = getWorkflowSchema();
 
 	try {
 		const { ndvInputData } = useNDVStore();
+		const model =
+			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
+				? 'gpt-4'
+				: 'gpt-3.5-turbo-16k';
 
 		const { getRestApiContext } = useRootStore();
 		const { code, mode } = await generateCodeForPrompt(getRestApiContext, {
 			prompt: prompt.value,
 			schema,
+			model,
 		});
-		// await new Promise((resolve) => setTimeout(resolve, 3000));
+
 		stopLoading();
 		emit('replaceCode', { code, mode });
 	} catch (error) {
@@ -58,7 +59,7 @@ function triggerLoadingPhraseChange() {
 		if (!start) start = timestamp;
 
 		if (!lastPhraseChange || timestamp - lastPhraseChange >= 2000) {
-			loadingPhraseIndex.value = Math.floor(Math.random() * loadingPhrase.value.length);
+			loadingPhraseIndex.value = Math.floor(Math.random() * 8);
 			lastPhraseChange = timestamp;
 		}
 
@@ -137,21 +138,18 @@ function stopLoading() {
 		<div :class="$style.controls">
 			<div :class="$style.loader" v-if="isLoading">
 				<transition name="text-fade-in-out" mode="out-in">
-					<div v-text="loadingPhrase[loadingPhraseIndex]" :key="loadingPhraseIndex" />
+					<div v-text="loadingString" :key="loadingPhraseIndex" />
 				</transition>
 				<CircleLoader :radius="8" :progress="loaderProgress" :stroke-width="3" />
 			</div>
-			<n8n-tooltip>
+			<n8n-tooltip :disabled="hasExecutionData" v-else>
 				<div>
 					<N8nButton :disabled="!hasExecutionData || !prompt" @click="onSubmit">{{
 						$locale.baseText('codeNodeEditor.askAi.generateCode')
 					}}</N8nButton>
 				</div>
-				<template #content>
-					<span
-						v-if="!hasExecutionData"
-						v-text="$locale.baseText('codeNodeEditor.askAi.noInputData')"
-					/>
+				<template #content v-if="!hasExecutionData">
+					<span v-text="$locale.baseText('codeNodeEditor.askAi.noInputData')" />
 				</template>
 			</n8n-tooltip>
 		</div>
