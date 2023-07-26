@@ -4,7 +4,6 @@ import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import { retry } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
-import { nextTick } from 'vue';
 
 const renderComponent = createComponentRenderer(PersonalizationModal, {
 	props: {

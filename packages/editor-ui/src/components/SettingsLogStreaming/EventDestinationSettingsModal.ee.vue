@@ -378,7 +378,7 @@ export default defineComponent({
 
 			if (newDestination) {
 				this.headerLabel = newDestination?.label ?? this.headerLabel;
-				nextTick(() => {
+				void nextTick(() => {
 					this.setupNode(newDestination);
 				});
 			}

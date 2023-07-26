@@ -27,7 +27,7 @@ export default defineComponent({
 			return;
 		}
 
-		this.$nextTick(() => {
+		void this.$nextTick(() => {
 			this.eventBus.emit('observe', this.$refs.observed);
 		});
 	},

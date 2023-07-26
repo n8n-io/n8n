@@ -354,6 +354,7 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
 	},
@@ -452,7 +453,7 @@ export default defineComponent({
 				if (from.name === VIEWS.NEW_WORKFLOW) {
 					// Replace the current route with the new workflow route
 					// before navigating to the new route when saving new workflow.
-					this.$router.replace(
+					await this.$router.replace(
 						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
 						() => {
 							// We can't use next() here since vue-router
@@ -764,7 +765,7 @@ export default defineComponent({
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
 			);
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				this.canvasStore.zoomToFit();
 				this.uiStore.stateIsDirty = false;
 			});
@@ -835,7 +836,7 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
 
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				this.canvasStore.zoomToFit();
 			});
 		},
@@ -878,7 +879,7 @@ export default defineComponent({
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
 			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				this.canvasStore.zoomToFit();
 				this.uiStore.stateIsDirty = true;
 			});
@@ -3748,7 +3749,7 @@ export default defineComponent({
 							const lastAddedNode = this.nodes[this.nodes.length - 1];
 							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
 
-							this.$nextTick(() =>
+							void this.$nextTick(() =>
 								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0),
 							);
 

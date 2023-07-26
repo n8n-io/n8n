@@ -64,6 +64,7 @@ export default defineComponent({
 		return {
 			...useToast(),
 			...useMessage(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
 	},

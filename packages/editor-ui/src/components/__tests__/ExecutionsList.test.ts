@@ -9,7 +9,8 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { RenderOptions, createComponentRenderer } from '@/__tests__/render';
+import type { RenderOptions } from '@/__tests__/render';
+import { createComponentRenderer } from '@/__tests__/render';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 

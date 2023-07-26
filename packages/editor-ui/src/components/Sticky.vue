@@ -163,7 +163,7 @@ export default defineComponent({
 	},
 	methods: {
 		deleteNode() {
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
 			});

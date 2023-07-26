@@ -1,5 +1,3 @@
-import { PiniaVuePlugin } from 'pinia';
-import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useRouter } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,7 +6,6 @@ import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import { useSSOStore } from '@/stores/sso.store';
 import { STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { i18nInstance } from '@/plugins/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 
 vi.mock('vue-router', () => {

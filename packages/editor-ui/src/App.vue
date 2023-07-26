@@ -75,6 +75,7 @@ export default defineComponent({
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...newVersions.setup?.(props),
 		};
 	},

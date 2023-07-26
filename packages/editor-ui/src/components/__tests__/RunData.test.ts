@@ -1,25 +1,11 @@
-import { defineComponent } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
 import RunData from '@/components/RunData.vue';
 import { STORES, VIEWS } from '@/constants';
-import { useSSOStore } from '@/stores/sso.store';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useNDVStore, useWorkflowsStore } from '@/stores';
 import { createComponentRenderer } from '@/__tests__/render';
-
-let pinia: ReturnType<typeof createTestingPinia>;
-let ssoStore: ReturnType<typeof useSSOStore>;
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-let ndvStore: ReturnType<typeof useNDVStore>;
-
-// const nodeHelpers = defineComponent({
-// 	methods: {
-// 		getNodeInputData: vi.fn().mockReturnValue(),
-// 	},
-// });
 
 const renderComponent = createComponentRenderer(RunData, {
 	props: {

@@ -5,9 +5,6 @@ import { createTestingPinia } from '@pinia/testing';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { expressionManager } from '@/mixins/expressionManager';
 import type { TargetItem } from '@/Interface';
-import { N8nPlugin } from 'n8n-design-system/plugin';
-import { PiniaVuePlugin } from 'pinia';
-import { GlobalDirectivesPlugin } from '@/plugins/directives';
 import { renderComponent } from '@/__tests__/render';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';

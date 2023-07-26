@@ -80,7 +80,7 @@ const valueValidationRules: Array<Rule | RuleGroup> = [
 watch(
 	() => modelValue.value.key,
 	() => {
-		nextTick(() => {
+		void nextTick(() => {
 			if (formValidationStatus.value.key) {
 				updateUsageSyntax();
 			}

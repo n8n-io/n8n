@@ -6,9 +6,6 @@ import { useSettingsStore } from '@/stores';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import { EnterpriseEditionFeature } from '@/constants';
-import { UserManagementAuthenticationMethod } from '@/Interface';
-import { nextTick } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
