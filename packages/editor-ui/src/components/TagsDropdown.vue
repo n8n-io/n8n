@@ -5,7 +5,7 @@
 		v-on-click-outside="onClickOutside"
 	>
 		<n8n-select
-			:teleported="false"
+			:teleported="true"
 			:modelValue="appliedTags"
 			:loading="isLoading"
 			:placeholder="placeholder"
@@ -13,8 +13,9 @@
 			filterable
 			multiple
 			:allowCreate="createEnabled"
+			:reserve-keyword="false"
 			default-first-option
-			ref="select"
+			ref="selectRef"
 			loading-text="..."
 			popper-class="tags-dropdown"
 			@update:modelValue="onTagsUpdated"
@@ -26,7 +27,7 @@
 				:key="CREATE_KEY"
 				:value="CREATE_KEY"
 				class="ops"
-				ref="create"
+				ref="createRef"
 			>
 				<font-awesome-icon icon="plus-circle" />
 				<span>
@@ -48,7 +49,7 @@
 				:key="tag.id + '_' + i"
 				:label="tag.name"
 				class="tag"
-				ref="tag"
+				ref="tagRefs"
 			/>
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
@@ -154,11 +155,13 @@ export default defineComponent({
 							emit('esc');
 						} else if (keyboardEvent.key === 'Enter' && filter.value.length === 0) {
 							preventUpdate.value = true;
-							emit('blur');
 
-							if (typeof selectRef.value?.blur === 'function') {
-								selectRef.value.blur();
-							}
+							// Disable blur event due to element-plus handler changes
+							// emit('blur');
+							//
+							// if (typeof selectRef.value?.blur === 'function') {
+							// 	selectRef.value.blur();
+							// }
 						}
 					});
 				}
@@ -207,8 +210,6 @@ export default defineComponent({
 				(value) => !allTags.value.find((tag) => tag.id === value) || value === CREATE_KEY,
 			);
 
-			console.log({ manage, create, selected });
-
 			if (manage) {
 				filter.value = '';
 				uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
@@ -226,12 +227,13 @@ export default defineComponent({
 
 		function focusOnTopOption() {
 			// focus on create option
-			if (createRef.value?.hoverItem) {
-				createRef.value.hoverItem();
+			if (createRef.value?.focus) {
+				createRef.value.focus();
 			}
 			// focus on top option after filter
-			else if (tagRefs.value?.[0]?.hoverItem) {
-				tagRefs.value[0].hoverItem();
+			else if (tagRefs.value?.[0]?.$el.focus) {
+				tagRefs.value[0].$el.focus();
+				console.log('focusing', tagRefs.value[0].$el);
 			}
 		}
 
@@ -265,10 +267,14 @@ export default defineComponent({
 		}
 
 		function onClickOutside(e: Event) {
+			const tagsDropdown = document.querySelector('.tags-dropdown');
 			const tagsModal = document.querySelector('#tags-manager-modal');
-			const clickInsideTagsModal = tagsModal?.contains(e.target as Node);
 
-			if (!clickInsideTagsModal && e.type === 'click') {
+			const clickInsideTagsDropdowns =
+				tagsDropdown?.contains(e.target as Node) || tagsDropdown === e.target;
+			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) || tagsModal === e.target;
+
+			if (!clickInsideTagsDropdowns && !clickInsideTagsModal && e.type === 'click') {
 				emit('blur');
 			}
 		}

@@ -17,7 +17,7 @@ export class WorkflowPage extends BasePage {
 		nthTagPill: (n: number) =>
 			cy.get(`[data-test-id="workflow-tags-container"] span.tags > span:nth-child(${n})`),
 		tagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
-		tagsInDropdown: () => cy.getByTestId('workflow-tags-dropdown').find('li').filter('.tag'),
+		tagsInDropdown: () => getVisibleSelect().find('li').filter('.tag'),
 		createTagButton: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
