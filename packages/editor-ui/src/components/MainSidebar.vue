@@ -478,16 +478,15 @@ export default defineComponent({
 		onResize(event: UIEvent) {
 			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
 		},
-		onResizeEnd(event: UIEvent) {
+		async onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;
-			this.checkWidthAndAdjustSidebar(browserWidth);
+			await this.checkWidthAndAdjustSidebar(browserWidth);
 		},
-		checkWidthAndAdjustSidebar(width: number) {
+		async checkWidthAndAdjustSidebar(width: number) {
 			if (width < 900) {
 				this.uiStore.sidebarMenuCollapsed = true;
-				this.$nextTick(() => {
-					this.fullyExpanded = !this.isCollapsed;
-				});
+				await this.$nextTick();
+				this.fullyExpanded = !this.isCollapsed;
 			}
 		},
 	},

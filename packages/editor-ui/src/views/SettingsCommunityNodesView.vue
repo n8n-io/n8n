@@ -76,11 +76,11 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	setup(props, ctx) {
+	setup(props) {
 		return {
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props, ctx),
+			...pushConnection.setup?.(props),
 		};
 	},
 	data() {

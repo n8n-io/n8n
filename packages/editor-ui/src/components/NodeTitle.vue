@@ -71,15 +71,14 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onEdit() {
+		async onEdit() {
 			this.newName = this.modelValue;
 			this.editName = true;
-			void this.$nextTick(() => {
-				const inputRef = this.$refs.input as HTMLInputElement | undefined;
-				if (inputRef) {
-					inputRef.focus();
-				}
-			});
+			await this.$nextTick();
+			const inputRef = this.$refs.input as HTMLInputElement | undefined;
+			if (inputRef) {
+				inputRef.focus();
+			}
 		},
 		onRename() {
 			if (this.newName.trim() !== '') {

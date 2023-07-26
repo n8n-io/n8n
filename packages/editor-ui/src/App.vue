@@ -108,7 +108,7 @@ export default defineComponent({
 	methods: {
 		async initSettings(): Promise<void> {
 			// The settings should only be initialized once
-			if(this.settingsInitialised) return;
+			if (this.settingsInitialised) return;
 
 			try {
 				await this.settingsStore.getSettings();

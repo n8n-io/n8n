@@ -181,7 +181,7 @@ export default defineComponent({
 
 		function filterOptions(value = '') {
 			filter.value = value.trim();
-			nextTick(() => focusFirstOption());
+			void nextTick(() => focusFirstOption());
 		}
 
 		async function onCreate() {
@@ -221,7 +221,7 @@ export default defineComponent({
 			}
 		}
 
-		async function focusFirstOption() {
+		function focusFirstOption() {
 			// focus on create option
 			if (createRef.value?.$el) {
 				createRef.value.$el.dispatchEvent(new Event('mouseenter'));

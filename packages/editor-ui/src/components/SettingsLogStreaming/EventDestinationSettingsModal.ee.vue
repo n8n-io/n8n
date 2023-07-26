@@ -355,7 +355,7 @@ export default defineComponent({
 		onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
 			this.typeSelectValue = destinationType;
 		},
-		onContinueAddClicked() {
+		async onContinueAddClicked() {
 			let newDestination;
 			switch (this.typeSelectValue) {
 				case MessageEventBusDestinationTypeNames.syslog:
