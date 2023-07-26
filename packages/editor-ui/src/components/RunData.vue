@@ -7,7 +7,7 @@
 			:class="$style.pinnedDataCallout"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs" v-if="!isReadOnlyRoute">
+			<span class="ml-4xs" v-if="!isReadOnlyRoute && !readOnlyEnv">
 				<n8n-link
 					theme="secondary"
 					size="small"
@@ -59,7 +59,7 @@
 					data-test-id="ndv-run-data-display-mode"
 				/>
 				<n8n-icon-button
-					v-if="canPinData && !isReadOnlyRoute"
+					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
@@ -100,7 +100,10 @@
 						:active="hasPinData"
 						icon="thumbtack"
 						:disabled="
-							editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnlyRoute
+							editMode.enabled ||
+							(inputData.length === 0 && !hasPinData) ||
+							isReadOnlyRoute ||
+							readOnlyEnv
 						"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 						data-test-id="ndv-pin-data"
@@ -888,6 +891,9 @@ export default defineComponent({
 		},
 		isPaneTypeOutput(): boolean {
 			return this.paneType === 'output';
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {
