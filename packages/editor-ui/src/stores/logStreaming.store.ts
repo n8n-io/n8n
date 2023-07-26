@@ -67,7 +67,7 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 						state.items[destination.id].destination = destination;
 					}
 					// to trigger refresh
-					state.items = deepCopy(state.items);
+					state.items = { ...state.items };
 				});
 			}
 		},
@@ -162,6 +162,8 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			delete this.items[id];
 		},
 		clearDestinationItemTrees() {
+			console.log('clearing destinations');
+
 			this.items = {} as DestinationSettingsStore;
 		},
 		setSelectionAndBuildItems(destination: MessageEventBusDestinationOptions) {

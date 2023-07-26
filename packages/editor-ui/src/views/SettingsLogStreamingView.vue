@@ -73,7 +73,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '../stores/workflows.store';
@@ -197,6 +197,7 @@ export default defineComponent({
 			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);
 			newDestination.id = uuid();
 			this.logStreamingStore.addDestination(newDestination);
+			await nextTick();
 			this.uiStore.openModalWithData({
 				name: LOG_STREAM_MODAL_KEY,
 				data: {

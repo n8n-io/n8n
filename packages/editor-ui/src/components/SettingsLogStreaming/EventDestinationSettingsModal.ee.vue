@@ -189,7 +189,7 @@ import {
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 import type { PropType } from 'vue';
-import { defineComponent, nextTick } from 'vue';
+import { defineComponent } from 'vue';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables';
@@ -378,9 +378,7 @@ export default defineComponent({
 
 			if (newDestination) {
 				this.headerLabel = newDestination?.label ?? this.headerLabel;
-				void nextTick(() => {
-					this.setupNode(newDestination);
-				});
+				this.setupNode(newDestination);
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {

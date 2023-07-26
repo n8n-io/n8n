@@ -155,12 +155,11 @@ export default defineComponent({
 						} else if (keyboardEvent.key === 'Enter' && filter.value.length === 0) {
 							preventUpdate.value = true;
 
-							// Disable blur event due to element-plus handler changes
-							// emit('blur');
-							//
-							// if (typeof selectRef.value?.blur === 'function') {
-							// 	selectRef.value.blur();
-							// }
+							emit('blur');
+
+							if (typeof selectRef.value?.blur === 'function') {
+								selectRef.value.blur();
+							}
 						}
 					});
 				}
