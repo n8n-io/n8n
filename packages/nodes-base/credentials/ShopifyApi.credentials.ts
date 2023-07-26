@@ -45,6 +45,14 @@ export class ShopifyApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+		{
+			displayName: 'API Version',
+			name: 'shopifyVersion',
+			required: true,
+			type: 'string',
+			default: '2023-01',
+			description: 'Shopify API version to use',
+		},
 	];
 
 	async authenticate(
@@ -62,7 +70,7 @@ export class ShopifyApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/2019-10',
+			baseURL: '=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/{{$credentials.shopifyVersion}}',
 			url: '/products.json',
 		},
 	};
