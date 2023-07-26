@@ -268,9 +268,9 @@ async function commitAndPush() {
 						>
 							<div :class="$style.listItemBody">
 								<n8n-checkbox
-									:value="staged[file.file]"
+									:modelValue="staged[file.file]"
 									:class="$style.listItemCheckbox"
-									@input="setStagedStatus(file, !staged[file.file])"
+									@update:modelValue="setStagedStatus(file, !staged[file.file])"
 								/>
 								<div>
 									<n8n-text v-if="file.status === 'deleted'" color="text-light">
@@ -300,7 +300,7 @@ async function commitAndPush() {
 						</n8n-card>
 					</div>
 					<n8n-notice class="mt-0" v-else>
-						<i18n path="settings.sourceControl.modals.push.noWorkflowChanges">
+						<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
 							<template #link>
 								<n8n-link size="small" :to="i18n.baseText('settings.sourceControl.docs.using.url')">
 									{{
@@ -308,7 +308,7 @@ async function commitAndPush() {
 									}}
 								</n8n-link>
 							</template>
-						</i18n>
+						</i18n-t>
 					</n8n-notice>
 
 					<n8n-text bold tag="p" class="mt-l mb-2xs">

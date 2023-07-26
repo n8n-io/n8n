@@ -315,7 +315,7 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
-import type { ElNotificationComponent } from 'element-ui/types/notification';
+import type { ElNotification } from 'element-plus';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 
 interface AddNodeOptions {
@@ -634,7 +634,7 @@ export default defineComponent({
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
-			readOnlyNotification: null as null | ElNotificationComponent,
+			readOnlyNotification: null as null | ElNotification,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -3845,7 +3845,7 @@ export default defineComponent({
 				this.readOnlyEnv &&
 				[VIEWS.NEW_WORKFLOW, VIEWS.TEMPLATE_IMPORT].includes(this.$route.name)
 			) {
-				this.$nextTick(async () => {
+				void this.$nextTick(async () => {
 					this.resetWorkspace();
 					this.uiStore.stateIsDirty = false;
 
