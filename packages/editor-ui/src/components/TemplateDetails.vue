@@ -31,9 +31,8 @@
 				<n8n-text size="small" color="text-base">
 					{{ $locale.baseText('template.details.created') }}
 					<TimeAgo :date="template.createdAt" />
-					<span>{{ $locale.baseText('template.details.by') }}</span>
-					<span v-if="template.user"> {{ template.user.username }}</span>
-					<span v-else> n8n team</span>
+					{{ $locale.baseText('template.details.by') }}
+					{{ template.user ? template.user.username : 'n8n team' }}
 				</n8n-text>
 			</div>
 			<div :class="$style.text">
@@ -104,5 +103,9 @@ export default defineComponent({
 }
 .text {
 	padding-bottom: var(--spacing-xs);
+
+	// span {
+	// 	margin: var(--spacing-1xs);
+	// }
 }
 </style>
