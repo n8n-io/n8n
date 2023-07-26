@@ -66,6 +66,7 @@
       "dist/credentials/CarbonBlackApi.credentials.js",
       "dist/credentials/ChargebeeApi.credentials.js",
       "dist/credentials/CircleCiApi.credentials.js",
+      "dist/credentials/CiscoSecureEndpointApi.credentials.js",
       "dist/credentials/CiscoWebexOAuth2Api.credentials.js",
       "dist/credentials/CiscoUmbrellaApi.credentials.js",
       "dist/credentials/CitrixAdcApi.credentials.js",

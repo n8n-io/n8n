@@ -14,6 +14,8 @@ export class CiscoFirepowerApi implements ICredentialType {
 
 	documentationUrl = 'metabase';
 
+	icon = 'file:icons/Cisco.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',
