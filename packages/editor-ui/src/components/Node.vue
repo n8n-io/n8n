@@ -569,28 +569,26 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
-		deleteNode() {
+		async deleteNode() {
 			this.$telemetry.track('User clicked node hover button', {
 				node_type: this.data.type,
 				button_name: 'delete',
 				workflow_id: this.workflowsStore.workflowId,
 			});
 
-			void this.$nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('removeNode', this.data.name);
-			});
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('removeNode', this.data.name);
 		},
-		duplicateNode() {
+		async duplicateNode() {
 			this.$telemetry.track('User clicked node hover button', {
 				node_type: this.data.type,
 				button_name: 'duplicate',
 				workflow_id: this.workflowsStore.workflowId,
 			});
-			void this.$nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('duplicateNode', this.data.name);
-			});
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('duplicateNode', this.data.name);
 		},
 
 		onClick(event: MouseEvent) {

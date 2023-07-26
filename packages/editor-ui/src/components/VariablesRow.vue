@@ -79,12 +79,11 @@ const valueValidationRules: Array<Rule | RuleGroup> = [
 
 watch(
 	() => modelValue.value.key,
-	() => {
-		void nextTick(() => {
-			if (formValidationStatus.value.key) {
-				updateUsageSyntax();
-			}
-		});
+	async () => {
+		await nextTick();
+		if (formValidationStatus.value.key) {
+			updateUsageSyntax();
+		}
 	},
 );
 

@@ -69,14 +69,15 @@ export default defineComponent({
 		Modals,
 	},
 	mixins: [newVersions, userHelpers],
-	setup(props) {
+	async setup(props) {
+		const newVersionsSetup = await newVersions.setup?.(props);
+
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...newVersions.setup?.(props),
+			...newVersionsSetup,
 		};
 	},
 	computed: {

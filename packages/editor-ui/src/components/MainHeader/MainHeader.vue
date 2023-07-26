@@ -39,12 +39,13 @@ export default defineComponent({
 		TabBar,
 	},
 	mixins: [pushConnection, workflowHelpers],
-	setup(props) {
+	async setup(props) {
+		const pushConnectionSetup = await pushConnection.setup?.(props);
+		const workflowHelpersSetup = await workflowHelpers.setup?.(props);
+
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowHelpers.setup?.(props),
+			...pushConnectionSetup,
+			...workflowHelpersSetup,
 		};
 	},
 	data() {

@@ -975,7 +975,7 @@ export default defineComponent({
 		onResourceLocatorDrop(data: string) {
 			this.$emit('drop', data);
 		},
-		setFocus() {
+		async setFocus() {
 			if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 				this.displayEditDialog();
 				return;
@@ -991,14 +991,13 @@ export default defineComponent({
 				this.nodeName = this.node.name;
 			}
 
-			void this.$nextTick(() => {
+			await this.$nextTick();
+			// @ts-ignore
+			if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 				// @ts-ignore
-				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
-					// @ts-ignore
-					this.$refs.inputField.focus();
-					this.isFocused = true;
-				}
-			});
+				this.$refs.inputField.focus();
+				this.isFocused = true;
+			}
 
 			this.$emit('focus');
 		},
@@ -1082,7 +1081,7 @@ export default defineComponent({
 				});
 			}
 		},
-		optionSelected(command: string) {
+		async optionSelected(command: string) {
 			const prevValue = this.modelValue;
 
 			if (command === 'resetValue') {
@@ -1109,7 +1108,7 @@ export default defineComponent({
 					this.valueChanged(`=${this.modelValue}`);
 				}
 
-				this.setFocus();
+				await this.setFocus();
 			} else if (command === 'removeExpression') {
 				let value: NodeParameterValueType = this.expressionEvaluated;
 
@@ -1161,14 +1160,13 @@ export default defineComponent({
 			}
 		},
 	},
-	updated() {
-		void this.$nextTick(() => {
-			const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
+	async updated() {
+		await this.$nextTick();
+		const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
-			if (remoteParameterOptions.length > 0) {
-				void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
-			}
-		});
+		if (remoteParameterOptions.length > 0) {
+			void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+		}
 	},
 	mounted() {
 		this.eventBus.on('optionSelected', this.optionSelected);

@@ -60,12 +60,12 @@ export default defineComponent({
 			type: String,
 		},
 	},
-	setup(props) {
+	async setup(props) {
+		const workflowRunSetup = await workflowRun.setup?.(props);
 		return {
 			...useToast(),
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
+			...workflowRunSetup,
 		};
 	},
 	computed: {

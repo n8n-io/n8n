@@ -394,7 +394,8 @@ export default defineComponent({
 			await this.initialize();
 
 			this.loading = false;
-			void this.$nextTick(this.focusSearchInput);
+			await this.$nextTick();
+			this.focusSearchInput();
 		},
 		setCurrentPage(page: number) {
 			this.currentPage = page;

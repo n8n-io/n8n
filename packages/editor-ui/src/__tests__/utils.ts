@@ -1,6 +1,5 @@
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import { render } from '@testing-library/vue';
 
 export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
 	return new Promise((resolve, reject) => {
