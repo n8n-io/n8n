@@ -1451,8 +1451,6 @@ export type SamlPreferencesExtractedData = {
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
-	authorName: string;
-	authorEmail: string;
 	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;

@@ -99,7 +99,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.$nextTick(() => {
+		void this.$nextTick(() => {
 			const sliderRef = this.$refs.slider as SliderRef | undefined;
 			if (!sliderRef) {
 				return;

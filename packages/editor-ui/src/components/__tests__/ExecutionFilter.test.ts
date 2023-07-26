@@ -9,7 +9,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import * as telemetryModule from '@/composables/useTelemetry';
 import type { Telemetry } from '@/plugins/telemetry';
 import { merge } from 'lodash-es';
-import { nextTick } from 'vue';
 
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',

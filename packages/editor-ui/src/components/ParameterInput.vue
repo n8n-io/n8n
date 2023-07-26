@@ -991,7 +991,7 @@ export default defineComponent({
 				this.nodeName = this.node.name;
 			}
 
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				// @ts-ignore
 				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore
@@ -1162,7 +1162,7 @@ export default defineComponent({
 		},
 	},
 	updated() {
-		this.$nextTick(() => {
+		void this.$nextTick(() => {
 			const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
 			if (remoteParameterOptions.length > 0) {

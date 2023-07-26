@@ -1,11 +1,10 @@
 import { beforeAll } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import { merge } from 'lodash-es';
 import { isAuthorized, ROLE } from '@/utils';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSSOStore } from '@/stores/sso.store';
 import type { IUser } from '@/Interface';
-import { VIEWS } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import type { IN8nUISettings } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';

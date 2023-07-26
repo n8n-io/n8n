@@ -41,7 +41,9 @@ export default defineComponent({
 	mixins: [pushConnection, workflowHelpers],
 	setup(props) {
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowHelpers.setup?.(props),
 		};
 	},

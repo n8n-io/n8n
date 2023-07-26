@@ -58,6 +58,7 @@
     "@types/markdown-it-link-attributes": "^3.0.1",
     "@types/sanitize-html": "^2.9.0",
     "@vitejs/plugin-vue": "^4.2.3",
+    "@vue/test-utils": "^2.4.1",
     "autoprefixer": "^10.4.14",
     "core-js": "^3.31.0",
     "jsdom": "21.1.0",

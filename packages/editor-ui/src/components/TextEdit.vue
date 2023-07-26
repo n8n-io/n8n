@@ -64,7 +64,7 @@ export default defineComponent({
 	watch: {
 		dialogVisible() {
 			if (this.dialogVisible === true) {
-				nextTick(() => {
+				void nextTick(() => {
 					(this.$refs.inputField as HTMLInputElement).focus();
 				});
 			}

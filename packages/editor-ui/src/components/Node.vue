@@ -576,7 +576,7 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
 			});
@@ -587,7 +587,7 @@ export default defineComponent({
 				button_name: 'duplicate',
 				workflow_id: this.workflowsStore.workflowId,
 			});
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});

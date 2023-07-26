@@ -192,6 +192,7 @@ export default defineComponent({
 		return {
 			...useDeviceSupport(),
 			...useMessage(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowActivate.setup?.(props),
 		};
 	},

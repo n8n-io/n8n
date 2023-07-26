@@ -74,7 +74,7 @@ export default defineComponent({
 		onEdit() {
 			this.newName = this.modelValue;
 			this.editName = true;
-			this.$nextTick(() => {
+			void this.$nextTick(() => {
 				const inputRef = this.$refs.input as HTMLInputElement | undefined;
 				if (inputRef) {
 					inputRef.focus();

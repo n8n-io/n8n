@@ -40,18 +40,16 @@
 					</n8n-button>
 				</div>
 			</template>
-			<template v-else>
-				<div data-test-id="action-box-licensed">
-					<n8n-action-box
-						:buttonText="$locale.baseText(`settings.log-streaming.add`)"
-						@click:button="addDestination"
-					>
-						<template #heading>
-							<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
-						</template>
-					</n8n-action-box>
-				</div>
-			</template>
+			<div v-else data-test-id="action-box-licensed">
+				<n8n-action-box
+					:buttonText="$locale.baseText(`settings.log-streaming.add`)"
+					@click:button="addDestination"
+				>
+					<template #heading>
+						<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+					</template>
+				</n8n-action-box>
+			</div>
 		</template>
 		<template v-else>
 			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">

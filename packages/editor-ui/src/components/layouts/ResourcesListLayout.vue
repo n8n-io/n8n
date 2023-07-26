@@ -8,7 +8,7 @@
 			</div>
 
 			<div class="mt-xs mb-l">
-				<slot name="add-button">
+				<slot name="add-button" :disabled="disabled">
 					<n8n-button
 						size="large"
 						block
@@ -394,7 +394,7 @@ export default defineComponent({
 			await this.initialize();
 
 			this.loading = false;
-			this.$nextTick(this.focusSearchInput);
+			void this.$nextTick(this.focusSearchInput);
 		},
 		setCurrentPage(page: number) {
 			this.currentPage = page;

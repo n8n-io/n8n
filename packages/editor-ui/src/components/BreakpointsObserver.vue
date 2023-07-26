@@ -43,7 +43,7 @@ export default defineComponent({
 		},
 		onResizeEnd() {
 			this.width = window.innerWidth;
-			this.$nextTick(async () => {
+			void this.$nextTick(async () => {
 				const bannerHeight = await getBannerRowHeight();
 				useUIStore().updateBannersHeight(bannerHeight);
 			});

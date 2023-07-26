@@ -138,6 +138,7 @@ export default defineComponent({
 	setup(props) {
 		return {
 			...useMessage(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
 	},
