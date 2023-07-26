@@ -126,13 +126,10 @@ export class WaitTracker {
 			// if the execution ended in an unforseen, non-cancelable state, try to recover it
 			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
 			// find recovered data
-			const restoredExecution = await Container.get(ExecutionRepository).findSingleExecution(
-				executionId,
-				{
-					includeData: true,
-					unflattenData: true,
-				},
-			);
+			const restoredExecution = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
 			if (!restoredExecution) {
 				throw new Error(`Execution ${executionId} could not be recovered or canceled.`);
 			}
@@ -151,10 +148,7 @@ export class WaitTracker {
 		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await this.executionRepository.updateExistingExecution(executionId, fullExecutionData);
 
 		return {
 			mode: fullExecutionData.mode,
@@ -196,7 +190,7 @@ export class WaitTracker {
 			};
 
 			// Start the execution again
-			const workflowRunner = new WorkflowRunner();
+			const workflowRunner = Container.get(WorkflowRunner);
 			await workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
 			ErrorReporter.error(error);

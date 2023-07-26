@@ -186,7 +186,7 @@ export async function executeErrorWorkflow(
 			userId: runningUser.id,
 		};
 
-		const workflowRunner = new WorkflowRunner();
+		const workflowRunner = Container.get(WorkflowRunner);
 		await workflowRunner.run(runData);
 	} catch (error) {
 		ErrorReporter.error(error);

@@ -31,6 +31,7 @@
 			"skipFiles": ["<node_internals>/**"],
 			"type": "node",
 			"env": {
+				"EXECUTIONS_CONCURRENCY": "1"
 				// "N8N_PORT": "5679",
 			},
 			"outputCapture": "std",

@@ -110,7 +110,7 @@ export class Execute extends BaseCommand {
 			userId: user.id,
 		};
 
-		const workflowRunner = new WorkflowRunner();
+		const workflowRunner = Container.get(WorkflowRunner);
 		const executionId = await workflowRunner.run(runData);
 
 		const activeExecutions = Container.get(ActiveExecutions);

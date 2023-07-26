@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -603,7 +603,7 @@ export class ActiveWorkflowRunner {
 			workflowData,
 		};
 
-		const workflowRunner = new WorkflowRunner();
+		const workflowRunner = Container.get(WorkflowRunner);
 		return workflowRunner.run(runData, true, undefined, undefined, responsePromise);
 	}
 

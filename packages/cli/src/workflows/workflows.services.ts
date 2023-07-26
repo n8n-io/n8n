@@ -430,7 +430,7 @@ export class WorkflowsService {
 			data.startNodes = [pinnedTrigger.name];
 		}
 
-		const workflowRunner = new WorkflowRunner();
+		const workflowRunner = Container.get(WorkflowRunner);
 		const executionId = await workflowRunner.run(data);
 
 		return {

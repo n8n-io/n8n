@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import { Container } from 'typedi';
 import fs from 'fs';
 import os from 'os';
 import { flags } from '@oclif/command';
@@ -8,6 +9,7 @@ import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 
+import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -16,7 +18,6 @@ import type { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
 import { BaseCommand } from './BaseCommand';
-import { Container } from 'typedi';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,
@@ -69,9 +70,8 @@ export class ExecuteBatch extends BaseCommand {
 				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
 		}),
 		concurrency: flags.integer({
-			default: 1,
-			description:
-				'How many workflows can run in parallel. Defaults to 1 which means no concurrency.',
+			default: config.getEnv('executions.concurrency'),
+			description: 'How many workflows can run in parallel',
 		}),
 		output: flags.string({
 			description:
@@ -188,7 +188,7 @@ export class ExecuteBatch extends BaseCommand {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
 		ExecuteBatch.debug = flags.debug;
-		ExecuteBatch.concurrency = flags.concurrency || 1;
+		ExecuteBatch.concurrency = flags.concurrency;
 
 		const ids: string[] = [];
 		const skipIds: string[] = [];
@@ -644,7 +644,7 @@ export class ExecuteBatch extends BaseCommand {
 					userId: ExecuteBatch.instanceOwner.id,
 				};
 
-				const workflowRunner = new WorkflowRunner();
+				const workflowRunner = Container.get(WorkflowRunner);
 				const executionId = await workflowRunner.run(runData);
 
 				const activeExecutions = Container.get(ActiveExecutions);

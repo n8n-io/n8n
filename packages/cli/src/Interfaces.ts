@@ -252,7 +252,7 @@ export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
 	process?: ChildProcess;
 	startedAt: Date;
-	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+	postExecutePromise: IDeferredPromise<IRun | undefined>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;

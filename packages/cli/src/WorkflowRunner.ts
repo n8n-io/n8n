@@ -28,6 +28,7 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
+import { Container, Service } from 'typedi';
 import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
@@ -44,28 +45,33 @@ import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobQueue, JobResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { generateFailedExecutionFromError, getStaticDataById } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import { Push } from '@/push';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
-import { Container } from 'typedi';
-import { InternalHooks } from './InternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories';
 
+@Service()
 export class WorkflowRunner {
-	activeExecutions: ActiveExecutions;
+	private executionsMode = config.getEnv('executions.mode');
 
-	push: Push;
+	private executionsProcess = config.getEnv('executions.process');
 
-	jobQueue: JobQueue;
+	private jobQueue: JobQueue;
 
-	constructor() {
-		this.push = Container.get(Push);
-		this.activeExecutions = Container.get(ActiveExecutions);
+	constructor(
+		private activeExecutions: ActiveExecutions,
+		private externalHooks: ExternalHooks,
+		private executionRepository: ExecutionRepository,
+		private nodeTypes: NodeTypes,
+		private queue: Queue,
+	) {
+		if (this.executionsMode === 'queue') {
+			this.jobQueue = this.queue.getBullObjectInstance();
+		}
 	}
 
 	/**
@@ -125,12 +131,9 @@ export class WorkflowRunner {
 				}
 			}
 
-			const executionFlattedData = await Container.get(ExecutionRepository).findSingleExecution(
-				executionId,
-				{
-					includeData: true,
-				},
-			);
+			const executionFlattedData = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+			});
 
 			if (executionFlattedData) {
 				void Container.get(InternalHooks).onWorkflowCrashed(
@@ -156,9 +159,6 @@ export class WorkflowRunner {
 
 	/**
 	 * Run the workflow
-	 *
-	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
-	 *                                   the workflow and added to input data
 	 */
 	async run(
 		data: IWorkflowExecutionDataProcess,
@@ -167,17 +167,9 @@ export class WorkflowRunner {
 		executionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		const executionsMode = config.getEnv('executions.mode');
-		const executionsProcess = config.getEnv('executions.process');
-
 		await initErrorHandling();
 
-		if (executionsMode === 'queue') {
-			const queue = Container.get(Queue);
-			this.jobQueue = queue.getBullObjectInstance();
-		}
-
-		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
+		if (this.executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
 			executionId = await this.enqueueExecution(
@@ -187,7 +179,7 @@ export class WorkflowRunner {
 				executionId,
 				responsePromise,
 			);
-		} else if (executionsProcess === 'main') {
+		} else if (this.executionsProcess === 'main') {
 			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
 		} else {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
@@ -197,7 +189,6 @@ export class WorkflowRunner {
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
-		const externalHooks = Container.get(ExternalHooks);
 		postExecutePromise
 			.then(async (executionData) => {
 				void Container.get(InternalHooks).onWorkflowPostExecute(
@@ -212,10 +203,10 @@ export class WorkflowRunner {
 				console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
 			});
 
-		if (externalHooks.exists('workflow.postExecute')) {
+		if (this.externalHooks.exists('workflow.postExecute')) {
 			postExecutePromise
 				.then(async (executionData) => {
-					await externalHooks.run('workflow.postExecute', [
+					await this.externalHooks.run('workflow.postExecute', [
 						executionData,
 						data.workflowData,
 						executionId,
@@ -232,11 +223,8 @@ export class WorkflowRunner {
 
 	/**
 	 * Run the workflow in current process
-	 *
-	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
-	 *                                   the workflow and added to input data
 	 */
-	async runMainProcess(
+	private async runMainProcess(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
@@ -244,10 +232,8 @@ export class WorkflowRunner {
 	): Promise<string> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+			data.workflowData.staticData = await getStaticDataById(workflowId);
 		}
-
-		const nodeTypes = Container.get(NodeTypes);
 
 		// Soft timeout to stop workflow execution after current running node
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
@@ -266,7 +252,7 @@ export class WorkflowRunner {
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
 			active: data.workflowData.active,
-			nodeTypes,
+			nodeTypes: this.nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
 		});
@@ -421,7 +407,7 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
-	async enqueueExecution(
+	private async enqueueExecution(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
@@ -487,8 +473,7 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					const queue = Container.get(Queue);
-					await queue.stopJob(job);
+					await this.queue.stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
@@ -572,13 +557,10 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
-					executionId,
-					{
-						includeData: true,
-						unflattenData: true,
-					},
-				);
+				const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+					includeData: true,
+					unflattenData: true,
+				});
 				if (!fullExecutionData) {
 					return reject(new Error(`Could not find execution with id "${executionId}"`));
 				}
@@ -609,7 +591,7 @@ export class WorkflowRunner {
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
-						await Container.get(ExecutionRepository).deleteExecution(executionId);
+						await this.executionRepository.deleteExecution(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {
@@ -637,7 +619,7 @@ export class WorkflowRunner {
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
 	 *                                   the workflow and added to input data
 	 */
-	async runSubprocess(
+	private async runSubprocess(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
@@ -648,7 +630,7 @@ export class WorkflowRunner {
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
 		if (loadStaticData === true && workflowId) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+			data.workflowData.staticData = await getStaticDataById(workflowId);
 		}
 
 		data.restartExecutionId = restartExecutionId;
