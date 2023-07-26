@@ -205,9 +205,7 @@ export default defineComponent({
 
 		function onTagsUpdated(selected: string[]) {
 			const manage = selected.find((value) => value === MANAGE_KEY);
-			const create = selected.find(
-				(value) => !allTags.value.find((tag) => tag.id === value) || value === CREATE_KEY,
-			);
+			const create = selected.find((value) => value === CREATE_KEY);
 
 			if (manage) {
 				filter.value = '';
@@ -226,11 +224,11 @@ export default defineComponent({
 
 		async function focusFirstOption() {
 			// focus on create option
-			if (createRef.value?.focus) {
-				createRef.value.focus();
+			if (createRef.value?.$el) {
+				createRef.value.$el.dispatchEvent(new Event('mouseenter'));
 			}
 			// focus on top option after filter
-			else if (tagRefs.value?.[0]?.$el.focus) {
+			else if (tagRefs.value?.[0]?.$el) {
 				tagRefs.value[0].$el.dispatchEvent(new Event('mouseenter'));
 			}
 		}
