@@ -272,7 +272,7 @@ export class Webhook extends Node {
 			};
 
 			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-			const fileName = req.headers['content-disposition']?.split('filename=')[1] ?? uuid();
+			const fileName = req.contentDisposition?.filename ?? uuid();
 			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
 				binaryFile.path,
 				fileName,

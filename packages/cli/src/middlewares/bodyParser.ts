@@ -1,3 +1,4 @@
+import { parse as parseContentDisposition } from 'content-disposition';
 import { parse as parseContentType } from 'content-type';
 import getRawBody from 'raw-body';
 import { type RequestHandler } from 'express';
@@ -7,15 +8,24 @@ import config from '@/config';
 const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
 export const rawBody: RequestHandler = async (req, res, next) => {
 	if ('content-type' in req.headers) {
-		const { type, parameters } = (() => {
+		const { type: contentType, parameters } = (() => {
 			try {
 				return parseContentType(req);
 			} catch {
 				return { type: undefined, parameters: undefined };
 			}
 		})();
-		req.contentType = type;
+		req.contentType = contentType;
 		req.encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
+
+		const contentDispositionHeader = req.headers['content-disposition'];
+		if (contentDispositionHeader?.length) {
+			const {
+				type,
+				parameters: { filename },
+			} = parseContentDisposition(contentDispositionHeader);
+			req.contentDisposition = { type, filename };
+		}
 	}
 
 	if (req.contentType !== 'multipart/form-data') {

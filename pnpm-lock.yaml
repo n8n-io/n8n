@@ -246,6 +246,9 @@ importers:
       connect-history-api-fallback:
         specifier: ^1.6.0
         version: 1.6.0
+      content-disposition:
+        specifier: ^0.5.4
+        version: 0.5.4
       content-type:
         specifier: ^1.0.4
         version: 1.0.4
@@ -472,6 +475,9 @@ importers:
       '@types/connect-history-api-fallback':
         specifier: ^1.3.1
         version: 1.3.5
+      '@types/content-disposition':
+        specifier: ^0.5.5
+        version: 0.5.5
       '@types/content-type':
         specifier: ^1.1.5
         version: 1.1.5
@@ -6019,6 +6025,10 @@ packages:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
       '@types/node': 18.16.16
+
+  /@types/content-disposition@0.5.5:
+    resolution: {integrity: sha512-v6LCdKfK6BwcqMo+wYW05rLS12S0ZO0Fl4w1h4aaZMD7bqT3gVUns6FvLJKGZHQmYn3SX55JWGpziwJRwVgutA==}
+    dev: true
 
   /@types/content-type@1.1.5:
     resolution: {integrity: sha512-dgMN+syt1xb7Hk8LU6AODOfPlvz5z1CbXpPuJE5ZrX9STfBOIXF09pEB8N7a97WT9dbngt3ksDCm6GW6yMrxfQ==}

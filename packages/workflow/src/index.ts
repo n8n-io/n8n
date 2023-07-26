@@ -52,6 +52,7 @@ declare module 'http' {
 	export interface IncomingMessage {
 		contentType?: string;
 		encoding: BufferEncoding;
+		contentDisposition?: { type: string; filename?: string };
 		rawBody: Buffer;
 		_body: boolean;
 	}
