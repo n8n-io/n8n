@@ -1,12 +1,5 @@
 <template>
-	<!-- eslint-disable vue/no-mutating-props -->
-	<a
-		v-if="version"
-		:set="(version = version)"
-		:href="version.documentationUrl"
-		target="_blank"
-		:class="$style.card"
-	>
+	<a v-if="version" :href="version.documentationUrl" target="_blank" :class="$style.card">
 		<div :class="$style.header">
 			<div>
 				<div :class="$style.name">
@@ -53,17 +46,24 @@
 </template>
 
 <script lang="ts">
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
 import type { IVersionNode } from '@/Interface';
+import type { IVersion } from '@/Interface';
 
 export default defineComponent({
 	name: 'VersionCard',
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
-	props: ['version'],
+	props: {
+		version: {
+			type: Object as PropType<IVersion>,
+			required: true,
+		},
+	},
 	// @ts-ignore
 	nodeName(node: IVersionNode): string {
 		return node !== null ? node.displayName : this.$locale.baseText('versionCard.unknown');

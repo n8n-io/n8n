@@ -46,6 +46,7 @@ describe('Log Streaming Settings', () => {
 	it('should create a destination and delete it', () => {
 		cy.enableFeature('logStreaming');
 		cy.visit('/settings/log-streaming');
+		cy.wait(1000); // Race condition with getDestinationDataFromBackend()
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
@@ -73,6 +74,7 @@ describe('Log Streaming Settings', () => {
 	it('should create a destination and delete it via card actions', () => {
 		cy.enableFeature('logStreaming');
 		cy.visit('/settings/log-streaming');
+		cy.wait(1000); // Race condition with getDestinationDataFromBackend()
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');

@@ -85,9 +85,7 @@ describe('Workflow tags', () => {
 		wf.getters.createTagButton().click();
 		wf.actions.addTags(TEST_TAGS);
 		wf.getters.nthTagPill(1).click();
-		cy.wait(300);
-		wf.getters.tagsDropdown().click(0, 0);
-		wf.getters.tagsDropdown().find('li.selected').first().click();
+		wf.getters.tagsInDropdown().filter('.selected').first().click();
 		cy.get('body').click(0, 0);
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});

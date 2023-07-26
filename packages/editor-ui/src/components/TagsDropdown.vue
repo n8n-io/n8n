@@ -5,7 +5,7 @@
 		v-on-click-outside="onClickOutside"
 	>
 		<n8n-select
-			:teleported="false"
+			:teleported="true"
 			:modelValue="appliedTags"
 			:loading="isLoading"
 			:placeholder="placeholder"
@@ -13,8 +13,8 @@
 			filterable
 			multiple
 			:allowCreate="createEnabled"
-			default-first-option
-			ref="select"
+			:reserve-keyword="false"
+			ref="selectRef"
 			loading-text="..."
 			popper-class="tags-dropdown"
 			@update:modelValue="onTagsUpdated"
@@ -26,7 +26,7 @@
 				:key="CREATE_KEY"
 				:value="CREATE_KEY"
 				class="ops"
-				ref="create"
+				ref="createRef"
 			>
 				<font-awesome-icon icon="plus-circle" />
 				<span>
@@ -48,7 +48,7 @@
 				:key="tag.id + '_' + i"
 				:label="tag.name"
 				class="tag"
-				ref="tag"
+				ref="tagRefs"
 			/>
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
@@ -154,6 +154,7 @@ export default defineComponent({
 							emit('esc');
 						} else if (keyboardEvent.key === 'Enter' && filter.value.length === 0) {
 							preventUpdate.value = true;
+
 							emit('blur');
 
 							if (typeof selectRef.value?.blur === 'function') {
@@ -175,12 +176,12 @@ export default defineComponent({
 
 		function onBusFocus() {
 			focusOnInput();
-			focusOnTopOption();
+			focusFirstOption();
 		}
 
 		function filterOptions(value = '') {
 			filter.value = value.trim();
-			void nextTick(() => focusOnTopOption());
+			nextTick(() => focusFirstOption());
 		}
 
 		async function onCreate() {
@@ -203,11 +204,7 @@ export default defineComponent({
 
 		function onTagsUpdated(selected: string[]) {
 			const manage = selected.find((value) => value === MANAGE_KEY);
-			const create = selected.find(
-				(value) => !allTags.value.find((tag) => tag.id === value) || value === CREATE_KEY,
-			);
-
-			console.log({ manage, create, selected });
+			const create = selected.find((value) => value === CREATE_KEY);
 
 			if (manage) {
 				filter.value = '';
@@ -224,14 +221,14 @@ export default defineComponent({
 			}
 		}
 
-		function focusOnTopOption() {
+		async function focusFirstOption() {
 			// focus on create option
-			if (createRef.value?.hoverItem) {
-				createRef.value.hoverItem();
+			if (createRef.value?.$el) {
+				createRef.value.$el.dispatchEvent(new Event('mouseenter'));
 			}
 			// focus on top option after filter
-			else if (tagRefs.value?.[0]?.hoverItem) {
-				tagRefs.value[0].hoverItem();
+			else if (tagRefs.value?.[0]?.$el) {
+				tagRefs.value[0].$el.dispatchEvent(new Event('mouseenter'));
 			}
 		}
 
@@ -265,10 +262,14 @@ export default defineComponent({
 		}
 
 		function onClickOutside(e: Event) {
+			const tagsDropdown = document.querySelector('.tags-dropdown');
 			const tagsModal = document.querySelector('#tags-manager-modal');
-			const clickInsideTagsModal = tagsModal?.contains(e.target as Node);
 
-			if (!clickInsideTagsModal && e.type === 'click') {
+			const clickInsideTagsDropdowns =
+				tagsDropdown?.contains(e.target as Node) || tagsDropdown === e.target;
+			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) || tagsModal === e.target;
+
+			if (!clickInsideTagsDropdowns && !clickInsideTagsModal && e.type === 'click') {
 				emit('blur');
 			}
 		}

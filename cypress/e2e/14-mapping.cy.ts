@@ -272,6 +272,8 @@ describe('Data mapping', () => {
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
+		ndv.actions.dismissMappingTooltip();
+		cy.wait(300);
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
 
