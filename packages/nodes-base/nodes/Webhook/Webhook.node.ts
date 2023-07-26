@@ -119,15 +119,14 @@ export class Webhook extends Node {
 			throw error;
 		}
 
-		if (req.contentType === 'multipart/form-data') {
-			return this.handleFormData(context);
-		}
-
 		if (options.binaryData) {
 			return this.handleBinaryData(context);
 		}
 
-		const mimeType = req.headers['content-type'] ?? 'application/json';
+		if (req.contentType === 'multipart/form-data') {
+			return this.handleFormData(context);
+		}
+
 		const response: INodeExecutionData = {
 			json: {
 				headers: req.headers,
@@ -139,7 +138,7 @@ export class Webhook extends Node {
 				? {
 						data: {
 							data: req.rawBody.toString(BINARY_ENCODING),
-							mimeType,
+							mimeType: req.contentType ?? 'application/json',
 						},
 				  }
 				: undefined,
@@ -218,19 +217,19 @@ export class Webhook extends Node {
 		};
 
 		let count = 0;
-		for (const xfile of Object.keys(files)) {
+		for (const key of Object.keys(files)) {
 			const processFiles: MultiPartFormData.File[] = [];
 			let multiFile = false;
-			if (Array.isArray(files[xfile])) {
-				processFiles.push(...(files[xfile] as MultiPartFormData.File[]));
+			if (Array.isArray(files[key])) {
+				processFiles.push(...(files[key] as MultiPartFormData.File[]));
 				multiFile = true;
 			} else {
-				processFiles.push(files[xfile] as MultiPartFormData.File);
+				processFiles.push(files[key] as MultiPartFormData.File);
 			}
 
 			let fileCount = 0;
 			for (const file of processFiles) {
-				let binaryPropertyName = xfile;
+				let binaryPropertyName = key;
 				if (binaryPropertyName.endsWith('[]')) {
 					binaryPropertyName = binaryPropertyName.slice(0, -2);
 				}
@@ -241,11 +240,10 @@ export class Webhook extends Node {
 					binaryPropertyName = `${options.binaryPropertyName}${count}`;
 				}
 
-				const fileJson = file.toJSON();
 				returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-					file.path,
-					fileJson.name || fileJson.filename,
-					fileJson.type,
+					file.filepath,
+					file.originalFilename ?? file.newFilename,
+					file.mimetype,
 				);
 
 				count += 1;
@@ -278,7 +276,7 @@ export class Webhook extends Node {
 			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
 				binaryFile.path,
 				fileName,
-				req.headers['content-type'] ?? 'application/octet-stream',
+				req.contentType ?? 'application/octet-stream',
 			);
 
 			return { workflowData: [[returnItem]] };

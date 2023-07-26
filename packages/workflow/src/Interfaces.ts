@@ -1237,8 +1237,10 @@ export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
 
 export namespace MultiPartFormData {
 	export interface File {
-		path: string;
-		toJSON(): { name: string; filename: string; type: string };
+		filepath: string;
+		mimetype?: string;
+		originalFilename?: string;
+		newFilename: string;
 	}
 
 	export type Request = express.Request<
