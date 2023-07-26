@@ -1,14 +1,13 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class CarbonBlackApi implements ICredentialType {
 	name = 'carbonBlackApi';
 
 	displayName = 'Carbon Black API';
+
+	icon = 'file:icons/vmware.svg';
+
+	documentationUrl = 'carbonblack';
 
 	properties: INodeProperties[] = [
 		{
@@ -36,10 +35,10 @@ export class CarbonBlackApi implements ICredentialType {
 		},
 	};
 
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: '={{$credentials.apiUrl}}',
-			url: 'integrationServices/v3/auditlogs',
-		},
-	};
+	// test: ICredentialTestRequest = {
+	// 	request: {
+	// 		baseURL: '={{$credentials.apiUrl}}',
+	// 		url: 'integrationServices/v3/auditlogs',
+	// 	},
+	// };
 }

@@ -1,19 +1,18 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class RecordedFutureApi implements ICredentialType {
 	name = 'recordedFutureApi';
 
-	displayName = 'Cisco Meraki API';
+	displayName = 'Recorded Future API';
+
+	documentationUrl = 'recordedfuture';
+
+	icon = 'file:icons/RecordedFuture.svg';
 
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
-			name: 'accessToken',
+			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
@@ -29,10 +28,10 @@ export class RecordedFutureApi implements ICredentialType {
 		},
 	};
 
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://api.recordedfuture.com/v2',
-			url: '/alert/search?limit=1',
-		},
-	};
+	// test: ICredentialTestRequest = {
+	// 	request: {
+	// 		baseURL: 'https://api.recordedfuture.com/v2',
+	// 		url: '/alert/search?limit=1',
+	// 	},
+	// };
 }
