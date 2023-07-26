@@ -9,7 +9,6 @@
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
-		:data-test-id="dataTestId"
 	>
 		<template #icon>
 			<node-icon :nodeType="nodeType" />
@@ -75,9 +74,6 @@ const description = computed<string>(() => {
 	}) as string;
 });
 const showActionArrow = computed(() => hasActions.value);
-const dataTestId = computed(() =>
-	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
-);
 
 const hasActions = computed(() => {
 	return nodeActions.value.length > 1;
