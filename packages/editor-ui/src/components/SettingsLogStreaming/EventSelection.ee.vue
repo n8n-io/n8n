@@ -35,7 +35,7 @@
 			>
 				{{ $locale.baseText('settings.log-streaming.tab.events.anonymize') }}
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" class="ml-4xs"/>
+					<n8n-icon icon="question-circle" size="small" class="ml-4xs" />
 					<template #content>
 						{{ $locale.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
