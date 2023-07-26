@@ -14,7 +14,6 @@
 			multiple
 			:allowCreate="createEnabled"
 			:reserve-keyword="false"
-			default-first-option
 			ref="selectRef"
 			loading-text="..."
 			popper-class="tags-dropdown"
@@ -178,12 +177,12 @@ export default defineComponent({
 
 		function onBusFocus() {
 			focusOnInput();
-			focusOnTopOption();
+			focusFirstOption();
 		}
 
 		function filterOptions(value = '') {
 			filter.value = value.trim();
-			void nextTick(() => focusOnTopOption());
+			nextTick(() => focusFirstOption());
 		}
 
 		async function onCreate() {
@@ -225,15 +224,14 @@ export default defineComponent({
 			}
 		}
 
-		function focusOnTopOption() {
+		async function focusFirstOption() {
 			// focus on create option
 			if (createRef.value?.focus) {
 				createRef.value.focus();
 			}
 			// focus on top option after filter
 			else if (tagRefs.value?.[0]?.$el.focus) {
-				tagRefs.value[0].$el.focus();
-				console.log('focusing', tagRefs.value[0].$el);
+				tagRefs.value[0].$el.dispatchEvent(new Event('mouseenter'));
 			}
 		}
 
