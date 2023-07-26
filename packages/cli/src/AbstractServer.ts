@@ -80,9 +80,6 @@ export abstract class AbstractServer {
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
-
-		this.externalHooks = Container.get(ExternalHooks);
-		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	}
 
 	private async setupErrorHandlers() {
@@ -439,6 +436,9 @@ export abstract class AbstractServer {
 		});
 
 		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
+
+		this.externalHooks = Container.get(ExternalHooks);
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.setupHealthCheck();
 

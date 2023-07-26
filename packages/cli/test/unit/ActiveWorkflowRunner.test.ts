@@ -24,6 +24,7 @@ import { mockInstance } from '../integration/shared/utils/';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
+import type { WebhookRepository } from '@/databases/repositories';
 
 /**
  * TODO:
@@ -139,6 +140,7 @@ const workflowExecuteAdditionalDataExecuteErrorWorkflowSpy = jest.spyOn(
 describe('ActiveWorkflowRunner', () => {
 	let externalHooks: ExternalHooks;
 	let activeWorkflowRunner: ActiveWorkflowRunner;
+	let webhookRepository = mock<WebhookRepository>();
 
 	beforeAll(async () => {
 		LoggerProxy.init(getLogger());
@@ -160,6 +162,7 @@ describe('ActiveWorkflowRunner', () => {
 			new ActiveExecutions(),
 			externalHooks,
 			Container.get(NodeTypes),
+			webhookRepository,
 		);
 	});
 
@@ -174,7 +177,7 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		expect(await activeWorkflowRunner.getActiveWorkflows()).toHaveLength(0);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(Db.collections.Webhook.clear)).toHaveBeenCalled();
+		expect(mocked(webhookRepository.clear)).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 	});
 
@@ -185,7 +188,7 @@ describe('ActiveWorkflowRunner', () => {
 			databaseActiveWorkflowsCount,
 		);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(Db.collections.Webhook.clear)).toHaveBeenCalled();
+		expect(mocked(webhookRepository.clear)).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalled();
 	});
 

@@ -8,6 +8,7 @@ import type { SourceControlPushWorkFolder } from './sourceControlPushWorkFolder'
 import type { SourceControlPullWorkFolder } from './sourceControlPullWorkFolder';
 import type { SourceControlDisconnect } from './sourceControlDisconnect';
 import type { SourceControlSetReadOnly } from './sourceControlSetReadOnly';
+import type { SourceControlGetStatus } from './sourceControlGetStatus';
 
 export declare namespace SourceControlRequest {
 	type UpdatePreferences = AuthenticatedRequest<{}, {}, Partial<SourceControlPreferences>, {}>;
@@ -19,4 +20,5 @@ export declare namespace SourceControlRequest {
 	type Disconnect = AuthenticatedRequest<{}, {}, SourceControlDisconnect, {}>;
 	type PushWorkFolder = AuthenticatedRequest<{}, {}, SourceControlPushWorkFolder, {}>;
 	type PullWorkFolder = AuthenticatedRequest<{}, {}, SourceControlPullWorkFolder, {}>;
+	type GetStatus = AuthenticatedRequest<{}, {}, {}, SourceControlGetStatus>;
 }
