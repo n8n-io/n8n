@@ -104,8 +104,8 @@ export default defineComponent({
 .text {
 	padding-bottom: var(--spacing-xs);
 
-	// span {
-	// 	margin: var(--spacing-1xs);
-	// }
+	span {
+		margin: var(--spacing-1xs);
+	}
 }
 </style>
