@@ -10,6 +10,7 @@ import {
 	getRedisStandardClient,
 } from './services/redis/RedisServiceHelper';
 import type { RedisClientType } from './services/redis/RedisServiceBaseClasses';
+import config from '@/config';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -36,7 +37,8 @@ export class Queue {
 	constructor(private activeExecutions: ActiveExecutions) {}
 
 	async init() {
-		const prefix = getRedisPrefix();
+		const bullPrefix = config.getEnv('queue.bull.prefix');
+		const prefix = getRedisPrefix(bullPrefix);
 		const clusterNodes = getRedisClusterNodes();
 		const usesRedisCluster = clusterNodes.length > 0;
 		// eslint-disable-next-line @typescript-eslint/naming-convention

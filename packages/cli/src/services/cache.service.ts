@@ -4,7 +4,7 @@ import { caching } from 'cache-manager';
 import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
 import { jsonStringify } from 'n8n-workflow';
-import { getDefaultRedisClient } from './redis/RedisServiceHelper';
+import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
 
 @Service()
 export class CacheService {
@@ -24,7 +24,10 @@ export class CacheService {
 			(backend === 'auto' && config.getEnv('executions.mode') === 'queue')
 		) {
 			const { redisInsStore } = await import('cache-manager-ioredis-yet');
-			const redisClient = await getDefaultRedisClient(undefined, 'client(cache)');
+			const redisPrefix = getRedisPrefix(config.getEnv('redis.prefix'));
+			const cachePrefix = config.getEnv('cache.redis.prefix');
+			const keyPrefix = `${redisPrefix}:${cachePrefix}:`;
+			const redisClient = await getDefaultRedisClient({ keyPrefix }, 'client(cache)');
 			const redisStore = redisInsStore(redisClient, {
 				ttl: config.getEnv('cache.redis.ttl'),
 			});
@@ -56,7 +59,7 @@ export class CacheService {
 		return this.cache;
 	}
 
-	async get<T>(key: string): Promise<T> {
+	async get<T>(key: string): Promise<T | undefined> {
 		if (!this.cache) {
 			await this.init();
 		}
@@ -115,7 +118,7 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
-		return this.cache?.store.mget(...keys) as Promise<Array<[string, T]>>;
+		return (this.cache?.store.mget(...keys) as Promise<Array<[string, T]>>) ?? [];
 	}
 
 	async deleteMany(keys: string[]): Promise<void> {
