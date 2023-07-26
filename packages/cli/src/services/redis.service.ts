@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { RedisServicePubSubSubscriber } from './redis/RedisServicePubSubSubscriber';
 import { RedisServicePubSubPublisher } from './redis/RedisServicePubSubPublisher';
 import { RedisServiceListReceiver } from './redis/RedisServiceListReceiver';
