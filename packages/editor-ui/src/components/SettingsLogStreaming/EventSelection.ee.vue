@@ -99,7 +99,7 @@ export default {
 	},
 	methods: {
 		onInput() {
-			this.$emit('input');
+			this.$emit(onUpdate);
 		},
 		onCheckboxChecked(eventName: string, checked: boolean) {
 			this.logStreamingStore.setSelectedInGroup(this.destinationId, eventName, checked);

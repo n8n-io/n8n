@@ -70,9 +70,9 @@
 				/>
 				<TagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:currentTagIds="filters.tags"
+					:modelValue="filters.tags"
 					:createEnabled="false"
-					@update="setKeyValue('tags', $event)"
+					@update:modelValue="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">

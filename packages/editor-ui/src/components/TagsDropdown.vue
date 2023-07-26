@@ -5,13 +5,15 @@
 		v-on-click-outside="onClickOutside"
 	>
 		<n8n-select
-			:teleported="true"
+			:teleported="false"
 			:modelValue="appliedTags"
-			:loading="tagsStore.isLoading"
+			:loading="isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
 			filterable
 			multiple
+			:allowCreate="createEnabled"
+			default-first-option
 			ref="select"
 			loading-text="..."
 			popper-class="tags-dropdown"
@@ -28,15 +30,15 @@
 			>
 				<font-awesome-icon icon="plus-circle" />
 				<span>
-					{{ $locale.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
+					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
 				</span>
 			</n8n-option>
 			<n8n-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">{{ $locale.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
 				<span v-else-if="allTags.length > 0">{{
-					$locale.baseText('tagsDropdown.noMatchingTagsExist')
+					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
-				<span v-else>{{ $locale.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</n8n-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -51,25 +53,25 @@
 
 			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
 				<font-awesome-icon icon="cog" />
-				<span>{{ $locale.baseText('tagsDropdown.manageTags') }}</span>
+				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
 			</n8n-option>
 		</n8n-select>
 	</div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
-import { useToast } from '@/composables';
-import { mapStores } from 'pinia';
+import { useI18n, useToast } from '@/composables';
 import { useUIStore } from '@/stores/ui.store';
 import { useTagsStore } from '@/stores/tags.store';
 import type { EventBus } from 'n8n-design-system';
 import type { PropType } from 'vue';
 import type { N8nOption, N8nSelect } from 'n8n-design-system';
+import { storeToRefs } from 'pinia';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
 type TagRef = InstanceType<typeof N8nOption>;
@@ -82,170 +84,218 @@ export default defineComponent({
 	name: 'TagsDropdown',
 	props: {
 		placeholder: {},
-		currentTagIds: {
+		modelValue: {
 			type: Array as PropType<string[]>,
 			default: () => [],
 		},
-		createEnabled: {},
+		createEnabled: {
+			type: Boolean,
+			default: false,
+		},
 		eventBus: {
 			type: Object as PropType<EventBus>,
 		},
 	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			filter: '',
-			MANAGE_KEY,
-			CREATE_KEY,
-			focused: false,
-			preventUpdate: false,
-		};
-	},
-	mounted() {
-		const selectRef = this.$refs.select as SelectRef | undefined;
-		const select = selectRef?.$refs?.innerSelect;
-		if (select) {
-			const input = select.$refs.input as Element | undefined;
-			if (input) {
-				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
-				input.addEventListener('keydown', (e: Event) => {
-					const keyboardEvent = e as KeyboardEvent;
-					// events don't bubble outside of select, so need to hook onto input
-					if (keyboardEvent.key === 'Escape') {
-						this.$emit('esc');
-					} else if (keyboardEvent.key === 'Enter' && this.filter.length === 0) {
-						this.preventUpdate = true;
-						this.$emit('blur');
+	setup(props, { emit }) {
+		const i18n = useI18n();
+		const { showError } = useToast();
+		const tagsStore = useTagsStore();
+		const uiStore = useUIStore();
 
-						if (typeof selectRef?.blur === 'function') {
-							selectRef.blur();
+		const { isLoading } = storeToRefs(tagsStore);
+
+		const selectRef = ref<SelectRef | undefined>();
+		const tagRefs = ref<TagRef[] | undefined>();
+		const createRef = ref<CreateRef | undefined>();
+
+		const tags = ref([]);
+		const filter = ref('');
+		const focused = ref(false);
+		const preventUpdate = ref(false);
+
+		const allTags = computed<ITag[]>(() => {
+			return tagsStore.allTags;
+		});
+
+		const hasTags = computed<boolean>(() => {
+			return tagsStore.hasTags;
+		});
+
+		const options = computed<ITag[]>(() => {
+			return allTags.value.filter(
+				(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
+			);
+		});
+
+		const appliedTags = computed<string[]>(() => {
+			return props.modelValue.filter((id: string) => tagsStore.getTagById(id));
+		});
+
+		watch(
+			() => allTags.value,
+			() => {
+				// keep applied tags in sync with store, for example in case tag is deleted from store
+				if (props.modelValue.length !== appliedTags.value.length) {
+					emit('update:modelValue', appliedTags.value);
+				}
+			},
+		);
+
+		onMounted(() => {
+			const select = selectRef.value?.$refs?.innerSelect;
+			if (select) {
+				const input = select.$refs.input as Element | undefined;
+				if (input) {
+					input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
+					input.addEventListener('keydown', (e: Event) => {
+						const keyboardEvent = e as KeyboardEvent;
+						// events don't bubble outside of select, so need to hook onto input
+						if (keyboardEvent.key === 'Escape') {
+							emit('esc');
+						} else if (keyboardEvent.key === 'Enter' && filter.value.length === 0) {
+							preventUpdate.value = true;
+							emit('blur');
+
+							if (typeof selectRef.value?.blur === 'function') {
+								selectRef.value.blur();
+							}
 						}
-					}
-				});
+					});
+				}
+			}
+
+			props.eventBus?.on('focus', onBusFocus);
+
+			void tagsStore.fetchAll();
+		});
+
+		onBeforeUnmount(() => {
+			props.eventBus?.off('focus', onBusFocus);
+		});
+
+		function onBusFocus() {
+			focusOnInput();
+			focusOnTopOption();
+		}
+
+		function filterOptions(value = '') {
+			filter.value = value.trim();
+			void nextTick(() => focusOnTopOption());
+		}
+
+		async function onCreate() {
+			const name = filter.value;
+			try {
+				const newTag = await tagsStore.create(name);
+				emit('update:modelValue', [...props.modelValue, newTag.id]);
+
+				void nextTick(() => focusOnTag(newTag.id));
+
+				filter.value = '';
+			} catch (error) {
+				showError(
+					error,
+					i18n.baseText('tagsDropdown.showError.title'),
+					i18n.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
+				);
 			}
 		}
 
-		this.eventBus?.on('focus', this.onBusFocus);
-
-		void this.tagsStore.fetchAll();
-	},
-	beforeUnmount() {
-		this.eventBus?.off('focus', this.onBusFocus);
-	},
-	computed: {
-		...mapStores(useTagsStore, useUIStore),
-		allTags(): ITag[] {
-			return this.tagsStore.allTags;
-		},
-		hasTags(): boolean {
-			return this.tagsStore.hasTags;
-		},
-		options(): ITag[] {
-			return this.allTags.filter(
-				(tag: ITag) => tag && tag.name.toLowerCase().includes(this.filter.toLowerCase()),
+		function onTagsUpdated(selected: string[]) {
+			const manage = selected.find((value) => value === MANAGE_KEY);
+			const create = selected.find(
+				(value) => !allTags.value.find((tag) => tag.id === value) || value === CREATE_KEY,
 			);
-		},
-		appliedTags(): string[] {
-			return this.currentTagIds.filter((id: string) => this.tagsStore.getTagById(id));
-		},
-	},
-	methods: {
-		onBusFocus() {
-			this.focusOnInput();
-			this.focusOnTopOption();
-		},
-		filterOptions(filter = '') {
-			this.filter = filter.trim();
-			this.$nextTick(() => this.focusOnTopOption());
-		},
-		async onCreate() {
-			const name = this.filter;
-			try {
-				const newTag = await this.tagsStore.create(name);
-				this.$emit('update', [...this.currentTagIds, newTag.id]);
-				this.$nextTick(() => this.focusOnTag(newTag.id));
 
-				this.filter = '';
-			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('tagsDropdown.showError.title'),
-					this.$locale.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
-				);
-			}
-		},
-		onTagsUpdated(selected: string[]) {
-			const ops = selected.find((value) => value === MANAGE_KEY || value === CREATE_KEY);
-			if (ops === MANAGE_KEY) {
-				this.filter = '';
-				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
-			} else if (ops === CREATE_KEY) {
-				void this.onCreate();
+			console.log({ manage, create, selected });
+
+			if (manage) {
+				filter.value = '';
+				uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
+			} else if (create) {
+				void onCreate();
 			} else {
 				setTimeout(() => {
-					if (!this.preventUpdate) {
-						this.$emit('update', selected);
+					if (!preventUpdate.value) {
+						emit('update:modelValue', selected);
 					}
-					this.preventUpdate = false;
+					preventUpdate.value = false;
 				}, 0);
 			}
-		},
-		focusOnTopOption() {
-			const tagRefs = this.$refs.tag as TagRef[] | undefined;
-			const createRef = this.$refs.create as CreateRef | undefined;
+		}
+
+		function focusOnTopOption() {
 			// focus on create option
-			if (createRef && createRef.hoverItem) {
-				createRef.hoverItem();
+			if (createRef.value?.hoverItem) {
+				createRef.value.hoverItem();
 			}
 			// focus on top option after filter
-			else if (tagRefs && tagRefs[0] && tagRefs[0].hoverItem) {
-				tagRefs[0].hoverItem();
+			else if (tagRefs.value?.[0]?.hoverItem) {
+				tagRefs.value[0].hoverItem();
 			}
-		},
-		focusOnTag(tagId: string) {
-			const tagOptions = (this.$refs.tag as TagRef[]) || [];
+		}
+
+		function focusOnTag(tagId: string) {
+			const tagOptions = tagRefs.value || [];
 			if (tagOptions && tagOptions.length) {
 				const added = tagOptions.find((ref) => ref.value === tagId);
 			}
-		},
-		focusOnInput() {
-			const selectRef = this.$refs.select as SelectRef | undefined;
-			if (selectRef) {
-				selectRef.focusOnInput();
-				this.focused = true;
+		}
+
+		function focusOnInput() {
+			if (selectRef.value) {
+				selectRef.value.focusOnInput();
+				focused.value = true;
 			}
-		},
-		onVisibleChange(visible: boolean) {
+		}
+
+		function onVisibleChange(visible: boolean) {
 			if (!visible) {
-				this.filter = '';
-				this.focused = false;
+				filter.value = '';
+				focused.value = false;
 			} else {
-				this.focused = true;
+				focused.value = true;
 			}
-		},
-		onRemoveTag() {
-			this.$nextTick(() => {
-				this.focusOnInput();
+		}
+
+		function onRemoveTag() {
+			void nextTick(() => {
+				focusOnInput();
 			});
-		},
-		onClickOutside(e: Event) {
-			if (e.type === 'click') {
-				this.$emit('blur');
+		}
+
+		function onClickOutside(e: Event) {
+			const tagsModal = document.querySelector('#tags-manager-modal');
+			const clickInsideTagsModal = tagsModal?.contains(e.target as Node);
+
+			if (!clickInsideTagsModal && e.type === 'click') {
+				emit('blur');
 			}
-		},
-	},
-	watch: {
-		allTags() {
-			// keep applied tags in sync with store
-			// for example in case tag is deleted from store
-			if (this.currentTagIds.length !== this.appliedTags.length) {
-				this.$emit('update', this.appliedTags);
-			}
-		},
+		}
+
+		return {
+			i18n,
+			tags,
+			filter,
+			focused,
+			preventUpdate,
+			selectRef,
+			tagRefs,
+			createRef,
+			allTags,
+			appliedTags,
+			options,
+			isLoading,
+			MANAGE_KEY,
+			CREATE_KEY,
+			onTagsUpdated,
+			onCreate,
+			filterOptions,
+			onVisibleChange,
+			onRemoveTag,
+			onClickOutside,
+			...useToast(),
+		};
 	},
 });
 </script>

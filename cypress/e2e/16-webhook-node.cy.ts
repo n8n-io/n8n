@@ -250,7 +250,7 @@ describe('Webhook Trigger node', async () => {
 		});
 	});
 
-	it.only('should listen for a GET request with Basic Authentication', () => {
+	it('should listen for a GET request with Basic Authentication', () => {
 		const webhookPath = uuid();
 		simpleWebhookCall({
 			method: 'GET',
