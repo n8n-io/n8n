@@ -37,7 +37,10 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	constructor(private executionRepository: ExecutionRepository) {
+	constructor(
+		private executionRepository: ExecutionRepository,
+		private ownershipService: OwnershipService,
+	) {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
@@ -187,7 +190,7 @@ export class WaitTracker {
 				throw new Error('Only saved workflows can be resumed.');
 			}
 			const workflowId = fullExecutionData.workflowData.id;
-			const user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
+			const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,

@@ -41,7 +41,10 @@ describe('EventsService', () => {
 	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
 	const updateUserSettingsMock = jest.spyOn(UserService, 'updateUserSettings').mockImplementation();
 
-	const eventsService = new EventsService(new WorkflowStatisticsRepository(dataSource));
+	const eventsService = new EventsService(
+		new WorkflowStatisticsRepository(dataSource),
+		ownershipService,
+	);
 
 	const onFirstProductionWorkflowSuccess = jest.fn();
 	const onFirstWorkflowDataLoad = jest.fn();

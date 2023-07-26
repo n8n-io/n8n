@@ -9,7 +9,10 @@ import { OwnershipService } from './ownership.service';
 
 @Service()
 export class EventsService extends EventEmitter {
-	constructor(private repository: WorkflowStatisticsRepository) {
+	constructor(
+		private repository: WorkflowStatisticsRepository,
+		private ownershipService: OwnershipService,
+	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
 
@@ -72,7 +75,7 @@ export class EventsService extends EventEmitter {
 		if (insertResult === 'failed') return;
 
 		// Compile the metrics since this was a new data loaded event
-		const owner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
+		const owner = await this.ownershipService.getWorkflowOwnerCached(workflowId);
 
 		let metrics = {
 			user_id: owner.id,

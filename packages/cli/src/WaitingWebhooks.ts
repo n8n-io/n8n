@@ -3,7 +3,7 @@
 /* eslint-disable no-param-reassign */
 import type { INode, WebhookHttpMethod } from 'n8n-workflow';
 import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import type express from 'express';
 
 import * as ResponseHelper from '@/ResponseHelper';
@@ -16,7 +16,11 @@ import { OwnershipService } from './services/ownership.service';
 
 @Service()
 export class WaitingWebhooks {
-	constructor(private nodeTypes: NodeTypes, private executionRepository: ExecutionRepository) {}
+	constructor(
+		private nodeTypes: NodeTypes,
+		private executionRepository: ExecutionRepository,
+		private ownershipService: OwnershipService,
+	) {}
 
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,
@@ -95,9 +99,7 @@ export class WaitingWebhooks {
 
 		let workflowOwner;
 		try {
-			workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
-				workflowData.id!,
-			);
+			workflowOwner = await this.ownershipService.getWorkflowOwnerCached(workflowData.id!);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Could not find workflow');
 		}
