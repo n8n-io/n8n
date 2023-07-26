@@ -1,5 +1,5 @@
 import { OwnershipService } from '@/services/ownership.service';
-import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositories';
+import { RoleRepository, SharedWorkflowRepository, UserRepository } from '@/databases/repositories';
 import { mockInstance } from '../../integration/shared/utils';
 import { Role } from '@/databases/entities/Role';
 import { randomInteger } from '../../integration/shared/random';
@@ -17,10 +17,12 @@ const wfOwnerRole = () =>
 describe('OwnershipService', () => {
 	const cacheService = mockInstance(CacheService);
 	const roleRepository = mockInstance(RoleRepository);
+	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 
 	const ownershipService = new OwnershipService(
 		cacheService,
+		userRepository,
 		roleRepository,
 		sharedWorkflowRepository,
 	);

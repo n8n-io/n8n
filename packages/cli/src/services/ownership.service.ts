@@ -1,23 +1,24 @@
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
-import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositories';
+import { RoleRepository, SharedWorkflowRepository, UserRepository } from '@/databases/repositories';
 import type { User } from '@/databases/entities/User';
 
 @Service()
 export class OwnershipService {
 	constructor(
 		private cacheService: CacheService,
+		private userRepository: UserRepository,
 		private roleRepository: RoleRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	/**
-	 * Retrieve the user who owns the workflow. Note that workflow ownership **cannot** be changed.
+	 * Retrieve the user who owns the workflow. Note that workflow ownership is **immutable**.
 	 */
 	async getWorkflowOwnerCached(workflowId: string) {
-		const cachedOwner = await this.cacheService.get<User>(`cache:workflow-owner:${workflowId}`);
+		const cachedValue = await this.cacheService.get<User>(`cache:workflow-owner:${workflowId}`);
 
-		if (cachedOwner) return cachedOwner;
+		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const workflowOwnerRole = await this.roleRepository.findWorkflowOwnerRole();
 
