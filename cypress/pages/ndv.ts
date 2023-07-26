@@ -106,6 +106,7 @@ export class NDV extends BasePage {
 		},
 		dismissMappingTooltip: () => {
 			cy.getByTestId('dismiss-mapping-tooltip').click();
+			cy.getByTestId('dismiss-mapping-tooltip').should('not.be.visible');
 		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();

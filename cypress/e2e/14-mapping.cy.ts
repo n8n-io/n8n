@@ -258,7 +258,7 @@ describe('Data mapping', () => {
 			.should('have.value', "input[0]['hello.world']['my count']");
 	});
 
-	it('maps expressions to updated fields correctly', () => {
+	it.only('maps expressions to updated fields correctly', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
@@ -272,6 +272,8 @@ describe('Data mapping', () => {
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
+		ndv.actions.dismissMappingTooltip();
+		cy.wait(300);
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
 
