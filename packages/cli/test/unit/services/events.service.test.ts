@@ -38,7 +38,7 @@ describe('EventsService', () => {
 	LoggerProxy.init(mock<ILogger>());
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
-	mocked(ownershipService.getWorkflowOwner).mockResolvedValue(fakeUser);
+	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
 	const updateUserSettingsMock = jest.spyOn(UserService, 'updateUserSettings').mockImplementation();
 
 	const eventsService = new EventsService(new WorkflowStatisticsRepository(dataSource));
