@@ -90,7 +90,7 @@ async function pullWorkfolder() {
 			});
 
 			if (hasVariablesOrCredentials) {
-				nextTick(() => {
+				void nextTick(() => {
 					toast.showMessage({
 						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
 						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
