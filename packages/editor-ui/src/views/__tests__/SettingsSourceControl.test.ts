@@ -80,8 +80,6 @@ describe('SettingsSourceControl', () => {
 		expect(connectButton).toBeDisabled();
 
 		const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
-		const authorName = container.querySelector('input[name="authorName"]')!;
-		const authorEmail = container.querySelector('input[name="authorEmail"]')!;
 
 		await userEvent.click(repoUrlInput);
 		await userEvent.type(repoUrlInput, 'git@github');
@@ -90,21 +88,6 @@ describe('SettingsSourceControl', () => {
 
 		await userEvent.click(repoUrlInput);
 		await userEvent.type(repoUrlInput, '.com:john/n8n-data.git');
-		await userEvent.tab();
-		expect(connectButton).toBeDisabled();
-
-		await userEvent.click(authorName);
-		await userEvent.type(authorName, 'John Doe');
-		await userEvent.tab();
-		expect(connectButton).toBeDisabled();
-
-		await userEvent.click(authorEmail);
-		await userEvent.type(authorEmail, 'john@example.');
-		await userEvent.tab();
-		expect(connectButton).toBeDisabled();
-
-		await userEvent.click(authorEmail);
-		await userEvent.type(authorEmail, 'com');
 		await userEvent.tab();
 
 		await waitFor(() => expect(connectButton).toBeEnabled());

@@ -12,7 +12,7 @@
 					class="node-name"
 					:value="node && node.name"
 					:nodeType="nodeType"
-					:isReadOnly="isReadOnly"
+					:readOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
