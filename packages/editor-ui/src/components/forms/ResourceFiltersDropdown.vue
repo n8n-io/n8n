@@ -162,7 +162,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .filter-button {
-	height: 36px;
+	height: 40px;
 	align-items: center;
 }
 
