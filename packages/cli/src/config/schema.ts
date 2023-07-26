@@ -353,7 +353,7 @@ export const schema = {
 		},
 		bull: {
 			prefix: {
-				doc: 'Prefix for all queue keys (wrap in {} for cluster mode)',
+				doc: 'Prefix for all bull queue keys',
 				format: String,
 				default: 'bull',
 				env: 'QUEUE_BULL_PREFIX',
@@ -1104,7 +1104,7 @@ export const schema = {
 
 	redis: {
 		prefix: {
-			doc: 'Prefix for all n8n related keys (wrap in {} for cluster mode)',
+			doc: 'Prefix for all n8n related keys',
 			format: String,
 			default: 'n8n',
 			env: 'N8N_REDIS_KEY_PREFIX',
