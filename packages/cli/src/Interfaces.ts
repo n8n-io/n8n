@@ -103,7 +103,6 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
-	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
