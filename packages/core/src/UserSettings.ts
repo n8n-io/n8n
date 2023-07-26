@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import fs from 'fs';
+import { access, readFile, mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import { createHash, randomBytes } from 'crypto';
-import { promisify } from 'util';
 import { deepCopy } from 'n8n-workflow';
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
@@ -16,11 +15,6 @@ import {
 	USER_SETTINGS_SUBFOLDER,
 } from './Constants';
 import type { IUserSettings } from './Interfaces';
-
-const fsAccess = promisify(fs.access);
-const fsReadFile = promisify(fs.readFile);
-const fsMkdir = promisify(fs.mkdir);
-const fsWriteFile = promisify(fs.writeFile);
 
 let settingsCache: IUserSettings | undefined;
 
@@ -157,10 +151,10 @@ export async function writeUserSettings(
 
 	// Check if parent folder exists if not create it.
 	try {
-		await fsAccess(path.dirname(settingsPath));
+		await access(path.dirname(settingsPath));
 	} catch (error) {
 		// Parent folder does not exist so create
-		await fsMkdir(path.dirname(settingsPath));
+		await mkdir(path.dirname(settingsPath));
 	}
 
 	const settingsToWrite = { ...userSettings };
@@ -168,7 +162,7 @@ export async function writeUserSettings(
 		delete settingsToWrite.instanceId;
 	}
 
-	await fsWriteFile(settingsPath, JSON.stringify(settingsToWrite, null, '\t'));
+	await writeFile(settingsPath, JSON.stringify(settingsToWrite, null, '\t'));
 	settingsCache = deepCopy(userSettings);
 
 	return userSettings;
@@ -191,13 +185,13 @@ export async function getUserSettings(
 	}
 
 	try {
-		await fsAccess(settingsPath);
+		await access(settingsPath);
 	} catch (error) {
 		// The file does not exist
 		return undefined;
 	}
 
-	const settingsFile = await fsReadFile(settingsPath, 'utf8');
+	const settingsFile = await readFile(settingsPath, 'utf8');
 
 	try {
 		settingsCache = JSON.parse(settingsFile);

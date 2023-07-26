@@ -12,9 +12,7 @@ import { deepCopy } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import { parse as pathParse } from 'path';
-import { writeFile as fsWriteFile } from 'fs';
-import { promisify } from 'util';
-const fsWriteFileAsync = promisify(fsWriteFile);
+import { writeFile as fsWriteFile } from 'fs/promises';
 import getSystemFonts from 'get-system-fonts';
 
 const nodeOperations: INodePropertyOptions[] = [
@@ -1119,7 +1117,7 @@ export class EditImage implements INodeType {
 
 						const { fd, path, cleanup } = await file();
 						cleanupFunctions.push(cleanup);
-						await fsWriteFileAsync(fd, binaryDataBuffer);
+						await fsWriteFile(fd, binaryDataBuffer);
 
 						if (operations[0].operation === 'create') {
 							// It seems like if the image gets created newly we have to create a new gm instance

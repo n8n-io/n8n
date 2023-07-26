@@ -11,12 +11,9 @@ import { deepCopy, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { BinaryToTextEncoding } from 'crypto';
 import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
-import stream from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 
 import { v4 as uuid } from 'uuid';
-
-const pipeline = promisify(stream.pipeline);
 
 const unsupportedAlgorithms = [
 	'RSA-MD4',

@@ -8,9 +8,8 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
 import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { flags } from '@oclif/command';
-import stream from 'stream';
+import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
-import { promisify } from 'util';
 import glob from 'fast-glob';
 
 import { LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
@@ -31,7 +30,6 @@ import { InternalHooks } from '@/InternalHooks';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
-const pipeline = promisify(stream.pipeline);
 
 export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';

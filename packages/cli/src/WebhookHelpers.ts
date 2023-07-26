@@ -10,8 +10,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 import get from 'lodash/get';
-import stream from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 import formidable from 'formidable';
 
 import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
@@ -62,8 +61,6 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
-
-const pipeline = promisify(stream.pipeline);
 
 export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 	'DELETE',
