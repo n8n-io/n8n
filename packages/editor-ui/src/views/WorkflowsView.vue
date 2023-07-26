@@ -13,6 +13,24 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
+		<template #add-button="{ disabled }">
+			<n8n-tooltip :disabled="!readOnlyEnv">
+				<div>
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="addWorkflow"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`workflows.add`) }}
+					</n8n-button>
+				</div>
+				<template #content>
+					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
+				</template>
+			</n8n-tooltip>
+		</template>
 		<template #default="{ data, updateItemSize }">
 			<workflow-card
 				data-test-id="resources-list-item"
