@@ -194,7 +194,7 @@ export default defineComponent({
 		}
 
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
-		await this.startAutoRefreshInterval();
+		void this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
 		this.loading = false;

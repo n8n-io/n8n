@@ -125,7 +125,7 @@ watch(
 			:data-keyboard-nav-id="item.uuid"
 			@click="wrappedEmit('selected', item)"
 		>
-			<Fragment v-if="renderedItems.includes(item)">
+			<div v-if="renderedItems.includes(item)">
 				<label-item v-if="item.type === 'label'" :item="item" />
 				<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
 
@@ -148,7 +148,7 @@ watch(
 					:view="item.properties"
 					:class="$style.viewItem"
 				/>
-			</Fragment>
+			</div>
 
 			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
 		</div>

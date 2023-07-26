@@ -1,11 +1,14 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore } from '@/stores/ui.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUsersStore } from '@/stores/users.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import type { SourceControlAggregatedFile } from '../Interface';
+import { sourceControlEventBus } from '@/event-bus/source-control';
 
 const props = defineProps<{
 	isCollapsed: boolean;
@@ -18,6 +21,7 @@ const responseStatuses = {
 const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const sourceControlStore = useSourceControlStore();
 const message = useMessage();
 const toast = useToast();
@@ -30,10 +34,16 @@ const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
 const featureEnabled = computed(() => window.localStorage.getItem('source-control'));
+// TODO: use this for release
+// const featureEnabled = computed(
+// 	() => sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName,
+// );
+const isInstanceOwner = computed(() => usersStore.isInstanceOwner);
 const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
 async function pushWorkfolder() {
 	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 	try {
 		const status = await sourceControlStore.getAggregatedStatus();
 
@@ -54,7 +64,45 @@ async function pullWorkfolder() {
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
 
 	try {
-		await sourceControlStore.pullWorkfolder(false);
+		const status: SourceControlAggregatedFile[] =
+			((await sourceControlStore.pullWorkfolder(
+				false,
+			)) as unknown as SourceControlAggregatedFile[]) || [];
+
+		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
+			return !(file.type === 'workflow' && file.status === 'created' && file.location === 'local');
+		});
+		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
+				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
+				type: 'success',
+			});
+		} else {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.success.title'),
+				type: 'success',
+			});
+
+			const incompleteFileTypes = ['variables', 'credential'];
+			const hasVariablesOrCredentials = (status || []).some((file) => {
+				return incompleteFileTypes.includes(file.type);
+			});
+
+			if (hasVariablesOrCredentials) {
+				void nextTick(() => {
+					toast.showMessage({
+						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+						type: 'info',
+						duration: 0,
+						showClose: true,
+						offset: 0,
+					});
+				});
+			}
+		}
+		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		const errorResponse = error.response;
 
@@ -79,12 +127,11 @@ const goToSourceControlSetup = async () => {
 
 <template>
 	<div
-		v-if="featureEnabled"
+		v-if="featureEnabled && isInstanceOwner"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
-			[$style.isConnected]:
-				sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName,
+			[$style.isConnected]: featureEnabled,
 		}"
 		:style="{ borderLeftColor: sourceControlStore.preferences.branchColor }"
 		data-test-id="main-sidebar-source-control"
@@ -94,7 +141,7 @@ const goToSourceControlSetup = async () => {
 			:class="$style.connected"
 			data-test-id="main-sidebar-source-control-connected"
 		>
-			<span>
+			<span :class="$style.branchName">
 				<n8n-icon icon="code-branch" />
 				{{ currentBranch }}
 			</span>
@@ -177,6 +224,11 @@ const goToSourceControlSetup = async () => {
 	button {
 		font-size: var(--font-size-3xs);
 	}
+}
+
+.branchName {
+	white-space: normal;
+	line-break: anywhere;
 }
 
 .collapsed {
