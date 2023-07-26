@@ -11,7 +11,7 @@ import { LoggerProxy, jsonStringify } from 'n8n-workflow';
 export class CacheService {
 	/**
 	 * Keys and values:
-	 * - `'workflow-owner:${workflowId}'`: `User`
+	 * - `'cache:workflow-owner:${workflowId}'`: `User`
 	 */
 	private cache: RedisCache | MemoryCache | undefined;
 

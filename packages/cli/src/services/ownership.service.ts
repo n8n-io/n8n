@@ -13,11 +13,9 @@ export class OwnershipService {
 
 	/**
 	 * Retrieve the user who owns the workflow. Note that workflow ownership **cannot** be changed.
-	 *
-	 * @caching
 	 */
-	async getWorkflowOwner(workflowId: string) {
-		const cachedOwner = await this.cacheService.get<User>(`workflow-owner:${workflowId}`);
+	async getWorkflowOwnerCached(workflowId: string) {
+		const cachedOwner = await this.cacheService.get<User>(`cache:workflow-owner:${workflowId}`);
 
 		if (cachedOwner) return cachedOwner;
 
@@ -30,7 +28,7 @@ export class OwnershipService {
 			relations: ['user', 'user.globalRole'],
 		});
 
-		void this.cacheService.set(`workflow-owner:${workflowId}`, sharedWorkflow.user);
+		void this.cacheService.set(`cache:workflow-owner:${workflowId}`, sharedWorkflow.user);
 
 		return sharedWorkflow.user;
 	}

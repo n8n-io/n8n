@@ -177,7 +177,7 @@ export async function executeWebhook(
 		user = (workflowData as WorkflowEntity).shared[0].user;
 	} else {
 		try {
-			user = await Container.get(OwnershipService).getWorkflowOwner(workflowData.id);
+			user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Cannot find workflow');
 		}

@@ -95,7 +95,9 @@ export class WaitingWebhooks {
 
 		let workflowOwner;
 		try {
-			workflowOwner = await Container.get(OwnershipService).getWorkflowOwner(workflowData.id!);
+			workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
+				workflowData.id!,
+			);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Could not find workflow');
 		}

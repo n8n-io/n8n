@@ -112,7 +112,7 @@ export class Worker extends BaseCommand {
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
-		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwner(workflowId);
+		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {

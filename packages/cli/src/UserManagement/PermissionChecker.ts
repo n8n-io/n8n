@@ -103,7 +103,9 @@ export class PermissionChecker {
 			policy = 'workflowsFromSameOwner';
 		}
 
-		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwner(subworkflow.id);
+		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
+			subworkflow.id,
+		);
 
 		const errorToThrow = new SubworkflowOperationError(
 			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,
