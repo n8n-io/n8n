@@ -1321,7 +1321,7 @@ export default defineComponent({
 	align-items: center;
 }
 
-.input-with-opener > .el-input__suffix {
+.input-with-opener .el-input__suffix {
 	right: 0;
 }
 
