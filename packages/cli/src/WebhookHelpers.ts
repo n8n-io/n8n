@@ -314,7 +314,6 @@ export async function executeWebhook(
 					});
 				});
 			} else if (rawBody?.length) {
-				// try to parse non-JSON content-types. JSON inputs are already parsed in bodyParser middleware
 				try {
 					if (contentType === 'application/json') {
 						req.body = jsonParse(rawBody.toString(encoding));
@@ -791,8 +790,8 @@ export async function executeWebhook(
 			e instanceof ResponseHelper.UnprocessableRequestError
 				? e
 				: new Error('There was a problem executing the workflow', { cause: e });
-		if (!didSendResponse) responseCallback(error, {});
-		else throw error;
+		if (didSendResponse) throw error;
+		responseCallback(error, {});
 		return;
 	}
 }
