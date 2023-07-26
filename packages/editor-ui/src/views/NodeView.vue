@@ -345,9 +345,8 @@ export default defineComponent({
 		NodeCreation,
 		CanvasControls,
 	},
-	async setup(props) {
+	setup(props) {
 		const locale = useI18n();
-		const workflowRunSetup = await workflowRun.setup?.(props);
 
 		return {
 			locale,
@@ -357,7 +356,8 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
-			...workflowRunSetup,
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...workflowRun.setup?.(props),
 		};
 	},
 	errorCaptured: (err, vm, info) => {

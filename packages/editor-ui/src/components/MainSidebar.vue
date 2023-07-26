@@ -135,11 +135,11 @@ export default defineComponent({
 		MainSidebarSourceControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
-	async setup(props) {
-		const workflowRunSetup = await workflowRun.setup?.(props);
+	setup(props) {
 		return {
 			...useMessage(),
-			...workflowRunSetup,
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...workflowRun.setup?.(props),
 		};
 	},
 	data() {

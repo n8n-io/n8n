@@ -69,15 +69,14 @@ export default defineComponent({
 		Modals,
 	},
 	mixins: [newVersions, userHelpers],
-	async setup(props) {
-		const newVersionsSetup = await newVersions.setup?.(props);
-
+	setup(props) {
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
-			...newVersionsSetup,
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...newVersions.setup?.(props),
 		};
 	},
 	computed: {
@@ -251,7 +250,7 @@ export default defineComponent({
 			this.postAuthenticateDone = true;
 		},
 	},
-	async mounted() {
+	async created() {
 		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
@@ -265,6 +264,8 @@ export default defineComponent({
 		void this.postAuthenticate();
 
 		this.loading = false;
+	},
+	async mounted() {
 
 		this.trackPage();
 		void this.externalHooks.run('app.mount');

@@ -62,11 +62,11 @@ export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
 	mixins: [workflowActivate],
-	async setup(props) {
-		const workflowActivateSetup = await workflowActivate.setup?.(props);
+	setup(props) {
 		return {
 			...useToast(),
-			...workflowActivateSetup,
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...workflowActivate.setup?.(props),
 		};
 	},
 	computed: {

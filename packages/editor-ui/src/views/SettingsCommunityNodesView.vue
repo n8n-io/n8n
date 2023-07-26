@@ -76,12 +76,11 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	async setup(props) {
-		const pushConnectionSetup = await pushConnection.setup?.(props);
-
+	setup(props) {
 		return {
 			...useToast(),
-			...pushConnectionSetup,
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...pushConnection.setup?.(props),
 		};
 	},
 	data() {
