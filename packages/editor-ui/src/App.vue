@@ -266,7 +266,6 @@ export default defineComponent({
 		this.loading = false;
 	},
 	async mounted() {
-
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
 
