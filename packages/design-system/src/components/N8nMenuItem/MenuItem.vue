@@ -296,7 +296,6 @@ export default defineComponent({
 }
 
 .compact {
-	width: 40px;
 	.icon {
 		margin: 0;
 		overflow: visible !important;

@@ -694,6 +694,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+.el-overlay-dialog {
+	padding-top: var(--spacing-2xs);
+}
+
 .ndv-wrapper {
 	overflow: visible;
 }
