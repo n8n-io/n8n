@@ -222,16 +222,24 @@ export class WorkflowsService {
 			);
 		}
 
-		// Update the workflow's version
-		workflow.versionId = uuid();
-
-		LoggerProxy.verbose(
-			`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
-			{
-				previousVersionId: shared.workflow.versionId,
-				newVersionId: workflow.versionId,
-			},
-		);
+		if (
+			Object.keys(workflow).length === 3 &&
+			workflow.id !== undefined &&
+			workflow.versionId !== undefined &&
+			workflow.active !== undefined
+		) {
+			// we're just updating the active status of the workflow, don't update the versionId
+		} else {
+			// Update the workflow's version
+			workflow.versionId = uuid();
+			LoggerProxy.verbose(
+				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
+				{
+					previousVersionId: shared.workflow.versionId,
+					newVersionId: workflow.versionId,
+				},
+			);
+		}
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);
