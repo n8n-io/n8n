@@ -40,7 +40,8 @@ export default defineComponent({
 			type: Object as PropType<EventBus>,
 		},
 		direction: {
-			type: String,
+			type: String as PropType<'ltr' | 'rtl' | 'ttb' | 'btt'>,
+			required: true,
 		},
 		modal: {
 			type: Boolean,
