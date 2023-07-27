@@ -13,9 +13,9 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () =>
 			this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
+		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.el-tag'),
 		nthTagPill: (n: number) =>
-			cy.get(`[data-test-id="workflow-tags-container"] span.tags > span:nth-child(${n})`),
+			cy.get(`[data-test-id="workflow-tags-container"] span.el-tag:nth-child(${n})`),
 		tagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
 		tagsInDropdown: () => getVisibleSelect().find('li').filter('.tag'),
 		createTagButton: () => cy.getByTestId('new-tag-link'),
@@ -214,7 +214,6 @@ export class WorkflowPage extends BasePage {
 				this.getters.workflowTagsInput().type(tag);
 				this.getters.workflowTagsInput().type('{enter}');
 			});
-			cy.get('body').click(0, 0);
 			// For a brief moment the Element UI tag component shows the tags as(+X) string
 			// so we need to wait for it to disappear
 			this.getters.workflowTagsContainer().should('not.contain', `+${tags.length}`);
