@@ -103,12 +103,13 @@ export class ExternalSecretsManager {
 		if (!settings) {
 			return;
 		}
-		// TODO allSettled
-		const providers: Array<SecretsProvider | null> = await Promise.all(
-			Object.entries(settings).map(async ([name, providerSettings]) =>
-				this.initProvider(name, providerSettings),
-			),
-		);
+		const providers: Array<SecretsProvider | null> = (
+			await Promise.allSettled(
+				Object.entries(settings).map(async ([name, providerSettings]) =>
+					this.initProvider(name, providerSettings),
+				),
+			)
+		).map((i) => (i.status === 'rejected' ? null : i.value));
 		this.providers = Object.fromEntries(
 			(providers.filter((p) => p !== null) as SecretsProvider[]).map((s) => [s.name, s]),
 		);
@@ -173,8 +174,7 @@ export class ExternalSecretsManager {
 		if (!this.license.isExternalSecretsEnabled()) {
 			return;
 		}
-		// TODO allSettled
-		await Promise.all(
+		await Promise.allSettled(
 			Object.entries(this.providers).map(async ([k, p]) => {
 				try {
 					if (this.cachedSettings[k].connected && p.state === 'connected') {
