@@ -7,8 +7,6 @@ export const isTestableExpression = (expr: string) => {
 		if (c.type === 'text') {
 			return true;
 		}
-
-		console.log(expr, c, /\$secrets(\.[a-zA-Z0-9_]+)+$/.test(c.text.trim()));
 		return /\$secrets(\.[a-zA-Z0-9_]+)+$/.test(c.text.trim());
 	});
 };
