@@ -250,6 +250,7 @@
       "dist/credentials/OneSimpleApi.credentials.js",
       "dist/credentials/OnfleetApi.credentials.js",
       "dist/credentials/OpenAiApi.credentials.js",
+      "dist/credentials/OpenCTIApi.credentials.js",
       "dist/credentials/OpenWeatherMapApi.credentials.js",
       "dist/credentials/OrbitApi.credentials.js",
       "dist/credentials/OuraApi.credentials.js",
