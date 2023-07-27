@@ -56,15 +56,27 @@ export class UpdateWorkflowCommand extends BaseCommand {
 			return;
 		}
 
-		updateQuery.active = flags.active === 'true';
-
 		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
-		if (flags.id) {
-			this.logger.info(`Deactivating workflow with ID: ${flags.id}`);
-			findQuery.id = flags.id;
+		if (flags.active === 'true') {
+			updateQuery.active = true;
+
+			if (flags.id) {
+				this.logger.info(`Activating workflow with ID: ${flags.id}`);
+				findQuery.id = flags.id;
+			} else {
+				this.logger.info('Activating all workflows');
+				findQuery.active = false;
+			}
 		} else {
-			this.logger.info('Deactivating all workflows');
-			findQuery.active = true;
+			updateQuery.active = false;
+
+			if (flags.id) {
+				this.logger.info(`Deactivating workflow with ID: ${flags.id}`);
+				findQuery.id = flags.id;
+			} else {
+				this.logger.info('Deactivating all workflows');
+				findQuery.active = true;
+			}
 		}
 
 		await Db.collections.Workflow.update(findQuery, updateQuery);
