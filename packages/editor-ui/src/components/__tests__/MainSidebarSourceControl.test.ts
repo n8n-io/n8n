@@ -19,10 +19,7 @@ let usersStore: ReturnType<typeof useUsersStore>;
 const renderComponent = createComponentRenderer(MainSidebarSourceControl);
 
 describe('MainSidebarSourceControl', () => {
-	const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
-
 	beforeEach(() => {
-		getItemSpy.mockReturnValue('true');
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -32,31 +29,22 @@ describe('MainSidebarSourceControl', () => {
 		});
 
 		usersStore = useUsersStore(pinia);
-
 		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
 
 		sourceControlStore = useSourceControlStore();
+		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
+
 		uiStore = useUIStore();
 	});
 
-	it('should render nothing', async () => {
-		getItemSpy.mockReturnValue(null);
-		const { container } = renderComponent({
-			props: { isCollapsed: false },
-			global: {
-				plugins: [pinia],
-			},
-		});
+	it('should render nothing when not instance owner', async () => {
+		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+		const { container } = renderComponent({ pinia, props: { isCollapsed: false } });
 		expect(container).toBeEmptyDOMElement();
 	});
 
-	it('should render empty content', async () => {
-		const { getByTestId } = renderComponent({
-			props: { isCollapsed: false },
-			global: {
-				plugins: [pinia],
-			},
-		});
+	it('should render empty content when instance owner but not connected', async () => {
+		const { getByTestId } = renderComponent({ pinia, props: { isCollapsed: false } });
 		expect(getByTestId('main-sidebar-source-control')).toBeInTheDocument();
 		expect(getByTestId('main-sidebar-source-control')).toBeEmptyDOMElement();
 	});
@@ -76,10 +64,8 @@ describe('MainSidebarSourceControl', () => {
 
 		it('should render the appropriate content', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
+				pinia,
 				props: { isCollapsed: false },
-				global: {
-					plugins: [pinia],
-				},
 			});
 			expect(getByTestId('main-sidebar-source-control-connected')).toBeInTheDocument();
 			expect(queryByTestId('main-sidebar-source-control-setup')).not.toBeInTheDocument();
@@ -90,10 +76,8 @@ describe('MainSidebarSourceControl', () => {
 				response: { status: 400 },
 			});
 			const { getAllByRole, getByRole } = renderComponent({
+				pinia,
 				props: { isCollapsed: false },
-				global: {
-					plugins: [pinia],
-				},
 			});
 
 			await userEvent.click(getAllByRole('button')[0]);
@@ -108,10 +92,8 @@ describe('MainSidebarSourceControl', () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
 			const { getAllByRole, getByRole } = renderComponent({
+				pinia,
 				props: { isCollapsed: false },
-				global: {
-					plugins: [pinia],
-				},
 			});
 
 			await userEvent.click(getAllByRole('button')[0]);
