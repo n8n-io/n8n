@@ -4,7 +4,6 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	ProcessedDataItemTypes,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -94,7 +93,7 @@ export class RssFeedRead implements INodeType {
 				});
 			}
 
-			if (onlyNew === true) {
+			if (onlyNew) {
 				if (returnData.length && !returnData[0].hasOwnProperty('title')) {
 					throw new NodeOperationError(
 						this.getNode(),

@@ -6,7 +6,7 @@ import type {
 	ProcessedDataContext,
 	ProcessedDataItemTypes,
 } from 'n8n-workflow';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import type {
 	ICheckProcessedContextData,
 	IProcessedDataConfig,

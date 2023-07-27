@@ -1,7 +1,7 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	ICheckProcessedOutput,
 	ICheckProcessedOptions,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,

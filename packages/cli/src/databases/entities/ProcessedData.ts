@@ -1,12 +1,12 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
 import type { IProcessedDataEntries, IProcessedDataLatest } from '@/Interfaces';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import { jsonColumnType, WithTimestamps } from './AbstractEntity';
 import { objectRetriever } from '../utils/transformers';
 
 @Entity()
 @Index(['workflowId', 'context'], { unique: true })
-export class ProcessedData extends AbstractEntity {
+export class ProcessedData extends WithTimestamps {
 	// @Column('varchar')
 	@PrimaryColumn('varchar')
 	context: string;
