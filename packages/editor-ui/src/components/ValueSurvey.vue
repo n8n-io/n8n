@@ -273,7 +273,7 @@ export default defineComponent({
 		margin: 0;
 		padding: 18px 0 16px;
 
-		button { // close
+		button {
 			top: 12px;
 			right: 16px;
 			position: absolute;
