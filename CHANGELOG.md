@@ -1,3 +1,14 @@
+## [1.1.1](https://github.com/n8n-io/n8n/compare/n8n@1.1.0...n8n@1.1.1) (2023-07-27)
+
+
+### Bug Fixes
+
+* **core:** Allow ignoring SSL issues on generic oauth2 credentials ([#6702](https://github.com/n8n-io/n8n/issues/6702)) ([45dcbd4](https://github.com/n8n-io/n8n/commit/45dcbd4eb0dfd802ed2d535e6e65e7eb62f13782))
+* Display source control buttons properly ([#6756](https://github.com/n8n-io/n8n/issues/6756)) ([41e3c43](https://github.com/n8n-io/n8n/commit/41e3c439f2bb94e039b951d5bb910752264018ce))
+* **Lemlist Node:** Fix pagination issues with campaigns and activities ([#6734](https://github.com/n8n-io/n8n/issues/6734)) ([3865add](https://github.com/n8n-io/n8n/commit/3865add250eb012393d65e6837a29a0d9643b42d))
+
+
+
 # [1.1.0](https://github.com/n8n-io/n8n/compare/n8n@1.0.1...n8n@1.1.0) (2023-07-26)
 
 
