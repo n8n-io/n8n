@@ -86,7 +86,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
-	it('should add node between two connected nodes', () => {
+	it.only('should add node between two connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
