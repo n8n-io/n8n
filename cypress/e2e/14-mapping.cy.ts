@@ -175,6 +175,7 @@ describe('Data mapping', () => {
 
 	it('maps expressions from previous nodes', () => {
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);

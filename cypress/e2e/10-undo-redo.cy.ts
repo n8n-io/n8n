@@ -131,7 +131,7 @@ describe('Undo/Redo', () => {
 			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
-	it.only('should undo/redo deleting a connection by pressing delete button', () => {
+	it('should undo/redo deleting a connection by pressing delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().realHover();
