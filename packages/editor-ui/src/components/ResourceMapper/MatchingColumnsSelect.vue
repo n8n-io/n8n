@@ -113,7 +113,12 @@ function onSelectionChange(value: string | string[]) {
 }
 
 function emitValueChanged() {
-	emit('matchingColumnsChanged', Array.isArray(state.selected) ? state.selected : [state.selected]);
+	if (state.selected) {
+		emit(
+			'matchingColumnsChanged',
+			Array.isArray(state.selected) ? state.selected : [state.selected],
+		);
+	}
 }
 
 defineExpose({
@@ -140,7 +145,12 @@ defineExpose({
 				:teleported="teleported"
 				@update:modelValue="onSelectionChange"
 			>
-				<n8n-option v-for="field in availableMatchingFields" :key="field.id" :value="field.id">
+				<n8n-option
+					v-for="field in availableMatchingFields"
+					:key="field.id"
+					:value="field.id"
+					:data-test-id="`matching-column-option-${field.id}`"
+				>
 					{{ field.displayName }}
 				</n8n-option>
 			</n8n-select>
