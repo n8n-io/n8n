@@ -31,11 +31,6 @@ const tooltipOpenDelay = ref(300);
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
-const featureEnabled = computed(() => window.localStorage.getItem('source-control'));
-// TODO: use this for release
-// const featureEnabled = computed(
-// 	() => sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName,
-// );
 const isInstanceOwner = computed(() => usersStore.isInstanceOwner);
 const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
@@ -125,11 +120,11 @@ const goToSourceControlSetup = async () => {
 
 <template>
 	<div
-		v-if="featureEnabled && isInstanceOwner"
+		v-if="sourceControlStore.isEnterpriseSourceControlEnabled && isInstanceOwner"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
-			[$style.isConnected]: featureEnabled,
+			[$style.isConnected]: sourceControlStore.isEnterpriseSourceControlEnabled,
 		}"
 		:style="{ borderLeftColor: sourceControlStore.preferences.branchColor }"
 		data-test-id="main-sidebar-source-control"

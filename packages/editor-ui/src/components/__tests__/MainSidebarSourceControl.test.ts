@@ -31,10 +31,7 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
 };
 
 describe('MainSidebarSourceControl', () => {
-	const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
-
 	beforeEach(() => {
-		getItemSpy.mockReturnValue('true');
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -44,20 +41,21 @@ describe('MainSidebarSourceControl', () => {
 		});
 
 		usersStore = useUsersStore(pinia);
-
 		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
 
 		sourceControlStore = useSourceControlStore();
+		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
+
 		uiStore = useUIStore();
 	});
 
-	it('should render nothing', async () => {
-		getItemSpy.mockReturnValue(null);
+	it('should render nothing when not instance owner', async () => {
+		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
 		const { container } = renderComponent({ props: { isCollapsed: false } });
 		expect(container).toBeEmptyDOMElement();
 	});
 
-	it('should render empty content', async () => {
+	it('should render empty content when instance owner but not connected', async () => {
 		const { getByTestId } = renderComponent({ props: { isCollapsed: false } });
 		expect(getByTestId('main-sidebar-source-control')).toBeInTheDocument();
 		expect(getByTestId('main-sidebar-source-control')).toBeEmptyDOMElement();
