@@ -385,9 +385,9 @@ export default defineComponent({
 			this.unchanged = false;
 			this.testMessageSent = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
-			const parameterPath = parameterData.name.startsWith('parameters.')
+			const parameterPath = parameterData.name?.startsWith('parameters.')
 				? parameterData.name.split('.').slice(1).join('.')
-				: parameterData.name;
+				: parameterData.name || '';
 
 			const nodeParameters = deepCopy(this.nodeParameters);
 
