@@ -164,8 +164,7 @@ export default defineComponent({
 					return;
 				}
 
-				void this.$router.replace({ name: VIEWS.SETUP });
-				return;
+				return this.$router.replace({ name: VIEWS.SETUP });
 			}
 
 			if (this.canUserAccessCurrentRoute()) {
@@ -178,8 +177,7 @@ export default defineComponent({
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-				return;
+				return this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 			}
 
 			// if cannot access page and is logged in, respect signin redirect
@@ -187,13 +185,12 @@ export default defineComponent({
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					void this.$router.replace(redirect);
-					return;
+					return this.$router.replace(redirect);
 				}
 			}
 
 			// if cannot access page and is logged in
-			void this.$router.replace({ name: VIEWS.HOMEPAGE });
+			return this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
 			const redirect =
@@ -201,7 +198,7 @@ export default defineComponent({
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
 			if (redirect) {
-				void this.$router.replace(redirect);
+				return this.$router.replace(redirect);
 			}
 		},
 		setTheme() {
@@ -255,11 +252,11 @@ export default defineComponent({
 			this.postAuthenticateDone = true;
 		},
 	},
-	async created() {
+	async mounted() {
 		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
-		this.authenticate();
+		await this.authenticate();
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
@@ -269,8 +266,8 @@ export default defineComponent({
 		void this.postAuthenticate();
 
 		this.loading = false;
-	},
-	async mounted() {
+
+		this.logHiringBanner();
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
 
@@ -286,7 +283,6 @@ export default defineComponent({
 		},
 		async $route(route) {
 			await this.initSettings();
-			this.authenticate();
 			this.redirectIfNecessary();
 
 			this.trackPage();

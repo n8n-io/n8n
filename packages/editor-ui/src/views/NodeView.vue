@@ -876,7 +876,7 @@ export default defineComponent({
 				}
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
 
@@ -889,7 +889,7 @@ export default defineComponent({
 			});
 
 			this.blankRedirect = true;
-			void this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
+			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
 			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
