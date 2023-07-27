@@ -157,7 +157,7 @@ export default defineComponent({
 
 			this.$telemetry.page(this.$route);
 		},
-		authenticate() {
+		async authenticate() {
 			// redirect to setup page. user should be redirected to this only once
 			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
