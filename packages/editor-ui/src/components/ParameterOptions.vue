@@ -173,7 +173,6 @@ export default defineComponent({
 			this.$emit('menu-expanded', visible);
 		},
 		onViewSelected(selected: string) {
-			console.log('onViewSelected', selected);
 			if (selected === 'expression') {
 				this.$emit(
 					'update:modelValue',
