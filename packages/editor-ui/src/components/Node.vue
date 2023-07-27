@@ -502,10 +502,6 @@ export default defineComponent({
 		}
 	},
 	mounted() {
-		// why is this not a computed property? because it's a very expensive operation
-		// it requires expressions to resolve each subtitle...
-		// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
-		// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 		setTimeout(() => {
 			this.setSubtitle();
 		}, 0);
@@ -545,6 +541,10 @@ export default defineComponent({
 			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
+			// why is this not a computed property? because it's a very expensive operation
+			// it requires expressions to resolve each subtitle...
+			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
+			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 			try {
 				const nodeSubtitle =
 					this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
