@@ -29,7 +29,6 @@
 					class="mb-3xs"
 				/>
 				<n8n-user-select
-					:teleported="false"
 					:users="ownedByUsers"
 					:currentUserId="usersStore.currentUser.id"
 					:modelValue="modelValue.ownedBy"
