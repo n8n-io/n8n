@@ -256,6 +256,9 @@ describe('Undo/Redo', () => {
 	});
 
 	it('should undo/redo multiple steps', () => {
+		const initialPosition = 'left: 420px; top: 220px;';
+		const movedPosition = 'left: 540px; top: 360px;';
+
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
@@ -266,8 +269,10 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.canvasNodes().last().click();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		// Move first one
+		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', initialPosition);
 		WorkflowPage.getters.canvasNodes().first().click();
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
+		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', movedPosition);
 		// Delete the set node
 		WorkflowPage.getters.canvasNodeByName(SET_NODE_NAME).click().click();
 		cy.get('body').type('{backspace}');
@@ -278,10 +283,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 3);
 		// Second undo: Should move first node to it's original position
 		WorkflowPage.actions.hitUndo();
-		WorkflowPage.getters
-			.canvasNodes()
-			.first()
-			.should('have.attr', 'style', 'left: 420px; top: 220px;');
+		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', initialPosition);
 		// Third undo: Should enable last node
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -291,10 +293,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		// Second redo: Should move the first node
 		WorkflowPage.actions.hitRedo();
-		WorkflowPage.getters
-			.canvasNodes()
-			.first()
-			.should('have.attr', 'style', 'left: 440px; top: 360px;');
+		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', movedPosition);
 		// Third redo: Should delete the Set node
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
