@@ -1,4 +1,3 @@
-import { within } from '@testing-library/vue';
 import {
 	DEFAULT_SETUP,
 	MAPPING_COLUMNS_RESPONSE,
@@ -168,7 +167,7 @@ describe('ResourceMapper.vue', () => {
 		expect(queryByText('First Name (using to match)')).not.toBeInTheDocument();
 	});
 
-	it.skip('uses field words defined in node definition', async () => {
+	it('uses field words defined in node definition', async () => {
 		const { getByText } = renderComponent(
 			{
 				props: {
