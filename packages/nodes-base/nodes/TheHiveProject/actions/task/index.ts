@@ -25,12 +25,12 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
-				action: 'Execute a responder on the specified task',
+				action: 'Execute responder on a task',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				action: 'Get a single task',
+				action: 'Get a task',
 			},
 			{
 				name: 'Search',

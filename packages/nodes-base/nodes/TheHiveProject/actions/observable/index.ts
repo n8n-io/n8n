@@ -21,22 +21,22 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				action: 'Create observable',
+				action: 'Create an observable',
 			},
 			{
 				name: 'Execute Analyzer',
 				value: 'executeAnalyzer',
-				action: 'Execute an responder on selected observable',
+				action: 'Execute analyzer on an observable',
 			},
 			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
-				action: 'Execute a responder on selected observable',
+				action: 'Execute responder on an observable',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				action: 'Get a single observable',
+				action: 'Get an observable',
 			},
 			{
 				name: 'Search',
@@ -46,7 +46,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				action: 'Update observable',
+				action: 'Update an observable',
 			},
 		],
 		displayOptions: {

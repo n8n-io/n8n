@@ -10,7 +10,8 @@ import { caseRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Create in ...',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Create in',
 		name: 'location',
 		type: 'options',
 		options: [

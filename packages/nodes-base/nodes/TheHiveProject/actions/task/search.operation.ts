@@ -21,7 +21,7 @@ const properties: INodeProperties[] = [
 		name: 'allCases',
 		type: 'boolean',
 		default: true,
-		description: 'Whether to search in all cases or only in selected case',
+		description: 'Whether to search in all cases or only in a selected case',
 	},
 	{
 		...caseRLC,

@@ -14,11 +14,10 @@ const properties: INodeProperties[] = [
 		displayName: 'Input Data Field Names',
 		name: 'inputDataFiels',
 		type: 'string',
-		placeholder: '“e.g. data, data2',
+		placeholder: 'e.g. data, data2',
 		default: 'data',
 		required: true,
-		description:
-			'The names of the fields in a input item which contain the binary data to be send as attachments',
+		hint: 'The names of the input fields containing the binary file data to be sent as attachments',
 	},
 	{
 		displayName: 'Options',
@@ -28,11 +27,10 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Can Rename',
+				displayName: 'Rename Files',
 				name: 'canRename',
 				type: 'boolean',
-				description:
-					'Whether set to true, the files can be renamed if they already exist with the same name',
+				description: 'Whether to rename the file in case a file with the same name already exists',
 				default: false,
 			},
 		],

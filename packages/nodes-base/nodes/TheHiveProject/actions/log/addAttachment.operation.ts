@@ -9,11 +9,10 @@ const properties: INodeProperties[] = [
 		displayName: 'Input Data Field Names',
 		name: 'inputDataFiels',
 		type: 'string',
-		placeholder: '“e.g. data, data2',
+		placeholder: 'e.g. data, data2',
 		default: 'data',
 		required: true,
-		description:
-			'The names of the fields in a input item which contain the binary data to be send as attachments',
+		hint: 'The names of the input fields containing the binary file data to be sent as attachments',
 	},
 ];
 

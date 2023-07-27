@@ -10,7 +10,8 @@ import { alertRLC, caseRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Add to ...',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Add to',
 		name: 'addTo',
 		type: 'options',
 		options: [

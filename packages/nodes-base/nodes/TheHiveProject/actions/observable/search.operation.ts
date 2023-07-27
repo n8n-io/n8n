@@ -19,12 +19,13 @@ import type { QueryScope } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Search in ...',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Search in',
 		name: 'searchIn',
 		type: 'options',
 		default: 'all',
 		description:
-			'Whether to search for observables in alerts and cases or from specific case or alert',
+			'Whether to search for observables in all alerts and cases or in a specific case or alert',
 		options: [
 			{
 				name: 'Alerts and Cases',

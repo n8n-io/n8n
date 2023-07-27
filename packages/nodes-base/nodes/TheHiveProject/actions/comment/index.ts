@@ -16,9 +16,9 @@ export const description: INodeProperties[] = [
 		default: 'add',
 		options: [
 			{
-				name: 'Add',
+				name: 'Create',
 				value: 'add',
-				action: 'Add a comment to a case or alert',
+				action: 'Create a comment in a case or alert',
 			},
 			{
 				name: 'Delete',

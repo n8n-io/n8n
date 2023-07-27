@@ -14,7 +14,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		description: 'ID of the observable',
+		description: 'The ID of the observable to retrieve',
 	},
 ];
 

@@ -22,12 +22,12 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				action: 'Create alert',
+				action: 'Create an alert',
 			},
 			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
-				action: 'Execute a responder on the specified alert',
+				action: 'Execute responder on an alert',
 			},
 			{
 				name: 'Get',
@@ -37,12 +37,12 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Merge Into Case',
 				value: 'merge',
-				action: 'Merge alert into an existing case',
+				action: 'Merge an alert into a case',
 			},
 			{
 				name: 'Promote to Case',
 				value: 'promote',
-				action: 'Promote an alert into a case',
+				action: 'Promote an alert to a case',
 			},
 			{
 				name: 'Search',
@@ -52,12 +52,12 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				action: 'Update alert',
+				action: 'Update an alert',
 			},
 			{
 				name: 'Update Status',
 				value: 'status',
-				action: 'Update alert status',
+				action: 'Update an alert status',
 			},
 		],
 		displayOptions: {
