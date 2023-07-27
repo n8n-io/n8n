@@ -1,6 +1,14 @@
 <template>
-	<ModalDrawer :name="VALUE_SURVEY_MODAL_KEY" :eventBus="modalBus" :beforeClose="closeDialog" :modal="false"
-		:wrapperClosable="false" direction="btt" width="120px" :class="$style.valueSurvey">
+	<ModalDrawer
+		:name="VALUE_SURVEY_MODAL_KEY"
+		:eventBus="modalBus"
+		:beforeClose="closeDialog"
+		:modal="false"
+		:wrapperClosable="false"
+		direction="btt"
+		width="120px"
+		:class="$style.valueSurvey"
+	>
 		<template #header>
 			<div :class="$style.title">
 				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ getTitle }}</n8n-heading>
@@ -11,8 +19,12 @@
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
-							<n8n-button type="tertiary" :label="(value - 1).toString()"
-								@click="selectSurveyValue((value - 1).toString())" square />
+							<n8n-button
+								type="tertiary"
+								:label="(value - 1).toString()"
+								@click="selectSurveyValue((value - 1).toString())"
+								square
+							/>
 						</div>
 					</div>
 					<div :class="$style.text">
@@ -22,7 +34,11 @@
 				</div>
 				<div v-else :class="$style.email">
 					<div :class="$style.input" @keyup.enter="send">
-						<n8n-input v-model="form.email" placeholder="Your email address" @update:modelValue="onInputChange" />
+						<n8n-input
+							v-model="form.email"
+							placeholder="Your email address"
+							@update:modelValue="onInputChange"
+						/>
 						<div :class="$style.button">
 							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
 						</div>
@@ -257,8 +273,7 @@ export default defineComponent({
 		margin: 0;
 		padding: 18px 0 16px;
 
-		button {
-			// close
+		button { // close
 			top: 12px;
 			right: 16px;
 			position: absolute;
