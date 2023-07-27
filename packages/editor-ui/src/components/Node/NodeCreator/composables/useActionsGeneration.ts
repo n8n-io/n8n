@@ -1,17 +1,23 @@
-import { startCase } from 'lodash-es';
+import { memoize, startCase } from 'lodash-es';
 import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import type { ActionTypeDescription, SimplifiedNodeType, ActionsRecord } from '@/Interface';
 
 import { i18n } from '@/plugins/i18n';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
+
+function translate(...args: Parameters<typeof i18n.baseText>) {
+	return i18n.baseText(...args);
+}
+// Memoize the translation function so we don't have to re-translate the same string
+// multiple times when generating the actions
+const cachedBaseText = memoize(translate, (...args) => JSON.stringify(args));
 
 const customNodeActionsParsers: {
 	[key: string]: (
@@ -26,7 +32,7 @@ const customNodeActionsParsers: {
 			(categoryItem): ActionTypeDescription => ({
 				...getNodeTypeBase(nodeTypeDescription),
 				actionKey: categoryItem.value as string,
-				displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
+				displayName: cachedBaseText('nodeCreator.actionsCategory.onEvent', {
 					interpolate: { event: startCase(categoryItem.name) },
 				}),
 				description: categoryItem.description || '',
@@ -40,8 +46,8 @@ const customNodeActionsParsers: {
 function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: string) {
 	const isTrigger = nodeTypeDescription.group.includes('trigger');
 	const category = isTrigger
-		? i18n.baseText('nodeCreator.actionsCategory.triggers')
-		: i18n.baseText('nodeCreator.actionsCategory.actions');
+		? cachedBaseText('nodeCreator.actionsCategory.triggers')
+		: cachedBaseText('nodeCreator.actionsCategory.actions');
 	return {
 		name: nodeTypeDescription.name,
 		group: nodeTypeDescription.group,
@@ -101,7 +107,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 			{
 				...getNodeTypeBase(nodeTypeDescription),
 				actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
-				displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
+				displayName: cachedBaseText('nodeCreator.actionsCategory.onNewEvent', {
 					interpolate: { event: nodeTypeDescription.displayName.replace('Trigger', '').trimEnd() },
 				}),
 				description: '',
@@ -125,7 +131,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 			actionKey: categoryItem.value as string,
 			displayName:
 				categoryItem.action ??
-				i18n.baseText('nodeCreator.actionsCategory.onEvent', {
+				cachedBaseText('nodeCreator.actionsCategory.onEvent', {
 					interpolate: { event: startCase(categoryItem.name) },
 				}),
 			description: categoryItem.description || '',
@@ -175,7 +181,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 						return {
 							...getNodeTypeBase(
 								nodeTypeDescription,
-								`${resourceOption.name} ${i18n.baseText('nodeCreator.actionsCategory.actions')}`,
+								`${resourceOption.name} ${cachedBaseText('nodeCreator.actionsCategory.actions')}`,
 							),
 							actionKey: operationOption.value as string,
 							description: operationOption?.description ?? '',
@@ -234,7 +240,7 @@ export function useActionsGenerator() {
 	}
 
 	function generateMergedNodesAndActions(nodeTypes: INodeTypeDescription[]) {
-		const visibleNodeTypes = deepCopy(nodeTypes);
+		const visibleNodeTypes = [...nodeTypes];
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
 
