@@ -17,7 +17,7 @@ import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
 
@@ -26,7 +26,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 64;
 
 @Entity()
-export class User extends AbstractEntity implements IUser {
+export class User extends WithTimestamps implements IUser {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
