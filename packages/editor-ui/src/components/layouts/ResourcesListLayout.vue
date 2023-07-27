@@ -480,6 +480,9 @@ export default defineComponent({
 		isOwnerSubview() {
 			this.sendSubviewTelemetry();
 		},
+		filters(value) {
+			this.filtersModel = value;
+		},
 		'filtersModel.ownedBy'(value) {
 			if (value) {
 				this.setOwnerSubview(false);
