@@ -505,7 +505,7 @@ export default defineComponent({
 		// why is this not a computed property? because it's a very expensive operation
 		// it requires expressions to resolve each subtitle...
 		// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
-		// so we only updating when node is mounted and when it's opened and closed (isActive)
+		// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 		setTimeout(() => {
 			try {
 				this.setSubtitle();
