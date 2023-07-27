@@ -101,13 +101,18 @@ export default defineComponent({
 	data() {
 		return {
 			postAuthenticateDone: false,
+			settingsInitialised: false,
 			loading: true,
 		};
 	},
 	methods: {
 		async initSettings(): Promise<void> {
+			// The settings should only be initialized once
+			if (this.settingsInitialised) return;
+
 			try {
 				await this.settingsStore.getSettings();
+				this.settingsInitialised = true;
 			} catch (e) {
 				this.showToast({
 					title: this.$locale.baseText('startupError'),
@@ -139,7 +144,6 @@ export default defineComponent({
 			}
 		},
 		async initialize(): Promise<void> {
-			await this.initSettings();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage(): void {
@@ -279,7 +283,8 @@ export default defineComponent({
 				void this.postAuthenticate();
 			}
 		},
-		$route(route) {
+		async $route(route) {
+			await this.initSettings();
 			this.authenticate();
 			this.redirectIfNecessary();
 
