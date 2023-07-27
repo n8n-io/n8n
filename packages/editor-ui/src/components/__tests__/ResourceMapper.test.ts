@@ -108,7 +108,7 @@ describe('ResourceMapper.vue', () => {
 		expect(queryByTestId('mapping-mode-select')).not.toBeInTheDocument();
 	});
 
-	it.skip('renders field on top of the list when they are selected for matching', async () => {
+	it('renders field on top of the list when they are selected for matching', async () => {
 		const { container, getByTestId } = renderComponent(
 			{
 				props: {
@@ -129,12 +129,12 @@ describe('ResourceMapper.vue', () => {
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
 		// Id should be the first field in the list
 		expect(container.querySelector('.parameter-item')).toContainHTML('id (using to match)');
-		// // Select Last Name as matching column
-		await userEvent.click(getByTestId('matching-column-select'));
-		const matchingColumnDropdown = getByTestId('matching-column-select');
-		await userEvent.click(within(matchingColumnDropdown).getByText('Last Name'));
-		// // Now, last name should be the first field in the list
-		expect(container.querySelector('.parameter-item')).toContainHTML('Last Name (using to match)');
+		// Select Last Name as matching column
+		await userEvent.click(getByTestId('matching-column-option-Last name'));
+		// Now, last name should be the first field in the list
+		expect(container.querySelector('.parameter-item  div.title')).toHaveTextContent(
+			'Last name (using to match)',
+		);
 	});
 
 	it.skip('renders selected matching columns properly when multiple key matching is enabled', async () => {
