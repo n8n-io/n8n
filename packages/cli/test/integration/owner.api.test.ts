@@ -55,7 +55,6 @@ describe('POST /owner/setup', () => {
 			personalizationAnswers,
 			globalRole,
 			password,
-			resetPasswordToken,
 			isPending,
 			apiKey,
 		} = response.body.data;
@@ -67,7 +66,6 @@ describe('POST /owner/setup', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
