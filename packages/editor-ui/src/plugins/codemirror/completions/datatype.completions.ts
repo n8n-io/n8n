@@ -1,4 +1,4 @@
-import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
+import { IDataObject, DocMetadata, NativeDoc, Expression } from 'n8n-workflow';
 import { ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
@@ -46,8 +46,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
-	} else if (/\$secrets(\.[a-zA-Z0-9_]+)+$/.test(base) && isCredential) {
-		options = secretOptions(base);
+	} else if (/\$secrets\./.test(base) && isCredential) {
+		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
 	} else {
@@ -359,32 +359,36 @@ export const variablesOptions = () => {
 };
 
 export const secretOptions = (base: string) => {
-	const splitBase = base.split('.').slice(1);
-	const provider = splitBase.shift()!;
 	const externalSecretsStore = useExternalSecretsStore();
-	const secrets = externalSecretsStore.secrets;
-	const path = splitBase.join('.');
+	let resolved: Resolved;
 
-	return secrets[provider]
-		?.filter((s) => s.startsWith(path))
-		.map((s) => s.substring(path === '' ? 0 : path.length + 1))
-		.map((s) => s.split('.'))
-		.reduce((acc, curr) => {
-			if (!acc.includes(curr[0]) && curr[0]) {
-				acc.push(curr[0]);
-			}
-			return acc;
-		}, [])
-		.map((secret) =>
+	try {
+		resolved = Expression.resolveWithoutWorkflow(`{{ ${base} }}`, {
+			$secrets: externalSecretsStore.secretsAsObject,
+		});
+	} catch {
+		return [];
+	}
+
+	if (resolved === null) return [];
+
+	try {
+		if (typeof resolved !== 'object') {
+			return [];
+		}
+		return Object.entries(resolved).map(([secret, value]) =>
 			createCompletionOption('Object', secret, 'keyword', {
 				doc: {
 					name: secret,
-					returnType: 'string',
+					returnType: typeof value,
 					description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
 					docURL: 'https://docs.n8n.io/',
 				},
 			}),
 		);
+	} catch {
+		return [];
+	}
 };
 
 export const secretProvidersOptions = () => {
