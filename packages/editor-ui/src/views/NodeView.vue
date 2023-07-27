@@ -3762,12 +3762,8 @@ export default defineComponent({
 				const actionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
 					if (name === 'addNode' && args[0].type === nodeTypeName) {
 						after(async () => {
-							this.instance?.setSuspendDrawing(true);
 							const lastAddedNode = this.nodes[this.nodes.length - 1];
 							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
-
-							await this.$nextTick();
-							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
 
 							// Position the added node to the right side of the previously added one
 							lastAddedNode.position = [
@@ -3776,9 +3772,9 @@ export default defineComponent({
 									NodeViewUtils.GRID_SIZE,
 								previouslyAddedNode.position[1],
 							];
-
 							await this.$nextTick();
-							this.instance?.setSuspendDrawing(false, true);
+							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0),
+
 							actionWatcher();
 						});
 					}
