@@ -14,7 +14,7 @@ import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableCredential } from './types/exportableCredential';
-import { Variables } from '@db/entities/Variables';
+import type { Variables } from '@db/entities/Variables';
 import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
@@ -576,7 +576,7 @@ export class SourceControlImportService {
 		if (overriddenKeys.length > 0 && valueOverrides) {
 			for (const key of overriddenKeys) {
 				result.imported.push(key);
-				const newVariable = new Variables({ key, value: valueOverrides[key] });
+				const newVariable = Db.collections.Variables.create({ key, value: valueOverrides[key] });
 				await Db.collections.Variables.save(newVariable);
 			}
 		}
