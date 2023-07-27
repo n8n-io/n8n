@@ -3778,7 +3778,7 @@ export default defineComponent({
 								previouslyAddedNode.position[1],
 							];
 							await this.$nextTick();
-							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0),
+							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
 
 							actionWatcher();
 						});
