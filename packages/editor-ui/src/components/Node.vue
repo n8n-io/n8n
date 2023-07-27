@@ -502,7 +502,17 @@ export default defineComponent({
 		}
 	},
 	mounted() {
-		this.setSubtitle();
+		// why is this not a computed property? because it's a very expensive operation
+		// it requires expressions to resolve each subtitle...
+		// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
+		// so we only updating when node is mounted and when it's opened and closed (isActive)
+		setTimeout(() => {
+			try {
+				this.setSubtitle();
+			} catch (e) {
+				// avoid breaking UI if expression error occurs
+			}
+		}, 0);
 		if (this.nodeRunData) {
 			setTimeout(() => {
 				this.$emit('run', {
