@@ -1827,6 +1827,10 @@ export interface WorkflowTestData {
 			[key: string]: any[][];
 		};
 	};
+	trigger?: {
+		mode: WorkflowExecuteMode;
+		input: INodeExecutionData;
+	};
 }
 
 export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
