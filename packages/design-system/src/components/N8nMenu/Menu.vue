@@ -23,7 +23,7 @@
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
-						@select="onSelect"
+						:handle-select="onSelect"
 					/>
 				</el-menu>
 			</div>
@@ -38,7 +38,7 @@
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
-						@select="onSelect"
+						:handle-select="onSelect"
 					/>
 				</el-menu>
 				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
@@ -139,17 +139,26 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onSelect(option: string): void {
-			if (this.mode === 'tabs') {
-				this.activeTab = option;
+		onSelect(item: IMenuItem): void {
+			if (item && item.type === 'link' && item.properties) {
+				const href: string = item.properties.href;
+				if (!href) {
+					return;
+				}
+
+				if (item.properties.newWindow) {
+					window.open(href);
+				} else {
+					window.location.assign(item.properties.href);
+				}
 			}
-			this.$emit('select', option);
-			this.$emit('update:modelValue', option);
-		},
-	},
-	watch: {
-		modelValue(value: string) {
-			this.activeTab = value;
+
+			if (this.mode === 'tabs') {
+				this.activeTab = item.id;
+			}
+
+			this.$emit('select', item.id);
+			this.$emit('update:modelValue', item.id);
 		},
 	},
 });
