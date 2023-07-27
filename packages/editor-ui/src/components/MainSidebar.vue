@@ -337,18 +337,21 @@ export default defineComponent({
 			};
 		},
 	},
-	async mounted() {
+	mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
 			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 		}
-		if (window.innerWidth < 900 || this.uiStore.isNodeView) {
-			this.uiStore.sidebarMenuCollapsed = true;
-		} else {
-			this.uiStore.sidebarMenuCollapsed = false;
-		}
-		await this.$nextTick();
-		this.fullyExpanded = !this.isCollapsed;
+
+		void this.$nextTick(() => {
+			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
+				this.uiStore.sidebarMenuCollapsed = true;
+			} else {
+				this.uiStore.sidebarMenuCollapsed = false;
+			}
+
+			this.fullyExpanded = !this.isCollapsed;
+		});
 	},
 	created() {
 		window.addEventListener('resize', this.onResize);
