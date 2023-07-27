@@ -354,6 +354,7 @@
       "dist/credentials/VonageApi.credentials.js",
       "dist/credentials/VenafiTlsProtectCloudApi.credentials.js",
       "dist/credentials/VenafiTlsProtectDatacenterApi.credentials.js",
+      "dist/credentials/WazuhApi.credentials.js",
       "dist/credentials/WebflowApi.credentials.js",
       "dist/credentials/WebflowOAuth2Api.credentials.js",
       "dist/credentials/WekanApi.credentials.js",
@@ -373,6 +374,7 @@
       "dist/credentials/ZohoOAuth2Api.credentials.js",
       "dist/credentials/ZoomApi.credentials.js",
       "dist/credentials/ZoomOAuth2Api.credentials.js",
+      "dist/credentials/ZscalerZiaApi.credentials.js",
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
