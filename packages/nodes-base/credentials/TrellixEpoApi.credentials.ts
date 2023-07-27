@@ -1,11 +1,11 @@
 import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class F5BigIpApi implements ICredentialType {
-	name = 'f5BigIpApi';
+export class TrellixEpoApi implements ICredentialType {
+	name = 'trellixEpoApi';
 
-	displayName = 'F5 Big-IP API';
+	displayName = 'Trellix (McAfee) ePolicy Orchestrator API';
 
-	icon = 'file:icons/F5.svg';
+	icon = 'file:icons/Trellix.svg';
 
 	properties: INodeProperties[] = [
 		{

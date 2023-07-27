@@ -1,9 +1,11 @@
 import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class ImpervaWAFApi implements ICredentialType {
-	name = 'impervaWAFApi';
+export class ImpervaWafApi implements ICredentialType {
+	name = 'impervaWafApi';
 
 	displayName = 'Imperva WAF API';
+
+	icon = 'file:icons/Imperva.svg';
 
 	properties: INodeProperties[] = [
 		{
@@ -11,6 +13,7 @@ export class ImpervaWAFApi implements ICredentialType {
 			name: 'apiID',
 			type: 'string',
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'API Key',
@@ -18,6 +21,7 @@ export class ImpervaWAFApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			required: true,
 		},
 	];
 

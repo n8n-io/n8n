@@ -1,9 +1,4 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class CiscoMerakiApi implements ICredentialType {
 	name = 'ciscoMerakiApi';
@@ -14,8 +9,8 @@ export class CiscoMerakiApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Access Token',
-			name: 'accessToken',
+			displayName: 'API Key',
+			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
@@ -26,15 +21,15 @@ export class CiscoMerakiApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'X-Cisco-Meraki-API-Key': '={{$credentials.accessToken}}',
+				'X-Cisco-Meraki-API-Key': '={{$credentials.apiKey}}',
 			},
 		},
 	};
 
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://api.meraki.com/api/v1',
-			url: '/organizations',
-		},
-	};
+	// test: ICredentialTestRequest = {
+	// 	request: {
+	// 		baseURL: 'https://api.meraki.com/api/v1',
+	// 		url: '/organizations',
+	// 	},
+	// };
 }
