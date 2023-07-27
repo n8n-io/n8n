@@ -3762,6 +3762,7 @@ export default defineComponent({
 				const actionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
 					if (name === 'addNode' && args[0].type === nodeTypeName) {
 						after(async () => {
+							this.instance?.setSuspendDrawing(true);
 							const lastAddedNode = this.nodes[this.nodes.length - 1];
 							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
 
@@ -3775,6 +3776,9 @@ export default defineComponent({
 									NodeViewUtils.GRID_SIZE,
 								previouslyAddedNode.position[1],
 							];
+
+							await this.$nextTick();
+							this.instance?.setSuspendDrawing(false, true);
 							actionWatcher();
 						});
 					}
