@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataManager, WorkflowExecute } from 'n8n-core';
+import { WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
@@ -34,10 +34,8 @@ import { fork } from 'child_process';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
-import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
-	IExecutionFlattedDb,
 	IProcessMessageDataHook,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
@@ -45,7 +43,6 @@ import type {
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobQueue, JobResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -57,6 +54,7 @@ import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+import { ExecutionRepository } from '@db/repositories';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions;
@@ -127,14 +125,22 @@ export class WorkflowRunner {
 				}
 			}
 
-			const executionFlattedData = await Db.collections.Execution.findOneBy({ id: executionId });
-
-			void Container.get(InternalHooks).onWorkflowCrashed(
+			const executionFlattedData = await Container.get(ExecutionRepository).findSingleExecution(
 				executionId,
-				executionMode,
-				executionFlattedData?.workflowData,
-				executionFlattedData?.metadata,
+				{
+					includeData: true,
+				},
 			);
+
+			if (executionFlattedData) {
+				void Container.get(InternalHooks).onWorkflowCrashed(
+					executionId,
+					executionMode,
+					executionFlattedData?.workflowData,
+					// TODO: get metadata to be sent here
+					// executionFlattedData?.metadata,
+				);
+			}
 		} catch {
 			// Ignore errors
 		}
@@ -566,10 +572,16 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				const executionDb = (await Db.collections.Execution.findOneBy({
-					id: executionId,
-				})) as IExecutionFlattedDb;
-				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
+				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+					executionId,
+					{
+						includeData: true,
+						unflattenData: true,
+					},
+				);
+				if (!fullExecutionData) {
+					return reject(new Error(`Could not find execution with id "${executionId}"`));
+				}
 				const runData = {
 					data: fullExecutionData.data,
 					finished: fullExecutionData.finished,
@@ -597,8 +609,7 @@ export class WorkflowRunner {
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
-						await Db.collections.Execution.delete(executionId);
-						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(executionId);
+						await Container.get(ExecutionRepository).deleteExecution(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {

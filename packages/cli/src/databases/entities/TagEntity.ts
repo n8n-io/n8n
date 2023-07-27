@@ -1,17 +1,11 @@
-import { Column, Entity, Generated, Index, ManyToMany, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Index, ManyToMany, OneToMany } from 'typeorm';
 import { IsString, Length } from 'class-validator';
-
-import { idStringifier } from '../utils/transformers';
 import type { WorkflowEntity } from './WorkflowEntity';
 import type { WorkflowTagMapping } from './WorkflowTagMapping';
-import { AbstractEntity } from './AbstractEntity';
+import { WithTimestampsAndStringId } from './AbstractEntity';
 
 @Entity()
-export class TagEntity extends AbstractEntity {
-	@Generated()
-	@PrimaryColumn({ transformer: idStringifier })
-	id: string;
-
+export class TagEntity extends WithTimestampsAndStringId {
 	@Column({ length: 24 })
 	@Index({ unique: true })
 	@IsString({ message: 'Tag name must be of type string.' })

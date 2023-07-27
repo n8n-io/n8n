@@ -19,14 +19,14 @@ import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldNa
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
-interface Props {
+type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
 	path: string;
 	inputSize: string;
 	labelSize: string;
-	dependentParametersValues: string | null;
-}
+	dependentParametersValues?: string | null;
+};
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -111,7 +111,10 @@ onMounted(async () => {
 			matchingColumns: nodeValues.matchingColumns,
 		};
 	}
-	await initFetching(hasSchema);
+	if (!hasSchema) {
+		// Only fetch a schema if it's not already set
+		await initFetching();
+	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
 		setDefaultFieldValues();
@@ -167,7 +170,9 @@ const hasAvailableMatchingColumns = computed<boolean>(() => {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
-					field.canBeUsedToMatch !== false && field.display !== false && field.removed !== true,
+					(field.canBeUsedToMatch || field.defaultMatch) &&
+					field.display !== false &&
+					field.removed !== true,
 			).length > 0
 		);
 	}
@@ -178,7 +183,7 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 	return state.paramValue.schema.length === 1
 		? [state.paramValue.schema[0].id]
 		: state.paramValue.schema.reduce((acc, field) => {
-				if (field.defaultMatch && field.canBeUsedToMatch === true) {
+				if (field.defaultMatch) {
 					acc.push(field.id);
 				}
 				return acc;

@@ -1,5 +1,6 @@
 import type express from 'express';
 import type {
+	Banners,
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
@@ -33,10 +34,6 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	lastName: string;
 }
 export class UserSettingsUpdatePayload {
-	@IsBoolean({ message: 'showUserActivationSurvey should be a boolean' })
-	@IsOptional()
-	showUserActivationSurvey: boolean;
-
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
 	userActivated: boolean;
@@ -185,22 +182,21 @@ export declare namespace MeRequest {
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
 
+export interface UserSetupPayload {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+}
+
 // ----------------------------------
 //             /owner
 // ----------------------------------
 
 export declare namespace OwnerRequest {
-	type Post = AuthenticatedRequest<
-		{},
-		{},
-		Partial<{
-			email: string;
-			password: string;
-			firstName: string;
-			lastName: string;
-		}>,
-		{}
-	>;
+	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
+
+	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: Banners }>, {}>;
 }
 
 // ----------------------------------

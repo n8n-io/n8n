@@ -30,10 +30,11 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
-	USER_ACTIVATION_SURVEY_MODAL,
-	VERSION_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
 import type {
+	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
 	IFakeDoorLocation,
 	IMenuItem,
@@ -41,19 +42,22 @@ import type {
 	IOnboardingCallPrompt,
 	IUser,
 	UIState,
+	UTMCampaign,
 	XYPosition,
 } from '@/Interface';
-import Vue from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
-import { useUsageStore } from './usage.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
+import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { getStyleTokenValue } from '@/utils';
+import { dismissBannerPermanently } from '@/api/ui';
+import type { Banners } from 'n8n-workflow';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -135,10 +139,10 @@ export const useUIStore = defineStore(STORES.UI, {
 				activeId: null,
 				showAuthSelector: false,
 			},
-			[USER_ACTIVATION_SURVEY_MODAL]: {
+			[SOURCE_CONTROL_PUSH_MODAL_KEY]: {
 				open: false,
 			},
-			[VERSION_CONTROL_PUSH_MODAL_KEY]: {
+			[SOURCE_CONTROL_PULL_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -148,16 +152,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		currentView: '',
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
-			{
-				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
-				featureName: 'fakeDoor.settings.environments.name',
-				icon: 'server',
-				infoText: 'fakeDoor.settings.environments.infoText',
-				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
-				uiLocations: ['settings'],
-			},
 			{
 				id: FAKE_DOOR_FEATURES.SSO,
 				featureName: 'fakeDoor.settings.sso.name',
@@ -185,6 +179,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
+		banners: {
+			V1: { dismissed: true },
+			TRIAL: { dismissed: true },
+			TRIAL_OVER: { dismissed: true },
+		},
+		bannersHeight: 0,
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
@@ -322,13 +322,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		upgradeLinkUrl() {
 			return (source: string, utm_campaign: string): string => {
-				const usageStore = useUsageStore();
 				const linkUrlTranslationKey = this.contextBasedTranslationKeys
 					.upgradeLinkUrl as BaseTextKey;
 				let linkUrl = locale.baseText(linkUrlTranslationKey);
 
 				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${usageStore.viewPlansUrl}&source=${source}`;
+					linkUrl = `${linkUrl}?ref=${source}`;
 				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
 					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
 				}
@@ -336,38 +335,68 @@ export const useUIStore = defineStore(STORES.UI, {
 				return linkUrl;
 			};
 		},
+		headerHeight() {
+			return Number(getStyleTokenValue('--header-height'));
+		},
 	},
 	actions: {
-		setMode(name: string, mode: string): void {
-			Vue.set(this.modals[name], 'mode', mode);
+		setBanners(banners: UIState['banners']): void {
+			this.banners = {
+				...this.banners,
+				...banners,
+			};
 		},
-		setActiveId(name: string, id: string): void {
-			Vue.set(this.modals[name], 'activeId', id);
+		setMode(name: keyof Modals, mode: string): void {
+			this.modals[name] = {
+				...this.modals[name],
+				mode,
+			};
 		},
-		setShowAuthSelector(name: string, show: boolean) {
-			Vue.set(this.modals[name], 'showAuthSelector', show);
+		setActiveId(name: keyof Modals, activeId: string): void {
+			this.modals[name] = {
+				...this.modals[name],
+				activeId,
+			};
 		},
-		setModalData(payload: { name: string; data: Record<string, unknown> }) {
-			Vue.set(this.modals[payload.name], 'data', payload.data);
+		setShowAuthSelector(name: keyof Modals, showAuthSelector: boolean) {
+			this.modals[name] = {
+				...this.modals[name],
+				showAuthSelector,
+			} as NewCredentialsModal;
 		},
-		openModal(name: string): void {
-			Vue.set(this.modals[name], 'open', true);
-			this.modalStack = [name].concat(this.modalStack);
+		setModalData(payload: { name: keyof Modals; data: Record<string, unknown> }) {
+			this.modals[payload.name] = {
+				...this.modals[payload.name],
+				data: payload.data,
+			};
 		},
-		openModalWithData(payload: { name: string; data: Record<string, unknown> }): void {
+		openModal(name: keyof Modals): void {
+			this.modals[name] = {
+				...this.modals[name],
+				open: true,
+			};
+			this.modalStack = [name].concat(this.modalStack) as string[];
+		},
+		openModalWithData(payload: { name: keyof Modals; data: Record<string, unknown> }): void {
 			this.setModalData(payload);
 			this.openModal(payload.name);
 		},
-		closeModal(name: string): void {
-			Vue.set(this.modals[name], 'open', false);
+		closeModal(name: keyof Modals): void {
+			this.modals[name] = {
+				...this.modals[name],
+				open: false,
+			};
 			this.modalStack = this.modalStack.filter((openModalName: string) => {
 				return name !== openModalName;
 			});
 		},
 		closeAllModals(): void {
-			Object.keys(this.modals).forEach((name: string) => {
+			Object.keys(this.modals).forEach((name) => {
 				if (this.modals[name].open) {
-					Vue.set(this.modals[name], 'open', false);
+					this.modals[name] = {
+						...this.modals[name],
+						open: false,
+					};
 				}
 			});
 			this.modalStack = [];
@@ -391,10 +420,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		setDraggableStickyPos(position: XYPosition): void {
-			Vue.set(this.draggable, 'stickyPosition', position);
+			this.draggable = {
+				...this.draggable,
+				stickyPosition: position,
+			};
 		},
 		setDraggableCanDrop(canDrop: boolean): void {
-			Vue.set(this.draggable, 'canDrop', canDrop);
+			this.draggable = {
+				...this.draggable,
+				canDrop,
+			};
 		},
 		openDeleteUserModal(id: string): void {
 			this.setActiveId(DELETE_USER_MODAL_KEY, id);
@@ -466,17 +501,23 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		resetSelectedNodes(): void {
-			Vue.set(this, 'selectedNodes', []);
+			this.selectedNodes = [];
 		},
 		addSidebarMenuItems(menuItems: IMenuItem[]) {
 			const updated = this.sidebarMenuItems.concat(menuItems);
-			Vue.set(this, 'sidebarMenuItems', updated);
+			this.sidebarMenuItems = updated;
 		},
 		setCurlCommand(payload: { name: string; command: string }): void {
-			Vue.set(this.modals[payload.name], 'curlCommand', payload.command);
+			this.modals[payload.name] = {
+				...this.modals[payload.name],
+				curlCommand: payload.command,
+			};
 		},
 		setHttpNodeParameters(payload: { name: string; parameters: string }): void {
-			Vue.set(this.modals[payload.name], 'httpNodeParameters', payload.parameters);
+			this.modals[payload.name] = {
+				...this.modals[payload.name],
+				httpNodeParameters: payload.parameters,
+			};
 		},
 		toggleSidebarMenuCollapse(): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
@@ -485,7 +526,11 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(source: string, utm_campaign: string, mode: 'open' | 'redirect' = 'open'): void {
+		goToUpgrade(
+			source: CloudUpdateLinkSourceType,
+			utm_campaign: UTMCampaign,
+			mode: 'open' | 'redirect' = 'open',
+		): void {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
 			useTelemetryStore().track('User clicked upgrade CTA', {
@@ -501,6 +546,28 @@ export const useUIStore = defineStore(STORES.UI, {
 			} else {
 				location.href = this.upgradeLinkUrl(source, utm_campaign);
 			}
+		},
+		async dismissBanner(
+			name: Banners,
+			type: 'temporary' | 'permanent' = 'temporary',
+		): Promise<void> {
+			if (type === 'permanent') {
+				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+					bannerName: name,
+					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
+				});
+				this.banners[name].dismissed = true;
+				this.banners[name].type = 'permanent';
+				return;
+			}
+			this.banners[name].dismissed = true;
+			this.banners[name].type = 'temporary';
+		},
+		showBanner(name: Banners): void {
+			this.banners[name].dismissed = false;
+		},
+		updateBannersHeight(newHeight: number): void {
+			this.bannersHeight = newHeight;
 		},
 	},
 });

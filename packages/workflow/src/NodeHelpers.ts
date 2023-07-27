@@ -12,8 +12,8 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import get from 'lodash.get';
-import isEqual from 'lodash.isequal';
+import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 
 import type {
 	IContextObject,
@@ -1601,6 +1601,8 @@ export function mergeNodeProperties(
 ): void {
 	let existingIndex: number;
 	for (const property of addProperties) {
+		if (property.doNotInherit) continue;
+
 		existingIndex = mainProperties.findIndex((element) => element.name === property.name);
 
 		if (existingIndex === -1) {

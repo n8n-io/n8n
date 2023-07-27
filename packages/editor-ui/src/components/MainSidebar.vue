@@ -29,10 +29,10 @@
 			<template #beforeLowerMenu>
 				<ExecutionsUsage
 					:cloud-plan-data="currentPlanAndUsageData"
-					v-if="!isCollapsed && userIsTrialing"
+					v-if="fullyExpanded && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
-				<div v-if="hasVersionUpdates || versionControlStore.preferences.connected">
+				<div>
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
@@ -46,10 +46,7 @@
 							}}
 						</n8n-text>
 					</div>
-					<MainSidebarVersionControl
-						v-if="versionControlStore.preferences.connected"
-						:is-collapsed="isCollapsed"
-					/>
+					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -92,6 +89,7 @@
 						<n8n-action-dropdown
 							:items="userMenuItems"
 							placement="top-start"
+							data-test-id="user-menu"
 							@select="onUserActionToggle"
 						/>
 					</div>
@@ -115,24 +113,26 @@ import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useVersionsStore } from '@/stores/versions.store';
+import {
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useWorkflowsStore,
+	useRootStore,
+	useVersionsStore,
+	useCloudPlanStore,
+	useSourceControlStore,
+} from '@/stores/';
 import { isNavigationFailure } from 'vue-router';
-import { useVersionControlStore } from '@/stores/versionControl.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
-import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
+import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
 		ExecutionsUsage,
-		MainSidebarVersionControl,
+		MainSidebarSourceControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
 	setup(props) {
@@ -155,8 +155,8 @@ export default defineComponent({
 			useUsersStore,
 			useVersionsStore,
 			useWorkflowsStore,
-			useVersionControlStore,
 			useCloudPlanStore,
+			useSourceControlStore,
 		),
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
@@ -172,11 +172,7 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return (
-				this.settingsStore.isUserManagementEnabled &&
-				this.usersStore.canUserAccessSidebarUserInfo &&
-				this.usersStore.currentUser !== null
-			);
+			return this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -197,6 +193,23 @@ export default defineComponent({
 			const items: IMenuItem[] = [];
 			const injectedItems = this.uiStore.sidebarMenuItems;
 
+			const workflows: IMenuItem = {
+				id: 'workflows',
+				icon: 'network-wired',
+				label: this.$locale.baseText('mainSidebar.workflows'),
+				position: 'top',
+				activateOnRouteNames: [VIEWS.WORKFLOWS],
+			};
+
+			if (this.sourceControlStore.preferences.branchReadOnly) {
+				workflows.secondaryIcon = {
+					name: 'lock',
+					tooltip: {
+						content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
+					},
+				};
+			}
+
 			if (injectedItems && injectedItems.length > 0) {
 				for (const item of injectedItems) {
 					items.push({
@@ -213,13 +226,7 @@ export default defineComponent({
 			}
 
 			const regularItems: IMenuItem[] = [
-				{
-					id: 'workflows',
-					icon: 'network-wired',
-					label: this.$locale.baseText('mainSidebar.workflows'),
-					position: 'top',
-					activateOnRouteNames: [VIEWS.WORKFLOWS],
-				},
+				workflows,
 				{
 					id: 'templates',
 					icon: 'box-open',
@@ -540,8 +547,9 @@ export default defineComponent({
 .updates {
 	display: flex;
 	align-items: center;
-	height: 26px;
 	cursor: pointer;
+	padding: var(--spacing-2xs) var(--spacing-l);
+	margin: var(--spacing-2xs) 0 0;
 
 	svg {
 		color: var(--color-text-base) !important;

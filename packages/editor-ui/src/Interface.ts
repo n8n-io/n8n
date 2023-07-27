@@ -34,6 +34,7 @@ import type {
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
+	Banners,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -60,6 +61,10 @@ declare global {
 						distinctId?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+					};
+					session_recording?: {
+						maskAllInputs?: boolean;
+						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
 					};
 				},
 			): void;
@@ -702,6 +707,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	maxExecutionTimeout?: number;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
+	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
 }
 
 export interface ITimeoutHMS {
@@ -975,13 +981,10 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export type Modals =
-	| {
-			[key: string]: ModalState;
-	  }
-	| {
-			[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
-	  };
+export type Modals = {
+	[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
+	[key: string]: ModalState;
+};
 
 export type ModalState = {
 	open: boolean;
@@ -1070,7 +1073,10 @@ export interface UIState {
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
+	bannersHeight: number;
+	banners: { [key in Banners]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
 }
+
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;
@@ -1442,11 +1448,9 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
-export type VersionControlPreferences = {
+export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
-	authorName: string;
-	authorEmail: string;
 	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
@@ -1455,7 +1459,7 @@ export type VersionControlPreferences = {
 	currentBranch?: string;
 };
 
-export interface VersionControlStatus {
+export interface SourceControlStatus {
 	ahead: number;
 	behind: number;
 	conflicted: string[];
@@ -1475,7 +1479,7 @@ export interface VersionControlStatus {
 	tracking: null;
 }
 
-export interface VersionControlAggregatedFile {
+export interface SourceControlAggregatedFile {
 	conflict: boolean;
 	file: string;
 	id: string;
@@ -1483,6 +1487,7 @@ export interface VersionControlAggregatedFile {
 	name: string;
 	status: string;
 	type: string;
+	updatedAt?: string;
 }
 
 export declare namespace Cloud {
@@ -1523,3 +1528,35 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
+
+export type CloudUpdateLinkSourceType =
+	| 'canvas-nav'
+	| 'custom-data-filter'
+	| 'workflow_sharing'
+	| 'credential_sharing'
+	| 'settings-n8n-api'
+	| 'audit-logs'
+	| 'ldap'
+	| 'log-streaming'
+	| 'source-control'
+	| 'sso'
+	| 'usage_page'
+	| 'settings-users'
+	| 'variables';
+
+export type UTMCampaign =
+	| 'upgrade-custom-data-filter'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-workflow-sharing'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-credentials-sharing'
+	| 'upgrade-workflow-sharing'
+	| 'upgrade-api'
+	| 'upgrade-audit-logs'
+	| 'upgrade-ldap'
+	| 'upgrade-log-streaming'
+	| 'upgrade-source-control'
+	| 'upgrade-sso'
+	| 'open'
+	| 'upgrade-users'
+	| 'upgrade-variables';

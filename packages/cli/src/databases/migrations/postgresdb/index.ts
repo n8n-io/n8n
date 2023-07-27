@@ -37,6 +37,10 @@ import { UpdateRunningExecutionStatus1677236854063 } from './1677236854063-Updat
 import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-CreateExecutionMetadataTable';
 import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
+import { MigrateIntegerKeysToString1690000000000 } from './1690000000000-MigrateIntegerKeysToString';
+import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExecutionData';
+import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
+import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -77,4 +81,8 @@ export const postgresMigrations: Migration[] = [
 	CreateExecutionMetadataTable1679416281778,
 	CreateVariables1677501636754,
 	AddUserActivatedProperty1681134145996,
+	MigrateIntegerKeysToString1690000000000,
+	SeparateExecutionData1690000000020,
+	RemoveSkipOwnerSetup1681134145997,
+	RemoveResetPasswordColumns1690000000030,
 ];

@@ -7,9 +7,9 @@ import type {
 	IOAuth2Options,
 } from 'n8n-workflow';
 
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -128,6 +128,64 @@ export async function slackApiRequestAllItems(
 			responseData[propertyName].paging.page < responseData[propertyName].paging.pages)
 	);
 	return returnData;
+}
+
+export function getMessageContent(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	i: number,
+) {
+	const nodeVersion = this.getNode().typeVersion;
+
+	const includeLinkToWorkflow = this.getNodeParameter(
+		'otherOptions.includeLinkToWorkflow',
+		i,
+		nodeVersion >= 2.1 ? true : false,
+	) as IDataObject;
+
+	const { id } = this.getWorkflow();
+	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n&utm_medium=slackNode|n8n workflow>_`;
+	const messageType = this.getNodeParameter('messageType', i) as string;
+
+	let content: IDataObject = {};
+	const text = this.getNodeParameter('text', i, '') as string;
+	switch (messageType) {
+		case 'text':
+			content = {
+				text: includeLinkToWorkflow ? `${text}\n${automatedMessage}` : text,
+			};
+			break;
+		case 'block':
+			content = jsonParse(this.getNodeParameter('blocksUi', i) as string);
+
+			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
+				content.blocks.push({
+					type: 'section',
+					text: {
+						type: 'mrkdwn',
+						text: automatedMessage,
+					},
+				});
+			}
+			if (text) {
+				content.text = text;
+			}
+			break;
+		case 'attachment':
+			content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
+			if (includeLinkToWorkflow && Array.isArray(content.attachments)) {
+				content.attachments.push({
+					text: automatedMessage,
+				});
+			}
+			break;
+		default:
+			throw new NodeOperationError(
+				this.getNode(),
+				`The message type "${messageType}" is not known!`,
+			);
+	}
+
+	return content;
 }
 
 // tslint:disable-next-line:no-any

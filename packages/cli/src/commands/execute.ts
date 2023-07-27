@@ -10,7 +10,6 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 
@@ -37,9 +36,6 @@ export class Execute extends BaseCommand {
 		await this.initBinaryManager();
 		await this.initProcessedDataManager();
 		await this.initExternalHooks();
-
-		// Add event handlers
-		initEvents();
 	}
 
 	async run() {

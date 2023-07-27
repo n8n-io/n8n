@@ -88,10 +88,11 @@
 				:toastTitle="
 					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 				"
+				:redactValue="true"
 			/>
 		</template>
 		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
-			<div class="ph-no-capture">
+			<div>
 				<n8n-info-tip :bold="false">
 					{{
 						$locale.baseText('credentialEdit.credentialEdit.info.sharee', {
@@ -264,7 +265,7 @@ export default defineComponent({
 			);
 		},
 		credentialTypeName(): string {
-			return (this.credentialType as ICredentialType).name;
+			return (this.credentialType as ICredentialType)?.name;
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);

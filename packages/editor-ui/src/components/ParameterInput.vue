@@ -9,6 +9,7 @@
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
 			:isReadOnly="isReadOnly"
+			:redactValues="shouldRedactValue"
 			@closeDialog="closeExpressionEditDialog"
 			@valueChanged="expressionUpdated"
 		></expression-edit>
@@ -28,6 +29,7 @@
 				:droppable="droppable"
 				:node="node"
 				:path="path"
+				:event-bus="eventBus"
 				@input="valueChanged"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -40,6 +42,7 @@
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@valueChanged="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -87,7 +90,7 @@
 				<code-node-editor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:value="node.parameters.jsCode"
+					:value="value"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
@@ -97,7 +100,7 @@
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="node.parameters.html"
+					:html="value"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -107,17 +110,13 @@
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="node.parameters.query"
+					:query="value"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
 
-				<div
-					v-else-if="editorType"
-					class="readonly-code clickable ph-no-capture"
-					@click="displayEditDialog()"
-				>
+				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
 					<code-node-editor
 						v-if="!codeEditDialogVisible"
 						:value="value"
@@ -130,7 +129,7 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
-					class="input-with-opener"
+					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
@@ -203,6 +202,7 @@
 						: $locale.baseText('parameterInput.selectDateAndTime')
 				"
 				:picker-options="dateTimePickerOptions"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@change="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -219,6 +219,7 @@
 				:min="getArgument('minValue')"
 				:precision="getArgument('numberPrecision')"
 				:disabled="isReadOnly"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@change="valueChanged"
 				@input="onTextInputChange"
 				@focus="setFocus"
@@ -273,7 +274,7 @@
 				>
 					<div class="list-option">
 						<div
-							class="option-headline ph-no-capture"
+							class="option-headline"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
 							{{ getOptionsOptionDisplayName(option) }}
@@ -330,7 +331,7 @@
 			/>
 			<el-switch
 				v-else-if="parameter.type === 'boolean'"
-				class="switch-input"
+				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
 				ref="inputField"
 				active-color="#13ce66"
 				:value="displayValue"
@@ -366,7 +367,7 @@ import type {
 	EditorType,
 	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -391,8 +392,8 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import Vue from 'vue';
-
-type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -463,6 +464,10 @@ export default defineComponent({
 				size: 'small',
 			}),
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	data() {
 		return {
@@ -513,10 +518,10 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		dependentParametersValues() {
+		async dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			void this.loadRemoteParameterOptions();
+			await this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -600,6 +605,11 @@ export default defineComponent({
 				// display the user the key instead of the value it
 				// represents
 				return this.$locale.baseText('parameterInput.loadingOptions');
+			}
+
+			// if the value is marked as empty return empty string, to prevent displaying the asterisks
+			if (this.value === CREDENTIAL_EMPTY_VALUE) {
+				return '';
 			}
 
 			let returnValue;
@@ -819,6 +829,9 @@ export default defineComponent({
 		},
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
+		},
+		shouldRedactValue(): boolean {
+			return this.getStringInputType === 'password' || this.isForCredential;
 		},
 	},
 	methods: {
@@ -1112,9 +1125,7 @@ export default defineComponent({
 				}
 			} else if (command === 'refreshOptions') {
 				if (this.isResourceLocatorParameter) {
-					const resourceLocatorRef = this.$refs.resourceLocator as ResourceLocatorRef | undefined;
-
-					resourceLocatorRef?.$emit('refreshList');
+					this.eventBus.emit('refreshList');
 				}
 				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
@@ -1146,7 +1157,7 @@ export default defineComponent({
 		});
 	},
 	mounted() {
-		this.$on('optionSelected', this.optionSelected);
+		this.eventBus.on('optionSelected', this.optionSelected);
 
 		this.tempValue = this.displayValue as string;
 		if (this.node !== null) {
@@ -1185,6 +1196,9 @@ export default defineComponent({
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});
+	},
+	beforeDestroy() {
+		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 });
 </script>

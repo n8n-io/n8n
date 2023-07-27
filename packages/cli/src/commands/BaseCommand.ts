@@ -66,11 +66,6 @@ export abstract class BaseCommand extends Command {
 			this.exitWithCrash('There was an error running database migrations', error),
 		);
 
-		if (process.env.WEBHOOK_TUNNEL_URL) {
-			LoggerProxy.warn(
-				'You are still using the WEBHOOK_TUNNEL_URL environment variable. It has been deprecated and will be removed in a future version of n8n. Please switch to using WEBHOOK_URL instead.',
-			);
-		}
 		const dbType = config.getEnv('database.type');
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {

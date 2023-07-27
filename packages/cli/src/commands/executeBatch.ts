@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import fs from 'fs';
+import os from 'os';
 import { flags } from '@oclif/command';
-import type { ITaskData } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import type { IRun, ITaskData } from 'n8n-workflow';
+import { jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';
@@ -14,9 +15,15 @@ import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
-import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import type {
+	IExecutionResult,
+	INodeSpecialCase,
+	INodeSpecialCases,
+	IResult,
+	IWorkflowExecutionProgress,
+} from '../types/commands.types';
 
 const re = /\d+/;
 
@@ -34,6 +41,8 @@ export class ExecuteBatch extends BaseCommand {
 	static snapshot: string;
 
 	static concurrency = 1;
+
+	static githubWorkflow = false;
 
 	static debug = false;
 
@@ -80,6 +89,12 @@ export class ExecuteBatch extends BaseCommand {
 			description:
 				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
 		}),
+
+		githubWorkflow: flags.boolean({
+			description:
+				'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
+		}),
+
 		skipList: flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
 		}),
@@ -168,15 +183,11 @@ export class ExecuteBatch extends BaseCommand {
 		await this.initBinaryManager();
 		await this.initProcessedDataManager();
 		await this.initExternalHooks();
-
-		// Add event handlers
-		initEvents();
 	}
 
 	async run() {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
-
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
 
@@ -222,7 +233,12 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.ids !== undefined) {
 			if (fs.existsSync(flags.ids)) {
 				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
-				ids.push(...contents.split(',').filter((id) => re.exec(id)));
+				ids.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				const paramIds = flags.ids.split(',');
 				const matchedIds = paramIds.filter((id) => re.exec(id));
@@ -241,7 +257,12 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(...contents.split(',').filter((id) => re.exec(id)));
+				skipIds.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				console.log('Skip list file not found. Exiting.');
 				return;
@@ -250,6 +271,10 @@ export class ExecuteBatch extends BaseCommand {
 
 		if (flags.shallow) {
 			ExecuteBatch.shallow = true;
+		}
+
+		if (flags.githubWorkflow) {
+			ExecuteBatch.githubWorkflow = true;
 		}
 
 		ExecuteBatch.instanceOwner = await getInstanceOwner();
@@ -370,6 +395,7 @@ export class ExecuteBatch extends BaseCommand {
 	private async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
 		const result: IResult = {
 			totalWorkflows: allWorkflows.length,
+			slackMessage: '',
 			summary: {
 				failedExecutions: 0,
 				warningExecutions: 0,
@@ -473,9 +499,28 @@ export class ExecuteBatch extends BaseCommand {
 			}
 
 			await Promise.allSettled(promisesArray);
-
+			if (ExecuteBatch.githubWorkflow) {
+				if (result.summary.errors.length < 6) {
+					const errorMessage = result.summary.errors.map((error) => {
+						return `*${error.workflowId}*: ${error.error}`;
+					});
+					result.slackMessage = `*${
+						result.summary.errors.length
+					} Executions errors*. Workflows failing: ${errorMessage.join(' ')} `;
+				} else {
+					result.slackMessage = `*${result.summary.errors.length} Executions errors*`;
+				}
+				this.setOutput('slackMessage', JSON.stringify(result.slackMessage));
+			}
 			res(result);
 		});
+	}
+
+	setOutput(key: string, value: any) {
+		// Temporary hack until we move to the new action.
+		const output = process.env.GITHUB_OUTPUT;
+		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+		fs.appendFileSync(output as unknown as fs.PathOrFileDescriptor, `${key}=${value}${os.EOL}`);
 	}
 
 	updateStatus() {
@@ -747,8 +792,9 @@ export class ExecuteBatch extends BaseCommand {
 							}${workflowData.id}-snapshot.json`;
 							if (fs.existsSync(fileName)) {
 								const contents = fs.readFileSync(fileName, { encoding: 'utf-8' });
-
-								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
+								const expected = jsonParse<IRun>(contents);
+								const received = jsonParse<IRun>(serializedData);
+								const changes = diff(expected, received, { keysOnly: true }) as object;
 
 								if (changes !== undefined) {
 									// If we had only additions with no removals
@@ -757,8 +803,13 @@ export class ExecuteBatch extends BaseCommand {
 									// and search for the `__deleted` string
 									const changesJson = JSON.stringify(changes);
 									if (changesJson.includes('__deleted')) {
-										// we have structural changes. Report them.
-										executionResult.error = 'Workflow may contain breaking changes';
+										if (ExecuteBatch.githubWorkflow) {
+											const deletedChanges = changesJson.match(/__deleted/g) ?? [];
+											// we have structural changes. Report them.
+											executionResult.error = `Workflow contains ${deletedChanges.length} deleted data.`;
+										} else {
+											executionResult.error = 'Workflow may contain breaking changes';
+										}
 										executionResult.changes = changes;
 										executionResult.executionStatus = 'error';
 									} else {

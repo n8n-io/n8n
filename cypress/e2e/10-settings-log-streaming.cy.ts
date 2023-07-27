@@ -1,22 +1,8 @@
-import { randFirstName, randLastName } from '@ngneat/falso';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { SettingsLogStreamingPage } from '../pages';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const settingsLogStreamingPage = new SettingsLogStreamingPage();
 
 describe('Log Streaming Settings', () => {
-	before(() => {
-		cy.setup({ email, firstName, lastName, password });
-	});
-
-	beforeEach(() => {
-		cy.signin({ email, password });
-	});
-
 	it('should show the unlicensed view when the feature is disabled', () => {
 		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.getters.getActionBoxUnlicensed().should('be.visible');
@@ -25,7 +11,7 @@ describe('Log Streaming Settings', () => {
 	});
 
 	it('should show the licensed view when the feature is enabled', () => {
-		cy.enableFeature('feat:logStreaming');
+		cy.enableFeature('logStreaming');
 		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.getters.getActionBoxLicensed().should('be.visible');
 		settingsLogStreamingPage.getters.getAddFirstDestinationButton().should('be.visible');

@@ -1,5 +1,3 @@
-import type { IWebhookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
 	IHookFunctions,
@@ -7,6 +5,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -125,6 +124,7 @@ export class LoneScaleTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}

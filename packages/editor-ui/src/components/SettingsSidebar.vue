@@ -75,12 +75,20 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
 				{
-					id: 'settings-version-control',
-					icon: 'code-branch',
-					label: this.$locale.baseText('settings.versionControl.title'),
+					id: 'settings-audit-logs',
+					icon: 'clipboard-list',
+					label: this.$locale.baseText('settings.auditLogs.title'),
 					position: 'top',
-					available: this.canAccessVersionControl(),
-					activateOnRouteNames: [VIEWS.VERSION_CONTROL],
+					available: this.canAccessAuditLogs(),
+					activateOnRouteNames: [VIEWS.AUDIT_LOGS],
+				},
+				{
+					id: 'settings-source-control',
+					icon: 'code-branch',
+					label: this.$locale.baseText('settings.sourceControl.title'),
+					position: 'top',
+					available: this.canAccessSourceControl(),
+					activateOnRouteNames: [VIEWS.SOURCE_CONTROL],
 				},
 				{
 					id: 'settings-sso',
@@ -156,8 +164,11 @@ export default defineComponent({
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
-		canAccessVersionControl(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
+		canAccessSourceControl(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.SOURCE_CONTROL);
+		},
+		canAccessAuditLogs(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.AUDIT_LOGS);
 		},
 		canAccessSso(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.SSO_SETTINGS);
@@ -196,7 +207,6 @@ export default defineComponent({
 					}
 					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
-				case 'environments':
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
 					break;
@@ -215,9 +225,14 @@ export default defineComponent({
 						void this.$router.push({ name: VIEWS.SSO_SETTINGS });
 					}
 					break;
-				case 'settings-version-control':
-					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
-						void this.$router.push({ name: VIEWS.VERSION_CONTROL });
+				case 'settings-source-control':
+					if (this.$router.currentRoute.name !== VIEWS.SOURCE_CONTROL) {
+						void this.$router.push({ name: VIEWS.SOURCE_CONTROL });
+					}
+					break;
+				case 'settings-audit-logs':
+					if (this.$router.currentRoute.name !== VIEWS.AUDIT_LOGS) {
+						void this.$router.push({ name: VIEWS.AUDIT_LOGS });
 					}
 					break;
 				default:
@@ -231,7 +246,7 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	min-width: $sidebar-expanded-width;
-	height: 100vh;
+	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
@@ -246,8 +261,11 @@ export default defineComponent({
 	}
 }
 
+.versionContainer {
+	padding: var(--spacing-xs) var(--spacing-l);
+}
+
 @media screen and (max-height: 420px) {
-	.updatesSubmenu,
 	.versionContainer {
 		display: none;
 	}

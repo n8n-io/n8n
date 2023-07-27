@@ -13,6 +13,24 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
+		<template #add-button="{ disabled }">
+			<n8n-tooltip :disabled="!readOnlyEnv">
+				<div>
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="addWorkflow"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`workflows.add`) }}
+					</n8n-button>
+				</div>
+				<template #content>
+					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
+				</template>
+			</n8n-tooltip>
+		</template>
 		<template #default="{ data, updateItemSize }">
 			<workflow-card
 				data-test-id="resources-list-item"
@@ -23,7 +41,7 @@
 				:readOnly="readOnlyEnv"
 			/>
 		</template>
-		<template v-if="!readOnlyEnv" #empty>
+		<template #empty>
 			<div class="text-center mt-s">
 				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
 					{{
@@ -36,10 +54,16 @@
 					}}
 				</n8n-heading>
 				<n8n-text size="large" color="text-base">
-					{{ $locale.baseText('workflows.empty.description') }}
+					{{
+						$locale.baseText(
+							readOnlyEnv
+								? 'workflows.empty.description.readOnlyEnv'
+								: 'workflows.empty.description',
+						)
+					}}
 				</n8n-text>
 			</div>
-			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
 					:class="$style.emptyStateCard"
 					hoverable
@@ -105,7 +129,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -117,6 +142,7 @@ const StatusFilter = {
 
 const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
+	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
@@ -131,7 +157,7 @@ const WorkflowsView = defineComponent({
 				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
-			versionControlStoreUnsubscribe: () => {},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -141,7 +167,7 @@ const WorkflowsView = defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 			useCredentialsStore,
-			useVersionControlStore,
+			useSourceControlStore,
 		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
@@ -167,9 +193,6 @@ const WorkflowsView = defineComponent({
 					value: StatusFilter.DEACTIVATED,
 				},
 			];
-		},
-		readOnlyEnv(): boolean {
-			return this.versionControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {
@@ -229,7 +252,7 @@ const WorkflowsView = defineComponent({
 	mounted() {
 		void this.usersStore.showPersonalizationSurvey();
 
-		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
 			if (name === 'pullWorkfolder' && after) {
 				after(() => {
 					void this.initialize();
@@ -238,7 +261,7 @@ const WorkflowsView = defineComponent({
 		});
 	},
 	beforeUnmount() {
-		this.versionControlStoreUnsubscribe();
+		this.sourceControlStoreUnsubscribe();
 	},
 });
 

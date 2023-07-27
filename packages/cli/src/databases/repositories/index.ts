@@ -2,6 +2,7 @@ export { AuthIdentityRepository } from './authIdentity.repository';
 export { AuthProviderSyncHistoryRepository } from './authProviderSyncHistory.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { EventDestinationsRepository } from './eventDestinations.repository';
+export { ExecutionDataRepository } from './executionData.repository';
 export { ExecutionMetadataRepository } from './executionMetadata.repository';
 export { ExecutionRepository } from './execution.repository';
 export { InstalledNodesRepository } from './installedNodes.repository';

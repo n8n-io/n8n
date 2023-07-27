@@ -176,7 +176,7 @@ onBeforeMount(() => {
 						filterable
 						data-test-id="executions-filter-workflows-select"
 					>
-						<div class="ph-no-capture">
+						<div>
 							<n8n-option
 								v-for="(item, idx) in props.workflows"
 								:key="idx"

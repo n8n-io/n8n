@@ -31,12 +31,12 @@ import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
 import { RoleRepository } from '@db/repositories';
-import omit from 'lodash.omit';
+import omit from 'lodash/omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
-import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
-import type { RoleNames } from './databases/entities/Role';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { RoleNames } from '@db/entities/Role';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
