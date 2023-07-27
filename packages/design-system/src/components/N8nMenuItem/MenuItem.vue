@@ -22,14 +22,15 @@
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
 			<n8n-menu-item
-				v-for="item in availableChildren"
-				:key="item.id"
-				:item="item"
+				v-for="child in availableChildren"
+				:key="child.id"
+				:item="child"
 				:compact="compact"
 				:tooltipDelay="tooltipDelay"
 				:popperClass="popperClass"
 				:mode="mode"
 				:activeTab="activeTab"
+				:handle-select="handleSelect"
 			/>
 		</el-sub-menu>
 		<n8n-tooltip
@@ -50,7 +51,7 @@
 				}"
 				data-test-id="menu-item"
 				:index="item.id"
-				@click="onItemClick(item)"
+				@click="handleSelect(item)"
 			>
 				<n8n-icon
 					v-if="item.icon"
@@ -115,6 +116,9 @@ export default defineComponent({
 		activeTab: {
 			type: String,
 		},
+		handleSelect: {
+			type: Function as PropType<(item: IMenuItem) => void>,
+		},
 	},
 	computed: {
 		availableChildren(): IMenuItem[] {
@@ -155,22 +159,6 @@ export default defineComponent({
 			} else {
 				return item.id === this.activeTab;
 			}
-		},
-		onItemClick(item: IMenuItem) {
-			if (item && item.type === 'link' && item.properties) {
-				const href: string = item.properties.href;
-				if (!href) {
-					return;
-				}
-
-				if (item.properties.newWindow) {
-					window.open(href);
-				} else {
-					window.location.assign(item.properties.href);
-				}
-			}
-
-			this.$emit('select', item.id);
 		},
 	},
 });

@@ -10,7 +10,6 @@
 		:popper-class="$style.limitPopperWidth"
 		:noDataText="t('nds.userSelect.noMatchingUsers')"
 		:size="size"
-		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
@@ -122,9 +121,6 @@ export default defineComponent({
 	methods: {
 		setFilter(value: string) {
 			this.filter = value;
-		},
-		onChange(value: string) {
-			this.$emit('update:modelValue', value);
 		},
 		onBlur() {
 			this.$emit('blur');

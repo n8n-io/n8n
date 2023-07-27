@@ -547,7 +547,6 @@ export default defineComponent({
 			}
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
-			console.log('openWorkflow', workflowId);
 			await this.loadActiveWorkflows();
 
 			let data: IWorkflowDb | undefined;

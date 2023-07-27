@@ -236,7 +236,6 @@ export default defineComponent({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			console.log('optionSelected', command);
 			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
