@@ -141,20 +141,20 @@ export class VaultProvider extends SecretsProvider {
 				},
 			},
 		},
-		{
-			displayName: 'Renew Token',
-			name: 'renewToken',
-			description:
-				'Try to renew Vault token. This will update the settings on this provider when doing so.',
-			type: 'boolean',
-			noDataExpression: true,
-			default: true,
-			displayOptions: {
-				show: {
-					authMethod: ['token'],
-				},
-			},
-		},
+		// {
+		// 	displayName: 'Renew Token',
+		// 	name: 'renewToken',
+		// 	description:
+		// 		'Try to renew Vault token. This will update the settings on this provider when doing so.',
+		// 	type: 'boolean',
+		// 	noDataExpression: true,
+		// 	default: true,
+		// 	displayOptions: {
+		// 		show: {
+		// 			authMethod: ['token'],
+		// 		},
+		// 	},
+		// },
 
 		// Username and Password
 		{
