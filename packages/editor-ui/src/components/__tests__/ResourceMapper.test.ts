@@ -137,8 +137,8 @@ describe('ResourceMapper.vue', () => {
 		);
 	});
 
-	it.skip('renders selected matching columns properly when multiple key matching is enabled', async () => {
-		const { getByTestId, getByText, queryByText } = renderComponent(
+	it('renders selected matching columns properly when multiple key matching is enabled', async () => {
+		const { getByTestId, getAllByText, queryByText } = renderComponent(
 			{
 				props: {
 					parameter: {
@@ -156,21 +156,15 @@ describe('ResourceMapper.vue', () => {
 		);
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
-		const matchingColumnDropdown = getByTestId('matching-column-select');
-		await userEvent.click(matchingColumnDropdown);
-		await userEvent.click(within(matchingColumnDropdown).getByText('Username'));
+		await userEvent.click(getByTestId('matching-column-option-Username'));
 
-		// Both matching columns should be rendered in the dropdown
-		expect(getByTestId('matching-column-select')).toContainHTML(
-			'<span class="el-select__tags-text">id</span>',
-		);
-		expect(getByTestId('matching-column-select')).toContainHTML(
-			'<span class="el-select__tags-text">Username</span>',
-		);
-
+		// Both matching columns (id and Username) should be rendered in the dropdown
+		expect(
+			getByTestId('matching-column-select').querySelector('.el-select  > div'),
+		).toHaveTextContent('idUsername');
 		// All selected columns should have correct labels
-		expect(getByText('id (using to match)')).toBeInTheDocument();
-		expect(getByText('Username (using to match)')).toBeInTheDocument();
+		expect(getAllByText('id (using to match)')[0]).toBeInTheDocument();
+		expect(getAllByText('Username (using to match)')[0]).toBeInTheDocument();
 		expect(queryByText('First Name (using to match)')).not.toBeInTheDocument();
 	});
 
