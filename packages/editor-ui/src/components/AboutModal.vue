@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		width="540px"
+		max-width="540px"
 		:title="$locale.baseText('about.aboutN8n')"
 		:eventBus="modalBus"
 		:name="ABOUT_MODAL_KEY"
