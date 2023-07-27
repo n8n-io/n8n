@@ -46,7 +46,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
-	} else if (/\$secrets\.[a-zA-Z0-9_]+$/.test(base) && isCredential) {
+	} else if (/\$secrets(\.[a-zA-Z0-9_]+)+$/.test(base) && isCredential) {
 		options = secretOptions(base);
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
@@ -368,6 +368,13 @@ export const secretOptions = (base: string) => {
 	return secrets[provider]
 		?.filter((s) => s.startsWith(path))
 		.map((s) => s.substring(path === '' ? 0 : path.length + 1))
+		.map((s) => s.split('.'))
+		.reduce((acc, curr) => {
+			if (!acc.includes(curr[0]) && curr[0]) {
+				acc.push(curr[0]);
+			}
+			return acc;
+		}, [])
 		.map((secret) =>
 			createCompletionOption('Object', secret, 'keyword', {
 				doc: {
