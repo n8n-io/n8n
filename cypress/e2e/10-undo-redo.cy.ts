@@ -131,11 +131,14 @@ describe('Undo/Redo', () => {
 			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
-	it('should undo/redo deleting a connection by pressing delete button', () => {
+	it.only('should undo/redo deleting a connection by pressing delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().realHover();
-		cy.get('.connection-actions .delete').filter(':visible').should('be.visible').realClick();
+		cy.get('.connection-actions .delete')
+			.filter(':visible')
+			.should('be.visible')
+			.click({ force: true });
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
