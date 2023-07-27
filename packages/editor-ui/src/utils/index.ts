@@ -9,3 +9,4 @@ export * from './typeGuards';
 export * from './typesUtils';
 export * from './userUtils';
 export * from './sourceControlUtils';
+export * from './expressions';

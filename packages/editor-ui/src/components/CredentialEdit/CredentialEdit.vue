@@ -158,6 +158,8 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 	isCredentialModalState,
+	isExpression,
+	isTestableExpression,
 } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 
@@ -371,12 +373,13 @@ export default defineComponent({
 			}
 
 			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
-			const hasExpressions = Object.values(credentialData).reduce(
+			const hasUntestableExpressions = Object.values(credentialData).reduce(
 				(accu: boolean, value: CredentialInformation) =>
-					accu || (typeof value === 'string' && value.startsWith('=')),
+					accu ||
+					(typeof value === 'string' && isExpression(value) && !isTestableExpression(value)),
 				false,
 			);
-			if (hasExpressions) {
+			if (hasUntestableExpressions) {
 				return false;
 			}
 

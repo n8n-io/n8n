@@ -44,6 +44,7 @@ export {
 } from './type-guards';
 
 export { ExpressionExtensions } from './Extensions';
+export * as ExpressionParser from './Extensions/ExpressionParser';
 export { NativeMethods } from './NativeMethods';
 
 export type { DocMetadata, NativeDoc } from './Extensions';
