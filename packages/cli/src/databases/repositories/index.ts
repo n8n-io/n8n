@@ -7,6 +7,7 @@ export { ExecutionMetadataRepository } from './executionMetadata.repository';
 export { ExecutionRepository } from './execution.repository';
 export { InstalledNodesRepository } from './installedNodes.repository';
 export { InstalledPackagesRepository } from './installedPackages.repository';
+export { ProcessedDataRepository } from './ProcessedData.repository';
 export { RoleRepository } from './role.repository';
 export { SettingsRepository } from './settings.repository';
 export { SharedCredentialsRepository } from './sharedCredentials.repository';

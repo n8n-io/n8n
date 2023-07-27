@@ -12,6 +12,7 @@ export * from './LoadMappingOptions';
 export * from './LoadNodeParameterOptions';
 export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
+export * from './ProcessedDataManager';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };
 export * from './errors';

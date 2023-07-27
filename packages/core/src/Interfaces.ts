@@ -3,7 +3,12 @@ import type {
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	INode,
 	BinaryMetadata,
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
+	ICheckProcessedOutput,
+	ICheckProcessedOptions,
 	ValidationResult,
 } from 'n8n-workflow';
 
@@ -58,6 +63,47 @@ export interface IBinaryDataManager {
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
 	deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<string[]>;
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
+}
+
+export interface IProcessedDataConfig {
+	availableModes: string;
+	mode: string;
+}
+
+export interface IProcessedDataManager {
+	init(): Promise<void>;
+	checkProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+
+	checkProcessedAndRecord(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+
+	removeProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+}
+
+export interface IProcessedDataManagers {
+	[key: string]: IProcessedDataManager;
+}
+
+export interface ICheckProcessedContextData {
+	node?: INode;
+	workflow: {
+		id?: number | string;
+		active: boolean;
+	};
 }
 
 export namespace n8n {

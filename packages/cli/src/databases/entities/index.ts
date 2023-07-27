@@ -6,6 +6,7 @@ import { EventDestinations } from './EventDestinations';
 import { ExecutionEntity } from './ExecutionEntity';
 import { InstalledNodes } from './InstalledNodes';
 import { InstalledPackages } from './InstalledPackages';
+import { ProcessedData } from './ProcessedData';
 import { Role } from './Role';
 import { Settings } from './Settings';
 import { SharedCredentials } from './SharedCredentials';
@@ -28,6 +29,7 @@ export const entities = {
 	ExecutionEntity,
 	InstalledNodes,
 	InstalledPackages,
+	ProcessedData,
 	Role,
 	Settings,
 	SharedCredentials,

@@ -15,6 +15,8 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
+	ProcessedDataMode,
+	ProcessedDataItemTypes,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -49,6 +51,7 @@ import type {
 	ExecutionRepository,
 	InstalledNodesRepository,
 	InstalledPackagesRepository,
+	ProcessedDataRepository,
 	RoleRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
@@ -95,6 +98,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	ExecutionMetadata: ExecutionMetadataRepository;
 	InstalledNodes: InstalledNodesRepository;
 	InstalledPackages: InstalledPackagesRepository;
+	ProcessedData: ProcessedDataRepository;
 	Role: RoleRepository;
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
@@ -107,6 +111,30 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }
 /* eslint-enable @typescript-eslint/naming-convention */
+
+// ----------------------------------
+//               ProcessedData
+// ----------------------------------
+
+export interface IProcessedDataLatest {
+	mode: ProcessedDataMode;
+	data: ProcessedDataItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: ProcessedDataMode;
+	data: ProcessedDataItemTypes[];
+}
+
+// ----------------------------------
+//               settings
+// ----------------------------------
+
+export interface ISettingsDb {
+	key: string;
+	value: string | boolean | IDataObject | number;
+	loadOnStartup: boolean;
+}
 
 // ----------------------------------
 //               tags

@@ -688,6 +688,49 @@ export interface BinaryHelperFunctions {
 	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 }
 
+export type ProcessedDataContext = 'node' | 'workflow';
+export type ProcessedDataItemTypes = string | number;
+export type ProcessedDataMode = 'entries' | 'latest';
+
+export interface ICheckProcessedOutput {
+	new: ProcessedDataItemTypes[];
+	processed: ProcessedDataItemTypes[];
+}
+
+export interface ICheckProcessedOutputItems {
+	new: IDataObject[];
+	processed: IDataObject[];
+}
+
+export interface ICheckProcessedOptions {
+	mode: ProcessedDataMode;
+	maxEntries?: number;
+}
+
+export interface CheckProcessedHelperFunctions {
+	checkProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+	checkProcessedAndRecord(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+	checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutputItems>;
+	removeProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+}
+
 export interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
@@ -769,6 +812,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
+			CheckProcessedHelperFunctions &
 			FileSystemHelperFunctions &
 			JsonHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];

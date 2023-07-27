@@ -10,7 +10,7 @@ import 'source-map-support/register';
 import 'reflect-metadata';
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, ProcessedDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
@@ -54,6 +54,7 @@ import config from '@/config';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { getProcessedDataManagers } from '@/ProcessedDataManagers';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
@@ -130,6 +131,47 @@ class WorkflowRunnerProcess {
 		const license = Container.get(License);
 		await license.init(instanceId);
 
+		const processedDataConfig = config.getEnv('processedDataManager');
+		const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
+
+		// TODO: Looks like that got removed in the meantime. Add gain now to resolve
+		//       merge conflicts
+		let shouldInitializeDb = false;
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		const loadedProcessedDataManager = ProcessedDataManager.getManagers();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		if (loadedProcessedDataManager.includes('nativeDatabase')) {
+			shouldInitializeDb = true;
+		}
+
+		// This code has been split into 4 ifs just to make it easier to understand
+		// Can be made smaller but in the end it will make it impossible to read.
+		if (shouldInitializeDb) {
+			// initialize db as we need to load credentials
+			await Db.init();
+		} else if (
+			inputData.workflowData.settings !== undefined &&
+			inputData.workflowData.settings.saveExecutionProgress === true
+		) {
+			// Workflow settings specifying it should save
+			await Db.init();
+		} else if (
+			inputData.workflowData.settings !== undefined &&
+			inputData.workflowData.settings.saveExecutionProgress !== false &&
+			config.getEnv('executions.saveExecutionProgress')
+		) {
+			// Workflow settings not saying anything about saving but default settings says so
+			await Db.init();
+		} else if (
+			inputData.workflowData.settings === undefined &&
+			config.getEnv('executions.saveExecutionProgress')
+		) {
+			// Workflow settings not saying anything about saving but default settings says so
+			await Db.init();
+		}
 		const workflowSettings = this.data.workflowData.settings ?? {};
 
 		// Start timeout for the execution

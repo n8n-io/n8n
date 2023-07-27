@@ -857,6 +857,21 @@ export const schema = {
 		},
 	},
 
+	processedDataManager: {
+		availableModes: {
+			format: String,
+			default: 'nativeDatabase',
+			env: 'N8N_AVAILABLE_PROCESSED_DATA_MODES',
+			doc: 'Available modes of processed data storage, as comma separated strings',
+		},
+		mode: {
+			format: ['nativeDatabase'] as const,
+			default: 'nativeDatabase',
+			env: 'N8N_DEFAULT_PROCESSED_DATA_MODE',
+			doc: 'Storage mode for processed data',
+		},
+	},
+
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,

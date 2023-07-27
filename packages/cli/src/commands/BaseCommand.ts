@@ -3,7 +3,7 @@ import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataManager, ProcessedDataManager, UserSettings } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
@@ -19,6 +19,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { getProcessedDataManagers } from '@/ProcessedDataManagers';
 import { License } from '@/License';
 
 export const UM_FIX_INSTRUCTION =
@@ -108,6 +109,15 @@ export abstract class BaseCommand extends Command {
 	protected async initBinaryManager() {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
+	}
+
+	protected async initProcessedDataManager() {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const processedDataConfig = config.getEnv('processedDataManager');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+		const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 	}
 
 	protected async initExternalHooks() {

@@ -79,6 +79,7 @@ export class Webhook extends BaseCommand {
 
 		await this.initLicense();
 		await this.initBinaryManager();
+		await this.initProcessedDataManager();
 		await this.initExternalHooks();
 	}
 

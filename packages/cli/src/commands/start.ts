@@ -194,6 +194,7 @@ export class Start extends BaseCommand {
 
 		await this.initLicense();
 		await this.initBinaryManager();
+		await this.initProcessedDataManager();
 		await this.initExternalHooks();
 
 		if (!config.getEnv('endpoints.disableUi')) {

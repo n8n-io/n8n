@@ -34,6 +34,7 @@ import {
 	ExecutionRepository,
 	InstalledNodesRepository,
 	InstalledPackagesRepository,
+	ProcessedDataRepository,
 	RoleRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
@@ -179,6 +180,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	collections.ExecutionMetadata = Container.get(ExecutionMetadataRepository);
 	collections.InstalledNodes = Container.get(InstalledNodesRepository);
 	collections.InstalledPackages = Container.get(InstalledPackagesRepository);
+	collections.ProcessedData = Container.get(ProcessedDataRepository);
 	collections.Role = Container.get(RoleRepository);
 	collections.Settings = Container.get(SettingsRepository);
 	collections.SharedCredentials = Container.get(SharedCredentialsRepository);

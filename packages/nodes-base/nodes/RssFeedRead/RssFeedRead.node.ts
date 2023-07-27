@@ -44,12 +44,21 @@ export class RssFeedRead implements INodeType {
 				required: true,
 				description: 'URL of the RSS feed',
 			},
+			{
+				displayName: 'Only New Items',
+				name: 'onlyNew',
+				type: 'boolean',
+				default: false,
+				required: true,
+				description: 'Whether only new items should be returned',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const url = this.getNodeParameter('url', 0) as string;
+			const onlyNew = this.getNodeParameter('onlyNew', 0) as boolean;
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -75,13 +84,29 @@ export class RssFeedRead implements INodeType {
 				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
-			const returnData: IDataObject[] = [];
+			let returnData: IDataObject[] = [];
 
 			// For now we just take the items and ignore everything else
 			if (feed.items) {
 				feed.items.forEach((item) => {
 					returnData.push(item);
 				});
+			}
+
+			if (onlyNew) {
+				if (returnData.length && !returnData[0].hasOwnProperty('title')) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The RSS feed seems to be invalid as it does not contain a "title".',
+					);
+				}
+
+				returnData = (
+					await this.helpers.checkProcessedItemsAndRecord('title', returnData, 'node', {
+						mode: 'entries',
+						maxEntries: 100,
+					})
+				).new;
 			}
 
 			return [this.helpers.returnJsonArray(returnData)];

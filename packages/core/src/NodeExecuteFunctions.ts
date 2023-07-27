@@ -61,6 +61,13 @@ import type {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
+	BinaryFileType,
+	CheckProcessedHelperFunctions,
+	ICheckProcessedOutput,
+	ICheckProcessedOutputItems,
+	ICheckProcessedOptions,
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
 	INodeType,
 } from 'n8n-workflow';
 import {
@@ -74,7 +81,6 @@ import {
 	LoggerProxy as Logger,
 	OAuth2GrantType,
 	deepCopy,
-	fileTypeFromMimeType,
 	ExpressionError,
 	validateFieldType,
 	NodeSSLError,
@@ -117,7 +123,15 @@ import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
-import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
+import { ProcessedDataManager } from './ProcessedDataManager';
+
+import type {
+	ExtendedValidationResult,
+	ICheckProcessedContextData,
+	IResponseError,
+	IWorkflowSettings,
+} from './Interfaces';
+
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
@@ -914,6 +928,62 @@ export async function getBinaryDataBuffer(
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
 	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
+}
+
+export async function checkProcessed(
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<ICheckProcessedOutput> {
+	return ProcessedDataManager.getInstance().checkProcessed(items, context, contextData, options);
+}
+
+export async function checkProcessedAndRecord(
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<ICheckProcessedOutput> {
+	return ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		items,
+		context,
+		contextData,
+		options,
+	);
+}
+
+export async function checkProcessedItemsAndRecord(
+	key: string,
+	items: IDataObject[],
+	// items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<ICheckProcessedOutputItems> {
+	return ProcessedDataManager.getInstance().checkProcessedItemsAndRecord(
+		key,
+		items,
+		context,
+		contextData,
+		options,
+	);
+}
+
+export async function removeProcessed(
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<void> {
+	return ProcessedDataManager.getInstance().removeProcessed(items, context, contextData, options);
+}
+
+function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
+	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('video/')) return 'video';
+	if (mimeType.startsWith('text/') || mimeType.startsWith('application/json')) return 'text';
+	return;
 }
 
 /**
@@ -2283,6 +2353,42 @@ const getBinaryHelperFunctions = ({
 	},
 });
 
+const getCheckProcessedHelperFunctions = (
+	workflow: Workflow,
+	node: INode,
+): CheckProcessedHelperFunctions => ({
+	async checkProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput> {
+		return checkProcessed(items, context, { node, workflow }, options);
+	},
+	async checkProcessedAndRecord(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput> {
+		return checkProcessedAndRecord(items, context, { node, workflow }, options);
+	},
+	async checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		// items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutputItems> {
+		return checkProcessedItemsAndRecord(propertyName, items, context, { node, workflow }, options);
+	},
+	async removeProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<void> {
+		return removeProcessed(items, context, { node, workflow }, options);
+	},
+});
+
 /**
  * Returns the execute functions the poll nodes have access to.
  */
@@ -2573,11 +2679,11 @@ export function getExecuteFunctions(
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
+				...getCheckProcessedHelperFunctions(workflow, node),
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
-
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
@@ -2712,6 +2818,31 @@ export function getExecuteSingleFunctions(
 				return dataProxy.getDataProxy();
 			},
 			helpers: {
+				// async checkProcessed(
+				// 	items: ProcessedDataItemTypes[],
+				// 	context: ProcessedDataContext,
+				// 	options: ICheckProcessedOptions,
+				// ): Promise<ICheckProcessedOutput> {
+				// 	return checkProcessed(items, context, { node, workflow }, options);
+				// },
+				// async checkProcessedAndRecord(
+				// 	items: ProcessedDataItemTypes[],
+				// 	context: ProcessedDataContext,
+				// 	options: ICheckProcessedOptions,
+				// ): Promise<ICheckProcessedOutput> {
+				// 	return checkProcessedAndRecord(items, context, { node, workflow }, options);
+				// },
+				// async removeProcessed(
+				// 	items: string[],
+				// 	context: ProcessedDataContext,
+				// 	options: ICheckProcessedOptions,
+				// ): Promise<void> {
+				// 	return removeProcessed(items, context, { node, workflow }, options);
+				// },
+
+				// // TODO: Still has to get adopted for single I assume:
+				// getCheckProcessedHelperFunctions(workflow, node),
+
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
