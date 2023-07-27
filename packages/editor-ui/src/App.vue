@@ -192,14 +192,16 @@ export default defineComponent({
 			// if cannot access page and is logged in
 			return this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
-		redirectIfNecessary() {
+		async redirectIfNecessary() {
 			const redirect =
 				this.$route.meta &&
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
+
 			if (redirect) {
 				return this.$router.replace(redirect);
 			}
+			return;
 		},
 		setTheme() {
 			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
@@ -257,7 +259,7 @@ export default defineComponent({
 		await this.initialize();
 		this.logHiringBanner();
 		await this.authenticate();
-		this.redirectIfNecessary();
+		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
 		await this.initBanners();
@@ -283,7 +285,7 @@ export default defineComponent({
 		},
 		async $route(route) {
 			await this.initSettings();
-			this.redirectIfNecessary();
+			await this.redirectIfNecessary();
 
 			this.trackPage();
 		},
