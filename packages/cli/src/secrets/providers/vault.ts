@@ -7,10 +7,11 @@ import { getLogger } from '@/Logger';
 
 const logger = getLogger();
 
-type VaultAuthMethod = 'token' | 'usernameAndPassword';
+type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
 interface VaultSettings {
 	url: string;
+	namespace?: string;
 	authMethod: VaultAuthMethod;
 
 	// Token
@@ -20,6 +21,10 @@ interface VaultSettings {
 	// Username and Password
 	username: string;
 	password: string;
+
+	// AppRole
+	roleId: string;
+	secretId: string;
 }
 
 interface VaultResponse<T> {
@@ -71,6 +76,8 @@ interface VaultUserPassLoginResp {
 	};
 }
 
+type VaultAppRoleResp = VaultUserPassLoginResp;
+
 interface VaultSecretList {
 	keys: string[];
 }
@@ -98,10 +105,10 @@ export class VaultProvider extends SecretsProvider {
 			displayName: 'Vault Namespace',
 			name: 'namespace',
 			type: 'string',
-			hint: 'Namespace of the Vault you wish to use (e.g. )',
+			hint: 'Namespace of the Vault you wish to use (e.g. ns1/ns2/)',
 			required: false,
 			noDataExpression: true,
-			placeholder: '',
+			placeholder: 'admin',
 			default: '',
 		},
 		{
@@ -113,6 +120,7 @@ export class VaultProvider extends SecretsProvider {
 			options: [
 				{ name: 'Token', value: 'token' },
 				{ name: 'Username and Password', value: 'usernameAndPassword' },
+				{ name: 'AppRole', value: 'appRole' },
 			],
 			default: 'token',
 		},
@@ -178,6 +186,37 @@ export class VaultProvider extends SecretsProvider {
 				},
 			},
 		},
+
+		// Username and Password
+		{
+			displayName: 'Role ID',
+			name: 'roleId',
+			type: 'string',
+			default: '',
+			required: true,
+			noDataExpression: true,
+			placeholder: '59d6d1ca-47bb-4e7e-a40b-8be3bc5a0ba8',
+			displayOptions: {
+				show: {
+					authMethod: ['appRole'],
+				},
+			},
+		},
+		{
+			displayName: 'Secret ID',
+			name: 'secretId',
+			type: 'string',
+			default: '',
+			required: true,
+			noDataExpression: true,
+			placeholder: '84896a0c-1347-aa90-a4f6-aca8b7558780',
+			typeOptions: { password: true },
+			displayOptions: {
+				show: {
+					authMethod: ['appRole'],
+				},
+			},
+		},
 	];
 
 	displayName = 'HashiCorp Vault';
@@ -204,11 +243,16 @@ export class VaultProvider extends SecretsProvider {
 		this.settings = settings.settings as unknown as VaultSettings;
 
 		const baseURL = new URL(this.settings.url);
-		if (!baseURL.pathname.endsWith('v1') && !baseURL.pathname.endsWith('v1/')) {
-			baseURL.pathname += '/v1/';
-		}
 
 		this.#http = axios.create({ baseURL: baseURL.toString() });
+		if (this.settings.namespace) {
+			this.#http.interceptors.request.use((config) => {
+				return {
+					...config,
+					headers: { ...config.headers, 'X-Vault-Namespace': this.settings.namespace },
+				};
+			});
+		}
 		this.#http.interceptors.request.use((config) => {
 			if (!this.#currentToken) {
 				return config;
@@ -229,6 +273,15 @@ export class VaultProvider extends SecretsProvider {
 				);
 			} catch {
 				this.state = 'error';
+				logger.error('Failed to connect to Vault using Username and Password credentials.');
+				return;
+			}
+		} else if (this.settings.authMethod === 'appRole') {
+			try {
+				this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
+			} catch {
+				this.state = 'error';
+				logger.error('Failed to connect to Vault using AppRole credentials.');
 				return;
 			}
 		}
@@ -238,12 +291,18 @@ export class VaultProvider extends SecretsProvider {
 			} else {
 				this.state = 'connected';
 
-				this.#tokenInfo = await this.getTokenInfo();
+				[this.#tokenInfo] = await this.getTokenInfo();
 				this.setupTokenRefresh();
 			}
+		} catch (e) {
+			this.state = 'error';
+			logger.error('Failed credentials test on Vault connect.');
+		}
+
+		try {
 			await this.update();
 		} catch {
-			this.state = 'error';
+			logger.warn('Failed to update Vault secrets');
 		}
 	}
 
@@ -280,7 +339,7 @@ export class VaultProvider extends SecretsProvider {
 			// return an expire_time
 			await this.#http.post('auth/token/renew-self');
 
-			this.#tokenInfo = await this.getTokenInfo();
+			[this.#tokenInfo] = await this.getTokenInfo();
 
 			if (!this.#tokenInfo) {
 				logger.error('Failed to fetch token info during renewal. Cancelling all future renewals.');
@@ -298,7 +357,6 @@ export class VaultProvider extends SecretsProvider {
 		}
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	private async authUsernameAndPassword(
 		username: string,
 		password: string,
@@ -317,7 +375,22 @@ export class VaultProvider extends SecretsProvider {
 		}
 	}
 
-	private async getTokenInfo(): Promise<VaultTokenInfo | null> {
+	private async authAppRole(role_id: string, secret_id: string): Promise<string | null> {
+		try {
+			const resp = await this.#http.request<VaultAppRoleResp>({
+				method: 'POST',
+				url: `auth/approle/login`,
+				responseType: 'json',
+				data: { role_id, secret_id },
+			});
+
+			return resp.data.auth.client_token;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	private async getTokenInfo(): Promise<[VaultTokenInfo | null, AxiosResponse]> {
 		const resp = await this.#http.request<VaultResponse<VaultTokenInfo>>({
 			method: 'GET',
 			url: 'auth/token/lookup-self',
@@ -326,9 +399,9 @@ export class VaultProvider extends SecretsProvider {
 		});
 
 		if (resp.status !== 200 || !resp.data.data) {
-			return null;
+			return [null, resp];
 		}
-		return resp.data.data;
+		return [resp.data.data, resp];
 	}
 
 	private async getKVSecrets(
@@ -352,9 +425,8 @@ export class VaultProvider extends SecretsProvider {
 			return null;
 		}
 		const data = Object.fromEntries(
-			// TODO allSettled
 			(
-				await Promise.all(
+				await Promise.allSettled(
 					listResp.data.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
 							return this.getKVSecrets(mountPath, kvVersion, path + key);
@@ -377,7 +449,9 @@ export class VaultProvider extends SecretsProvider {
 						}
 					}),
 				)
-			).filter((v) => v !== null) as Array<[string, IDataObject]>,
+			)
+				.map((i) => (i.status === 'rejected' ? null : i.value))
+				.filter((v) => v !== null) as Array<[string, IDataObject]>,
 		);
 		const name = path.substring(0, path.length - 1);
 		return [name, data];
@@ -405,32 +479,51 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
-		const token = await this.getTokenInfo();
+		try {
+			const [token, tokenResp] = await this.getTokenInfo();
 
-		if (token === null) {
-			return [false, 'Invalid credentials'];
+			if (token === null) {
+				if (tokenResp.status === 404) {
+					return [
+						false,
+						'Could not find auth path. Maybe try adding /v1/ to the end of your base URL?',
+					];
+				}
+				return [false, 'Invalid credentials'];
+			}
+
+			const resp = await this.#http.request<VaultResponse<VaultTokenInfo>>({
+				method: 'GET',
+				url: 'sys/mounts',
+				responseType: 'json',
+				validateStatus: () => true,
+			});
+
+			if (resp.status === 403) {
+				return [
+					false,
+					"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.",
+				];
+			} else if (resp.status !== 200) {
+				return [
+					false,
+					"Couldn't list mounts but wasn't a permissions issue. Please consult your Vault admin.",
+				];
+			}
+
+			return [true];
+		} catch (e) {
+			if (axios.isAxiosError(e)) {
+				if (e.code === 'ECONNREFUSED') {
+					return [
+						false,
+						'Connection refused. Please check the host and port of the server are correct.',
+					];
+				}
+			}
+
+			return [false];
 		}
-
-		const resp = await this.#http.request<VaultResponse<VaultTokenInfo>>({
-			method: 'GET',
-			url: 'sys/mounts',
-			responseType: 'json',
-			validateStatus: () => true,
-		});
-
-		if (resp.status === 403) {
-			return [
-				false,
-				"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.",
-			];
-		} else if (resp.status !== 200) {
-			return [
-				false,
-				"Couldn't list mounts but wasn't a permissions issue. Please consult your Vault admin.",
-			];
-		}
-
-		return [true];
 	}
 
 	getSecret(name: string): IDataObject {
