@@ -507,11 +507,7 @@ export default defineComponent({
 		// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
 		// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
 		setTimeout(() => {
-			try {
-				this.setSubtitle();
-			} catch (e) {
-				// avoid breaking UI if expression error occurs
-			}
+			this.setSubtitle();
 		}, 0);
 		if (this.nodeRunData) {
 			setTimeout(() => {
@@ -549,10 +545,14 @@ export default defineComponent({
 			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
-			const nodeSubtitle =
-				this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+			try {
+				const nodeSubtitle =
+					this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
 
-			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
+				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
+			} catch (e) {
+				// avoid breaking UI if expression error occurs
+			}
 		},
 		disableNode() {
 			if (this.data !== null) {
