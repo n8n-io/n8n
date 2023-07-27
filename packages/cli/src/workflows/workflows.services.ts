@@ -12,6 +12,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { RoleNames } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
@@ -27,7 +28,6 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
-import type { RoleNames } from '../databases/entities/Role';
 
 export type IGetWorkflowsQueryFilter = Pick<
 	FindOptionsWhere<WorkflowEntity>,
@@ -222,16 +222,24 @@ export class WorkflowsService {
 			);
 		}
 
-		// Update the workflow's version
-		workflow.versionId = uuid();
-
-		LoggerProxy.verbose(
-			`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
-			{
-				previousVersionId: shared.workflow.versionId,
-				newVersionId: workflow.versionId,
-			},
-		);
+		if (
+			Object.keys(workflow).length === 3 &&
+			workflow.id !== undefined &&
+			workflow.versionId !== undefined &&
+			workflow.active !== undefined
+		) {
+			// we're just updating the active status of the workflow, don't update the versionId
+		} else {
+			// Update the workflow's version
+			workflow.versionId = uuid();
+			LoggerProxy.verbose(
+				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
+				{
+					previousVersionId: shared.workflow.versionId,
+					newVersionId: workflow.versionId,
+				},
+			);
+		}
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);

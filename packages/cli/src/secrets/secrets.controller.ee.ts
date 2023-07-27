@@ -1,8 +1,10 @@
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
 import { NotFoundError } from '@/ResponseHelper';
+import { Service } from 'typedi';
 import { ProviderNotFoundError, SecretsService } from './secrets.service.ee';
 
+@Service()
 @Authorized(['global', 'owner'])
 @RestController('/external-secrets')
 export class ExternalSecretsController {

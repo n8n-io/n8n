@@ -1,17 +1,15 @@
+import type { Application } from 'express';
 import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
 import type { SuperAgentTest } from 'supertest';
+import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import type { ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
+import type { BooleanLicenseFeature, ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
 
 export type CollectionName = keyof IDatabaseCollections;
 
-export type ApiPath = 'internal' | 'public';
-
-export type AuthAgent = (user: User) => SuperAgentTest;
-
-type EndpointGroup =
+export type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
@@ -26,7 +24,22 @@ type EndpointGroup =
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
-	| 'variables';
+	| 'variables'
+	| 'tags';
+
+export interface SetupProps {
+	applyAuth?: boolean;
+	endpointGroups?: EndpointGroup[];
+	enabledFeatures?: BooleanLicenseFeature[];
+}
+
+export interface TestServer {
+	app: Application;
+	httpServer: Server;
+	authAgentFor: (user: User) => SuperAgentTest;
+	publicApiAgentFor: (user: User) => SuperAgentTest;
+	authlessAgent: SuperAgentTest;
+}
 
 export type CredentialPayload = {
 	name: string;

@@ -29,7 +29,7 @@
 			<template #beforeLowerMenu>
 				<ExecutionsUsage
 					:cloud-plan-data="currentPlanAndUsageData"
-					v-if="!isCollapsed && userIsTrialing"
+					v-if="fullyExpanded && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
 				<div>
@@ -202,10 +202,11 @@ export default defineComponent({
 			};
 
 			if (this.sourceControlStore.preferences.branchReadOnly) {
-				workflows.secondaryIcon = { name: 'lock' };
-				workflows.tooltip = {
-					content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-					bindTo: 'secondaryIcon',
+				workflows.secondaryIcon = {
+					name: 'lock',
+					tooltip: {
+						content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
+					},
 				};
 			}
 

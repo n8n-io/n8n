@@ -15,7 +15,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BinaryDataManager, eventEmitter, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import type {
 	IDataObject,
@@ -43,6 +43,7 @@ import {
 } from 'n8n-workflow';
 
 import pick from 'lodash/pick';
+import { Container } from 'typedi';
 import type { FindOptionsWhere } from 'typeorm';
 import { LessThanOrEqual, In } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
@@ -67,11 +68,11 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
-import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { ExecutionRepository } from '@db/repositories';
+import { EventsService } from '@/services/events.service';
 import { SecretsHelper } from './SecretsHelpers';
-import { ExecutionRepository } from './databases/repositories';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -274,6 +275,7 @@ export async function saveExecutionMetadata(
  *
  */
 function hookFunctionsPush(): IWorkflowExecuteHooks {
+	const pushInstance = Container.get(Push);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
@@ -290,7 +292,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = Container.get(Push);
 				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, sessionId);
 			},
 		],
@@ -308,7 +309,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				const pushInstance = Container.get(Push);
 				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, sessionId);
 			},
 		],
@@ -325,7 +325,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (sessionId === undefined) {
 					return;
 				}
-				const pushInstance = Container.get(Push);
 				pushInstance.send(
 					'executionStarted',
 					{
@@ -391,7 +390,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					retryOf,
 				};
 
-				const pushInstance = Container.get(Push);
 				pushInstance.send('executionFinished', sendData, sessionId);
 			},
 		],
@@ -400,7 +398,6 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 
 export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowExecuteHooks {
 	const externalHooks = Container.get(ExternalHooks);
-
 	return {
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks, workflow: Workflow): Promise<void> {
@@ -515,23 +512,17 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
  *
  */
 function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
+	const internalHooks = Container.get(InternalHooks);
+	const eventsService = Container.get(EventsService);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				void Container.get(InternalHooks).onNodeBeforeExecute(
-					this.executionId,
-					this.workflowData,
-					nodeName,
-				);
+				void internalHooks.onNodeBeforeExecute(this.executionId, this.workflowData, nodeName);
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				void Container.get(InternalHooks).onNodePostExecute(
-					this.executionId,
-					this.workflowData,
-					nodeName,
-				);
+				void internalHooks.onNodePostExecute(this.executionId, this.workflowData, nodeName);
 			},
 		],
 		workflowExecuteBefore: [],
@@ -579,7 +570,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
-						await Container.get(ExecutionRepository).deleteExecution(this.executionId);
+						await Container.get(ExecutionRepository).deleteExecution(this.executionId, true);
 
 						return;
 					}
@@ -712,17 +703,13 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						);
 					}
 				} finally {
-					eventEmitter.emit(
-						eventEmitter.types.workflowExecutionCompleted,
-						this.workflowData,
-						fullRunData,
-					);
+					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
 				}
 			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
+				eventsService.emit('nodeFetchedData', workflowId, node);
 			},
 		],
 	};
@@ -735,6 +722,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
  *
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
+	const eventsService = Container.get(EventsService);
 	return {
 		nodeExecuteBefore: [],
 		nodeExecuteAfter: [],
@@ -835,17 +823,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.retryOf,
 					);
 				} finally {
-					eventEmitter.emit(
-						eventEmitter.types.workflowExecutionCompleted,
-						this.workflowData,
-						fullRunData,
-					);
+					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
 				}
 			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
+				eventsService.emit('nodeFetchedData', workflowId, node);
 			},
 		],
 	};
@@ -952,10 +936,12 @@ async function executeWorkflow(
 		parentWorkflowSettings?: IWorkflowSettings;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
+	const internalHooks = Container.get(InternalHooks);
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
 	const nodeTypes = Container.get(NodeTypes);
+	const activeExecutions = Container.get(ActiveExecutions);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -985,10 +971,10 @@ async function executeWorkflow(
 		executionId =
 			options.parentExecutionId !== undefined
 				? options.parentExecutionId
-				: await Container.get(ActiveExecutions).add(runData);
+				: await activeExecutions.add(runData);
 	}
 
-	void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId || '', runData);
+	void internalHooks.onWorkflowBeforeExecute(executionId || '', runData);
 
 	let data;
 	try {
@@ -1078,7 +1064,7 @@ async function executeWorkflow(
 		}
 
 		// remove execution from active executions
-		Container.get(ActiveExecutions).remove(executionId, fullRunData);
+		activeExecutions.remove(executionId, fullRunData);
 
 		await Container.get(ExecutionRepository).updateExistingExecution(
 			executionId,
@@ -1093,21 +1079,16 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void Container.get(InternalHooks).onWorkflowPostExecute(
-		executionId,
-		workflowData,
-		data,
-		additionalData.userId,
-	);
+	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully
 
-		Container.get(ActiveExecutions).remove(executionId, data);
+		activeExecutions.remove(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 		return returnData!.data!.main;
 	}
-	Container.get(ActiveExecutions).remove(executionId, data);
+	activeExecutions.remove(executionId, data);
 	// Workflow did fail
 	const { error } = data.data.resultData;
 	// eslint-disable-next-line @typescript-eslint/no-throw-literal
@@ -1189,7 +1170,7 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
-		secretsHelpers: new SecretsHelper(),
+		secretsHelpers: Container.get(SecretsHelper),
 	};
 }
 

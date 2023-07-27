@@ -12,7 +12,7 @@ import {
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
 import config from '@/config';
-import { generateNanoId } from '@/databases/utils/generators';
+import { generateNanoId } from '@db/utils/generators';
 
 beforeAll(async () => {
 	await testDb.init();

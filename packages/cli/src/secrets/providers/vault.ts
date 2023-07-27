@@ -79,7 +79,7 @@ export class VaultProvider extends SecretsProvider {
 	properties: INodeProperties[] = [
 		{
 			displayName:
-				'Need help filling out these fields? <a href="https://infisical.com/docs/documentation/platform/token" target="_blank">Open docs</a>',
+				'Need help filling out these fields? <a href="https://developer.hashicorp.com/vault/tutorials/tokens/token-management" target="_blank">Open docs</a>',
 			name: 'notice',
 			type: 'notice',
 			default: '',
@@ -92,6 +92,16 @@ export class VaultProvider extends SecretsProvider {
 			required: true,
 			noDataExpression: true,
 			placeholder: 'https://example.com/v1/',
+			default: '',
+		},
+		{
+			displayName: 'Vault Namespace',
+			name: 'namespace',
+			type: 'string',
+			hint: 'Namespace of the Vault you wish to use (e.g. )',
+			required: false,
+			noDataExpression: true,
+			placeholder: '',
 			default: '',
 		},
 		{
@@ -342,6 +352,7 @@ export class VaultProvider extends SecretsProvider {
 			return null;
 		}
 		const data = Object.fromEntries(
+			// TODO allSettled
 			(
 				await Promise.all(
 					listResp.data.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {

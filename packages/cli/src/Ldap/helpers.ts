@@ -36,7 +36,9 @@ import { InternalServerError } from '../ResponseHelper';
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
-export const isLdapEnabled = () => Container.get(License).isLdapEnabled();
+export const isLdapEnabled = () => {
+	return Container.get(License).isLdapEnabled();
+};
 
 /**
  * 	Check whether the LDAP feature is enabled in the instance
@@ -215,7 +217,7 @@ export const handleLdapInit = async (): Promise<void> => {
 	try {
 		await setGlobalLdapConfigVariables(ldapConfig);
 	} catch (error) {
-		Logger.error(
+		Logger.warn(
 			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			error,

@@ -97,11 +97,11 @@ import {
 	TagsController,
 	TranslationController,
 	UsersController,
+	WorkflowStatisticsController,
 } from '@/controllers';
 
 import { ExternalSecretsController } from '@/secrets/secrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
-import { workflowStatsController } from '@/api/workflowStats.api';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
 	getInstanceBaseUrl,
@@ -137,7 +137,6 @@ import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBu
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
-import { initEvents } from './events';
 import {
 	getLdapLoginLabel,
 	handleLdapInit,
@@ -150,6 +149,7 @@ import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
+import { License } from './License';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
@@ -165,14 +165,13 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { SecretsService } from './secrets/secrets.service.ee';
 import { isExternalSecretsEnabled } from './secrets/externalSecretsHelper.ee';
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
-import { ExecutionRepository } from './databases/repositories';
-import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
+import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { JwtService } from './services/jwt.service';
 
 const exec = promisify(callbackExec);
 
@@ -262,6 +261,7 @@ export class Server extends AbstractServer {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
+				quota: Container.get(License).getUsersLimit(),
 				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
 				smtpSetup: isEmailSetUp(),
 				authenticationMethod: getCurrentAuthenticationMethod(),
@@ -322,9 +322,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			banners: {
-				v1: {
-					dismissed: false,
-				},
+				dismissed: [],
 			},
 		};
 	}
@@ -388,9 +386,6 @@ export class Server extends AbstractServer {
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 		};
 
-		// Set up event handling
-		initEvents();
-
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
 			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
@@ -411,21 +406,22 @@ export class Server extends AbstractServer {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
+			quota: Container.get(License).getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
-		let v1Dismissed = false;
+		let dismissedBanners: string[] = [];
 
 		try {
-			v1Dismissed = config.getEnv('ui.banners.v1.dismissed');
+			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
 		} catch {
 			// not yet in DB
 		}
 
-		this.frontendSettings.banners.v1.dismissed = v1Dismissed;
+		this.frontendSettings.banners.dismissed = dismissedBanners;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
@@ -472,10 +468,7 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const samlService = Container.get(SamlService);
-		const secretsService = Container.get(SecretsService);
-		const sourceControlService = Container.get(SourceControlService);
-		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+		const jwtService = Container.get(JwtService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -490,6 +483,7 @@ export class Server extends AbstractServer {
 				mailer,
 				repositories,
 				logger,
+				jwtService,
 			}),
 			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),
@@ -502,10 +496,12 @@ export class Server extends AbstractServer {
 				activeWorkflowRunner,
 				logger,
 				postHog,
+				jwtService,
 			}),
-			new SamlController(samlService),
-			new ExternalSecretsController(secretsService),
-			new SourceControlController(sourceControlService, sourceControlPreferencesService),
+			Container.get(SamlController),
+			Container.get(SourceControlController),
+			Container.get(WorkflowStatisticsController),
+			Container.get(ExternalSecretsController),
 		];
 
 		if (isLdapEnabled()) {
@@ -613,11 +609,6 @@ export class Server extends AbstractServer {
 		// License
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/license`, licenseController);
-
-		// ----------------------------------------
-		// Workflow Statistics
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
 		// SAML

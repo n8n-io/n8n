@@ -8,12 +8,13 @@ import { SOURCE_CONTROL_PULL_MODAL_KEY, STORES } from '@/constants';
 import { i18nInstance } from '@/plugins/i18n';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { useUsersStore, useSourceControlStore, useUIStore } from '@/stores';
+import { useSourceControlStore, useUIStore } from '@/stores';
+import { useUsersStore } from '@/stores/users.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let sourceControlStore: ReturnType<typeof useSourceControlStore>;
-let usersStore: ReturnType<typeof useUsersStore>;
 let uiStore: ReturnType<typeof useUIStore>;
+let usersStore: ReturnType<typeof useUsersStore>;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
 	return render(
@@ -30,10 +31,7 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
 };
 
 describe('MainSidebarSourceControl', () => {
-	const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
-
 	beforeEach(() => {
-		getItemSpy.mockReturnValue('true');
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -42,18 +40,22 @@ describe('MainSidebarSourceControl', () => {
 			},
 		});
 
+		usersStore = useUsersStore(pinia);
+		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
+
 		sourceControlStore = useSourceControlStore();
+		vi.spyOn(sourceControlStore, 'isEnterpriseSourceControlEnabled', 'get').mockReturnValue(true);
+
 		uiStore = useUIStore();
-		usersStore = useUsersStore();
 	});
 
-	it('should render nothing', async () => {
-		getItemSpy.mockReturnValue(null);
+	it('should render nothing when not instance owner', async () => {
+		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
 		const { container } = renderComponent({ props: { isCollapsed: false } });
 		expect(container).toBeEmptyDOMElement();
 	});
 
-	it('should render empty content', async () => {
+	it('should render empty content when instance owner but not connected', async () => {
 		const { getByTestId } = renderComponent({ props: { isCollapsed: false } });
 		expect(getByTestId('main-sidebar-source-control')).toBeInTheDocument();
 		expect(getByTestId('main-sidebar-source-control')).toBeEmptyDOMElement();
@@ -64,8 +66,6 @@ describe('MainSidebarSourceControl', () => {
 			vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 				branchName: 'main',
 				branches: [],
-				authorName: '',
-				authorEmail: '',
 				repositoryUrl: '',
 				branchReadOnly: false,
 				branchColor: '#5296D6',

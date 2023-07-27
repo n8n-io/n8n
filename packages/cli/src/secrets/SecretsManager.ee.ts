@@ -103,6 +103,7 @@ export class ExternalSecretsManager {
 		if (!settings) {
 			return;
 		}
+		// TODO allSettled
 		const providers: Array<SecretsProvider | null> = await Promise.all(
 			Object.entries(settings).map(async ([name, providerSettings]) =>
 				this.initProvider(name, providerSettings),
@@ -172,6 +173,7 @@ export class ExternalSecretsManager {
 		if (!this.license.isExternalSecretsEnabled()) {
 			return;
 		}
+		// TODO allSettled
 		await Promise.all(
 			Object.entries(this.providers).map(async ([k, p]) => {
 				try {

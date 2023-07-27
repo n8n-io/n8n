@@ -22,7 +22,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';

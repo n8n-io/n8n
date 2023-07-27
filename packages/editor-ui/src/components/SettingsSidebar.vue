@@ -215,9 +215,7 @@ export default defineComponent({
 				case 'settings-log-streaming':
 					await this.navigateTo(VIEWS.LOG_STREAMING_SETTINGS);
 					break;
-				// Fakedoor feature added via hooks when user management is disabled on cloud
-				case 'users':
-				case 'environments':
+				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
 					break;
@@ -254,7 +252,7 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	min-width: $sidebar-expanded-width;
-	height: 100vh;
+	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;

@@ -12,12 +12,12 @@
 					class="node-name"
 					:value="node && node.name"
 					:nodeType="nodeType"
-					:isReadOnly="isReadOnly"
+					:readOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI"
+						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"

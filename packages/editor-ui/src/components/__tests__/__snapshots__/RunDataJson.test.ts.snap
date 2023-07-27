@@ -138,7 +138,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     class="vjs-value vjs-value-number"
                   >
                     <span
-                      class="ph-no-capture mappable"
+                      class="mappable"
                       data-depth="3"
                       data-name="list[0]"
                       data-path="[0].list[0]"
@@ -180,7 +180,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     class="vjs-value vjs-value-number"
                   >
                     <span
-                      class="ph-no-capture mappable"
+                      class="mappable"
                       data-depth="3"
                       data-name="list[1]"
                       data-path="[0].list[1]"
@@ -222,7 +222,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     class="vjs-value vjs-value-number"
                   >
                     <span
-                      class="ph-no-capture mappable"
+                      class="mappable"
                       data-depth="3"
                       data-name="list[2]"
                       data-path="[0].list[2]"
@@ -351,9 +351,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                   <span
                     class="vjs-value vjs-value-string"
                   >
-                    <span
-                      class="ph-no-capture"
-                    >
+                    <span>
                       "Joe"
                     </span>
                   </span>
@@ -429,9 +427,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                   <span
                     class="vjs-value vjs-value-number"
                   >
-                    <span
-                      class="ph-no-capture"
-                    >
+                    <span>
                       123
                     </span>
                   </span>
@@ -479,9 +475,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                   <span
                     class="vjs-value vjs-value-string"
                   >
-                    <span
-                      class="ph-no-capture"
-                    >
+                    <span>
                       "456"
                     </span>
                   </span>
@@ -529,9 +523,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                   <span
                     class="vjs-value vjs-value-string"
                   >
-                    <span
-                      class="ph-no-capture"
-                    >
+                    <span>
                       "abc"
                     </span>
                   </span>
@@ -579,9 +571,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                   <span
                     class="vjs-value vjs-value-null"
                   >
-                    <span
-                      class="ph-no-capture"
-                    >
+                    <span>
                       null
                     </span>
                   </span>
@@ -629,9 +619,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                   <span
                     class="vjs-value vjs-value-undefined"
                   >
-                    <span
-                      class="ph-no-capture"
-                    >
+                    <span>
                       
                     </span>
                   </span>

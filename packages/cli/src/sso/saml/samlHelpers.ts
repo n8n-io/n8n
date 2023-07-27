@@ -52,7 +52,9 @@ export function setSamlLoginLabel(label: string): void {
 	config.set(SAML_LOGIN_LABEL, label);
 }
 
-export const isSamlLicensed = () => Container.get(License).isSamlEnabled();
+export function isSamlLicensed(): boolean {
+	return Container.get(License).isSamlEnabled();
+}
 
 export function isSamlLicensedAndEnabled(): boolean {
 	return isSamlLoginEnabled() && isSamlLicensed() && isSamlCurrentAuthenticationMethod();
@@ -95,7 +97,8 @@ export function generatePassword(): string {
 export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
 	const user = new User();
 	const authIdentity = new AuthIdentity();
-	user.email = attributes.email;
+	const lowerCasedEmail = attributes.email?.toLowerCase() ?? '';
+	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
 	user.globalRole = await Container.get(RoleRepository).findGlobalMemberRoleOrFail();

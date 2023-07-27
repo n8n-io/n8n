@@ -1,11 +1,12 @@
-import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
-import type { BinaryFileType } from './Interfaces';
+import FormData from 'form-data';
+import type { BinaryFileType, JsonObject } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {
+		if (obj instanceof FormData) return obj.getLengthSync() === 0;
 		if (Array.isArray(obj)) return obj.length === 0;
 		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
 		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
@@ -129,19 +130,34 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 	}
 }
 
-const IS_FRONTEND_IN_DEV_MODE =
-	typeof process === 'object' &&
-	Object.keys(process).length === 1 &&
-	'env' in process &&
-	Object.keys(process.env).length === 0;
+export const isTraversableObject = (value: any): value is JsonObject => {
+	return (
+		value &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		!!Object.keys(value).length
+	);
+};
 
-export const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
-
-export const isSyntaxError = (error: unknown): error is SyntaxError =>
-	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
-
-export const isExpressionError = (error: unknown): error is ExpressionError =>
-	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
-
-export const isTypeError = (error: unknown): error is TypeError =>
-	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
+export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
+	seen.add(obj);
+	Object.entries(obj).forEach(([key, value]) => {
+		if (isTraversableObject(value)) {
+			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+			seen.has(value) ? (obj[key] = { circularReference: true }) : removeCircularRefs(value, seen);
+			return;
+		}
+		if (Array.isArray(value)) {
+			value.forEach((val, index) => {
+				if (seen.has(val)) {
+					value[index] = { circularReference: true };
+					return;
+				}
+				if (isTraversableObject(val)) {
+					removeCircularRefs(val, seen);
+				}
+			});
+		}
+	});
+};

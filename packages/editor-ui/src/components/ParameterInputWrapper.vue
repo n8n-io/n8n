@@ -28,9 +28,8 @@
 		/>
 		<input-hint
 			v-if="expressionOutput"
-			:class="$style.hint"
+			:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
 			data-test-id="parameter-expression-preview"
-			class="ph-no-capture"
 			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
 			:hint="expressionOutput"
 			:singleLine="true"

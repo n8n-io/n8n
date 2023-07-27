@@ -65,17 +65,4 @@ describe('RunDataJson.vue', () => {
 		expect(screen.getByText('null')).toBeInTheDocument();
 		expect(screen.queryByText('undefined')).not.toBeInTheDocument();
 	});
-
-	it('sets ph-no-capture class correctly', () => {
-		render(RunDataJson, DEFAULT_SETUP);
-
-		expect(screen.getByText('"list"')).not.toHaveClass('ph-no-capture');
-		expect(screen.getByText('"record"')).not.toHaveClass('ph-no-capture');
-		expect(screen.getByText('"myStringNumber"')).not.toHaveClass('ph-no-capture');
-
-		expect(screen.getByText('123')).toHaveClass('ph-no-capture');
-		expect(screen.getByText('"456"')).toHaveClass('ph-no-capture');
-		expect(screen.getByText('"abc"')).toHaveClass('ph-no-capture');
-		expect(screen.getByText('null')).toHaveClass('ph-no-capture');
-	});
 });

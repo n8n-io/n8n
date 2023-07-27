@@ -23,12 +23,20 @@ const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const toast = useToast();
-const { i18n } = useI18n();
+const { i18n: locale } = useI18n();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 
 const staged = ref<Record<string, boolean>>({});
-const files = ref<SourceControlAggregatedFile[]>(props.data.status || []);
+const files = ref<SourceControlAggregatedFile[]>(
+	props.data.status.filter((file, index, self) => {
+		// do not show remote workflows that are not yet created locally during push
+		if (file.location === 'remote' && file.type === 'workflow' && file.status === 'created') {
+			return false;
+		}
+		return self.findIndex((f) => f.id === file.id) === index;
+	}) || [],
+);
 
 const commitMessage = ref('');
 const loading = ref(true);
@@ -55,10 +63,10 @@ const workflowId = computed(() => {
 
 const sortedFiles = computed(() => {
 	const statusPriority = {
-		deleted: 1,
-		modified: 2,
-		renamed: 3,
-		created: 4,
+		modified: 1,
+		renamed: 2,
+		created: 3,
+		deleted: 4,
 	};
 
 	return [...files.value].sort((a, b) => {
@@ -104,7 +112,7 @@ onMounted(async () => {
 	try {
 		staged.value = getStagedFilesByContext(files.value);
 	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
+		toast.showError(error, locale.baseText('error'));
 	} finally {
 		loading.value = false;
 	}
@@ -152,10 +160,10 @@ function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<s
 			stagedFiles[file.file] = true;
 		}
 
-		if (context.value === 'workflow' && file.type === 'workflow' && file.id === workflowId.value) {
-			stagedFiles[file.file] = true;
-		} else if (context.value === 'workflows' && file.type === 'workflow') {
-			stagedFiles[file.file] = true;
+		if (context.value === 'workflow') {
+			if (file.type === 'workflow' && file.id === workflowId.value) {
+				stagedFiles[file.file] = true;
+			}
 		}
 	});
 
@@ -176,7 +184,7 @@ function close() {
 function renderUpdatedAt(file: SourceControlAggregatedFile) {
 	const currentYear = new Date().getFullYear();
 
-	return i18n.baseText('settings.sourceControl.lastUpdated', {
+	return locale.baseText('settings.sourceControl.lastUpdated', {
 		interpolate: {
 			date: dateformat(
 				file.updatedAt,
@@ -187,25 +195,32 @@ function renderUpdatedAt(file: SourceControlAggregatedFile) {
 	});
 }
 
-async function commitAndPush() {
-	const fileNames = files.value.filter((file) => staged.value[file.file]).map((file) => file.file);
+async function onCommitKeyDownEnter() {
+	if (!isSubmitDisabled.value) {
+		await commitAndPush();
+	}
+}
 
-	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.push'));
+async function commitAndPush() {
+	const fileNames = files.value.filter((file) => staged.value[file.file]);
+
+	loadingService.startLoading(locale.baseText('settings.sourceControl.loading.push'));
 	close();
 
 	try {
 		await sourceControlStore.pushWorkfolder({
+			force: true,
 			commitMessage: commitMessage.value,
 			fileNames,
 		});
 
 		toast.showToast({
-			title: i18n.baseText('settings.sourceControl.modals.push.success.title'),
-			message: i18n.baseText('settings.sourceControl.modals.push.success.description'),
+			title: locale.baseText('settings.sourceControl.modals.push.success.title'),
+			message: locale.baseText('settings.sourceControl.modals.push.success.description'),
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
+		toast.showError(error, locale.baseText('error'));
 	} finally {
 		loadingService.stopLoading();
 	}
@@ -215,98 +230,106 @@ async function commitAndPush() {
 <template>
 	<Modal
 		width="812px"
-		:title="i18n.baseText('settings.sourceControl.modals.push.title')"
+		:title="locale.baseText('settings.sourceControl.modals.push.title')"
 		:eventBus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
 	>
 		<template #content>
 			<div :class="$style.container">
-				<n8n-text>
-					{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
-					<span v-if="context">
-						{{ i18n.baseText(`settings.sourceControl.modals.push.description.${context}`) }}
-					</span>
-					<n8n-link
-						:href="i18n.baseText('settings.sourceControl.modals.push.description.learnMore.url')"
-					>
-						{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
-					</n8n-link>
-				</n8n-text>
+				<div v-if="files.length > 0">
+					<div v-if="workflowFiles.length > 0">
+						<n8n-text>
+							{{ locale.baseText('settings.sourceControl.modals.push.description') }}
+							<n8n-link :to="locale.baseText('settings.sourceControl.docs.using.pushPull.url')">
+								{{ locale.baseText('settings.sourceControl.modals.push.description.learnMore') }}
+							</n8n-link>
+						</n8n-text>
 
-				<div v-if="workflowFiles.length > 0">
-					<div class="mt-l mb-2xs">
-						<n8n-checkbox
-							:indeterminate="selectAllIndeterminate"
-							:value="selectAll"
-							@input="onToggleSelectAll"
-						>
-							<n8n-text bold tag="strong">
-								{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
-							</n8n-text>
-							<n8n-text tag="strong" v-show="workflowFiles.length > 0">
-								({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
-							</n8n-text>
-						</n8n-checkbox>
-					</div>
-					<n8n-card
-						v-for="file in sortedFiles"
-						v-show="!defaultStagedFileTypes.includes(file.type)"
-						:key="file.file"
-						:class="$style.listItem"
-						@click="setStagedStatus(file, !staged[file.file])"
-					>
-						<div :class="$style.listItemBody">
+						<div class="mt-l mb-2xs">
 							<n8n-checkbox
-								:value="staged[file.file]"
-								:class="$style.listItemCheckbox"
-								@input="setStagedStatus(file, !staged[file.file])"
-							/>
-							<div>
-								<n8n-text v-if="file.status === 'deleted'" color="text-light">
-									<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
-									<span v-if="file.type === 'credential'"> Deleted Credential: </span>
-									<strong>{{ file.id }}</strong>
+								:indeterminate="selectAllIndeterminate"
+								:value="selectAll"
+								@input="onToggleSelectAll"
+							>
+								<n8n-text bold tag="strong">
+									{{ locale.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
 								</n8n-text>
-								<n8n-text bold v-else>
-									{{ file.name }}
+								<n8n-text tag="strong" v-show="workflowFiles.length > 0">
+									({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
 								</n8n-text>
-								<div v-if="file.updatedAt">
-									<n8n-text color="text-light" size="small">
-										{{ renderUpdatedAt(file) }}
-									</n8n-text>
-								</div>
-								<div v-if="file.conflict">
-									<n8n-text color="danger" size="small">
-										{{ i18n.baseText('settings.sourceControl.modals.push.overrideVersionInGit') }}
-									</n8n-text>
-								</div>
-							</div>
-							<div :class="$style.listItemStatus">
-								<n8n-badge class="mr-2xs" v-if="workflowId === file.id && file.type === 'workflow'">
-									Current workflow
-								</n8n-badge>
-								<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
-									{{ file.status }}
-								</n8n-badge>
-							</div>
+							</n8n-checkbox>
 						</div>
-					</n8n-card>
+						<n8n-card
+							v-for="file in sortedFiles"
+							v-show="!defaultStagedFileTypes.includes(file.type)"
+							:key="file.file"
+							:class="$style.listItem"
+							@click="setStagedStatus(file, !staged[file.file])"
+						>
+							<div :class="$style.listItemBody">
+								<n8n-checkbox
+									:value="staged[file.file]"
+									:class="$style.listItemCheckbox"
+									@input="setStagedStatus(file, !staged[file.file])"
+								/>
+								<div>
+									<n8n-text v-if="file.status === 'deleted'" color="text-light">
+										<span v-if="file.type === 'workflow'"> Deleted Workflow: </span>
+										<span v-if="file.type === 'credential'"> Deleted Credential: </span>
+										<strong>{{ file.name || file.id }}</strong>
+									</n8n-text>
+									<n8n-text bold v-else> {{ file.name }} </n8n-text>
+									<div v-if="file.updatedAt">
+										<n8n-text color="text-light" size="small">
+											{{ renderUpdatedAt(file) }}
+										</n8n-text>
+									</div>
+								</div>
+								<div :class="$style.listItemStatus">
+									<n8n-badge
+										class="mr-2xs"
+										v-if="workflowId === file.id && file.type === 'workflow'"
+									>
+										Current workflow
+									</n8n-badge>
+									<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
+										{{ locale.baseText(`settings.sourceControl.status.${file.status}`) }}
+									</n8n-badge>
+								</div>
+							</div>
+						</n8n-card>
+					</div>
+					<n8n-notice class="mt-0" v-else>
+						<i18n path="settings.sourceControl.modals.push.noWorkflowChanges">
+							<template #link>
+								<n8n-link
+									size="small"
+									:to="locale.baseText('settings.sourceControl.docs.using.url')"
+								>
+									{{
+										locale.baseText('settings.sourceControl.modals.push.noWorkflowChanges.moreInfo')
+									}}
+								</n8n-link>
+							</template>
+						</i18n>
+					</n8n-notice>
 
 					<n8n-text bold tag="p" class="mt-l mb-2xs">
-						{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
+						{{ locale.baseText('settings.sourceControl.modals.push.commitMessage') }}
 					</n8n-text>
 					<n8n-input
 						type="text"
 						v-model="commitMessage"
 						:placeholder="
-							i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
+							locale.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 						"
+						@keydown.enter.native="onCommitKeyDownEnter"
 					/>
 				</div>
 				<div v-else-if="!loading">
-					<n8n-callout class="mt-l">
-						{{ i18n.baseText('settings.sourceControl.modals.push.everythingIsUpToDate') }}
-					</n8n-callout>
+					<n8n-notice class="mt-0 mb-0">
+						{{ locale.baseText('settings.sourceControl.modals.push.everythingIsUpToDate') }}
+					</n8n-notice>
 				</div>
 			</div>
 		</template>
@@ -314,10 +337,10 @@ async function commitAndPush() {
 		<template #footer>
 			<div :class="$style.footer">
 				<n8n-button type="tertiary" class="mr-2xs" @click="close">
-					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.cancel') }}
+					{{ locale.baseText('settings.sourceControl.modals.push.buttons.cancel') }}
 				</n8n-button>
 				<n8n-button type="primary" :disabled="isSubmitDisabled" @click="commitAndPush">
-					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.save') }}
+					{{ locale.baseText('settings.sourceControl.modals.push.buttons.save') }}
 				</n8n-button>
 			</div>
 		</template>

@@ -17,8 +17,9 @@ import type express from 'express';
 import get from 'lodash/get';
 import stream from 'stream';
 import { promisify } from 'util';
+import { Container } from 'typedi';
 
-import { BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
+import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
 	IBinaryData,
@@ -60,7 +61,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
+import { EventsService } from '@/services/events.service';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -243,7 +244,7 @@ export async function executeWebhook(
 				NodeExecuteFunctions,
 				executionMode,
 			);
-			eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id, workflowStartNode);
+			Container.get(EventsService).emit('nodeFetchedData', workflow.id, workflowStartNode);
 		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';

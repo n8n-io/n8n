@@ -12,8 +12,8 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories';
 import config from '@/config';
-import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { License } from '@/License';
+import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import type { PostHogClient } from '@/posthog';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
@@ -111,15 +111,7 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const {
-		password,
-		resetPasswordToken,
-		resetPasswordTokenExpiration,
-		updatedAt,
-		apiKey,
-		authIdentities,
-		...rest
-	} = user;
+	const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 	if (withoutKeys) {
 		withoutKeys.forEach((key) => {
 			// @ts-ignore

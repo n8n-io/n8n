@@ -222,23 +222,6 @@ export class Start extends BaseCommand {
 
 		await this.loadNodesAndCredentials.generateTypesForFrontend();
 
-		const installedPackages = await getAllInstalledPackages();
-		const missingPackages = new Set<{
-			packageName: string;
-			version: string;
-		}>();
-		installedPackages.forEach((installedPackage) => {
-			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!this.loadNodesAndCredentials.known.nodes[installedNode.type]) {
-					// Leave the list ready for installing in case we need.
-					missingPackages.add({
-						packageName: installedPackage.packageName,
-						version: installedPackage.installedVersion,
-					});
-				}
-			});
-		});
-
 		await UserSettings.getEncryptionKey();
 
 		// Load settings from database and set them to config.
@@ -247,36 +230,57 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		config.set('nodes.packagesMissing', '');
-		if (missingPackages.size) {
-			LoggerProxy.error(
-				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
-			);
+		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
-			if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
-				LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
-				try {
-					// Optimistic approach - stop if any installation fails
-					// eslint-disable-next-line no-restricted-syntax
-					for (const missingPackage of missingPackages) {
-						await this.loadNodesAndCredentials.installNpmModule(
-							missingPackage.packageName,
-							missingPackage.version,
-						);
-						missingPackages.delete(missingPackage);
+		if (areCommunityPackagesEnabled) {
+			const installedPackages = await getAllInstalledPackages();
+			const missingPackages = new Set<{
+				packageName: string;
+				version: string;
+			}>();
+			installedPackages.forEach((installedPackage) => {
+				installedPackage.installedNodes.forEach((installedNode) => {
+					if (!this.loadNodesAndCredentials.known.nodes[installedNode.type]) {
+						// Leave the list ready for installing in case we need.
+						missingPackages.add({
+							packageName: installedPackage.packageName,
+							version: installedPackage.installedVersion,
+						});
 					}
-					LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
-				} catch (error) {
-					LoggerProxy.error('n8n was unable to install the missing packages.');
-				}
-			}
+				});
+			});
 
-			config.set(
-				'nodes.packagesMissing',
-				Array.from(missingPackages)
-					.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
-					.join(' '),
-			);
+			config.set('nodes.packagesMissing', '');
+			if (missingPackages.size) {
+				LoggerProxy.error(
+					'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
+				);
+
+				if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
+					LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
+					try {
+						// Optimistic approach - stop if any installation fails
+						// eslint-disable-next-line no-restricted-syntax
+						for (const missingPackage of missingPackages) {
+							await this.loadNodesAndCredentials.installNpmModule(
+								missingPackage.packageName,
+								missingPackage.version,
+							);
+							missingPackages.delete(missingPackage);
+						}
+						LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
+					} catch (error) {
+						LoggerProxy.error('n8n was unable to install the missing packages.');
+					}
+				}
+
+				config.set(
+					'nodes.packagesMissing',
+					Array.from(missingPackages)
+						.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
+						.join(' '),
+				);
+			}
 		}
 
 		const dbType = config.getEnv('database.type');

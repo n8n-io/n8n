@@ -1,9 +1,10 @@
 import type { IDataObject, SecretsHelpersBase } from 'n8n-workflow';
-import Container from 'typedi';
+import { Service } from 'typedi';
 import { ExternalSecretsManager } from './secrets/SecretsManager.ee';
 
+@Service()
 export class SecretsHelper implements SecretsHelpersBase {
-	constructor(private service: ExternalSecretsManager = Container.get(ExternalSecretsManager)) {}
+	constructor(private service: ExternalSecretsManager) {}
 
 	async update() {
 		if (!this.service.initialized) {

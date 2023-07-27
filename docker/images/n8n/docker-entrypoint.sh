@@ -1,8 +1,8 @@
 #!/bin/sh
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
-  node "$@"
+  exec n8n "$@"
 else
   # Got started without arguments
-  n8n
+  exec n8n
 fi

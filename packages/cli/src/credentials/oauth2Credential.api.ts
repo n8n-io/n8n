@@ -274,6 +274,7 @@ oauth2CredentialController.get(
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 				scopes: split(scopes, ','),
 				scopesSeparator: scopes.includes(',') ? ',' : ' ',
+				ignoreSSLIssues: get(oauthCredentials, 'ignoreSSLIssues') as boolean,
 			};
 
 			if (oauthCredentials.grantType === 'pkce') {

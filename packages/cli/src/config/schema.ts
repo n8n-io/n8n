@@ -353,9 +353,9 @@ export const schema = {
 		},
 		bull: {
 			prefix: {
-				doc: 'Prefix for all queue keys',
+				doc: 'Prefix for all queue keys (wrap in {} for cluster mode)',
 				format: String,
-				default: '',
+				default: 'bull',
 				env: 'QUEUE_BULL_PREFIX',
 			},
 			redis: {
@@ -394,6 +394,12 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'QUEUE_BULL_REDIS_USERNAME',
+				},
+				clusterNodes: {
+					doc: 'Redis Cluster startup nodes (comma separated list of host:port pairs)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
 			},
 			queueRecoveryInterval: {
@@ -1092,6 +1098,43 @@ export const schema = {
 				format: String,
 				default: 'n8nEventLog',
 				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
+			},
+		},
+	},
+
+	cache: {
+		enabled: {
+			doc: 'Whether caching is enabled',
+			format: Boolean,
+			default: true,
+			env: 'N8N_CACHE_ENABLED',
+		},
+		backend: {
+			doc: 'Backend to use for caching',
+			format: ['memory', 'redis', 'auto'] as const,
+			default: 'auto',
+			env: 'N8N_CACHE_BACKEND',
+		},
+		memory: {
+			maxSize: {
+				doc: 'Maximum size of memory cache in bytes',
+				format: Number,
+				default: 3 * 1024 * 1024, // 3 MB
+				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
+			},
+			ttl: {
+				doc: 'Time to live for cached items in memory (in ms)',
+				format: Number,
+				default: 3600 * 1000, // 1 hour
+				env: 'N8N_CACHE_MEMORY_TTL',
+			},
+		},
+		redis: {
+			ttl: {
+				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
+				format: Number,
+				default: 0,
+				env: 'N8N_CACHE_REDIS_TTL',
 			},
 		},
 	},
