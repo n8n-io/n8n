@@ -25,7 +25,7 @@
 				v-for="child in availableChildren"
 				:key="child.id"
 				:item="child"
-				:compact="compact"
+				:compact="false"
 				:tooltipDelay="tooltipDelay"
 				:popperClass="popperClass"
 				:mode="mode"
@@ -184,22 +184,6 @@ export default defineComponent({
 	--sub-menu-item-height: 27px;
 }
 
-@mixin compact() {
-	.icon {
-		margin: 0;
-		overflow: visible !important;
-		visibility: visible !important;
-		width: initial !important;
-		height: initial !important;
-	}
-	.label {
-		display: none;
-	}
-	.secondaryIcon {
-		display: none;
-	}
-}
-
 .submenu {
 	background: none !important;
 
@@ -307,7 +291,19 @@ export default defineComponent({
 }
 
 .compact {
-	@include compact();
+	.icon {
+		margin: 0;
+		overflow: visible !important;
+		visibility: visible !important;
+		width: initial !important;
+		height: initial !important;
+	}
+	.label {
+		display: none;
+	}
+	.secondaryIcon {
+		display: none;
+	}
 }
 
 .submenuPopper {
@@ -327,9 +323,8 @@ export default defineComponent({
 	}
 
 	&.compact {
-		:global(.el-menu--popup) {
-			min-width: auto;
-			@include compact();
+		.label {
+			display: inline-block;
 		}
 	}
 }
