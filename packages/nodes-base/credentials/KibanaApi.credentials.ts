@@ -15,18 +15,11 @@ export class KibanaApi implements ICredentialType {
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
-			name: 'apiUrl',
+			name: 'url',
 			type: 'string',
 			required: true,
 			default: '',
-			placeholder: 'http://localhost',
-		},
-		{
-			displayName: 'Port',
-			name: 'port',
-			type: 'number',
-			required: true,
-			default: 5601,
+			placeholder: 'http://localhost:5601',
 		},
 		{
 			displayName: 'Username',
@@ -60,7 +53,7 @@ export class KibanaApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials?.apiUrl}}:{{$credentials.port}}',
+			baseURL: '={{$credentials.url}}',
 			url: '/api/features',
 		},
 	};
