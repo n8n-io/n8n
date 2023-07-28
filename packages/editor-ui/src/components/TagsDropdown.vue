@@ -209,6 +209,7 @@ export default defineComponent({
 			if (manage) {
 				filter.value = '';
 				uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
+				emit('blur');
 			} else if (create) {
 				void onCreate();
 			} else {
