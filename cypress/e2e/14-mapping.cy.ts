@@ -4,6 +4,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
 import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -28,11 +29,7 @@ describe('Data mapping', () => {
 		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
 
 		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
-		ndv.getters
-			.nodeParameters()
-			.find('.el-select-dropdown__list li:nth-child(3)')
-			.should('have.text', 'String')
-			.click();
+		getVisibleSelect().find('li:nth-child(3)').should('have.text', 'String').click();
 		ndv.getters
 			.parameterInput('name')
 			.should('have.length', 1)
@@ -128,7 +125,7 @@ describe('Data mapping', () => {
 			.find('.json-data')
 			.should(
 				'have.text',
-				'[{"input":[{"count":0,"with space":"!!","with.dot":"!!","with"quotes":"!!"}]},{"input":[{"count":1}]}]',
+				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
 			)
 			.find('span')
 			.contains('"count"')
@@ -178,6 +175,7 @@ describe('Data mapping', () => {
 
 	it('maps expressions from previous nodes', () => {
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
@@ -245,7 +243,8 @@ describe('Data mapping', () => {
 		workflowPage.actions.addNodeToCanvas('Item Lists');
 		workflowPage.actions.openNode('Item Lists');
 
-		ndv.getters.parameterInput('operation').click().find('li').contains('Sort').click();
+		ndv.getters.parameterInput('operation').click();
+		getVisibleSelect().find('li').contains('Sort').click();
 
 		ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
 
@@ -274,6 +273,8 @@ describe('Data mapping', () => {
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
+		ndv.actions.dismissMappingTooltip();
+		cy.wait(300);
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
 

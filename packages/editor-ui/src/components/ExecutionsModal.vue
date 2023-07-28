@@ -11,7 +11,7 @@ import { defineComponent } from 'vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import Modal from '@/components/Modal.vue';
 import { EXECUTIONS_MODAL_KEY } from '@/constants';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'ExecutionsModal',

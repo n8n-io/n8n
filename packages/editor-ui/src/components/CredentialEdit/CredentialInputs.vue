@@ -17,7 +17,7 @@
 				:showValidationWarnings="showValidationWarnings"
 				:label="label"
 				eventSource="credentials"
-				@change="valueChanged"
+				@update="valueChanged"
 			/>
 		</form>
 	</div>
@@ -51,7 +51,7 @@ export default defineComponent({
 		valueChanged(parameterData: IUpdateInformation) {
 			const name = parameterData.name.split('.').pop();
 
-			this.$emit('change', {
+			this.$emit('update', {
 				name,
 				value: parameterData.value,
 			});

@@ -276,7 +276,7 @@
 			color: var(--color-primary);
 		}
 
-		& [class*='el-icon-'] {
+		& .el-icon {
 			line-height: 0.9;
 
 			& + span {

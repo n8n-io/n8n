@@ -7,8 +7,7 @@
 	>
 		<n8n-tooltip
 			placement="top"
-			:value="showTooltip"
-			manual
+			:visible="showTooltip"
 			:disabled="nodeCreatorStore.showScrim"
 			:popper-class="$style.tooltip"
 			:open-delay="700"

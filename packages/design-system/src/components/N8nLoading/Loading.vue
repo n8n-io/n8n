@@ -28,7 +28,7 @@
 				</div>
 			</div>
 			<div :class="$style.custom" v-else-if="variant === 'custom'">
-				<el-skeleton-item :variant="variant" />
+				<el-skeleton-item />
 			</div>
 			<el-skeleton-item v-else :variant="variant" />
 		</template>
@@ -36,8 +36,7 @@
 </template>
 
 <script lang="ts">
-import { Skeleton as ElSkeleton, SkeletonItem as ElSkeletonItem } from 'element-ui';
-
+import { ElSkeleton, ElSkeletonItem } from 'element-plus';
 import { defineComponent } from 'vue';
 
 export default defineComponent({
@@ -99,7 +98,7 @@ export default defineComponent({
 </style>
 
 <style lang="scss">
-.n8n-loading-custom .el-skeleton {
+.n8n-loading-custom.el-skeleton {
 	&,
 	.el-skeleton__item {
 		width: 100%;

@@ -11,7 +11,7 @@ export class PersonalSettingsPage extends BasePage {
 		lastNameInput: () => cy.getByTestId('lastName').find('input').first(),
 		emailInputContainer: () => cy.getByTestId('email'),
 		emailInput: () => cy.getByTestId('email').find('input').first(),
-		changePasswordLink: () => cy.getByTestId('change-password-link').find('a').first(),
+		changePasswordLink: () => cy.getByTestId('change-password-link').first(),
 		saveSettingsButton: () => cy.getByTestId('save-settings-button'),
 	};
 	actions = {
@@ -34,7 +34,10 @@ export class PersonalSettingsPage extends BasePage {
 		},
 		tryToSetWeakPassword: (oldPassword: string, newPassword: string) => {
 			this.actions.updatePassword(oldPassword, newPassword);
-			changePasswordModal.getters.newPasswordInputContainer().find('div[class^="_errorInput"]').should('exist');
+			changePasswordModal.getters
+				.newPasswordInputContainer()
+				.find('div[class^="_errorInput"]')
+				.should('exist');
 		},
 		updateEmail: (newEmail: string) => {
 			this.getters.emailInput().type('{selectall}').type(newEmail).type('{enter}');

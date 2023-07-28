@@ -1,4 +1,6 @@
 import { SettingsLogStreamingPage } from '../pages';
+import { getVisibleModalOverlay } from '../utils/modal';
+import { getVisibleDropdown } from '../utils';
 
 const settingsLogStreamingPage = new SettingsLogStreamingPage();
 
@@ -19,6 +21,7 @@ describe('Log Streaming Settings', () => {
 	});
 
 	it('should show the add destination modal', () => {
+		cy.enableFeature('logStreaming');
 		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
@@ -27,7 +30,7 @@ describe('Log Streaming Settings', () => {
 		settingsLogStreamingPage.getters.getSelectDestinationButton().should('be.visible');
 		settingsLogStreamingPage.getters.getSelectDestinationButton().should('have.attr', 'disabled');
 		settingsLogStreamingPage.getters
-			.getDestinationModalDialog()
+			.getDestinationModal()
 			.invoke('css', 'width')
 			.then((widthStr) => parseInt((widthStr as unknown as string).replace('px', '')))
 			.should('be.lessThan', 500);
@@ -36,65 +39,67 @@ describe('Log Streaming Settings', () => {
 		settingsLogStreamingPage.getters
 			.getSelectDestinationButton()
 			.should('not.have.attr', 'disabled');
-		settingsLogStreamingPage.getters.getDestinationModal().click(1, 1);
+		getVisibleModalOverlay().click(1, 1);
 		settingsLogStreamingPage.getters.getDestinationModal().should('not.exist');
 	});
 
 	it('should create a destination and delete it', () => {
+		cy.enableFeature('logStreaming');
 		cy.visit('/settings/log-streaming');
+		cy.wait(1000); // Race condition with getDestinationDataFromBackend()
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
 		settingsLogStreamingPage.getters.getSelectDestinationType().click();
 		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(0).click();
 		settingsLogStreamingPage.getters.getSelectDestinationButton().click();
-		settingsLogStreamingPage.getters.getDestinationNameInput().click()
+		settingsLogStreamingPage.getters.getDestinationNameInput().click();
 
-		settingsLogStreamingPage.getters.getDestinationNameInput().find('input').clear().type('Destination 0');
+		settingsLogStreamingPage.getters
+			.getDestinationNameInput()
+			.find('input')
+			.clear()
+			.type('Destination 0');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();
 		cy.wait(100);
-		settingsLogStreamingPage.getters.getDestinationModal().click(1, 1);
+		getVisibleModalOverlay().click(1, 1);
 		cy.reload();
 		settingsLogStreamingPage.getters.getDestinationCards().eq(0).click();
 		settingsLogStreamingPage.getters.getDestinationDeleteButton().should('be.visible').click();
 		cy.get('.el-message-box').should('be.visible').find('.btn--cancel').click();
 		settingsLogStreamingPage.getters.getDestinationDeleteButton().click();
 		cy.get('.el-message-box').should('be.visible').find('.btn--confirm').click();
-		cy.reload();
 	});
 
 	it('should create a destination and delete it via card actions', () => {
+		cy.enableFeature('logStreaming');
 		cy.visit('/settings/log-streaming');
+		cy.wait(1000); // Race condition with getDestinationDataFromBackend()
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
 		settingsLogStreamingPage.getters.getSelectDestinationType().click();
 		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(0).click();
 		settingsLogStreamingPage.getters.getSelectDestinationButton().click();
-		settingsLogStreamingPage.getters.getDestinationNameInput().click()
-		settingsLogStreamingPage.getters.getDestinationNameInput().find('input').clear().type('Destination 1');
+		settingsLogStreamingPage.getters.getDestinationNameInput().click();
+		settingsLogStreamingPage.getters
+			.getDestinationNameInput()
+			.find('input')
+			.clear()
+			.type('Destination 1');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().should('not.have.attr', 'disabled');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();
 		cy.wait(100);
-		settingsLogStreamingPage.getters.getDestinationModal().click(1, 1);
+		getVisibleModalOverlay().click(1, 1);
 		cy.reload();
 
-		settingsLogStreamingPage.getters
-			.getDestinationCards()
-			.eq(0)
-			.find('.el-dropdown-selfdefine')
-			.click();
-		cy.get('.el-dropdown-menu').find('.el-dropdown-menu__item').eq(0).click();
+		settingsLogStreamingPage.getters.getDestinationCards().eq(0).find('.el-dropdown').click();
+		getVisibleDropdown().find('.el-dropdown-menu__item').eq(0).click();
 		settingsLogStreamingPage.getters.getDestinationSaveButton().should('not.exist');
-		settingsLogStreamingPage.getters.getDestinationModal().click(1, 1);
+		getVisibleModalOverlay().click(1, 1);
 
-		settingsLogStreamingPage.getters
-			.getDestinationCards()
-			.eq(0)
-			.find('.el-dropdown-selfdefine')
-			.click();
-		cy.get('.el-dropdown-menu').find('.el-dropdown-menu__item').eq(1).click();
+		settingsLogStreamingPage.getters.getDestinationCards().eq(0).find('.el-dropdown').click();
+		getVisibleDropdown().find('.el-dropdown-menu__item').eq(1).click();
 		cy.get('.el-message-box').should('be.visible').find('.btn--confirm').click();
-		cy.reload();
 	});
 });
