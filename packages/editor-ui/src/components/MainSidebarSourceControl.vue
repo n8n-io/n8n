@@ -141,7 +141,7 @@ const goToSourceControlSetup = async () => {
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
-				<n8n-tooltip :disabled="!isCollapsed" :open-delay="tooltipOpenDelay" placement="right">
+				<n8n-tooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
 					<template #content>
 						<div>
 							{{ i18n.baseText('settings.sourceControl.button.pull') }}
@@ -163,7 +163,7 @@ const goToSourceControlSetup = async () => {
 				<n8n-tooltip
 					v-if="!sourceControlStore.preferences.branchReadOnly"
 					:disabled="!isCollapsed"
-					:open-delay="tooltipOpenDelay"
+					:show-after="tooltipOpenDelay"
 					placement="right"
 				>
 					<template #content>
