@@ -954,6 +954,7 @@ export default defineComponent({
 
 			this.editDialogClosing = true;
 			void this.$nextTick(() => {
+				this.$refs.inputField?.blur?.();
 				this.editDialogClosing = false;
 			});
 		},
@@ -990,7 +991,7 @@ export default defineComponent({
 		onResourceLocatorDrop(data: string) {
 			this.$emit('drop', data);
 		},
-		async setFocus() {
+		async setFocus(event: MouseEvent) {
 			if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 				this.displayEditDialog();
 				return;
