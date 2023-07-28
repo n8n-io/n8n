@@ -172,7 +172,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
 		);
 
-		if (expirableProperty === undefined || expirableProperty.name === undefined) {
+		if (expirableProperty?.name === undefined) {
 			return undefined;
 		}
 
