@@ -1,21 +1,23 @@
 <template>
-	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<template #content>
-			<div>{{ disabledHint }}</div>
-		</template>
-		<div>
-			<n8n-button
-				v-bind="$attrs"
-				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
-				:disabled="disabled || !!disabledHint"
-				:label="buttonLabel"
-				:type="type"
-				:size="size"
-				:transparentBackground="transparent"
-				@click="onClick"
-			/>
-		</div>
-	</n8n-tooltip>
+	<span>
+		<n8n-tooltip placement="bottom" :disabled="!disabledHint">
+			<template #content>
+				<div>{{ disabledHint }}</div>
+			</template>
+			<div>
+				<n8n-button
+					v-bind="$attrs"
+					:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
+					:disabled="disabled || !!disabledHint"
+					:label="buttonLabel"
+					:type="type"
+					:size="size"
+					:transparentBackground="transparent"
+					@click="onClick"
+				/>
+			</div>
+		</n8n-tooltip>
+	</span>
 </template>
 
 <script lang="ts">
