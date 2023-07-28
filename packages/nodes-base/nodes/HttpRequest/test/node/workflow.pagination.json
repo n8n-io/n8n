@@ -151,6 +151,59 @@
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.1,
 			"position": [900, 520]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"options": {
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"limitPagesFetched": true,
+							"maxRequests": 3
+						}
+					}
+				}
+			},
+			"id": "698733fb-0a96-4aea-b249-3ecc27147232",
+			"name": "Response Empty Next",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 780]
+		},
+		{
+			"parameters": {
+				"content": "### Next URL",
+				"height": 225.33363208604078,
+				"width": 258.5274479049966
+			},
+			"id": "d028fb00-eac0-495e-b0a7-6a47958bf293",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [840, 720]
+		},
+		{
+			"parameters": {
+				"content": "### Update a Parameter in Each Request",
+				"height": 746.0524311001569,
+				"width": 252.67667488236606
+			},
+			"id": "2f48dfae-a194-4d50-9f62-e30768bc3d47",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [847.3233251176339, -60]
 		}
 	],
 	"pinData": {
@@ -431,6 +484,68 @@
 					"id": 14
 				}
 			}
+		],
+		"Response Empty Next": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			}
 		]
 	},
 	"connections": {
@@ -456,6 +571,11 @@
 						"node": "Complete Expression",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Response Empty Next",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -465,7 +585,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "221d22ba-dbcf-4a81-a0cc-230194c3a115",
+	"versionId": "62392ed5-27b1-4469-9229-d58890ec94c9",
 	"id": "ZKVF9JrrzoxXbUqu",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"

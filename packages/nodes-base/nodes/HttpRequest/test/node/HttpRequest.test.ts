@@ -122,6 +122,7 @@ describe('Test HTTP Request Node', () => {
 				const data = parseUrl(uri, true);
 				const skip = parseInt((data.query.skip as string) || '0', 10);
 				const limit = parseInt((data.query.limit as string) || '10', 10);
+				const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
 
 				const response = [];
 				for (let i = skip; i < skip + limit; i++) {
@@ -134,10 +135,10 @@ describe('Test HTTP Request Node', () => {
 				}
 
 				if (!response.length) {
-					return [201, response];
+					return [201, response, { 'next-url': nextUrl }];
 				}
 
-				return [200, response];
+				return [200, response, { 'next-url': nextUrl }];
 			});
 	});
 
