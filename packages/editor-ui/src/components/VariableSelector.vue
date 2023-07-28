@@ -361,7 +361,7 @@ export default defineComponent({
 			filterText: string,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
-			const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
+			const outputData = pinData.map((data) => ({ json: data }) as INodeExecutionData)[0];
 
 			return this.getNodeOutput(nodeName, outputData, filterText, useShort);
 		},
