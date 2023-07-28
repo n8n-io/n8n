@@ -12,11 +12,6 @@ const ndv = new NDV();
 describe('Data mapping', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-
-		cy.window().then((win) => {
-			// @ts-ignore
-			win.preventNodeViewBeforeUnload = true;
-		});
 	});
 
 	it('maps expressions from table header', () => {
