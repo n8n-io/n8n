@@ -6,6 +6,10 @@ before(() => {
 		owner: INSTANCE_OWNER,
 		members: INSTANCE_MEMBERS,
 	});
+
+	Cypress.on('uncaught:exception', (err) => {
+		return !err.message.includes('ResizeObserver');
+	});
 });
 
 beforeEach(() => {

@@ -1,11 +1,11 @@
 <template>
 	<button
 		:class="classes"
-		:disabled="disabled || loading"
+		:disabled="isDisabled"
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
 		aria-live="polite"
-		v-on="$listeners"
+		v-bind="$attrs"
 	>
 		<span :class="$style.icon" v-if="loading || icon">
 			<n8n-spinner v-if="loading" :size="size" />
@@ -17,158 +17,112 @@
 	</button>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
+import { useCssModule, computed, useAttrs } from 'vue';
 
-export default defineComponent({
-	name: 'n8n-button',
-	props: {
-		label: {
-			type: String,
-		},
-		type: {
-			type: String,
-			default: 'primary',
-			validator: (value: string): boolean =>
-				['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'].includes(value),
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean =>
-				['xmini', 'mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		outline: {
-			type: Boolean,
-			default: false,
-		},
-		text: {
-			type: Boolean,
-			default: false,
-		},
-		icon: {
-			type: [String, Array],
-		},
-		block: {
-			type: Boolean,
-			default: false,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
-		float: {
-			type: String,
-			validator: (value: string): boolean => ['left', 'right'].includes(value),
-		},
-		square: {
-			type: Boolean,
-			default: false,
-		},
+const $style = useCssModule();
+const $attrs = useAttrs();
+
+const props = defineProps({
+	label: {
+		type: String,
+		default: '',
 	},
-	components: {
-		N8nSpinner,
-		N8nIcon,
+	type: {
+		type: String,
+		default: 'primary',
 	},
-	computed: {
-		ariaBusy(): 'true' | undefined {
-			return this.loading ? 'true' : undefined;
-		},
-		ariaDisabled(): 'true' | undefined {
-			return this.disabled ? 'true' : undefined;
-		},
-		classes(): string {
-			return (
-				`button ${this.$style.button} ${this.$style[this.type]}` +
-				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
-				`${this.outline ? ` ${this.$style.outline}` : ''}` +
-				`${this.loading ? ` ${this.$style.loading}` : ''}` +
-				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
-				`${this.text ? ` ${this.$style.text}` : ''}` +
-				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
-				`${this.block ? ` ${this.$style.block}` : ''}` +
-				`${this.active ? ` ${this.$style.active}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style.withIcon}` : ''}` +
-				`${this.square ? ` ${this.$style.square}` : ''}`
-			);
-		},
+	size: {
+		type: String,
+		default: 'medium',
 	},
+	loading: {
+		type: Boolean,
+		default: false,
+	},
+	disabled: {
+		type: Boolean,
+		default: false,
+	},
+	outline: {
+		type: Boolean,
+		default: false,
+	},
+	text: {
+		type: Boolean,
+		default: false,
+	},
+	icon: {
+		type: [String, Array],
+	},
+	block: {
+		type: Boolean,
+		default: false,
+	},
+	active: {
+		type: Boolean,
+		default: false,
+	},
+	float: {
+		type: String,
+	},
+	square: {
+		type: Boolean,
+		default: false,
+	},
+});
+
+const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
+const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
+const isDisabled = computed(() => props.disabled || props.loading);
+
+const classes = computed(() => {
+	return (
+		`button ${$style.button} ${$style[props.type]}` +
+		`${props.size ? ` ${$style[props.size]}` : ''}` +
+		`${props.outline ? ` ${$style.outline}` : ''}` +
+		`${props.loading ? ` ${$style.loading}` : ''}` +
+		`${props.float ? ` ${$style[`float-${props.float}`]}` : ''}` +
+		`${props.text ? ` ${$style.text}` : ''}` +
+		`${props.disabled ? ` ${$style.disabled}` : ''}` +
+		`${props.block ? ` ${$style.block}` : ''}` +
+		`${props.active ? ` ${$style.active}` : ''}` +
+		`${props.icon || props.loading ? ` ${$style.withIcon}` : ''}` +
+		`${props.square ? ` ${$style.square}` : ''}`
+	);
 });
 </script>
 
+<style lang="scss">
+@import './Button';
+
+.el-button {
+	@include n8n-button(true);
+
+	--button-padding-vertical: var(--spacing-2xs);
+	--button-padding-horizontal: var(--spacing-xs);
+	--button-font-size: var(--font-size-2xs);
+
+	+ .el-button {
+		margin-left: var(--spacing-2xs);
+	}
+
+	&.btn--cancel,
+	&.el-color-dropdown__link-btn {
+		@include n8n-button-secondary;
+	}
+}
+</style>
+
 <style lang="scss" module>
+@import './Button';
 @import '../../css/mixins/utils';
 @import '../../css/common/var';
 
 .button {
-	display: inline-block;
-	line-height: 1;
-	white-space: nowrap;
-	cursor: pointer;
-
-	border: var(--border-width-base) $button-border-color var(--border-style-base);
-	color: $button-font-color;
-	background-color: $button-background-color;
-	font-weight: var(--font-weight-bold);
-	border-radius: $button-border-radius;
-	padding: $button-padding-vertical $button-padding-horizontal;
-	font-size: $button-font-size;
-
-	-webkit-appearance: none;
-	text-align: center;
-	box-sizing: border-box;
-	outline: none;
-	margin: 0;
-	transition: 0.3s;
-
-	@include utils-user-select(none);
-
-	&:hover {
-		color: $button-hover-color;
-		border-color: $button-hover-border-color;
-		background-color: $button-hover-background-color;
-	}
-
-	&:focus {
-		border-color: $button-focus-outline-color;
-		outline: $focus-outline-width solid $button-focus-outline-color;
-	}
-
-	&:active,
-	&.active {
-		color: $button-active-color;
-		border-color: $button-active-border-color;
-		background-color: $button-active-background-color;
-		outline: none;
-	}
-
-	&::-moz-focus-inner {
-		border: 0;
-	}
-
-	> i {
-		display: none;
-	}
-
-	> span {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	span + span {
-		margin-left: var(--spacing-3xs);
-	}
+	@include n8n-button;
 }
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0);
@@ -178,19 +132,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  */
 
 .secondary {
-	--button-color: var(--color-primary);
-	--button-border-color: var(--color-primary);
-	--button-background-color: var(--color-background-xlight);
-
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: var(--color-primary);
-
-	--button-hover-background-color: var(--color-primary-tint-3);
-	--button-hover-color: var(--color-primary);
-	--button-hover-border-color: var(--color-primary);
-
-	--button-focus-outline-color: var(--color-primary-tint-1);
+	@include n8n-button-secondary;
 }
 
 .tertiary {

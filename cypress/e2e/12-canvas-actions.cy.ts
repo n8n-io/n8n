@@ -66,7 +66,6 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeViewBackground().click({ force: true });
 	});
 
-
 	it('should add a connected node using plus endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		cy.get('.plus-endpoint').should('be.visible').click();

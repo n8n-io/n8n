@@ -55,7 +55,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils';
+import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { Banners } from 'n8n-workflow';
 
