@@ -7,7 +7,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [660, 280]
+			"position": [420, 520]
 		},
 		{
 			"parameters": {
@@ -154,6 +154,64 @@
 		},
 		{
 			"parameters": {
+				"content": "### Next URL\nResponse Format: Autodetect",
+				"height": 223.6542431762359,
+				"width": 258.5274479049966
+			},
+			"id": "d028fb00-eac0-495e-b0a7-6a47958bf293",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [840, 720]
+		},
+		{
+			"parameters": {
+				"content": "### Update a Parameter in Each Request\nResponse Format: Autodetect",
+				"height": 764.5257091080099,
+				"width": 323.21100909416833
+			},
+			"id": "2f48dfae-a194-4d50-9f62-e30768bc3d47",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [847.3233251176339, -78.47327800785297]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "text"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "201"
+						}
+					}
+				}
+			},
+			"id": "a53f6a9d-945f-4891-8bda-15651dc67267",
+			"name": "Response Empty - Text",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 1040]
+		},
+		{
+			"parameters": {
 				"url": "https://dummyjson.com/users",
 				"sendQuery": true,
 				"queryParameters": {
@@ -176,34 +234,75 @@
 				}
 			},
 			"id": "698733fb-0a96-4aea-b249-3ecc27147232",
-			"name": "Response Empty Next",
+			"name": "Response Empty Next with Max Pages",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.1,
 			"position": [900, 780]
 		},
 		{
 			"parameters": {
-				"content": "### Next URL",
-				"height": 225.33363208604078,
+				"content": "### Next URL\nResponse Format: Text",
+				"height": 223.6542431762359,
 				"width": 258.5274479049966
 			},
-			"id": "d028fb00-eac0-495e-b0a7-6a47958bf293",
-			"name": "Sticky Note",
+			"id": "51183fa5-a558-4fdc-9aae-60bd5f9a46e9",
+			"name": "Sticky Note2",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [840, 720]
+			"position": [840, 980]
 		},
 		{
 			"parameters": {
-				"content": "### Update a Parameter in Each Request",
-				"height": 746.0524311001569,
-				"width": 252.67667488236606
+				"content": "### Update a Parameter in Each Request\nResponse Format: JSON",
+				"height": 232.15942469988397,
+				"width": 323.21100909416833
 			},
-			"id": "2f48dfae-a194-4d50-9f62-e30768bc3d47",
-			"name": "Sticky Note1",
+			"id": "029449f0-327b-4eca-acdb-e23d2e24fd86",
+			"name": "Sticky Note3",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [847.3233251176339, -60]
+			"position": [840, -347.6337155918741]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "qs",
+										"name": "skip",
+										"value": "={{ $count * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "other",
+							"completeExpression": "={{ $response.statusCode === 201 }}"
+						}
+					}
+				}
+			},
+			"id": "343443db-1650-4c50-81f1-f122d59b821b",
+			"name": "Complete Expression - JSON",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, -280]
 		}
 	],
 	"pinData": {
@@ -485,7 +584,34 @@
 				}
 			}
 		],
-		"Response Empty Next": [
+		"Response Empty - Text": [
+			{
+				"json": {
+					"data": "[{\"id\":0},{\"id\":1},{\"id\":2},{\"id\":3}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[]"
+				}
+			}
+		],
+		"Response Empty Next with Max Pages": [
 			{
 				"json": {
 					"id": 0
@@ -546,6 +672,83 @@
 					"id": 11
 				}
 			}
+		],
+		"Complete Expression - JSON": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
 		]
 	},
 	"connections": {
@@ -573,7 +776,17 @@
 						"index": 0
 					},
 					{
-						"node": "Response Empty Next",
+						"node": "Response Empty Next with Max Pages",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty - Text",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Complete Expression - JSON",
 						"type": "main",
 						"index": 0
 					}
@@ -585,7 +798,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "62392ed5-27b1-4469-9229-d58890ec94c9",
+	"versionId": "0939674b-036a-412d-be0e-46181e1c542d",
 	"id": "ZKVF9JrrzoxXbUqu",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
