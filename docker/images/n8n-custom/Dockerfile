@@ -20,7 +20,7 @@ RUN jq '{name: .name, version: .version}' packages/editor-ui/package.json > edit
 RUN jq '{name: .name, version: .version}' packages/design-system/package.json > design-system.tmp; mv design-system.tmp packages/design-system/package.json
 RUN NODE_ENV=production pnpm install --prod --no-optional
 RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
-RUN rm -rf packages/@n8n_io/eslint-config packages/editor-ui/src packages/editor-ui/node_modules packages/design-system
+RUN rm -rf packages/@n8n/eslint-config packages/editor-ui/src packages/editor-ui/node_modules packages/design-system
 RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/*
 
 

@@ -1,5 +1,5 @@
 {
-  "name": "@n8n_io/eslint-config",
+  "name": "@n8n/eslint-config",
   "private": true,
   "version": "0.0.1",
   "devDependencies": {

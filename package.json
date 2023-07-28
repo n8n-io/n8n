@@ -36,7 +36,7 @@
     "n8n": "workspace:*"
   },
   "devDependencies": {
-    "@n8n_io/eslint-config": "workspace:*",
+    "@n8n/eslint-config": "workspace:*",
     "@ngneat/falso": "^6.4.0",
     "@types/jest": "^29.5.3",
     "@types/supertest": "^2.0.12",
