@@ -70,7 +70,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const makePreferencesAction =
-		(action: typeof vcApi.savePreferences | typeof vcApi.updatePreferences) =>
+		(action: typeof vcApi.savePreferences) =>
 		async (preferences: Partial<SourceControlPreferences>) => {
 			const data = await action(rootStore.getRestApiContext, preferences);
 			setPreferences(data);

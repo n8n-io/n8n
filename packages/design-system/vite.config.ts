@@ -41,7 +41,7 @@ export default mergeConfig(
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
 			coverage: {
-				provider: 'c8',
+				provider: 'v8',
 				reporter: coverageReporters,
 				all: true,
 			},
