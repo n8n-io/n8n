@@ -16,12 +16,12 @@ import * as manual from './manual.mode';
 type Mode = 'manual' | 'raw';
 
 const versionDescription: INodeTypeDescription = {
-	displayName: 'Add or Edit Fields',
+	displayName: 'Add or Edit Fields (Set)',
 	name: 'set',
 	icon: 'fa:pen',
 	group: ['input'],
 	version: 3,
-	description: 'Add or edit fields on an input item and optionally remove other fields',
+	description: 'Change the structure of your items',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
 		name: 'Add or Edit Fields',
@@ -43,7 +43,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Edit item fields one by one',
 				},
 				{
-					name: 'RAW Mapping',
+					name: 'JSON Output',
 					value: 'raw',
 					description: 'Customize item output with JSON',
 					action: 'Customize item output with JSON',
@@ -165,8 +165,7 @@ const versionDescription: INodeTypeDescription = {
 					name: 'ignoreConversionErrors',
 					type: 'boolean',
 					default: false,
-					description:
-						"Whether to ignore field type errors. Affected values will be set to 'null'.",
+					description: 'Whether to ignore field type errors',
 					displayOptions: {
 						show: {
 							'/mode': ['manual'],
