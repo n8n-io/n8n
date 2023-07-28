@@ -157,15 +157,14 @@ export default defineComponent({
 
 			this.$telemetry.page(this.$route);
 		},
-		authenticate() {
+		async authenticate() {
 			// redirect to setup page. user should be redirected to this only once
 			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
 
-				void this.$router.replace({ name: VIEWS.SETUP });
-				return;
+				return this.$router.replace({ name: VIEWS.SETUP });
 			}
 
 			if (this.canUserAccessCurrentRoute()) {
@@ -178,8 +177,7 @@ export default defineComponent({
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-				return;
+				return this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 			}
 
 			// if cannot access page and is logged in, respect signin redirect
@@ -187,22 +185,23 @@ export default defineComponent({
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					void this.$router.replace(redirect);
-					return;
+					return this.$router.replace(redirect);
 				}
 			}
 
 			// if cannot access page and is logged in
-			void this.$router.replace({ name: VIEWS.HOMEPAGE });
+			return this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
-		redirectIfNecessary() {
+		async redirectIfNecessary() {
 			const redirect =
 				this.$route.meta &&
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
+
 			if (redirect) {
-				void this.$router.replace(redirect);
+				return this.$router.replace(redirect);
 			}
+			return;
 		},
 		setTheme() {
 			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
@@ -259,8 +258,8 @@ export default defineComponent({
 		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
-		this.authenticate();
-		this.redirectIfNecessary();
+		await this.authenticate();
+		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
 		await this.initBanners();
@@ -269,8 +268,8 @@ export default defineComponent({
 		void this.postAuthenticate();
 
 		this.loading = false;
-	},
-	async mounted() {
+
+		this.logHiringBanner();
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
 
@@ -286,8 +285,7 @@ export default defineComponent({
 		},
 		async $route(route) {
 			await this.initSettings();
-			this.authenticate();
-			this.redirectIfNecessary();
+			await this.redirectIfNecessary();
 
 			this.trackPage();
 		},
