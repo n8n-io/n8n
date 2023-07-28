@@ -17,6 +17,7 @@ export class KibanaApi implements ICredentialType {
 			displayName: 'URL',
 			name: 'apiUrl',
 			type: 'string',
+			required: true,
 			default: '',
 			placeholder: 'http://localhost',
 		},
@@ -24,13 +25,14 @@ export class KibanaApi implements ICredentialType {
 			displayName: 'Port',
 			name: 'port',
 			type: 'number',
-			default: '',
-			placeholder: '5601',
+			required: true,
+			default: 5601,
 		},
 		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
@@ -38,6 +40,7 @@ export class KibanaApi implements ICredentialType {
 			name: 'password',
 			type: 'string',
 			typeOptions: { password: true },
+			required: true,
 			default: '',
 		},
 	];
