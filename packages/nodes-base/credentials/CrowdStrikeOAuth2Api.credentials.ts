@@ -28,12 +28,14 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
@@ -43,6 +45,7 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			required: true,
 			default: '',
 		},
 	];

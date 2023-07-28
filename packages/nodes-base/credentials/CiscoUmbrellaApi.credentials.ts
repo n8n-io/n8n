@@ -29,6 +29,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 			name: 'apiKey',
 			// eslint-disable-next-line n8n-nodes-base/cred-class-field-unobscured-sensitive-input
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
@@ -38,6 +39,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			required: true,
 			default: '',
 		},
 	];

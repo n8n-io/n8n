@@ -18,6 +18,7 @@ export class VirusTotalApi implements ICredentialType {
 			name: 'accessToken',
 			type: 'string',
 			typeOptions: { password: true },
+			required: true,
 			default: '',
 		},
 	];

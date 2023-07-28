@@ -15,6 +15,7 @@ export class SekoiaApi implements ICredentialType {
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
+			required: true,
 			default: '',
 		},
 	];

@@ -20,6 +20,7 @@ export class MistApi implements ICredentialType {
 			name: 'token',
 			type: 'string',
 			typeOptions: { password: true },
+			required: true,
 			default: '',
 		},
 		{

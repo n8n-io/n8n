@@ -17,6 +17,7 @@ export class OktaApi implements ICredentialType {
 			displayName: 'URL',
 			name: 'url',
 			type: 'string',
+			required: true,
 			default: '',
 			placeholder: 'https://dev-123456.okta.com',
 		},
@@ -25,6 +26,7 @@ export class OktaApi implements ICredentialType {
 			name: 'accessToken',
 			type: 'string',
 			typeOptions: { password: true },
+			required: true,
 			default: '',
 		},
 	];
