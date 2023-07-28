@@ -12,6 +12,8 @@ export class Auth0ManagementApi implements ICredentialType {
 
 	displayName = 'Auth0 Management API';
 
+	icon = 'file:icons/Auth0.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',
@@ -26,12 +28,14 @@ export class Auth0ManagementApi implements ICredentialType {
 			displayName: 'Auth0 Domain',
 			name: 'domain',
 			type: 'string',
+			required: true,
 			default: 'your-domain.eu.auth0.com',
 		},
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string',
+			required: true,
 			default: '',
 		},
 		{
@@ -41,6 +45,7 @@ export class Auth0ManagementApi implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
+			required: true,
 			default: '',
 		},
 	];
