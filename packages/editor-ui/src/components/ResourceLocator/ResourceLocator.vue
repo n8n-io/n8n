@@ -842,7 +842,9 @@ $--mode-selector-width: 92px;
 .selectIcon {
 	cursor: pointer;
 	font-size: 14px;
-	transition: transform 0.3s, -webkit-transform 0.3s;
+	transition:
+		transform 0.3s,
+		-webkit-transform 0.3s;
 	-webkit-transform: rotateZ(0);
 	transform: rotateZ(0);
 
