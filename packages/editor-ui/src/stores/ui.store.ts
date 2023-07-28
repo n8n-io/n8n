@@ -34,6 +34,7 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 } from '@/constants';
 import type {
+	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
 	IFakeDoorLocation,
 	IMenuItem,
@@ -41,6 +42,7 @@ import type {
 	IOnboardingCallPrompt,
 	IUser,
 	UIState,
+	UTMCampaign,
 	XYPosition,
 } from '@/Interface';
 import { defineStore } from 'pinia';
@@ -53,6 +55,9 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { getStyleTokenValue } from '@/utils/htmlUtils';
+import { dismissBannerPermanently } from '@/api/ui';
+import type { Banners } from 'n8n-workflow';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -148,16 +153,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
 			{
-				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
-				featureName: 'fakeDoor.settings.environments.name',
-				icon: 'server',
-				infoText: 'fakeDoor.settings.environments.infoText',
-				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
-				uiLocations: ['settings'],
-			},
-			{
 				id: FAKE_DOOR_FEATURES.SSO,
 				featureName: 'fakeDoor.settings.sso.name',
 				icon: 'key',
@@ -184,6 +179,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
+		banners: {
+			V1: { dismissed: true },
+			TRIAL: { dismissed: true },
+			TRIAL_OVER: { dismissed: true },
+		},
+		bannersHeight: 0,
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
@@ -334,8 +335,17 @@ export const useUIStore = defineStore(STORES.UI, {
 				return linkUrl;
 			};
 		},
+		headerHeight() {
+			return Number(getStyleTokenValue('--header-height'));
+		},
 	},
 	actions: {
+		setBanners(banners: UIState['banners']): void {
+			this.banners = {
+				...this.banners,
+				...banners,
+			};
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
@@ -516,7 +526,11 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(source: string, utm_campaign: string, mode: 'open' | 'redirect' = 'open'): void {
+		goToUpgrade(
+			source: CloudUpdateLinkSourceType,
+			utm_campaign: UTMCampaign,
+			mode: 'open' | 'redirect' = 'open',
+		): void {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
 			useTelemetryStore().track('User clicked upgrade CTA', {
@@ -532,6 +546,28 @@ export const useUIStore = defineStore(STORES.UI, {
 			} else {
 				location.href = this.upgradeLinkUrl(source, utm_campaign);
 			}
+		},
+		async dismissBanner(
+			name: Banners,
+			type: 'temporary' | 'permanent' = 'temporary',
+		): Promise<void> {
+			if (type === 'permanent') {
+				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+					bannerName: name,
+					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
+				});
+				this.banners[name].dismissed = true;
+				this.banners[name].type = 'permanent';
+				return;
+			}
+			this.banners[name].dismissed = true;
+			this.banners[name].type = 'temporary';
+		},
+		showBanner(name: Banners): void {
+			this.banners[name].dismissed = false;
+		},
+		updateBannersHeight(newHeight: number): void {
+			this.bannersHeight = newHeight;
 		},
 	},
 });

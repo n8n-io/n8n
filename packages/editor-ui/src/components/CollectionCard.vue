@@ -1,5 +1,5 @@
 <template>
-	<Card :loading="loading" :title="collection.name" @click="onClick">
+	<Card :loading="loading" :title="collection.name">
 		<template #footer>
 			<n8n-text size="small" color="text-light">
 				{{ collection.workflows.length }}
@@ -30,11 +30,6 @@ export default defineComponent({
 	components: {
 		Card,
 		NodeList,
-	},
-	methods: {
-		onClick(e: MouseEvent) {
-			this.$emit('click', e);
-		},
 	},
 });
 </script>

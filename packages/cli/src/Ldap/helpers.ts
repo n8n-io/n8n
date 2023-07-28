@@ -12,7 +12,6 @@ import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { RoleRepository } from '@db/repositories';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
-import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
 
 import {
@@ -37,9 +36,8 @@ import { InternalServerError } from '../ResponseHelper';
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
-export const isLdapEnabled = (): boolean => {
-	const license = Container.get(License);
-	return isUserManagementEnabled() && license.isLdapEnabled();
+export const isLdapEnabled = () => {
+	return Container.get(License).isLdapEnabled();
 };
 
 /**
@@ -219,7 +217,7 @@ export const handleLdapInit = async (): Promise<void> => {
 	try {
 		await setGlobalLdapConfigVariables(ldapConfig);
 	} catch (error) {
-		Logger.error(
+		Logger.warn(
 			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			error,

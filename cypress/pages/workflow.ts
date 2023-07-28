@@ -1,5 +1,6 @@
 import { META_KEY } from '../constants';
 import { BasePage } from './base';
+import { getVisibleSelect } from '../utils';
 
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
@@ -12,11 +13,11 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () =>
 			this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
+		tagPills: () => cy.get('[data-test-id="workflow-tags-container"] span.el-tag'),
 		nthTagPill: (n: number) =>
-			cy.get(`[data-test-id="workflow-tags-container"] span.tags > span:nth-child(${n})`),
+			cy.get(`[data-test-id="workflow-tags-container"] span.el-tag:nth-child(${n})`),
 		tagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
-		tagsInDropdown: () => cy.getByTestId('workflow-tags-dropdown').find('li').filter('.tag'),
+		tagsInDropdown: () => getVisibleSelect().find('li').filter('.tag'),
 		createTagButton: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
@@ -37,8 +38,8 @@ export class WorkflowPage extends BasePage {
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
-		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
-		errorToast: () => cy.get('.el-notification .el-icon-error'),
+		successToast: () => cy.get('.el-notification .el-notification--success').parent(),
+		errorToast: () => cy.get('.el-notification .el-notification--error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -84,7 +85,8 @@ export class WorkflowPage extends BasePage {
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 		nodeView: () => cy.getByTestId('node-view'),
-		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
+		inlineExpressionEditorInput: () =>
+			cy.getByTestId('inline-expression-editor-input').find('[role=textbox]'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 		zoomInButton: () => cy.getByTestId('zoom-in-button'),
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
@@ -92,8 +94,10 @@ export class WorkflowPage extends BasePage {
 		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
 		clearExecutionDataButton: () => cy.getByTestId('clear-execution-data-button'),
 		stopExecutionButton: () => cy.getByTestId('stop-execution-button'),
-		stopExecutionWaitingForWebhookButton: () => cy.getByTestId('stop-execution-waiting-for-webhook-button'),
+		stopExecutionWaitingForWebhookButton: () =>
+			cy.getByTestId('stop-execution-waiting-for-webhook-button'),
 		nodeCredentialsSelect: () => cy.getByTestId('node-credentials-select'),
+		nodeCredentialsCreateOption: () => cy.getByTestId('node-credentials-select-item-new'),
 		nodeCredentialsEditButton: () => cy.getByTestId('credential-edit-button'),
 		nodeCreatorItems: () => cy.getByTestId('item-iterator-item'),
 		ndvParameters: () => cy.getByTestId('parameter-item'),
@@ -134,17 +138,17 @@ export class WorkflowPage extends BasePage {
 
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			cy.wait(500)
+			cy.wait(500);
 			cy.get('body').then((body) => {
-				if(body.find('[data-test-id=node-creator]').length > 0) {
-					if(action) {
-						cy.contains(action).click()
+				if (body.find('[data-test-id=node-creator]').length > 0) {
+					if (action) {
+						cy.contains(action).click();
 					} else {
 						// Select the first action
-						cy.get('[data-keyboard-nav-type="action"]').eq(0).click()
+						cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
 					}
 				}
-			})
+			});
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
@@ -157,7 +161,8 @@ export class WorkflowPage extends BasePage {
 		},
 		openTagManagerModal: () => {
 			this.getters.createTagButton().click();
-			this.getters.tagsDropdown().find('li.manage-tags').first().click();
+			this.getters.tagsDropdown().click();
+			getVisibleSelect().find('li.manage-tags').first().click();
 		},
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
@@ -209,7 +214,7 @@ export class WorkflowPage extends BasePage {
 				this.getters.workflowTagsInput().type(tag);
 				this.getters.workflowTagsInput().type('{enter}');
 			});
-			cy.get('body').type('{enter}');
+			cy.realPress('Tab')
 			// For a brief moment the Element UI tag component shows the tags as(+X) string
 			// so we need to wait for it to disappear
 			this.getters.workflowTagsContainer().should('not.contain', `+${tags.length}`);
@@ -241,7 +246,12 @@ export class WorkflowPage extends BasePage {
 		executeWorkflow: () => {
 			this.getters.executeWorkflowButton().click();
 		},
-		addNodeBetweenNodes: (sourceNodeName: string, targetNodeName: string, newNodeName: string, action?: string) => {
+		addNodeBetweenNodes: (
+			sourceNodeName: string,
+			targetNodeName: string,
+			newNodeName: string,
+			action?: string,
+		) => {
 			this.getters.getConnectionBetweenNodes(sourceNodeName, targetNodeName).first().realHover();
 			this.getters
 				.getConnectionActionsBetweenNodes(sourceNodeName, targetNodeName)
@@ -268,36 +278,10 @@ export class WorkflowPage extends BasePage {
 			this.getters.addStickyButton().click();
 		},
 		deleteSticky: () => {
-			this.getters.stickies().eq(0)
-				.realHover()
-				.find('[data-test-id="delete-sticky"]')
-				.click();
+			this.getters.stickies().eq(0).realHover().find('[data-test-id="delete-sticky"]').click();
 		},
 		editSticky: (content: string) => {
-			this.getters.stickies()
-				.dblclick()
-				.find('textarea')
-				.clear()
-				.type(content)
-				.type('{esc}');
-		},
-		turnOnManualExecutionSaving: () => {
-			this.getters.workflowMenu().click();
-			this.getters.workflowMenuItemSettings().click();
-			cy.get('.el-loading-mask').should('not.be.visible');
-			this.getters
-				.workflowSettingsSaveManualExecutionsSelect()
-				.find('li:contains("Yes")')
-				.click({ force: true });
-
-			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
-			this.getters.workflowSettingsSaveButton().click();
-			this.getters.successToast().should('exist');
-
-			this.getters.workflowMenu().click();
-			this.getters.workflowMenuItemSettings().click();
-			this.getters.workflowSettingsSaveManualExecutionsSelect().should('contain', 'Yes');
-			this.getters.workflowSettingsSaveButton().click();
+			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
 		},
 	};
 }

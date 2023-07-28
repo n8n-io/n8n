@@ -1,5 +1,5 @@
-import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { Message, MessageBox } from 'element-ui';
+import type { ElMessageBoxOptions } from 'element-plus';
+import { ElMessageBox as MessageBox } from 'element-plus';
 
 export function useMessage() {
 	const handleCancelOrClose = (e: unknown) => {
@@ -65,6 +65,6 @@ export function useMessage() {
 		alert,
 		confirm,
 		prompt,
-		message: Message,
+		message: MessageBox,
 	};
 }

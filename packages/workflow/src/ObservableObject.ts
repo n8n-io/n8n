@@ -51,6 +51,9 @@ export function create(
 		get(target, name, receiver) {
 			return Reflect.get(target, name, receiver);
 		},
+		has(target, key) {
+			return Reflect.has(target, key);
+		},
 		set(target, name, value) {
 			if (parent === undefined) {
 				// If no parent is given mark current data as changed

@@ -11,7 +11,6 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
-	resetPasswordToken: null,
 };
 
 export class Reset extends BaseCommand {
@@ -54,10 +53,6 @@ export class Reset extends BaseCommand {
 
 		await Db.collections.Settings.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: 'false' },
-		);
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
 			{ value: 'false' },
 		);
 
