@@ -87,9 +87,7 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 	return createHash('md5').update(data).digest('hex');
 }
 
-export function setMetadata(
-	data: IShoppingLine[] | IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[],
-) {
+export function setMetadata(data: IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[]) {
 	for (let i = 0; i < data.length; i++) {
 		//@ts-ignore\
 		if (data[i].metadataUi?.metadataValues) {
@@ -105,7 +103,7 @@ export function setMetadata(
 }
 
 export function toSnakeCase(
-	data: IShoppingLine[] | IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[] | IDataObject,
+	data: IShoppingLine[] | IFeeLine[] | ILineItem[] | ICouponLine[] | IDataObject,
 ) {
 	if (!Array.isArray(data)) {
 		data = [data];

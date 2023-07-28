@@ -77,7 +77,7 @@ export async function getEncryptionKey(): Promise<string> {
 
 	const userSettings = await getUserSettings();
 
-	if (userSettings === undefined || userSettings.encryptionKey === undefined) {
+	if (userSettings?.encryptionKey === undefined) {
 		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 	}
 
