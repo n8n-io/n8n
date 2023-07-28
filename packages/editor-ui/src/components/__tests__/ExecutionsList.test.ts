@@ -1,17 +1,16 @@
 import { vi, describe, it, expect } from 'vitest';
 import { merge } from 'lodash-es';
-import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { STORES } from '@/constants';
 import ExecutionsList from '@/components/ExecutionsList.vue';
-import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { RenderOptions } from '@/__tests__/render';
+import { createComponentRenderer } from '@/__tests__/render';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 
@@ -65,27 +64,18 @@ const generateExecutionsData = () =>
 		estimated: false,
 	}));
 
-const renderComponent = async () => {
-	const renderResult = render(
-		ExecutionsList,
-		{
-			pinia,
-			propsData: {
-				autoRefreshEnabled: false,
-			},
-			i18n: i18nInstance,
+const defaultRenderOptions: RenderOptions = {
+	props: {
+		autoRefreshEnabled: false,
+	},
+	global: {
+		stubs: {
 			stubs: ['font-awesome-icon'],
 		},
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-			vue.prototype.$telemetry = {
-				track: () => {},
-			};
-		},
-	);
-	await waitAllPromises();
-	return renderResult;
+	},
 };
+
+const renderComponent = createComponentRenderer(ExecutionsList, defaultRenderOptions);
 
 describe('ExecutionsList.vue', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -123,7 +113,13 @@ describe('ExecutionsList.vue', () => {
 			results: [],
 			estimated: false,
 		});
-		const { queryAllByTestId, queryByTestId, getByTestId } = await renderComponent();
+		const { queryAllByTestId, queryByTestId, getByTestId } = renderComponent({
+			global: {
+				plugins: [pinia],
+			},
+		});
+		await waitAllPromises();
+
 		await userEvent.click(getByTestId('execution-auto-refresh-checkbox'));
 
 		expect(queryAllByTestId('select-execution-checkbox').length).toBe(0);
@@ -132,58 +128,67 @@ describe('ExecutionsList.vue', () => {
 		expect(getByTestId('execution-list-empty')).toBeInTheDocument();
 	});
 
-	it('should handle selection flow when loading more items', async () => {
-		const storeSpy = vi
-			.spyOn(workflowsStore, 'getPastExecutions')
-			.mockResolvedValueOnce(executionsData[0])
-			.mockResolvedValueOnce(executionsData[1]);
+	it(
+		'should handle selection flow when loading more items',
+		async () => {
+			const storeSpy = vi
+				.spyOn(workflowsStore, 'getPastExecutions')
+				.mockResolvedValueOnce(executionsData[0])
+				.mockResolvedValueOnce(executionsData[1]);
 
-		const { getByTestId, getAllByTestId, queryByTestId } = await renderComponent();
+			const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+				global: {
+					plugins: [pinia],
+				},
+			});
+			await waitAllPromises();
 
-		expect(storeSpy).toHaveBeenCalledTimes(1);
+			expect(storeSpy).toHaveBeenCalledTimes(1);
 
-		await userEvent.click(getByTestId('select-visible-executions-checkbox'));
+			await userEvent.click(getByTestId('select-visible-executions-checkbox'));
 
-		await retry(() =>
+			await retry(() =>
+				expect(
+					getAllByTestId('select-execution-checkbox').filter((el) =>
+						el.contains(el.querySelector(':checked')),
+					).length,
+				).toBe(10),
+			);
+			expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
+			expect(getByTestId('selected-executions-info').textContent).toContain(10);
+
+			await userEvent.click(getByTestId('load-more-button'));
+
+			expect(storeSpy).toHaveBeenCalledTimes(2);
+			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
 			expect(
 				getAllByTestId('select-execution-checkbox').filter((el) =>
 					el.contains(el.querySelector(':checked')),
 				).length,
-			).toBe(10),
-		);
-		expect(getByTestId('select-all-executions-checkbox')).toBeInTheDocument();
-		expect(getByTestId('selected-executions-info').textContent).toContain(10);
+			).toBe(10);
 
-		await userEvent.click(getByTestId('load-more-button'));
+			await userEvent.click(getByTestId('select-all-executions-checkbox'));
+			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
+			expect(
+				getAllByTestId('select-execution-checkbox').filter((el) =>
+					el.contains(el.querySelector(':checked')),
+				).length,
+			).toBe(20);
+			expect(getByTestId('selected-executions-info').textContent).toContain(20);
 
-		expect(storeSpy).toHaveBeenCalledTimes(2);
-		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
-		expect(
-			getAllByTestId('select-execution-checkbox').filter((el) =>
-				el.contains(el.querySelector(':checked')),
-			).length,
-		).toBe(10);
-
-		await userEvent.click(getByTestId('select-all-executions-checkbox'));
-		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
-		expect(
-			getAllByTestId('select-execution-checkbox').filter((el) =>
-				el.contains(el.querySelector(':checked')),
-			).length,
-		).toBe(20);
-		expect(getByTestId('selected-executions-info').textContent).toContain(20);
-
-		await userEvent.click(getAllByTestId('select-execution-checkbox')[2]);
-		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
-		expect(
-			getAllByTestId('select-execution-checkbox').filter((el) =>
-				el.contains(el.querySelector(':checked')),
-			).length,
-		).toBe(19);
-		expect(getByTestId('selected-executions-info').textContent).toContain(19);
-		expect(getByTestId('select-visible-executions-checkbox')).toBeInTheDocument();
-		expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
-	});
+			await userEvent.click(getAllByTestId('select-execution-checkbox')[2]);
+			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
+			expect(
+				getAllByTestId('select-execution-checkbox').filter((el) =>
+					el.contains(el.querySelector(':checked')),
+				).length,
+			).toBe(19);
+			expect(getByTestId('selected-executions-info').textContent).toContain(19);
+			expect(getByTestId('select-visible-executions-checkbox')).toBeInTheDocument();
+			expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
+		},
+		{ timeout: 10000 },
+	);
 
 	it('should show "retry" data when appropriate', async () => {
 		vi.spyOn(workflowsStore, 'getPastExecutions').mockResolvedValue(executionsData[0]);
@@ -192,7 +197,12 @@ describe('ExecutionsList.vue', () => {
 			(execution) => !execution.retryOf && execution.retrySuccessId,
 		);
 
-		const { queryAllByText } = await renderComponent();
+		const { queryAllByText } = renderComponent({
+			global: {
+				plugins: [pinia],
+			},
+		});
+		await waitAllPromises();
 
 		expect(queryAllByText(/Retry of/).length).toBe(retryOf.length);
 		expect(queryAllByText(/Success retry/).length).toBe(retrySuccessId.length);

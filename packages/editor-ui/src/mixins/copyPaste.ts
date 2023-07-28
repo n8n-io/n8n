@@ -226,7 +226,7 @@ export const copyPaste = defineComponent({
 			}
 		},
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.hiddenInput) {
 			this.hiddenInput.remove();
 		}

@@ -24,6 +24,7 @@ export const expressionManager = defineComponent({
 		return {
 			editor: {} as EditorView,
 			skipSegments: [] as string[],
+			editorState: undefined,
 		};
 	},
 	watch: {
@@ -72,24 +73,24 @@ export const expressionManager = defineComponent({
 		},
 
 		segments(): Segment[] {
-			if (!this.editor?.state) return [];
+			if (!this.editorState || !this.editorState) return [];
 
 			const rawSegments: RawSegment[] = [];
 
 			const fullTree = ensureSyntaxTree(
-				this.editor.state,
-				this.editor.state.doc.length,
+				this.editorState,
+				this.editorState.doc.length,
 				EXPRESSION_EDITOR_PARSER_TIMEOUT,
 			);
 
 			if (fullTree === null) {
-				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
+				throw new Error(`Failed to parse expression: ${this.editorValue}`);
 			}
 
 			const skipSegments = ['Program', 'Script', 'Document', ...this.skipSegments];
 
 			fullTree.cursor().iterate((node) => {
-				const text = this.editor.state.sliceDoc(node.from, node.to);
+				const text = this.editorState.sliceDoc(node.from, node.to);
 
 				if (skipSegments.includes(node.type.name)) return;
 

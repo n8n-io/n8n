@@ -1,59 +1,42 @@
-const path = require('path');
+const { mergeConfig } = require('vite');
+const { resolve } = require('path');
 
-/**
- * @type {import('@storybook/types').StorybookConfig}
- */
 module.exports = {
-	framework: {
-		name: '@storybook/vue-webpack5',
-		options: {},
-	},
-	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.{ts,js}'],
+	stories: ['../src/**/*.stories.@(js|jsx|ts|tsx|mdx)'],
 	addons: [
+		'@storybook/addon-styling',
 		'@storybook/addon-links',
 		'@storybook/addon-essentials',
-		{
-			name: '@storybook/addon-postcss',
-			options: {
-				postcssLoaderOptions: {
-					implementation: require('postcss'),
-				},
-			},
-		},
-		'storybook-addon-themes',
+		// Disabled until this is actually used rather otherwise its a blank tab
+		// '@storybook/addon-interactions',
+		'@storybook/addon-a11y',
+		'storybook-dark-mode',
 	],
-	webpackFinal: async (config) => {
-		config.module.rules.push({
-			test: /\.scss$/,
-			oneOf: [
-				{
-					resourceQuery: /module/,
-					use: [
-						'vue-style-loader',
-						{
-							loader: 'css-loader',
-							options: {
-								modules: {
-									localIdentName: '[path][name]__[local]--[hash:base64:5]',
-								},
-							},
-						},
-						'sass-loader',
-					],
-					include: path.resolve(__dirname, '../'),
-				},
-				{
-					use: ['vue-style-loader', 'css-loader', 'sass-loader'],
-					include: path.resolve(__dirname, '../'),
-				},
-			],
+	staticDirs: ['../public'],
+	framework: {
+		name: '@storybook/vue3-vite',
+		options: {},
+	},
+	disableTelemetry: true,
+	async viteFinal(config, { configType }) {
+		// return the customized config
+		return mergeConfig(config, {
+			// customize the Vite config here
+			resolve: {
+				alias: [
+					{
+						find: /^@n8n-design-system\//,
+						replacement: `${resolve(__dirname, '..')}/src/`,
+					},
+					{
+						find: /^n8n-design-system$/,
+						replacement: `${resolve(__dirname, '..')}/src/main.ts`,
+					},
+				],
+			},
 		});
-
-		config.resolve.alias = {
-			...config.resolve.alias,
-			'@/': path.resolve(__dirname, '../src/'),
-		};
-
-		return config;
+	},
+	docs: {
+		autodocs: true,
 	},
 };

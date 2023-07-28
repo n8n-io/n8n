@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nMarkdown from './Markdown.vue';
 
 export default {
@@ -18,24 +18,25 @@ export default {
 		loadingBlocks: {
 			control: {
 				type: 'select',
-				options: [1, 2, 3, 4, 5],
 			},
+			options: [1, 2, 3, 4, 5],
 		},
 		loadingRows: {
 			control: {
 				type: 'select',
-				options: [1, 2, 3, 4, 5],
 			},
+			options: [1, 2, 3, 4, 5],
 		},
 	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nMarkdown,
 	},
-	template: '<n8n-markdown v-bind="$props"></n8n-markdown>',
+	template: '<n8n-markdown v-bind="args"></n8n-markdown>',
 });
 
 export const Markdown = Template.bind({});

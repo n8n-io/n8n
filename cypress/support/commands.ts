@@ -53,12 +53,12 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 });
 
 Cypress.Commands.add('signout', () => {
-	cy.request('POST', '/rest/logout');
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/logout`);
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 
 Cypress.Commands.add('interceptREST', (method, url) => {
-	cy.intercept(method, `http://localhost:5678/rest${url}`);
+	cy.intercept(method, `${BACKEND_BASE_URL}/rest${url}`);
 });
 
 const setFeature = (feature: string, enabled: boolean) =>

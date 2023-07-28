@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref } from 'vue';
-import { useRouter } from 'vue-router/composables';
+import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
-import { useUIStore, useSourceControlStore, useUsersStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUsersStore } from '@/stores/users.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import type { SourceControlAggregatedFile } from '../Interface';
 import { sourceControlEventBus } from '@/event-bus/source-control';
@@ -23,7 +25,7 @@ const usersStore = useUsersStore();
 const sourceControlStore = useSourceControlStore();
 const message = useMessage();
 const toast = useToast();
-const { i18n } = useI18n();
+const i18n = useI18n();
 
 const eventBus = createEventBus();
 const tooltipOpenDelay = ref(300);
@@ -83,7 +85,7 @@ async function pullWorkfolder() {
 			});
 
 			if (hasVariablesOrCredentials) {
-				nextTick(() => {
+				void nextTick(() => {
 					toast.showMessage({
 						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
 						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
@@ -154,12 +156,9 @@ const goToSourceControlSetup = async () => {
 						type="tertiary"
 						size="mini"
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.pull')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 				<n8n-tooltip
 					v-if="!sourceControlStore.preferences.branchReadOnly"
@@ -174,15 +173,12 @@ const goToSourceControlSetup = async () => {
 					</template>
 					<n8n-button
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						icon="arrow-up"
 						type="tertiary"
 						size="mini"
 						@click="pushWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.push')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 			</div>
 		</div>
