@@ -54,6 +54,7 @@ export default defineComponent({
 		this.observer = observer;
 
 		this.eventBus.on('observe', (observed: Element) => {
+			console.log({ observed });
 			observer.observe(observed);
 		});
 
