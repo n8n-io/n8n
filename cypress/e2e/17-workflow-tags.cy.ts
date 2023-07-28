@@ -30,6 +30,7 @@ describe('Workflow tags', () => {
 		}
 		cy.contains('Done').click();
 
+		wf.getters.createTagButton().click();
 		wf.getters.tagsDropdown().click();
 		wf.getters.tagsInDropdown().should('have.length', 5);
 		wf.getters.tagPills().should('have.length', 0); // none attached
@@ -45,7 +46,7 @@ describe('Workflow tags', () => {
 		});
 
 		cy.contains('Done').click();
-		wf.getters.tagsDropdown().click();
+		wf.getters.createTagButton().click();
 		wf.getters.tagsInDropdown().should('have.length', 0); // none stored
 		wf.getters.tagPills().should('have.length', 0); // none attached
 	});
@@ -66,7 +67,7 @@ describe('Workflow tags', () => {
 			.type(' Updated')
 			.type('{enter}');
 		cy.contains('Done').click();
-		wf.getters.tagsDropdown().click();
+		wf.getters.createTagButton().click();
 		wf.getters.tagsInDropdown().should('have.length', 1); // one stored
 		wf.getters.tagsInDropdown().contains('Updated').should('exist');
 		wf.getters.tagPills().should('have.length', 0); // none attached
