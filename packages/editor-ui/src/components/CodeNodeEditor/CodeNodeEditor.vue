@@ -225,7 +225,7 @@ export default defineComponent({
 
 			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: this.content.length },
+					selection: { anchor: (this.modelValue ?? this.content).length },
 				});
 				return;
 			}
