@@ -5,6 +5,10 @@ export class SekoiaApi implements ICredentialType {
 
 	displayName = 'Sekoia API';
 
+	icon = 'file:icons/Sekoia.svg';
+
+	documentationUrl = 'sekoia';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

@@ -290,6 +290,7 @@
       "dist/credentials/SeaTableApi.credentials.js",
       "dist/credentials/SecurityScorecardApi.credentials.js",
       "dist/credentials/SegmentApi.credentials.js",
+      "dist/credentials/SekoiaApi.credentials.js",
       "dist/credentials/SendGridApi.credentials.js",
       "dist/credentials/BrevoApi.credentials.js",
       "dist/credentials/SendyApi.credentials.js",
