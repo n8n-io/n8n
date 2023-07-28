@@ -923,6 +923,11 @@ export default defineComponent({
 		},
 		closeCodeEditDialog() {
 			this.codeEditDialogVisible = false;
+
+			this.editDialogClosing = true;
+			void this.$nextTick(() => {
+				this.editDialogClosing = false;
+			});
 		},
 		closeExpressionEditDialog() {
 			this.expressionEditDialogVisible = false;
