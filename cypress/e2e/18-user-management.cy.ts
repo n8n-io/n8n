@@ -88,6 +88,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it(`shouldn't allow user to set weak password`, () => {
 		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		personalSettingsPage.getters.changePasswordLink().click();
 		for (let weakPass of updatedPersonalData.invalidPasswords) {
 			personalSettingsPage.actions.tryToSetWeakPassword(INSTANCE_OWNER.password, weakPass);
 		}
@@ -95,6 +96,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it(`shouldn't allow user to change password if old password is wrong`, () => {
 		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		personalSettingsPage.getters.changePasswordLink().click();
 		personalSettingsPage.actions.updatePassword('iCannotRemember', updatedPersonalData.newPassword);
 		workflowPage.getters
 			.errorToast()
@@ -104,6 +106,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it(`should change current user password`, () => {
 		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		personalSettingsPage.getters.changePasswordLink().click();
 		personalSettingsPage.actions.updatePassword(
 			INSTANCE_OWNER.password,
 			updatedPersonalData.newPassword,
