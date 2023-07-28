@@ -1,7 +1,6 @@
 {
   "name": "@n8n/eslint-config",
-  "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "devDependencies": {
     "@types/eslint": "^8.44.1",
     "@typescript-eslint/eslint-plugin": "^6.2.0",
