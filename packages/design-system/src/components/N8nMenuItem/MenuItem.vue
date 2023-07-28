@@ -25,7 +25,7 @@
 				v-for="child in availableChildren"
 				:key="child.id"
 				:item="child"
-				:compact="compact"
+				:compact="false"
 				:tooltipDelay="tooltipDelay"
 				:popperClass="popperClass"
 				:mode="mode"
@@ -38,7 +38,7 @@
 			placement="right"
 			:content="item.label"
 			:disabled="!compact"
-			:open-delay="tooltipDelay"
+			:show-after="tooltipDelay"
 		>
 			<el-menu-item
 				:id="item.id"
@@ -66,7 +66,7 @@
 					:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
 					:content="item.secondaryIcon?.tooltip?.content"
 					:disabled="compact || !item.secondaryIcon?.tooltip?.content"
-					:open-delay="tooltipDelay"
+					:show-after="tooltipDelay"
 				>
 					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
 				</n8n-tooltip>
@@ -184,22 +184,6 @@ export default defineComponent({
 	--sub-menu-item-height: 27px;
 }
 
-@mixin compact() {
-	.icon {
-		margin: 0;
-		overflow: visible !important;
-		visibility: visible !important;
-		width: initial !important;
-		height: initial !important;
-	}
-	.label {
-		display: none;
-	}
-	.secondaryIcon {
-		display: none;
-	}
-}
-
 .submenu {
 	background: none !important;
 
@@ -307,7 +291,19 @@ export default defineComponent({
 }
 
 .compact {
-	@include compact();
+	.icon {
+		margin: 0;
+		overflow: visible !important;
+		visibility: visible !important;
+		width: initial !important;
+		height: initial !important;
+	}
+	.label {
+		display: none;
+	}
+	.secondaryIcon {
+		display: none;
+	}
 }
 
 .submenuPopper {
@@ -327,9 +323,8 @@ export default defineComponent({
 	}
 
 	&.compact {
-		:global(.el-menu--popup) {
-			min-width: auto;
-			@include compact();
+		.label {
+			display: inline-block;
 		}
 	}
 }

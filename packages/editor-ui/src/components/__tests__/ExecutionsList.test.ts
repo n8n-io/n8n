@@ -21,7 +21,7 @@ const generateUndefinedNullOrString = () => {
 		case 1:
 			return null;
 		case 2:
-			return faker.datatype.uuid();
+			return faker.string.uuid();
 		case 3:
 			return '';
 		default:
@@ -32,23 +32,23 @@ const generateUndefinedNullOrString = () => {
 const workflowDataFactory = (): IWorkflowDb => ({
 	createdAt: faker.date.past().toDateString(),
 	updatedAt: faker.date.past().toDateString(),
-	id: faker.datatype.uuid(),
-	name: faker.datatype.string(),
+	id: faker.string.uuid(),
+	name: faker.string.sample(),
 	active: faker.datatype.boolean(),
 	tags: [],
 	nodes: [],
 	connections: {},
-	versionId: faker.datatype.number().toString(),
+	versionId: faker.number.int().toString(),
 });
 
 const executionDataFactory = (): IExecutionsSummary => ({
-	id: faker.datatype.uuid(),
+	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
 	startedAt: faker.date.past(),
 	stoppedAt: faker.date.past(),
-	workflowId: faker.datatype.number().toString(),
-	workflowName: faker.datatype.string(),
+	workflowId: faker.number.int().toString(),
+	workflowName: faker.string.sample(),
 	status: faker.helpers.arrayElement(['failed', 'success']),
 	nodeExecutionStatus: {},
 	retryOf: generateUndefinedNullOrString(),

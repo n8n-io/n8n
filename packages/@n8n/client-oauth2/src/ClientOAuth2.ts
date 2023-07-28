@@ -39,7 +39,11 @@ export interface ClientOAuth2Options {
 }
 
 class ResponseError extends Error {
-	constructor(readonly status: number, readonly body: object, readonly code = 'ESTATUS') {
+	constructor(
+		readonly status: number,
+		readonly body: object,
+		readonly code = 'ESTATUS',
+	) {
 		super(`HTTP status ${status}`);
 	}
 }
