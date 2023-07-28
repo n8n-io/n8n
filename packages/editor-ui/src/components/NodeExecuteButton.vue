@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<span>
 		<n8n-tooltip placement="bottom" :disabled="!disabledHint">
 			<template #content>
 				<div>{{ disabledHint }}</div>
@@ -17,7 +17,7 @@
 				/>
 			</div>
 		</n8n-tooltip>
-	</div>
+	</span>
 </template>
 
 <script lang="ts">
