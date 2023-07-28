@@ -1,0 +1,356 @@
+{
+	"name": "HTTP Pagination Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "2be55c5f-3986-4631-bb9e-54a1f87e95b9",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [660, 280]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "qs",
+										"name": "skip",
+										"value": "={{ $count * 3 }}"
+									}
+								]
+							},
+							"limitPagesFetched": true,
+							"maxRequests": 3
+						}
+					}
+				}
+			},
+			"id": "062086e5-e4c9-4ef2-b506-408167e1f0a5",
+			"name": "Page Limit",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 0]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "qs",
+										"name": "skip",
+										"value": "={{ $count * 3 }}"
+									}
+								]
+							}
+						}
+					}
+				}
+			},
+			"id": "5b82121f-ec6f-4638-abc9-2c9d6cd29f41",
+			"name": "Response Empty",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 180]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "qs",
+										"name": "skip",
+										"value": "={{ $count * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "201",
+							"limitPagesFetched": true
+						}
+					}
+				}
+			},
+			"id": "4f794c3e-7f08-4d6f-8907-1216d2bea416",
+			"name": "Receive Status Code",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 340]
+		}
+	],
+	"pinData": {
+		"Page Limit": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			}
+		],
+		"Response Empty": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
+		],
+		"Receive Status Code": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Page Limit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Receive Status Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "221d22ba-dbcf-4a81-a0cc-230194c3a115",
+	"id": "ZKVF9JrrzoxXbUqu",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

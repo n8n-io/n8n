@@ -1,4 +1,5 @@
 import { setup, equalityTest, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
+import { parse as parseUrl } from 'url';
 
 import nock from 'nock';
 
@@ -111,6 +112,33 @@ describe('Test HTTP Request Node', () => {
 			isDeleted: true,
 			deletedOn: '2023-02-09T05:37:31.720Z',
 		});
+
+		// Pagination - Data not identical to dummyjson.com
+		nock(baseUrl)
+			.persist()
+			.get('/users')
+			.query(true)
+			.reply((uri) => {
+				const data = parseUrl(uri, true);
+				const skip = parseInt((data.query.skip as string) || '0', 10);
+				const limit = parseInt((data.query.limit as string) || '10', 10);
+
+				const response = [];
+				for (let i = skip; i < skip + limit; i++) {
+					if (i > 14) {
+						break;
+					}
+					response.push({
+						id: i,
+					});
+				}
+
+				if (!response.length) {
+					return [201, response];
+				}
+
+				return [200, response];
+			});
 	});
 
 	afterAll(() => {
