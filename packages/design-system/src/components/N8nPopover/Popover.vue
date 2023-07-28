@@ -14,10 +14,12 @@ export default defineComponent({
 </script>
 
 <template>
-	<el-popover v-bind="{ ...$props, ...$attrs }">
-		<template #reference>
-			<slot name="reference" />
-		</template>
-		<slot />
-	</el-popover>
+	<span>
+		<el-popover v-bind="{ ...$props, ...$attrs }">
+			<template #reference>
+				<slot name="reference" />
+			</template>
+			<slot />
+		</el-popover>
+	</span>
 </template>
