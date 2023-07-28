@@ -156,7 +156,7 @@
 								invalid: !isFocused && getIssues.length > 0 && !isValueExpression,
 							}"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
+							@click.stop="displayEditDialog()"
 							@focus="setFocus"
 						/>
 					</template>
@@ -486,6 +486,7 @@ export default defineComponent({
 			remoteParameterOptionsLoading: false,
 			remoteParameterOptionsLoadingIssues: null as string | null,
 			textEditDialogVisible: false,
+			editDialogClosing: false,
 			tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
 			CUSTOM_API_CALL_KEY,
 			activeCredentialType: '',
@@ -945,8 +946,17 @@ export default defineComponent({
 		},
 		closeTextEditDialog() {
 			this.textEditDialogVisible = false;
+
+			this.editDialogClosing = true;
+			void this.$nextTick(() => {
+				this.editDialogClosing = false;
+			});
 		},
 		displayEditDialog() {
+			if (this.editDialogClosing) {
+				return;
+			}
+
 			if (this.editorType) {
 				this.codeEditDialogVisible = true;
 			} else {
