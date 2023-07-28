@@ -23,11 +23,6 @@ function checkStickiesStyle(
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-
-		cy.window().then((win) => {
-			// @ts-ignore
-			win.preventNodeViewBeforeUnload = true;
-		});
 	});
 
 	it('adds sticky to canvas with default text and position', () => {
