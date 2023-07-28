@@ -47,8 +47,8 @@ importers:
         specifier: workspace:*
         version: link:packages/@n8n_io/eslint-config
       '@ngneat/falso':
-        specifier: ^7.0.1
-        version: 7.0.1
+        specifier: ^6.4.0
+        version: 6.4.0
       '@types/jest':
         specifier: ^29.5.3
         version: 29.5.3
@@ -4140,8 +4140,8 @@ packages:
       tar-fs: 2.1.1
     dev: true
 
-  /@ngneat/falso@7.0.1:
-    resolution: {integrity: sha512-ngiUBnDQfohetsGz7fkgokQJKdbJBezi6fWMiBMyB7AUEgKGo4TfPzn1EGswyVtMW69NNMuxKdEXbLbF8af3oA==}
+  /@ngneat/falso@6.4.0:
+    resolution: {integrity: sha512-f6r036h2fX/AoHw1eV2t8+qWQwrbSrozs3zXMhhwoO7SJBc+DGMxRWEhFeYIinfwx0uhUH8ggx5+PDLzYESLOA==}
     dependencies:
       seedrandom: 3.0.5
       uuid: 8.3.2
