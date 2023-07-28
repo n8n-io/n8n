@@ -22,7 +22,11 @@ export function expects<Keys extends keyof ClientOAuth2Options>(
 }
 
 export class AuthError extends Error {
-	constructor(message: string, readonly body: any, readonly code = 'EAUTH') {
+	constructor(
+		message: string,
+		readonly body: any,
+		readonly code = 'EAUTH',
+	) {
 		super(message);
 	}
 }
