@@ -1654,7 +1654,7 @@ export class HttpRequestV3 implements INodeType {
 					if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
 						throw new NodeOperationError(this.getNode(), 'Invalid or empty Complete Expression');
 					}
-					continueExpression = `={{!${pagination.completeExpression.slice(3)}`;
+					continueExpression = `={{ !(${pagination.completeExpression.trim().slice(3, -2)}) }}`;
 				}
 
 				const paginationData: PaginationOptions = {

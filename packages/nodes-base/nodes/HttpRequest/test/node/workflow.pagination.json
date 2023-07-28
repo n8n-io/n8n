@@ -115,6 +115,42 @@
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.1,
 			"position": [900, 340]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "qs",
+										"name": "skip",
+										"value": "={{ $count * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "other",
+							"completeExpression": "={{ $response.statusCode === 201 }}"
+						}
+					}
+				}
+			},
+			"id": "b0348541-a416-4a54-8ece-3a623b7b6143",
+			"name": "Complete Expression",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 520]
 		}
 	],
 	"pinData": {
@@ -318,6 +354,83 @@
 					"id": 14
 				}
 			}
+		],
+		"Complete Expression": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
 		]
 	},
 	"connections": {
@@ -336,6 +449,11 @@
 					},
 					{
 						"node": "Receive Status Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Complete Expression",
 						"type": "main",
 						"index": 0
 					}
