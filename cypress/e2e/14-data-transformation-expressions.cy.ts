@@ -6,11 +6,6 @@ const ndv = new NDV();
 describe('Data transformation expressions', () => {
 	beforeEach(() => {
 		wf.actions.visit();
-
-		cy.window().then((win) => {
-			// @ts-ignore
-			win.preventNodeViewBeforeUnload = true;
-		});
 	});
 
 	it('$json + native string methods', () => {
