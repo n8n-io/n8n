@@ -35,7 +35,10 @@ export class TestWebhooks {
 		};
 	} = {};
 
-	constructor(private activeWebhooks: ActiveWebhooks, private push: Push) {
+	constructor(
+		private activeWebhooks: ActiveWebhooks,
+		private push: Push,
+	) {
 		activeWebhooks.testWebhooks = true;
 	}
 
