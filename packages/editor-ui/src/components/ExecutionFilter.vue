@@ -57,21 +57,24 @@ const filter = reactive(getDefaultFilter());
 
 // Automatically set up v-models based on filter properties
 const vModel = reactive(
-	getObjectKeys(filter).reduce((acc, key) => {
-		acc[key] = computed({
-			get() {
-				return filter[key];
-			},
-			set(value) {
-				// TODO: find out what exactly is typechecker complaining about
-				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-				// @ts-ignore
-				filter[key] = value;
-				emit('filterChanged', filter);
-			},
-		});
-		return acc;
-	}, {} as Record<keyof ExecutionFilterType, ReturnType<typeof computed>>),
+	getObjectKeys(filter).reduce(
+		(acc, key) => {
+			acc[key] = computed({
+				get() {
+					return filter[key];
+				},
+				set(value) {
+					// TODO: find out what exactly is typechecker complaining about
+					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+					// @ts-ignore
+					filter[key] = value;
+					emit('filterChanged', filter);
+				},
+			});
+			return acc;
+		},
+		{} as Record<keyof ExecutionFilterType, ReturnType<typeof computed>>,
+	),
 );
 
 const statuses = computed(() => [
