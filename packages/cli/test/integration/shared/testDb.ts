@@ -577,7 +577,7 @@ export const getBootstrapDBOptions = (type: TestDBType) =>
 		name: type,
 		database: type,
 		...baseOptions(type),
-	} as const);
+	}) as const;
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,

@@ -90,9 +90,8 @@ export class EEWorkflowsService extends WorkflowsService {
 	}
 
 	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role): void {
-		const ownerId = workflow.shared?.find(
-			({ roleId }) => String(roleId) === workflowOwnerRole.id,
-		)?.userId;
+		const ownerId = workflow.shared?.find(({ roleId }) => String(roleId) === workflowOwnerRole.id)
+			?.userId;
 		workflow.ownedBy = ownerId ? { id: ownerId } : null;
 		delete workflow.shared;
 	}
