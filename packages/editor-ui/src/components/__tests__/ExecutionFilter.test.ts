@@ -68,7 +68,7 @@ describe('ExecutionFilter', () => {
 			() =>
 				({
 					track,
-				} as unknown as Telemetry),
+				}) as unknown as Telemetry,
 		);
 
 		const { getByTestId } = renderComponent({

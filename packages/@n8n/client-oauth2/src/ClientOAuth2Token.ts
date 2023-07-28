@@ -24,7 +24,10 @@ export class ClientOAuth2Token {
 
 	private expires: Date;
 
-	constructor(readonly client: ClientOAuth2, readonly data: ClientOAuth2TokenData) {
+	constructor(
+		readonly client: ClientOAuth2,
+		readonly data: ClientOAuth2TokenData,
+	) {
 		this.tokenType = data.token_type?.toLowerCase() ?? 'bearer';
 		this.accessToken = data.access_token;
 		this.refreshToken = data.refresh_token;

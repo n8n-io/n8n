@@ -224,12 +224,13 @@ const WorkflowsView = defineComponent({
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
-					filters.tags.every((tag) =>
-						(resource.tags as ITag[])?.find((resourceTag) =>
-							typeof resourceTag === 'object'
-								? `${resourceTag.id}` === `${tag}`
-								: `${resourceTag}` === `${tag}`,
-						),
+					filters.tags.every(
+						(tag) =>
+							(resource.tags as ITag[])?.find((resourceTag) =>
+								typeof resourceTag === 'object'
+									? `${resourceTag.id}` === `${tag}`
+									: `${resourceTag}` === `${tag}`,
+							),
 					);
 			}
 
