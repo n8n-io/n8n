@@ -38,7 +38,7 @@
 			placement="right"
 			:content="item.label"
 			:disabled="!compact"
-			:open-delay="tooltipDelay"
+			:show-after="tooltipDelay"
 		>
 			<el-menu-item
 				:id="item.id"
@@ -66,7 +66,7 @@
 					:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
 					:content="item.secondaryIcon?.tooltip?.content"
 					:disabled="compact || !item.secondaryIcon?.tooltip?.content"
-					:open-delay="tooltipDelay"
+					:show-after="tooltipDelay"
 				>
 					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
 				</n8n-tooltip>
