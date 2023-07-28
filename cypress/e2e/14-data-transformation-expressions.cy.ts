@@ -7,12 +7,10 @@ describe('Data transformation expressions', () => {
 	beforeEach(() => {
 		wf.actions.visit();
 
-		cy.window().then(
-			(win) => {
-				// @ts-ignore
-				win.preventNodeViewBeforeUnload = true;
-			},
-		);
+		cy.window().then((win) => {
+			// @ts-ignore
+			win.preventNodeViewBeforeUnload = true;
+		});
 	});
 
 	it('$json + native string methods', () => {
@@ -85,7 +83,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist');
 		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
 	});
 
@@ -100,7 +98,7 @@ describe('Data transformation expressions', () => {
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
 		ndv.actions.execute();
-		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist')
+		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist');
 		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
 	});
 });
@@ -111,7 +109,7 @@ describe('Data transformation expressions', () => {
 
 const addSet = () => {
 	wf.actions.addNodeToCanvas('Set', true, true);
-	ndv.getters.parameterInput('keepOnlySet').find('div[role=switch]').click(); // shorten output
+	ndv.getters.parameterInput('keepOnlySet').find('.el-switch').click(); // shorten output
 	cy.get('input[placeholder="Add Value"]').click();
 	cy.get('span').contains('String').click();
 	ndv.getters.nthParam(3).contains('Expression').invoke('show').click(); // Values to Set > String > Value

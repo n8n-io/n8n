@@ -1,10 +1,12 @@
 <template>
-	<n8n-menu
-		:items="menuItems"
-		mode="tabs"
-		:value="value ? 'owner' : 'all'"
-		@input="onSelectOwner"
-	/>
+	<div class="resource-ownership-select">
+		<n8n-menu
+			:items="menuItems"
+			mode="tabs"
+			:modelValue="value ? 'owner' : 'all'"
+			@update:modelValue="onSelectOwner"
+		/>
+	</div>
 </template>
 
 <script lang="ts">
@@ -46,7 +48,7 @@ export default defineComponent({
 	},
 	methods: {
 		onSelectOwner(type: string) {
-			this.$emit('input', type === 'owner');
+			this.$emit('update:modelValue', type === 'owner');
 		},
 	},
 });

@@ -17,12 +17,11 @@
 				/>
 				<TagsDropdown
 					v-if="settingsStore.areTagsEnabled"
+					v-model="currentTagIds"
 					:createEnabled="true"
-					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
-					@update="onTagsUpdate"
 					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
@@ -62,7 +61,7 @@ import type { IWorkflowDataUpdate } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useCredentialsStore } from '@/stores';
 
 export default defineComponent({
@@ -90,7 +89,8 @@ export default defineComponent({
 	},
 	async mounted() {
 		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
-		this.$nextTick(() => this.focusOnNameInput());
+		await this.$nextTick();
+		this.focusOnNameInput();
 	},
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
@@ -132,9 +132,6 @@ export default defineComponent({
 		onTagsEsc() {
 			// revert last changes
 			this.currentTagIds = this.prevTagIds;
-		},
-		onTagsUpdate(tagIds: string[]) {
-			this.currentTagIds = tagIds;
 		},
 		async save(): Promise<void> {
 			const name = this.name.trim();

@@ -1,5 +1,5 @@
 <template>
-	<n8n-card :class="$style.card" v-on="$listeners">
+	<n8n-card :class="$style.card" v-bind="$attrs">
 		<template #header v-if="!loading">
 			<span v-text="title" :class="$style.title" />
 		</template>

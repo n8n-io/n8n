@@ -40,7 +40,6 @@
     "@ngneat/falso": "^6.1.0",
     "@types/jest": "^29.5.0",
     "@types/supertest": "^2.0.12",
-    "@vitejs/plugin-vue2": "^2.2.0",
     "@vitest/coverage-c8": "^0.28.5",
     "c8": "^7.12.0",
     "cross-env": "^7.0.3",
@@ -64,7 +63,6 @@
     "typescript": "*",
     "vite": "^4.0.4",
     "vitest": "^0.28.5",
-    "vue-template-compiler": "^2.7.14",
     "vue-tsc": "^1.0.24"
   },
   "pnpm": {
@@ -92,7 +90,6 @@
       "qqjs>globby": "^11.1.0"
     },
     "patchedDependencies": {
-      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",
       "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch",
       "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch",

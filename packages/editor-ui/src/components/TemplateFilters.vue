@@ -8,8 +8,8 @@
 			<li :class="$style.item">
 				<el-checkbox
 					:label="$locale.baseText('templates.allCategories')"
-					:value="allSelected"
-					@change="(value) => resetCategories(value)"
+					:modelValue="allSelected"
+					@update:modelValue="(value) => resetCategories(value)"
 				/>
 			</li>
 			<li
@@ -19,8 +19,8 @@
 			>
 				<el-checkbox
 					:label="category.name"
-					:value="isSelected(category.id)"
-					@change="(value) => handleCheckboxChanged(value, category)"
+					:modelValue="isSelected(category.id)"
+					@update:modelValue="(value) => handleCheckboxChanged(value, category)"
 				/>
 			</li>
 		</ul>
