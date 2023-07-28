@@ -19,6 +19,7 @@
 					:columnView="true"
 					:eventBus="formBus"
 					:teleported="teleported"
+					tagSize="small"
 					@submit="onSubmit"
 				/>
 			</div>

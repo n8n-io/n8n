@@ -26,6 +26,7 @@
 						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
 						:teleported="teleported"
+						:tagSize="tagSize"
 						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
 						@enter="onSubmit"
@@ -72,6 +73,11 @@ export default defineComponent({
 		teleported: {
 			type: Boolean,
 			default: true,
+		},
+		tagSize: {
+			type: String,
+			default: 'small',
+			validator: (value: string): boolean => ['small', 'medium'].includes(value),
 		},
 	},
 	data() {
