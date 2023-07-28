@@ -35,7 +35,7 @@ export default defineComponent({
 		window.addEventListener('mousemove', this.onMouseMove);
 		window.addEventListener('mouseup', this.onMouseUp);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('mousemove', this.onMouseMove);
 		window.removeEventListener('mouseup', this.onMouseUp);
 	},

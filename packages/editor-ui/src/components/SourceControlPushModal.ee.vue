@@ -8,7 +8,7 @@ import type { SourceControlAggregatedFile } from '@/Interface';
 import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores';
-import { useRoute } from 'vue-router/composables';
+import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
 
 const props = defineProps({
@@ -23,7 +23,7 @@ const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const toast = useToast();
-const { i18n: locale } = useI18n();
+const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const route = useRoute();
 
@@ -112,7 +112,7 @@ onMounted(async () => {
 	try {
 		staged.value = getStagedFilesByContext(files.value);
 	} catch (error) {
-		toast.showError(error, locale.baseText('error'));
+		toast.showError(error, i18n.baseText('error'));
 	} finally {
 		loading.value = false;
 	}
@@ -184,7 +184,7 @@ function close() {
 function renderUpdatedAt(file: SourceControlAggregatedFile) {
 	const currentYear = new Date().getFullYear();
 
-	return locale.baseText('settings.sourceControl.lastUpdated', {
+	return i18n.baseText('settings.sourceControl.lastUpdated', {
 		interpolate: {
 			date: dateformat(
 				file.updatedAt,
@@ -204,7 +204,7 @@ async function onCommitKeyDownEnter() {
 async function commitAndPush() {
 	const fileNames = files.value.filter((file) => staged.value[file.file]);
 
-	loadingService.startLoading(locale.baseText('settings.sourceControl.loading.push'));
+	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.push'));
 	close();
 
 	try {
@@ -215,12 +215,12 @@ async function commitAndPush() {
 		});
 
 		toast.showToast({
-			title: locale.baseText('settings.sourceControl.modals.push.success.title'),
-			message: locale.baseText('settings.sourceControl.modals.push.success.description'),
+			title: i18n.baseText('settings.sourceControl.modals.push.success.title'),
+			message: i18n.baseText('settings.sourceControl.modals.push.success.description'),
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, locale.baseText('error'));
+		toast.showError(error, i18n.baseText('error'));
 	} finally {
 		loadingService.stopLoading();
 	}
@@ -230,7 +230,7 @@ async function commitAndPush() {
 <template>
 	<Modal
 		width="812px"
-		:title="locale.baseText('settings.sourceControl.modals.push.title')"
+		:title="i18n.baseText('settings.sourceControl.modals.push.title')"
 		:eventBus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
 	>
@@ -239,20 +239,20 @@ async function commitAndPush() {
 				<div v-if="files.length > 0">
 					<div v-if="workflowFiles.length > 0">
 						<n8n-text>
-							{{ locale.baseText('settings.sourceControl.modals.push.description') }}
-							<n8n-link :to="locale.baseText('settings.sourceControl.docs.using.pushPull.url')">
-								{{ locale.baseText('settings.sourceControl.modals.push.description.learnMore') }}
+							{{ i18n.baseText('settings.sourceControl.modals.push.description') }}
+							<n8n-link :to="i18n.baseText('settings.sourceControl.docs.using.pushPull.url')">
+								{{ i18n.baseText('settings.sourceControl.modals.push.description.learnMore') }}
 							</n8n-link>
 						</n8n-text>
 
 						<div class="mt-l mb-2xs">
 							<n8n-checkbox
 								:indeterminate="selectAllIndeterminate"
-								:value="selectAll"
-								@input="onToggleSelectAll"
+								:modelValue="selectAll"
+								@update:modelValue="onToggleSelectAll"
 							>
 								<n8n-text bold tag="strong">
-									{{ locale.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
+									{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
 								</n8n-text>
 								<n8n-text tag="strong" v-show="workflowFiles.length > 0">
 									({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
@@ -268,9 +268,9 @@ async function commitAndPush() {
 						>
 							<div :class="$style.listItemBody">
 								<n8n-checkbox
-									:value="staged[file.file]"
+									:modelValue="staged[file.file]"
 									:class="$style.listItemCheckbox"
-									@input="setStagedStatus(file, !staged[file.file])"
+									@update:modelValue="setStagedStatus(file, !staged[file.file])"
 								/>
 								<div>
 									<n8n-text v-if="file.status === 'deleted'" color="text-light">
@@ -293,42 +293,39 @@ async function commitAndPush() {
 										Current workflow
 									</n8n-badge>
 									<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
-										{{ locale.baseText(`settings.sourceControl.status.${file.status}`) }}
+										{{ i18n.baseText(`settings.sourceControl.status.${file.status}`) }}
 									</n8n-badge>
 								</div>
 							</div>
 						</n8n-card>
 					</div>
 					<n8n-notice class="mt-0" v-else>
-						<i18n path="settings.sourceControl.modals.push.noWorkflowChanges">
+						<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
 							<template #link>
-								<n8n-link
-									size="small"
-									:to="locale.baseText('settings.sourceControl.docs.using.url')"
-								>
+								<n8n-link size="small" :to="i18n.baseText('settings.sourceControl.docs.using.url')">
 									{{
-										locale.baseText('settings.sourceControl.modals.push.noWorkflowChanges.moreInfo')
+										i18n.baseText('settings.sourceControl.modals.push.noWorkflowChanges.moreInfo')
 									}}
 								</n8n-link>
 							</template>
-						</i18n>
+						</i18n-t>
 					</n8n-notice>
 
 					<n8n-text bold tag="p" class="mt-l mb-2xs">
-						{{ locale.baseText('settings.sourceControl.modals.push.commitMessage') }}
+						{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
 					</n8n-text>
 					<n8n-input
 						type="text"
 						v-model="commitMessage"
 						:placeholder="
-							locale.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
+							i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 						"
-						@keydown.enter.native="onCommitKeyDownEnter"
+						@keydown.enter="onCommitKeyDownEnter"
 					/>
 				</div>
 				<div v-else-if="!loading">
 					<n8n-notice class="mt-0 mb-0">
-						{{ locale.baseText('settings.sourceControl.modals.push.everythingIsUpToDate') }}
+						{{ i18n.baseText('settings.sourceControl.modals.push.everythingIsUpToDate') }}
 					</n8n-notice>
 				</div>
 			</div>
@@ -337,10 +334,10 @@ async function commitAndPush() {
 		<template #footer>
 			<div :class="$style.footer">
 				<n8n-button type="tertiary" class="mr-2xs" @click="close">
-					{{ locale.baseText('settings.sourceControl.modals.push.buttons.cancel') }}
+					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.cancel') }}
 				</n8n-button>
 				<n8n-button type="primary" :disabled="isSubmitDisabled" @click="commitAndPush">
-					{{ locale.baseText('settings.sourceControl.modals.push.buttons.save') }}
+					{{ i18n.baseText('settings.sourceControl.modals.push.buttons.save') }}
 				</n8n-button>
 			</div>
 		</template>
