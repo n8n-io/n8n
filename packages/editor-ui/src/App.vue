@@ -254,7 +254,7 @@ export default defineComponent({
 			this.postAuthenticateDone = true;
 		},
 	},
-	async created() {
+	async mounted() {
 		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
