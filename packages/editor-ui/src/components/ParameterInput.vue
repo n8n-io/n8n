@@ -156,7 +156,7 @@
 								invalid: !isFocused && getIssues.length > 0 && !isValueExpression,
 							}"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
-							@click.stop="displayEditDialog()"
+							@click="displayEditDialog()"
 							@focus="setFocus"
 						/>
 					</template>
