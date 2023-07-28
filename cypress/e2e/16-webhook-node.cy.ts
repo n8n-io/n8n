@@ -79,11 +79,6 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 describe('Webhook Trigger node', async () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-
-		cy.window().then((win) => {
-			// @ts-ignore
-			win.preventNodeViewBeforeUnload = true;
-		});
 	});
 
 	it('should listen for a GET request', () => {
