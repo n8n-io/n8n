@@ -24,7 +24,7 @@
 						{{ $locale.baseText('credentials.item.owner') }}
 					</n8n-badge>
 				</enterprise-edition>
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
 		</template>
 	</n8n-card>

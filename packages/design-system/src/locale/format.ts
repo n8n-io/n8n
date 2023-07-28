@@ -1,9 +1,3 @@
-const hasOwnProperty = Object.prototype.hasOwnProperty;
-
-export function hasOwn(obj, key) {
-	return hasOwnProperty.call(obj, key);
-}
-
 const RE_NARGS = /(%|)\{([0-9a-zA-Z_]+)\}/g;
 /**
  *  String format template
@@ -12,34 +6,30 @@ const RE_NARGS = /(%|)\{([0-9a-zA-Z_]+)\}/g;
  *    https://github.com/Matt-Esch/string-template/index.js
  */
 export default function () {
-	/**
-	 * template
-	 *
-	 * @param {String | Function} string
-	 * @param {Array} ...args
-	 * @return {String}
-	 */
-
-	function template(value, ...args) {
+	function template(
+		value: string | ((...args: unknown[]) => string),
+		...args: Array<string | object>
+	) {
 		if (typeof value === 'function') {
 			return value(args);
 		}
-		const string = value;
+
+		const str = value;
 		if (args.length === 1 && typeof args[0] === 'object') {
-			args = args[0];
+			args = args[0] as unknown as Array<string | object>;
 		}
 
 		if (!args || !args.hasOwnProperty) {
-			args = {};
+			args = {} as unknown as Array<string | object>;
 		}
 
-		return string.replace(RE_NARGS, (match, prefix, i, index) => {
+		return str.replace(RE_NARGS, (match, prefix, i, index: number) => {
 			let result;
 
-			if (string[index - 1] === '{' && string[index + match.length] === '}') {
+			if (str[index - 1] === '{' && str[index + match.length] === '}') {
 				return i;
 			} else {
-				result = hasOwn(args, i) ? args[i] : null;
+				result = Object.hasOwn(args, i) ? args[i] : null;
 				if (result === null || result === undefined) {
 					return '';
 				}

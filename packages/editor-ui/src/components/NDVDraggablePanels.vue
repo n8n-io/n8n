@@ -119,7 +119,7 @@ export default defineComponent({
 			this.initialized = true;
 		}, 0);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {

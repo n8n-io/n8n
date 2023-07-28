@@ -26,7 +26,7 @@ const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const message = useMessage();
 const sourceControlStore = useSourceControlStore();
 let sourceControlStoreUnsubscribe = () => {};
@@ -228,6 +228,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<ResourcesListLayout
+		class="variables-view"
 		ref="layoutRef"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
@@ -275,7 +276,7 @@ onBeforeUnmount(() => {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</template>
 		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
@@ -289,7 +290,7 @@ onBeforeUnmount(() => {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 			<n8n-action-box
 				v-else-if="!canCreateVariables"
@@ -331,43 +332,45 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use 'n8n-design-system/css/common/var.scss';
 
-:deep(.datatable) {
-	table {
-		table-layout: fixed;
-	}
-
-	th,
-	td {
-		width: 25%;
-
-		@media screen and (max-width: var.$md) {
-			width: 33.33%;
+.variables-view {
+	:deep(.datatable) {
+		table {
+			table-layout: fixed;
 		}
 
-		&.variables-value-column,
-		&.variables-key-column,
-		&.variables-usage-column {
-			> div {
-				width: 100%;
+		th,
+		td {
+			width: 25%;
 
-				> span {
-					max-width: 100%;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap;
-					height: 18px;
-				}
+			@media screen and (max-width: var.$md) {
+				width: 33.33%;
+			}
 
+			&.variables-value-column,
+			&.variables-key-column,
+			&.variables-usage-column {
 				> div {
 					width: 100%;
+
+					> span {
+						max-width: 100%;
+						overflow: hidden;
+						text-overflow: ellipsis;
+						white-space: nowrap;
+						height: 18px;
+					}
+
+					> div {
+						width: 100%;
+					}
 				}
 			}
 		}
-	}
 
-	.variables-usage-column {
-		@media screen and (max-width: var.$md) {
-			display: none;
+		.variables-usage-column {
+			@media screen and (max-width: var.$md) {
+				display: none;
+			}
 		}
 	}
 }
