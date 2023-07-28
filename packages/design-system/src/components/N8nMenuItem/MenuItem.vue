@@ -10,7 +10,7 @@
 			}"
 			:index="item.id"
 			teleported
-			:popper-class="`${$style.submenuPopper} ${popperClass}`"
+			:popper-class="submenuPopperClass"
 		>
 			<template #title>
 				<n8n-icon
@@ -134,6 +134,13 @@ export default defineComponent({
 				}
 			);
 		},
+		submenuPopperClass(): string {
+			const popperClass = [this.$style.submenuPopper, this.popperClass];
+			if (this.compact) {
+				popperClass.push(this.$style.compact);
+			}
+			return popperClass.join(' ');
+		},
 	},
 	methods: {
 		isItemActive(item: IMenuItem): boolean {
@@ -175,6 +182,22 @@ export default defineComponent({
 	--menu-item-hover-font-color: var(--color-text-dark);
 	--menu-item-height: 35px;
 	--sub-menu-item-height: 27px;
+}
+
+@mixin compact() {
+	.icon {
+		margin: 0;
+		overflow: visible !important;
+		visibility: visible !important;
+		width: initial !important;
+		height: initial !important;
+	}
+	.label {
+		display: none;
+	}
+	.secondaryIcon {
+		display: none;
+	}
 }
 
 .submenu {
@@ -284,19 +307,7 @@ export default defineComponent({
 }
 
 .compact {
-	.icon {
-		margin: 0;
-		overflow: visible !important;
-		visibility: visible !important;
-		width: initial !important;
-		height: initial !important;
-	}
-	.label {
-		display: none;
-	}
-	.secondaryIcon {
-		display: none;
-	}
+	@include compact();
 }
 
 .submenuPopper {
@@ -315,8 +326,11 @@ export default defineComponent({
 		margin-right: var(--spacing-xs);
 	}
 
-	.label {
-		display: block;
+	&.compact {
+		:global(.el-menu--popup) {
+			min-width: auto;
+			@include compact();
+		}
 	}
 }
 </style>

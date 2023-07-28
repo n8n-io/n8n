@@ -156,12 +156,9 @@ const goToSourceControlSetup = async () => {
 						type="tertiary"
 						size="mini"
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.pull')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 				<n8n-tooltip
 					v-if="!sourceControlStore.preferences.branchReadOnly"
@@ -176,15 +173,12 @@ const goToSourceControlSetup = async () => {
 					</template>
 					<n8n-button
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						icon="arrow-up"
 						type="tertiary"
 						size="mini"
 						@click="pushWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.push')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 			</div>
 		</div>
