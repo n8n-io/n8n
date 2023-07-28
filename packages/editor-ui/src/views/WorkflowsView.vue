@@ -13,6 +13,24 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
+		<template #add-button="{ disabled }">
+			<n8n-tooltip :disabled="!readOnlyEnv">
+				<div>
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="addWorkflow"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`workflows.add`) }}
+					</n8n-button>
+				</div>
+				<template #content>
+					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
+				</template>
+			</n8n-tooltip>
+		</template>
 		<template #default="{ data, updateItemSize }">
 			<workflow-card
 				data-test-id="resources-list-item"
@@ -70,9 +88,9 @@
 				/>
 				<TagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:currentTagIds="filters.tags"
+					:modelValue="filters.tags"
 					:createEnabled="false"
-					@update="setKeyValue('tags', $event)"
+					@update:modelValue="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
@@ -83,7 +101,7 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="medium">
+				<n8n-select :modelValue="filters.status" @update:modelValue="setKeyValue('status', $event)">
 					<n8n-option
 						v-for="option in statusFilterOptions"
 						:key="option.label"
@@ -102,7 +120,6 @@ import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
@@ -114,7 +131,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 const StatusFilter = {
 	ACTIVE: true,

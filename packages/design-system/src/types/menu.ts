@@ -1,10 +1,14 @@
-import type { Tooltip } from 'element-ui';
+import type { ElTooltipProps } from 'element-plus';
 
 export type IMenuItem = {
 	id: string;
 	label: string;
 	icon?: string;
-	secondaryIcon?: { name: string; size?: 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge' };
+	secondaryIcon?: {
+		name: string;
+		size?: 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
+		tooltip?: ElTooltipProps;
+	};
 	customIconSize?: 'medium' | 'small';
 	available?: boolean;
 	position?: 'top' | 'bottom';
@@ -16,7 +20,6 @@ export type IMenuItem = {
 	// For more specific matching, we can use paths
 	activateOnRoutePaths?: string[];
 	children?: IMenuItem[];
-	tooltip?: Tooltip & { bindTo?: 'menuItem' | 'secondaryIcon' };
 };
 
 export type ILinkMenuItemProperties = {

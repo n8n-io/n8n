@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -53,6 +53,7 @@
     "crypto-js": "^4.1.1",
     "deep-equal": "^2.2.0",
     "esprima-next": "5.8.4",
+    "form-data": "^4.0.0",
     "jmespath": "^0.16.0",
     "js-base64": "^3.7.2",
     "lodash": "^4.17.21",

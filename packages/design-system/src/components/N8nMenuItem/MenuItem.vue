@@ -1,6 +1,6 @@
 <template>
 	<div :class="['n8n-menu-item', $style.item]">
-		<el-submenu
+		<el-sub-menu
 			v-if="item.children?.length"
 			:id="item.id"
 			:class="{
@@ -9,8 +9,8 @@
 				[$style.active]: mode === 'router' && isItemActive(item),
 			}"
 			:index="item.id"
-			popper-append-to-body
-			:popper-class="`${$style.submenuPopper} ${popperClass}`"
+			teleported
+			:popper-class="submenuPopperClass"
 		>
 			<template #title>
 				<n8n-icon
@@ -22,16 +22,17 @@
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
 			<n8n-menu-item
-				v-for="item in availableChildren"
-				:key="item.id"
-				:item="item"
+				v-for="child in availableChildren"
+				:key="child.id"
+				:item="child"
 				:compact="compact"
 				:tooltipDelay="tooltipDelay"
 				:popperClass="popperClass"
 				:mode="mode"
 				:activeTab="activeTab"
+				:handle-select="handleSelect"
 			/>
-		</el-submenu>
+		</el-sub-menu>
 		<n8n-tooltip
 			v-else
 			placement="right"
@@ -50,7 +51,7 @@
 				}"
 				data-test-id="menu-item"
 				:index="item.id"
-				@click="onItemClick(item, $event)"
+				@click="handleSelect(item)"
 			>
 				<n8n-icon
 					v-if="item.icon"
@@ -62,9 +63,9 @@
 				<n8n-tooltip
 					v-if="item.secondaryIcon"
 					:class="$style.secondaryIcon"
-					:placement="item.tooltip?.placement || 'right'"
-					:content="item.tooltip?.content"
-					:disabled="compact || !item.tooltip?.content || item.tooltip?.bindTo !== 'secondaryIcon'"
+					:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
+					:content="item.secondaryIcon?.tooltip?.content"
+					:disabled="compact || !item.secondaryIcon?.tooltip?.content"
 					:open-delay="tooltipDelay"
 				>
 					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
@@ -75,7 +76,7 @@
 </template>
 
 <script lang="ts">
-import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
+import { ElSubMenu, ElMenuItem } from 'element-plus';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import type { PropType } from 'vue';
@@ -85,7 +86,7 @@ import type { IMenuItem, RouteObject } from '../../types';
 export default defineComponent({
 	name: 'n8n-menu-item',
 	components: {
-		ElSubmenu,
+		ElSubMenu,
 		ElMenuItem,
 		N8nIcon,
 		N8nTooltip,
@@ -115,6 +116,9 @@ export default defineComponent({
 		activeTab: {
 			type: String,
 		},
+		handleSelect: {
+			type: Function as PropType<(item: IMenuItem) => void>,
+		},
 	},
 	computed: {
 		availableChildren(): IMenuItem[] {
@@ -129,6 +133,13 @@ export default defineComponent({
 					path: '',
 				}
 			);
+		},
+		submenuPopperClass(): string {
+			const popperClass = [this.$style.submenuPopper, this.popperClass];
+			if (this.compact) {
+				popperClass.push(this.$style.compact);
+			}
+			return popperClass.join(' ');
 		},
 	},
 	methods: {
@@ -156,21 +167,6 @@ export default defineComponent({
 				return item.id === this.activeTab;
 			}
 		},
-		onItemClick(item: IMenuItem, event: MouseEvent) {
-			if (item && item.type === 'link' && item.properties) {
-				const href: string = item.properties.href;
-				if (!href) {
-					return;
-				}
-
-				if (item.properties.newWindow) {
-					window.open(href);
-				} else {
-					window.location.assign(item.properties.href);
-				}
-			}
-			this.$emit('click', event, item.id);
-		},
 	},
 });
 </script>
@@ -178,26 +174,42 @@ export default defineComponent({
 <style module lang="scss">
 // Element menu-item overrides
 :global(.el-menu-item),
-:global(.el-submenu__title) {
+:global(.el-sub-menu__title) {
 	--menu-font-color: var(--color-text-base);
 	--menu-item-active-background-color: var(--color-foreground-base);
 	--menu-item-active-font-color: var(--color-text-dark);
 	--menu-item-hover-fill: var(--color-foreground-base);
 	--menu-item-hover-font-color: var(--color-text-dark);
 	--menu-item-height: 35px;
-	--submenu-item-height: 27px;
+	--sub-menu-item-height: 27px;
+}
+
+@mixin compact() {
+	.icon {
+		margin: 0;
+		overflow: visible !important;
+		visibility: visible !important;
+		width: initial !important;
+		height: initial !important;
+	}
+	.label {
+		display: none;
+	}
+	.secondaryIcon {
+		display: none;
+	}
 }
 
 .submenu {
 	background: none !important;
 
-	&.compact :global(.el-submenu__title) {
+	&.compact :global(.el-sub-menu__title) {
 		i {
 			display: none;
 		}
 	}
 
-	:global(.el-submenu__title) {
+	:global(.el-sub-menu__title) {
 		display: flex;
 		align-items: center;
 		border-radius: var(--border-radius-base) !important;
@@ -219,7 +231,7 @@ export default defineComponent({
 	}
 
 	.menuItem {
-		height: var(--submenu-item-height) !important;
+		height: var(--sub-menu-item-height) !important;
 		min-width: auto !important;
 		margin: var(--spacing-2xs) 0 !important;
 		padding-left: var(--spacing-l) !important;
@@ -246,7 +258,7 @@ export default defineComponent({
 		svg {
 			color: var(--color-text-dark) !important;
 		}
-		&:global(.el-submenu) {
+		&:global(.el-sub-menu) {
 			background-color: unset !important;
 		}
 	}
@@ -254,7 +266,7 @@ export default defineComponent({
 
 .active {
 	&,
-	& :global(.el-submenu__title) {
+	& :global(.el-sub-menu__title) {
 		background-color: var(--color-foreground-base);
 		border-radius: var(--border-radius-base);
 		.icon {
@@ -295,20 +307,7 @@ export default defineComponent({
 }
 
 .compact {
-	width: 40px;
-	.icon {
-		margin: 0;
-		overflow: visible !important;
-		visibility: visible !important;
-		width: initial !important;
-		height: initial !important;
-	}
-	.label {
-		display: none;
-	}
-	.secondaryIcon {
-		display: none;
-	}
+	@include compact();
 }
 
 .submenuPopper {
@@ -327,8 +326,11 @@ export default defineComponent({
 		margin-right: var(--spacing-xs);
 	}
 
-	.label {
-		display: block;
+	&.compact {
+		:global(.el-menu--popup) {
+			min-width: auto;
+			@include compact();
+		}
 	}
 }
 </style>

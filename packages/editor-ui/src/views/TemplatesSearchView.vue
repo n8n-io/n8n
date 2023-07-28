@@ -32,9 +32,9 @@
 				<div :class="$style.search">
 					<template v-if="!isFixedListExperiment">
 						<n8n-input
-							:value="search"
+							:modelValue="search"
 							:placeholder="$locale.baseText('templates.searchPlaceholder')"
-							@input="onSearchInput"
+							@update:modelValue="onSearchInput"
 							@blur="trackSearch"
 							clearable
 						>
@@ -52,7 +52,6 @@
 									<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
 								</n8n-heading>
 							</div>
-
 							<CollectionsCarousel
 								:collections="collections"
 								:loading="loadingCollections"

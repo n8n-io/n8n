@@ -66,6 +66,10 @@ async function callRecursiveList(
 
 		// Is directory
 		if (item.type === 'd') {
+			// ignore . and .. to prevent infinite loop
+			if (item.name === '.' || item.name === '..') {
+				return;
+			}
 			pathArray.push(currentPath);
 		}
 

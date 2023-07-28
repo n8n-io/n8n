@@ -66,11 +66,11 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
-	private executionDataRepository: ExecutionDataRepository;
-
-	constructor(dataSource: DataSource, executionDataRepository: ExecutionDataRepository) {
+	constructor(
+		dataSource: DataSource,
+		private readonly executionDataRepository: ExecutionDataRepository,
+	) {
 		super(ExecutionEntity, dataSource.manager);
-		this.executionDataRepository = executionDataRepository;
 	}
 
 	async findMultipleExecutions(
@@ -238,9 +238,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 	}
 
-	async deleteExecution(executionId: string) {
-		// TODO: Should this be awaited? Should we add a catch in case it fails?
-		await BinaryDataManager.getInstance().deleteBinaryDataByExecutionIds([executionId]);
+	async deleteExecution(executionId: string, deferBinaryDataDeletion = false) {
+		const binaryDataManager = BinaryDataManager.getInstance();
+		if (deferBinaryDataDeletion) {
+			await binaryDataManager.markDataForDeletionByExecutionId(executionId);
+		} else {
+			await binaryDataManager.deleteBinaryDataByExecutionIds([executionId]);
+		}
 		return this.delete({ id: executionId });
 	}
 

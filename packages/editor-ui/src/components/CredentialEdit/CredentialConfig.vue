@@ -88,10 +88,11 @@
 				:toastTitle="
 					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 				"
+				:redactValue="true"
 			/>
 		</template>
 		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
-			<div class="ph-no-capture">
+			<div>
 				<n8n-info-tip :bold="false">
 					{{
 						$locale.baseText('credentialEdit.credentialEdit.info.sharee', {
@@ -108,7 +109,7 @@
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
 			:showValidationWarnings="showValidationWarning"
-			@change="onDataChange"
+			@update="onDataChange"
 		/>
 
 		<OauthButton
@@ -331,7 +332,7 @@ export default defineComponent({
 			return this.credentialsStore.allUsableCredentialsByType[type];
 		},
 		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
-			this.$emit('change', event);
+			this.$emit('update', event);
 		},
 		onDocumentationUrlClick(): void {
 			this.$telemetry.track('User clicked credential modal docs link', {

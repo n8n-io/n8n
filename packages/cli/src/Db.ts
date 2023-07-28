@@ -41,7 +41,6 @@ import {
 	TagRepository,
 	UserRepository,
 	VariablesRepository,
-	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
@@ -187,7 +186,6 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	collections.Tag = Container.get(TagRepository);
 	collections.User = Container.get(UserRepository);
 	collections.Variables = Container.get(VariablesRepository);
-	collections.Webhook = Container.get(WebhookRepository);
 	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);

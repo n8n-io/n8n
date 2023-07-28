@@ -107,7 +107,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.zoomToFit();
 
 		cy.get('.plus-draggable-endpoint').filter(':visible').should('not.have.class', 'ep-success');
-		cy.get('.jtk-connector.success').should('have.length', 4);
+		cy.get('.jtk-connector.success').should('have.length', 3);
 		cy.get('.jtk-connector').should('have.length', 4);
 	});
 
@@ -162,7 +162,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 740px; top: 360px;');
+			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
 	it('should zoom in', () => {
