@@ -126,11 +126,15 @@ export default defineComponent({
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	pointer-events: none;
 
 	svg {
 		max-width: 100%;
 		max-height: 100%;
+	}
+
+	img,
+	svg {
+		pointer-events: none;
 	}
 }
 .nodeIconPlaceholder {
