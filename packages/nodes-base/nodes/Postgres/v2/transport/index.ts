@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import { sanitizePrivateKey } from '@utils/utilities';
 
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
@@ -8,8 +9,7 @@ import { createServer } from 'net';
 
 import pgPromise from 'pg-promise';
 
-import { rm, writeFile } from 'fs/promises';
-import { file } from 'tmp-promise';
+import { rm } from 'fs/promises';
 
 import type { PgpDatabase } from '../helpers/interfaces';
 
@@ -22,14 +22,11 @@ async function createSshConnectConfig(credentials: IDataObject) {
 			password: credentials.sshPassword as string,
 		} as ConnectConfig;
 	} else {
-		const { path } = await file({ prefix: 'n8n-ssh-' });
-		await writeFile(path, credentials.privateKey as string);
-
 		const options: ConnectConfig = {
-			host: credentials.host as string,
-			username: credentials.username as string,
-			port: credentials.port as number,
-			privateKey: path,
+			host: credentials.sshHost as string,
+			username: credentials.sshUser as string,
+			port: credentials.sshPort as number,
+			privateKey: sanitizePrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {
