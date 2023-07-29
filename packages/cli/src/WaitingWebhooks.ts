@@ -16,7 +16,10 @@ import { ExecutionRepository } from '@db/repositories';
 
 @Service()
 export class WaitingWebhooks {
-	constructor(private nodeTypes: NodeTypes, private executionRepository: ExecutionRepository) {}
+	constructor(
+		private nodeTypes: NodeTypes,
+		private executionRepository: ExecutionRepository,
+	) {}
 
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,

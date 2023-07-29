@@ -131,7 +131,6 @@ export class Rundeck implements INodeType {
 				},
 				default: '',
 				placeholder: 'Add Filters',
-				required: false,
 				description: 'Filter Rundeck nodes by name',
 			},
 

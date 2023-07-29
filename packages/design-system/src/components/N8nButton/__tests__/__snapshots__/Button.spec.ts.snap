@@ -1,4 +1,4 @@
-// Vitest Snapshot v1
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button class=\\"button button primary medium withIcon\\" aria-live=\\"polite\\"><span class=\\"icon\\"><n8n-icon-stub icon=\\"plus-circle\\" size=\\"medium\\" spin=\\"false\\"></n8n-icon-stub></span><span>Button</span></button>"`;
 

@@ -115,9 +115,13 @@ export class WorkflowPage extends BasePage {
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 	};
 	actions = {
-		visit: () => {
+		visit: (preventNodeViewUnload = true) => {
 			cy.visit(this.url);
 			cy.waitForLoad();
+			cy.window().then((win) => {
+				// @ts-ignore
+				win.preventNodeViewBeforeUnload = preventNodeViewUnload;
+			});
 		},
 		addInitialNodeToCanvas: (nodeDisplayName: string, { keepNdvOpen } = { keepNdvOpen: false }) => {
 			this.getters.canvasPlusButton().click();

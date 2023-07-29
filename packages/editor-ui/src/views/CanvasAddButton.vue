@@ -10,7 +10,7 @@
 			:visible="showTooltip"
 			:disabled="nodeCreatorStore.showScrim"
 			:popper-class="$style.tooltip"
-			:open-delay="700"
+			:show-after="700"
 		>
 			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
