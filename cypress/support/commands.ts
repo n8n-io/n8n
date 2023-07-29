@@ -109,8 +109,8 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 	element.then(([$el]) => {
 		const originalLocation = $el.getBoundingClientRect();
 		const newPosition = {
-			x: options?.abs ? xDiff : originalLocation.x + xDiff,
-			y: options?.abs ? yDiff : originalLocation.y + yDiff,
+			x: options?.abs ? xDiff : originalLocation.right + xDiff,
+			y: options?.abs ? yDiff : originalLocation.top + yDiff,
 		}
 
 		if(options?.realMouse) {
