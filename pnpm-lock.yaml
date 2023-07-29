@@ -877,8 +877,8 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       qrcode.vue:
-        specifier: ^1.7.0
-        version: 1.7.0(vue@3.3.4)
+        specifier: ^3.0.0
+        version: 3.0.0(vue@3.3.4)
       stream-browserify:
         specifier: ^3.0.0
         version: 3.0.0
@@ -17553,10 +17553,10 @@ packages:
       - supports-color
     dev: true
 
-  /qrcode.vue@1.7.0(vue@3.3.4):
-    resolution: {integrity: sha512-R7t6Y3fDDtcU7L4rtqwGUDP9xD64gJhIwpfjhRCTKmBoYF6SS49PIJHRJ048cse6OI7iwTwgyy2C46N9Ygoc6g==}
+  /qrcode.vue@3.0.0(vue@3.3.4):
+    resolution: {integrity: sha512-+Lv0isDaBHF71SoDPHdzWWTLehf/Y2iBy0LsOrE5MkN1k1bXKugY3cjifmyvrv6EeQhNniZF4YCQ+hqE73vmTQ==}
     peerDependencies:
-      vue: ^2.0.0
+      vue: ^3.0.0
     dependencies:
       vue: 3.3.4
     dev: false
