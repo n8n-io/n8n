@@ -264,7 +264,7 @@ export class PasswordResetController {
 		const user = await this.userRepository.findOne({
 			select: ['id', 'mfaSecret', 'mfaEnabled', 'email', 'password', 'firstName', 'lastName'],
 			where: {
-				id: decodedToken.sub
+				id: decodedToken.sub,
 			},
 			relations: ['authIdentities'],
 		});
@@ -283,7 +283,7 @@ export class PasswordResetController {
 			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
 
 			const { decryptedSecret: secret } = await this.mfaService.getRawSecretAndRecoveryCodes(
-				userId,
+				user.id,
 			);
 
 			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });

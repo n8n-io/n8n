@@ -95,7 +95,6 @@
 
 <script lang="ts">
 import { useI18n, useToast } from '@/composables';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import type { IFormInputs, IUser } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
