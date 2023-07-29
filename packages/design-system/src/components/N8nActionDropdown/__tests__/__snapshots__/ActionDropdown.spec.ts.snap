@@ -1,4 +1,4 @@
-// Vitest Snapshot v1
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`components > N8nActionDropdown > should render custom styling correctly 1`] = `
 "<div class=\\"action-dropdown-container actionDropdownContainer\\">

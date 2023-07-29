@@ -33,6 +33,7 @@
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot" />
 			<n8n-select
+				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				v-else-if="type === 'select' || type === 'multi-select'"
 				:modelValue="modelValue"
 				:placeholder="placeholder"
@@ -50,6 +51,7 @@
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
+					size="small"
 				/>
 			</n8n-select>
 			<n8n-input
@@ -127,6 +129,7 @@ export interface Props {
 	inactiveLabel?: string;
 	inactiveColor?: string;
 	teleported?: boolean;
+	tagSize?: 'small' | 'medium';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -136,6 +139,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showRequiredAsterisk: true,
 	validateOnBlur: true,
 	teleported: true,
+	tagSize: 'small',
 });
 
 const emit = defineEmits<{
@@ -267,5 +271,13 @@ defineExpose({ inputRef });
 
 .errorInput {
 	--input-border-color: var(--color-danger);
+}
+
+.multiSelectSmallTags {
+	:global(.el-tag) {
+		height: 24px;
+		padding: 0 8px;
+		line-height: 22px;
+	}
 }
 </style>

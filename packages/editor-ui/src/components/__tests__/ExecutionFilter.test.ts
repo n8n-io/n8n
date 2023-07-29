@@ -22,8 +22,8 @@ const defaultFilterState: ExecutionFilterType = {
 const workflowDataFactory = (): IWorkflowShortResponse => ({
 	createdAt: faker.date.past().toDateString(),
 	updatedAt: faker.date.past().toDateString(),
-	id: faker.datatype.uuid(),
-	name: faker.datatype.string(),
+	id: faker.string.uuid(),
+	name: faker.string.sample(),
 	active: faker.datatype.boolean(),
 	tags: [],
 });
@@ -68,7 +68,7 @@ describe('ExecutionFilter', () => {
 			() =>
 				({
 					track,
-				} as unknown as Telemetry),
+				}) as unknown as Telemetry,
 		);
 
 		const { getByTestId } = renderComponent({
@@ -92,7 +92,7 @@ describe('ExecutionFilter', () => {
 		['production', 'default', false, undefined],
 		['production', 'default', true, workflowsData],
 	])(
-		'renders in %s environment on %s deployment with advancedExecutionFilters %s and workflows %s',
+		'renders in %s environment on %s deployment with advancedExecutionFilters %s',
 		async (environment, deployment, advancedExecutionFilters, workflows) => {
 			const { html, getByTestId, queryByTestId, queryAllByTestId } = renderComponent({
 				props: { workflows },
