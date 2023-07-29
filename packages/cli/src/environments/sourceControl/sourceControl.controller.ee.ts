@@ -5,15 +5,20 @@ import {
 } from './middleware/sourceControlEnabledMiddleware.ee';
 import { SourceControlService } from './sourceControl.service.ee';
 import { SourceControlRequest } from './types/requests';
-import type { SourceControlPreferences } from './types/sourceControlPreferences';
-import { BadRequestError } from '@/ResponseHelper';
-import type { PullResult, PushResult, StatusResult } from 'simple-git';
-import express from 'express';
-import type { ImportResult } from './types/importResult';
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
+import type { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
+import { BadRequestError } from '@/ResponseHelper';
+import type { PullResult } from 'simple-git';
+import express from 'express';
+import type { ImportResult } from './types/importResult';
+import Container, { Service } from 'typedi';
+import { InternalHooks } from '../../InternalHooks';
+import { getRepoType } from './sourceControlHelper.ee';
+import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 
+@Service()
 @RestController(`/${SOURCE_CONTROL_API_ROOT}`)
 export class SourceControlController {
 	constructor(
@@ -21,7 +26,7 @@ export class SourceControlController {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
-	@Authorized('any')
+	@Authorized('none')
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
 	async getPreferences(): Promise<SourceControlPreferences> {
 		// returns the settings with the privateKey property redacted
@@ -54,14 +59,17 @@ export class SourceControlController {
 			);
 			if (sanitizedPreferences.initRepo === true) {
 				try {
-					await this.sourceControlService.initializeRepository({
-						...updatedPreferences,
-						branchName:
-							updatedPreferences.branchName === ''
-								? SOURCE_CONTROL_DEFAULT_BRANCH
-								: updatedPreferences.branchName,
-						initRepo: true,
-					});
+					await this.sourceControlService.initializeRepository(
+						{
+							...updatedPreferences,
+							branchName:
+								updatedPreferences.branchName === ''
+									? SOURCE_CONTROL_DEFAULT_BRANCH
+									: updatedPreferences.branchName,
+							initRepo: true,
+						},
+						req.user,
+					);
 					if (this.sourceControlPreferencesService.getPreferences().branchName !== '') {
 						await this.sourceControlPreferencesService.setPreferences({
 							connected: true,
@@ -74,7 +82,17 @@ export class SourceControlController {
 				}
 			}
 			await this.sourceControlService.init();
-			return this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			// #region Tracking Information
+			// located in controller so as to not call this multiple times when updating preferences
+			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
+				branch_name: resultingPreferences.branchName,
+				connected: resultingPreferences.connected,
+				read_only_instance: resultingPreferences.branchReadOnly,
+				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+			});
+			// #endregion
+			return resultingPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -90,8 +108,6 @@ export class SourceControlController {
 				connected: undefined,
 				publicKey: undefined,
 				repositoryUrl: undefined,
-				authorName: undefined,
-				authorEmail: undefined,
 			};
 			const currentPreferences = this.sourceControlPreferencesService.getPreferences();
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
@@ -113,7 +129,14 @@ export class SourceControlController {
 				);
 			}
 			await this.sourceControlService.init();
-			return this.sourceControlPreferencesService.getPreferences();
+			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
+			void Container.get(InternalHooks).onSourceControlSettingsUpdated({
+				branch_name: resultingPreferences.branchName,
+				connected: resultingPreferences.connected,
+				read_only_instance: resultingPreferences.branchReadOnly,
+				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+			});
+			return resultingPreferences;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -144,18 +167,18 @@ export class SourceControlController {
 	async pushWorkfolder(
 		req: SourceControlRequest.PushWorkFolder,
 		res: express.Response,
-	): Promise<PushResult | SourceControlledFile[]> {
+	): Promise<SourceControlledFile[]> {
 		if (this.sourceControlPreferencesService.isBranchReadOnly()) {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 		try {
+			await this.sourceControlService.setGitUserDetails(
+				`${req.user.firstName} ${req.user.lastName}`,
+				req.user.email,
+			);
 			const result = await this.sourceControlService.pushWorkfolder(req.body);
-			if ((result as PushResult).pushed) {
-				res.statusCode = 200;
-			} else {
-				res.statusCode = 409;
-			}
-			return result;
+			res.statusCode = result.statusCode;
+			return result.statusResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -166,20 +189,15 @@ export class SourceControlController {
 	async pullWorkfolder(
 		req: SourceControlRequest.PullWorkFolder,
 		res: express.Response,
-	): Promise<SourceControlledFile[] | ImportResult | PullResult | StatusResult | undefined> {
+	): Promise<SourceControlledFile[] | ImportResult | PullResult | undefined> {
 		try {
 			const result = await this.sourceControlService.pullWorkfolder({
 				force: req.body.force,
 				variables: req.body.variables,
 				userId: req.user.id,
-				importAfterPull: req.body.importAfterPull ?? true,
 			});
-			if ((result as ImportResult)?.workflows) {
-				res.statusCode = 200;
-			} else {
-				res.statusCode = 409;
-			}
-			return result;
+			res.statusCode = result.statusCode;
+			return result.statusResult;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -187,16 +205,9 @@ export class SourceControlController {
 
 	@Authorized(['global', 'owner'])
 	@Get('/reset-workfolder', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	async resetWorkfolder(
-		req: SourceControlRequest.PullWorkFolder,
-	): Promise<ImportResult | undefined> {
+	async resetWorkfolder(): Promise<ImportResult | undefined> {
 		try {
-			return await this.sourceControlService.resetWorkfolder({
-				force: req.body.force,
-				variables: req.body.variables,
-				userId: req.user.id,
-				importAfterPull: req.body.importAfterPull ?? true,
-			});
+			return await this.sourceControlService.resetWorkfolder();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -204,9 +215,12 @@ export class SourceControlController {
 
 	@Authorized('any')
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
-	async getStatus() {
+	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
-			return await this.sourceControlService.getStatus();
+			const result = (await this.sourceControlService.getStatus(
+				new SourceControlGetStatus(req.query),
+			)) as SourceControlledFile[];
+			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -214,9 +228,9 @@ export class SourceControlController {
 
 	@Authorized('any')
 	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
-	async status(): Promise<StatusResult> {
+	async status(req: SourceControlRequest.GetStatus) {
 		try {
-			return await this.sourceControlService.status();
+			return await this.sourceControlService.getStatus(new SourceControlGetStatus(req.query));
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

@@ -1,4 +1,4 @@
-const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n_io/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
@@ -12,25 +12,31 @@ module.exports = {
 
 	rules: {
 		// TODO: remove all the following rules
-		eqeqeq: 'off',
-		'id-denylist': 'off',
-		'import/extensions': 'off',
-		'import/order': 'off',
-		'prefer-spread': 'off',
-		'import/no-extraneous-dependencies': 'off',
+		eqeqeq: 'warn',
+		'id-denylist': 'warn',
+		'import/extensions': 'warn',
+		'import/order': 'warn',
+		'prefer-spread': 'warn',
+		'import/no-extraneous-dependencies': 'warn',
 
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
-		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
-		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
-		'@typescript-eslint/no-unsafe-assignment': 'off', //7084 problems, better to fix in separate PR
-		'@typescript-eslint/no-unsafe-call': 'off', //541 errors, better to fix in separate PR
-		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
-		'@typescript-eslint/no-unsafe-return': 'off', //438 errors, better to fix in separate PR
+		'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
+		'@typescript-eslint/no-non-null-assertion': 'warn', //665 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-assignment': 'warn', //7084 problems, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-call': 'warn', //541 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-member-access': 'warn', //4591 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-return': 'warn', //438 errors, better to fix in separate PR
 		'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
-		'@typescript-eslint/restrict-template-expressions': 'off', //1152 errors, better to fix in separate PR
-		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/restrict-template-expressions': 'warn', //1152 errors, better to fix in separate PR
+		'@typescript-eslint/unbound-method': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
-		'@typescript-eslint/prefer-nullish-coalescing': 'off',
+		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
+		'@typescript-eslint/no-base-to-string': 'warn',
+		'@typescript-eslint/no-redundant-type-constituents': 'warn',
+		'@typescript-eslint/no-unused-vars': 'warn',
+		'@typescript-eslint/no-unsafe-argument': 'warn',
+		'@typescript-eslint/prefer-optional-chain': 'warn',
+		'@typescript-eslint/restrict-plus-operands': 'warn',
 	},
 
 	overrides: [

@@ -1,22 +1,31 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router/composables';
+import { computed, nextTick, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
-import { useUIStore, useSourceControlStore } from '@/stores';
-import { SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUsersStore } from '@/stores/users.store';
+import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
+import type { SourceControlAggregatedFile } from '../Interface';
+import { sourceControlEventBus } from '@/event-bus/source-control';
 
 const props = defineProps<{
 	isCollapsed: boolean;
 }>();
 
+const responseStatuses = {
+	CONFLICT: 409,
+};
+
 const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const sourceControlStore = useSourceControlStore();
 const message = useMessage();
 const toast = useToast();
-const { i18n } = useI18n();
+const i18n = useI18n();
 
 const eventBus = createEventBus();
 const tooltipOpenDelay = ref(300);
@@ -24,11 +33,12 @@ const tooltipOpenDelay = ref(300);
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
-const featureEnabled = computed(() => window.localStorage.getItem('source-control'));
+const isInstanceOwner = computed(() => usersStore.isInstanceOwner);
 const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
 async function pushWorkfolder() {
 	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 	try {
 		const status = await sourceControlStore.getAggregatedStatus();
 
@@ -47,28 +57,55 @@ async function pushWorkfolder() {
 async function pullWorkfolder() {
 	loadingService.startLoading();
 	loadingService.setLoadingText(i18n.baseText('settings.sourceControl.loading.pull'));
+
 	try {
-		await sourceControlStore.pullWorkfolder(false);
+		const status: SourceControlAggregatedFile[] =
+			((await sourceControlStore.pullWorkfolder(
+				false,
+			)) as unknown as SourceControlAggregatedFile[]) || [];
+
+		const statusWithoutLocallyCreatedWorkflows = status.filter((file) => {
+			return !(file.type === 'workflow' && file.status === 'created' && file.location === 'local');
+		});
+		if (statusWithoutLocallyCreatedWorkflows.length === 0) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.upToDate.title'),
+				message: i18n.baseText('settings.sourceControl.pull.upToDate.description'),
+				type: 'success',
+			});
+		} else {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.pull.success.title'),
+				type: 'success',
+			});
+
+			const incompleteFileTypes = ['variables', 'credential'];
+			const hasVariablesOrCredentials = (status || []).some((file) => {
+				return incompleteFileTypes.includes(file.type);
+			});
+
+			if (hasVariablesOrCredentials) {
+				void nextTick(() => {
+					toast.showMessage({
+						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
+						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
+						type: 'info',
+						duration: 0,
+						showClose: true,
+						offset: 0,
+					});
+				});
+			}
+		}
+		sourceControlEventBus.emit('pull');
 	} catch (error) {
 		const errorResponse = error.response;
 
-		if (errorResponse?.status === 409) {
-			const confirm = await message.confirm(
-				i18n.baseText('settings.sourceControl.modals.pull.description'),
-				i18n.baseText('settings.sourceControl.modals.pull.title'),
-				{
-					confirmButtonText: i18n.baseText('settings.sourceControl.modals.pull.buttons.save'),
-					cancelButtonText: i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel'),
-				},
-			);
-
-			try {
-				if (confirm === 'confirm') {
-					await sourceControlStore.pullWorkfolder(true);
-				}
-			} catch (error) {
-				toast.showError(error, 'Error');
-			}
+		if (errorResponse?.status === responseStatuses.CONFLICT) {
+			uiStore.openModalWithData({
+				name: SOURCE_CONTROL_PULL_MODAL_KEY,
+				data: { eventBus, status: errorResponse.data.data },
+			});
 		} else {
 			toast.showError(error, 'Error');
 		}
@@ -85,12 +122,11 @@ const goToSourceControlSetup = async () => {
 
 <template>
 	<div
-		v-if="featureEnabled"
+		v-if="sourceControlStore.isEnterpriseSourceControlEnabled && isInstanceOwner"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
-			[$style.isConnected]:
-				sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName,
+			[$style.isConnected]: sourceControlStore.isEnterpriseSourceControlEnabled,
 		}"
 		:style="{ borderLeftColor: sourceControlStore.preferences.branchColor }"
 		data-test-id="main-sidebar-source-control"
@@ -100,12 +136,12 @@ const goToSourceControlSetup = async () => {
 			:class="$style.connected"
 			data-test-id="main-sidebar-source-control-connected"
 		>
-			<span>
+			<span :class="$style.branchName">
 				<n8n-icon icon="code-branch" />
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
-				<n8n-tooltip :disabled="!isCollapsed" :open-delay="tooltipOpenDelay" placement="right">
+				<n8n-tooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
 					<template #content>
 						<div>
 							{{ i18n.baseText('settings.sourceControl.button.pull') }}
@@ -120,17 +156,14 @@ const goToSourceControlSetup = async () => {
 						type="tertiary"
 						size="mini"
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.pull')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 				<n8n-tooltip
 					v-if="!sourceControlStore.preferences.branchReadOnly"
 					:disabled="!isCollapsed"
-					:open-delay="tooltipOpenDelay"
+					:show-after="tooltipOpenDelay"
 					placement="right"
 				>
 					<template #content>
@@ -140,15 +173,12 @@ const goToSourceControlSetup = async () => {
 					</template>
 					<n8n-button
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						icon="arrow-up"
 						type="tertiary"
 						size="mini"
 						@click="pushWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.push')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 			</div>
 		</div>
@@ -183,6 +213,11 @@ const goToSourceControlSetup = async () => {
 	button {
 		font-size: var(--font-size-3xs);
 	}
+}
+
+.branchName {
+	white-space: normal;
+	line-break: anywhere;
 }
 
 .collapsed {

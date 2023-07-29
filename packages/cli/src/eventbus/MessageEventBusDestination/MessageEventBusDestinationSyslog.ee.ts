@@ -2,15 +2,17 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import syslog from 'syslog-client';
-import type {
-	MessageEventBusDestinationOptions,
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import {
+	LoggerProxy,
+	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationSyslogOptions,
 } from 'n8n-workflow';
-import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
-import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
+import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,

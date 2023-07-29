@@ -8,12 +8,10 @@ import {
 	login,
 	loginCurrentUser,
 	logout,
-	preOwnerSetup,
 	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
 	signup,
-	skipOwnerSetup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -195,9 +193,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.currentUserId = null;
 			usePostHog().reset();
 		},
-		async preOwnerSetup() {
-			return preOwnerSetup(useRootStore().getRestApiContext);
-		},
 		async createOwner(params: {
 			firstName: string;
 			lastName: string;
@@ -240,16 +235,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await sendForgotPasswordEmail(rootStore.getRestApiContext, params);
 		},
-		async validatePasswordToken(params: { token: string; userId: string }): Promise<void> {
+		async validatePasswordToken(params: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await validatePasswordToken(rootStore.getRestApiContext, params);
 		},
-		async changePassword(params: {
-			token: string;
-			password: string;
-			userId: string;
-			mfaToken?: string;
-		}): Promise<void> {
+		async changePassword(params: { token: string; password: string; mfaToken?: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await changePassword(rootStore.getRestApiContext, params);
 		},
@@ -344,14 +334,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				const uiStore = useUIStore();
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
 			}
-		},
-		async skipOwnerSetup(): Promise<void> {
-			try {
-				const rootStore = useRootStore();
-				const settingsStore = useSettingsStore();
-				settingsStore.stopShowingSetupPage();
-				await skipOwnerSetup(rootStore.getRestApiContext);
-			} catch (error) {}
 		},
 		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 			const rootStore = useRootStore();

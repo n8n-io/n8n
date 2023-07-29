@@ -1,4 +1,4 @@
-import type { PluginObject } from 'vue';
+import type { Plugin } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -135,7 +135,7 @@ import {
 	faGem,
 	faDownload,
 } from '@fortawesome/free-solid-svg-icons';
-import { faVariable } from './custom';
+import { faVariable, faXmark } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -143,7 +143,7 @@ function addIcon(icon: IconDefinition) {
 	library.add(icon);
 }
 
-export const FontAwesomePlugin: PluginObject<{}> = {
+export const FontAwesomePlugin: Plugin<{}> = {
 	install: (app) => {
 		addIcon(faAngleDoubleLeft);
 		addIcon(faAngleDown);
@@ -278,6 +278,7 @@ export const FontAwesomePlugin: PluginObject<{}> = {
 		addIcon(faTree);
 		addIcon(faUserLock);
 		addIcon(faGem);
+		addIcon(faXmark);
 		addIcon(faDownload);
 
 		app.component('font-awesome-icon', FontAwesomeIcon);

@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // eslint-disable-next-line max-classes-per-file
 import type * as express from 'express';
-import type * as FormData from 'form-data';
+import type FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
-import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
+import type { RequestPromiseOptions } from 'request-promise-native';
 import type { PathLike } from 'fs';
 
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
@@ -657,7 +657,7 @@ export type ICredentialTestFunction = (
 
 export interface ICredentialTestFunctions {
 	helpers: {
-		request: RequestPromiseAPI;
+		request: (uriOrObject: string | object, options?: object) => Promise<any>;
 	};
 }
 
@@ -671,6 +671,7 @@ interface JsonHelperFunctions {
 
 export interface FileSystemHelperFunctions {
 	createReadStream(path: PathLike): Promise<Readable>;
+	getStoragePath(): string;
 }
 
 export interface BinaryHelperFunctions {
@@ -682,6 +683,7 @@ export interface BinaryHelperFunctions {
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
+	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
 	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 }
@@ -729,6 +731,7 @@ export interface FunctionsBase {
 	getWorkflowStaticData(type: string): IDataObject;
 	getTimezone(): string;
 	getRestApiUrl(): string;
+	getInstanceBaseUrl(): string;
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
@@ -1088,6 +1091,8 @@ export interface IDisplayOptions {
 	show?: {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
+
+	hideOnCloud?: boolean;
 }
 
 export interface INodeProperties {
@@ -1111,6 +1116,7 @@ export interface INodeProperties {
 	extractValue?: INodePropertyValueExtractor;
 	modes?: INodePropertyMode[];
 	requiresDataPath?: 'single' | 'multiple';
+	doNotInherit?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -1193,9 +1199,10 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
-		| Promise<string | NodeParameterValue>
-		| (string | NodeParameterValue);
+	(
+		this: IExecuteSingleFunctions,
+		value: string | NodeParameterValue,
+	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
@@ -1228,7 +1235,6 @@ export interface INodeType {
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
-	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
@@ -1256,6 +1262,16 @@ export interface INodeType {
 			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
 		};
 	};
+}
+
+/**
+ * This class serves as the base for all nodes using the new context API
+ * having this as a class enables us to identify these instances at runtime
+ */
+export abstract class Node {
+	abstract description: INodeTypeDescription;
+	execute?(context: IExecuteFunctions): Promise<INodeExecutionData[][]>;
+	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 }
 
 export interface IVersionedNodeType {
@@ -1430,6 +1446,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	eventTriggerDescription?: string;
 	activationMessage?: string;
 	inputs: string[];
+	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
 	outputs: string[];
 	outputNames?: string[];
@@ -1556,6 +1573,7 @@ export type LoadingDetails = {
 
 export type CredentialLoadingDetails = LoadingDetails & {
 	nodesToTestWith?: string[];
+	extends?: string[];
 };
 
 export type NodeLoadingDetails = LoadingDetails;
@@ -1725,6 +1743,7 @@ export interface IWorkflowExecuteAdditionalData {
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	restApiUrl: string;
+	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendMessageToUI?: (source: string, message: any) => void;
 	timezone: string;
@@ -1769,6 +1788,7 @@ export interface IWorkflowSettings {
 	saveManualExecutions?: 'DEFAULT' | boolean;
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
+	executionOrder?: 'v0' | 'v1';
 }
 
 export interface WorkflowTestData {
@@ -1958,8 +1978,8 @@ export interface IExecutionsSummary {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
+	retryOf?: string | null;
+	retrySuccessId?: string | null;
 	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
@@ -1969,11 +1989,11 @@ export interface IExecutionsSummary {
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
-		[key: string]: IExceutionSummaryNodeExecutionResult;
+		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
 }
 
-export interface IExceutionSummaryNodeExecutionResult {
+export interface IExecutionSummaryNodeExecutionResult {
 	executionStatus: ExecutionStatus;
 	errors?: Array<{
 		name?: string;
@@ -1996,6 +2016,7 @@ export interface ResourceMapperField {
 	type?: FieldType;
 	removed?: boolean;
 	options?: INodePropertyOptions[];
+	readOnly?: boolean;
 }
 
 export type FieldType =
@@ -2041,7 +2062,7 @@ export interface IVersionNotificationSettings {
 }
 
 export interface IUserManagementSettings {
-	enabled: boolean;
+	quota: number;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
@@ -2150,4 +2171,9 @@ export interface IN8nUISettings {
 	mfa: {
 		enabled: boolean;
 	};
+	banners: {
+		dismissed: string[];
+	};
 }
+
+export type Banners = 'V1' | 'TRIAL_OVER' | 'TRIAL';

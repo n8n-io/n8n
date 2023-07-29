@@ -79,7 +79,7 @@ export default defineComponent({
 			],
 		};
 
-		if (!this.settingsStore.isDesktopDeployment || this.settingsStore.isUserManagementEnabled) {
+		if (!this.settingsStore.isDesktopDeployment) {
 			this.FORM_CONFIG.redirectLink = '/forgot-password';
 		}
 	},

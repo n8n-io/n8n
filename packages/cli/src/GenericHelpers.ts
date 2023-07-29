@@ -13,6 +13,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
+import { Container } from 'typedi';
 import { Like } from 'typeorm';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -23,8 +24,7 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserUpdatePayload } from '@/requests';
-import Container from 'typedi';
-import { ExecutionRepository } from './databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -197,6 +197,30 @@ export async function createErrorExecution(
 	};
 
 	await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
+}
+
+export function getRedisClusterNodes(): Array<{ host: string; port: number }> {
+	const clusterNodePairs = config
+		.getEnv('queue.bull.redis.clusterNodes')
+		.split(',')
+		.filter((e) => e);
+	return clusterNodePairs.map((pair) => {
+		const [host, port] = pair.split(':');
+		return { host, port: parseInt(port) };
+	});
+}
+
+export function getRedisPrefix(): string {
+	let prefix = config.getEnv('queue.bull.prefix');
+	if (prefix && getRedisClusterNodes().length > 0) {
+		if (!prefix.startsWith('{')) {
+			prefix = '{' + prefix;
+		}
+		if (!prefix.endsWith('}')) {
+			prefix += '}';
+		}
+	}
+	return prefix;
 }
 
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

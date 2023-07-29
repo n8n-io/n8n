@@ -207,7 +207,6 @@ export default defineComponent({
 					}
 					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
-				case 'environments':
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
 					break;
@@ -247,7 +246,7 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	min-width: $sidebar-expanded-width;
-	height: 100vh;
+	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;

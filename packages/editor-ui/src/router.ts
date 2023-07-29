@@ -1,5 +1,3 @@
-import Vue from 'vue';
-
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
@@ -21,8 +19,8 @@ import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
 import Mfa from './views/MfaView.vue';
-import type { Route } from 'vue-router';
-import Router from 'vue-router';
+import type { RouteLocation, RouteRecordRaw } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router';
 
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
@@ -33,8 +31,6 @@ import WorkflowsView from '@/views/WorkflowsView.vue';
 import VariablesView from '@/views/VariablesView.vue';
 import type { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
-import type { RouteConfigSingleView } from 'vue-router/types/router';
-import { TEMPLATE_EXPERIMENT, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useSSOStore } from './stores/sso.store';
@@ -44,11 +40,9 @@ import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsSourceControl from './views/SettingsSourceControl.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
-import { usePostHog } from './stores/posthog.store';
+import { VIEWS } from '@/constants';
 
-Vue.use(Router);
-
-interface IRouteConfig extends RouteConfigSingleView {
+interface IRouteConfig {
 	meta: {
 		nodeView?: boolean;
 		templatesEnabled?: boolean;
@@ -56,7 +50,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 		permissions: IPermissions;
 		telemetry?: {
 			disabled?: true;
-			getProperties: (route: Route) => object;
+			getProperties: (route: RouteLocation) => object;
 		};
 		scrollOffset?: number;
 	};
@@ -64,12 +58,8 @@ interface IRouteConfig extends RouteConfigSingleView {
 
 function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
-	const posthog = usePostHog();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
-	if (
-		!posthog.isVariantEnabled(TEMPLATE_EXPERIMENT.name, TEMPLATE_EXPERIMENT.variant) &&
-		!isTemplatesEnabled
-	) {
+	if (!isTemplatesEnabled) {
 		return { name: VIEWS.NOT_FOUND };
 	}
 
@@ -80,10 +70,10 @@ export const routes = [
 	{
 		path: '/',
 		name: VIEWS.HOMEPAGE,
+		redirect: (to) => {
+			return { name: VIEWS.WORKFLOWS };
+		},
 		meta: {
-			getRedirect() {
-				return { name: VIEWS.WORKFLOWS };
-			},
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -101,7 +91,7 @@ export const routes = [
 		meta: {
 			templatesEnabled: true,
 			telemetry: {
-				getProperties(route: Route) {
+				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
 						collection_id: route.params.id,
@@ -128,7 +118,7 @@ export const routes = [
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
 			telemetry: {
-				getProperties(route: Route) {
+				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
 						template_id: route.params.id,
@@ -156,7 +146,7 @@ export const routes = [
 			// Templates view remembers it's scroll position on back
 			scrollOffset: 0,
 			telemetry: {
-				getProperties(route: Route) {
+				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
 						wf_template_repo_session_id: templatesStore.currentSessionId,
@@ -417,12 +407,6 @@ export const routes = [
 				allow: {
 					role: [ROLE.Default],
 				},
-				deny: {
-					shouldDeny: () => {
-						const settingsStore = useSettingsStore();
-						return settingsStore.isUserManagementEnabled === false;
-					},
-				},
 			},
 		},
 	},
@@ -474,7 +458,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'usage',
 							};
@@ -505,7 +489,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'personal',
 							};
@@ -530,7 +514,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'users',
 							};
@@ -538,17 +522,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-
-								return (
-									settingsStore.isUserManagementEnabled === false &&
-									!(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment)
-								);
-							},
+							role: [ROLE.Owner],
 						},
 					},
 				},
@@ -562,7 +536,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'api',
 							};
@@ -582,7 +556,7 @@ export const routes = [
 				},
 			},
 			{
-				path: 'source-control',
+				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
 				components: {
 					settingsView: SettingsSourceControl,
@@ -590,18 +564,15 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
-								feature: 'vc',
+								feature: 'environments',
 							};
 						},
 					},
 					permissions: {
 						allow: {
 							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => !window.localStorage.getItem('source-control'),
 						},
 					},
 				},
@@ -615,7 +586,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'sso',
 							};
@@ -646,7 +617,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							role: [ROLE.Member],
@@ -666,7 +637,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							shouldDeny: () => {
@@ -686,7 +657,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: route.params['featureId'],
 							};
@@ -708,7 +679,7 @@ export const routes = [
 				meta: {
 					permissions: {
 						allow: {
-							role: [ROLE.Default, ROLE.Owner],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							role: [ROLE.Member],
@@ -725,7 +696,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'audit-logs',
 							};
@@ -786,7 +757,7 @@ export const routes = [
 		},
 	},
 	{
-		path: '*',
+		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
 		component: ErrorView,
 		props: {
@@ -808,11 +779,10 @@ export const routes = [
 			},
 		},
 	},
-] as IRouteConfig[];
+] as Array<RouteRecordRaw & IRouteConfig>;
 
-const router = new Router({
-	mode: 'history',
-	base: import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/',
+const router = createRouter({
+	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
 	scrollBehavior(to, from, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {

@@ -1601,6 +1601,8 @@ export function mergeNodeProperties(
 ): void {
 	let existingIndex: number;
 	for (const property of addProperties) {
+		if (property.doNotInherit) continue;
+
 		existingIndex = mainProperties.findIndex((element) => element.name === property.name);
 
 		if (existingIndex === -1) {

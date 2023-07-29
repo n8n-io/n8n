@@ -1,22 +1,22 @@
 <template>
 	<n8n-popover
+		:teleported="false"
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
+		:visible="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
-		v-click-outside="onClickOutside"
+		v-on-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input
-				size="medium"
-				:value="filter"
+				:modelValue="filter"
 				:clearable="true"
-				@input="onFilterInput"
+				@update:modelValue="onFilterInput"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 			>
@@ -45,10 +45,9 @@
 				:key="result.value"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === value,
+					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
-				class="ph-no-capture"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -91,7 +90,7 @@ const SCROLL_MARGIN_PX = 10;
 export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
-		value: {
+		modelValue: {
 			type: [String, Number],
 		},
 		show: {
@@ -136,7 +135,7 @@ export default defineComponent({
 	mounted() {
 		this.eventBus.on('keyDown', this.onKeyDown);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	computed: {
@@ -149,7 +148,7 @@ export default defineComponent({
 					}
 					seen.add(item.value);
 
-					if (this.value && item.value === this.value) {
+					if (this.modelValue && item.value === this.modelValue) {
 						acc.selected = item;
 					} else {
 						acc.notSelected.push(item);
@@ -210,7 +209,7 @@ export default defineComponent({
 					}
 				}
 			} else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
+				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
 			}
 		},
 		onFilterInput(value: string) {
@@ -220,7 +219,7 @@ export default defineComponent({
 			this.$emit('hide');
 		},
 		onItemClick(selected: string) {
-			this.$emit('input', selected);
+			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
@@ -262,7 +261,7 @@ export default defineComponent({
 			}, 0);
 		},
 		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
 		},
 	},
 });

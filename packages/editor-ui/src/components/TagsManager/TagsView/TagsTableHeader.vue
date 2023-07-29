@@ -3,11 +3,11 @@
 		<el-col :span="10">
 			<n8n-input
 				:placeholder="$locale.baseText('tagsTableHeader.searchTags')"
-				:value="search"
-				@input="onSearchChange"
+				:modelValue="search"
 				:disabled="disabled"
-				clearable
 				:maxlength="maxLength"
+				clearable
+				@update:modelValue="onSearchChange"
 			>
 				<template #prefix>
 					<font-awesome-icon icon="search" />

@@ -1,13 +1,13 @@
 import { beforeAll } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import { merge } from 'lodash-es';
-import { isAuthorized } from '@/utils';
-import { useSettingsStore, useSSOStore } from '@/stores';
+import { isAuthorized, ROLE } from '@/utils';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useSSOStore } from '@/stores/sso.store';
 import type { IUser } from '@/Interface';
-import { routes } from '@/router';
-import { VIEWS } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import type { IN8nUISettings } from 'n8n-workflow';
+import { createTestingPinia } from '@pinia/testing';
 
 const DEFAULT_SETTINGS: IN8nUISettings = SETTINGS_STORE_DEFAULT_STATE.settings;
 
@@ -30,15 +30,24 @@ describe('userUtils', () => {
 
 	describe('isAuthorized', () => {
 		beforeAll(() => {
-			setActivePinia(createPinia());
+			setActivePinia(createTestingPinia());
 			settingsStore = useSettingsStore();
 			ssoStore = useSSOStore();
 		});
 
+		// @TODO Move to routes tests in the future
 		it('should check SSO settings route permissions', () => {
-			const ssoSettingsPermissions = routes
-				.find((route) => route.path.startsWith('/settings'))
-				?.children?.find((route) => route.name === VIEWS.SSO_SETTINGS)?.meta?.permissions;
+			const ssoSettingsPermissions = {
+				allow: {
+					role: [ROLE.Owner],
+				},
+				deny: {
+					shouldDeny: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isDesktopDeployment;
+					},
+				},
+			};
 
 			const user: IUser = merge({}, DEFAULT_USER, {
 				isDefaultUser: false,

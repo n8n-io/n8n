@@ -4,7 +4,7 @@
 		:form="config"
 		:formLoading="loading"
 		@submit="onSubmit"
-		@input="onInput"
+		@update="onInput"
 	/>
 </template>
 
@@ -76,8 +76,7 @@ export default defineComponent({
 			],
 		};
 
-		const token = this.getToken();
-		const userId = this.getUserId();
+		const token = this.getResetToken();
 		const mfaEnabled = this.getMfaEnabled();
 
 		if (mfaEnabled) {
@@ -101,11 +100,8 @@ export default defineComponent({
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
 			}
-			if (!userId) {
-				throw new Error(this.$locale.baseText('auth.changePassword.missingUserIdError'));
-			}
 
-			await this.usersStore.validatePasswordToken({ token, userId });
+			await this.usersStore.validatePasswordToken({ token });
 		} catch (e) {
 			this.showMessage({
 				title: this.$locale.baseText('auth.changePassword.tokenValidationError'),
@@ -132,31 +128,24 @@ export default defineComponent({
 				this.password = e.value;
 			}
 		},
-		getToken() {
+		getResetToken() {
 			return !this.$route.query.token || typeof this.$route.query.token !== 'string'
 				? null
 				: this.$route.query.token;
 		},
-		getUserId() {
-			return !this.$route.query.userId || typeof this.$route.query.userId !== 'string'
-				? null
-				: this.$route.query.userId;
-		},
 		getMfaEnabled() {
-			if (!this.$route.query.mfaEnabled || typeof this.$route.query.userId !== 'string')
+			if (!this.$route.query.mfaEnabled)
 				return null;
 			return this.$route.query.mfaEnabled === 'true' ? true : false;
 		},
 		async onSubmit(values: { mfaToken: string }) {
 			try {
 				this.loading = true;
-				const token = this.getToken();
-				const userId = this.getUserId();
+				const token = this.getResetToken();
 
-				if (token && userId) {
+				if (token) {
 					const changePasswordParameters = {
 						token,
-						userId,
 						password: this.password,
 						...(values.mfaToken && { mfaToken: values.mfaToken }),
 					};

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.234.0",
+  "version": "1.1.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -53,13 +53,15 @@
     "workflow"
   ],
   "engines": {
-    "node": ">=16.9"
+    "node": ">=18.10"
   },
   "files": [
     "bin",
     "templates",
     "dist",
-    "oclif.manifest.json"
+    "oclif.manifest.json",
+    "!dist/**/e2e.*",
+    "!dist/ReloadNodesAndCredentials.*"
   ],
   "devDependencies": {
     "@apidevtools/swagger-cli": "4.0.0",
@@ -72,7 +74,7 @@
     "@types/convict": "^6.1.1",
     "@types/cookie-parser": "^1.4.2",
     "@types/express": "^4.17.6",
-    "@types/json-diff": "^0.5.1",
+    "@types/json-diff": "^1.0.0",
     "@types/jsonwebtoken": "^9.0.1",
     "@types/localtunnel": "^1.9.0",
     "@types/lodash": "^4.14.195",
@@ -91,13 +93,10 @@
     "@types/ws": "^8.5.4",
     "@types/yamljs": "^0.2.31",
     "chokidar": "^3.5.2",
-    "concurrently": "^5.1.0",
-    "mock-jwks": "^1.0.9",
-    "nodemon": "^2.0.2",
-    "run-script-os": "^1.0.7",
+    "concurrently": "^8.2.0",
     "ts-essentials": "^7.0.3",
-    "tsc-alias": "^1.8.2",
-    "tsconfig-paths": "^4.1.2"
+    "tsc-alias": "^1.8.7",
+    "tsconfig-paths": "^4.2.0"
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
@@ -114,6 +113,8 @@
     "body-parser": "^1.20.1",
     "body-parser-xml": "^2.0.3",
     "bull": "^4.10.2",
+    "cache-manager": "^5.2.3",
+    "cache-manager-ioredis-yet": "^1.2.2",
     "callsites": "^3.1.0",
     "change-case": "^4.1.1",
     "class-transformer": "^0.5.1",
@@ -137,7 +138,7 @@
     "handlebars": "4.7.7",
     "inquirer": "^7.0.1",
     "ioredis": "^5.2.4",
-    "json-diff": "^0.5.4",
+    "json-diff": "^1.0.6",
     "jsonschema": "^1.4.1",
     "jsonwebtoken": "^9.0.0",
     "jwks-rsa": "^3.0.1",
@@ -162,15 +163,15 @@
     "passport-cookie": "^1.0.9",
     "passport-jwt": "^4.0.0",
     "pg": "^8.8.0",
-    "pkce-challenge": "^3.0.0",
     "picocolors": "^1.0.0",
+    "pkce-challenge": "^3.0.0",
     "posthog-node": "^2.2.2",
     "prom-client": "^13.1.0",
     "psl": "^1.8.0",
     "reflect-metadata": "^0.1.13",
     "replacestream": "^4.0.3",
     "samlify": "^2.8.9",
-    "semver": "^7.3.8",
+    "semver": "^7.5.4",
     "shelljs": "^0.8.5",
     "simple-git": "^3.17.0",
     "source-map-support": "^0.5.21",

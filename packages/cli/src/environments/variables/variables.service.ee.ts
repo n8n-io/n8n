@@ -1,10 +1,10 @@
-import type { Variables } from '@/databases/entities/Variables';
+import { Container } from 'typedi';
+import type { Variables } from '@db/entities/Variables';
 import { collections } from '@/Db';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
+import { generateNanoId } from '@db/utils/generators';
 import { canCreateNewVariable } from './enviromentHelpers';
 import { VariablesService } from './variables.service';
-import { generateNanoId } from '../../databases/utils/generators';
 
 export class VariablesLicenseError extends Error {}
 export class VariablesValidationError extends Error {}
@@ -21,7 +21,7 @@ export class EEVariablesService extends VariablesService {
 		if (variable.key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
 			throw new VariablesValidationError('key can only contain characters A-Za-z0-9_');
 		}
-		if (variable.value.length > 255) {
+		if (variable.value?.length > 255) {
 			throw new VariablesValidationError('value cannot be longer than 255 characters');
 		}
 	}

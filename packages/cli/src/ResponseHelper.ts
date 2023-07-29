@@ -87,17 +87,6 @@ export class ServiceUnavailableError extends ResponseError {
 	}
 }
 
-export function basicAuthAuthorizationError(resp: Response, realm: string, message?: string) {
-	resp.statusCode = 401;
-	resp.setHeader('WWW-Authenticate', `Basic realm="${realm}"`);
-	resp.json({ code: resp.statusCode, message });
-}
-
-export function jwtAuthAuthorizationError(resp: Response, message?: string) {
-	resp.statusCode = 403;
-	resp.json({ code: resp.statusCode, message });
-}
-
 export function sendSuccessResponse(
 	res: Response,
 	data: any,

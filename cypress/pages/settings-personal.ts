@@ -16,7 +16,7 @@ export class PersonalSettingsPage extends BasePage {
 		lastNameInput: () => cy.getByTestId('lastName').find('input').first(),
 		emailInputContainer: () => cy.getByTestId('email'),
 		emailInput: () => cy.getByTestId('email').find('input').first(),
-		changePasswordLink: () => cy.getByTestId('change-password-link').find('a').first(),
+		changePasswordLink: () => cy.getByTestId('change-password-link').first(),
 		saveSettingsButton: () => cy.getByTestId('save-settings-button'),
 		enableMfaButton: () => cy.getByTestId('enable-mfa-button'),
 		disableMfaButton: () => cy.getByTestId('disable-mfa-button'),
@@ -32,7 +32,6 @@ export class PersonalSettingsPage extends BasePage {
 			this.getters.saveSettingsButton().realClick();
 		},
 		updatePassword: (oldPassword: string, newPassword: string) => {
-			this.getters.changePasswordLink().realClick();
 			changePasswordModal.getters.modalContainer().should('be.visible');
 			changePasswordModal.getters.currentPasswordInput().type('{selectall}').type(oldPassword);
 			changePasswordModal.getters.newPasswordInput().type('{selectall}').type(newPassword);

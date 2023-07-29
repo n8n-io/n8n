@@ -2,7 +2,12 @@
 	<div>
 		<n8n-input-label :label="label">
 			<div
-				:class="{ [$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse }"
+				:class="{
+					[$style.copyText]: true,
+					[$style[size]]: true,
+					[$style.collapsed]: collapse,
+					'ph-no-capture': redactValue,
+				}"
 				@click="copy"
 				data-test-id="copy-input"
 			>
@@ -20,6 +25,7 @@
 import { defineComponent } from 'vue';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables';
+import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({
 	mixins: [copyPaste],
@@ -36,13 +42,13 @@ export default defineComponent({
 		copyButtonText: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copy');
+				return i18n.baseText('generic.copy');
 			},
 		},
 		toastTitle: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copiedToClipboard');
+				return i18n.baseText('generic.copiedToClipboard');
 			},
 		},
 		toastMessage: {
@@ -55,6 +61,10 @@ export default defineComponent({
 		size: {
 			type: String,
 			default: 'large',
+		},
+		redactValue: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	setup() {

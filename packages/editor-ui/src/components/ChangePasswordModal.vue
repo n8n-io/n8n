@@ -12,7 +12,7 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@input="onInput"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
 		</template>
@@ -37,7 +37,7 @@ import Modal from '@/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'ChangePasswordModal',

@@ -11,10 +11,6 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 describe('Canvas Actions', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 	});
@@ -70,7 +66,6 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.nodeViewBackground().click({ force: true });
 	});
 
-
 	it('should add a connected node using plus endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		cy.get('.plus-endpoint').should('be.visible').click();
@@ -103,7 +98,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 860px; top: 260px;');
+			.should('have.attr', 'style', 'left: 860px; top: 220px;');
 	});
 
 	it('should delete connections by pressing the delete button', () => {
