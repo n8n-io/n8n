@@ -267,7 +267,7 @@ describe('NDV', () => {
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 	});
 
-	it.only ('can pair items between input and output across branches and runs', () => {
+	it('can pair items between input and output across branches and runs', () => {
 		cy.fixture('Test_workflow_5.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});
