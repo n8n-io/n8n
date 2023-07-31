@@ -161,8 +161,6 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			delete this.items[id];
 		},
 		clearDestinationItemTrees() {
-			console.log('clearing destinations');
-
 			this.items = {} as DestinationSettingsStore;
 		},
 		setSelectionAndBuildItems(destination: MessageEventBusDestinationOptions) {
