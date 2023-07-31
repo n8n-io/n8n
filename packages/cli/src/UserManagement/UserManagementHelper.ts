@@ -14,17 +14,6 @@ import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import type { PostHogClient } from '@/posthog';
 
-export async function getWorkflowOwner(workflowId: string): Promise<User> {
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
-
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflowId, roleId: workflowOwnerRole?.id ?? undefined },
-		relations: ['user', 'user.globalRole'],
-	});
-
-	return sharedWorkflow.user;
-}
-
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
 	const host = !!config.getEnv('userManagement.emails.smtp.host');

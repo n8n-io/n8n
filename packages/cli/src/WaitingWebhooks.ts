@@ -8,14 +8,15 @@ import * as WebhookHelpers from '@/WebhookHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import type { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { ExecutionRepository } from '@db/repositories';
+import { OwnershipService } from './services/ownership.service';
 
 @Service()
 export class WaitingWebhooks {
 	constructor(
 		private nodeTypes: NodeTypes,
 		private executionRepository: ExecutionRepository,
+		private ownershipService: OwnershipService,
 	) {}
 
 	async executeWebhook(
@@ -83,7 +84,7 @@ export class WaitingWebhooks {
 		const { workflowData } = fullExecutionData;
 
 		const workflow = new Workflow({
-			id: workflowData.id!.toString(),
+			id: workflowData.id!,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
@@ -95,7 +96,7 @@ export class WaitingWebhooks {
 
 		let workflowOwner;
 		try {
-			workflowOwner = await getWorkflowOwner(workflowData.id!.toString());
+			workflowOwner = await this.ownershipService.getWorkflowOwnerCached(workflowData.id!);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Could not find workflow');
 		}
