@@ -66,21 +66,21 @@ export async function pgTriggerFunction(
 		throw new Error('Channel name cannot contain hyphens (-)');
 	}
 
-	const replaceIfExists = additionalFields.replaceIfExists || false;
+	const replaceIfExists = additionalFields.replaceIfExists ?? false;
 
 	try {
-		if (replaceIfExists || !(additionalFields.triggerName || additionalFields.functionName)) {
+		if (replaceIfExists || !(additionalFields.triggerName ?? additionalFields.functionName)) {
 			await db.any(functionReplace, [functionName, channelName, whichData]);
 			await db.any(dropIfExist, [triggerName, target, whichData]);
 		} else {
 			await db.any(functionExists, [functionName, channelName, whichData]);
 		}
 		await db.any(trigger, [target, functionName, firesOn, triggerName]);
-	} catch (err) {
-		if (err.message.includes('near "-"')) {
+	} catch (error) {
+		if ((error as Error).message.includes('near "-"')) {
 			throw new Error('Names cannot contain hyphens (-)');
 		}
-		throw new Error(err as string);
+		throw error;
 	}
 }
 
@@ -114,7 +114,7 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const { db, pgp } = await initDB.call(this);
 	const schemaList = await db.any('SELECT schema_name FROM information_schema.schemata');
-	const results: INodeListSearchItems[] = schemaList.map((s) => ({
+	const results: INodeListSearchItems[] = (schemaList as IDataObject[]).map((s) => ({
 		name: s.schema_name as string,
 		value: s.schema_name as string,
 	}));
@@ -134,7 +134,7 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 	} catch (error) {
 		throw new Error(error as string);
 	}
-	const results: INodeListSearchItems[] = tableList.map((s) => ({
+	const results: INodeListSearchItems[] = (tableList as IDataObject[]).map((s) => ({
 		name: s.table_name as string,
 		value: s.table_name as string,
 	}));

@@ -228,10 +228,10 @@ export class PostgresTrigger implements INodeType {
 		const connection = await db.connect({ direct: true });
 
 		// prepare and set up listener
-		const onNotification = async (data: any) => {
+		const onNotification = async (data: IDataObject) => {
 			if (data.payload) {
 				try {
-					data.payload = JSON.parse(data.payload as string);
+					data.payload = JSON.parse(data.payload as string) as IDataObject;
 				} catch (error) {}
 			}
 			this.emit([this.helpers.returnJsonArray([data])]);
@@ -259,7 +259,10 @@ export class PostgresTrigger implements INodeType {
 			try {
 				await connection.none('UNLISTEN $1:name', [pgNames.channelName]);
 				if (triggerMode === 'createTrigger') {
-					await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [pgNames.functionName]);
+					const functionName = pgNames.functionName.includes('(')
+						? pgNames.functionName.split('(')[0]
+						: pgNames.functionName;
+					await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [functionName]);
 
 					const schema = this.getNodeParameter('schema', undefined, {
 						extractValue: true,
@@ -276,7 +279,10 @@ export class PostgresTrigger implements INodeType {
 				}
 				connection.client.removeListener('notification', onNotification);
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), `Postgres Trigger Error: ${error.message}`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`Postgres Trigger Error: ${(error as Error).message}`,
+				);
 			} finally {
 				pgp.end();
 			}
@@ -302,10 +308,10 @@ export class PostgresTrigger implements INodeType {
 						),
 					);
 				}, 30000);
-				connection.client.on('notification', async (data: any) => {
+				connection.client.on('notification', async (data: IDataObject) => {
 					if (data.payload) {
 						try {
-							data.payload = JSON.parse(data.payload as string);
+							data.payload = JSON.parse(data.payload as string) as IDataObject;
 						} catch (error) {}
 					}
 
