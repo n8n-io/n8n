@@ -9,11 +9,11 @@ export class RoleRepository extends Repository<Role> {
 		super(Role, dataSource.manager);
 	}
 
-	async findRole(scope: RoleScopes, name: RoleNames): Promise<Role | null> {
+	async findRole(scope: RoleScopes, name: RoleNames) {
 		return this.findOne({ where: { scope, name } });
 	}
 
-	async findRoleOrFail(scope: RoleScopes, name: RoleNames): Promise<Role> {
+	async findRoleOrFail(scope: RoleScopes, name: RoleNames) {
 		return this.findOneOrFail({ where: { scope, name } });
 	}
 }
