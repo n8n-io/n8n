@@ -1,13 +1,14 @@
 import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
 import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
-import { OldRoleService } from '@/role/role.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { UserService } from '@/user/user.service';
 import { CredentialsService } from './credentials.service';
 import type { CredentialWithSharings } from './credentials.types';
+import { RoleService } from '@/services/role.service';
+import Container from 'typedi';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
@@ -77,10 +78,8 @@ export class EECredentialsService extends CredentialsService {
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
-		const [users, role] = await Promise.all([
-			UserService.getByIds(transaction, shareWithIds),
-			OldRoleService.trxGet(transaction, { scope: 'credential', name: 'user' }),
-		]);
+		const users = await UserService.getByIds(transaction, shareWithIds);
+		const role = await Container.get(RoleService).findOneBy({ scope: 'credential', name: 'user' });
 
 		const newSharedCredentials = users
 			.filter((user) => !user.isPending)

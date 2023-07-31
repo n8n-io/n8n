@@ -2,6 +2,7 @@ import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositori
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import type { Role, RoleNames, RoleScopes } from '@/databases/entities/Role';
+import type { FindOptionsWhere } from 'typeorm';
 
 @Service()
 export class RoleService {
@@ -9,21 +10,25 @@ export class RoleService {
 		private roleRepository: RoleRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private cacheService: CacheService,
-	) {}
+	) {
+		// @TODO: Prepopulate cache
+	}
 
-	// @TODO: Prepopulate cache
+	/**
+	 * Role finders
+	 */
 
-	private async findRole(
+	private async findCached(
 		scope: RoleScopes,
 		name: RoleNames,
 		options: { orFail: true },
 	): Promise<Role>;
-	private async findRole(
+	private async findCached(
 		scope: RoleScopes,
 		name: RoleNames,
 		options: { orFail: false },
 	): Promise<Role | null>;
-	private async findRole(scope: RoleScopes, name: RoleNames, options: { orFail: boolean }) {
+	private async findCached(scope: RoleScopes, name: RoleNames, options: { orFail: boolean }) {
 		const cacheKey = `cache:role:${scope}:${name}`;
 
 		const cachedRole = await this.cacheService.get<Role>(cacheKey);
@@ -49,62 +54,12 @@ export class RoleService {
 		return this.roleRepository.findOneOrFail({ where: { scope, name } });
 	}
 
-	async findGlobalOwnerRole() {
-		return this.findRole('global', 'owner', { orFail: false });
+	async findOneBy(condition: FindOptionsWhere<Role>): Promise<Role | null> {
+		return this.roleRepository.findOneBy(condition);
 	}
 
-	async findGlobalOwnerRoleOrFail() {
-		const whoa = await this.findRole('global', 'owner', { orFail: true });
-
-		return whoa;
-	}
-
-	async findGlobalMemberRole() {
-		return this.findRole('global', 'member', { orFail: false });
-	}
-
-	async findGlobalMemberRoleOrFail() {
-		return this.findRole('global', 'member', { orFail: true });
-	}
-
-	// workflow owner
-
-	async findWorkflowOwnerRole() {
-		return this.findRole('workflow', 'owner', { orFail: false });
-	}
-
-	async findWorkflowOwnerRoleOrFail() {
-		return this.findRole('workflow', 'owner', { orFail: true });
-	}
-
-	// workflow editor
-
-	async findWorkflowEditorRole() {
-		return this.findRole('workflow', 'editor', { orFail: false });
-	}
-
-	async findWorkflowEditorRoleOrFail() {
-		return this.findRole('workflow', 'editor', { orFail: true });
-	}
-
-	// credential owner
-
-	async findCredentialOwnerRole() {
-		return this.findRole('credential', 'owner', { orFail: false });
-	}
-
-	async findCredentialOwnerRoleOrFail() {
-		return this.findRole('credential', 'owner', { orFail: true });
-	}
-
-	// credential user
-
-	async findCredentialUserRole(options = { orFail: false as const }) {
-		return this.findRole('credential', 'user', options);
-	}
-
-	// utils
-
+	// @TODO: findRoleOfUserForWorkflow?
+	// @TODO: -> findOneBy?
 	async getUserRoleForWorkflow(userId: string, workflowId: string) {
 		const shared = await this.sharedWorkflowRepository.findOne({
 			where: { workflowId, userId },
@@ -112,5 +67,77 @@ export class RoleService {
 		});
 
 		return shared?.role;
+	}
+
+	/**
+	 * global owner
+	 */
+
+	async findGlobalOwnerRole() {
+		return this.findCached('global', 'owner', { orFail: false });
+	}
+
+	async findGlobalOwnerRoleOrFail() {
+		return this.findCached('global', 'owner', { orFail: true });
+	}
+
+	/**
+	 * global member
+	 */
+
+	async findGlobalMemberRole() {
+		return this.findCached('global', 'member', { orFail: false });
+	}
+
+	async findGlobalMemberRoleOrFail() {
+		return this.findCached('global', 'member', { orFail: true });
+	}
+
+	/**
+	 * workflow owner
+	 */
+
+	async findWorkflowOwnerRole() {
+		return this.findCached('workflow', 'owner', { orFail: false });
+	}
+
+	async findWorkflowOwnerRoleOrFail() {
+		return this.findCached('workflow', 'owner', { orFail: true });
+	}
+
+	/**
+	 * workflow editor
+	 */
+
+	async findWorkflowEditorRole() {
+		return this.findCached('workflow', 'editor', { orFail: false });
+	}
+
+	async findWorkflowEditorRoleOrFail() {
+		return this.findCached('workflow', 'editor', { orFail: true });
+	}
+
+	/**
+	 * credential owner
+	 */
+
+	async findCredentialOwnerRole() {
+		return this.findCached('credential', 'owner', { orFail: false });
+	}
+
+	async findCredentialOwnerRoleOrFail() {
+		return this.findCached('credential', 'owner', { orFail: true });
+	}
+
+	/**
+	 * credential user
+	 */
+
+	async findCredentialUserRole() {
+		return this.findCached('credential', 'user', { orFail: false });
+	}
+
+	async findCredentialUserRoleOrFail() {
+		return this.findCached('credential', 'user', { orFail: true });
 	}
 }
