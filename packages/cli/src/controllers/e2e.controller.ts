@@ -13,8 +13,6 @@ import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 
-// @TODO: Refactor to use service?
-
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
