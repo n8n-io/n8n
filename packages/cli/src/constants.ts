@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/naming-convention */
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
 import type { n8n } from 'n8n-core';

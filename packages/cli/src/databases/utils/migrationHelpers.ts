@@ -165,7 +165,6 @@ export async function runInBatches(
 	let batchedQuery: string;
 	let batchedQueryResults: unknown[];
 
-	// eslint-disable-next-line no-param-reassign
 	if (query.trim().endsWith(';')) query = query.trim().slice(0, -1);
 
 	do {

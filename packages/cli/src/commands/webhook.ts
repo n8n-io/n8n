@@ -46,7 +46,7 @@ export class Webhook extends BaseCommand {
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}

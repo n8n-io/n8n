@@ -78,7 +78,7 @@ export class Worker extends BaseCommand {
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 			}
 		} catch (error) {
@@ -238,7 +238,6 @@ export class Worker extends BaseCommand {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Worker);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
 		const queue = Container.get(Queue);
@@ -309,7 +308,7 @@ export class Worker extends BaseCommand {
 
 			app.get(
 				'/healthz',
-				// eslint-disable-next-line consistent-return
+
 				async (req: express.Request, res: express.Response) => {
 					LoggerProxy.debug('Health check started!');
 
