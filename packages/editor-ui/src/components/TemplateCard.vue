@@ -13,7 +13,7 @@
 		</div>
 		<div v-else>
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
-			<div :class="$style.content">
+			<div :class="$style.content" v-if="!simpleView">
 				<span v-if="workflow.totalViews">
 					<n8n-text size="small" color="text-light">
 						<font-awesome-icon icon="eye" />
@@ -49,6 +49,7 @@ import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { filterTemplateNodes, abbreviateNumber } from '@/utils';
 import NodeList from './NodeList.vue';
+import TimeAgo from '@/components/TimeAgo.vue';
 
 export default defineComponent({
 	name: 'TemplateCard',
@@ -71,8 +72,13 @@ export default defineComponent({
 		loading: {
 			type: Boolean,
 		},
+		simpleView: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	components: {
+		TimeAgo,
 		NodeList,
 	},
 	data() {
@@ -120,6 +126,7 @@ export default defineComponent({
 	background-color: var(--color-background-xlight);
 
 	display: flex;
+	align-items: center;
 	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
 	background-color: var(--color-background-xlight);
 	cursor: pointer;

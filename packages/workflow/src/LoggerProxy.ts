@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import type { ILogger, LogTypes } from './Interfaces';
 
 let logger: ILogger | undefined;

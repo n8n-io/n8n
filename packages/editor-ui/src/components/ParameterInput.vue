@@ -2,22 +2,27 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="
-				isResourceLocatorParameter && typeof value !== 'string' ? (value ? value.value : '') : value
+			:modelValue="
+				isResourceLocatorParameter && typeof modelValue !== 'string'
+					? modelValue
+						? modelValue.value
+						: ''
+					: modelValue
 			"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
 			:isReadOnly="isReadOnly"
+			:redactValues="shouldRedactValue"
 			@closeDialog="closeExpressionEditDialog"
-			@valueChanged="expressionUpdated"
+			@update:modelValue="expressionUpdated"
 		></expression-edit>
 		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
 			<resource-locator
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
 				:parameter="parameter"
-				:value="value"
+				:modelValue="modelValue"
 				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
@@ -28,7 +33,8 @@
 				:droppable="droppable"
 				:node="node"
 				:path="path"
-				@input="valueChanged"
+				:event-bus="eventBus"
+				@update:modelValue="valueChanged"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -36,11 +42,12 @@
 			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
-				:value="expressionDisplayValue"
+				:modelValue="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
-				@valueChanged="expressionUpdated"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				@update:modelValue="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -54,60 +61,60 @@
 			>
 				<el-dialog
 					v-if="codeEditDialogVisible"
-					visible
+					:modelValue="true"
 					append-to-body
 					:close-on-click-modal="false"
 					width="80%"
-					:title="`${$locale.baseText('codeEdit.edit')} ${$locale
+					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
 						.nodeText()
 						.inputLabelDisplayName(parameter, path)}`"
 					:before-close="closeCodeEditDialog"
 				>
 					<div class="ignore-key-press">
 						<code-node-editor
-							:value="value"
+							:modelValue="modelValue"
 							:defaultValue="parameter.default"
 							:language="editorLanguage"
 							:isReadOnly="isReadOnly"
-							@valueChanged="expressionUpdated"
+							@update:modelValue="expressionUpdated"
 						/>
 					</div>
 				</el-dialog>
 
 				<text-edit
 					:dialogVisible="textEditDialogVisible"
-					:value="value"
+					:modelValue="modelValue"
 					:parameter="parameter"
 					:path="path"
 					:isReadOnly="isReadOnly"
 					@closeDialog="closeTextEditDialog"
-					@valueChanged="expressionUpdated"
+					@update:modelValue="expressionUpdated"
 				></text-edit>
 
 				<code-node-editor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:value="value"
+					:modelValue="modelValue"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
-					@valueChanged="valueChangedDebounced"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="value"
+					:modelValue="modelValue"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
 					:disableExpressionCompletions="!isHtmlNode(node)"
-					@valueChanged="valueChangedDebounced"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="value"
+					:modelValue="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
@@ -122,16 +129,13 @@
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					@valueChanged="valueChangedDebounced"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
-				<div
-					v-else-if="editorType"
-					class="readonly-code clickable ph-no-capture"
-					@click="displayEditDialog()"
-				>
+				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
 					<code-node-editor
 						v-if="!codeEditDialogVisible"
-						:value="value"
+						:modelValue="modelValue"
 						:language="editorLanguage"
 						:isReadOnly="true"
 						:rows="getArgument('rows')"
@@ -142,14 +146,12 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
-					class="input-with-opener"
+					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
-					:value="displayValue"
 					:disabled="isReadOnly"
-					@input="onTextInputChange"
-					@change="valueChanged"
+					@update:modelValue="valueChanged($event) && onUpdateTextInput($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -166,7 +168,7 @@
 								focused: isFocused,
 								invalid: !isFocused && getIssues.length > 0 && !isValueExpression,
 							}"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 							@focus="setFocus"
 						/>
@@ -178,11 +180,11 @@
 				<el-color-picker
 					size="small"
 					class="color-picker"
-					:value="displayValue"
+					:modelValue="displayValue"
 					:disabled="isReadOnly"
 					@focus="setFocus"
 					@blur="onBlur"
-					@change="valueChanged"
+					@update:modelValue="valueChanged"
 					:title="displayTitle"
 					:show-alpha="getArgument('showAlpha')"
 				/>
@@ -190,9 +192,8 @@
 					v-model="tempValue"
 					:size="inputSize"
 					type="text"
-					:value="tempValue"
 					:disabled="isReadOnly"
-					@change="valueChanged"
+					@update:modelValue="valueChanged"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -206,16 +207,17 @@
 				ref="inputField"
 				type="datetime"
 				:size="inputSize"
-				:value="displayValue"
+				:modelValue="displayValue"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				:placeholder="
 					parameter.placeholder
 						? getPlaceholder()
-						: $locale.baseText('parameterInput.selectDateAndTime')
+						: i18n.baseText('parameterInput.selectDateAndTime')
 				"
 				:picker-options="dateTimePickerOptions"
-				@change="valueChanged"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				@update:modelValue="valueChanged"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -225,14 +227,14 @@
 				v-else-if="parameter.type === 'number'"
 				ref="inputField"
 				:size="inputSize"
-				:value="displayValue"
+				:modelValue="displayValue"
 				:controls="false"
 				:max="getArgument('maxValue')"
 				:min="getArgument('minValue')"
 				:precision="getArgument('numberPrecision')"
 				:disabled="isReadOnly"
-				@change="valueChanged"
-				@input="onTextInputChange"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				@update:modelValue="onUpdateTextInput"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -251,7 +253,7 @@
 				:isReadOnly="isReadOnly"
 				:displayTitle="displayTitle"
 				@credentialSelected="credentialSelected"
-				@valueChanged="valueChanged"
+				@update:modelValue="valueChanged"
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
@@ -265,14 +267,14 @@
 				ref="inputField"
 				:size="inputSize"
 				filterable
-				:value="displayValue"
+				:modelValue="displayValue"
 				:placeholder="
-					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
+					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
 				"
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
-				@change="valueChanged"
+				@update:modelValue="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -285,7 +287,7 @@
 				>
 					<div class="list-option">
 						<div
-							class="option-headline ph-no-capture"
+							class="option-headline"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
 							{{ getOptionsOptionDisplayName(option) }}
@@ -305,12 +307,12 @@
 				:size="inputSize"
 				filterable
 				multiple
-				:value="displayValue"
+				:modelValue="displayValue"
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
-				:placeholder="$locale.baseText('parameterInput.select')"
-				@change="valueChanged"
+				:placeholder="i18n.baseText('parameterInput.select')"
+				@update:modelValue="valueChanged"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -336,18 +338,18 @@
 			<n8n-input
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
-				:value="JSON.stringify(displayValue)"
+				:modelValue="JSON.stringify(displayValue)"
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
 			<el-switch
 				v-else-if="parameter.type === 'boolean'"
-				class="switch-input"
+				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
 				ref="inputField"
 				active-color="#13ce66"
-				:value="displayValue"
+				:modelValue="displayValue"
 				:disabled="isReadOnly"
-				@change="valueChanged"
+				@update:modelValue="valueChanged"
 			/>
 		</div>
 
@@ -378,7 +380,7 @@ import type {
 	EditorType,
 	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -409,9 +411,9 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
-import Vue from 'vue';
-
-type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useI18n } from '@/composables';
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -437,7 +439,7 @@ export default defineComponent({
 		path: {
 			type: String,
 		},
-		value: {
+		modelValue: {
 			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 		},
 		hideLabel: {
@@ -482,6 +484,17 @@ export default defineComponent({
 				size: 'small',
 			}),
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
+	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+		};
 	},
 	data() {
 		return {
@@ -493,6 +506,7 @@ export default defineComponent({
 			remoteParameterOptionsLoading: false,
 			remoteParameterOptionsLoadingIssues: null as string | null,
 			textEditDialogVisible: false,
+			editDialogClosing: false,
 			tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
 			CUSTOM_API_CALL_KEY,
 			activeCredentialType: '',
@@ -537,7 +551,7 @@ export default defineComponent({
 			// on which the current field depends on changes
 			await this.loadRemoteParameterOptions();
 		},
-		value() {
+		modelValue() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
 				// Do not set for color with alpha else wrong value gets displayed in field
 				return;
@@ -558,7 +572,9 @@ export default defineComponent({
 				return '';
 			}
 
-			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
+			const value = isResourceLocatorValue(this.modelValue)
+				? this.modelValue.value
+				: this.modelValue;
 			if (typeof value === 'string' && value.startsWith('=')) {
 				return value.slice(1);
 			}
@@ -566,7 +582,7 @@ export default defineComponent({
 			return `${this.displayValue ?? ''}`;
 		},
 		isValueExpression(): boolean {
-			return isValueExpression(this.parameter, this.value);
+			return isValueExpression(this.parameter, this.modelValue);
 		},
 		codeAutocomplete(): string | undefined {
 			return this.getArgument('codeAutocomplete') as string | undefined;
@@ -600,17 +616,14 @@ export default defineComponent({
 			const interpolation = { interpolate: { shortPath: this.shortPath } };
 
 			if (this.getIssues.length && this.isValueExpression) {
-				return this.$locale.baseText(
-					'parameterInput.parameterHasIssuesAndExpression',
-					interpolation,
-				);
+				return this.i18n.baseText('parameterInput.parameterHasIssuesAndExpression', interpolation);
 			} else if (this.getIssues.length && !this.isValueExpression) {
-				return this.$locale.baseText('parameterInput.parameterHasIssues', interpolation);
+				return this.i18n.baseText('parameterInput.parameterHasIssues', interpolation);
 			} else if (!this.getIssues.length && this.isValueExpression) {
-				return this.$locale.baseText('parameterInput.parameterHasExpression', interpolation);
+				return this.i18n.baseText('parameterInput.parameterHasExpression', interpolation);
 			}
 
-			return this.$locale.baseText('parameterInput.parameter', interpolation);
+			return this.i18n.baseText('parameterInput.parameter', interpolation);
 		},
 		displayValue(): string | number | boolean | null {
 			if (this.remoteParameterOptionsLoading === true) {
@@ -618,22 +631,27 @@ export default defineComponent({
 				// to user that the data is loading. If not it would
 				// display the user the key instead of the value it
 				// represents
-				return this.$locale.baseText('parameterInput.loadingOptions');
+				return this.i18n.baseText('parameterInput.loadingOptions');
+			}
+
+			// if the value is marked as empty return empty string, to prevent displaying the asterisks
+			if (this.modelValue === CREDENTIAL_EMPTY_VALUE) {
+				return '';
 			}
 
 			let returnValue;
 			if (this.isValueExpression === false) {
 				returnValue = this.isResourceLocatorParameter
-					? isResourceLocatorValue(this.value)
-						? this.value.value
+					? isResourceLocatorValue(this.modelValue)
+						? this.modelValue.value
 						: ''
-					: this.value;
+					: this.modelValue;
 			} else {
 				returnValue = this.expressionEvaluated;
 			}
 
-			if (this.parameter.type === 'credentialsSelect' && typeof this.value === 'string') {
-				const credType = this.credentialsStore.getCredentialTypeByName(this.value);
+			if (this.parameter.type === 'credentialsSelect' && typeof this.modelValue === 'string') {
+				const credType = this.credentialsStore.getCredentialTypeByName(this.modelValue);
 				if (credType) {
 					returnValue = credType.displayName;
 				}
@@ -699,7 +717,7 @@ export default defineComponent({
 			if (this.parameter.type === 'credentialsSelect' && this.displayValue === '') {
 				issues.parameters = issues.parameters || {};
 
-				const issue = this.$locale.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
+				const issue = this.i18n.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
 
 				issues.parameters[this.parameter.name] = [issue];
 			} else if (
@@ -732,7 +750,7 @@ export default defineComponent({
 							issues.parameters = {};
 						}
 
-						const issue = this.$locale.baseText('parameterInput.theValueIsNotSupported', {
+						const issue = this.i18n.baseText('parameterInput.theValueIsNotSupported', {
 							interpolate: { checkValue },
 						});
 
@@ -839,6 +857,9 @@ export default defineComponent({
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
 		},
+		shouldRedactValue(): boolean {
+			return this.getStringInputType === 'password' || this.isForCredential;
+		},
 	},
 	methods: {
 		isRemoteParameterOption(option: INodePropertyOptions) {
@@ -865,18 +886,18 @@ export default defineComponent({
 		},
 		getPlaceholder(): string {
 			return this.isForCredential
-				? this.$locale.credText().placeholder(this.parameter)
-				: this.$locale.nodeText().placeholder(this.parameter, this.path);
+				? this.i18n.credText().placeholder(this.parameter)
+				: this.i18n.nodeText().placeholder(this.parameter, this.path);
 		},
 		getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 			return this.isForCredential
-				? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
-				: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
+				? this.i18n.credText().optionsOptionDisplayName(this.parameter, option)
+				: this.i18n.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
 		},
 		getOptionsOptionDescription(option: INodePropertyOptions): string {
 			return this.isForCredential
-				? this.$locale.credText().optionsOptionDescription(this.parameter, option)
-				: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
+				? this.i18n.credText().optionsOptionDescription(this.parameter, option)
+				: this.i18n.nodeText().optionsOptionDescription(this.parameter, option, this.path);
 		},
 
 		async loadRemoteParameterOptions() {
@@ -922,6 +943,11 @@ export default defineComponent({
 		},
 		closeCodeEditDialog() {
 			this.codeEditDialogVisible = false;
+
+			this.editDialogClosing = true;
+			void this.$nextTick(() => {
+				this.editDialogClosing = false;
+			});
 		},
 		closeExpressionEditDialog() {
 			this.expressionEditDialogVisible = false;
@@ -945,8 +971,18 @@ export default defineComponent({
 		},
 		closeTextEditDialog() {
 			this.textEditDialogVisible = false;
+
+			this.editDialogClosing = true;
+			void this.$nextTick(() => {
+				this.$refs.inputField?.blur?.();
+				this.editDialogClosing = false;
+			});
 		},
 		displayEditDialog() {
+			if (this.editDialogClosing) {
+				return;
+			}
+
 			if (this.editorType) {
 				this.codeEditDialogVisible = true;
 			} else {
@@ -958,7 +994,7 @@ export default defineComponent({
 		},
 		expressionUpdated(value: string) {
 			const val: NodeParameterValueType = this.isResourceLocatorParameter
-				? { __rl: true, value, mode: this.value.mode }
+				? { __rl: true, value, mode: this.modelValue.mode }
 				: value;
 			this.valueChanged(val);
 		},
@@ -975,7 +1011,7 @@ export default defineComponent({
 		onResourceLocatorDrop(data: string) {
 			this.$emit('drop', data);
 		},
-		setFocus() {
+		async setFocus(event: MouseEvent) {
 			if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 				this.displayEditDialog();
 				return;
@@ -991,14 +1027,13 @@ export default defineComponent({
 				this.nodeName = this.node.name;
 			}
 
-			Vue.nextTick(() => {
+			await this.$nextTick();
+			// @ts-ignore
+			if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 				// @ts-ignore
-				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
-					// @ts-ignore
-					this.$refs.inputField.focus();
-					this.isFocused = true;
-				}
-			});
+				this.$refs.inputField.focus();
+				this.isFocused = true;
+			}
 
 			this.$emit('focus');
 		},
@@ -1039,6 +1074,10 @@ export default defineComponent({
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
 			void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
 		},
+		onUpdateTextInput(value: string) {
+			this.valueChanged(value);
+			this.onTextInputChange(value);
+		},
 		valueChanged(value: NodeParameterValueType | {} | Date) {
 			if (this.parameter.name === 'nodeCredentialType') {
 				this.activeCredentialType = value as string;
@@ -1068,7 +1107,7 @@ export default defineComponent({
 				value,
 			};
 
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update', parameterData);
 
 			if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
 				this.$telemetry.track('User set node operation or mode', {
@@ -1081,30 +1120,34 @@ export default defineComponent({
 				});
 			}
 		},
-		optionSelected(command: string) {
-			const prevValue = this.value;
+		async optionSelected(command: string) {
+			const prevValue = this.modelValue;
 
 			if (command === 'resetValue') {
 				this.valueChanged(this.parameter.default);
 			} else if (command === 'addExpression') {
 				if (this.isResourceLocatorParameter) {
-					if (isResourceLocatorValue(this.value)) {
-						this.valueChanged({ __rl: true, value: `=${this.value.value}`, mode: this.value.mode });
+					if (isResourceLocatorValue(this.modelValue)) {
+						this.valueChanged({
+							__rl: true,
+							value: `=${this.modelValue.value}`,
+							mode: this.modelValue.mode,
+						});
 					} else {
-						this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
+						this.valueChanged({ __rl: true, value: `=${this.modelValue}`, mode: '' });
 					}
 				} else if (
 					this.parameter.type === 'number' &&
-					(!this.value || this.value === '[Object: null]')
+					(!this.modelValue || this.modelValue === '[Object: null]')
 				) {
 					this.valueChanged('={{ 0 }}');
 				} else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-					this.valueChanged(`={{ ${this.value} }}`);
+					this.valueChanged(`={{ ${this.modelValue} }}`);
 				} else {
-					this.valueChanged(`=${this.value}`);
+					this.valueChanged(`=${this.modelValue}`);
 				}
 
-				this.setFocus();
+				await this.setFocus();
 			} else if (command === 'removeExpression') {
 				let value: NodeParameterValueType = this.expressionEvaluated;
 
@@ -1120,23 +1163,21 @@ export default defineComponent({
 						);
 				}
 
-				if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
-					this.valueChanged({ __rl: true, value, mode: this.value.mode });
+				if (this.isResourceLocatorParameter && isResourceLocatorValue(this.modelValue)) {
+					this.valueChanged({ __rl: true, value, mode: this.modelValue.mode });
 				} else {
 					let newValue = typeof value !== 'undefined' ? value : null;
 
 					if (this.parameter.type === 'string') {
 						// Strip the '=' from the beginning
-						newValue = this.value ? this.value.toString().substring(1) : null;
+						newValue = this.modelValue ? this.modelValue.toString().substring(1) : null;
 					}
 
 					this.valueChanged(newValue);
 				}
 			} else if (command === 'refreshOptions') {
 				if (this.isResourceLocatorParameter) {
-					const resourceLocatorRef = this.$refs.resourceLocator as ResourceLocatorRef | undefined;
-
-					resourceLocatorRef?.$emit('refreshList');
+					this.eventBus.emit('refreshList');
 				}
 				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
@@ -1158,17 +1199,16 @@ export default defineComponent({
 			}
 		},
 	},
-	updated() {
-		this.$nextTick(() => {
-			const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
+	async updated() {
+		await this.$nextTick();
+		const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
-			if (remoteParameterOptions.length > 0) {
-				void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
-			}
-		});
+		if (remoteParameterOptions.length > 0) {
+			void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+		}
 	},
 	mounted() {
-		this.$on('optionSelected', this.optionSelected);
+		this.eventBus.on('optionSelected', this.optionSelected);
 
 		this.tempValue = this.displayValue as string;
 		if (this.node !== null) {
@@ -1195,7 +1235,7 @@ export default defineComponent({
 			// Make sure to load the parameter options
 			// directly and whenever the credentials change
 			this.$watch(
-				() => this.node!.credentials,
+				() => this.node?.credentials,
 				() => {
 					void this.loadRemoteParameterOptions();
 				},
@@ -1207,6 +1247,9 @@ export default defineComponent({
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});
+	},
+	beforeUnmount() {
+		this.eventBus.off('optionSelected', this.optionSelected);
 	},
 });
 </script>
@@ -1232,13 +1275,13 @@ export default defineComponent({
 
 .parameter-input {
 	display: inline-block;
-}
 
-::v-deep .color-input {
-	display: flex;
+	:deep(.color-input) {
+		display: flex;
 
-	.el-color-picker__trigger {
-		border: none;
+		.el-color-picker__trigger {
+			border: none;
+		}
 	}
 }
 </style>
@@ -1315,7 +1358,7 @@ export default defineComponent({
 	align-items: center;
 }
 
-.input-with-opener > .el-input__suffix {
+.input-with-opener .el-input__suffix {
 	right: 0;
 }
 

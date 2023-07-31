@@ -23,6 +23,8 @@ export const expressionManager = defineComponent({
 	data() {
 		return {
 			editor: {} as EditorView,
+			skipSegments: [] as string[],
+			editorState: undefined,
 		};
 	},
 	watch: {
@@ -71,26 +73,32 @@ export const expressionManager = defineComponent({
 		},
 
 		segments(): Segment[] {
+			if (!this.editorState || !this.editorState) return [];
+
 			const rawSegments: RawSegment[] = [];
 
 			const fullTree = ensureSyntaxTree(
-				this.editor.state,
-				this.editor.state.doc.length,
+				this.editorState,
+				this.editorState.doc.length,
 				EXPRESSION_EDITOR_PARSER_TIMEOUT,
 			);
 
 			if (fullTree === null) {
-				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
+				throw new Error(`Failed to parse expression: ${this.editorValue}`);
 			}
 
+			const skipSegments = ['Program', 'Script', 'Document', ...this.skipSegments];
+
 			fullTree.cursor().iterate((node) => {
-				if (node.type.name === 'Program') return;
+				const text = this.editorState.sliceDoc(node.from, node.to);
+
+				if (skipSegments.includes(node.type.name)) return;
 
 				rawSegments.push({
 					from: node.from,
 					to: node.to,
-					text: this.editor.state.sliceDoc(node.from, node.to),
-					token: node.type.name,
+					text,
+					token: node.type.name === 'Resolvable' ? 'Resolvable' : 'Plaintext',
 				});
 			});
 
@@ -100,7 +108,18 @@ export const expressionManager = defineComponent({
 				if (token === 'Resolvable') {
 					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
 
-					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
+					acc.push({
+						kind: 'resolvable',
+						from,
+						to,
+						resolvable: text,
+						// TODO:
+						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
+						// This fixes that but as as TODO we should figure out why this is happening
+						resolved: String(resolved),
+						error,
+						fullError,
+					});
 
 					return acc;
 				}

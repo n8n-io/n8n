@@ -1,5 +1,5 @@
 import N8nNodeCreatorNode from './NodeCreatorNode.vue';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Modules/Node Creator Node',
@@ -7,13 +7,14 @@ export default {
 };
 
 const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nNodeCreatorNode,
 	},
 	template: `
-		<n8n-node-creator-node v-bind="$props">
-			<template v-slot:icon>
+		<n8n-node-creator-node v-bind="args">
+			<template #icon>
 				<img src="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/cartman.svg" />
 			</template>
 		</n8n-node-creator-node>
@@ -29,6 +30,7 @@ WithTitle.args = {
 };
 
 const PanelTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nNodeCreatorNode,
@@ -39,11 +41,11 @@ const PanelTemplate: StoryFn = (args, { argTypes }) => ({
 		};
 	},
 	template: `
-		<n8n-node-creator-node v-bind="$props" :isPanelActive="isPanelActive" @click.capture="isPanelActive = true">
-			<template v-slot:icon>
+		<n8n-node-creator-node v-bind="args" :isPanelActive="isPanelActive" @click.capture="isPanelActive = true">
+			<template #icon>
 				<img src="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/cartman.svg" />
 			</template>
-			<template v-slot:panel>
+			<template #panel>
 				<p style="width: 100%; height: 300px; background: white">Lorem ipsum dolor sit amet</p>
 				<button @click="isPanelActive = false">Close</button>
 			</template>

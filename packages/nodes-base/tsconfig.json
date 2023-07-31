@@ -5,16 +5,23 @@
 		"types": ["node", "jest"],
 		"noEmit": true,
 		"paths": {
-			"@test/*": ["./test/*"]
+			"@test/*": ["./test/*"],
+			"@utils/*": ["./utils/*"]
 		},
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
-		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["credentials/**/*.ts", "nodes/**/*.ts", "test/**/*.ts", "utils/**/*.ts"],
 	"references": [
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }
-	]
+	],
+	"tsc-alias": {
+		"replacers": {
+			"base-url": {
+				"enabled": false
+			}
+		}
+	}
 }

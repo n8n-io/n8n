@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import type { WorkflowTestData } from '../../../../test/nodes/types';
+import type { WorkflowTestData } from '@test/nodes/types';
 import type { IDataObject } from 'n8n-workflow';
 
 import {
@@ -7,8 +7,8 @@ import {
 	setup,
 	initBinaryDataManager,
 	readJsonFileSync,
-} from '../../../../test/nodes/Helpers';
-import { executeWorkflow } from '../../../../test/nodes/ExecuteWorkflow';
+} from '@test/nodes/Helpers';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 import path from 'path';
 import os from 'node:os';

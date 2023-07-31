@@ -1,7 +1,8 @@
-import type { Variables } from '@/databases/entities/Variables';
+import { Container } from 'typedi';
+import type { Variables } from '@db/entities/Variables';
 import { collections } from '@/Db';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
+import { generateNanoId } from '@db/utils/generators';
 import { canCreateNewVariable } from './enviromentHelpers';
 import { VariablesService } from './variables.service';
 
@@ -20,7 +21,7 @@ export class EEVariablesService extends VariablesService {
 		if (variable.key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
 			throw new VariablesValidationError('key can only contain characters A-Za-z0-9_');
 		}
-		if (variable.value.length > 255) {
+		if (variable.value?.length > 255) {
 			throw new VariablesValidationError('value cannot be longer than 255 characters');
 		}
 	}
@@ -32,14 +33,16 @@ export class EEVariablesService extends VariablesService {
 		this.validateVariable(variable);
 
 		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
-		return collections.Variables.save(variable);
+		return collections.Variables.save({
+			...variable,
+			id: generateNanoId(),
+		});
 	}
 
-	static async update(id: number, variable: Omit<Variables, 'id'>): Promise<Variables> {
+	static async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
 		this.validateVariable(variable);
-
 		await collections.Variables.update(id, variable);
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 		return (await this.get(id))!;
 	}
 }

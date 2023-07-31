@@ -4,37 +4,37 @@
 		@observed="onObserved"
 		class="tags-container"
 		:enabled="responsive"
+		:event-bus="intersectionEventBus"
 	>
-		<template>
-			<span class="tags">
-				<span
-					v-for="tag in tags"
-					:key="tag.id"
-					:class="{ clickable: !tag.hidden }"
-					@click="(e) => onClick(e, tag)"
+		<span class="tags">
+			<span
+				v-for="tag in tags"
+				:key="tag.id"
+				:class="{ clickable: !tag.hidden }"
+				@click="(e) => onClick(e, tag)"
+			>
+				<el-tag
+					:title="tag.title"
+					type="info"
+					size="small"
+					v-if="tag.isCount"
+					class="count-container"
 				>
-					<el-tag
-						:title="tag.title"
-						type="info"
-						size="small"
-						v-if="tag.isCount"
-						class="count-container"
-					>
+					{{ tag.name }}
+				</el-tag>
+				<IntersectionObserved
+					:class="{ hidden: tag.hidden }"
+					:data-id="tag.id"
+					:enabled="responsive"
+					:event-bus="intersectionEventBus"
+					v-else
+				>
+					<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
 						{{ tag.name }}
 					</el-tag>
-					<IntersectionObserved
-						:class="{ hidden: tag.hidden }"
-						:data-id="tag.id"
-						:enabled="responsive"
-						v-else
-					>
-						<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
-							{{ tag.name }}
-						</el-tag>
-					</IntersectionObserved>
-				</span>
+				</IntersectionObserved>
 			</span>
-		</template>
+		</span>
 	</IntersectionObserver>
 </template>
 
@@ -46,6 +46,7 @@ import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
@@ -62,6 +63,7 @@ export default defineComponent({
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],
 	data() {
 		return {
+			intersectionEventBus: createEventBus(),
 			visibility: {} as { [id: string]: boolean },
 		};
 	},
@@ -77,7 +79,7 @@ export default defineComponent({
 			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
 			toDisplay = toDisplay.map((tag: ITag) => ({
 				...tag,
-				hidden: this.responsive && !this.$data.visibility[tag.id],
+				hidden: this.responsive && !this.visibility[tag.id],
 			}));
 
 			let visibleCount = toDisplay.length;
@@ -109,7 +111,7 @@ export default defineComponent({
 	methods: {
 		onObserved({ el, isIntersecting }: { el: HTMLElement; isIntersecting: boolean }) {
 			if (el.dataset.id) {
-				this.$data.visibility = { ...this.$data.visibility, [el.dataset.id]: isIntersecting };
+				this.visibility = { ...this.visibility, [el.dataset.id]: isIntersecting };
 			}
 		},
 		onClick(e: MouseEvent, tag: TagEl) {

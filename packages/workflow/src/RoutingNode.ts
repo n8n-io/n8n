@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-continue */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-restricted-syntax */
-import get from 'lodash.get';
-import merge from 'lodash.merge';
-import set from 'lodash.set';
+
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import set from 'lodash/set';
 
 import type {
 	ICredentialDataDecryptedObject,
@@ -359,7 +355,6 @@ export class RoutingNode {
 		if (action.type === 'setKeyValue') {
 			const returnData: INodeExecutionData[] = [];
 
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			inputData.forEach((item) => {
 				const returnItem: IDataObject = {};
 				for (const key of Object.keys(action.properties)) {
@@ -454,7 +449,7 @@ export class RoutingNode {
 			}
 		} else {
 			// No postReceive functionality got defined so simply add data as it is
-			// eslint-disable-next-line no-lonely-if
+
 			if (Array.isArray(responseData.body)) {
 				returnData = responseData.body.map((json) => {
 					return {
@@ -814,7 +809,7 @@ export class RoutingNode {
 
 					if (nodeProperties.routing.send.type === 'body') {
 						// Send in "body"
-						// eslint-disable-next-line no-lonely-if
+
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							(returnData.options.body as Record<string, any>)![propertyName] = value;
@@ -823,7 +818,7 @@ export class RoutingNode {
 						}
 					} else {
 						// Send in "query"
-						// eslint-disable-next-line no-lonely-if
+
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							returnData.options.qs![propertyName] = value;
 						} else {

@@ -1,24 +1,29 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-plus-operands */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ClientOAuth2RequestObject } from './ClientOAuth2';
+import type { ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
 import { ERROR_RESPONSES } from './constants';
 
 /**
  * Check if properties exist on an object and throw when they aren't.
  */
-export function expects(obj: any, ...args: any[]) {
-	for (let i = 1; i < args.length; i++) {
-		const prop = args[i];
-		if (obj[prop] === null) {
-			throw new TypeError('Expected "' + prop + '" to exist');
+export function expects<Keys extends keyof ClientOAuth2Options>(
+	obj: ClientOAuth2Options,
+	...keys: Keys[]
+): asserts obj is ClientOAuth2Options & {
+	[K in Keys]: NonNullable<ClientOAuth2Options[K]>;
+} {
+	for (const key of keys) {
+		if (obj[key] === null || obj[key] === undefined) {
+			throw new TypeError('Expected "' + key + '" to exist');
 		}
 	}
 }
 
 export class AuthError extends Error {
-	constructor(message: string, readonly body: any, readonly code = 'EAUTH') {
+	constructor(
+		message: string,
+		readonly body: any,
+		readonly code = 'EAUTH',
+	) {
 		super(message);
 	}
 }
@@ -48,13 +53,6 @@ function toString(str: string | null | undefined) {
 }
 
 /**
- * Sanitize the scopes option to be a string.
- */
-export function sanitizeScope(scopes: string[] | string): string {
-	return Array.isArray(scopes) ? scopes.join(' ') : toString(scopes);
-}
-
-/**
  * Create basic auth header.
  */
 export function auth(username: string, password: string): string {
@@ -66,14 +64,15 @@ export function auth(username: string, password: string): string {
  */
 export function getRequestOptions(
 	{ url, method, body, query, headers }: ClientOAuth2RequestObject,
-	options: any,
+	options: ClientOAuth2Options,
 ): ClientOAuth2RequestObject {
 	const rOptions = {
 		url,
 		method,
 		body: { ...body, ...options.body },
 		query: { ...query, ...options.query },
-		headers: { ...headers, ...options.headers },
+		headers: headers ?? {},
+		ignoreSSLIssues: options.ignoreSSLIssues,
 	};
 	// if request authorization was overridden delete it from header
 	if (rOptions.headers.Authorization === '') {

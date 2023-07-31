@@ -60,3 +60,11 @@ export function isChildOf(parent: Element, child: Element): boolean {
 export const capitalizeFirstLetter = (text: string): string => {
 	return text.charAt(0).toUpperCase() + text.slice(1);
 };
+
+export const getBannerRowHeight = async (): Promise<number> => {
+	return new Promise((resolve) => {
+		setTimeout(() => {
+			resolve(document.getElementById('banners')?.clientHeight ?? 0);
+		}, 0);
+	});
+};

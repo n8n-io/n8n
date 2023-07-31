@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
 import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
@@ -7,7 +7,7 @@ import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import remove from 'lodash.remove';
+import remove from 'lodash/remove';
 import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import type { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
@@ -219,7 +219,6 @@ export class MessageEventBusLogWriter {
 						}
 					} catch (error) {
 						LoggerProxy.error(
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
 						);
 					}

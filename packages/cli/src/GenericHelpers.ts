@@ -1,9 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type express from 'express';
 import type {
 	ExecutionError,
@@ -13,16 +7,18 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
+import { Container } from 'typedi';
 import { Like } from 'typeorm';
 import config from '@/config';
 import * as Db from '@/Db';
-import type { ICredentialsDb, IExecutionDb, IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
+import type { ICredentialsDb, IExecutionDb, IWorkflowDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserUpdatePayload } from '@/requests';
+import { ExecutionRepository } from '@db/repositories';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -54,7 +50,7 @@ export function getSessionId(req: express.Request): string | undefined {
  * - If the name already exists more than once with suffixes, it looks for the max suffix
  * and returns the requested name with max suffix + 1.
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 export async function generateUniqueName(
 	requestedName: string,
 	entityType: 'workflow' | 'credentials',
@@ -83,7 +79,6 @@ export async function generateUniqueName(
 
 		const suffix = Number(parts[1]);
 
-		// eslint-disable-next-line no-restricted-globals
 		if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
 			acc = Math.ceil(suffix);
 		}
@@ -127,7 +122,7 @@ export async function validateEntity(
  * @returns
  * @memberof ActiveWorkflowRunner
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 export async function createErrorExecution(
 	error: ExecutionError,
 	node: INode,
@@ -194,9 +189,31 @@ export async function createErrorExecution(
 		status: 'error',
 	};
 
-	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
+	await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
+}
 
-	await Db.collections.Execution.save(execution as IExecutionFlattedDb);
+export function getRedisClusterNodes(): Array<{ host: string; port: number }> {
+	const clusterNodePairs = config
+		.getEnv('queue.bull.redis.clusterNodes')
+		.split(',')
+		.filter((e) => e);
+	return clusterNodePairs.map((pair) => {
+		const [host, port] = pair.split(':');
+		return { host, port: parseInt(port) };
+	});
+}
+
+export function getRedisPrefix(): string {
+	let prefix = config.getEnv('queue.bull.prefix');
+	if (prefix && getRedisClusterNodes().length > 0) {
+		if (!prefix.startsWith('{')) {
+			prefix = '{' + prefix;
+		}
+		if (!prefix.endsWith('}')) {
+			prefix += '}';
+		}
+	}
+	return prefix;
 }
 
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

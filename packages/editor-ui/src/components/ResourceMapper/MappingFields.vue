@@ -29,9 +29,12 @@ interface Props {
 	showMappingModeSelect: boolean;
 	loading: boolean;
 	refreshInProgress: boolean;
+	teleported?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
 const {
@@ -51,7 +54,16 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 
-const fieldsUi = computed<INodeProperties[]>(() => {
+function markAsReadOnly(field: ResourceMapperField): boolean {
+	if (
+		isMatchingField(field.id, props.paramValue.matchingColumns, props.showMatchingColumnsSelector)
+	) {
+		return false;
+	}
+	return field.readOnly || false;
+}
+
+const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	return props.fieldsToMap
 		.filter((field) => field.display !== false && field.removed !== true)
 		.map((field) => {
@@ -64,11 +76,12 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				required: field.required,
 				description: getFieldDescription(field),
 				options: field.options,
+				readOnly: markAsReadOnly(field),
 			};
 		});
 });
 
-const orderedFields = computed<INodeProperties[]>(() => {
+const orderedFields = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	// Sort so that matching columns are first
 	if (props.paramValue.matchingColumns) {
 		fieldsUi.value.forEach((field, i) => {
@@ -271,7 +284,7 @@ defineExpose({
 					:customActions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loadingMessage="fetchingFieldsLabel"
-					@optionSelected="onParameterActionSelected"
+					@update:modelValue="onParameterActionSelected"
 				/>
 			</template>
 		</n8n-input-label>
@@ -333,11 +346,11 @@ defineExpose({
 					:value="getParameterValue(field.name)"
 					:displayOptions="true"
 					:path="`${props.path}.${field.name}`"
-					:isReadOnly="refreshInProgress"
+					:isReadOnly="refreshInProgress || field.readOnly"
 					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"
-					@valueChanged="onValueChanged"
+					@update="onValueChanged"
 				/>
 			</div>
 			<parameter-issues
@@ -346,7 +359,7 @@ defineExpose({
 				:class="[$style.parameterIssues, 'ml-5xs']"
 			/>
 		</div>
-		<div class="add-option" data-test-id="add-fields-select">
+		<div :class="['add-option', $style.addOption]" data-test-id="add-fields-select">
 			<n8n-select
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {
@@ -354,8 +367,9 @@ defineExpose({
 					})
 				"
 				size="small"
+				:teleported="teleported"
 				:disabled="addFieldOptions.length == 0"
-				@change="addField"
+				@update:modelValue="addField"
 			>
 				<n8n-option
 					v-for="item in addFieldOptions"
@@ -373,7 +387,7 @@ defineExpose({
 <style module lang="scss">
 .parameterItem {
 	display: flex;
-	padding: 0 0 0 1em;
+	padding: 0 0 0 var(--spacing-s);
 
 	.parameterInput {
 		width: 100%;
@@ -394,5 +408,10 @@ defineExpose({
 
 .parameterTooltipIcon {
 	color: var(--color-text-light) !important;
+}
+
+.addOption {
+	margin-top: var(--spacing-l);
+	padding: 0 0 0 var(--spacing-s);
 }
 </style>

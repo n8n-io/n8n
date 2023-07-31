@@ -1,24 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable no-param-reassign */
+
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable id-denylist */
 /* eslint-disable prefer-spread */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-restricted-syntax */
+
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable prefer-destructuring */
+
 import type express from 'express';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import stream from 'stream';
 import { promisify } from 'util';
+import { Container } from 'typedi';
 
-import { BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
+import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
 	IBinaryData,
@@ -59,8 +58,8 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ActiveExecutions } from '@/ActiveExecutions';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
+import { EventsService } from '@/services/events.service';
+import { OwnershipService } from './services/ownership.service';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -91,7 +90,7 @@ export function getWorkflowWebhooks(
 		if (parentNodes !== undefined && !parentNodes.includes(node.name)) {
 			// If parentNodes are given check only them if they have webhooks
 			// and no other ones
-			// eslint-disable-next-line no-continue
+
 			continue;
 		}
 		returnData.push.apply(
@@ -176,7 +175,7 @@ export async function executeWebhook(
 		user = (workflowData as WorkflowEntity).shared[0].user;
 	} else {
 		try {
-			user = await getWorkflowOwner(workflowData.id);
+			user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Cannot find workflow');
 		}
@@ -243,7 +242,7 @@ export async function executeWebhook(
 				NodeExecuteFunctions,
 				executionMode,
 			);
-			eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id, workflowStartNode);
+			Container.get(EventsService).emit('nodeFetchedData', workflow.id, workflowStartNode);
 		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
@@ -324,7 +323,7 @@ export async function executeWebhook(
 				}
 			} else {
 				// Send default response
-				// eslint-disable-next-line no-lonely-if
+
 				if (!didSendResponse) {
 					responseCallback(null, {
 						data: {
@@ -426,7 +425,7 @@ export async function executeWebhook(
 					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 					if (binaryData?.id) {
 						res.header(response.headers);
-						const stream = NodeExecuteFunctions.getBinaryStream(binaryData.id);
+						const stream = BinaryDataManager.getInstance().getBinaryStream(binaryData.id);
 						void pipeline(stream, res).then(() =>
 							responseCallback(null, { noWebhookResponse: true }),
 						);
@@ -643,10 +642,12 @@ export async function executeWebhook(
 						if (!didSendResponse) {
 							// Send the webhook response manually
 							res.setHeader('Content-Type', binaryData.mimeType);
-							const binaryDataBuffer = await BinaryDataManager.getInstance().retrieveBinaryData(
-								binaryData,
-							);
-							res.end(binaryDataBuffer);
+							if (binaryData.id) {
+								const stream = BinaryDataManager.getInstance().getBinaryStream(binaryData.id);
+								await pipeline(stream, res);
+							} else {
+								res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
+							}
 
 							responseCallback(null, {
 								noWebhookResponse: true,
@@ -682,7 +683,6 @@ export async function executeWebhook(
 				throw new ResponseHelper.InternalServerError(e.message);
 			});
 
-		// eslint-disable-next-line consistent-return
 		return executionId;
 	} catch (e) {
 		if (!didSendResponse) {
@@ -695,20 +695,11 @@ export async function executeWebhook(
 
 /**
  * Returns the base URL of the webhooks
- *
  */
 export function getWebhookBaseUrl() {
-	let urlBaseWebhook = GenericHelpers.getBaseUrl();
-
-	// We renamed WEBHOOK_TUNNEL_URL to WEBHOOK_URL. This is here to maintain
-	// backward compatibility. Will be deprecated and removed in the future.
-	if (process.env.WEBHOOK_TUNNEL_URL !== undefined || process.env.WEBHOOK_URL !== undefined) {
-		// @ts-ignore
-		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || process.env.WEBHOOK_URL;
-	}
+	let urlBaseWebhook = process.env.WEBHOOK_URL ?? GenericHelpers.getBaseUrl();
 	if (!urlBaseWebhook.endsWith('/')) {
 		urlBaseWebhook += '/';
 	}
-
 	return urlBaseWebhook;
 }

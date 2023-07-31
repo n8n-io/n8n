@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="hideLabel ? '' : $locale.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel ? '' : $locale.nodeText().inputLabelDescription(parameter, path)"
+		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
+		:tooltipText="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
@@ -16,57 +16,55 @@
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
 				:showExpressionSelector="showExpressionSelector"
-				@optionSelected="optionSelected"
+				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<template>
-			<draggable-target
-				type="mapping"
-				:disabled="isDropDisabled"
-				:sticky="true"
-				:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
-				@drop="onDrop"
-			>
-				<template #default="{ droppable, activeDrop }">
-					<n8n-tooltip
-						placement="left"
-						:manual="true"
-						:value="showMappingTooltip"
-						:buttons="dataMappingTooltipButtons"
-					>
-						<template #content>
-							<span
-								v-html="
-									$locale.baseText(`dataMapping.${displayMode}Hint`, {
-										interpolate: { name: parameter.displayName },
-									})
-								"
-							/>
-						</template>
-						<parameter-input-wrapper
-							ref="param"
-							:parameter="parameter"
-							:value="value"
-							:path="path"
-							:isReadOnly="isReadOnly"
-							:droppable="droppable"
-							:activeDrop="activeDrop"
-							:forceShowExpression="forceShowExpression"
-							:hint="hint"
-							:hide-issues="hideIssues"
-							:label="label"
-							@valueChanged="valueChanged"
-							@textInput="onTextInput"
-							@focus="onFocus"
-							@blur="onBlur"
-							@drop="onDrop"
-							inputSize="small"
+		<draggable-target
+			type="mapping"
+			:disabled="isDropDisabled"
+			:sticky="true"
+			:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+			@drop="onDrop"
+		>
+			<template #default="{ droppable, activeDrop }">
+				<n8n-tooltip
+					placement="left"
+					:visible="showMappingTooltip"
+					:buttons="dataMappingTooltipButtons"
+				>
+					<template #content>
+						<span
+							v-html="
+								i18n.baseText(`dataMapping.${displayMode}Hint`, {
+									interpolate: { name: parameter.displayName },
+								})
+							"
 						/>
-					</n8n-tooltip>
-				</template>
-			</draggable-target>
-		</template>
+					</template>
+					<parameter-input-wrapper
+						ref="param"
+						:parameter="parameter"
+						:modelValue="value"
+						:path="path"
+						:isReadOnly="isReadOnly"
+						:droppable="droppable"
+						:activeDrop="activeDrop"
+						:forceShowExpression="forceShowExpression"
+						:hint="hint"
+						:hide-issues="hideIssues"
+						:label="label"
+						:event-bus="eventBus"
+						@update="valueChanged"
+						@textInput="onTextInput"
+						@focus="onFocus"
+						@blur="onBlur"
+						@drop="onDrop"
+						inputSize="small"
+					/>
+				</n8n-tooltip>
+			</template>
+		</draggable-target>
 	</n8n-input-label>
 </template>
 
@@ -79,7 +77,7 @@ import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } fro
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import { useToast } from '@/composables';
+import { useI18n, useToast } from '@/composables';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -98,8 +96,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '@/utils/mappingUtils';
-
-type ParameterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
+import { createEventBus } from 'n8n-design-system/utils';
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
@@ -112,7 +109,12 @@ export default defineComponent({
 		ParameterInputWrapper,
 	},
 	setup() {
+		const eventBus = createEventBus();
+		const i18n = useI18n();
+
 		return {
+			i18n,
+			eventBus,
 			...useToast(),
 		};
 	},
@@ -158,12 +160,12 @@ export default defineComponent({
 			}),
 		},
 	},
-	created() {
+	mounted() {
 		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
 		this.dataMappingTooltipButtons = [
 			{
 				attrs: {
-					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					label: this.i18n.baseText('_reusableBaseText.dismiss' as BaseTextKey),
 					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
@@ -178,7 +180,7 @@ export default defineComponent({
 			return this.ndvStore.activeNode;
 		},
 		hint(): string | null {
-			return this.$locale.nodeText().hint(this.parameter, this.path);
+			return this.i18n.nodeText().hint(this.parameter, this.path);
 		},
 		isInputTypeString(): boolean {
 			return this.parameter.type === 'string';
@@ -234,17 +236,14 @@ export default defineComponent({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
-			paramRef?.$emit('optionSelected', command);
+			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
-
 			if (isValueExpression(this.parameter, parameterData.value)) {
-				paramRef?.$emit('optionSelected', 'addExpression');
+				this.eventBus.emit('optionSelected', 'addExpression');
 			}
 		},
 		onDrop(newParamValue: string) {
@@ -297,12 +296,12 @@ export default defineComponent({
 						};
 					}
 
-					this.$emit('valueChanged', parameterData);
+					this.valueChanged(parameterData);
 
 					if (!this.ndvStore.isMappingOnboarded) {
 						this.showMessage({
-							title: this.$locale.baseText('dataMapping.success.title'),
-							message: this.$locale.baseText('dataMapping.success.moreInfo'),
+							title: this.i18n.baseText('dataMapping.success.title'),
+							message: this.i18n.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
 							dangerouslyUseHTMLString: true,
 						});

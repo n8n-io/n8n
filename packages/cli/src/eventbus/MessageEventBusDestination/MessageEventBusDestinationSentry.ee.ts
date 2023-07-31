@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
-import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import type {
-	MessageEventBusDestinationOptions,
+import {
+	LoggerProxy,
+	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { N8N_VERSION } from '@/constants';
-import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
+import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,

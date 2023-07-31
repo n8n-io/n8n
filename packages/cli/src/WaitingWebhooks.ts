@@ -1,22 +1,23 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-param-reassign */
 import type { INode, WebhookHttpMethod } from 'n8n-workflow';
 import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type express from 'express';
 
-import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import type { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { ExecutionRepository } from '@db/repositories';
+import { OwnershipService } from './services/ownership.service';
 
 @Service()
 export class WaitingWebhooks {
-	constructor(private nodeTypes: NodeTypes) {}
+	constructor(
+		private nodeTypes: NodeTypes,
+		private executionRepository: ExecutionRepository,
+		private ownershipService: OwnershipService,
+	) {}
 
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,
@@ -39,19 +40,20 @@ export class WaitingWebhooks {
 		const executionId = pathParts.shift();
 		const path = pathParts.join('/');
 
-		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
+		const execution = await this.executionRepository.findSingleExecution(executionId as string, {
+			includeData: true,
+			unflattenData: true,
+		});
 
-		if (execution === null) {
+		if (!execution) {
 			throw new ResponseHelper.NotFoundError(`The execution "${executionId} does not exist.`);
 		}
 
-		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-
-		if (fullExecutionData.finished || fullExecutionData.data.resultData.error) {
+		if (execution.finished || execution.data.resultData.error) {
 			throw new ResponseHelper.ConflictError(`The execution "${executionId} has finished already.`);
 		}
 
-		return this.startExecution(httpMethod, path, fullExecutionData, req, res);
+		return this.startExecution(httpMethod, path, execution, req, res);
 	}
 
 	async startExecution(
@@ -82,7 +84,7 @@ export class WaitingWebhooks {
 		const { workflowData } = fullExecutionData;
 
 		const workflow = new Workflow({
-			id: workflowData.id!.toString(),
+			id: workflowData.id!,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
@@ -94,7 +96,7 @@ export class WaitingWebhooks {
 
 		let workflowOwner;
 		try {
-			workflowOwner = await getWorkflowOwner(workflowData.id!.toString());
+			workflowOwner = await this.ownershipService.getWorkflowOwnerCached(workflowData.id!);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Could not find workflow');
 		}
@@ -105,13 +107,13 @@ export class WaitingWebhooks {
 			workflow,
 			workflow.getNode(lastNodeExecuted) as INode,
 			additionalData,
-		).filter((webhook) => {
+		).find((webhook) => {
 			return (
 				webhook.httpMethod === httpMethod &&
 				webhook.path === path &&
 				webhook.webhookDescription.restartWebhook === true
 			);
-		})[0];
+		});
 
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
@@ -141,7 +143,7 @@ export class WaitingWebhooks {
 				fullExecutionData.id,
 				req,
 				res,
-				// eslint-disable-next-line consistent-return
+
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);

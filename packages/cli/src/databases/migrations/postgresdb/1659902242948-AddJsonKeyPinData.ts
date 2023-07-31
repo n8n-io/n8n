@@ -1,4 +1,4 @@
-import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import { runInBatches } from '@db/utils/migrationHelpers';
 import { addJsonKeyToPinDataColumn } from '../sqlite/1659888469333-AddJsonKeyPinData';
 

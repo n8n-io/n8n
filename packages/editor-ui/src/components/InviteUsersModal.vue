@@ -35,21 +35,9 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@input="onInput"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
-			<n8n-info-tip v-if="!settingsStore.isSmtpSetup" class="mt-s">
-				<i18n path="settings.users.setupSMTPInfo">
-					<template #link>
-						<a
-							href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
-							target="_blank"
-						>
-							{{ $locale.baseText('settings.users.setupSMTPInfo.link') }}
-						</a>
-					</template>
-				</i18n>
-			</n8n-info-tip>
 		</template>
 		<template v-if="!showInviteUrls" #footer>
 			<n8n-button
@@ -74,7 +62,7 @@ import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 

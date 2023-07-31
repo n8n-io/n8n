@@ -20,20 +20,20 @@
 					iconSize="small"
 					:actions="actions"
 					:iconOrientation="iconOrientation"
-					@action="(action) => $emit('optionSelected', action)"
+					@action="(action) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
 			</div>
 			<n8n-radio-buttons
 				v-if="shouldShowExpressionSelector"
 				size="small"
-				:value="selectedView"
+				:modelValue="selectedView"
 				:disabled="isReadOnly"
-				@input="onViewSelected"
 				:options="[
 					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
 					{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
 				]"
+				@update:modelValue="onViewSelected"
 			/>
 		</div>
 	</div>
@@ -44,6 +44,7 @@ import type { NodeParameterValueType } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
+import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({
 	name: 'parameter-options',
@@ -81,7 +82,7 @@ export default defineComponent({
 		loadingMessage: {
 			type: String,
 			default() {
-				return this.$locale.baseText('genericHelpers.loading');
+				return i18n.baseText('genericHelpers.loading');
 			},
 		},
 	},
@@ -107,7 +108,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (this.parameter.typeOptions?.editor === 'codeNodeEditor') {
+			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor)) {
 				return false;
 			}
 
@@ -173,11 +174,14 @@ export default defineComponent({
 		},
 		onViewSelected(selected: string) {
 			if (selected === 'expression') {
-				this.$emit('optionSelected', this.isValueExpression ? 'openExpression' : 'addExpression');
+				this.$emit(
+					'update:modelValue',
+					this.isValueExpression ? 'openExpression' : 'addExpression',
+				);
 			}
 
 			if (selected === 'fixed' && this.isValueExpression) {
-				this.$emit('optionSelected', 'removeExpression');
+				this.$emit('update:modelValue', 'removeExpression');
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {
@@ -199,12 +203,18 @@ export default defineComponent({
 .container {
 	display: flex;
 }
-.loader > span {
-	line-height: 1em;
-}
 
+.loader {
+	padding-bottom: var(--spacing-4xs);
+
+	& > span {
+		line-height: 1em;
+	}
+}
 .controlsContainer {
 	display: flex;
+	align-items: center;
+	flex-direction: row;
 }
 
 .noExpressionSelector {

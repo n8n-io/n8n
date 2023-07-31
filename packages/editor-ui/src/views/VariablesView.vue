@@ -5,7 +5,7 @@ import {
 	useUIStore,
 	useSettingsStore,
 	useUsersStore,
-	useVersionControlStore,
+	useSourceControlStore,
 } from '@/stores';
 import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
 
@@ -26,10 +26,10 @@ const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const message = useMessage();
-const versionControlStore = useVersionControlStore();
-let versionControlStoreUnsubscribe = () => {};
+const sourceControlStore = useSourceControlStore();
+let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
 
@@ -157,9 +157,8 @@ async function saveVariable(data: EnvironmentVariable | TemporaryEnvironmentVari
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
 			updatedVariable = await environmentsStore.updateVariable(data as EnvironmentVariable);
-			allVariables.value = allVariables.value.map((variable) =>
-				variable.id === data.id ? updatedVariable : variable,
-			);
+			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
+			allVariables.value.push(updatedVariable);
 			toggleEditing(updatedVariable);
 		}
 	} catch (error) {
@@ -213,7 +212,7 @@ function displayName(resource: EnvironmentVariable) {
 }
 
 onBeforeMount(() => {
-	versionControlStoreUnsubscribe = versionControlStore.$onAction(({ name, after }) => {
+	sourceControlStoreUnsubscribe = sourceControlStore.$onAction(({ name, after }) => {
 		if (name === 'pullWorkfolder' && after) {
 			after(() => {
 				void initialize();
@@ -223,12 +222,13 @@ onBeforeMount(() => {
 });
 
 onBeforeUnmount(() => {
-	versionControlStoreUnsubscribe();
+	sourceControlStoreUnsubscribe();
 });
 </script>
 
 <template>
 	<ResourcesListLayout
+		class="variables-view"
 		ref="layoutRef"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
@@ -276,11 +276,12 @@ onBeforeUnmount(() => {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</template>
-		<template v-if="!isFeatureEnabled" #empty>
+		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
 			<n8n-action-box
+				v-if="!isFeatureEnabled"
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
@@ -289,6 +290,18 @@ onBeforeUnmount(() => {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
+				@click:button="goToUpgrade"
+			/>
+			<n8n-action-box
+				v-else-if="!canCreateVariables"
+				data-test-id="cannot-create-variables"
+				emoji="👋"
+				:heading="
+					$locale.baseText('variables.empty.notAllowedToCreate.heading', {
+						interpolate: { name: usersStore.currentUser.firstName },
+					})
+				"
+				:description="$locale.baseText('variables.empty.notAllowedToCreate.description')"
 				@click="goToUpgrade"
 			/>
 		</template>
@@ -319,43 +332,45 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 @use 'n8n-design-system/css/common/var.scss';
 
-:deep(.datatable) {
-	table {
-		table-layout: fixed;
-	}
-
-	th,
-	td {
-		width: 25%;
-
-		@media screen and (max-width: var.$md) {
-			width: 33.33%;
+.variables-view {
+	:deep(.datatable) {
+		table {
+			table-layout: fixed;
 		}
 
-		&.variables-value-column,
-		&.variables-key-column,
-		&.variables-usage-column {
-			> div {
-				width: 100%;
+		th,
+		td {
+			width: 25%;
 
-				> span {
-					max-width: 100%;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap;
-					height: 18px;
-				}
+			@media screen and (max-width: var.$md) {
+				width: 33.33%;
+			}
 
+			&.variables-value-column,
+			&.variables-key-column,
+			&.variables-usage-column {
 				> div {
 					width: 100%;
+
+					> span {
+						max-width: 100%;
+						overflow: hidden;
+						text-overflow: ellipsis;
+						white-space: nowrap;
+						height: 18px;
+					}
+
+					> div {
+						width: 100%;
+					}
 				}
 			}
 		}
-	}
 
-	.variables-usage-column {
-		@media screen and (max-width: var.$md) {
-			display: none;
+		.variables-usage-column {
+			@media screen and (max-width: var.$md) {
+				display: none;
+			}
 		}
 	}
 }

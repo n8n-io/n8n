@@ -1,34 +1,26 @@
-import { parse, stringify } from 'flatted';
 import type { IRun, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
-import * as Db from '@/Db';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { Push } from '@/push';
-import type { IPushDataExecutionRecovered } from '../../Interfaces';
-import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
-import { eventBus } from './MessageEventBus';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
+import { ExecutionRepository } from '@db/repositories';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
 	messages: EventMessageTypes[],
 	applyToDb = true,
 ): Promise<IRunExecutionData | undefined> {
-	const executionEntry = await Db.collections.Execution.findOne({
-		where: {
-			id: executionId,
-		},
+	const executionEntry = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
+		includeData: true,
+		unflattenData: true,
 	});
 
 	if (executionEntry && messages) {
-		let executionData: IRunExecutionData | undefined;
+		let executionData = executionEntry.data;
 		let workflowError: WorkflowOperationError | undefined;
-		try {
-			executionData = parse(executionEntry.data) as IRunExecutionData;
-		} catch {}
 		if (!executionData) {
 			executionData = { resultData: { runData: {} } };
 		}
@@ -156,8 +148,8 @@ export async function recoverExecutionDataFromEventLogMessages(
 
 		if (applyToDb) {
 			const newStatus = executionEntry.status === 'failed' ? 'failed' : 'crashed';
-			await Db.collections.Execution.update(executionId, {
-				data: stringify(executionData),
+			await Container.get(ExecutionRepository).updateExistingExecution(executionId, {
+				data: executionData,
 				status: newStatus,
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 			});
@@ -198,16 +190,12 @@ export async function recoverExecutionDataFromEventLogMessages(
 			// execute workflowExecuteAfter hook to trigger error workflow
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [iRunData]);
 
-			// calling workflowExecutionCompleted directly because the eventEmitter is not up yet at this point
-			await workflowExecutionCompleted(executionEntry.workflowData, iRunData);
-
+			const push = Container.get(Push);
 			// wait for UI to be back up and send the execution data
-			eventBus.once('editorUiConnected', function handleUiBackUp() {
+			push.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
-					Container.get(Push).send('executionRecovered', {
-						executionId,
-					} as IPushDataExecutionRecovered);
+					push.send('executionRecovered', { executionId });
 				}, 1000);
 			});
 		}

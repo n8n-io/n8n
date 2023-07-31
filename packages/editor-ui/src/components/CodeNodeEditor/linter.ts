@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import type { Diagnostic } from '@codemirror/lint';
 import { linter as createLinter } from '@codemirror/lint';
 import { jsonParseLinter } from '@codemirror/lang-json';
@@ -10,9 +10,9 @@ import type { CodeNodeEditorLanguage } from 'n8n-workflow';
 import { DEFAULT_LINTER_DELAY_IN_MS, DEFAULT_LINTER_SEVERITY } from './constants';
 import { OFFSET_FOR_SCRIPT_WRAPPER } from './constants';
 import { walk } from './utils';
-import type { CodeNodeEditorMixin, RangeNode } from './types';
+import type { RangeNode } from './types';
 
-export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
+export const linterExtension = defineComponent({
 	methods: {
 		createLinter(language: CodeNodeEditorLanguage) {
 			switch (language) {

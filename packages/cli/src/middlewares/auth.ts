@@ -1,6 +1,5 @@
 import type { Application, NextFunction, Request, RequestHandler, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { sync as globSync } from 'fast-glob';
@@ -10,8 +9,6 @@ import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, EDITOR_UI_DIST_DIR } from '@/constants';
 import { issueCookie, resolveJwtContent } from '@/auth/jwt';
-import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
-import type { UserRepository } from '@db/repositories';
 import { canSkipAuth } from '@/decorators/registerController';
 
 const jwtFromRequest = (req: Request) => {
@@ -19,7 +16,7 @@ const jwtFromRequest = (req: Request) => {
 	return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
 };
 
-const jwtAuth = (): RequestHandler => {
+const userManagementJwtAuth = (): RequestHandler => {
 	const jwtStrategy = new Strategy(
 		{
 			jwtFromRequest,
@@ -79,11 +76,8 @@ export const setupAuthMiddlewares = (
 	app: Application,
 	ignoredEndpoints: Readonly<string[]>,
 	restEndpoint: string,
-	userRepository: UserRepository,
 ) => {
-	// needed for testing; not adding overhead since it directly returns if req.cookies exists
-	app.use(cookieParser());
-	app.use(jwtAuth());
+	app.use(userManagementJwtAuth());
 
 	app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (
@@ -98,15 +92,6 @@ export const setupAuthMiddlewares = (
 			req.url.startsWith(`/${restEndpoint}/oauth2-credential/callback`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`)
 		) {
-			return next();
-		}
-
-		// skip authentication if user management is disabled
-		if (!isUserManagementEnabled()) {
-			req.user = await userRepository.findOneOrFail({
-				relations: ['globalRole'],
-				where: {},
-			});
 			return next();
 		}
 

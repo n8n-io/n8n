@@ -15,11 +15,11 @@
 						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
-						:name="credentialName"
+						:modelValue="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
 						:readonly="!credentialPermissions.updateName || !credentialType"
 						type="Credential"
-						@input="onNameEdit"
+						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
 					/>
 				</div>
@@ -28,7 +28,6 @@
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
-						size="medium"
 						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
@@ -74,7 +73,7 @@
 						:mode="mode"
 						:selectedCredential="selectedCredential"
 						:showAuthTypeSelector="requiredCredentials"
-						@change="onDataChange"
+						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scrollToTop="scrollToTop"
@@ -145,7 +144,7 @@ import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -412,7 +411,8 @@ export default defineComponent({
 			return (
 				!!this.credentialTypeName &&
 				(((this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')) &&
-					this.credentialData.grantType === 'authorizationCode') ||
+					(this.credentialData.grantType === 'authorizationCode' ||
+						this.credentialData.grantType === 'pkce')) ||
 					this.credentialTypeName === 'oAuth1Api' ||
 					this.parentTypes.includes('oAuth1Api'))
 			);
@@ -553,6 +553,10 @@ export default defineComponent({
 				return false;
 			}
 
+			if (parameter.displayOptions?.hideOnCloud && this.settingsStore.isCloudDeployment) {
+				return false;
+			}
+
 			if (parameter.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
 				return true;
@@ -669,6 +673,9 @@ export default defineComponent({
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		onDataChange({ name, value }: { name: string; value: any }) {
+			// skip update if new value matches the current
+			if (this.credentialData[name] === value) return;
+
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;

@@ -12,16 +12,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
-import get from 'lodash.get';
-import isEmpty from 'lodash.isempty';
-import isEqual from 'lodash.isequal';
-import isObject from 'lodash.isobject';
-import lt from 'lodash.lt';
-import merge from 'lodash.merge';
-import pick from 'lodash.pick';
-import reduce from 'lodash.reduce';
-import set from 'lodash.set';
-import unset from 'lodash.unset';
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
+import isObject from 'lodash/isObject';
+import lt from 'lodash/lt';
+import merge from 'lodash/merge';
+import pick from 'lodash/pick';
+import reduce from 'lodash/reduce';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 const compareItems = (
 	obj: INodeExecutionData,
@@ -1207,7 +1207,7 @@ return 0;`,
 						({
 							json: { ...item.json, __INDEX: index },
 							pairedItem: { item: index },
-						} as INodeExecutionData),
+						}) as INodeExecutionData,
 				);
 				//sort items using the compare keys
 				newItems.sort((a, b) => {

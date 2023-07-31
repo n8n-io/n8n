@@ -26,7 +26,6 @@ const config = {
 	collectCoverage: true,
 	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
 	collectCoverageFrom: ['src/**/*.ts'],
-	testTimeout: 10_000,
 };
 
 if (process.env.CI === 'true') {

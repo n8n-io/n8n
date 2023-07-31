@@ -16,7 +16,7 @@ const defaultSettings: IN8nUISettings = {
 		logStreaming: false,
 		advancedExecutionFilters: false,
 		variables: true,
-		versionControl: false,
+		sourceControl: false,
 		auditLogs: false,
 	},
 	executionMode: 'regular',
@@ -56,7 +56,6 @@ const defaultSettings: IN8nUISettings = {
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
 	userManagement: {
-		enabled: true,
 		showSetupOnFirstLoad: true,
 		smtpSetup: true,
 		authenticationMethod: 'email',
@@ -74,6 +73,9 @@ const defaultSettings: IN8nUISettings = {
 	},
 	deployment: {
 		type: 'default',
+	},
+	banners: {
+		dismissed: [],
 	},
 };
 

@@ -1,10 +1,10 @@
 <template>
-	<fragment></fragment>
+	<span v-show="false" />
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { ElNotificationComponent } from 'element-ui/types/notification';
+import type { NotificationInstance } from 'element-plus';
 import { sanitizeHtml } from '@/utils';
 import { useToast } from '@/composables';
 
@@ -26,7 +26,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			alert: null as null | ElNotificationComponent,
+			alert: null as null | NotificationInstance,
 		};
 	},
 	mounted() {
@@ -40,7 +40,7 @@ export default defineComponent({
 			customClass: this.popupClass || '',
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.alert) {
 			this.alert.close();
 		}

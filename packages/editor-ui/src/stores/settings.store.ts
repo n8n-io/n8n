@@ -31,13 +31,14 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils';
+import { useCloudPlanStore } from './cloudPlan.store';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
-			enabled: false,
+			quota: -1,
 			showSetupOnFirstLoad: false,
 			smtpSetup: false,
 			authenticationMethod: UserManagementAuthenticationMethod.Email,
@@ -70,9 +71,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		versionCli(): string {
 			return this.settings.versionCli;
-		},
-		isUserManagementEnabled(): boolean {
-			return this.userManagement.enabled;
 		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
@@ -173,6 +171,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isDefaultAuthenticationSaml(): boolean {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
 		},
+		permanentlyDismissedBanners(): string[] {
+			return this.settings.banners?.dismissed ?? [];
+		},
+		isBelowUserQuota(): boolean {
+			const userStore = useUsersStore();
+			return (
+				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
+			);
+		},
 	},
 	actions: {
 		setSettings(settings: IN8nUISettings): void {
@@ -216,6 +223,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
+
+			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes('V1');
+			if (
+				!isV1BannerDismissedPermanently &&
+				useRootStore().versionCli.startsWith('1.') &&
+				!useCloudPlanStore().userIsTrialing
+			) {
+				useUIStore().showBanner('V1');
+			}
+
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
 		stopShowingSetupPage(): void {

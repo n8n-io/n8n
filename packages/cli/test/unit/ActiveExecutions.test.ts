@@ -1,24 +1,23 @@
-import * as Db from '@/Db';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
+import { Container } from 'typedi';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { ExecutionRepository } from '@db/repositories';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
-jest.mock('@/Db', () => {
-	return {
-		collections: {
-			Execution: {
-				save: jest.fn(async () => ({ id: FAKE_EXECUTION_ID })),
-				update: jest.fn(),
-			},
-		},
-	};
+const updateExistingExecution = jest.fn();
+const createNewExecution = jest.fn(async () => {
+	return { id: FAKE_EXECUTION_ID };
+});
+
+Container.set(ExecutionRepository, {
+	updateExistingExecution,
+	createNewExecution,
 });
 
 describe('ActiveExecutions', () => {
@@ -42,8 +41,8 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
-		expect(mocked(Db.collections.Execution.save)).toHaveBeenCalledTimes(1);
-		expect(mocked(Db.collections.Execution.update)).toHaveBeenCalledTimes(0);
+		expect(createNewExecution).toHaveBeenCalledTimes(1);
+		expect(updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
@@ -56,8 +55,8 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
-		expect(mocked(Db.collections.Execution.save)).toHaveBeenCalledTimes(0);
-		expect(mocked(Db.collections.Execution.update)).toHaveBeenCalledTimes(1);
+		expect(createNewExecution).toHaveBeenCalledTimes(0);
+		expect(updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
 
 	test('Should fail attaching execution to invalid executionId', async () => {

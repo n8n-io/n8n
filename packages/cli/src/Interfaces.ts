@@ -44,6 +44,7 @@ import type {
 	AuthProviderSyncHistoryRepository,
 	CredentialsRepository,
 	EventDestinationsRepository,
+	ExecutionDataRepository,
 	ExecutionMetadataRepository,
 	ExecutionRepository,
 	InstalledNodesRepository,
@@ -55,11 +56,11 @@ import type {
 	TagRepository,
 	UserRepository,
 	VariablesRepository,
-	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
+import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 
 export interface IActivationError {
 	time: number;
@@ -90,6 +91,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Credentials: CredentialsRepository;
 	EventDestinations: EventDestinationsRepository;
 	Execution: ExecutionRepository;
+	ExecutionData: ExecutionDataRepository;
 	ExecutionMetadata: ExecutionMetadataRepository;
 	InstalledNodes: InstalledNodesRepository;
 	InstalledPackages: InstalledPackagesRepository;
@@ -100,7 +102,6 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
-	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
@@ -217,19 +218,6 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 }
 
-export interface IExecutionResponseApi {
-	id: string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId?: string;
-	finished: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	data?: object;
-	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
-}
 export interface IExecutionsListResponse {
 	count: number;
 	// results: IExecutionShortResponse[];
@@ -317,7 +305,6 @@ export interface IDiagnosticInfo {
 	databaseType: DatabaseType;
 	notificationsEnabled: boolean;
 	disableProductionWebhooksOnMainProcess: boolean;
-	basicAuthActive: boolean;
 	systemInfo: {
 		os: {
 			type?: string;
@@ -335,7 +322,6 @@ export interface IDiagnosticInfo {
 	};
 	deploymentType: string;
 	binaryDataMode: string;
-	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
@@ -667,22 +653,8 @@ export interface IWorkflowExecuteProcess {
 	workflowExecute: WorkflowExecute;
 }
 
-export interface IWorkflowStatisticsCounts {
-	productionSuccess: number;
-	productionError: number;
-	manualSuccess: number;
-	manualError: number;
-}
-
 export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
-}
-
-export interface IWorkflowStatisticsTimestamps {
-	productionSuccess: Date | null;
-	productionError: Date | null;
-	manualSuccess: Date | null;
-	manualError: Date | null;
 }
 
 export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
@@ -728,6 +700,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 // ----------------------------------
 //               license
 // ----------------------------------
+
+type ValuesOf<T> = T[keyof T];
+
+export type BooleanLicenseFeature = ValuesOf<typeof LICENSE_FEATURES>;
+export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
 
 export interface ILicenseReadResponse {
 	usage: {
