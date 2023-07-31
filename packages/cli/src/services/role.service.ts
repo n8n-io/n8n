@@ -10,7 +10,15 @@ export class RoleService {
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private cacheService: CacheService,
 	) {
-		// @TODO: Prepopulate cache
+		void this.primeCache();
+	}
+
+	async primeCache() {
+		const allRoles = await this.roleRepository.find({});
+
+		void this.cacheService.setMany<Role>(
+			allRoles.map((role) => [`cache:role:${role.scope}:${role.name}`, role]),
+		);
 	}
 
 	/**
@@ -31,6 +39,8 @@ export class RoleService {
 		const cacheKey = `cache:role:${scope}:${name}`;
 
 		const cachedRole = await this.cacheService.get<Role>(cacheKey);
+
+		console.log('cachedRole', cachedRole);
 
 		if (cachedRole) return this.roleRepository.create(cachedRole);
 
