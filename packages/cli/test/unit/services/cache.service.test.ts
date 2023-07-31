@@ -72,10 +72,10 @@ describe('cacheService', () => {
 		await cacheService.set('testString', 'test');
 		await cacheService.set('testNumber', 123);
 
-		await expect(cacheService.get<string>('testString')).resolves.toBe('test');
-		expect(typeof (await cacheService.get<string>('testString'))).toBe('string');
-		await expect(cacheService.get<number>('testNumber')).resolves.toBe(123);
-		expect(typeof (await cacheService.get<number>('testNumber'))).toBe('number');
+		await expect(cacheService.get('testString')).resolves.toBe('test');
+		expect(typeof (await cacheService.get('testString'))).toBe('string');
+		await expect(cacheService.get('testNumber')).resolves.toBe(123);
+		expect(typeof (await cacheService.get('testNumber'))).toBe('number');
 	});
 
 	test('should honour ttl values', async () => {
@@ -92,20 +92,20 @@ describe('cacheService', () => {
 		await expect(store!.ttl('testString')).resolves.toBeLessThanOrEqual(100);
 		await expect(store!.ttl('testNumber')).resolves.toBeLessThanOrEqual(1000);
 
-		await expect(cacheService.get<string>('testString')).resolves.toBe('test');
-		await expect(cacheService.get<number>('testNumber')).resolves.toBe(123);
+		await expect(cacheService.get('testString')).resolves.toBe('test');
+		await expect(cacheService.get('testNumber')).resolves.toBe(123);
 
 		await new Promise((resolve) => setTimeout(resolve, 20));
 
-		await expect(cacheService.get<string>('testString')).resolves.toBeUndefined();
-		await expect(cacheService.get<number>('testNumber')).resolves.toBe(123);
+		await expect(cacheService.get('testString')).resolves.toBeUndefined();
+		await expect(cacheService.get('testNumber')).resolves.toBe(123);
 	});
 
 	test('should set and remove values', async () => {
 		await cacheService.set('testString', 'test');
-		await expect(cacheService.get<string>('testString')).resolves.toBe('test');
+		await expect(cacheService.get('testString')).resolves.toBe('test');
 		await cacheService.delete('testString');
-		await expect(cacheService.get<string>('testString')).resolves.toBeUndefined();
+		await expect(cacheService.get('testString')).resolves.toBeUndefined();
 	});
 
 	test('should calculate maxSize', async () => {
@@ -114,18 +114,18 @@ describe('cacheService', () => {
 
 		// 16 bytes because stringify wraps the string in quotes, so 2 bytes for the quotes
 		await cacheService.set('testString', 'withoutUnicode');
-		await expect(cacheService.get<string>('testString')).resolves.toBe('withoutUnicode');
+		await expect(cacheService.get('testString')).resolves.toBe('withoutUnicode');
 
 		await cacheService.destroy();
 
 		// should not fit!
 		await cacheService.set('testString', 'withUnicodeԱԲԳ');
-		await expect(cacheService.get<string>('testString')).resolves.toBeUndefined();
+		await expect(cacheService.get('testString')).resolves.toBeUndefined();
 	});
 
 	test('should set and get complex objects', async () => {
 		await cacheService.set('testObject', testObject);
-		await expect(cacheService.get<TestObject>('testObject')).resolves.toMatchObject(testObject);
+		await expect(cacheService.get('testObject')).resolves.toMatchObject(testObject);
 	});
 
 	test('should set and get multiple values', async () => {
@@ -182,9 +182,9 @@ describe('cacheService', () => {
 		await cacheService.init();
 
 		await cacheService.set('testObject', testObject);
-		await expect(cacheService.get<TestObject>('testObject')).resolves.toMatchObject(testObject);
+		await expect(cacheService.get('testObject')).resolves.toMatchObject(testObject);
 		await cacheService.delete('testObject');
-		await expect(cacheService.get<TestObject>('testObject')).resolves.toBeUndefined();
+		await expect(cacheService.get('testObject')).resolves.toBeUndefined();
 	});
 
 	// NOTE: mset and mget are not supported by ioredis-mock

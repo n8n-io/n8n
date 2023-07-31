@@ -63,14 +63,14 @@ export class CacheService {
 		return this.cache;
 	}
 
-	async get<T>(key: string): Promise<T | undefined> {
+	async get(key: string): Promise<unknown | undefined> {
 		if (!this.cache) {
 			await this.init();
 		}
-		return this.cache?.store.get(key) as T;
+		return this.cache?.store.get(key);
 	}
 
-	async set<T = unknown>(key: string, value: T, ttl?: number): Promise<void> {
+	async set(key: string, value: unknown, ttl?: number): Promise<void> {
 		if (!this.cache) {
 			await this.init();
 		}
@@ -103,7 +103,7 @@ export class CacheService {
 		return this.cache?.store.keys() ?? [];
 	}
 
-	async setMany<T = unknown>(values: Array<[string, T]>, ttl?: number): Promise<void> {
+	async setMany(values: Array<[string, unknown]>, ttl?: number): Promise<void> {
 		if (!this.cache) {
 			await this.init();
 		}
@@ -118,11 +118,11 @@ export class CacheService {
 		return this.cache?.store.mset(values, ttl);
 	}
 
-	async getMany<T>(keys: string[]): Promise<Array<[string, T]>> {
+	async getMany(keys: string[]): Promise<Array<[string, unknown]>> {
 		if (!this.cache) {
 			await this.init();
 		}
-		return (this.cache?.store.mget(...keys) as Promise<Array<[string, T]>>) ?? [];
+		return (this.cache?.store.mget(...keys) as Promise<Array<[string, unknown]>>) ?? [];
 	}
 
 	async deleteMany(keys: string[]): Promise<void> {
