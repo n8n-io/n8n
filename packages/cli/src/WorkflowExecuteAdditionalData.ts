@@ -58,7 +58,6 @@ import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
@@ -66,6 +65,7 @@ import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from '@db/repositories';
 import { EventsService } from '@/services/events.service';
+import { OwnershipService } from './services/ownership.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -146,7 +146,9 @@ export function executeErrorWorkflow(
 				// make sure there are no possible security gaps
 				return;
 			}
-			getWorkflowOwner(workflowId)
+
+			Container.get(OwnershipService)
+				.getWorkflowOwnerCached(workflowId)
 				.then((user) => {
 					void WorkflowHelpers.executeErrorWorkflow(errorWorkflow, workflowErrorData, user);
 				})
@@ -169,9 +171,11 @@ export function executeErrorWorkflow(
 			workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)
 		) {
 			Logger.verbose('Start internal error workflow', { executionId, workflowId });
-			void getWorkflowOwner(workflowId).then((user) => {
-				void WorkflowHelpers.executeErrorWorkflow(workflowId, workflowErrorData, user);
-			});
+			void Container.get(OwnershipService)
+				.getWorkflowOwnerCached(workflowId)
+				.then((user) => {
+					void WorkflowHelpers.executeErrorWorkflow(workflowId, workflowErrorData, user);
+				});
 		}
 	}
 }
