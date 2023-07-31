@@ -313,7 +313,6 @@ export class SamlService {
 			}
 		} catch (error) {
 			throw new BadRequestError(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Error fetching SAML Metadata from ${this._samlPreferences.metadataUrl}: ${error}`,
 			);
 		}

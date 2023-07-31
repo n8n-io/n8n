@@ -1,4 +1,3 @@
-/* eslint-disable no-param-reassign */
 import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
 import { In, Not } from 'typeorm';
 import * as Db from '@/Db';

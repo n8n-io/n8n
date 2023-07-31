@@ -1,9 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type express from 'express';
 import type {
 	ExecutionError,
@@ -56,7 +50,7 @@ export function getSessionId(req: express.Request): string | undefined {
  * - If the name already exists more than once with suffixes, it looks for the max suffix
  * and returns the requested name with max suffix + 1.
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 export async function generateUniqueName(
 	requestedName: string,
 	entityType: 'workflow' | 'credentials',
@@ -85,7 +79,6 @@ export async function generateUniqueName(
 
 		const suffix = Number(parts[1]);
 
-		// eslint-disable-next-line no-restricted-globals
 		if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
 			acc = Math.ceil(suffix);
 		}
@@ -129,7 +122,7 @@ export async function validateEntity(
  * @returns
  * @memberof ActiveWorkflowRunner
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 export async function createErrorExecution(
 	error: ExecutionError,
 	node: INode,
