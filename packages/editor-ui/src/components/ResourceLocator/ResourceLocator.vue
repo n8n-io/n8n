@@ -5,8 +5,9 @@
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
 		<resource-locator-dropdown
+			ref="dropdown"
 			:modelValue="modelValue ? modelValue.value : ''"
-			:show="showResourceDropdown"
+			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
 			:filterRequired="requiresSearchFilter"
 			:resources="currentQueryResults"
@@ -16,8 +17,8 @@
 			:errorView="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
+			v-on-click-outside="hideResourceDropdown"
 			@update:modelValue="onListItemSelected"
-			@hide="onDropdownHide"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDebounced"
 		>
@@ -117,7 +118,7 @@
 												['el-input__icon']: true,
 												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
-												[$style.isReverse]: showResourceDropdown,
+												[$style.isReverse]: resourceDropdownVisible,
 											}"
 										/>
 									</template>
@@ -263,7 +264,8 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			showResourceDropdown: false,
+			resourceDropdownVisible: false,
+			resourceDropdownHiding: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
 			hasCompletedASearch: false,
@@ -438,7 +440,7 @@ export default defineComponent({
 	},
 	watch: {
 		currentQueryError(curr: boolean, prev: boolean) {
-			if (this.showResourceDropdown && curr && !prev) {
+			if (this.resourceDropdownVisible && curr && !prev) {
 				const inputRef = this.$refs.input as HTMLInputElement | undefined;
 				if (inputRef) {
 					inputRef.focus();
@@ -517,7 +519,7 @@ export default defineComponent({
 			this.trackEvent('User refreshed resource locator list');
 		},
 		onKeyDown(e: MouseEvent) {
-			if (this.showResourceDropdown && !this.isSearchable) {
+			if (this.resourceDropdownVisible && !this.isSearchable) {
 				this.eventBus.emit('keyDown', e);
 			}
 		},
@@ -722,12 +724,12 @@ export default defineComponent({
 			}
 		},
 		onInputFocus(): void {
-			if (!this.isListMode || this.showResourceDropdown) {
+			if (!this.isListMode || this.resourceDropdownVisible) {
 				return;
 			}
 
 			void this.loadInitialResources();
-			this.showResourceDropdown = true;
+			this.showResourceDropdown();
 		},
 		switchFromListMode(): void {
 			if (this.isListMode && this.parameter.modes && this.parameter.modes.length > 1) {
@@ -748,16 +750,37 @@ export default defineComponent({
 		},
 		onDropdownHide() {
 			if (!this.currentQueryError) {
-				this.showResourceDropdown = false;
+				this.hideResourceDropdown();
 			}
+		},
+		hideResourceDropdown() {
+			if (!this.resourceDropdownVisible) {
+				return;
+			}
+
+			this.resourceDropdownVisible = false;
+
+			const inputRef = this.$refs.input as HTMLInputElement | undefined;
+			this.resourceDropdownHiding = true;
+			setTimeout(() => {
+				inputRef?.blur?.();
+				this.resourceDropdownHiding = false;
+			}, 100);
+		},
+		showResourceDropdown() {
+			if (this.resourceDropdownVisible || this.resourceDropdownHiding) {
+				return;
+			}
+
+			this.resourceDropdownVisible = true;
 		},
 		onListItemSelected(value: string) {
 			this.onInputChange(value);
-			this.showResourceDropdown = false;
+			this.hideResourceDropdown();
 		},
 		onInputBlur() {
 			if (!this.isSearchable || this.currentQueryError) {
-				this.showResourceDropdown = false;
+				this.hideResourceDropdown();
 			}
 			this.$emit('blur');
 		},
@@ -842,9 +865,7 @@ $--mode-selector-width: 92px;
 .selectIcon {
 	cursor: pointer;
 	font-size: 14px;
-	transition:
-		transform 0.3s,
-		-webkit-transform 0.3s;
+	transition: transform 0.3s, -webkit-transform 0.3s;
 	-webkit-transform: rotateZ(0);
 	transform: rotateZ(0);
 
