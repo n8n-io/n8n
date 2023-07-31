@@ -29,31 +29,27 @@ export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
 		LoggerProxy.debug(`Redis client now listening to stream ${stream} starting with id ${lastId}`);
 		this.setLastId(stream, lastId);
 		const interval = this.streams.get(stream)?.pollingInterval ?? 1000;
-		const waiter = setInterval(
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			async () => {
-				const currentLastId = this.streams.get(stream)?.lastId ?? '$';
-				const results = await this.redisClient?.xread(
-					'BLOCK',
-					interval,
-					'STREAMS',
-					stream,
-					currentLastId,
-				);
-				if (results && results.length > 0) {
-					const [_key, messages] = results[0];
-					if (messages.length > 0) {
-						messages.forEach(([id, message]) => {
-							this.messageHandlers.forEach((handler) => handler(stream, id, message));
-						});
-						// Pass the last id of the results to the next round.
-						const newLastId = messages[messages.length - 1][0];
-						this.setLastId(stream, newLastId);
-					}
+		const waiter = setInterval(async () => {
+			const currentLastId = this.streams.get(stream)?.lastId ?? '$';
+			const results = await this.redisClient?.xread(
+				'BLOCK',
+				interval,
+				'STREAMS',
+				stream,
+				currentLastId,
+			);
+			if (results && results.length > 0) {
+				const [_key, messages] = results[0];
+				if (messages.length > 0) {
+					messages.forEach(([id, message]) => {
+						this.messageHandlers.forEach((handler) => handler(stream, id, message));
+					});
+					// Pass the last id of the results to the next round.
+					const newLastId = messages[messages.length - 1][0];
+					this.setLastId(stream, newLastId);
 				}
-			},
-			interval,
-		);
+			}
+		}, interval);
 		this.setWaiter(stream, waiter);
 	}
 
