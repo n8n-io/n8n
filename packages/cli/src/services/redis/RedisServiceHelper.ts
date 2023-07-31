@@ -46,12 +46,14 @@ export function getRedisStandardClient(
 	const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
 	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 	const sharedRedisOptions: RedisOptions = {
-		...redisOptions,
+		host,
+		port,
 		username,
 		password,
 		db,
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
+		...redisOptions,
 	};
 	LoggerProxy.debug(
 		`Initialising Redis client${redisType ? ` of type ${redisType}` : ''} connection with host: ${
@@ -86,15 +88,18 @@ export function getRedisClusterClient(
 	redisOptions?: RedisOptions,
 	redisType?: RedisClientType,
 ): Cluster {
+	let lastTimer = 0;
+	let cumulativeTimeout = 0;
 	const clusterNodes = getRedisClusterNodes();
 	const { username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 	const sharedRedisOptions: RedisOptions = {
-		...redisOptions,
 		username,
 		password,
 		db,
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
+		...redisOptions,
 	};
 	LoggerProxy.debug(
 		`Initialising Redis cluster${
@@ -105,6 +110,24 @@ export function getRedisClusterClient(
 		clusterNodes.map((node) => ({ host: node.host, port: node.port })),
 		{
 			redisOptions: sharedRedisOptions,
+			clusterRetryStrategy: (): number | null => {
+				const now = Date.now();
+				if (now - lastTimer > 30000) {
+					// Means we had no timeout at all or last timeout was temporary and we recovered
+					lastTimer = now;
+					cumulativeTimeout = 0;
+				} else {
+					cumulativeTimeout += now - lastTimer;
+					lastTimer = now;
+					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
+						LoggerProxy.error(
+							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+						);
+						process.exit(1);
+					}
+				}
+				return 500;
+			},
 		},
 	);
 }

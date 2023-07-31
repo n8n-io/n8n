@@ -10,14 +10,14 @@ export class RedisServiceListReceiver extends RedisServiceBaseReceiver {
 		await super.init('list-receiver');
 	}
 
-	async popFromFront(list: string): Promise<string | null | undefined> {
+	async popFromHead(list: string): Promise<string | null | undefined> {
 		if (!this.redisClient) {
 			await this.init();
 		}
 		return this.redisClient?.lpop(list);
 	}
 
-	async popFromBack(list: string): Promise<string | null | undefined> {
+	async popFromTail(list: string): Promise<string | null | undefined> {
 		if (!this.redisClient) {
 			await this.init();
 		}
@@ -46,12 +46,12 @@ export class RedisServiceListReceiver extends RedisServiceBaseReceiver {
 	}
 
 	async popOldestWorkerResponse(): Promise<RedisServiceWorkerResponseObject | null> {
-		const poppedResult = await this.popFromBack(WORKER_RESPONSE_REDIS_LIST);
+		const poppedResult = await this.popFromTail(WORKER_RESPONSE_REDIS_LIST);
 		return this.poppedResultToWorkerResponse(poppedResult);
 	}
 
 	async popLatestWorkerResponse(): Promise<RedisServiceWorkerResponseObject | null> {
-		const poppedResult = await this.popFromFront(WORKER_RESPONSE_REDIS_LIST);
+		const poppedResult = await this.popFromHead(WORKER_RESPONSE_REDIS_LIST);
 		return this.poppedResultToWorkerResponse(poppedResult);
 	}
 }

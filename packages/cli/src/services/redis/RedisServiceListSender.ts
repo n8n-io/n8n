@@ -10,14 +10,14 @@ export class RedisServiceListSender extends RedisServiceBaseSender {
 		this.setSenderId(senderId);
 	}
 
-	async pushToFront(list: string, message: string): Promise<void> {
+	async prepend(list: string, message: string): Promise<void> {
 		if (!this.redisClient) {
 			await this.init();
 		}
 		await this.redisClient?.lpush(list, message);
 	}
 
-	async pushToBack(list: string, message: string): Promise<void> {
+	async append(list: string, message: string): Promise<void> {
 		if (!this.redisClient) {
 			await this.init();
 		}
@@ -25,6 +25,6 @@ export class RedisServiceListSender extends RedisServiceBaseSender {
 	}
 
 	async appendWorkerResponse(message: RedisServiceWorkerResponseObject): Promise<void> {
-		await this.pushToFront(WORKER_RESPONSE_REDIS_LIST, JSON.stringify(message));
+		await this.prepend(WORKER_RESPONSE_REDIS_LIST, JSON.stringify(message));
 	}
 }

@@ -9,7 +9,7 @@ type StreamName = string;
 type StreamDetails = {
 	lastId: LastId;
 	pollingInterval: number;
-	waiter: NodeJS.Timeout | undefined;
+	waiter: NodeJS.Timer | undefined;
 };
 
 @Service()
@@ -28,33 +28,42 @@ export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
 		}
 		LoggerProxy.debug(`Redis client now listening to stream ${stream} starting with id ${lastId}`);
 		this.setLastId(stream, lastId);
-		let failedRuns = 0;
-		while (this.streams.has(stream)) {
-			const results = await this.redisClient?.xread('BLOCK', 0, 'STREAMS', stream, lastId);
-			if (results) {
-				const [_key, messages] = results[0];
-				if (messages.length > 0) {
-					messages.forEach(([id, message]) => {
-						this.messageHandlers.forEach((handler) => handler(stream, id, message));
-					});
-					// Pass the last id of the results to the next round.
-					lastId = messages[messages.length - 1][0];
-					this.setLastId(stream, lastId);
-				}
-			} else {
-				failedRuns++;
-			}
-			if (failedRuns > 10) {
-				LoggerProxy.warn(
-					`Redis stream ${stream} is not available (failed ${failedRuns} times). Stopping listening.`,
+		const interval = this.streams.get(stream)?.pollingInterval ?? 1000;
+		const waiter = setInterval(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			async () => {
+				const currentLastId = this.streams.get(stream)?.lastId ?? '$';
+				const results = await this.redisClient?.xread(
+					'BLOCK',
+					interval,
+					'STREAMS',
+					stream,
+					currentLastId,
 				);
-				this.streams.delete(stream);
-			}
-			await new Promise((resolve) => {
-				const waiter = setTimeout(resolve, this.streams.get(stream)?.pollingInterval ?? 1000);
-				this.setWaiter(stream, waiter);
-			});
+				if (results && results.length > 0) {
+					const [_key, messages] = results[0];
+					if (messages.length > 0) {
+						messages.forEach(([id, message]) => {
+							this.messageHandlers.forEach((handler) => handler(stream, id, message));
+						});
+						// Pass the last id of the results to the next round.
+						const newLastId = messages[messages.length - 1][0];
+						this.setLastId(stream, newLastId);
+					}
+				}
+			},
+			interval,
+		);
+		this.setWaiter(stream, waiter);
+	}
+
+	stopListeningToStream(stream: StreamName): void {
+		LoggerProxy.debug(`Redis client stopped listening to stream ${stream}`);
+		const existing = this.streams.get(stream);
+		if (existing?.waiter) {
+			clearInterval(existing.waiter);
 		}
+		this.streams.delete(stream);
 	}
 
 	private updateStreamDetails(stream: StreamName, details: Partial<StreamDetails>): void {
@@ -66,8 +75,12 @@ export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
 		});
 	}
 
-	setPollingInterval(stream: StreamName, pollingInterval: number): void {
+	async setPollingInterval(stream: StreamName, pollingInterval: number): Promise<void> {
 		this.updateStreamDetails(stream, { pollingInterval });
+		if (this.streams.get(stream)?.waiter) {
+			this.stopListeningToStream(stream);
+			await this.listenToStream(stream);
+		}
 	}
 
 	setLastId(stream: StreamName, lastId: string): void {
@@ -79,14 +92,5 @@ export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
 		if (this.streams.get(stream)) {
 			this.updateStreamDetails(stream, { waiter });
 		}
-	}
-
-	stopListeningToStream(stream: StreamName): void {
-		LoggerProxy.debug(`Redis client stopped listening to stream ${stream}`);
-		const existing = this.streams.get(stream);
-		if (existing?.waiter) {
-			clearTimeout(existing.waiter);
-		}
-		this.streams.delete(stream);
 	}
 }
