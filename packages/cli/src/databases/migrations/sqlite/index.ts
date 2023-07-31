@@ -40,7 +40,6 @@ import { SeparateExecutionData1690000000010 } from './1690000000010-SeparateExec
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 import { FixMissingIndicesFromStringIdMigration1690000000020 } from './1690000000020-FixMissingIndicesFromStringIdMigration';
 import { RemoveResetPasswordColumns1690000000030 } from './1690000000030-RemoveResetPasswordColumns';
-import { AddMissingIndexOnExecutionData1690787606731 } from '../common/1690787606731-AddMissingIndexOnExecutionData';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -84,7 +83,6 @@ const sqliteMigrations: Migration[] = [
 	RemoveSkipOwnerSetup1681134145997,
 	FixMissingIndicesFromStringIdMigration1690000000020,
 	RemoveResetPasswordColumns1690000000030,
-	AddMissingIndexOnExecutionData1690787606731,
 ];
 
 export { sqliteMigrations };
