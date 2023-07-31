@@ -40,8 +40,6 @@ export class RoleService {
 
 		const cachedRole = await this.cacheService.get<Role>(cacheKey);
 
-		console.log('cachedRole', cachedRole);
-
 		if (cachedRole) return this.roleRepository.create(cachedRole);
 
 		let dbRole: Role | null;
