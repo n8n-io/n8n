@@ -92,7 +92,7 @@ export const packageOperations: INodeProperties[] = [
 								return items.flatMap(({ json }) =>
 									(json.objects as Array<{ package: PackageJson }>).map(
 										({ package: { name, version, description } }) =>
-											({ json: { name, version, description } } as INodeExecutionData),
+											({ json: { name, version, description } }) as INodeExecutionData,
 									),
 								);
 							},

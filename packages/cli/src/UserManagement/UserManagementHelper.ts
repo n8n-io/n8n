@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
@@ -185,7 +183,6 @@ export function rightDiff<T1, T2>(
 ): T2[] {
 	// create map { itemKey => true } for fast lookup for diff
 	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
-		// eslint-disable-next-line no-param-reassign
 		map[keyExtractor1(item)] = true;
 		return map;
 	}, {});

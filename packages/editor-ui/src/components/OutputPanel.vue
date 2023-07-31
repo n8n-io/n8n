@@ -36,17 +36,15 @@
 					tooltipPlacement="right"
 					v-if="hasNodeRun && staleData"
 				>
-					<template>
-						<span
-							v-html="
-								$locale.baseText(
-									hasPinData
-										? 'ndv.output.staleDataWarning.pinData'
-										: 'ndv.output.staleDataWarning.regular',
-								)
-							"
-						></span>
-					</template>
+					<span
+						v-html="
+							$locale.baseText(
+								hasPinData
+									? 'ndv.output.staleDataWarning.pinData'
+									: 'ndv.output.staleDataWarning.regular',
+							)
+						"
+					></span>
 				</n8n-info-tip>
 			</div>
 		</template>

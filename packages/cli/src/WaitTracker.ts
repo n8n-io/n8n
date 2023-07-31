@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
@@ -49,7 +44,6 @@ export class WaitTracker {
 		void this.getWaitingExecutions();
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async getWaitingExecutions() {
 		Logger.debug('Wait tracker querying database for waiting executions');
 		// Find all the executions which should be triggered in the next 70 seconds
@@ -85,7 +79,7 @@ export class WaitTracker {
 		);
 
 		// Add timers for each waiting execution that they get started at the correct time
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const execution of executions) {
 			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {

@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-param-reassign */
 import type { INode, WebhookHttpMethod } from 'n8n-workflow';
 import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
 import { Service } from 'typedi';
@@ -146,7 +143,7 @@ export class WaitingWebhooks {
 				fullExecutionData.id,
 				req,
 				res,
-				// eslint-disable-next-line consistent-return
+
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);

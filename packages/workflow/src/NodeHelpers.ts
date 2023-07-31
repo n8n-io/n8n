@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-continue */
+
 /* eslint-disable prefer-spread */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
@@ -415,7 +411,6 @@ export function getContext(
 	}
 
 	if (runExecutionData.executionData.contextData[key] === undefined) {
-		// eslint-disable-next-line no-param-reassign
 		runExecutionData.executionData.contextData[key] = {};
 	}
 
@@ -1258,7 +1253,6 @@ export const tryToParseObject = (value: unknown): object => {
 		return value;
 	}
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const o = JSON.parse(String(value));
 		if (typeof o !== 'object' || Array.isArray(o)) {
 			throw new Error(`The value "${String(value)}" is not a valid object.`);
@@ -1318,7 +1312,7 @@ export const validateResourceMapperParameter = (
 		const key = `${nodeProperties.name}.${field.id}`;
 		const fieldErrors: string[] = [];
 		if (field.required && !skipRequiredCheck) {
-			if (value.value === null || fieldValue === null || fieldValue === undefined) {
+			if (value.value === null || fieldValue === undefined) {
 				const error = `${fieldWordSingular} "${field.id}" is required`;
 				fieldErrors.push(error);
 			}
@@ -1601,6 +1595,8 @@ export function mergeNodeProperties(
 ): void {
 	let existingIndex: number;
 	for (const property of addProperties) {
+		if (property.doNotInherit) continue;
+
 		existingIndex = mainProperties.findIndex((element) => element.name === property.name);
 
 		if (existingIndex === -1) {

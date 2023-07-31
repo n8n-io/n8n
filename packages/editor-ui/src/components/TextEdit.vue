@@ -1,7 +1,7 @@
 <template>
 	<div v-if="dialogVisible">
 		<el-dialog
-			:visible="dialogVisible"
+			:modelValue="dialogVisible"
 			append-to-body
 			width="80%"
 			:title="`${$locale.baseText('textEdit.edit')} ${$locale
@@ -16,11 +16,10 @@
 							v-model="tempValue"
 							type="textarea"
 							ref="inputField"
-							:value="value"
 							:placeholder="$locale.nodeText().placeholder(parameter, path)"
 							:readOnly="isReadOnly"
-							@change="valueChanged"
 							:rows="15"
+							@update:modelValue="valueChanged"
 						/>
 					</div>
 				</n8n-input-label>
@@ -34,7 +33,7 @@ import { nextTick, defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'TextEdit',
-	props: ['dialogVisible', 'parameter', 'path', 'value', 'isReadOnly'],
+	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'isReadOnly'],
 	data() {
 		return {
 			tempValue: '', // el-input does not seem to work without v-model so add one
@@ -42,12 +41,12 @@ export default defineComponent({
 	},
 	methods: {
 		valueChanged(value: string) {
-			this.$emit('valueChanged', value);
+			this.$emit('update:modelValue', value);
 		},
 
 		onKeyDownEsc() {
 			// Resetting input value when closing the dialog, required when closing it using the `Esc` key
-			this.tempValue = this.value;
+			this.tempValue = this.modelValue;
 
 			this.closeDialog();
 		},
@@ -60,18 +59,17 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.tempValue = this.value as string;
+		this.tempValue = this.modelValue as string;
 	},
 	watch: {
-		dialogVisible() {
+		async dialogVisible() {
 			if (this.dialogVisible === true) {
-				nextTick(() => {
-					(this.$refs.inputField as HTMLInputElement).focus();
-				});
+				await nextTick();
+				(this.$refs.inputField as HTMLInputElement).focus();
 			}
 		},
-		value() {
-			this.tempValue = this.value as string;
+		modelValue(value: string) {
+			this.tempValue = value;
 		},
 	},
 });

@@ -224,6 +224,7 @@ export default function useCanvasMouseSelect() {
 	});
 
 	return {
+		selectActive,
 		getMousePositionWithinNodeView,
 		mouseUpMouseSelect,
 		mouseDownMouseSelect,

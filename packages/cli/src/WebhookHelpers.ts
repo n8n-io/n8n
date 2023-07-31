@@ -1,18 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable no-param-reassign */
+
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable id-denylist */
 /* eslint-disable prefer-spread */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-restricted-syntax */
+
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable prefer-destructuring */
+
 import type express from 'express';
 import get from 'lodash/get';
 import stream from 'stream';
@@ -92,7 +90,7 @@ export function getWorkflowWebhooks(
 		if (parentNodes !== undefined && !parentNodes.includes(node.name)) {
 			// If parentNodes are given check only them if they have webhooks
 			// and no other ones
-			// eslint-disable-next-line no-continue
+
 			continue;
 		}
 		returnData.push.apply(
@@ -325,7 +323,7 @@ export async function executeWebhook(
 				}
 			} else {
 				// Send default response
-				// eslint-disable-next-line no-lonely-if
+
 				if (!didSendResponse) {
 					responseCallback(null, {
 						data: {
@@ -685,7 +683,6 @@ export async function executeWebhook(
 				throw new ResponseHelper.InternalServerError(e.message);
 			});
 
-		// eslint-disable-next-line consistent-return
 		return executionId;
 	} catch (e) {
 		if (!didSendResponse) {

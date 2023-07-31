@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -26,8 +26,8 @@
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "dev:worker": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon worker\"",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint --quiet .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet --report-unused-disable-directives",
+    "lintfix": "eslint . --fix --report-unused-disable-directives",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "oclif-dev manifest",
     "start": "run-script-os",
@@ -93,13 +93,10 @@
     "@types/ws": "^8.5.4",
     "@types/yamljs": "^0.2.31",
     "chokidar": "^3.5.2",
-    "concurrently": "^5.1.0",
-    "mock-jwks": "^1.0.9",
-    "nodemon": "^2.0.2",
-    "run-script-os": "^1.0.7",
+    "concurrently": "^8.2.0",
     "ts-essentials": "^7.0.3",
-    "tsc-alias": "^1.8.2",
-    "tsconfig-paths": "^4.1.2"
+    "tsc-alias": "^1.8.7",
+    "tsconfig-paths": "^4.2.0"
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
