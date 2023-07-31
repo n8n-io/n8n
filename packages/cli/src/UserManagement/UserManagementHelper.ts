@@ -7,7 +7,6 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
-import type { Role } from '@db/entities/Role';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
@@ -27,19 +26,13 @@ export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
 }
 
-export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
-	return Container.get(RoleService)
-		.findRoleOrFail(scope, name)
-		.then((role) => role.id);
-}
-
 export async function getInstanceOwner(): Promise<User> {
-	const ownerRoleId = await getRoleId('global', 'owner');
+	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRoleOrFail();
 
 	const owner = await Db.collections.User.findOneOrFail({
 		relations: ['globalRole'],
 		where: {
-			globalRoleId: ownerRoleId,
+			globalRoleId: globalOwnerRole.id,
 		},
 	});
 	return owner;

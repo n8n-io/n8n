@@ -51,10 +51,12 @@ export class RoleRepository extends Repository<Role> {
 		return this.findRole('credential', 'user');
 	}
 
+	// @TODO: Keep
 	async findRole(scope: RoleScopes, name: RoleNames): Promise<Role | null> {
 		return this.findOne({ where: { scope, name } });
 	}
 
+	// @TODO: Keep
 	async findRoleOrFail(scope: RoleScopes, name: RoleNames): Promise<Role> {
 		return this.findOneOrFail({ where: { scope, name } });
 	}

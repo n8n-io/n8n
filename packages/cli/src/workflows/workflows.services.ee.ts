@@ -70,7 +70,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		shareWithIds: string[],
 	): Promise<SharedWorkflow[]> {
 		const users = await UserService.getByIds(transaction, shareWithIds);
-		const role = await Container.get(RoleService).findOneBy({ scope: 'workflow', name: 'editor' });
+		const role = await Container.get(RoleService).findWorkflowEditorRole();
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
 			if (user.isPending) {

@@ -2,7 +2,6 @@ import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositori
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import type { Role, RoleNames, RoleScopes } from '@/databases/entities/Role';
-import type { FindOptionsWhere } from 'typeorm';
 
 @Service()
 export class RoleService {
@@ -15,7 +14,7 @@ export class RoleService {
 	}
 
 	/**
-	 * Role finders
+	 * role finders
 	 */
 
 	private async findCached(
@@ -50,16 +49,14 @@ export class RoleService {
 		return dbRole;
 	}
 
-	async findRoleOrFail(scope: RoleScopes, name: RoleNames): Promise<Role> {
+	private async findRoleOrFail(scope: RoleScopes, name: RoleNames): Promise<Role> {
 		return this.roleRepository.findOneOrFail({ where: { scope, name } });
 	}
 
-	async findOneBy(condition: FindOptionsWhere<Role>): Promise<Role | null> {
-		return this.roleRepository.findOneBy(condition);
-	}
+	/**
+	 * sharing state
+	 */
 
-	// @TODO: findRoleOfUserForWorkflow?
-	// @TODO: -> findOneBy?
 	async getUserRoleForWorkflow(userId: string, workflowId: string) {
 		const shared = await this.sharedWorkflowRepository.findOne({
 			where: { workflowId, userId },
@@ -139,5 +136,13 @@ export class RoleService {
 
 	async findCredentialUserRoleOrFail() {
 		return this.findCached('credential', 'user', { orFail: true });
+	}
+
+	/**
+	 * utils
+	 */
+
+	async getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
+		return this.findRoleOrFail(scope, name).then((role) => role.id);
 	}
 }

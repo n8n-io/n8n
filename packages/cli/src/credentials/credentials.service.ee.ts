@@ -79,7 +79,7 @@ export class EECredentialsService extends CredentialsService {
 		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
 		const users = await UserService.getByIds(transaction, shareWithIds);
-		const role = await Container.get(RoleService).findOneBy({ scope: 'credential', name: 'user' });
+		const role = await Container.get(RoleService).findCredentialUserRole();
 
 		const newSharedCredentials = users
 			.filter((user) => !user.isPending)
