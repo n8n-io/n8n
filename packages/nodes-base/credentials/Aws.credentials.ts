@@ -134,7 +134,7 @@ export class Aws implements ICredentialType {
 
 	documentationUrl = 'aws';
 
-	icon = 'file:AWS.svg';
+	icon = 'file:icons/AWS.svg';
 
 	properties: INodeProperties[] = [
 		{
