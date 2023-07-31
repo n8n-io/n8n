@@ -7,9 +7,8 @@ export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 		await runQuery(`ALTER TABLE ${userTable} ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`);
 
 		await runQuery(`
-			INSERT INTO ${escape.tableName('settings')} (${escape.columnName(
-			'key',
-		)}, value, ${escape.columnName('loadOnStartup')})
+			INSERT INTO ${escape.tableName('settings')}
+			(${escape.columnName('key')}, value, ${escape.columnName('loadOnStartup')})
 			VALUES ('${LDAP_FEATURE_NAME}', '${JSON.stringify(LDAP_DEFAULT_CONFIGURATION)}', true)
 		`);
 
