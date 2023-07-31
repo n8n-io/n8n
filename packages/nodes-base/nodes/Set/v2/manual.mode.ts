@@ -9,7 +9,7 @@ import type { SetField, SetNodeOptions } from './helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Fields to Edit or Add',
+		displayName: 'Fields to Set',
 		name: 'fields',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',

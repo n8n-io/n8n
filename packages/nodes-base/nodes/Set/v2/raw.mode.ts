@@ -16,7 +16,7 @@ const properties: INodeProperties[] = [
 			editor: 'json',
 			rows: 5,
 		},
-		default: '{\n  "key": "value"\n}',
+		default: '={\n  "key": "value"\n}',
 	},
 ];
 
