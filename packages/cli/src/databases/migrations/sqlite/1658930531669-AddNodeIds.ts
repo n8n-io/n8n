@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */

@@ -83,7 +83,6 @@ export class Queue {
 
 		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
 				WebhookHelpers.decodeWebhookResponse(progress.response),
 			);

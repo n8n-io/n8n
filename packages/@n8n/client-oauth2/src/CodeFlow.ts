@@ -69,7 +69,6 @@ export class CodeFlow {
 		}
 
 		if (!url.search?.substring(1)) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			throw new TypeError(`Unable to process uri: ${urlString}`);
 		}
 

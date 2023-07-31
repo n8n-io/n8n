@@ -1,8 +1,5 @@
-/* eslint-disable import/no-mutable-exports */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-case-declarations */
-/* eslint-disable @typescript-eslint/naming-convention */
+
 import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
 import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
@@ -219,7 +219,6 @@ export class MessageEventBusLogWriter {
 						}
 					} catch (error) {
 						LoggerProxy.error(
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
 						);
 					}
