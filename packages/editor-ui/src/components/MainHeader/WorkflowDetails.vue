@@ -26,19 +26,18 @@
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<div v-if="isTagsEditEnabled && !readOnly">
-				<TagsDropdown
-					v-model="appliedTagIds"
-					:createEnabled="true"
-					:eventBus="tagsEditBus"
-					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
-					ref="dropdown"
-					class="tags-edit"
-					data-test-id="workflow-tags-dropdown"
-					@blur="onTagsBlur"
-					@esc="onTagsEditEsc"
-				/>
-			</div>
+			<TagsDropdown
+				v-if="isTagsEditEnabled && !readOnly"
+				v-model="appliedTagIds"
+				:createEnabled="true"
+				:eventBus="tagsEditBus"
+				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
+				ref="dropdown"
+				class="tags-edit"
+				data-test-id="workflow-tags-dropdown"
+				@blur="onTagsBlur"
+				@esc="onTagsEditEsc"
+			/>
 			<div v-else-if="currentWorkflowTagIds.length === 0 && !readOnly">
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
@@ -658,12 +657,16 @@ $--header-spacing: 20px;
 }
 
 .tags {
+	display: flex;
+	align-items: center;
+	width: 100%;
 	flex: 1;
 	margin-right: $--header-spacing;
 }
 
 .tags-edit {
 	min-width: 100px;
+	width: 100%;
 	max-width: 460px;
 }
 
