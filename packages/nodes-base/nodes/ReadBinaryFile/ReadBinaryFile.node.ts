@@ -5,9 +5,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { checkFilePathAccess } from '@utils/utilities';
-import { allowedPathsNotice } from '@utils/descriptions';
-
 export class ReadBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read Binary File',
@@ -24,7 +21,6 @@ export class ReadBinaryFile implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
-			allowedPathsNotice,
 			{
 				displayName: 'File Path',
 				name: 'filePath',
@@ -71,17 +67,17 @@ export class ReadBinaryFile implements INodeType {
 				}
 
 				const filePath = this.getNodeParameter('filePath', itemIndex);
-				checkFilePathAccess(filePath);
 
 				const stream = await this.helpers.createReadStream(filePath);
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(stream, filePath);
 				returnData.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: itemIndex,

@@ -7,9 +7,6 @@ import {
 
 import glob from 'fast-glob';
 
-import { checkFilePathAccess } from '@utils/utilities';
-import { allowedPathsNotice } from '@utils/descriptions';
-
 export class ReadBinaryFiles implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read Binary Files',
@@ -25,7 +22,6 @@ export class ReadBinaryFiles implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
-			allowedPathsNotice,
 			{
 				displayName: 'File Selector',
 				name: 'fileSelector',
@@ -54,8 +50,6 @@ export class ReadBinaryFiles implements INodeType {
 
 		const items: INodeExecutionData[] = [];
 		for (const filePath of files) {
-			checkFilePathAccess(filePath);
-
 			const stream = await this.helpers.createReadStream(filePath);
 			items.push({
 				binary: {

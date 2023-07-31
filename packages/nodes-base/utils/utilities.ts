@@ -6,20 +6,8 @@ import type {
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
-import { CUSTOM_EXTENSION_ENV, UserSettings } from 'n8n-core';
 
 import { isEqual, isNull, merge } from 'lodash';
-
-import { resolve, join } from 'path';
-
-import {
-	BLOCK_FILE_ACCESS_TO_N8N_FILES,
-	RESTRICT_FILE_ACCESS_TO,
-	CONFIG_FILES,
-	BINARY_DATA_STORAGE_PATH,
-	UM_EMAIL_TEMPLATES_INVITE,
-	UM_EMAIL_TEMPLATES_PWRESET,
-} from './constants';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -37,8 +25,8 @@ import {
  * // => [['a', 'b', 'c'], ['d']]
  */
 
-export function chunk(array: any[], size = 1) {
-	const length = array == null ? 0 : array.length;
+export function chunk<T>(array: T[], size = 1) {
+	const length = array === null ? 0 : array.length;
 	if (!length || size < 1) {
 		return [];
 	}
@@ -49,7 +37,7 @@ export function chunk(array: any[], size = 1) {
 	while (index < length) {
 		result[resIndex++] = array.slice(index, (index += size));
 	}
-	return result;
+	return result as T[][];
 }
 
 /**
@@ -63,20 +51,22 @@ export function chunk(array: any[], size = 1) {
  *
  */
 
-export function flatten(nestedArray: any[][]) {
+export function flatten<T>(nestedArray: T[][]) {
 	const result = [];
 
-	(function loop(array: any[] | any) {
+	(function loop(array: T[] | T[][]) {
 		for (let i = 0; i < array.length; i++) {
 			if (Array.isArray(array[i])) {
-				loop(array[i]);
+				loop(array[i] as T[]);
 			} else {
 				result.push(array[i]);
 			}
 		}
 	})(nestedArray);
 
-	return result;
+	//TODO: check logic in MicrosoftSql.node.ts
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
+	return result as any;
 }
 
 export function updateDisplayOptions(
@@ -222,7 +212,7 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 export const keysToLowercase = <T>(headers: T) => {
 	if (typeof headers !== 'object' || Array.isArray(headers) || headers === null) return headers;
 	return Object.entries(headers).reduce((acc, [key, value]) => {
-		acc[key.toLowerCase()] = value;
+		acc[key.toLowerCase()] = value as IDataObject;
 		return acc;
 	}, {} as IDataObject);
 };
@@ -245,72 +235,4 @@ export function getResolvables(expression: string) {
 	}
 
 	return resolvables;
-}
-
-export const getAllowedPaths = () => {
-	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
-	if (!restrictFileAccessTo) {
-		return [];
-	}
-	const allowedPaths = restrictFileAccessTo
-		.split(';')
-		.map((path) => path.trim())
-		.filter((path) => path);
-	return allowedPaths;
-};
-
-export function checkFilePathAccess(filePath: string): void {
-	const allowedPaths = getAllowedPaths();
-	const resolvedFilePath = resolve(filePath);
-
-	if (allowedPaths.length) {
-		for (const path of allowedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				return;
-			}
-		}
-
-		throw new Error(
-			`Access to file "${filePath}" is not allowed. Allowed paths: ${allowedPaths.join(', ')}`,
-		);
-	}
-
-	const blockAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
-
-	if (blockAccessToN8nFiles) {
-		const restrictedPaths: string[] = [];
-
-		const userFolder = UserSettings.getUserHome();
-
-		if (userFolder) {
-			restrictedPaths.push(join(userFolder, '.n8n'));
-		}
-
-		if (process.env[CONFIG_FILES]) {
-			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
-		}
-
-		if (process.env[CUSTOM_EXTENSION_ENV]) {
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
-			restrictedPaths.push(...customExtensionFolders);
-		}
-
-		if (process.env[BINARY_DATA_STORAGE_PATH]) {
-			restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
-		}
-
-		if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
-			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
-		}
-
-		for (const path of restrictedPaths) {
-			if (resolvedFilePath.startsWith(path)) {
-				throw new Error(`Access to file "${filePath}" is not allowed.`);
-			}
-		}
-	}
 }

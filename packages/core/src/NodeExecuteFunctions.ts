@@ -113,14 +113,22 @@ import type {
 import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import { Readable } from 'stream';
-import { access as fsAccess } from 'fs/promises';
+import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
+import {
+	CUSTOM_EXTENSION_ENV,
+	PLACEHOLDER_EMPTY_EXECUTION_ID,
+	RESTRICT_FILE_ACCESS_TO,
+	CONFIG_FILES,
+	BINARY_DATA_STORAGE_PATH,
+	UM_EMAIL_TEMPLATES_INVITE,
+	UM_EMAIL_TEMPLATES_PWRESET,
+} from './Constants';
 import { binaryToBuffer } from './BinaryDataManager/utils';
 import {
 	getAllWorkflowExecutionMetadata,
@@ -2242,6 +2250,74 @@ const getRequestHelperFunctions = (
 	},
 });
 
+const getAllowedPaths = () => {
+	const restrictFileAccessTo = process.env[RESTRICT_FILE_ACCESS_TO];
+	if (!restrictFileAccessTo) {
+		return [];
+	}
+	const allowedPaths = restrictFileAccessTo
+		.split(';')
+		.map((path) => path.trim())
+		.filter((path) => path);
+	return allowedPaths;
+};
+
+function isFilePathBlocked(filePath: string): boolean {
+	const allowedPaths = getAllowedPaths();
+	const resolvedFilePath = path.resolve(filePath);
+	const userFolder = getUserN8nFolderPath();
+
+	//always restrict access to .n8n folder
+	if (resolvedFilePath.startsWith(userFolder)) {
+		return true;
+	}
+
+	//if allowed paths are defined, allow access only to those paths
+	if (allowedPaths.length) {
+		for (const path of allowedPaths) {
+			if (resolvedFilePath.startsWith(path)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	//based on .env config, restrict access to certain paths
+	const restrictedPaths: string[] = [];
+
+	if (process.env[CONFIG_FILES]) {
+		restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
+	}
+
+	if (process.env[CUSTOM_EXTENSION_ENV]) {
+		const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+		restrictedPaths.push(...customExtensionFolders);
+	}
+
+	if (process.env[BINARY_DATA_STORAGE_PATH]) {
+		restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
+	}
+
+	if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
+		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
+	}
+
+	if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
+		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
+	}
+
+	//check if the file path is restricted
+	for (const path of restrictedPaths) {
+		if (resolvedFilePath.startsWith(path)) {
+			return true;
+		}
+	}
+
+	//path is not restricted
+	return false;
+}
+
 const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(filePath) {
 		try {
@@ -2250,13 +2326,29 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 			throw error.code === 'ENOENT'
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
+						severity: 'warning',
 				  })
 				: error;
 		}
+		if (isFilePathBlocked(filePath as string)) {
+			throw new NodeOperationError(node, `The file "${String(filePath)}" could not be accessed.`, {
+				severity: 'warning',
+			});
+		}
 		return createReadStream(filePath);
 	},
+
 	getStoragePath() {
 		return path.join(getUserN8nFolderPath(), `storage/${node.type}`);
+	},
+
+	async writeContentToFile(filePath, content, flag) {
+		if (isFilePathBlocked(filePath as string)) {
+			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
+				severity: 'warning',
+			});
+		}
+		return fsWriteFile(filePath, content, { encoding: 'binary', flag });
 	},
 });
 
