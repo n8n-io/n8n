@@ -175,7 +175,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (user.id && workflow.id) {
-			const role = await this.roleService.getUserRoleForWorkflow(user.id, workflow.id);
+			const role = await this.roleService.findRoleByUserAndWorkflow(user.id, workflow.id);
 			if (role) {
 				userRole = role.name === 'owner' ? 'owner' : 'sharee';
 			}
@@ -381,7 +381,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
+					const role = await this.roleService.findRoleByUserAndWorkflow(userId, workflow.id);
 					if (role) {
 						userRole = role.name === 'owner' ? 'owner' : 'sharee';
 					}

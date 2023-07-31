@@ -50,19 +50,6 @@ export class RoleService {
 	}
 
 	/**
-	 * sharing state
-	 */
-
-	async getUserRoleForWorkflow(userId: string, workflowId: string) {
-		const shared = await this.sharedWorkflowRepository.findOne({
-			where: { workflowId, userId },
-			relations: ['role'],
-		});
-
-		return shared?.role;
-	}
-
-	/**
 	 * global owner
 	 */
 
@@ -132,5 +119,18 @@ export class RoleService {
 
 	async findCredentialUserRoleOrFail() {
 		return this.findCached('credential', 'user', { orFail: true });
+	}
+
+	/**
+	 * utils
+	 */
+
+	async findRoleByUserAndWorkflow(userId: string, workflowId: string) {
+		return this.sharedWorkflowRepository
+			.findOne({
+				where: { workflowId, userId },
+				relations: ['role'],
+			})
+			.then((shared) => shared?.role);
 	}
 }

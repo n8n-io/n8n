@@ -1,10 +1,23 @@
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { mockInstance } from '../../integration/shared/utils/';
 import { RoleService } from '@/services/role.service';
 import { RoleRepository } from '@/databases/repositories';
 import { CacheService } from '@/services/cache.service';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { chooseRandomly } from '../../integration/shared/random';
+
+const ROLE_PROPS: Array<{ name: RoleNames; scope: RoleScopes }> = [
+	{ name: 'owner', scope: 'global' },
+	{ name: 'member', scope: 'global' },
+	{ name: 'owner', scope: 'workflow' },
+	{ name: 'owner', scope: 'credential' },
+	{ name: 'user', scope: 'credential' },
+	{ name: 'editor', scope: 'workflow' },
+];
+
+export const uppercaseInitial = (str: string) => str[0].toUpperCase() + str.slice(1);
 
 describe('RoleService', () => {
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
@@ -15,18 +28,49 @@ describe('RoleService', () => {
 	const userId = '1';
 	const workflowId = '42';
 
-	describe('getUserRoleForWorkflow()', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	const { name, scope } = chooseRandomly(ROLE_PROPS);
+
+	const display = {
+		name: uppercaseInitial(name),
+		scope: uppercaseInitial(scope),
+	};
+
+	describe(`find${display.scope}${display.name}Role()`, () => {
+		test(`should return the ${scope} ${name} role if found`, async () => {
+			const role = roleRepository.create({ name, scope });
+			roleRepository.findRole.mockResolvedValueOnce(role);
+			const returnedRole = await roleRepository.findRole(scope, name);
+
+			expect(returnedRole).toBe(role);
+		});
+	});
+
+	describe(`find${display.scope}${display.name}RoleOrFail()`, () => {
+		test(`should throw if the ${scope} ${name} role is not found`, async () => {
+			roleRepository.findRole.mockRejectedValueOnce(new Error());
+
+			await expect(roleRepository.findRole(scope, name)).rejects.toThrow();
+		});
+	});
+
+	describe('findRoleByUserAndWorkflow()', () => {
 		test('should return the role if a shared workflow is found', async () => {
 			const sharedWorkflow = Object.assign(new SharedWorkflow(), { role: new Role() });
 			sharedWorkflowRepository.findOne.mockResolvedValueOnce(sharedWorkflow);
-			const role = await roleService.getUserRoleForWorkflow(userId, workflowId);
-			expect(role).toBe(sharedWorkflow.role);
+			const returnedRole = await roleService.findRoleByUserAndWorkflow(userId, workflowId);
+
+			expect(returnedRole).toBe(sharedWorkflow.role);
 		});
 
 		test('should return undefined if no shared workflow is found', async () => {
 			sharedWorkflowRepository.findOne.mockResolvedValueOnce(null);
-			const role = await roleService.getUserRoleForWorkflow(userId, workflowId);
-			expect(role).toBeUndefined();
+			const returnedRole = await roleService.findRoleByUserAndWorkflow(userId, workflowId);
+
+			expect(returnedRole).toBeUndefined();
 		});
 	});
 });
