@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { PostHogClient } from '@/posthog';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -148,7 +146,6 @@ export class Telemetry {
 					first: execTime,
 				};
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				this.executionCountsBuffer[workflowId][key]!.count++;
 			}
 

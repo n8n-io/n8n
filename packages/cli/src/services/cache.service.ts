@@ -9,6 +9,10 @@ import { LoggerProxy, jsonStringify } from 'n8n-workflow';
 
 @Service()
 export class CacheService {
+	/**
+	 * Keys and values:
+	 * - `'cache:workflow-owner:${workflowId}'`: `User`
+	 */
 	private cache: RedisCache | MemoryCache | undefined;
 
 	async init() {
@@ -22,7 +26,6 @@ export class CacheService {
 			backend === 'redis' ||
 			(backend === 'auto' && config.getEnv('executions.mode') === 'queue')
 		) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { redisInsStore } = await import('cache-manager-ioredis-yet');
 
 			// #region TEMPORARY Redis Client Code

@@ -46,7 +46,6 @@ export async function createCredential(
 	} else {
 		// Add the added date for node access permissions
 		newCredential.nodesAccess.forEach((nodeAccess) => {
-			// eslint-disable-next-line no-param-reassign
 			nodeAccess.date = new Date();
 		});
 	}
@@ -115,7 +114,6 @@ export function sanitizeCredentials(
 	const credentialsList = argIsArray ? credentials : [credentials];
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { data, nodesAccess, shared, ...rest } = credential;
 		return rest;
 	});
@@ -191,7 +189,6 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			let dependantValue: string | number | boolean = '';
 
 			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
-				// eslint-disable-next-line prefer-destructuring
 				dependantValue = displayOptionsValues[0];
 			}
 

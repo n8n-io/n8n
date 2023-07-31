@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';

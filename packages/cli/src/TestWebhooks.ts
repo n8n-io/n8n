@@ -1,6 +1,3 @@
-/* eslint-disable consistent-return */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-param-reassign */
 import type express from 'express';
 import { Service } from 'typedi';
 
@@ -69,7 +66,7 @@ export class TestWebhooks {
 		if (webhookData === undefined) {
 			const pathElements = path.split('/');
 			const webhookId = pathElements.shift();
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 			webhookData = activeWebhooks.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
@@ -117,7 +114,6 @@ export class TestWebhooks {
 			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
-		// eslint-disable-next-line no-async-promise-executor
 		return new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
@@ -211,7 +207,7 @@ export class TestWebhooks {
 
 		let key: string;
 		const activatedKey: string[] = [];
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const webhookData of webhooks) {
 			key = `${activeWebhooks.getWebhookKey(
 				webhookData.httpMethod,
@@ -230,11 +226,10 @@ export class TestWebhooks {
 			};
 
 			try {
-				// eslint-disable-next-line no-await-in-loop
 				await activeWebhooks.add(workflow, webhookData, mode, activation);
 			} catch (error) {
 				activatedKey.forEach((deleteKey) => delete testWebhookData[deleteKey]);
-				// eslint-disable-next-line no-await-in-loop
+
 				await activeWebhooks.removeWorkflow(workflow);
 				throw error;
 			}
@@ -250,12 +245,11 @@ export class TestWebhooks {
 	cancelTestWebhook(workflowId: string): boolean {
 		let foundWebhook = false;
 		const { activeWebhooks, push, testWebhookData } = this;
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const webhookKey of Object.keys(testWebhookData)) {
 			const { sessionId, timeout, workflow, workflowData } = testWebhookData[webhookKey];
 
 			if (workflowData.id !== workflowId) {
-				// eslint-disable-next-line no-continue
 				continue;
 			}
 
