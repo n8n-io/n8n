@@ -1,17 +1,21 @@
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { Role } from '@db/entities/Role';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { OldRoleService } from '@/role/role.service';
 import { mockInstance } from '../../integration/shared/utils/';
+import { RoleService } from '@/services/role.service';
+import { RoleRepository } from '@/databases/repositories';
+import { CacheService } from '@/services/cache.service';
 
 describe('RoleService', () => {
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
-	const roleService = new OldRoleService(sharedWorkflowRepository);
+	const roleRepository = mockInstance(RoleRepository);
+	const cacheService = mockInstance(CacheService);
+	const roleService = new RoleService(roleRepository, sharedWorkflowRepository, cacheService);
 
 	const userId = '1';
 	const workflowId = '42';
 
-	describe('getUserRoleForWorkflow', () => {
+	describe('getUserRoleForWorkflow()', () => {
 		test('should return the role if a shared workflow is found', async () => {
 			const sharedWorkflow = Object.assign(new SharedWorkflow(), { role: new Role() });
 			sharedWorkflowRepository.findOne.mockResolvedValueOnce(sharedWorkflow);

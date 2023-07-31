@@ -22,7 +22,6 @@ import type {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import { OldRoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import { EventsService } from '@/services/events.service';
 import type { User } from '@db/entities/User';
@@ -30,6 +29,7 @@ import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from '@db/repositories';
+import { RoleService } from './services/role.service';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -62,7 +62,7 @@ export class InternalHooks implements IInternalHooksClass {
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
-		private roleService: OldRoleService,
+		private roleService: RoleService,
 		private executionRepository: ExecutionRepository,
 		eventsService: EventsService,
 	) {

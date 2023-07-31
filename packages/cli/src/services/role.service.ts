@@ -103,14 +103,14 @@ export class RoleService {
 		return this.findRole('credential', 'user', options);
 	}
 
+	// utils
+
 	async getUserRoleForWorkflow(userId: string, workflowId: string) {
 		const shared = await this.sharedWorkflowRepository.findOne({
 			where: { workflowId, userId },
 			relations: ['role'],
 		});
 
-		if (!shared) return null;
-
-		return shared.role;
+		return shared?.role;
 	}
 }

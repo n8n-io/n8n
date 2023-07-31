@@ -124,7 +124,6 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
-
 		return this.cache?.store.get(key) as T;
 	}
 
