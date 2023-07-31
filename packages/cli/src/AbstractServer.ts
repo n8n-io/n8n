@@ -243,7 +243,7 @@ export abstract class AbstractServer {
 
 			// Register a handler for waiting webhooks
 			this.app.all(
-				`/${this.endpointWebhookWaiting}/:path`,
+				`/${this.endpointWebhookWaiting}/:path/:suffix?`,
 				webhookRequestHandler(Container.get(WaitingWebhooks)),
 			);
 		}

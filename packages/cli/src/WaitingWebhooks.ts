@@ -9,7 +9,7 @@ import type {
 	IResponseCallbackData,
 	IWebhookManager,
 	IWorkflowDb,
-	WebhookRequest,
+	WaitingWebhookRequest,
 } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ExecutionRepository } from '@db/repositories';
@@ -25,8 +25,11 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	// TODO: implement `getWebhookMethods` for CORS support
 
-	async executeWebhook(req: WebhookRequest, res: express.Response): Promise<IResponseCallbackData> {
-		const { path: executionId } = req.params;
+	async executeWebhook(
+		req: WaitingWebhookRequest,
+		res: express.Response,
+	): Promise<IResponseCallbackData> {
+		const { path: executionId, suffix } = req.params;
 		Logger.debug(`Received waiting-webhook "${req.method}" for execution "${executionId}"`);
 
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
@@ -87,7 +90,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		).find(
 			(webhook) =>
 				webhook.httpMethod === req.method &&
-				webhook.path === executionId &&
+				webhook.path === (suffix ?? '') &&
 				webhook.webhookDescription.restartWebhook === true,
 		);
 
