@@ -9,11 +9,12 @@ import { In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { getRoleId, isSharingEnabled } from './UserManagementHelper';
+import { isSharingEnabled } from './UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { UserService } from '@/user/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import Container from 'typedi';
+import { RoleService } from '@/services/role.service';
 
 export class PermissionChecker {
 	/**
@@ -54,8 +55,9 @@ export class PermissionChecker {
 		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
 
 		if (!isSharingEnabled()) {
+			const role = await Container.get(RoleService).findCredentialOwnerRoleOrFail();
 			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhere.roleId = await getRoleId('credential', 'owner');
+			credentialsWhere.roleId = role.id;
 		}
 
 		const credentialSharings = await Db.collections.SharedCredentials.find({

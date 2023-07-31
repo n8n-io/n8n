@@ -49,10 +49,6 @@ export class RoleService {
 		return dbRole;
 	}
 
-	private async findRoleOrFail(scope: RoleScopes, name: RoleNames): Promise<Role> {
-		return this.roleRepository.findOneOrFail({ where: { scope, name } });
-	}
-
 	/**
 	 * sharing state
 	 */
@@ -136,13 +132,5 @@ export class RoleService {
 
 	async findCredentialUserRoleOrFail() {
 		return this.findCached('credential', 'user', { orFail: true });
-	}
-
-	/**
-	 * utils
-	 */
-
-	async getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
-		return this.findRoleOrFail(scope, name).then((role) => role.id);
 	}
 }
