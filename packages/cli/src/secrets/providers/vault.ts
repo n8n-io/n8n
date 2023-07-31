@@ -249,6 +249,7 @@ export class VaultProvider extends SecretsProvider {
 			this.#http.interceptors.request.use((config) => {
 				return {
 					...config,
+					// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
 					headers: { ...config.headers, 'X-Vault-Namespace': this.settings.namespace },
 				};
 			});
@@ -375,13 +376,13 @@ export class VaultProvider extends SecretsProvider {
 		}
 	}
 
-	private async authAppRole(role_id: string, secret_id: string): Promise<string | null> {
+	private async authAppRole(roleId: string, secretId: string): Promise<string | null> {
 		try {
 			const resp = await this.#http.request<VaultAppRoleResp>({
 				method: 'POST',
-				url: `auth/approle/login`,
+				url: 'auth/approle/login',
 				responseType: 'json',
-				data: { role_id, secret_id },
+				data: { role_id: roleId, secret_id: secretId },
 			});
 
 			return resp.data.auth.client_token;

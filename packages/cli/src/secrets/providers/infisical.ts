@@ -65,7 +65,10 @@ export class InfisicalProvider implements SecretsProvider {
 
 	async update(): Promise<void> {
 		if (!this.client) {
-			return;
+			throw new Error('Updated attempted on Infisical when initialization failed');
+		}
+		if (!(await this.test())[0]) {
+			throw new Error('Infisical provider test failed during update');
 		}
 		const secrets = (await this.client.getAllSecrets()) as InfisicalSecret[];
 		const newCache = Object.fromEntries(

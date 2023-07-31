@@ -1,6 +1,7 @@
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
 import { NotFoundError } from '@/ResponseHelper';
+import { Response } from 'express';
 import { Service } from 'typedi';
 import { ProviderNotFoundError, SecretsService } from './secrets.service.ee';
 
@@ -29,10 +30,16 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/test')
-	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings) {
+	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings, res: Response) {
 		const providerName = req.params.provider;
 		try {
-			return await this.secretsService.testProviderSettings(providerName, req.body);
+			const result = await this.secretsService.testProviderSettings(providerName, req.body);
+			if (result.success) {
+				res.statusCode = 200;
+			} else {
+				res.statusCode = 400;
+			}
+			return result;
 		} catch (e) {
 			if (e instanceof ProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
@@ -70,10 +77,16 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/update')
-	async updateProvider(req: ExternalSecretsRequest.UpdateProvider) {
+	async updateProvider(req: ExternalSecretsRequest.UpdateProvider, res: Response) {
 		const providerName = req.params.provider;
 		try {
-			return { updated: await this.secretsService.updateProvider(providerName) };
+			const resp = await this.secretsService.updateProvider(providerName);
+			if (resp) {
+				res.statusCode = 200;
+			} else {
+				res.statusCode = 400;
+			}
+			return { updated: resp };
 		} catch (e) {
 			if (e instanceof ProviderNotFoundError) {
 				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
