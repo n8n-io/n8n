@@ -37,6 +37,7 @@ import { UserService } from './user/user.service';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
 import { RoleService } from './services/role.service';
+import { RoleRepository } from './databases/repositories';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -377,10 +378,17 @@ export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Pro
 		where.userId = user.id;
 	}
 	if (roles?.length) {
-		const roleIds = await Db.collections.Role.find({
-			select: ['id'],
-			where: { name: In(roles), scope: 'workflow' },
-		}).then((data) => data.map(({ id }) => id));
+		const roleIds = await Container.get(RoleRepository)
+			.find({
+				select: ['id'],
+				where: { name: In(roles), scope: 'workflow' },
+			})
+			.then((role) => role.map(({ id }) => id));
+
+		// const roleIds = await Db.collections.Role.find({
+		// 	select: ['id'],
+		// 	where: { name: In(roles), scope: 'workflow' },
+		// }).then((data) => data.map(({ id }) => id));
 		where.roleId = In(roleIds);
 	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
