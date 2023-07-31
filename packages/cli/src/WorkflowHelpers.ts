@@ -385,10 +385,6 @@ export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Pro
 			})
 			.then((role) => role.map(({ id }) => id));
 
-		// const roleIds = await Db.collections.Role.find({
-		// 	select: ['id'],
-		// 	where: { name: In(roles), scope: 'workflow' },
-		// }).then((data) => data.map(({ id }) => id));
 		where.roleId = In(roleIds);
 	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
