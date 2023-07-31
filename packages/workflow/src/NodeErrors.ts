@@ -1,11 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable no-param-reassign */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-// eslint-disable-next-line max-classes-per-file
+
 import { parseString } from 'xml2js';
 import { removeCircularRefs, isTraversableObject } from './utils';
 import type { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
@@ -146,7 +143,6 @@ export abstract class NodeError extends ExecutionBaseError {
 		potentialKeys: string[],
 		traversalKeys: string[] = [],
 	): string | null {
-		// eslint-disable-next-line no-restricted-syntax
 		for (const key of potentialKeys) {
 			const value = jsonError[key];
 			if (value) {
@@ -178,7 +174,6 @@ export abstract class NodeError extends ExecutionBaseError {
 			}
 		}
 
-		// eslint-disable-next-line no-restricted-syntax
 		for (const key of traversalKeys) {
 			const value = jsonError[key];
 			if (isTraversableObject(value)) {
@@ -356,14 +351,13 @@ export class NodeApiError extends NodeError {
 	}
 
 	private setDescriptionFromXml(xml: string) {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				result[topLevelKey],
 				ERROR_MESSAGE_PROPERTIES,
 				['Error'].concat(ERROR_NESTING_PROPERTIES),

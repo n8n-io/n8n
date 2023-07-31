@@ -22,7 +22,6 @@ export class CacheService {
 			backend === 'redis' ||
 			(backend === 'auto' && config.getEnv('executions.mode') === 'queue')
 		) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { redisInsStore } = await import('cache-manager-ioredis-yet');
 
 			// #region TEMPORARY Redis Client Code

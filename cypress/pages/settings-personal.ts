@@ -25,7 +25,6 @@ export class PersonalSettingsPage extends BasePage {
 			this.getters.saveSettingsButton().realClick();
 		},
 		updatePassword: (oldPassword: string, newPassword: string) => {
-			this.getters.changePasswordLink().realClick();
 			changePasswordModal.getters.modalContainer().should('be.visible');
 			changePasswordModal.getters.currentPasswordInput().type('{selectall}').type(oldPassword);
 			changePasswordModal.getters.newPasswordInput().type('{selectall}').type(newPassword);
