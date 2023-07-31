@@ -27,7 +27,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			// eslint-disable-next-line n8n-nodes-base/cred-class-field-unobscured-sensitive-input
+			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
 			type: 'string',
 			required: true,
 			default: '',
