@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { deepCopy, NodeOperationError, jsonParse, validateFieldType } from 'n8n-workflow';
 
-import set from 'lodash.set';
+import set from 'lodash/set';
 
 import type { SetNodeOptions, SetField } from './interfaces';
 import { INCLUDE } from './interfaces';

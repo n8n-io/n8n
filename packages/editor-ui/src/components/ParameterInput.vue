@@ -128,7 +128,6 @@
 					:language="'json'"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
-					@valueChanged="valueChangedDebounced"
 					@update:modelValue="valueChangedDebounced"
 				/>
 
