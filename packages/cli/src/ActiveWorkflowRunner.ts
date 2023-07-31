@@ -42,6 +42,7 @@ import type {
 	IWebhookManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
+	WebhookRequest,
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -186,11 +187,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
 	async executeWebhook(
-		httpMethod: IHttpRequestMethods,
-		path: string,
-		req: express.Request,
-		res: express.Response,
+		request: WebhookRequest,
+		response: express.Response,
 	): Promise<IResponseCallbackData> {
+		const httpMethod = request.method;
+		let path = request.params.path;
+
 		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 
 		// Remove trailing slash
@@ -250,14 +252,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 
 			// @ts-ignore
-
 			path = webhook.webhookPath;
 			// extracting params from path
 			// @ts-ignore
 			webhook.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
-					req.params[ele.slice(1)] = pathElements[index];
+					// @ts-ignore
+					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});
 		}
@@ -312,9 +314,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				undefined,
 				undefined,
 				undefined,
-				req,
-				res,
-
+				request,
+				response,
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);

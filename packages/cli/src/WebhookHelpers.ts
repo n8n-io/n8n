@@ -51,6 +51,7 @@ import type {
 	IWebhookManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
+	WebhookCORSRequest,
 	WebhookRequest,
 } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
@@ -83,7 +84,8 @@ const xmlParser = new XmlParser({
 });
 
 export const webhookRequestHandler =
-	(webhookManager: IWebhookManager) => async (req: WebhookRequest, res: express.Response) => {
+	(webhookManager: IWebhookManager) =>
+	async (req: WebhookRequest | WebhookCORSRequest, res: express.Response) => {
 		const { path } = req.params;
 		const method = req.method;
 
@@ -113,7 +115,7 @@ export const webhookRequestHandler =
 
 		let response;
 		try {
-			response = await webhookManager.executeWebhook(method, path, req, res);
+			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
 			return ResponseHelper.sendErrorResponse(res, error as Error);
 		}
@@ -202,7 +204,7 @@ export async function executeWebhook(
 	sessionId: string | undefined,
 	runExecutionData: IRunExecutionData | undefined,
 	executionId: string | undefined,
-	req: express.Request,
+	req: WebhookRequest,
 	res: express.Response,
 	responseCallback: (error: Error | null, data: IResponseCallbackData) => void,
 	destinationNode?: string,

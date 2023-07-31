@@ -11,7 +11,12 @@ import type {
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
-import type { IResponseCallbackData, IWebhookManager, IWorkflowDb } from '@/Interfaces';
+import type {
+	IResponseCallbackData,
+	IWebhookManager,
+	IWorkflowDb,
+	WebhookRequest,
+} from '@/Interfaces';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -45,13 +50,11 @@ export class TestWebhooks implements IWebhookManager {
 	 * automatically remove the test-webhook.
 	 */
 	async executeWebhook(
-		httpMethod: IHttpRequestMethods,
-		path: string,
-		request: express.Request,
+		request: WebhookRequest,
 		response: express.Response,
 	): Promise<IResponseCallbackData> {
-		// Reset request parameters
-		request.params = {};
+		const httpMethod = request.method;
+		let path = request.params.path;
 
 		// Remove trailing slash
 		if (path.endsWith('/')) {
@@ -82,6 +85,7 @@ export class TestWebhooks implements IWebhookManager {
 			path.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
+					// @ts-ignore
 					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});

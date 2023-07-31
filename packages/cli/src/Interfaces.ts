@@ -301,18 +301,13 @@ export interface IExternalHooksClass {
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
-export type WebhookRequest = Request<{ path: string }> & {
-	method: IHttpRequestMethods | 'OPTIONS';
-};
+export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
+
+export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
 
 export interface IWebhookManager {
 	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
-	executeWebhook(
-		httpMethod: IHttpRequestMethods,
-		path: string,
-		req: Request,
-		res: Response,
-	): Promise<IResponseCallbackData>;
+	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
 }
 
 export interface IDiagnosticInfo {
