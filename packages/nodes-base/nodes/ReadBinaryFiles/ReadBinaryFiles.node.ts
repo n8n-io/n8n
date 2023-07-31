@@ -1,8 +1,8 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import glob from 'fast-glob';

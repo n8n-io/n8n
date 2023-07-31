@@ -2331,7 +2331,9 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				: error;
 		}
 		if (isFilePathBlocked(filePath as string)) {
-			throw new NodeOperationError(node, `The file "${String(filePath)}" could not be accessed.`, {
+			const aollowedPaths = getAllowedPaths();
+			const message = aollowedPaths.length ? ` Allowed paths: ${aollowedPaths.join(', ')}` : '';
+			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
 				severity: 'warning',
 			});
 		}
