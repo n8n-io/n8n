@@ -8,7 +8,6 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 	IDeferredPromise,
-	INodeExecutionData,
 	IRun,
 } from 'n8n-workflow';
 import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
