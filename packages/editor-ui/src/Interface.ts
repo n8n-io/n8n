@@ -1451,8 +1451,6 @@ export type SamlPreferencesExtractedData = {
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
-	authorName: string;
-	authorEmail: string;
 	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
@@ -1550,9 +1548,7 @@ export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
 	| 'upgrade-canvas-nav'
 	| 'upgrade-workflow-sharing'
-	| 'upgrade-canvas-nav'
 	| 'upgrade-credentials-sharing'
-	| 'upgrade-workflow-sharing'
 	| 'upgrade-api'
 	| 'upgrade-audit-logs'
 	| 'upgrade-ldap'

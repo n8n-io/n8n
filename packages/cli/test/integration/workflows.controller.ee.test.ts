@@ -759,13 +759,12 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 		await authMemberAgent
 			.patch(`/workflows/${id}`)
-			.send({ active: true, versionId: memberVersionId });
-
+			.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
 		// owner blocked from activating workflow
 
 		const activationAttemptResponse = await authOwnerAgent
 			.patch(`/workflows/${id}`)
-			.send({ active: true, versionId: ownerVersionId });
+			.send({ active: true, versionId: ownerVersionId, name: 'Update by owner' });
 
 		expect(activationAttemptResponse.status).toBe(400);
 		expect(activationAttemptResponse.body.code).toBe(100);
@@ -793,13 +792,13 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		await authOwnerAgent
 			.patch(`/workflows/${id}`)
-			.send({ active: true, versionId: ownerSecondVersionId });
+			.send({ active: true, versionId: ownerSecondVersionId, name: 'Owner update again' });
 
 		// member blocked from activating workflow
 
 		const updateAttemptResponse = await authMemberAgent
 			.patch(`/workflows/${id}`)
-			.send({ active: true, versionId: memberVersionId });
+			.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.code).toBe(100);

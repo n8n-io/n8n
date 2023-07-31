@@ -22,7 +22,11 @@ export function expects<Keys extends keyof ClientOAuth2Options>(
 }
 
 export class AuthError extends Error {
-	constructor(message: string, readonly body: any, readonly code = 'EAUTH') {
+	constructor(
+		message: string,
+		readonly body: any,
+		readonly code = 'EAUTH',
+	) {
 		super(message);
 	}
 }
@@ -63,14 +67,15 @@ export function auth(username: string, password: string): string {
  */
 export function getRequestOptions(
 	{ url, method, body, query, headers }: ClientOAuth2RequestObject,
-	options: any,
+	options: ClientOAuth2Options,
 ): ClientOAuth2RequestObject {
 	const rOptions = {
 		url,
 		method,
 		body: { ...body, ...options.body },
 		query: { ...query, ...options.query },
-		headers: { ...headers, ...options.headers },
+		headers: headers ?? {},
+		ignoreSSLIssues: options.ignoreSSLIssues,
 	};
 	// if request authorization was overridden delete it from header
 	if (rOptions.headers.Authorization === '') {

@@ -50,6 +50,7 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
+import { JwtService } from '@/services/jwt.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -182,6 +183,7 @@ export const setupTestServer = ({
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
+			const jwtService = Container.get(JwtService);
 			const repositories = Db.collections;
 
 			for (const group of functionEndpoints) {
@@ -238,6 +240,7 @@ export const setupTestServer = ({
 								internalHooks,
 								mailer,
 								repositories,
+								jwtService,
 							}),
 						);
 						break;
@@ -260,6 +263,7 @@ export const setupTestServer = ({
 								repositories,
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
+								jwtService,
 							}),
 						);
 						break;

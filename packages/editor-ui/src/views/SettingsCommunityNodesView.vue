@@ -38,7 +38,7 @@
 				:buttonText="getEmptyStateButtonText"
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
-				@click="onClickEmptyStateButton"
+				@click:button="onClickEmptyStateButton"
 			/>
 		</div>
 		<div :class="$style.cardsContainer" v-else>
@@ -79,6 +79,7 @@ export default defineComponent({
 	setup(props) {
 		return {
 			...useToast(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props),
 		};
 	},
@@ -92,7 +93,7 @@ export default defineComponent({
 		this.pushConnect();
 
 		try {
-			this.$data.loading = true;
+			this.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
 
 			const installedPackages: PublicInstalledPackage[] =
@@ -126,15 +127,15 @@ export default defineComponent({
 				this.$locale.baseText('settings.communityNodes.fetchError.message'),
 			);
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 		try {
 			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.pushDisconnect();
 	},
 	computed: {
