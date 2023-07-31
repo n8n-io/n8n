@@ -2269,11 +2269,6 @@ function isFilePathBlocked(filePath: string): boolean {
 	const userFolder = getUserN8nFolderPath();
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
-	//restrict access to .n8n folder
-	if (blockFileAccessToN8nFiles && resolvedFilePath.startsWith(userFolder)) {
-		return true;
-	}
-
 	//if allowed paths are defined, allow access only to those paths
 	if (allowedPaths.length) {
 		for (const path of allowedPaths) {
@@ -2285,34 +2280,36 @@ function isFilePathBlocked(filePath: string): boolean {
 		return true;
 	}
 
-	//based on .env config, restrict access to certain paths
-	const restrictedPaths: string[] = [];
+	//restrict access to .n8n folder and other .env config related paths
+	if (blockFileAccessToN8nFiles) {
+		const restrictedPaths: string[] = [userFolder];
 
-	if (process.env[CONFIG_FILES]) {
-		restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
-	}
+		if (process.env[CONFIG_FILES]) {
+			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
+		}
 
-	if (process.env[CUSTOM_EXTENSION_ENV]) {
-		const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
-		restrictedPaths.push(...customExtensionFolders);
-	}
+		if (process.env[CUSTOM_EXTENSION_ENV]) {
+			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+			restrictedPaths.push(...customExtensionFolders);
+		}
 
-	if (process.env[BINARY_DATA_STORAGE_PATH]) {
-		restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
-	}
+		if (process.env[BINARY_DATA_STORAGE_PATH]) {
+			restrictedPaths.push(process.env[BINARY_DATA_STORAGE_PATH]);
+		}
 
-	if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
-		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
-	}
+		if (process.env[UM_EMAIL_TEMPLATES_INVITE]) {
+			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_INVITE]);
+		}
 
-	if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
-		restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
-	}
+		if (process.env[UM_EMAIL_TEMPLATES_PWRESET]) {
+			restrictedPaths.push(process.env[UM_EMAIL_TEMPLATES_PWRESET]);
+		}
 
-	//check if the file path is restricted
-	for (const path of restrictedPaths) {
-		if (resolvedFilePath.startsWith(path)) {
-			return true;
+		//check if the file path is restricted
+		for (const path of restrictedPaths) {
+			if (resolvedFilePath.startsWith(path)) {
+				return true;
+			}
 		}
 	}
 
