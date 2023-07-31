@@ -123,6 +123,7 @@ import { getClientCredentialsToken } from './OAuth2Helper';
 import {
 	CUSTOM_EXTENSION_ENV,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
+	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	RESTRICT_FILE_ACCESS_TO,
 	CONFIG_FILES,
 	BINARY_DATA_STORAGE_PATH,
@@ -2266,9 +2267,10 @@ function isFilePathBlocked(filePath: string): boolean {
 	const allowedPaths = getAllowedPaths();
 	const resolvedFilePath = path.resolve(filePath);
 	const userFolder = getUserN8nFolderPath();
+	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
-	//always restrict access to .n8n folder
-	if (resolvedFilePath.startsWith(userFolder)) {
+	//restrict access to .n8n folder
+	if (blockFileAccessToN8nFiles && resolvedFilePath.startsWith(userFolder)) {
 		return true;
 	}
 
