@@ -482,6 +482,18 @@ export const schema = {
 	},
 
 	security: {
+		restrictFileAccessTo: {
+			doc: 'If set only files in that directories can be accessed. Multiple directories can be separated by semicolon (";").',
+			format: String,
+			default: '',
+			env: 'N8N_RESTRICT_FILE_ACCESS_TO',
+		},
+		blockFileAccessToN8nFiles: {
+			doc: 'If set to true it will block access to all files in the ".n8n" directory and user defined config files.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES',
+		},
 		audit: {
 			daysAbandonedWorkflow: {
 				doc: 'Days for a workflow to be considered abandoned if not executed',

@@ -54,7 +54,9 @@ export default defineComponent({
 		this.observer = observer;
 
 		this.eventBus.on('observe', (observed: Element) => {
-			observer.observe(observed);
+			if (observed) {
+				observer.observe(observed);
+			}
 		});
 
 		this.eventBus.on('unobserve', (observed: Element) => {
