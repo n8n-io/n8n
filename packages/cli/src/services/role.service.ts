@@ -16,6 +16,8 @@ export class RoleService {
 	async primeCache() {
 		const allRoles = await this.roleRepository.find({});
 
+		if (!allRoles) return;
+
 		void this.cacheService.setMany<Role>(
 			allRoles.map((role) => [`cache:role:${role.scope}:${role.name}`, role]),
 		);
