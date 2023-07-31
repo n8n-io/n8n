@@ -8,7 +8,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleService } from '@/role/role.service';
+import { OldRoleService } from '@/role/role.service';
 import { UserService } from '@/user/user.service';
 import { WorkflowsService } from './workflows.services';
 import type {
@@ -70,7 +70,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	): Promise<SharedWorkflow[]> {
 		const [users, role] = await Promise.all([
 			UserService.getByIds(transaction, shareWithIds),
-			RoleService.trxGet(transaction, { scope: 'workflow', name: 'editor' }),
+			OldRoleService.trxGet(transaction, { scope: 'workflow', name: 'editor' }),
 		]);
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {

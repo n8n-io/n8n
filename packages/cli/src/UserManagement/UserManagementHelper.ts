@@ -8,11 +8,11 @@ import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import type { PostHogClient } from '@/posthog';
+import { RoleService } from '@/services/role.service';
 
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
@@ -28,7 +28,7 @@ export function isSharingEnabled(): boolean {
 }
 
 export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
-	return Container.get(RoleRepository)
+	return Container.get(RoleService)
 		.findRoleOrFail(scope, name)
 		.then((role) => role.id);
 }

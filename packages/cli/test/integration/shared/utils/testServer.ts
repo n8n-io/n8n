@@ -51,6 +51,7 @@ import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } f
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
+import { RoleService } from '@/services/role.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -264,6 +265,7 @@ export const setupTestServer = ({
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
 								jwtService,
+								roleService: Container.get(RoleService),
 							}),
 						);
 						break;

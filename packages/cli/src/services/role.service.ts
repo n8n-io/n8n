@@ -1,4 +1,4 @@
-import { RoleRepository } from '@/databases/repositories';
+import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositories';
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import type { Role, RoleNames, RoleScopes } from '@/databases/entities/Role';
@@ -7,21 +7,32 @@ import type { Role, RoleNames, RoleScopes } from '@/databases/entities/Role';
 export class RoleService {
 	constructor(
 		private roleRepository: RoleRepository,
+		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private cacheService: CacheService,
 	) {}
 
-	private async findRole(scope: RoleScopes, name: RoleNames, { orFail } = { orFail: false }) {
+	// @TODO: Prepopulate cache
+
+	private async findRole(
+		scope: RoleScopes,
+		name: RoleNames,
+		options: { orFail: true },
+	): Promise<Role>;
+	private async findRole(
+		scope: RoleScopes,
+		name: RoleNames,
+		options: { orFail: false },
+	): Promise<Role | null>;
+	private async findRole(scope: RoleScopes, name: RoleNames, options: { orFail: boolean }) {
 		const cacheKey = `cache:role:${scope}:${name}`;
 
-		const cachedRole = await this.cacheService.get<Role>(cacheKey, (value: Role) =>
-			this.roleRepository.create(value),
-		);
+		const cachedRole = await this.cacheService.get<Role>(cacheKey);
 
-		if (cachedRole) return cachedRole;
+		if (cachedRole) return this.roleRepository.create(cachedRole);
 
 		let dbRole: Role | null;
 
-		if (orFail) {
+		if (options.orFail) {
 			dbRole = await this.roleRepository.findRoleOrFail(scope, name);
 		} else {
 			dbRole = await this.roleRepository.findRole(scope, name);
@@ -34,27 +45,72 @@ export class RoleService {
 		return dbRole;
 	}
 
-	async findGlobalOwnerRole(options = { orFail: false }) {
-		return this.findRole('global', 'owner', options);
+	async findRoleOrFail(scope: RoleScopes, name: RoleNames): Promise<Role> {
+		return this.roleRepository.findOneOrFail({ where: { scope, name } });
 	}
 
-	async findGlobalMemberRole(options = { orFail: false }) {
-		return this.findRole('global', 'member', options);
+	async findGlobalOwnerRole() {
+		return this.findRole('global', 'owner', { orFail: false });
 	}
 
-	async findWorkflowOwnerRole(options = { orFail: false }) {
-		return this.findRole('workflow', 'owner', options);
+	async findGlobalOwnerRoleOrFail() {
+		const whoa = await this.findRole('global', 'owner', { orFail: true });
+
+		return whoa;
 	}
 
-	async findWorkflowEditorRole(options = { orFail: false }) {
-		return this.findRole('workflow', 'editor', options);
+	async findGlobalMemberRole() {
+		return this.findRole('global', 'member', { orFail: false });
 	}
 
-	async findCredentialOwnerRole(options = { orFail: false }) {
-		return this.findRole('credential', 'owner', options);
+	async findGlobalMemberRoleOrFail() {
+		return this.findRole('global', 'member', { orFail: true });
 	}
 
-	async findCredentialUserRole(options = { orFail: false }) {
+	// workflow owner
+
+	async findWorkflowOwnerRole() {
+		return this.findRole('workflow', 'owner', { orFail: false });
+	}
+
+	async findWorkflowOwnerRoleOrFail() {
+		return this.findRole('workflow', 'owner', { orFail: true });
+	}
+
+	// workflow editor
+
+	async findWorkflowEditorRole() {
+		return this.findRole('workflow', 'editor', { orFail: false });
+	}
+
+	async findWorkflowEditorRoleOrFail() {
+		return this.findRole('workflow', 'editor', { orFail: true });
+	}
+
+	// credential owner
+
+	async findCredentialOwnerRole() {
+		return this.findRole('credential', 'owner', { orFail: false });
+	}
+
+	async findCredentialOwnerRoleOrFail() {
+		return this.findRole('credential', 'owner', { orFail: true });
+	}
+
+	// credential user
+
+	async findCredentialUserRole(options = { orFail: false as const }) {
 		return this.findRole('credential', 'user', options);
+	}
+
+	async getUserRoleForWorkflow(userId: string, workflowId: string) {
+		const shared = await this.sharedWorkflowRepository.findOne({
+			where: { workflowId, userId },
+			relations: ['role'],
+		});
+
+		if (!shared) return null;
+
+		return shared.role;
 	}
 }

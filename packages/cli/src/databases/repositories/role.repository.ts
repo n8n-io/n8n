@@ -9,6 +9,8 @@ export class RoleRepository extends Repository<Role> {
 		super(Role, dataSource.manager);
 	}
 
+	// @TODO: Remove some methods?
+
 	async findGlobalOwnerRole(): Promise<Role | null> {
 		return this.findRole('global', 'owner');
 	}

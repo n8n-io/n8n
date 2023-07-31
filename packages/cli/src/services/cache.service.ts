@@ -120,16 +120,12 @@ export class CacheService {
 		return this.cache;
 	}
 
-	async get<T>(key: string, transform?: (t: T) => T): Promise<T> {
+	async get<T>(key: string): Promise<T> {
 		if (!this.cache) {
 			await this.init();
 		}
 
-		const cached = this.cache?.store.get(key) as T;
-
-		if (transform) return transform(cached);
-
-		return cached;
+		return this.cache?.store.get(key) as T;
 	}
 
 	async set<T>(key: string, value: T, ttl?: number): Promise<void> {

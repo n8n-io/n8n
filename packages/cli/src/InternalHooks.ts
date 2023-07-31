@@ -22,7 +22,7 @@ import type {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import { RoleService } from './role/role.service';
+import { OldRoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import { EventsService } from '@/services/events.service';
 import type { User } from '@db/entities/User';
@@ -62,7 +62,7 @@ export class InternalHooks implements IInternalHooksClass {
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
-		private roleService: RoleService,
+		private roleService: OldRoleService,
 		private executionRepository: ExecutionRepository,
 		eventsService: EventsService,
 	) {

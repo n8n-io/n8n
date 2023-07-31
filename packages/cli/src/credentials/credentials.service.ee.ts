@@ -1,7 +1,7 @@
 import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
 import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
-import { RoleService } from '@/role/role.service';
+import { OldRoleService } from '@/role/role.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
@@ -79,7 +79,7 @@ export class EECredentialsService extends CredentialsService {
 	): Promise<SharedCredentials[]> {
 		const [users, role] = await Promise.all([
 			UserService.getByIds(transaction, shareWithIds),
-			RoleService.trxGet(transaction, { scope: 'credential', name: 'user' }),
+			OldRoleService.trxGet(transaction, { scope: 'credential', name: 'user' }),
 		]);
 
 		const newSharedCredentials = users
