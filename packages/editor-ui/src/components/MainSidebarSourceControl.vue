@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref } from 'vue';
-import { useRouter } from 'vue-router/composables';
+import { useRouter } from 'vue-router';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
-import { useUIStore, useSourceControlStore, useUsersStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUsersStore } from '@/stores/users.store';
 import { SOURCE_CONTROL_PULL_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 import type { SourceControlAggregatedFile } from '../Interface';
 import { sourceControlEventBus } from '@/event-bus/source-control';
@@ -23,7 +25,7 @@ const usersStore = useUsersStore();
 const sourceControlStore = useSourceControlStore();
 const message = useMessage();
 const toast = useToast();
-const { i18n } = useI18n();
+const i18n = useI18n();
 
 const eventBus = createEventBus();
 const tooltipOpenDelay = ref(300);
@@ -31,11 +33,6 @@ const tooltipOpenDelay = ref(300);
 const currentBranch = computed(() => {
 	return sourceControlStore.preferences.branchName;
 });
-const featureEnabled = computed(() => window.localStorage.getItem('source-control'));
-// TODO: use this for release
-// const featureEnabled = computed(
-// 	() => sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName,
-// );
 const isInstanceOwner = computed(() => usersStore.isInstanceOwner);
 const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
@@ -88,7 +85,7 @@ async function pullWorkfolder() {
 			});
 
 			if (hasVariablesOrCredentials) {
-				nextTick(() => {
+				void nextTick(() => {
 					toast.showMessage({
 						message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
 						title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),
@@ -125,11 +122,11 @@ const goToSourceControlSetup = async () => {
 
 <template>
 	<div
-		v-if="featureEnabled && isInstanceOwner"
+		v-if="sourceControlStore.isEnterpriseSourceControlEnabled && isInstanceOwner"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
-			[$style.isConnected]: featureEnabled,
+			[$style.isConnected]: sourceControlStore.isEnterpriseSourceControlEnabled,
 		}"
 		:style="{ borderLeftColor: sourceControlStore.preferences.branchColor }"
 		data-test-id="main-sidebar-source-control"
@@ -144,7 +141,7 @@ const goToSourceControlSetup = async () => {
 				{{ currentBranch }}
 			</span>
 			<div :class="{ 'pt-xs': !isCollapsed }">
-				<n8n-tooltip :disabled="!isCollapsed" :open-delay="tooltipOpenDelay" placement="right">
+				<n8n-tooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
 					<template #content>
 						<div>
 							{{ i18n.baseText('settings.sourceControl.button.pull') }}
@@ -159,17 +156,14 @@ const goToSourceControlSetup = async () => {
 						type="tertiary"
 						size="mini"
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.pull')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 				<n8n-tooltip
 					v-if="!sourceControlStore.preferences.branchReadOnly"
 					:disabled="!isCollapsed"
-					:open-delay="tooltipOpenDelay"
+					:show-after="tooltipOpenDelay"
 					placement="right"
 				>
 					<template #content>
@@ -179,15 +173,12 @@ const goToSourceControlSetup = async () => {
 					</template>
 					<n8n-button
 						:square="isCollapsed"
+						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						icon="arrow-up"
 						type="tertiary"
 						size="mini"
 						@click="pushWorkfolder"
-					>
-						<span v-if="!isCollapsed">{{
-							i18n.baseText('settings.sourceControl.button.push')
-						}}</span>
-					</n8n-button>
+					/>
 				</n8n-tooltip>
 			</div>
 		</div>

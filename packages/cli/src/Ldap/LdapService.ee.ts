@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
 import type { LdapConfig } from './types';

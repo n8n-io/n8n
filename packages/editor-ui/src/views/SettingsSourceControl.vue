@@ -6,7 +6,7 @@ import { useUIStore, useSourceControlStore } from '@/stores';
 import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
-const { i18n: locale } = useI18n();
+const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
@@ -177,13 +177,13 @@ const refreshBranches = async () => {
 			data-test-id="source-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
-				<i18n path="settings.sourceControl.description">
+				<i18n-t keypath="settings.sourceControl.description" tag="span">
 					<template #link>
 						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
 							{{ locale.baseText('settings.sourceControl.description.link') }}
 						</a>
 					</template>
-				</i18n>
+				</i18n-t>
 			</n8n-callout>
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
@@ -236,7 +236,7 @@ const refreshBranches = async () => {
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n path="settings.sourceControl.sshKeyDescription">
+					<i18n-t keypath="settings.sourceControl.sshKeyDescription" tag="span">
 						<template #link>
 							<a
 								:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
@@ -244,7 +244,7 @@ const refreshBranches = async () => {
 								>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
 							>
 						</template>
-					</i18n>
+					</i18n-t>
 				</n8n-notice>
 			</div>
 			<n8n-button
@@ -274,9 +274,9 @@ const refreshBranches = async () => {
 							validateOnBlur
 							:validationRules="branchNameValidationRules"
 							:options="branchNameOptions"
-							:value="sourceControlStore.preferences.branchName"
+							:modelValue="sourceControlStore.preferences.branchName"
 							@validate="(value) => onValidate('branchName', value)"
-							@input="onSelect"
+							@update:modelValue="onSelect"
 						/>
 						<n8n-tooltip placement="top">
 							<template #content>
@@ -299,11 +299,11 @@ const refreshBranches = async () => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n path="settings.sourceControl.protected">
+						<i18n-t keypath="settings.sourceControl.protected" tag="span">
 							<template #bold>
 								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
 							</template>
-						</i18n>
+						</i18n-t>
 					</n8n-checkbox>
 				</div>
 				<div :class="$style.group">
@@ -329,7 +329,7 @@ const refreshBranches = async () => {
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sourceControl.actionBox.description')"
 			:buttonText="locale.baseText('settings.sourceControl.actionBox.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.sourceControl.actionBox.title') }}</span>

@@ -42,7 +42,5 @@ test.skip('user-management:reset should reset DB to default user state', async (
 	expect(user.firstName).toBeNull();
 	expect(user.lastName).toBeNull();
 	expect(user.password).toBeNull();
-	expect(user.resetPasswordToken).toBeNull();
-	expect(user.resetPasswordTokenExpiration).toBeNull();
 	expect(user.personalizationAnswers).toBeNull();
 });

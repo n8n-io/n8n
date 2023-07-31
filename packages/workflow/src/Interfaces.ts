@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// eslint-disable-next-line max-classes-per-file
+
 import type * as express from 'express';
 import type FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
@@ -1116,6 +1116,7 @@ export interface INodeProperties {
 	extractValue?: INodePropertyValueExtractor;
 	modes?: INodePropertyMode[];
 	requiresDataPath?: 'single' | 'multiple';
+	doNotInherit?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -1198,9 +1199,10 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
-		| Promise<string | NodeParameterValue>
-		| (string | NodeParameterValue);
+	(
+		this: IExecuteSingleFunctions,
+		value: string | NodeParameterValue,
+	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;

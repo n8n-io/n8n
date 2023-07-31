@@ -3,15 +3,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable new-cap */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable no-param-reassign */
+
 import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
@@ -1092,6 +1091,7 @@ export async function requestOAuth2(
 		clientSecret: credentials.clientSecret as string,
 		accessTokenUri: credentials.accessTokenUrl as string,
 		scopes: (credentials.scope as string).split(' '),
+		ignoreSSLIssues: credentials.ignoreSSLIssues as boolean,
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
@@ -1131,6 +1131,9 @@ export async function requestOAuth2(
 		},
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
 	);
+
+	(requestOptions as OptionsWithUri).rejectUnauthorized = !credentials.ignoreSSLIssues;
+
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as ClientOAuth2RequestObject);
@@ -2139,7 +2142,6 @@ export function getWebhookDescription(
 		return undefined;
 	}
 
-	// eslint-disable-next-line no-restricted-syntax
 	for (const webhookDescription of nodeType.description.webhooks) {
 		if (webhookDescription.name === name) {
 			return webhookDescription;
@@ -2557,7 +2559,6 @@ export function getExecuteFunctions(
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},

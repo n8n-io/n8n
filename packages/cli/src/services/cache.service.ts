@@ -8,6 +8,10 @@ import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelpe
 
 @Service()
 export class CacheService {
+	/**
+	 * Keys and values:
+	 * - `'cache:workflow-owner:${workflowId}'`: `User`
+	 */
 	private cache: RedisCache | MemoryCache | undefined;
 
 	isRedisCache(): boolean {

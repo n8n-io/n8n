@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable prefer-const */
-/* eslint-disable @typescript-eslint/no-invalid-void-type */
+
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-var-requires */
+
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -933,7 +933,6 @@ export class Server extends AbstractServer {
 
 				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
 
-				// eslint-disable-next-line new-cap
 				const oauth = new clientOAuth1(oAuthOptions);
 
 				const options: RequestOptions = {

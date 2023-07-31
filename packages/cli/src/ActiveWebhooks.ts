@@ -35,7 +35,6 @@ export class ActiveWebhooks {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
 		if (webhookData.path.endsWith('/')) {
-			// eslint-disable-next-line no-param-reassign
 			webhookData.path = webhookData.path.slice(0, -1);
 		}
 
@@ -139,7 +138,7 @@ export class ActiveWebhooks {
 
 		Object.keys(this.webhookUrls)
 			.filter((key) => key.includes(path))
-			// eslint-disable-next-line array-callback-return
+
 			.map((key) => {
 				methods.push(key.split('|')[0]);
 			});
@@ -164,7 +163,7 @@ export class ActiveWebhooks {
 		if (webhookId) {
 			if (path.startsWith(webhookId)) {
 				const cutFromIndex = path.indexOf('/') + 1;
-				// eslint-disable-next-line no-param-reassign
+
 				path = path.slice(cutFromIndex);
 			}
 			return `${httpMethod}|${webhookId}|${path.split('/').length}`;
@@ -177,7 +176,6 @@ export class ActiveWebhooks {
 	 *
 	 */
 	async removeWorkflow(workflow: Workflow): Promise<boolean> {
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const workflowId = workflow.id!.toString();
 
 		if (this.workflowWebhooks[workflowId] === undefined) {
@@ -190,9 +188,8 @@ export class ActiveWebhooks {
 		const mode = 'internal';
 
 		// Go through all the registered webhooks of the workflow and remove them
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const webhookData of webhooks) {
-			// eslint-disable-next-line no-await-in-loop
 			await workflow.runWebhookMethod(
 				'delete',
 				webhookData,
@@ -218,7 +215,7 @@ export class ActiveWebhooks {
 	 */
 	async removeAll(workflows: Workflow[]): Promise<void> {
 		const removePromises = [];
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const workflow of workflows) {
 			removePromises.push(this.removeWorkflow(workflow));
 		}

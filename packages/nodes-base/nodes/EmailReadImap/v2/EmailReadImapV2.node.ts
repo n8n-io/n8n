@@ -628,20 +628,23 @@ export class EmailReadImapV2 implements INodeType {
 		let reconnectionInterval: NodeJS.Timeout | undefined;
 
 		if (options.forceReconnect !== undefined) {
-			reconnectionInterval = setInterval(async () => {
-				this.logger.verbose('Forcing reconnect to IMAP server');
-				try {
-					isCurrentlyReconnecting = true;
-					if (connection.closeBox) await connection.closeBox(false);
-					connection.end();
-					connection = await establishConnection();
-					await connection.openBox(mailbox);
-				} catch (error) {
-					this.logger.error(error as string);
-				} finally {
-					isCurrentlyReconnecting = false;
-				}
-			}, (options.forceReconnect as number) * 1000 * 60);
+			reconnectionInterval = setInterval(
+				async () => {
+					this.logger.verbose('Forcing reconnect to IMAP server');
+					try {
+						isCurrentlyReconnecting = true;
+						if (connection.closeBox) await connection.closeBox(false);
+						connection.end();
+						connection = await establishConnection();
+						await connection.openBox(mailbox);
+					} catch (error) {
+						this.logger.error(error as string);
+					} finally {
+						isCurrentlyReconnecting = false;
+					}
+				},
+				(options.forceReconnect as number) * 1000 * 60,
+			);
 		}
 
 		// When workflow and so node gets set to inactive close the connectoin

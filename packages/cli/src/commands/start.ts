@@ -123,12 +123,12 @@ export class Start extends BaseCommand {
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-					// eslint-disable-next-line array-callback-return
+
 					executingWorkflows.map((execution) => {
 						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
 					});
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
@@ -259,7 +259,7 @@ export class Start extends BaseCommand {
 					LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
 					try {
 						// Optimistic approach - stop if any installation fails
-						// eslint-disable-next-line no-restricted-syntax
+
 						for (const missingPackage of missingPackages) {
 							await this.loadNodesAndCredentials.installNpmModule(
 								missingPackage.packageName,
@@ -360,7 +360,7 @@ export class Start extends BaseCommand {
 					void this.stopProcess();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
-					// eslint-disable-next-line no-lonely-if
+
 					if (key.charCodeAt(0) === 13) {
 						// send to child process and print in terminal
 						process.stdout.write('\n');

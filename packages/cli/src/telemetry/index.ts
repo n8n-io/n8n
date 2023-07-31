@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { PostHogClient } from '@/posthog';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -40,7 +38,10 @@ export class Telemetry {
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private postHog: PostHogClient, private license: License) {}
+	constructor(
+		private postHog: PostHogClient,
+		private license: License,
+	) {}
 
 	setInstanceId(instanceId: string) {
 		this.instanceId = instanceId;
@@ -70,9 +71,12 @@ export class Telemetry {
 	}
 
 	private startPulse() {
-		this.pulseIntervalReference = setInterval(async () => {
-			void this.pulse();
-		}, 6 * 60 * 60 * 1000); // every 6 hours
+		this.pulseIntervalReference = setInterval(
+			async () => {
+				void this.pulse();
+			},
+			6 * 60 * 60 * 1000,
+		); // every 6 hours
 	}
 
 	private async pulse(): Promise<unknown> {
@@ -142,7 +146,6 @@ export class Telemetry {
 					first: execTime,
 				};
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				this.executionCountsBuffer[workflowId][key]!.count++;
 			}
 

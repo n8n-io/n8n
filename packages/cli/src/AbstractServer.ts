@@ -101,7 +101,6 @@ export abstract class AbstractServer {
 
 		// Make sure that each request has the "parsedUrl" parameter
 		app.use((req, res, next) => {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			req.parsedUrl = parseUrl(req)!;
 			req.rawBody = emptyBuffer;
 			next();

@@ -20,7 +20,11 @@
 							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</n8n-text>
 					</div>
-					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
+					<el-radio
+						:modelValue="operation"
+						label="transfer"
+						@update:modelValue="() => setOperation('transfer')"
+					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
 						}}</n8n-text>
@@ -29,14 +33,18 @@
 						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
 							<n8n-user-select
 								:users="usersStore.allUsers"
-								:value="transferId"
+								:modelValue="transferId"
 								:ignoreIds="ignoreIds"
 								:currentUserId="usersStore.currentUserId"
-								@input="setTransferId"
+								@update:modelValue="setTransferId"
 							/>
 						</n8n-input-label>
 					</div>
-					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
+					<el-radio
+						:modelValue="operation"
+						label="delete"
+						@update:modelValue="() => setOperation('delete')"
+					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
 						}}</n8n-text>
@@ -48,9 +56,9 @@
 					>
 						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
 							<n8n-input
-								:value="deleteConfirmText"
+								:modelValue="deleteConfirmText"
 								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-								@input="setConfirmText"
+								@update:modelValue="setConfirmText"
 							/>
 						</n8n-input-label>
 					</div>
@@ -76,7 +84,7 @@ import Modal from '@/components/Modal.vue';
 import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'DeleteUserModal',

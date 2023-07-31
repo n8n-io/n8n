@@ -48,7 +48,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		workflowPage.actions.setWorkflowName('Workflow W1');
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.actions.addNodeToCanvas('Notion', true, true);
-		ndv.getters.credentialInput().should('contain', 'Credential C1');
+		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C1');
 		ndv.actions.close();
 
 		workflowPage.actions.openShareModal();
@@ -87,16 +87,12 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		workflowsPage.getters.workflowCards().should('have.length', 1);
 		workflowsPage.getters.workflowCard('Workflow W1').click();
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
-		ndv.getters.credentialInput().should('contain', 'Credential C2');
+		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
 		ndv.actions.close();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
 		workflowPage.actions.openNode('Notion');
-		ndv.getters
-			.credentialInput()
-			.find('input')
-			.should('have.value', 'Credential C1')
-			.should('be.disabled');
+		ndv.getters.credentialInput().should('have.value', 'Credential C1').should('be.disabled');
 		ndv.actions.close();
 	});
 
@@ -116,11 +112,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		workflowsPage.getters.workflowCards().should('have.length', 2);
 		workflowsPage.getters.workflowCard('Workflow W1').click();
 		workflowPage.actions.openNode('Notion');
-		ndv.getters
-			.credentialInput()
-			.find('input')
-			.should('have.value', 'Credential C1')
-			.should('be.disabled');
+		ndv.getters.credentialInput().should('have.value', 'Credential C1').should('be.disabled');
 		ndv.actions.close();
 
 		cy.waitForLoad();

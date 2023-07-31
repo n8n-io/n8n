@@ -33,7 +33,7 @@ export default defineComponent({
 			this.setNow();
 		}, 1000);
 	},
-	destroyed() {
+	beforeUnmount() {
 		// Make sure that the timer gets destroyed once no longer needed
 		if (this.intervalTimer !== null) {
 			clearInterval(this.intervalTimer);

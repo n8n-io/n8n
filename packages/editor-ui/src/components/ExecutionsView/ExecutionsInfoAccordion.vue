@@ -5,7 +5,7 @@
 		:items="accordionItems"
 		:initiallyExpanded="shouldExpandAccordion"
 		:headerIcon="accordionIcon"
-		@click="onAccordionClick"
+		@click:body="onAccordionClick"
 		@tooltipClick="onItemTooltipClick"
 	>
 		<template #customContent>
