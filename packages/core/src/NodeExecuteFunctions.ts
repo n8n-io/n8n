@@ -3,15 +3,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable new-cap */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable no-param-reassign */
+
 import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
@@ -2143,7 +2142,6 @@ export function getWebhookDescription(
 		return undefined;
 	}
 
-	// eslint-disable-next-line no-restricted-syntax
 	for (const webhookDescription of nodeType.description.webhooks) {
 		if (webhookDescription.name === name) {
 			return webhookDescription;
@@ -2561,7 +2559,6 @@ export function getExecuteFunctions(
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},

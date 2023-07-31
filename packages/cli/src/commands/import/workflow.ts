@@ -126,7 +126,6 @@ export class ImportWorkflowsCommand extends BaseCommand {
 							this.transformCredentials(node, credentials);
 
 							if (!node.id) {
-								// eslint-disable-next-line no-param-reassign
 								node.id = uuid();
 							}
 						});
@@ -168,7 +167,6 @@ export class ImportWorkflowsCommand extends BaseCommand {
 					workflow.nodes.forEach((node: INode) => {
 						this.transformCredentials(node, credentials);
 						if (!node.id) {
-							// eslint-disable-next-line no-param-reassign
 							node.id = uuid();
 						}
 						if (!node.credentials?.id) {
@@ -274,7 +272,6 @@ export class ImportWorkflowsCommand extends BaseCommand {
 						nodeCredentials.id = matchingCredentials[0].id;
 					}
 
-					// eslint-disable-next-line no-param-reassign
 					node.credentials[type] = nodeCredentials;
 				}
 			}

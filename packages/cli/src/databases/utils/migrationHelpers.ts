@@ -25,8 +25,7 @@ function loadSurveyFromDisk(): string | null {
 		if (!kvPairs.length) {
 			throw new Error('personalizationSurvey is empty');
 		} else {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const emptyKeys = kvPairs.reduce((acc, [_key, value]) => {
+			const emptyKeys = kvPairs.reduce((acc, [, value]) => {
 				if (!value || (Array.isArray(value) && !value.length)) {
 					return acc + 1;
 				}
@@ -133,7 +132,6 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 		let batchedQuery: string;
 		let batchedQueryResults: T[];
 
-		// eslint-disable-next-line no-param-reassign
 		if (query.trim().endsWith(';')) query = query.trim().slice(0, -1);
 
 		do {

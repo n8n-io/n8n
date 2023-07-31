@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-plus-operands */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
 import { ERROR_RESPONSES } from './constants';
