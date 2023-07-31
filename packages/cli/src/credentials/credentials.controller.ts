@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
 import { deepCopy, LoggerProxy } from 'n8n-workflow';

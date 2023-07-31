@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 // import { createHash } from 'crypto';
 import { titleCase } from 'title-case';
 import * as ExpressionError from '../ExpressionError';
@@ -295,7 +294,6 @@ function toSentenceCase(value: string) {
 		const charIndex = current.search(CHAR_TEST_REGEXP);
 		current =
 			current.slice(0, charIndex) +
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			current[charIndex]!.toLocaleUpperCase() +
 			current.slice(charIndex + 1).toLocaleLowerCase();
 		const puncIndex = current.search(PUNC_TEST_REGEXP);
