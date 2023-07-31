@@ -15,11 +15,11 @@
 						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
-						:name="credentialName"
+						:modelValue="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
 						:readonly="!credentialPermissions.updateName || !credentialType"
 						type="Credential"
-						@input="onNameEdit"
+						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
 					/>
 				</div>
@@ -28,7 +28,6 @@
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
-						size="medium"
 						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
@@ -74,7 +73,7 @@
 						:mode="mode"
 						:selectedCredential="selectedCredential"
 						:showAuthTypeSelector="requiredCredentials"
-						@change="onDataChange"
+						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scrollToTop="scrollToTop"
@@ -109,7 +108,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
@@ -146,7 +144,7 @@ import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -234,12 +232,15 @@ export default defineComponent({
 			});
 
 			if (this.currentUser) {
-				Vue.set(this.credentialData, 'ownedBy', {
-					id: this.currentUser.id,
-					firstName: this.currentUser.firstName,
-					lastName: this.currentUser.lastName,
-					email: this.currentUser.email,
-				});
+				this.credentialData = {
+					...this.credentialData,
+					ownedBy: {
+						id: this.currentUser.id,
+						firstName: this.currentUser.firstName,
+						lastName: this.currentUser.lastName,
+						email: this.currentUser.email,
+					},
+				};
 			}
 		} else {
 			await this.loadCurrentCredential();
@@ -251,7 +252,10 @@ export default defineComponent({
 					!this.credentialData.hasOwnProperty(property.name) &&
 					!this.credentialType.__overwrittenProperties?.includes(property.name)
 				) {
-					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+					this.credentialData = {
+						...this.credentialData,
+						[property.name]: property.default as CredentialInformation,
+					};
 				}
 			}
 		}
@@ -407,7 +411,8 @@ export default defineComponent({
 			return (
 				!!this.credentialTypeName &&
 				(((this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')) &&
-					this.credentialData.grantType === 'authorizationCode') ||
+					(this.credentialData.grantType === 'authorizationCode' ||
+						this.credentialData.grantType === 'pkce')) ||
 					this.credentialTypeName === 'oAuth1Api' ||
 					this.parentTypes.includes('oAuth1Api'))
 			);
@@ -529,7 +534,7 @@ export default defineComponent({
 						),
 					},
 				);
-				keepEditing = confirmAction !== MODAL_CONFIRM;
+				keepEditing = confirmAction === MODAL_CONFIRM;
 			}
 
 			if (!keepEditing) {
@@ -545,6 +550,10 @@ export default defineComponent({
 		},
 		displayCredentialParameter(parameter: INodeProperties): boolean {
 			if (parameter.type === 'hidden') {
+				return false;
+			}
+
+			if (parameter.displayOptions?.hideOnCloud && this.settingsStore.isCloudDeployment) {
 				return false;
 			}
 
@@ -594,12 +603,18 @@ export default defineComponent({
 					);
 				}
 
-				this.credentialData = currentCredentials.data || {};
+				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
 				if (currentCredentials.sharedWith) {
-					Vue.set(this.credentialData, 'sharedWith', currentCredentials.sharedWith);
+					this.credentialData = {
+						...this.credentialData,
+						sharedWith: currentCredentials.sharedWith as IDataObject[],
+					};
 				}
 				if (currentCredentials.ownedBy) {
-					Vue.set(this.credentialData, 'ownedBy', currentCredentials.ownedBy);
+					this.credentialData = {
+						...this.credentialData,
+						ownedBy: currentCredentials.ownedBy as IDataObject[],
+					};
 				}
 
 				this.credentialName = currentCredentials.name;
@@ -650,11 +665,17 @@ export default defineComponent({
 			}
 		},
 		onChangeSharedWith(sharees: IDataObject[]) {
-			Vue.set(this.credentialData, 'sharedWith', sharees);
+			this.credentialData = {
+				...this.credentialData,
+				sharedWith: sharees,
+			};
 			this.hasUnsavedChanges = true;
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		onDataChange({ name, value }: { name: string; value: any }) {
+			// skip update if new value matches the current
+			if (this.credentialData[name] === value) return;
+
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
@@ -997,7 +1018,11 @@ export default defineComponent({
 			const params =
 				'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
-			Vue.set(this.credentialData, 'oauthTokenData', null);
+
+			this.credentialData = {
+				...this.credentialData,
+				oauthTokenData: null as unknown as CredentialInformation,
+			};
 
 			const receiveMessage = (event: MessageEvent) => {
 				// // TODO: Add check that it came from n8n
@@ -1009,7 +1034,11 @@ export default defineComponent({
 
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
-					Vue.set(this.credentialData, 'oauthTokenData', {});
+					this.credentialData = {
+						...this.credentialData,
+						oauthTokenData: {} as CredentialInformation,
+					};
+
 					this.credentialsStore.enableOAuthCredential(credential);
 
 					// Close the window
@@ -1061,7 +1090,10 @@ export default defineComponent({
 			}
 			for (const property of this.credentialType.properties) {
 				if (!this.credentialType.__overwrittenProperties?.includes(property.name)) {
-					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+					this.credentialData = {
+						...this.credentialData,
+						[property.name]: property.default as CredentialInformation,
+					};
 				}
 			}
 		},

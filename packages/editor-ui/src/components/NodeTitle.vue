@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<n8n-popover placement="right" width="200" :value="editName" :disabled="!editable">
+		<n8n-popover placement="right" width="200" :visible="editName" :disabled="!editable">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
@@ -28,8 +28,8 @@
 				</div>
 			</div>
 			<template #reference>
-				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: editable }">
-					{{ value }}
+				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
+					{{ modelValue }}
 					<div :class="$style.editIconContainer">
 						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="editable" />
 					</div>
@@ -41,12 +41,17 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
 
 export default defineComponent({
 	name: 'NodeTitle',
+	components: {
+		NodeIcon,
+	},
 	props: {
-		value: {
+		modelValue: {
 			type: String,
+			default: '',
 		},
 		nodeType: {},
 		readOnly: {
@@ -66,19 +71,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onEdit() {
-			this.newName = this.value;
+		async onEdit() {
+			this.newName = this.modelValue;
 			this.editName = true;
-			this.$nextTick(() => {
-				const inputRef = this.$refs.input as HTMLInputElement | undefined;
-				if (inputRef) {
-					inputRef.focus();
-				}
-			});
+			await this.$nextTick();
+			const inputRef = this.$refs.input as HTMLInputElement | undefined;
+			if (inputRef) {
+				inputRef.focus();
+			}
 		},
 		onRename() {
 			if (this.newName.trim() !== '') {
-				this.$emit('input', this.newName.trim());
+				this.$emit('update:modelValue', this.newName.trim());
 			}
 
 			this.editName = false;

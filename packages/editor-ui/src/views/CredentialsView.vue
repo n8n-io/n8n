@@ -23,13 +23,13 @@
 					class="mb-3xs"
 				/>
 				<n8n-select
-					:value="filters.type"
+					:modelValue="filters.type"
 					size="medium"
 					multiple
 					filterable
 					ref="typeInput"
 					:class="$style['type-input']"
-					@input="setKeyValue('type', $event)"
+					@update:modelValue="setKeyValue('type', $event)"
 				>
 					<n8n-option
 						v-for="credentialType in allCredentialTypes"
@@ -51,17 +51,17 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
-import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 export default defineComponent({
-	name: 'SettingsPersonalView',
+	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
 		CredentialCard,
@@ -74,10 +74,17 @@ export default defineComponent({
 				sharedWith: '',
 				type: '',
 			},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useUsersStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useUsersStore,
+			useSourceControlStore,
+		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
 		},
@@ -140,6 +147,18 @@ export default defineComponent({
 		'filters.type'() {
 			this.sendFiltersTelemetry('type');
 		},
+	},
+	mounted() {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 });
 </script>

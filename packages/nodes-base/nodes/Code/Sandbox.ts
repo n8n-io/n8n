@@ -35,7 +35,7 @@ export abstract class Sandbox {
 	constructor(
 		private textKeys: SandboxTextKeys,
 		protected itemIndex: number | undefined,
-		private helpers: IExecuteFunctions['helpers'],
+		protected helpers: IExecuteFunctions['helpers'],
 	) {}
 
 	abstract runCodeAllItems(): Promise<INodeExecutionData[]>;

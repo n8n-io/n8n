@@ -25,21 +25,11 @@ export async function logout(context: IRestApiContext): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/logout');
 }
 
-export async function preOwnerSetup(
-	context: IRestApiContext,
-): Promise<{ credentials: number; workflows: number }> {
-	return makeRestApiRequest(context, 'GET', '/owner/pre-setup');
-}
-
 export async function setupOwner(
 	context: IRestApiContext,
 	params: { firstName: string; lastName: string; email: string; password: string },
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
-}
-
-export async function skipOwnerSetup(context: IRestApiContext): Promise<void> {
-	return makeRestApiRequest(context, 'POST', '/owner/skip-setup');
 }
 
 export async function validateSignupToken(
@@ -77,14 +67,14 @@ export async function sendForgotPasswordEmail(
 
 export async function validatePasswordToken(
 	context: IRestApiContext,
-	params: { token: string; userId: string },
+	params: { token: string },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'GET', '/resolve-password-token', params);
 }
 
 export async function changePassword(
 	context: IRestApiContext,
-	params: { token: string; password: string; userId: string },
+	params: { token: string; password: string },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
@@ -105,7 +95,15 @@ export async function updateCurrentUserSettings(
 	context: IRestApiContext,
 	settings: IUserResponse['settings'],
 ): Promise<IUserResponse['settings']> {
-	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
+	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings as IDataObject);
+}
+
+export async function updateOtherUserSettings(
+	context: IRestApiContext,
+	userId: string,
+	settings: IUserResponse['settings'],
+): Promise<IUserResponse['settings']> {
+	return makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings as IDataObject);
 }
 
 export async function updateCurrentUserPassword(
@@ -142,6 +140,13 @@ export async function getInviteLink(
 	{ id }: { id: string },
 ): Promise<{ link: string }> {
 	return makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
+}
+
+export async function getPasswordResetLink(
+	context: IRestApiContext,
+	{ id }: { id: string },
+): Promise<{ link: string }> {
+	return makeRestApiRequest(context, 'GET', `/users/${id}/password-reset-link`);
 }
 
 export async function submitPersonalizationSurvey(

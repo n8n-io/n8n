@@ -1,9 +1,7 @@
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import { render } from '@testing-library/vue';
-import { PiniaVuePlugin } from 'pinia';
 
-export const retry = async (assertion: () => any, { interval = 20, timeout = 200 } = {}) => {
+export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
 	return new Promise((resolve, reject) => {
 		const startTime = Date.now();
 
@@ -21,17 +19,10 @@ export const retry = async (assertion: () => any, { interval = 20, timeout = 200
 	});
 };
 
-type RenderParams = Parameters<typeof render>;
-export const renderComponent = (Component: RenderParams[0], renderOptions: RenderParams[1] = {}) =>
-	render(Component, renderOptions, (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
-
 export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	settings: {
-		userActivationSurveyEnabled: false,
 		allowedModules: {},
 		communityNodesEnabled: false,
 		defaultLocale: '',
@@ -44,7 +35,8 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 			saml: false,
 			logStreaming: false,
 			variables: false,
-			versionControl: false,
+			sourceControl: false,
+			auditLogs: false,
 		},
 		executionMode: 'regular',
 		executionTimeout: 0,

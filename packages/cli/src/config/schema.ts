@@ -4,7 +4,6 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { IS_V1_RELEASE } from '@/constants';
 
 convict.addFormat({
 	name: 'nodes-list',
@@ -225,13 +224,12 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in their own process.
-		// If this option gets set to "main" it will run them in the
-		// main-process instead.
+		// By default workflows get always executed in the main process.
+		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
 		process: {
-			doc: 'In what process workflows should be executed. Note: Own mode has been deprecated and will be removed in a future version as well as this setting.',
+			doc: 'In what process workflows should be executed.',
 			format: ['main', 'own'] as const,
-			default: IS_V1_RELEASE ? 'main' : 'own',
+			default: 'main',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
@@ -299,7 +297,7 @@ export const schema = {
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
 			format: 'Boolean',
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
@@ -311,7 +309,7 @@ export const schema = {
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
 			format: 'Boolean',
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
@@ -329,11 +327,11 @@ export const schema = {
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
 		// Deletes the oldest entries first
-		// Default is 0 = No limit
+		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
 			format: Number,
-			default: 0,
+			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
 	},
@@ -355,9 +353,9 @@ export const schema = {
 		},
 		bull: {
 			prefix: {
-				doc: 'Prefix for all queue keys',
+				doc: 'Prefix for all queue keys (wrap in {} for cluster mode)',
 				format: String,
-				default: '',
+				default: 'bull',
 				env: 'QUEUE_BULL_PREFIX',
 			},
 			redis: {
@@ -396,6 +394,12 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'QUEUE_BULL_REDIS_USERNAME',
+				},
+				clusterNodes: {
+					doc: 'Redis Cluster startup nodes (comma separated list of host:port pairs)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
 			},
 			queueRecoveryInterval: {
@@ -493,82 +497,6 @@ export const schema = {
 			format: String,
 			default: '',
 			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
-		},
-		basicAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_ACTIVE',
-				doc: 'If basic auth should be activated for editor and REST-API',
-			},
-			user: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_USER',
-				doc: 'The name of the basic auth user',
-			},
-			password: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_PASSWORD',
-				doc: 'The password of the basic auth user',
-			},
-			hash: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_HASH',
-				doc: 'If password for basic auth is hashed',
-			},
-		},
-		jwtAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_JWT_AUTH_ACTIVE',
-				doc: 'If JWT auth should be activated for editor and REST-API',
-			},
-			jwtHeader: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER',
-				doc: 'The request header containing a signed JWT',
-			},
-			jwtHeaderValuePrefix: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
-				doc: 'The request header value prefix to strip (optional)',
-			},
-			jwksUri: {
-				format: String,
-				default: '',
-				env: 'N8N_JWKS_URI',
-				doc: 'The URI to fetch JWK Set for JWT authentication',
-			},
-			jwtIssuer: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ISSUER',
-				doc: 'JWT issuer to expect (optional)',
-			},
-			jwtNamespace: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_NAMESPACE',
-				doc: 'JWT namespace to expect (optional)',
-			},
-			jwtAllowedTenantKey: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
-				doc: 'JWT tenant key name to inspect within JWT namespace (optional)',
-			},
-			jwtAllowedTenant: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT',
-				doc: 'JWT tenant to allow (optional)',
-			},
 		},
 	},
 
@@ -728,12 +656,6 @@ export const schema = {
 	},
 
 	userManagement: {
-		disabled: {
-			doc: 'Disable user management and hide it completely.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_USER_MANAGEMENT_DISABLED',
-		},
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
 			format: String,
@@ -743,12 +665,6 @@ export const schema = {
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
-			format: Boolean,
-			default: false,
-		},
-		skipInstanceOwnerSetup: {
-			// n8n loads this setting from DB on startup
-			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
 			format: Boolean,
 			default: false,
 		},
@@ -944,7 +860,7 @@ export const schema = {
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
-			default: IS_V1_RELEASE ? 'websocket' : 'sse',
+			default: 'websocket',
 			env: 'N8N_PUSH_BACKEND',
 			doc: 'Backend to use for push notifications',
 		},
@@ -1040,15 +956,6 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_PERSONALIZATION_ENABLED',
-		},
-	},
-
-	userActivationSurvey: {
-		enabled: {
-			doc: 'Whether user activation survey is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
 		},
 	},
 
@@ -1191,6 +1098,43 @@ export const schema = {
 				format: String,
 				default: 'n8nEventLog',
 				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
+			},
+		},
+	},
+
+	cache: {
+		enabled: {
+			doc: 'Whether caching is enabled',
+			format: Boolean,
+			default: true,
+			env: 'N8N_CACHE_ENABLED',
+		},
+		backend: {
+			doc: 'Backend to use for caching',
+			format: ['memory', 'redis', 'auto'] as const,
+			default: 'auto',
+			env: 'N8N_CACHE_BACKEND',
+		},
+		memory: {
+			maxSize: {
+				doc: 'Maximum size of memory cache in bytes',
+				format: Number,
+				default: 3 * 1024 * 1024, // 3 MB
+				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
+			},
+			ttl: {
+				doc: 'Time to live for cached items in memory (in ms)',
+				format: Number,
+				default: 3600 * 1000, // 1 hour
+				env: 'N8N_CACHE_MEMORY_TTL',
+			},
+		},
+		redis: {
+			ttl: {
+				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
+				format: Number,
+				default: 0,
+				env: 'N8N_CACHE_REDIS_TTL',
 			},
 		},
 	},

@@ -11,8 +11,8 @@
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
-				v-model="autoRefresh"
-				@change="onAutoRefreshToggle"
+				:modelValue="autoRefresh"
+				@update:modelValue="$emit('update:autoRefresh', $event)"
 				data-test-id="auto-refresh-checkbox"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
@@ -39,7 +39,6 @@
 				:ref="`execution-${temporaryExecution.id}`"
 				:data-test-id="`execution-details-${temporaryExecution.id}`"
 				:showGap="true"
-				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
 			<execution-card
@@ -48,7 +47,6 @@
 				:execution="execution"
 				:ref="`execution-${execution.id}`"
 				:data-test-id="`execution-details-${execution.id}`"
-				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
 			<div v-if="loadingMore" class="mr-m">
@@ -85,6 +83,10 @@ export default defineComponent({
 		ExecutionFilter,
 	},
 	props: {
+		autoRefresh: {
+			type: Boolean,
+			default: false,
+		},
 		executions: {
 			type: Array as PropType<IExecutionsSummary[]>,
 			required: true,
@@ -106,8 +108,6 @@ export default defineComponent({
 		return {
 			VIEWS,
 			filter: {} as ExecutionFilterType,
-			autoRefresh: false,
-			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 		};
 	},
 	computed: {
@@ -126,20 +126,10 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
-		if (this.autoRefresh) {
-			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
-		}
 		// On larger screens, we need to load more then first page of executions
 		// for the scroll bar to appear and infinite scrolling is enabled
 		this.checkListSize();
 		this.scrollToActiveCard();
-	},
-	beforeDestroy() {
-		if (this.autoRefreshInterval) {
-			clearInterval(this.autoRefreshInterval);
-			this.autoRefreshInterval = undefined;
-		}
 	},
 	methods: {
 		loadMore(limit = 20): void {
@@ -166,17 +156,6 @@ export default defineComponent({
 		},
 		reloadExecutions(): void {
 			this.$emit('reloadExecutions');
-		},
-		onAutoRefreshToggle(): void {
-			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
-			if (this.autoRefreshInterval) {
-				// Clear any previously existing intervals (if any - there shouldn't)
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4 * 1000); // refresh data every 4 secs
-			}
 		},
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
@@ -291,8 +270,10 @@ export default defineComponent({
 </style>
 
 <style lang="scss" scoped>
-:deep(.el-skeleton__item) {
-	height: 60px;
-	border-radius: 0;
+.executions-sidebar {
+	:deep(.el-skeleton__item) {
+		height: 60px;
+		border-radius: 0;
+	}
 }
 </style>

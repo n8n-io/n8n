@@ -14,11 +14,15 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
 import type express from 'express';
-import get from 'lodash.get';
+import get from 'lodash/get';
+import stream from 'stream';
+import { promisify } from 'util';
+import { Container } from 'typedi';
 
-import { BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
+import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
+	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	IDeferredPromise,
@@ -57,7 +61,9 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
+import { EventsService } from '@/services/events.service';
+
+const pipeline = promisify(stream.pipeline);
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -238,7 +244,7 @@ export async function executeWebhook(
 				NodeExecuteFunctions,
 				executionMode,
 			);
-			eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id, workflowStartNode);
+			Container.get(EventsService).emit('nodeFetchedData', workflow.id, workflowStartNode);
 		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
@@ -418,13 +424,17 @@ export async function executeWebhook(
 						return;
 					}
 
-					if (Buffer.isBuffer(response.body)) {
+					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
+					if (binaryData?.id) {
+						res.header(response.headers);
+						const stream = BinaryDataManager.getInstance().getBinaryStream(binaryData.id);
+						void pipeline(stream, res).then(() =>
+							responseCallback(null, { noWebhookResponse: true }),
+						);
+					} else if (Buffer.isBuffer(response.body)) {
 						res.header(response.headers);
 						res.end(response.body);
-
-						responseCallback(null, {
-							noWebhookResponse: true,
-						});
+						responseCallback(null, { noWebhookResponse: true });
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node
@@ -634,10 +644,12 @@ export async function executeWebhook(
 						if (!didSendResponse) {
 							// Send the webhook response manually
 							res.setHeader('Content-Type', binaryData.mimeType);
-							const binaryDataBuffer = await BinaryDataManager.getInstance().retrieveBinaryData(
-								binaryData,
-							);
-							res.end(binaryDataBuffer);
+							if (binaryData.id) {
+								const stream = BinaryDataManager.getInstance().getBinaryStream(binaryData.id);
+								await pipeline(stream, res);
+							} else {
+								res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
+							}
 
 							responseCallback(null, {
 								noWebhookResponse: true,
@@ -686,20 +698,11 @@ export async function executeWebhook(
 
 /**
  * Returns the base URL of the webhooks
- *
  */
 export function getWebhookBaseUrl() {
-	let urlBaseWebhook = GenericHelpers.getBaseUrl();
-
-	// We renamed WEBHOOK_TUNNEL_URL to WEBHOOK_URL. This is here to maintain
-	// backward compatibility. Will be deprecated and removed in the future.
-	if (process.env.WEBHOOK_TUNNEL_URL !== undefined || process.env.WEBHOOK_URL !== undefined) {
-		// @ts-ignore
-		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || process.env.WEBHOOK_URL;
-	}
+	let urlBaseWebhook = process.env.WEBHOOK_URL ?? GenericHelpers.getBaseUrl();
 	if (!urlBaseWebhook.endsWith('/')) {
 		urlBaseWebhook += '/';
 	}
-
 	return urlBaseWebhook;
 }

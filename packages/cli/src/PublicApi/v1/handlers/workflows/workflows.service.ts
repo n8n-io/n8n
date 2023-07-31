@@ -1,17 +1,13 @@
 import type { FindManyOptions, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
-import intersection from 'lodash.intersection';
-import type { INode } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
+import intersection from 'lodash/intersection';
 
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { isInstanceOwner } from '../users/users.service';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
-import { START_NODES } from '@/constants';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
@@ -24,8 +20,6 @@ export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 		select: ['workflowId'],
 	});
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
-
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
 export async function getSharedWorkflow(
@@ -34,7 +28,7 @@ export async function getSharedWorkflow(
 ): Promise<SharedWorkflow | null> {
 	return Db.collections.SharedWorkflow.findOne({
 		where: {
-			...(!isInstanceOwner(user) && { userId: user.id }),
+			...(!user.isOwner && { userId: user.id }),
 			...(workflowId && { workflowId }),
 		},
 		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
@@ -50,7 +44,7 @@ export async function getSharedWorkflows(
 ): Promise<SharedWorkflow[]> {
 	return Db.collections.SharedWorkflow.find({
 		where: {
-			...(!isInstanceOwner(user) && { userId: user.id }),
+			...(!user.isOwner && { userId: user.id }),
 			...(options.workflowIds && { workflowId: In(options.workflowIds) }),
 		},
 		...(options.relations && { relations: options.relations }),
@@ -123,25 +117,6 @@ export async function updateWorkflow(
 	updateData: WorkflowEntity,
 ): Promise<UpdateResult> {
 	return Db.collections.Workflow.update(workflowId, updateData);
-}
-
-export function hasStartNode(workflow: WorkflowEntity): boolean {
-	if (!workflow.nodes.length) return false;
-
-	const found = workflow.nodes.find((node) => START_NODES.includes(node.type));
-
-	return Boolean(found);
-}
-
-export function getStartNode(): INode {
-	return {
-		id: uuid(),
-		parameters: {},
-		name: 'Start',
-		type: 'n8n-nodes-base.start',
-		typeVersion: 1,
-		position: [240, 300],
-	};
 }
 
 export function parseTagNames(tags: string): string[] {

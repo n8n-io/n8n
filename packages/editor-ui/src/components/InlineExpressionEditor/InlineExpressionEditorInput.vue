@@ -1,12 +1,12 @@
 <template>
-	<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-input"></div>
+	<div ref="root" data-test-id="inline-expression-editor-input"></div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
-import { EditorState, Prec } from '@codemirror/state';
+import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { history, redo } from '@codemirror/commands';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 
@@ -19,11 +19,13 @@ import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionManager } from '@/mixins/completionManager';
 
+const editableConf = new Compartment();
+
 export default defineComponent({
 	name: 'InlineExpressionEditorInput',
 	mixins: [completionManager, expressionManager, workflowHelpers],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
 		},
 		isReadOnly: {
@@ -39,7 +41,12 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		value(newValue) {
+		isReadOnly(newValue: boolean) {
+			this.editor?.dispatch({
+				effects: editableConf.reconfigure(EditorView.editable.of(!newValue)),
+			});
+		},
+		modelValue(newValue) {
 			const isInternalChange = newValue === this.editor?.state.doc.toString();
 
 			if (isInternalChange) return;
@@ -59,7 +66,7 @@ export default defineComponent({
 				changes: {
 					from: 0,
 					to: this.editor.state.doc.length,
-					insert: this.value,
+					insert: this.modelValue,
 				},
 			});
 
@@ -97,7 +104,7 @@ export default defineComponent({
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,
-			EditorView.editable.of(!this.isReadOnly),
+			editableConf.of(EditorView.editable.of(!this.isReadOnly)),
 			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({
 				focus: () => {
@@ -106,6 +113,9 @@ export default defineComponent({
 			}),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
+
+				// Force segments value update by keeping track of editor state
+				this.editorState = this.editor.state;
 
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
@@ -126,10 +136,11 @@ export default defineComponent({
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
-				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
+				doc: this.modelValue.startsWith('=') ? this.modelValue.slice(1) : this.modelValue,
 				extensions,
 			}),
 		});
+		this.editorState = this.editor.state;
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
 
@@ -138,7 +149,7 @@ export default defineComponent({
 			segments: this.displayableSegments,
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	methods: {

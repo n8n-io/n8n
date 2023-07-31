@@ -2,7 +2,7 @@
 	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
 		<template #header>
 			<div>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+				<n8n-heading tag="h2" bold :class="$style.cardHeading">
 					{{ destination.label }}
 				</n8n-heading>
 				<div :class="$style.cardDescription">
@@ -26,8 +26,8 @@
 				<el-switch
 					class="mr-s"
 					:disabled="!isInstanceOwner"
-					:value="nodeParameters.enabled"
-					@change="onEnabledSwitched($event, destination.id)"
+					:modelValue="nodeParameters.enabled"
+					@update:modelValue="onEnabledSwitched($event, destination.id)"
 					:title="
 						nodeParameters.enabled
 							? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -56,7 +56,7 @@ import { mapStores } from 'pinia';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
-import type { EventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -96,7 +96,7 @@ export default defineComponent({
 		);
 		this.eventBus?.on('destinationWasSaved', this.onDestinationWasSaved);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('destinationWasSaved', this.onDestinationWasSaved);
 	},
 	computed: {

@@ -12,7 +12,7 @@
 		<div v-if="apiKey">
 			<p class="mb-s">
 				<n8n-info-tip :bold="false">
-					<i18n path="settings.api.view.info" tag="span">
+					<i18n-t keypath="settings.api.view.info" tag="span">
 						<template #apiAction>
 							<a
 								href="https://docs.n8n.io/api"
@@ -27,7 +27,7 @@
 								v-text="$locale.baseText('settings.api.view.info.webhook')"
 							/>
 						</template>
-					</i18n>
+					</i18n-t>
 				</n8n-info-tip>
 			</p>
 			<n8n-card class="mb-4xs" :class="$style.card">
@@ -36,12 +36,13 @@
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
-				<div class="ph-no-capture">
+				<div>
 					<CopyInput
 						:label="$locale.baseText('settings.api.view.myKey')"
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+						:redactValue="true"
 						@copy="onCopy"
 					/>
 				</div>
@@ -52,6 +53,7 @@
 						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
 					}}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-link :to="apiDocsURL" :newWindow="true" size="small">
 					{{
 						$locale.baseText(
@@ -66,7 +68,7 @@
 			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
 			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
 			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
-			@click="onUpgrade"
+			@click:button="onUpgrade"
 		/>
 		<n8n-action-box
 			v-else-if="mounted && !isLoadingCloudPlans"
@@ -76,7 +78,7 @@
 				)
 			"
 			:description="$locale.baseText('settings.api.create.description')"
-			@click="createApiKey"
+			@click:button="createApiKey"
 		/>
 	</div>
 </template>
@@ -90,10 +92,10 @@ import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
-import { useCloudPlanStore } from '@/stores';
-import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 
 export default defineComponent({
 	name: 'SettingsApiView',
@@ -104,6 +106,7 @@ export default defineComponent({
 		return {
 			...useToast(),
 			...useMessage(),
+			...useUIStore(),
 		};
 	},
 	data() {
@@ -126,7 +129,7 @@ export default defineComponent({
 			: `https://${DOCS_DOMAIN}/api/api-reference/`;
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore),
+		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore, useUIStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
@@ -139,7 +142,7 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
-			location.href = CLOUD_CHANGE_PLAN_PAGE;
+			this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 		},
 		async showDeleteModal() {
 			const confirmed = await this.confirm(

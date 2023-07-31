@@ -5,11 +5,12 @@
 			:loading="loading && !executions.length"
 			:loadingMore="loadingMore"
 			:temporaryExecution="temporaryExecution"
+			:auto-refresh="autoRefresh"
+			@update:autoRefresh="onAutoRefreshToggle"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
 			@loadMore="onLoadMore"
 			@retryExecution="onRetryExecution"
-			@refresh="loadAutoRefresh"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
 			<router-view
@@ -83,6 +84,8 @@ export default defineComponent({
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
 			temporaryExecution: null as IExecutionsSummary | null,
+			autoRefresh: false,
+			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 		};
 	},
 	setup() {
@@ -123,8 +126,10 @@ export default defineComponent({
 	},
 	watch: {
 		$route(to: Route, from: Route) {
-			const workflowChanged = from.params.name !== to.params.name;
-			void this.initView(workflowChanged);
+			if (to.params.name) {
+				const workflowChanged = from.params.name !== to.params.name;
+				void this.initView(workflowChanged);
+			}
 
 			if (to.params.executionId) {
 				const execution = this.workflowsStore.getExecutionDataById(to.params.executionId);
@@ -187,7 +192,16 @@ export default defineComponent({
 				await this.setExecutions();
 			}
 		}
+
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
+		void this.startAutoRefreshInterval();
+		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
+
 		this.loading = false;
+	},
+	beforeUnmount() {
+		this.stopAutoRefreshInterval();
+		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	methods: {
 		async initView(loadWorkflow: boolean): Promise<void> {
@@ -325,13 +339,42 @@ export default defineComponent({
 				);
 			}
 		},
-		async onFilterUpdated(filter: ExecutionFilterType): void {
+		async onFilterUpdated(filter: ExecutionFilterType) {
 			this.filter = filter;
 			await this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
 			this.workflowsStore.currentWorkflowExecutions = await this.loadExecutions();
 			await this.setActiveExecution();
+		},
+
+		async startAutoRefreshInterval() {
+			if (this.autoRefresh) {
+				await this.loadAutoRefresh();
+				this.autoRefreshTimeout = setTimeout(() => {
+					void this.startAutoRefreshInterval();
+				}, 4000);
+			}
+		},
+		stopAutoRefreshInterval() {
+			if (this.autoRefreshTimeout) {
+				clearTimeout(this.autoRefreshTimeout);
+				this.autoRefreshTimeout = undefined;
+			}
+		},
+		onAutoRefreshToggle(value: boolean): void {
+			this.autoRefresh = value;
+			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
+
+			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
+			void this.startAutoRefreshInterval();
+		},
+		onDocumentVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				void this.stopAutoRefreshInterval();
+			} else {
+				void this.startAutoRefreshInterval();
+			}
 		},
 		async loadAutoRefresh(): Promise<void> {
 			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
@@ -449,12 +492,15 @@ export default defineComponent({
 				!this.temporaryExecution
 			) {
 				this.workflowsStore.activeWorkflowExecution = this.executions[0];
-				this.$router
-					.push({
-						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-					})
-					.catch(() => {});
+
+				if (this.$route.name === VIEWS.EXECUTION_HOME) {
+					this.$router
+						.push({
+							name: VIEWS.EXECUTION_PREVIEW,
+							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+						})
+						.catch(() => {});
+				}
 			}
 		},
 		async tryToFindExecution(executionId: string, attemptCount = 0): Promise<void> {

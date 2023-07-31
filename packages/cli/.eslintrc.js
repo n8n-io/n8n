@@ -1,4 +1,4 @@
-const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n_io/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
@@ -18,7 +18,14 @@ module.exports = {
 		// TODO: Remove this
 		'import/no-cycle': 'warn',
 		'import/order': 'off',
-		'import/extensions': 'off',
+		'import/extensions': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'@typescript-eslint/no-explicit-any': 'warn',
+		'@typescript-eslint/no-base-to-string': 'warn',
+		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
+		'@typescript-eslint/no-redundant-type-constituents': 'warn',
+		'@typescript-eslint/ban-types': 'warn',
+		'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
+		'@typescript-eslint/no-unsafe-declaration-merging': 'warn',
 	},
 };

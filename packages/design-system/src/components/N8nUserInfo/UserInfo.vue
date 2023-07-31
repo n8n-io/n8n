@@ -1,5 +1,5 @@
 <template>
-	<div class="ph-no-capture" :class="classes">
+	<div :class="classes">
 		<div :class="$style.avatarContainer">
 			<n8n-avatar :firstName="firstName" :lastName="lastName" />
 		</div>
@@ -23,7 +23,14 @@
 			</div>
 			<div v-if="!isOwner">
 				<n8n-text v-if="signInType" size="small" color="text-light">
-					Sign-in type: {{ signInType }}
+					Sign-in type:
+					{{
+						isSamlLoginEnabled
+							? settings?.allowSSOManualLogin
+								? $locale.baseText('settings.sso') + ' + ' + signInType
+								: $locale.baseText('settings.sso')
+							: signInType
+					}}
 				</n8n-text>
 			</div>
 		</div>
@@ -69,6 +76,14 @@ export default defineComponent({
 		},
 		signInType: {
 			type: String,
+			required: false,
+		},
+		settings: {
+			type: Object,
+			required: false,
+		},
+		isSamlLoginEnabled: {
+			type: Boolean,
 			required: false,
 		},
 	},

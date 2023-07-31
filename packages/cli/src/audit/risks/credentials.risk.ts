@@ -1,11 +1,13 @@
 import type { FindOperator } from 'typeorm';
 import { MoreThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
+import { Container } from 'typedi';
 import * as Db from '@/Db';
 import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
+import { ExecutionRepository } from '@db/repositories';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 	const credsInAnyUse = new Set<string>();
@@ -44,12 +46,14 @@ async function getExecutionsInPastDays(days: number) {
 
 	const utcDate = DateUtils.mixedDateToUtcDatetimeString(date) as string;
 
-	return Db.collections.Execution.find({
-		select: ['workflowData'],
-		where: {
-			startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
+	return Container.get(ExecutionRepository).findMultipleExecutions(
+		{
+			where: {
+				startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
+			},
 		},
-	});
+		{ includeData: true },
+	);
 }
 
 /**

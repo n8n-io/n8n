@@ -31,6 +31,7 @@ export {
 	sleep,
 	fileTypeFromMimeType,
 	assert,
+	removeCircularRefs,
 } from './utils';
 export {
 	isINodeProperties,
@@ -39,6 +40,7 @@ export {
 	isINodePropertiesList,
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
+	isResourceMapperValue,
 } from './type-guards';
 
 export { ExpressionExtensions } from './Extensions';

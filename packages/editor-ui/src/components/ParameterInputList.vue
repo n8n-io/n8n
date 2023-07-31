@@ -62,26 +62,37 @@
 					:underline="true"
 					color="text-dark"
 				/>
-				<collection-parameter
-					v-if="parameter.type === 'collection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
-				<fixed-collection-parameter
-					v-else-if="parameter.type === 'fixedCollection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
+				<Suspense>
+					<collection-parameter
+						v-if="parameter.type === 'collection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+					<fixed-collection-parameter
+						v-else-if="parameter.type === 'fixedCollection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+				</Suspense>
 			</div>
-
+			<resource-mapper
+				v-else-if="parameter.type === 'resourceMapper'"
+				:parameter="parameter"
+				:node="node"
+				:path="getPath(parameter.name)"
+				:dependentParametersValues="getDependentParametersValues(parameter)"
+				inputSize="small"
+				labelSize="small"
+				@valueChanged="valueChanged"
+			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
 				<div
 					class="delete-option clickable"
@@ -100,10 +111,12 @@
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
 					:value="getParameterValue(nodeValues, parameter.name, path)"
-					:displayOptions="true"
+					:displayOptions="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
+					:hideLabel="false"
+					:nodeValues="nodeValues"
+					@update="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
 			</div>
@@ -115,10 +128,15 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import type { INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -127,12 +145,17 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
-
+import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { get, set } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+
+const FixedCollectionParameter = defineAsyncComponent(
+	async () => import('./FixedCollectionParameter.vue'),
+);
+const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
 
 export default defineComponent({
 	name: 'ParameterInputList',
@@ -140,9 +163,10 @@ export default defineComponent({
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
-		FixedCollectionParameter: async () => import('./FixedCollectionParameter.vue'),
-		CollectionParameter: async () => import('./CollectionParameter.vue'),
+		FixedCollectionParameter,
+		CollectionParameter,
 		ImportParameter,
+		ResourceMapper,
 	},
 	props: {
 		nodeValues: {
@@ -224,7 +248,7 @@ export default defineComponent({
 			return index < this.filteredParameters.length ? index : this.filteredParameters.length - 1;
 		},
 		mainNodeAuthField(): INodeProperties | null {
-			return getMainAuthField(this.nodeType || undefined);
+			return getMainAuthField(this.nodeType || null);
 		},
 	},
 	methods: {
@@ -397,6 +421,33 @@ export default defineComponent({
 			// Ideally, we should check if any non-auth field depends on it before hiding it but
 			// since there is no such case, omitting it to avoid additional computation
 			return isAuthRelatedParameter(this.nodeAuthFields, parameter);
+		},
+		shouldShowOptions(parameter: INodeProperties): boolean {
+			return parameter.type !== 'resourceMapper';
+		},
+		getDependentParametersValues(parameter: INodeProperties): string | null {
+			const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn', parameter) as
+				| string[]
+				| undefined;
+
+			if (loadOptionsDependsOn === undefined) {
+				return null;
+			}
+
+			// Get the resolved parameter values of the current node
+			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
+			try {
+				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+
+				const returnValues: string[] = [];
+				for (const parameterPath of loadOptionsDependsOn) {
+					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+				}
+
+				return returnValues.join('|');
+			} catch (error) {
+				return null;
+			}
 		},
 	},
 	watch: {

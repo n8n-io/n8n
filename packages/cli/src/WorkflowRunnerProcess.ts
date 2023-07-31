@@ -104,6 +104,9 @@ class WorkflowRunnerProcess {
 
 		this.startedAt = new Date();
 
+		// Init db since we need to read the license.
+		await Db.init();
+
 		const userSettings = await UserSettings.prepareUserSettings();
 
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
@@ -116,9 +119,6 @@ class WorkflowRunnerProcess {
 		// Load all external hooks
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
-
-		// Init db since we need to read the license.
-		await Db.init();
 
 		const instanceId = userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(instanceId);
@@ -497,8 +497,7 @@ process.on('message', async (message: IProcessMessage) => {
 					status: 'canceled',
 				};
 
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
+				await workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
 			await sendToParentProcess(message.type === 'timeout' ? message.type : 'end', {

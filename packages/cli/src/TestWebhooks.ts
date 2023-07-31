@@ -35,7 +35,10 @@ export class TestWebhooks {
 		};
 	} = {};
 
-	constructor(private activeWebhooks: ActiveWebhooks, private push: Push) {
+	constructor(
+		private activeWebhooks: ActiveWebhooks,
+		private push: Push,
+	) {
 		activeWebhooks.testWebhooks = true;
 	}
 
@@ -272,8 +275,7 @@ export class TestWebhooks {
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				activeWebhooks.removeWorkflow(workflow);
+				void activeWebhooks.removeWorkflow(workflow);
 			}
 
 			foundWebhook = true;

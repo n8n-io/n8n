@@ -39,7 +39,7 @@
 						:currentUserId="currentUser.id"
 						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="workflow-sharing-modal-users-select"
-						@input="onAddSharee"
+						@update:modelValue="onAddSharee"
 					>
 						<template #prefix>
 							<n8n-icon icon="search" />
@@ -55,9 +55,9 @@
 						<template #actions="{ user }">
 							<n8n-select
 								:class="$style.roleSelect"
-								value="editor"
+								modelValue="editor"
 								size="small"
-								@change="onRoleAction(user, $event)"
+								@update:modelValue="onRoleAction(user, $event)"
 							>
 								<n8n-option :label="$locale.baseText('workflows.roles.editor')" value="editor" />
 								<n8n-option :class="$style.roleSelectRemoveOption" value="remove">
@@ -70,14 +70,14 @@
 					</n8n-users-list>
 					<template #fallback>
 						<n8n-text>
-							<i18n
-								:path="
+							<i18n-t
+								:keypath="
 									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
 								"
 								tag="span"
 							>
 								<template #action />
-							</i18n>
+							</i18n-t>
 						</n8n-text>
 					</template>
 				</enterprise-edition>
@@ -111,7 +111,6 @@
 					v-show="workflowPermissions.updateSharing"
 					:loading="loading"
 					:disabled="!isDirty"
-					size="medium"
 					data-test-id="workflow-sharing-modal-save-button"
 					@click="onSave"
 				>
@@ -123,6 +122,10 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system/utils';
+
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -134,10 +137,8 @@ import {
 import type { IUser, IWorkflowDb } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { defineComponent } from 'vue';
 import { useToast, useMessage } from '@/composables';
-import { createEventBus, nodeViewEventBus } from '@/event-bus';
-import { mapStores } from 'pinia';
+import { nodeViewEventBus } from '@/event-bus';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -389,6 +390,7 @@ export default defineComponent({
 						cancelButtonText: this.$locale.baseText(
 							'workflows.shareModal.list.delete.confirm.cancelButtonText',
 						),
+						dangerouslyUseHTMLString: true,
 					},
 				);
 

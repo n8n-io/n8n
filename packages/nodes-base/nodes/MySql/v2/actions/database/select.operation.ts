@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import type {
 	QueryRunner,
@@ -9,7 +13,7 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { addSortRules, addWhereClauses } from '../../helpers/utils';
 

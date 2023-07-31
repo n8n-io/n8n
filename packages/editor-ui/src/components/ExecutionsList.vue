@@ -9,10 +9,10 @@
 						v-else
 						class="mr-xl"
 						v-model="autoRefresh"
-						@change="handleAutoRefreshToggle"
+						@update:modelValue="handleAutoRefreshToggle"
 						data-test-id="execution-auto-refresh-checkbox"
 					>
-						{{ $locale.baseText('executionsList.autoRefresh') }}
+						{{ i18n.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
 					<execution-filter
 						v-show="!isMounting"
@@ -26,13 +26,13 @@
 				v-if="allVisibleSelected && finishedExecutionsCount > 0"
 				:class="$style.selectAll"
 				:label="
-					$locale.baseText('executionsList.selectAll', {
+					i18n.baseText('executionsList.selectAll', {
 						adjustToNumber: finishedExecutionsCount,
 						interpolate: { executionNum: finishedExecutionsCount },
 					})
 				"
-				:value="allExistingSelected"
-				@change="handleCheckAllExistingChange"
+				:modelValue="allExistingSelected"
+				@update:modelValue="handleCheckAllExistingChange"
 				data-test-id="select-all-executions-checkbox"
 			/>
 
@@ -46,17 +46,17 @@
 					<tr>
 						<th>
 							<el-checkbox
-								:value="allVisibleSelected"
-								@change="handleCheckAllVisibleChange"
+								:modelValue="allVisibleSelected"
+								@update:modelValue="handleCheckAllVisibleChange"
 								:disabled="finishedExecutionsCount < 1"
 								label=""
 								data-test-id="select-visible-executions-checkbox"
 							/>
 						</th>
-						<th>{{ $locale.baseText('executionsList.name') }}</th>
-						<th>{{ $locale.baseText('executionsList.startedAt') }}</th>
-						<th>{{ $locale.baseText('executionsList.status') }}</th>
-						<th>{{ $locale.baseText('executionsList.id') }}</th>
+						<th>{{ i18n.baseText('executionsList.name') }}</th>
+						<th>{{ i18n.baseText('executionsList.startedAt') }}</th>
+						<th>{{ i18n.baseText('executionsList.status') }}</th>
+						<th>{{ i18n.baseText('executionsList.id') }}</th>
 						<th></th>
 						<th></th>
 						<th></th>
@@ -72,16 +72,18 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:value="selectedItems[execution.id] || allExistingSelected"
-								@change="handleCheckboxChanged(execution.id)"
+								:modelValue="selectedItems[execution.id] || allExistingSelected"
+								@update:modelValue="handleCheckboxChanged(execution.id)"
 								label=""
 								data-test-id="select-execution-checkbox"
 							/>
 						</td>
 						<td>
-							<span class="ph-no-capture">{{
-								execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
-							}}</span>
+							<span @click.stop="displayExecution(execution)"
+								><a href="#" :class="$style.link">{{
+									execution.workflowName || i18n.baseText('executionsList.unsavedWorkflow')
+								}}</a></span
+							>
 						</td>
 						<td>
 							<span>{{ formatDate(execution.startedAt) }}</span>
@@ -91,9 +93,10 @@
 								<span v-if="isRunning(execution)" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
 								</span>
-								<i18n
+								<i18n-t
 									v-if="!isWaitTillIndefinite(execution)"
-									:path="getStatusTextTranslationPath(execution)"
+									tag="span"
+									:keypath="getStatusTextTranslationPath(execution)"
 								>
 									<template #status>
 										<span :class="$style.status">{{ getStatusText(execution) }}</span>
@@ -113,7 +116,7 @@
 										</span>
 										<execution-time v-else :start-time="execution.startedAt" />
 									</template>
-								</i18n>
+								</i18n-t>
 								<n8n-tooltip v-else placement="top">
 									<template #content>
 										<span>{{ getStatusTooltipText(execution) }}</span>
@@ -124,16 +127,16 @@
 						</td>
 						<td>
 							<span v-if="execution.id">#{{ execution.id }}</span>
-							<span v-if="execution.retryOf !== undefined">
+							<span v-if="execution.retryOf">
 								<br />
 								<small>
-									({{ $locale.baseText('executionsList.retryOf') }} #{{ execution.retryOf }})
+									({{ i18n.baseText('executionsList.retryOf') }} #{{ execution.retryOf }})
 								</small>
 							</span>
-							<span v-else-if="execution.retrySuccessId !== undefined">
+							<span v-else-if="execution.retrySuccessId">
 								<br />
 								<small>
-									({{ $locale.baseText('executionsList.successRetry') }} #{{
+									({{ i18n.baseText('executionsList.successRetry') }} #{{
 										execution.retrySuccessId
 									}})
 								</small>
@@ -142,7 +145,7 @@
 						<td>
 							<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
 								<template #content>
-									<span>{{ $locale.baseText('executionsList.test') }}</span>
+									<span>{{ i18n.baseText('executionsList.test') }}</span>
 								</template>
 								<font-awesome-icon icon="flask" />
 							</n8n-tooltip>
@@ -153,7 +156,7 @@
 									v-if="execution.stoppedAt !== undefined && execution.id"
 									size="small"
 									outline
-									:label="$locale.baseText('executionsList.view')"
+									:label="i18n.baseText('executionsList.view')"
 									@click.stop="displayExecution(execution)"
 								/>
 							</div>
@@ -164,7 +167,7 @@
 									v-if="execution.stoppedAt === undefined || execution.waitTill"
 									size="small"
 									outline
-									:label="$locale.baseText('executionsList.stop')"
+									:label="i18n.baseText('executionsList.stop')"
 									@click.stop="stopExecution(execution.id)"
 									:loading="stoppingExecutions.includes(execution.id)"
 								/>
@@ -181,7 +184,7 @@
 										text
 										type="tertiary"
 										size="mini"
-										:title="$locale.baseText('executionsList.retryExecution')"
+										:title="i18n.baseText('executionsList.retryExecution')"
 										icon="ellipsis-v"
 									/>
 								</span>
@@ -197,20 +200,20 @@
 											:class="$style.retryAction"
 											:command="{ command: 'currentlySaved', execution }"
 										>
-											{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+											{{ i18n.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 										</el-dropdown-item>
 										<el-dropdown-item
 											v-if="isExecutionRetriable(execution)"
 											:class="$style.retryAction"
 											:command="{ command: 'original', execution }"
 										>
-											{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+											{{ i18n.baseText('executionsList.retryWithOriginalWorkflow') }}
 										</el-dropdown-item>
 										<el-dropdown-item
 											:class="$style.deleteAction"
 											:command="{ command: 'delete', execution }"
 										>
-											{{ $locale.baseText('generic.delete') }}
+											{{ i18n.baseText('generic.delete') }}
 										</el-dropdown-item>
 									</el-dropdown-menu>
 								</template>
@@ -225,7 +228,7 @@
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
-				{{ $locale.baseText('executionsList.empty') }}
+				{{ i18n.baseText('executionsList.empty') }}
 			</div>
 			<div
 				:class="$style.loadMore"
@@ -235,8 +238,8 @@
 			>
 				<n8n-button
 					icon="sync"
-					:title="$locale.baseText('executionsList.loadMore')"
-					:label="$locale.baseText('executionsList.loadMore')"
+					:title="i18n.baseText('executionsList.loadMore')"
+					:label="i18n.baseText('executionsList.loadMore')"
 					@click="loadMore()"
 					:loading="isDataLoading"
 					data-test-id="load-more-button"
@@ -247,7 +250,7 @@
 				:class="$style.loadedAll"
 				data-test-id="execution-all-loaded"
 			>
-				{{ $locale.baseText('executionsList.loadedAll') }}
+				{{ i18n.baseText('executionsList.loadedAll') }}
 			</div>
 		</div>
 		<div
@@ -257,20 +260,20 @@
 		>
 			<span>
 				{{
-					$locale.baseText('executionsList.selected', {
+					i18n.baseText('executionsList.selected', {
 						adjustToNumber: numSelected,
 						interpolate: { numSelected },
 					})
 				}}
 			</span>
 			<n8n-button
-				:label="$locale.baseText('generic.delete')"
+				:label="i18n.baseText('generic.delete')"
 				type="tertiary"
 				@click="handleDeleteSelected"
 				data-test-id="delete-selected-button"
 			/>
 			<n8n-button
-				:label="$locale.baseText('executionsList.clearSelection')"
+				:label="i18n.baseText('executionsList.clearSelection')"
 				type="tertiary"
 				@click="handleClearSelection"
 				data-test-id="clear-selection-button"
@@ -280,16 +283,15 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useToast, useMessage } from '@/composables';
+import { useToast, useMessage, useI18n, useTelemetry } from '@/composables';
 import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -310,11 +312,21 @@ export default defineComponent({
 	mixins: [externalHooks, genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
-		WorkflowActivator,
 		ExecutionFilter,
 	},
+	props: {
+		autoRefreshEnabled: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	setup() {
+		const i18n = useI18n();
+		const telemetry = useTelemetry();
+
 		return {
+			i18n,
+			telemetry,
 			...useToast(),
 			...useMessage(),
 		};
@@ -328,8 +340,8 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: true,
-			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+			autoRefresh: this.autoRefreshEnabled,
+			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
 
@@ -345,21 +357,21 @@ export default defineComponent({
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
+
+		void this.handleAutoRefreshToggle();
+		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
 		await this.loadWorkflows();
-		this.handleAutoRefreshToggle();
 
 		void this.$externalHooks().run('executionsList.openDialog');
-		this.$telemetry.track('User opened Executions log', {
+		this.telemetry.track('User opened Executions log', {
 			workflow_id: this.workflowsStore.workflowId,
 		});
 	},
-	beforeDestroy() {
-		if (this.autoRefreshInterval) {
-			clearInterval(this.autoRefreshInterval);
-			this.autoRefreshInterval = undefined;
-		}
+	beforeUnmount() {
+		this.stopAutoRefreshInterval();
+		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
@@ -399,7 +411,7 @@ export default defineComponent({
 			return executionFilterToQueryFilter(this.filter);
 		},
 		pageTitle() {
-			return this.$locale.baseText('executionsList.workflowExecutions');
+			return this.i18n.baseText('executionsList.workflowExecutions');
 		},
 	},
 	methods: {
@@ -413,16 +425,9 @@ export default defineComponent({
 			});
 			window.open(route.href, '_blank');
 		},
-		handleAutoRefreshToggle() {
-			if (this.autoRefreshInterval) {
-				// Clear any previously existing intervals (if any - there shouldn't)
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-
-			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
-			}
+		async handleAutoRefreshToggle() {
+			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
+			void this.startAutoRefreshInterval();
 		},
 		handleCheckAllExistingChange() {
 			this.allExistingSelected = !this.allExistingSelected;
@@ -433,16 +438,21 @@ export default defineComponent({
 			this.allVisibleSelected = !this.allVisibleSelected;
 			if (!this.allVisibleSelected) {
 				this.allExistingSelected = false;
-				Vue.set(this, 'selectedItems', {});
+				this.selectedItems = {};
 			} else {
 				this.selectAllVisibleExecutions();
 			}
 		},
 		handleCheckboxChanged(executionId: string) {
 			if (this.selectedItems[executionId]) {
-				Vue.delete(this.selectedItems, executionId);
+				const { [executionId]: removedSelectedItem, ...remainingSelectedItems } =
+					this.selectedItems;
+				this.selectedItems = remainingSelectedItems;
 			} else {
-				Vue.set(this.selectedItems, executionId, true);
+				this.selectedItems = {
+					...this.selectedItems,
+					[executionId]: true,
+				};
 			}
 			this.allVisibleSelected =
 				Object.keys(this.selectedItems).length === this.combinedExecutions.length;
@@ -451,16 +461,14 @@ export default defineComponent({
 		},
 		async handleDeleteSelected() {
 			const deleteExecutions = await this.confirm(
-				this.$locale.baseText('executionsList.confirmMessage.message', {
+				this.i18n.baseText('executionsList.confirmMessage.message', {
 					interpolate: { numSelected: this.numSelected.toString() },
 				}),
-				this.$locale.baseText('executionsList.confirmMessage.headline'),
+				this.i18n.baseText('executionsList.confirmMessage.headline'),
 				{
 					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'executionsList.confirmMessage.confirmButtonText',
-					),
-					cancelButtonText: this.$locale.baseText('executionsList.confirmMessage.cancelButtonText'),
+					confirmButtonText: this.i18n.baseText('executionsList.confirmMessage.confirmButtonText'),
+					cancelButtonText: this.i18n.baseText('executionsList.confirmMessage.cancelButtonText'),
 				},
 			);
 
@@ -485,7 +493,7 @@ export default defineComponent({
 				this.isDataLoading = false;
 				this.showError(
 					error,
-					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
+					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
 
 				return;
@@ -493,17 +501,17 @@ export default defineComponent({
 			this.isDataLoading = false;
 
 			this.showMessage({
-				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
+				title: this.i18n.baseText('executionsList.showMessage.handleDeleteSelected.title'),
 				type: 'success',
 			});
 
 			this.handleClearSelection();
-			this.refreshData();
+			await this.refreshData();
 		},
 		handleClearSelection(): void {
 			this.allVisibleSelected = false;
 			this.allExistingSelected = false;
-			Vue.set(this, 'selectedItems', {});
+			this.selectedItems = {};
 		},
 		async onFilterChanged(filter: ExecutionFilterType) {
 			this.filter = filter;
@@ -511,23 +519,23 @@ export default defineComponent({
 			this.handleClearSelection();
 			this.isMounting = false;
 		},
-		handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
+		async handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 			if (['currentlySaved', 'original'].includes(commandData.command)) {
 				let loadWorkflow = false;
 				if (commandData.command === 'currentlySaved') {
 					loadWorkflow = true;
 				}
 
-				this.retryExecution(commandData.execution, loadWorkflow);
+				await this.retryExecution(commandData.execution, loadWorkflow);
 
-				this.$telemetry.track('User clicked retry execution button', {
+				this.telemetry.track('User clicked retry execution button', {
 					workflow_id: this.workflowsStore.workflowId,
 					execution_id: commandData.execution.id,
 					retry_type: loadWorkflow ? 'current' : 'original',
 				});
 			}
 			if (commandData.command === 'delete') {
-				this.deleteExecution(commandData.execution);
+				await this.deleteExecution(commandData.execution);
 			}
 		},
 		getWorkflowName(workflowId: string): string | undefined {
@@ -578,8 +586,11 @@ export default defineComponent({
 			);
 			let lastId = 0;
 			const gaps = [] as number[];
-			for (let i = results[0].results.length - 1; i >= 0; i--) {
-				const currentItem = results[0].results[i];
+
+			const pastExecutions = results[0] || { results: [], count: 0, estimated: false };
+
+			for (let i = pastExecutions.results.length - 1; i >= 0; i--) {
+				const currentItem = pastExecutions.results[i];
 				const currentId = parseInt(currentItem.id, 10);
 				if (lastId !== 0 && !isNaN(currentId)) {
 					// We are doing this iteration to detect possible gaps.
@@ -630,10 +641,10 @@ export default defineComponent({
 				(execution) =>
 					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
 			);
-			this.finishedExecutionsCount = results[0].count;
-			this.finishedExecutionsCountEstimated = results[0].estimated;
+			this.finishedExecutionsCount = pastExecutions.count;
+			this.finishedExecutionsCountEstimated = pastExecutions.estimated;
 
-			Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
+			this.finishedExecutions = alreadyPresentExecutionsFiltered;
 			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
 
 			this.adjustSelectionAfterMoreItemsLoaded();
@@ -683,7 +694,7 @@ export default defineComponent({
 				);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
+				this.showError(error, this.i18n.baseText('executionsList.showError.loadMore.title'));
 				return;
 			}
 
@@ -704,7 +715,8 @@ export default defineComponent({
 		},
 		async loadWorkflows() {
 			try {
-				const workflows = await this.workflowsStore.fetchAllWorkflows();
+				const workflows =
+					(await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
 				workflows.sort((a, b) => {
 					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
@@ -715,18 +727,14 @@ export default defineComponent({
 					return 0;
 				});
 
-				// @ts-ignore
 				workflows.unshift({
 					id: 'all',
-					name: this.$locale.baseText('executionsList.allWorkflows'),
-				});
+					name: this.i18n.baseText('executionsList.allWorkflows'),
+				} as IWorkflowShortResponse);
 
-				Vue.set(this, 'workflows', workflows);
+				this.workflows = workflows;
 			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
-				);
+				this.showError(error, this.i18n.baseText('executionsList.showError.loadWorkflows.title'));
 			}
 		},
 		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
@@ -740,22 +748,19 @@ export default defineComponent({
 
 				if (retrySuccessful) {
 					this.showMessage({
-						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
+						title: this.i18n.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
 						type: 'success',
 					});
 				} else {
 					this.showMessage({
-						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
+						title: this.i18n.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
 						type: 'error',
 					});
 				}
 
 				this.isDataLoading = false;
 			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('executionsList.showError.retryExecution.title'),
-				);
+				this.showError(error, this.i18n.baseText('executionsList.showError.retryExecution.title'));
 
 				this.isDataLoading = false;
 			}
@@ -766,7 +771,7 @@ export default defineComponent({
 			try {
 				await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
+				this.showError(error, this.i18n.baseText('executionsList.showError.refreshData.title'));
 			}
 
 			this.isDataLoading = false;
@@ -799,21 +804,21 @@ export default defineComponent({
 			let text = '';
 
 			if (status === 'waiting') {
-				text = this.$locale.baseText('executionsList.waiting');
+				text = this.i18n.baseText('executionsList.waiting');
 			} else if (status === 'canceled') {
-				text = this.$locale.baseText('executionsList.canceled');
+				text = this.i18n.baseText('executionsList.canceled');
 			} else if (status === 'crashed') {
-				text = this.$locale.baseText('executionsList.error');
+				text = this.i18n.baseText('executionsList.error');
 			} else if (status === 'new') {
-				text = this.$locale.baseText('executionsList.running');
+				text = this.i18n.baseText('executionsList.running');
 			} else if (status === 'running') {
-				text = this.$locale.baseText('executionsList.running');
+				text = this.i18n.baseText('executionsList.running');
 			} else if (status === 'success') {
-				text = this.$locale.baseText('executionsList.succeeded');
+				text = this.i18n.baseText('executionsList.succeeded');
 			} else if (status === 'failed') {
-				text = this.$locale.baseText('executionsList.error');
+				text = this.i18n.baseText('executionsList.error');
 			} else {
-				text = this.$locale.baseText('executionsList.unknown');
+				text = this.i18n.baseText('executionsList.unknown');
 			}
 
 			return text;
@@ -847,7 +852,7 @@ export default defineComponent({
 			let text = '';
 
 			if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
-				text = this.$locale.baseText(
+				text = this.i18n.baseText(
 					'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
 				);
 			}
@@ -867,19 +872,16 @@ export default defineComponent({
 				this.stoppingExecutions.splice(index, 1);
 
 				this.showMessage({
-					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
-					message: this.$locale.baseText('executionsList.showMessage.stopExecution.message', {
+					title: this.i18n.baseText('executionsList.showMessage.stopExecution.title'),
+					message: this.i18n.baseText('executionsList.showMessage.stopExecution.message', {
 						interpolate: { activeExecutionId },
 					}),
 					type: 'success',
 				});
 
-				this.refreshData();
+				await this.refreshData();
 			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('executionsList.showError.stopExecution.title'),
-				);
+				this.showError(error, this.i18n.baseText('executionsList.showError.stopExecution.title'));
 			}
 		},
 		isExecutionRetriable(execution: IExecutionsSummary): boolean {
@@ -898,13 +900,13 @@ export default defineComponent({
 				await this.refreshData();
 
 				if (this.allVisibleSelected) {
-					Vue.set(this, 'selectedItems', {});
+					this.selectedItems = {};
 					this.selectAllVisibleExecutions();
 				}
 			} catch (error) {
 				this.showError(
 					error,
-					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
+					this.i18n.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
 			}
 			this.isDataLoading = true;
@@ -920,13 +922,34 @@ export default defineComponent({
 		},
 		selectAllVisibleExecutions() {
 			this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
-				Vue.set(this.selectedItems, execution.id, true);
+				this.selectedItems = { ...this.selectedItems, [execution.id]: true };
 			});
 		},
 		adjustSelectionAfterMoreItemsLoaded() {
 			if (this.allExistingSelected) {
 				this.allVisibleSelected = true;
 				this.selectAllVisibleExecutions();
+			}
+		},
+		async startAutoRefreshInterval() {
+			if (this.autoRefresh) {
+				await this.loadAutoRefresh();
+				this.autoRefreshTimeout = setTimeout(() => {
+					void this.startAutoRefreshInterval();
+				}, 4 * 1000); // refresh data every 4 secs
+			}
+		},
+		stopAutoRefreshInterval() {
+			if (this.autoRefreshTimeout) {
+				clearTimeout(this.autoRefreshTimeout);
+				this.autoRefreshTimeout = undefined;
+			}
+		},
+		onDocumentVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				this.stopAutoRefreshInterval();
+			} else {
+				void this.startAutoRefreshInterval();
 			}
 		},
 	},
@@ -1170,5 +1193,10 @@ export default defineComponent({
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
+}
+
+.link {
+	color: var(--color-text-base);
+	text-decoration: underline;
 }
 </style>

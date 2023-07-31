@@ -6,7 +6,7 @@
 			</n8n-text>
 		</div>
 		<div v-else-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
-			<i18n path="executionUsage.currentUsage">
+			<i18n-t tag="span" keypath="executionUsage.currentUsage">
 				<template #text>
 					<n8n-text size="small" color="text-dark">
 						{{ locale.baseText('executionUsage.currentUsage.text') }}
@@ -16,12 +16,12 @@
 					<n8n-text size="small" :bold="true" color="warning">
 						{{
 							locale.baseText('executionUsage.currentUsage.count', {
-								adjustToNumber: daysLeftOnTrial,
+								adjustToNumber: daysLeftOnTrial || 0,
 							})
 						}}
 					</n8n-text>
 				</template>
-			</i18n>
+			</i18n-t>
 		</div>
 		<div v-else-if="!trialHasExecutionsLeft" :class="$style.usageText">
 			<n8n-text size="small">
@@ -66,8 +66,8 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
-import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 import { computed } from 'vue';
+import { useUIStore } from '@/stores';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
@@ -114,7 +114,7 @@ const maxExecutions = computed(() => {
 });
 
 const onUpgradeClicked = () => {
-	location.href = CLOUD_CHANGE_PLAN_PAGE;
+	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 };
 </script>
 

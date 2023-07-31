@@ -15,8 +15,33 @@
 			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
 				<el-row>
 					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.executionOrder') + ':' }}
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.executionOrder"
+							placeholder="Select Execution Order"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-execution-order"
+						>
+							<n8n-option
+								v-for="option in executionOrderOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+
+				<el-row>
+					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-html="helpTexts.errorWorkflow"></div>
 							</template>
@@ -27,8 +52,8 @@
 						<n8n-select
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
-							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
 						>
@@ -46,7 +71,7 @@
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
-							<n8n-tooltip class="setting-info" placement="top">
+							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerPolicy"></div>
 								</template>
@@ -57,8 +82,8 @@
 						<el-col :span="14" class="ignore-key-press">
 							<n8n-select
 								v-model="workflowSettings.callerPolicy"
+								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.selectOption')"
-								size="medium"
 								filterable
 								:limit-popper-width="true"
 							>
@@ -75,7 +100,7 @@
 					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerIds') + ':' }}
-							<n8n-tooltip class="setting-info" placement="top">
+							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
 								</template>
@@ -84,11 +109,11 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
-								size="medium"
 								v-model="workflowSettings.callerIds"
-								@input="onCallerIdsInput"
+								@update:modelValue="onCallerIdsInput"
 							/>
 						</el-col>
 					</el-row>
@@ -96,7 +121,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timezone') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.timezone"></div>
 							</template>
@@ -107,8 +132,8 @@
 						<n8n-select
 							v-model="workflowSettings.timezone"
 							placeholder="Select Timezone"
-							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-timezone"
 						>
@@ -125,7 +150,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataErrorExecution"></div>
 							</template>
@@ -136,8 +161,8 @@
 						<n8n-select
 							v-model="workflowSettings.saveDataErrorExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-failed-executions"
 						>
@@ -154,7 +179,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveDataSuccessExecution"></div>
 							</template>
@@ -165,8 +190,8 @@
 						<n8n-select
 							v-model="workflowSettings.saveDataSuccessExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-success-executions"
 						>
@@ -183,7 +208,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveManualExecutions') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveManualExecutions"></div>
 							</template>
@@ -194,8 +219,8 @@
 						<n8n-select
 							v-model="workflowSettings.saveManualExecutions"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-manual-executions"
 						>
@@ -212,7 +237,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveExecutionProgress') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.saveExecutionProgress"></div>
 							</template>
@@ -223,8 +248,8 @@
 						<n8n-select
 							v-model="workflowSettings.saveExecutionProgress"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-execution-progress"
 						>
@@ -241,7 +266,7 @@
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-text="helpTexts.executionTimeoutToggle"></div>
 							</template>
@@ -252,8 +277,9 @@
 						<div>
 							<el-switch
 								ref="inputField"
-								:value="workflowSettings.executionTimeout > -1"
-								@change="toggleTimeout"
+								:disabled="readOnlyEnv"
+								:modelValue="workflowSettings.executionTimeout > -1"
+								@update:modelValue="toggleTimeout"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
 							></el-switch>
@@ -267,7 +293,7 @@
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}
-							<n8n-tooltip class="setting-info" placement="top">
+							<n8n-tooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.executionTimeout"></div>
 								</template>
@@ -276,9 +302,9 @@
 						</el-col>
 						<el-col :span="4">
 							<n8n-input
-								size="medium"
-								:value="timeoutHMS.hours"
-								@input="(value) => setTimeout('hours', value)"
+								:disabled="readOnlyEnv"
+								:modelValue="timeoutHMS.hours"
+								@update:modelValue="(value) => setTimeout('hours', value)"
 								:min="0"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
@@ -286,22 +312,22 @@
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
-								size="medium"
-								:value="timeoutHMS.minutes"
-								@input="(value) => setTimeout('minutes', value)"
+								:disabled="readOnlyEnv"
+								:modelValue="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
+								@update:modelValue="(value) => setTimeout('minutes', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
-								size="medium"
-								:value="timeoutHMS.seconds"
-								@input="(value) => setTimeout('seconds', value)"
+								:disabled="readOnlyEnv"
+								:modelValue="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
+								@update:modelValue="(value) => setTimeout('seconds', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>
@@ -313,6 +339,7 @@
 		<template #footer>
 			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
+					:disabled="readOnlyEnv"
 					:label="$locale.baseText('workflowSettings.save')"
 					size="large"
 					float="right"
@@ -324,7 +351,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
@@ -348,12 +374,14 @@ import {
 
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import useWorkflowsEEStore from '@/stores/workflows.ee.store';
-import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from '@/event-bus';
+import {
+	useWorkflowsStore,
+	useSettingsStore,
+	useRootStore,
+	useWorkflowsEEStore,
+	useUsersStore,
+} from '@/stores';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
@@ -406,9 +434,14 @@ export default defineComponent({
 			saveDataSuccessExecutionOptions: [] as Array<{ key: string; value: string }>,
 			saveExecutionProgressOptions: [] as Array<{ key: string | boolean; value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean; value: string }>,
+			executionOrderOptions: [
+				{ key: 'v0', value: 'v0 (legacy)' },
+				{ key: 'v1', value: 'v1 (recommended)' },
+			] as Array<{ key: string; value: string }>,
 			timezones: [] as Array<{ key: string; value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
+			executionOrder: 'v0',
 			executionTimeout: 0,
 			maxExecutionTimeout: 0,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
@@ -516,8 +549,11 @@ export default defineComponent({
 		if (workflowSettings.maxExecutionTimeout === undefined) {
 			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
+		if (workflowSettings.executionOrder === undefined) {
+			workflowSettings.executionOrder = 'v0';
+		}
 
-		Vue.set(this, 'workflowSettings', workflowSettings);
+		this.workflowSettings = workflowSettings;
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
@@ -732,7 +768,7 @@ export default defineComponent({
 			}
 		},
 		async loadWorkflows() {
-			const workflows = await this.workflowsStore.fetchAllWorkflows();
+			const workflows = (await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;
@@ -743,13 +779,12 @@ export default defineComponent({
 				return 0;
 			});
 
-			// @ts-ignore
 			workflows.unshift({
 				id: undefined as unknown as string,
 				name: this.$locale.baseText('workflowSettings.noWorkflow'),
-			});
+			} as IWorkflowShortResponse);
 
-			Vue.set(this, 'workflows', workflows);
+			this.workflows = workflows;
 		},
 		async saveSettings() {
 			// Set that the active state should be changed
@@ -860,17 +895,19 @@ export default defineComponent({
 	}
 }
 
-.setting-info {
-	display: none;
-}
-
 .setting-name {
 	line-height: 32px;
-}
 
-.setting-name:hover {
-	.setting-info {
-		display: inline;
+	svg {
+		display: inline-flex;
+		opacity: 0;
+		transition: opacity 0.3s ease;
+	}
+
+	&:hover {
+		svg {
+			opacity: 1;
+		}
 	}
 }
 

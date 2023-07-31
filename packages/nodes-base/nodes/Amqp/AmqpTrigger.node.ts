@@ -217,9 +217,12 @@ export class AmqpTrigger implements INodeType {
 			}
 
 			if (!context.receiver?.has_credit()) {
-				setTimeout(() => {
-					context.receiver?.add_credit(pullMessagesNumber);
-				}, (options.sleepTime as number) || 10);
+				setTimeout(
+					() => {
+						context.receiver?.add_credit(pullMessagesNumber);
+					},
+					(options.sleepTime as number) || 10,
+				);
 			}
 		});
 

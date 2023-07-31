@@ -1,18 +1,21 @@
 <template>
 	<el-dialog
-		:visible="uiStore.isModalOpen(this.name)"
+		:modelValue="uiStore.isModalOpen(this.name)"
 		:before-close="closeDialog"
-		:class="{ 'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable }"
+		:class="{
+			'dialog-wrapper': true,
+			scrollable: scrollable,
+			[getCustomClass()]: true,
+		}"
 		:width="width"
 		:show-close="showClose"
-		:custom-class="getCustomClass()"
 		:close-on-click-modal="closeOnClickModal"
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
-		append-to-body
+		:append-to-body="appendToBody"
 		:data-test-id="`${this.name}-modal`"
 	>
-		<template #title v-if="$scopedSlots.header">
+		<template #header v-if="$slots.header">
 			<slot name="header" v-if="!loading" />
 		</template>
 		<template #title v-else-if="title">
@@ -36,22 +39,24 @@
 				<n8n-spinner />
 			</div>
 		</div>
-		<div v-if="!loading && $scopedSlots.footer" :class="$style.footer">
+		<div v-if="!loading && $slots.footer" :class="$style.footer">
 			<slot name="footer" :close="closeDialog" />
 		</div>
 	</el-dialog>
 </template>
 
 <script lang="ts">
+import { ElDialog } from 'element-plus';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import type { EventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	name: 'Modal',
 	props: {
+		...ElDialog.props,
 		name: {
 			type: String,
 		},
@@ -118,6 +123,10 @@ export default defineComponent({
 			type: Boolean,
 			default: true,
 		},
+		appendToBody: {
+			type: Boolean,
+			default: true,
+		},
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
@@ -130,7 +139,7 @@ export default defineComponent({
 			activeElement.blur();
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.eventBus?.off('close', this.closeDialog);
 		this.eventBus?.off('closeAll', this.uiStore.closeAllModals);
 		window.removeEventListener('keydown', this.onWindowKeydown);
@@ -197,7 +206,7 @@ export default defineComponent({
 
 <style lang="scss">
 .dialog-wrapper {
-	.el-dialog {
+	&.el-dialog {
 		display: flex;
 		flex-direction: column;
 		max-width: var(--dialog-max-width, 80%);

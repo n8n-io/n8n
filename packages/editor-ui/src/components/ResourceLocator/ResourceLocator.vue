@@ -5,7 +5,7 @@
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
 		<resource-locator-dropdown
-			:value="value ? value.value : ''"
+			:modelValue="modelValue ? modelValue.value : ''"
 			:show="showResourceDropdown"
 			:filterable="isSearchable"
 			:filterRequired="requiresSearchFilter"
@@ -15,11 +15,11 @@
 			:hasMore="currentQueryHasMore"
 			:errorView="currentQueryError"
 			:width="width"
-			@input="onListItemSelected"
+			:event-bus="eventBus"
+			@update:modelValue="onListItemSelected"
 			@hide="onDropdownHide"
 			@filter="onSearchFilter"
 			@loadMore="loadResourcesDebounced"
-			ref="dropdown"
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
@@ -45,18 +45,17 @@
 			>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
-						:value="selectedMode"
+						:modelValue="selectedMode"
 						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
-						@change="onModeSelected"
+						@update:modelValue="onModeSelected"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
 							:key="mode.name"
-							:label="$locale.baseText(getModeLabel(mode.name)) || mode.displayName"
 							:value="mode.name"
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
@@ -65,6 +64,7 @@
 									: ''
 							"
 						>
+							{{ getModeLabel(mode.name) || mode.displayName }}
 						</n8n-option>
 					</n8n-select>
 				</div>
@@ -88,10 +88,10 @@
 							>
 								<ExpressionParameterInput
 									v-if="isValueExpression || forceShowExpression"
-									:value="expressionDisplayValue"
+									:modelValue="expressionDisplayValue"
 									:path="path"
 									isForRecordLocator
-									@valueChanged="onInputChange"
+									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
 									ref="input"
 								/>
@@ -99,7 +99,7 @@
 									v-else
 									:class="{ [$style.selectInput]: isListMode }"
 									:size="inputSize"
-									:value="valueToDisplay"
+									:modelValue="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
@@ -107,7 +107,7 @@
 									type="text"
 									ref="input"
 									data-test-id="rlc-input"
-									@input="onInputChange"
+									@update:modelValue="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
@@ -157,7 +157,6 @@ import type {
 } from 'n8n-workflow';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import type { PropType } from 'vue';
@@ -177,8 +176,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-
-type ResourceLocatorDropdownRef = InstanceType<typeof ResourceLocatorDropdown>;
+import { createEventBus } from 'n8n-design-system/utils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -192,7 +191,6 @@ export default defineComponent({
 	mixins: [debounceHelper, workflowHelpers, nodeHelpers],
 	components: {
 		DraggableTarget,
-		ExpressionEdit,
 		ExpressionParameterInput,
 		ParameterIssues,
 		ResourceLocatorDropdown,
@@ -202,7 +200,7 @@ export default defineComponent({
 			type: Object as PropType<INodeProperties>,
 			required: true,
 		},
-		value: {
+		modelValue: {
 			type: [Object, String] as PropType<
 				INodeParameterResourceLocator | NodeParameterValue | undefined
 			>,
@@ -258,6 +256,10 @@ export default defineComponent({
 		loadOptionsMethod: {
 			type: String,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	data() {
 		return {
@@ -279,16 +281,16 @@ export default defineComponent({
 			return getAppNameFromNodeName(nodeType?.displayName || '');
 		},
 		selectedMode(): string {
-			if (typeof this.value !== 'object') {
+			if (typeof this.modelValue !== 'object') {
 				// legacy mode
 				return '';
 			}
 
-			if (!this.value) {
+			if (!this.modelValue) {
 				return this.parameter.modes ? this.parameter.modes[0].name : '';
 			}
 
-			return this.value.mode;
+			return this.modelValue.mode;
 		},
 		isListMode(): boolean {
 			return this.selectedMode === 'list';
@@ -333,19 +335,19 @@ export default defineComponent({
 			return hasOnlyListMode(this.parameter);
 		},
 		valueToDisplay(): NodeParameterValue {
-			if (typeof this.value !== 'object') {
-				return this.value;
+			if (typeof this.modelValue !== 'object') {
+				return this.modelValue;
 			}
 
 			if (this.isListMode) {
-				return this.value ? this.value.cachedResultName || this.value.value : '';
+				return this.modelValue ? this.modelValue.cachedResultName || this.modelValue.value : '';
 			}
 
-			return this.value ? this.value.value : '';
+			return this.modelValue ? this.modelValue.value : '';
 		},
 		urlValue(): string | null {
-			if (this.isListMode && typeof this.value === 'object') {
-				return (this.value && this.value.cachedResultUrl) || null;
+			if (this.isListMode && typeof this.modelValue === 'object') {
+				return (this.modelValue && this.modelValue.cachedResultUrl) || null;
 			}
 
 			if (this.selectedMode === 'url') {
@@ -452,17 +454,23 @@ export default defineComponent({
 			if (
 				mode.extractValue &&
 				mode.extractValue.regex &&
-				isResourceLocatorValue(this.value) &&
-				this.value.__regex !== mode.extractValue.regex
+				isResourceLocatorValue(this.modelValue) &&
+				this.modelValue.__regex !== mode.extractValue.regex
 			) {
-				this.$emit('input', { ...this.value, __regex: mode.extractValue.regex });
+				this.$emit('update:modelValue', { ...this.modelValue, __regex: mode.extractValue.regex });
 			}
 		},
-		dependentParametersValues() {
+		dependentParametersValues(currentValue, oldValue) {
+			const isUpdated = oldValue !== null && currentValue !== null && oldValue !== currentValue;
 			// Reset value if dependent parameters change
-			if (this.value && isResourceLocatorValue(this.value) && this.value.value !== '') {
-				this.$emit('input', {
-					...this.value,
+			if (
+				isUpdated &&
+				this.modelValue &&
+				isResourceLocatorValue(this.modelValue) &&
+				this.modelValue.value !== ''
+			) {
+				this.$emit('update:modelValue', {
+					...this.modelValue,
 					cachedResultName: '',
 					cachedResultUrl: '',
 					value: '',
@@ -471,17 +479,20 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.$on('refreshList', this.refreshList);
+		this.eventBus.on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
+
 		useNDVStore().$subscribe((mutation, state) => {
 			// Update the width when main panel dimension change
 			this.setWidth();
 		});
+
 		setTimeout(() => {
 			this.setWidth();
 		}, 0);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
+		this.eventBus.off('refreshList', this.refreshList);
 		window.removeEventListener('resize', this.setWidth);
 	},
 	methods: {
@@ -506,9 +517,8 @@ export default defineComponent({
 			this.trackEvent('User refreshed resource locator list');
 		},
 		onKeyDown(e: MouseEvent) {
-			const dropdownRef = this.$refs.dropdown as ResourceLocatorDropdownRef | undefined;
-			if (dropdownRef && this.showResourceDropdown && !this.isSearchable) {
-				dropdownRef.$emit('keyDown', e);
+			if (this.showResourceDropdown && !this.isSearchable) {
+				this.eventBus.emit('keyDown', e);
 			}
 		},
 		openResource(url: string) {
@@ -580,17 +590,26 @@ export default defineComponent({
 					params.cachedResultUrl = resource.url;
 				}
 			}
-			this.$emit('input', params);
+			this.$emit('update:modelValue', params);
 		},
 		onModeSelected(value: string): void {
-			if (typeof this.value !== 'object') {
-				this.$emit('input', { __rl: true, value: this.value, mode: value });
-			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
-				this.$emit('input', { __rl: true, mode: value, value: this.value.cachedResultUrl });
-			} else if (value === 'id' && this.selectedMode === 'list' && this.value && this.value.value) {
-				this.$emit('input', { __rl: true, mode: value, value: this.value.value });
+			if (typeof this.modelValue !== 'object') {
+				this.$emit('update:modelValue', { __rl: true, value: this.modelValue, mode: value });
+			} else if (value === 'url' && this.modelValue && this.modelValue.cachedResultUrl) {
+				this.$emit('update:modelValue', {
+					__rl: true,
+					mode: value,
+					value: this.modelValue.cachedResultUrl,
+				});
+			} else if (
+				value === 'id' &&
+				this.selectedMode === 'list' &&
+				this.modelValue &&
+				this.modelValue.value
+			) {
+				this.$emit('update:modelValue', { __rl: true, mode: value, value: this.modelValue.value });
 			} else {
-				this.$emit('input', { __rl: true, mode: value, value: '' });
+				this.$emit('update:modelValue', { __rl: true, mode: value, value: '' });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
@@ -718,9 +737,10 @@ export default defineComponent({
 				}
 
 				if (mode) {
-					this.$emit('input', {
+					this.$emit('update:modelValue', {
 						__rl: true,
-						value: this.value && typeof this.value === 'object' ? this.value.value : '',
+						value:
+							this.modelValue && typeof this.modelValue === 'object' ? this.modelValue.value : '',
 						mode: mode.name,
 					});
 				}
@@ -822,7 +842,9 @@ $--mode-selector-width: 92px;
 .selectIcon {
 	cursor: pointer;
 	font-size: 14px;
-	transition: transform 0.3s, -webkit-transform 0.3s;
+	transition:
+		transform 0.3s,
+		-webkit-transform 0.3s;
 	-webkit-transform: rotateZ(0);
 	transform: rotateZ(0);
 

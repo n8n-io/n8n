@@ -5,7 +5,7 @@ import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Authorized, NoAuthRequired, Delete, Get, Post, RestController } from '@/decorators';
+import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
 import {
 	addInviteLinkToUser,
 	generateUserInviteUrl,
@@ -17,10 +17,15 @@ import {
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
-import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
-import { UserRequest } from '@/requests';
+import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type {
 	PublicUser,
@@ -32,7 +37,6 @@ import type {
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
-import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import type {
 	RoleRepository,
@@ -40,6 +44,12 @@ import type {
 	SharedWorkflowRepository,
 	UserRepository,
 } from '@db/repositories';
+import { UserService } from '@/user/user.service';
+import { plainToInstance } from 'class-transformer';
+import { License } from '@/License';
+import { Container } from 'typedi';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { JwtService } from '@/services/jwt.service';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -64,6 +74,8 @@ export class UsersController {
 
 	private mailer: UserManagementMailer;
 
+	private jwtService: JwtService;
+
 	private postHog?: PostHogClient;
 
 	constructor({
@@ -74,6 +86,7 @@ export class UsersController {
 		repositories,
 		activeWorkflowRunner,
 		mailer,
+		jwtService,
 		postHog,
 	}: {
 		config: Config;
@@ -86,6 +99,7 @@ export class UsersController {
 		>;
 		activeWorkflowRunner: ActiveWorkflowRunner;
 		mailer: UserManagementMailer;
+		jwtService: JwtService;
 		postHog?: PostHogClient;
 	}) {
 		this.config = config;
@@ -98,14 +112,17 @@ export class UsersController {
 		this.sharedWorkflowRepository = repositories.SharedWorkflow;
 		this.activeWorkflowRunner = activeWorkflowRunner;
 		this.mailer = mailer;
+		this.jwtService = jwtService;
 		this.postHog = postHog;
 	}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-	@Post('/', { middlewares: [userManagementEnabledMiddleware] })
+	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
@@ -113,6 +130,13 @@ export class UsersController {
 			throw new BadRequestError(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
+		}
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -355,6 +379,48 @@ export class UsersController {
 		);
 	}
 
+	@Authorized(['global', 'owner'])
+	@Get('/:id/password-reset-link')
+	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: req.params.id },
+		});
+		if (!user) {
+			throw new NotFoundError('User not found');
+		}
+
+		const resetPasswordToken = this.jwtService.signData(
+			{ sub: user.id },
+			{
+				expiresIn: '1d',
+			},
+		);
+
+		const baseUrl = getInstanceBaseUrl();
+
+		const link = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		return {
+			link,
+		};
+	}
+
+	@Authorized(['global', 'owner'])
+	@Patch('/:id/settings')
+	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+
+		const id = req.params.id;
+
+		await UserService.updateUserSettings(id, payload);
+
+		const user = await this.userRepository.findOneOrFail({
+			select: ['settings'],
+			where: { id },
+		});
+
+		return user.settings;
+	}
+
 	/**
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
@@ -518,6 +584,14 @@ export class UsersController {
 	@Post('/:id/reinvite')
 	async reinviteUser(req: UserRequest.Reinvite) {
 		const { id: idToReinvite } = req.params;
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 
 		if (!isEmailSetUp()) {
 			this.logger.error('Request to reinvite a user failed because email sending was not set up');

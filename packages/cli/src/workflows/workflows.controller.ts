@@ -169,8 +169,7 @@ workflowsController.get(
 
 		// Do a very basic check if it is really a n8n-workflow-json
 		if (
-			workflowData === undefined ||
-			workflowData.nodes === undefined ||
+			workflowData?.nodes === undefined ||
 			!Array.isArray(workflowData.nodes) ||
 			workflowData.connections === undefined ||
 			typeof workflowData.connections !== 'object' ||
@@ -189,7 +188,7 @@ workflowsController.get(
  * GET /workflows/:id
  */
 workflowsController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
@@ -228,7 +227,7 @@ workflowsController.get(
  * PATCH /workflows/:id
  */
 workflowsController.patch(
-	'/:id',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
 
@@ -254,7 +253,7 @@ workflowsController.patch(
  * DELETE /workflows/:id
  */
 workflowsController.delete(
-	'/:id',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 

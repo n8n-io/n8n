@@ -19,6 +19,7 @@ import type {
 	IHttpRequestOptions,
 	ILogger,
 	INode,
+	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeType,
 	INodeTypeData,
@@ -29,10 +30,10 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	NodeLoadingDetails,
+	WorkflowTestData,
 } from 'n8n-workflow';
 import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
-import type { WorkflowTestData } from './types';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
 
@@ -237,7 +238,7 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	const nodes = [...new Set(testData.flatMap((data) => data.input.workflowData.nodes))];
 	const credentialNames = nodes
 		.filter((n) => n.credentials)
-		.flatMap(({ credentials }) => Object.keys(credentials!));
+		.flatMap(({ credentials }) => Object.keys(credentials as INodeCredentials));
 	for (const credentialName of credentialNames) {
 		const loadInfo = knownCredentials[credentialName];
 		if (!loadInfo) {
@@ -320,6 +321,15 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	const resultNodeData = getResultNodeData(result, testData);
 	resultNodeData.forEach(({ nodeName, resultData }) => {
 		const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
+		resultData.forEach((item) => {
+			item?.forEach(({ binary }) => {
+				if (binary) {
+					// @ts-ignore
+					delete binary.data.data;
+					delete binary.data.directory;
+				}
+			});
+		});
 		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
@@ -344,6 +354,14 @@ export const workflowToTests = (workflowFiles: string[]) => {
 	for (const filePath of workflowFiles) {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
+		const testDir = path.join(baseDir, path.dirname(filePath));
+		workflowData.nodes.forEach((node) => {
+			if (node.parameters) {
+				node.parameters = JSON.parse(
+					JSON.stringify(node.parameters).replace(/"C:\\\\Test\\\\(.*)"/, `"${testDir}/$1"`),
+				);
+			}
+		});
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}

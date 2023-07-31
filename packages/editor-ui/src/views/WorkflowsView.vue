@@ -9,9 +9,28 @@
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
 		:initialize="initialize"
+		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
+		<template #add-button="{ disabled }">
+			<n8n-tooltip :disabled="!readOnlyEnv">
+				<div>
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="addWorkflow"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`workflows.add`) }}
+					</n8n-button>
+				</div>
+				<template #content>
+					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
+				</template>
+			</n8n-tooltip>
+		</template>
 		<template #default="{ data, updateItemSize }">
 			<workflow-card
 				data-test-id="resources-list-item"
@@ -19,6 +38,7 @@
 				:data="data"
 				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
+				:readOnly="readOnlyEnv"
 			/>
 		</template>
 		<template #empty>
@@ -34,10 +54,16 @@
 					}}
 				</n8n-heading>
 				<n8n-text size="large" color="text-base">
-					{{ $locale.baseText('workflows.empty.description') }}
+					{{
+						$locale.baseText(
+							readOnlyEnv
+								? 'workflows.empty.description.readOnlyEnv'
+								: 'workflows.empty.description',
+						)
+					}}
 				</n8n-text>
 			</div>
-			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
 					:class="$style.emptyStateCard"
 					hoverable
@@ -62,9 +88,9 @@
 				/>
 				<TagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:currentTagIds="filters.tags"
+					:modelValue="filters.tags"
 					:createEnabled="false"
-					@update="setKeyValue('tags', $event)"
+					@update:modelValue="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
@@ -75,7 +101,7 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="medium">
+				<n8n-select :modelValue="filters.status" @update:modelValue="setKeyValue('status', $event)">
 					<n8n-option
 						v-for="option in statusFilterOptions"
 						:key="option.label"
@@ -94,7 +120,6 @@ import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
@@ -103,8 +128,10 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 const StatusFilter = {
 	ACTIVE: true,
@@ -114,6 +141,7 @@ const StatusFilter = {
 
 const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
+	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
@@ -128,6 +156,7 @@ const WorkflowsView = defineComponent({
 				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -137,6 +166,7 @@ const WorkflowsView = defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 			useCredentialsStore,
+			useSourceControlStore,
 		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
@@ -194,12 +224,13 @@ const WorkflowsView = defineComponent({
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
-					filters.tags.every((tag) =>
-						(resource.tags as ITag[])?.find((resourceTag) =>
-							typeof resourceTag === 'object'
-								? `${resourceTag.id}` === `${tag}`
-								: `${resourceTag}` === `${tag}`,
-						),
+					filters.tags.every(
+						(tag) =>
+							(resource.tags as ITag[])?.find((resourceTag) =>
+								typeof resourceTag === 'object'
+									? `${resourceTag.id}` === `${tag}`
+									: `${resourceTag}` === `${tag}`,
+							),
 					);
 			}
 
@@ -220,6 +251,17 @@ const WorkflowsView = defineComponent({
 	},
 	mounted() {
 		void this.usersStore.showPersonalizationSurvey();
+
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 });
 

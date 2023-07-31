@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.167.0",
+  "version": "1.1.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -38,15 +38,14 @@
     "@types/cron": "~1.7.1",
     "@types/crypto-js": "^4.0.1",
     "@types/express": "^4.17.6",
-    "@types/lodash.get": "^4.4.6",
-    "@types/lodash.pick": "^4.4.7",
+    "@types/lodash": "^4.14.195",
     "@types/mime-types": "^2.1.0",
     "@types/request-promise-native": "~1.0.15",
     "@types/uuid": "^8.3.2"
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "client-oauth2": "^4.2.5",
+    "@n8n/client-oauth2": "workspace:*",
     "concat-stream": "^2.0.0",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
@@ -54,16 +53,13 @@
     "file-type": "^16.5.4",
     "flatted": "^3.2.4",
     "form-data": "^4.0.0",
-    "lodash.get": "^4.4.2",
-    "lodash.pick": "^4.4.0",
+    "lodash": "^4.17.21",
     "mime-types": "^2.1.27",
     "n8n-workflow": "workspace:*",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "pretty-bytes": "^5.6.0",
     "qs": "^6.10.1",
-    "request": "^2.88.2",
-    "request-promise-native": "^1.0.7",
     "uuid": "^8.3.2"
   }
 }

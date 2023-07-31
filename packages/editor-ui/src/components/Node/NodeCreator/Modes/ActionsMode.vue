@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, defineComponent } from 'vue';
-import type { VNode, PropType } from 'vue';
+import { computed, getCurrentInstance, onMounted, defineComponent, h } from 'vue';
+import type { PropType } from 'vue';
 import type {
 	INodeCreateElement,
 	ActionTypeDescription,
@@ -13,10 +13,8 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	CUSTOM_API_CALL_KEY,
-	AUTO_INSERT_ACTION_EXPERIMENT,
 } from '@/constants';
 
-import { usePostHog } from '@/stores/posthog.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWebhooksStore } from '@/stores/webhooks.store';
 import { runExternalHook } from '@/utils';
@@ -143,12 +141,8 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	const isPlaceholderTriggerAction = placeholderTriggerActions.some(
 		(p) => p.key === actionCreateElement.key,
 	);
-	const includeNodeWithPlaceholderTrigger = usePostHog().isVariantEnabled(
-		AUTO_INSERT_ACTION_EXPERIMENT.name,
-		AUTO_INSERT_ACTION_EXPERIMENT.variant,
-	);
 
-	if (includeNodeWithPlaceholderTrigger && isPlaceholderTriggerAction && isTriggerRootView) {
+	if (isPlaceholderTriggerAction && isTriggerRootView.value) {
 		const actionNode = actions.value[0].key;
 
 		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
@@ -211,15 +205,15 @@ const OrderSwitcher = defineComponent({
 			type: String as PropType<NodeFilterType>,
 		},
 	},
-	render(h): VNode {
-		const triggers = this.$slots?.triggers?.[0];
-		const actions = this.$slots?.actions?.[0];
-
-		return h(
-			'div',
-			{},
-			this.rootView === REGULAR_NODE_CREATOR_VIEW ? [actions, triggers] : [triggers, actions],
-		);
+	setup(props, { slots }) {
+		return () =>
+			h(
+				'div',
+				{},
+				props.rootView === REGULAR_NODE_CREATOR_VIEW
+					? [slots.actions?.(), slots.triggers?.()]
+					: [slots.triggers?.(), slots.actions?.()],
+			);
 	},
 });
 
@@ -242,32 +236,30 @@ onMounted(() => {
 					@selected="onSelected"
 				>
 					<!-- Empty state -->
-					<template #empty>
-						<template v-if="hasNoTriggerActions">
-							<n8n-callout
-								theme="info"
-								iconless
-								slim
-								data-test-id="actions-panel-no-triggers-callout"
-							>
-								<span
-									v-html="
-										$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
-											interpolate: { nodeName: subcategory },
-										})
-									"
-								/>
-							</n8n-callout>
-							<ItemsRenderer @selected="onSelected" :elements="placeholderTriggerActions" />
-						</template>
-
-						<template v-else>
-							<p
-								:class="$style.resetSearch"
-								v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
-								@click="resetSearch"
+					<template #empty v-if="hasNoTriggerActions">
+						<n8n-callout
+							v-if="hasNoTriggerActions"
+							theme="info"
+							iconless
+							slim
+							data-test-id="actions-panel-no-triggers-callout"
+						>
+							<span
+								v-html="
+									$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
+										interpolate: { nodeName: subcategory },
+									})
+								"
 							/>
-						</template>
+						</n8n-callout>
+						<ItemsRenderer @selected="onSelected" :elements="placeholderTriggerActions" />
+					</template>
+					<template #empty v-else>
+						<p
+							:class="$style.resetSearch"
+							v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingTriggers')"
+							@click="resetSearch"
+						/>
 					</template>
 				</CategorizedItemsRenderer>
 			</template>
@@ -280,17 +272,15 @@ onMounted(() => {
 					:expanded="!isTriggerRootView || parsedTriggerActions.length === 0"
 					@selected="onSelected"
 				>
-					<template>
-						<n8n-callout
-							theme="info"
-							iconless
-							v-if="!userActivated && isTriggerRootView"
-							slim
-							data-test-id="actions-panel-activation-callout"
-						>
-							<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
-						</n8n-callout>
-					</template>
+					<n8n-callout
+						theme="info"
+						iconless
+						v-if="!userActivated && isTriggerRootView"
+						slim
+						data-test-id="actions-panel-activation-callout"
+					>
+						<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
+					</n8n-callout>
 					<!-- Empty state -->
 					<template #empty>
 						<n8n-info-tip theme="info" type="note" v-if="!search" :class="$style.actionsEmpty">
@@ -302,14 +292,13 @@ onMounted(() => {
 								"
 							/>
 						</n8n-info-tip>
-						<template v-else>
-							<p
-								:class="$style.resetSearch"
-								v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')"
-								@click="resetSearch"
-								data-test-id="actions-panel-no-matching-actions"
-							/>
-						</template>
+						<p
+							v-else
+							:class="$style.resetSearch"
+							v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')"
+							@click="resetSearch"
+							data-test-id="actions-panel-no-matching-actions"
+						/>
 					</template>
 				</CategorizedItemsRenderer>
 			</template>

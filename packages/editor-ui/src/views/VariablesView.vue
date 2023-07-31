@@ -1,7 +1,13 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { useEnvironmentsStore, useUIStore, useSettingsStore, useUsersStore } from '@/stores';
-import { useI18n, useTelemetry, useToast, useUpgradeLink, useMessage } from '@/composables';
+import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import {
+	useEnvironmentsStore,
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useSourceControlStore,
+} from '@/stores';
+import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
@@ -20,8 +26,10 @@ const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const message = useMessage();
+const sourceControlStore = useSourceControlStore();
+let sourceControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
 
@@ -70,10 +78,6 @@ const datatableColumns = computed<DatatableColumn[]>(() => [
 ]);
 
 const contextBasedTranslationKeys = computed(() => uiStore.contextBasedTranslationKeys);
-const { upgradeLinkUrl } = useUpgradeLink({
-	default: '&source=variables',
-	desktop: '&utm_campaign=upgrade-variables',
-});
 
 const newlyAddedVariableIds = ref<number[]>([]);
 
@@ -153,9 +157,8 @@ async function saveVariable(data: EnvironmentVariable | TemporaryEnvironmentVari
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
 			updatedVariable = await environmentsStore.updateVariable(data as EnvironmentVariable);
-			allVariables.value = allVariables.value.map((variable) =>
-				variable.id === data.id ? updatedVariable : variable,
-			);
+			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
+			allVariables.value.push(updatedVariable);
 			toggleEditing(updatedVariable);
 		}
 	} catch (error) {
@@ -201,16 +204,31 @@ async function deleteVariable(data: EnvironmentVariable) {
 }
 
 function goToUpgrade() {
-	window.open(upgradeLinkUrl.value, '_blank');
+	uiStore.goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: EnvironmentVariable) {
 	return resource.key;
 }
+
+onBeforeMount(() => {
+	sourceControlStoreUnsubscribe = sourceControlStore.$onAction(({ name, after }) => {
+		if (name === 'pullWorkfolder' && after) {
+			after(() => {
+				void initialize();
+			});
+		}
+	});
+});
+
+onBeforeUnmount(() => {
+	sourceControlStoreUnsubscribe();
+});
 </script>
 
 <template>
 	<ResourcesListLayout
+		class="variables-view"
 		ref="layoutRef"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
@@ -258,11 +276,12 @@ function displayName(resource: EnvironmentVariable) {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</template>
-		<template v-if="!isFeatureEnabled" #empty>
+		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
 			<n8n-action-box
+				v-if="!isFeatureEnabled"
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
@@ -271,6 +290,18 @@ function displayName(resource: EnvironmentVariable) {
 				"
 				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
 				buttonType="secondary"
+				@click:button="goToUpgrade"
+			/>
+			<n8n-action-box
+				v-else-if="!canCreateVariables"
+				data-test-id="cannot-create-variables"
+				emoji="👋"
+				:heading="
+					$locale.baseText('variables.empty.notAllowedToCreate.heading', {
+						interpolate: { name: usersStore.currentUser.firstName },
+					})
+				"
+				:description="$locale.baseText('variables.empty.notAllowedToCreate.description')"
 				@click="goToUpgrade"
 			/>
 		</template>
@@ -301,43 +332,45 @@ function displayName(resource: EnvironmentVariable) {
 <style lang="scss" scoped>
 @use 'n8n-design-system/css/common/var.scss';
 
-:deep(.datatable) {
-	table {
-		table-layout: fixed;
-	}
-
-	th,
-	td {
-		width: 25%;
-
-		@media screen and (max-width: var.$md) {
-			width: 33.33%;
+.variables-view {
+	:deep(.datatable) {
+		table {
+			table-layout: fixed;
 		}
 
-		&.variables-value-column,
-		&.variables-key-column,
-		&.variables-usage-column {
-			> div {
-				width: 100%;
+		th,
+		td {
+			width: 25%;
 
-				> span {
-					max-width: 100%;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					white-space: nowrap;
-					height: 18px;
-				}
+			@media screen and (max-width: var.$md) {
+				width: 33.33%;
+			}
 
+			&.variables-value-column,
+			&.variables-key-column,
+			&.variables-usage-column {
 				> div {
 					width: 100%;
+
+					> span {
+						max-width: 100%;
+						overflow: hidden;
+						text-overflow: ellipsis;
+						white-space: nowrap;
+						height: 18px;
+					}
+
+					> div {
+						width: 100%;
+					}
 				}
 			}
 		}
-	}
 
-	.variables-usage-column {
-		@media screen and (max-width: var.$md) {
-			display: none;
+		.variables-usage-column {
+			@media screen and (max-width: var.$md) {
+				display: none;
+			}
 		}
 	}
 }

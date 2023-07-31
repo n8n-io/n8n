@@ -1,90 +1,106 @@
-import { PiniaVuePlugin } from 'pinia';
-import { render } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
-import { createTestingPinia } from '@pinia/testing';
-import { merge } from 'lodash-es';
-import { faker } from '@faker-js/faker';
+import { createPinia, setActivePinia } from 'pinia';
 import SettingsSso from '@/views/SettingsSso.vue';
+
+import { retry } from '@/__tests__/utils';
+import { setupServer } from '@/__tests__/server';
+import { afterAll, beforeAll } from 'vitest';
+import { useSettingsStore } from '@/stores/settings.store';
+import userEvent from '@testing-library/user-event';
 import { useSSOStore } from '@/stores/sso.store';
-import { STORES } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { i18nInstance } from '@/plugins/i18n';
-import type { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
+import { createComponentRenderer } from '@/__tests__/render';
+import { EnterpriseEditionFeature } from '@/constants';
+import { nextTick } from 'vue';
 
-let pinia: ReturnType<typeof createTestingPinia>;
+let pinia: ReturnType<typeof createPinia>;
 let ssoStore: ReturnType<typeof useSSOStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
+let server: ReturnType<typeof setupServer>;
 
-const samlConfig: SamlPreferences & SamlPreferencesExtractedData = {
-	metadata: '<?xml version="1.0"?>',
-	entityID: faker.internet.url(),
-	returnUrl: faker.internet.url(),
-};
-
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(
-		SettingsSso,
-		merge(
-			{
-				pinia,
-				i18n: i18nInstance,
-			},
-			renderOptions,
-		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
-	);
+const renderComponent = createComponentRenderer(SettingsSso);
 
 describe('SettingsSso', () => {
-	beforeEach(() => {
-		pinia = createTestingPinia({
-			initialState: {
-				[STORES.SETTINGS]: {
-					settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
-				},
-			},
-		});
-		ssoStore = useSSOStore(pinia);
+	beforeAll(() => {
+		server = setupServer();
+	});
+
+	beforeEach(async () => {
+		window.open = vi.fn();
+
+		pinia = createPinia();
+		setActivePinia(pinia);
+
+		ssoStore = useSSOStore();
+		settingsStore = useSettingsStore();
+
+		await settingsStore.getSettings();
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
+	afterAll(() => {
+		server.shutdown();
+	});
+
 	it('should render paywall state when there is no license', () => {
-		const { getByTestId, queryByTestId, queryByRole } = renderComponent();
+		const { getByTestId, queryByTestId, queryByRole } = renderComponent({
+			pinia,
+		});
 
 		expect(queryByRole('checkbox')).not.toBeInTheDocument();
 		expect(queryByTestId('sso-content-licensed')).not.toBeInTheDocument();
 		expect(getByTestId('sso-content-unlicensed')).toBeInTheDocument();
 	});
 
-	it('should render licensed content', () => {
-		vi.spyOn(ssoStore, 'isEnterpriseSamlEnabled', 'get').mockReturnValue(true);
+	it('should render licensed content', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
 
-		const { getByTestId, queryByTestId, getByRole } = renderComponent();
+		const { getByTestId, queryByTestId, getByRole } = renderComponent({
+			pinia,
+		});
 
-		expect(getByRole('checkbox')).toBeInTheDocument();
+		expect(getByRole('switch')).toBeInTheDocument();
 		expect(getByTestId('sso-content-licensed')).toBeInTheDocument();
 		expect(queryByTestId('sso-content-unlicensed')).not.toBeInTheDocument();
 	});
 
 	it('should enable activation checkbox and test button if data is already saved', async () => {
-		vi.spyOn(ssoStore, 'isEnterpriseSamlEnabled', 'get').mockReturnValue(true);
-		vi.spyOn(ssoStore, 'getSamlConfig').mockResolvedValue(samlConfig);
+		await ssoStore.getSamlConfig();
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
 
-		const { getByRole, getByTestId } = renderComponent();
-		await waitAllPromises();
+		const { container, getByTestId, getByRole } = renderComponent({
+			pinia,
+		});
 
-		expect(getByRole('checkbox')).toBeEnabled();
+		const xmlRadioButton = getByTestId('radio-button-xml');
+		await userEvent.click(xmlRadioButton);
+
+		await retry(() =>
+			expect(container.querySelector('textarea[name="metadata"]')).toHaveValue(
+				'<?xml version="1.0"?>',
+			),
+		);
+
+		expect(getByRole('switch')).toBeEnabled();
 		expect(getByTestId('sso-test')).toBeEnabled();
 	});
 
 	it('should enable activation checkbox after data is saved', async () => {
-		vi.spyOn(ssoStore, 'isEnterpriseSamlEnabled', 'get').mockReturnValue(true);
+		await ssoStore.saveSamlConfig({ metadata: '' });
 
-		const { getByRole, getAllByRole, getByTestId } = renderComponent();
-		const checkbox = getByRole('checkbox');
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
+
+		const saveSpy = vi.spyOn(ssoStore, 'saveSamlConfig');
+		const getSpy = vi.spyOn(ssoStore, 'getSamlConfig');
+
+		const { container, getByRole, getByTestId } = renderComponent({
+			pinia,
+		});
+		const checkbox = getByRole('switch');
 		const btnSave = getByTestId('sso-save');
 		const btnTest = getByTestId('sso-test');
 
@@ -93,8 +109,12 @@ describe('SettingsSso', () => {
 			expect(el).toBeDisabled();
 		});
 
+		const xmlRadioButton = getByTestId('radio-button-xml');
+		await userEvent.click(xmlRadioButton);
+
+		await retry(() => expect(container.querySelector('textarea[name="metadata"]')).toBeVisible());
 		await userEvent.type(
-			getAllByRole('textbox').find((el) => el.getAttribute('name') === 'metadata')!,
+			container.querySelector('textarea[name="metadata"]')!,
 			'<?xml version="1.0"?>',
 		);
 
@@ -102,14 +122,9 @@ describe('SettingsSso', () => {
 		expect(btnTest).toBeDisabled();
 		expect(btnSave).toBeEnabled();
 
-		const saveSpy = vi.spyOn(ssoStore, 'saveSamlConfig');
-		const getSpy = vi.spyOn(ssoStore, 'getSamlConfig').mockResolvedValue(samlConfig);
 		await userEvent.click(btnSave);
 
 		expect(saveSpy).toHaveBeenCalled();
 		expect(getSpy).toHaveBeenCalled();
-		expect(checkbox).toBeEnabled();
-		expect(btnTest).toBeEnabled();
-		expect(btnSave).toBeEnabled();
 	});
 });

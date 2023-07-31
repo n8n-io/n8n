@@ -9,15 +9,16 @@
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
+					v-if="node"
 					class="node-name"
-					:value="node && node.name"
+					:modelValue="node.name"
 					:nodeType="nodeType"
-					:isReadOnly="isReadOnly"
-					@input="nameChanged"
+					:readOnly="isReadOnly"
+					@update:modelValue="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
-						v-if="!blockUI"
+						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
@@ -46,8 +47,8 @@
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n
-						path="nodeSettings.communityNodeUnknown.description"
+					<i18n-t
+						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
 						@click="onMissingNodeTextClick"
 					>
@@ -58,7 +59,7 @@
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n>
+					</i18n-t>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -67,7 +68,7 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -75,7 +76,7 @@
 						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n>
+			</i18n-t>
 		</div>
 		<div class="node-parameters-wrapper" data-test-id="node-parameters" v-if="node && nodeValid">
 			<n8n-notice
@@ -158,7 +159,7 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type {
 	INodeTypeDescription,
@@ -182,7 +183,6 @@ import {
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
@@ -202,7 +202,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { EventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'NodeSettings',
@@ -210,7 +210,6 @@ export default defineComponent({
 	components: {
 		NodeTitle,
 		NodeCredentials,
-		ParameterInputFull,
 		ParameterInputList,
 		NodeSettingsTabs,
 		NodeWebhooks,
@@ -292,10 +291,10 @@ export default defineComponent({
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.node.type);
+			return isCommunityPackageName(this.node?.type);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node?.type);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
@@ -526,46 +525,59 @@ export default defineComponent({
 				}
 			}
 
-			// Set the value via Vue.set that everything updates correctly in the UI
+			// Set the value so that everything updates correctly in the UI
 			if (nameParts.length === 0) {
 				// Data is on top level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
-					Vue.delete(this.nodeValues, lastNamePart);
+					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = this.nodeValues;
+					this.nodeValues = remainingNodeValues;
 				} else {
 					// Value should be set
-					// @ts-ignore
-					Vue.set(this.nodeValues, lastNamePart, value);
+					this.nodeValues = {
+						...this.nodeValues,
+						[lastNamePart as string]: value,
+					};
 				}
 			} else {
 				// Data is on lower level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
 					let tempValue = get(this.nodeValues, nameParts.join('.')) as
 						| INodeParameters
 						| INodeParameters[];
-					Vue.delete(tempValue as object, lastNamePart as string);
+
+					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
+					tempValue = remainingNodeValues;
 
 					if (isArray === true && (tempValue as INodeParameters[]).length === 0) {
 						// If a value from an array got delete and no values are left
 						// delete also the parent
 						lastNamePart = nameParts.pop();
 						tempValue = get(this.nodeValues, nameParts.join('.')) as INodeParameters;
-						Vue.delete(tempValue as object, lastNamePart as string);
+						const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
+							tempValue;
+						tempValue = remainingArrayNodeValues;
 					}
 				} else {
 					// Value should be set
 					if (typeof value === 'object') {
-						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
+						set(
+							get(this.nodeValues, nameParts.join('.')) as Record<string, unknown>,
+							lastNamePart as string,
+							deepCopy(value),
+						);
 					} else {
-						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);
+						set(
+							get(this.nodeValues, nameParts.join('.')) as Record<string, unknown>,
+							lastNamePart as string,
+							value,
+						);
 					}
 				}
 			}
+
+			this.nodeValues = { ...this.nodeValues };
 		},
 		credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 			// Update the values on the node
@@ -602,7 +614,7 @@ export default defineComponent({
 			}
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
-			const nodeNameBefore = parameterData.node || this.node.name;
+			const nodeNameBefore = parameterData.node || this.node?.name;
 			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
 
 			if (node === null) {
@@ -662,7 +674,7 @@ export default defineComponent({
 
 						if (Array.isArray(data)) {
 							data.splice(parseInt(index, 10), 1);
-							Vue.set(nodeParameters as object, path, data);
+							set(nodeParameters as object, path, data);
 						}
 					} else {
 						if (newValue === undefined) {
@@ -746,7 +758,7 @@ export default defineComponent({
 
 					if (Array.isArray(data)) {
 						data.splice(parseInt(index, 10), 1);
-						Vue.set(nodeParameters as object, path, data);
+						set(nodeParameters as object, path, data);
 					}
 				} else {
 					if (newValue === undefined) {
@@ -789,11 +801,15 @@ export default defineComponent({
 
 				this.updateNodeParameterIssues(node, nodeType);
 				this.updateNodeCredentialIssues(node);
+				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
 
 				// Update data in settings
-				Vue.set(this.nodeValues, parameterData.name, newValue);
+				this.nodeValues = {
+					...this.nodeValues,
+					[parameterData.name]: newValue,
+				};
 
 				// Update data in vuex
 				const updateInformation = {
@@ -820,58 +836,91 @@ export default defineComponent({
 				const foundNodeSettings = [];
 				if (this.node.color) {
 					foundNodeSettings.push('color');
-					Vue.set(this.nodeValues, 'color', this.node.color);
+					this.nodeValues = {
+						...this.nodeValues,
+						color: this.node.color,
+					};
 				}
 
 				if (this.node.notes) {
 					foundNodeSettings.push('notes');
-					Vue.set(this.nodeValues, 'notes', this.node.notes);
+					this.nodeValues = {
+						...this.nodeValues,
+						notes: this.node.notes,
+					};
 				}
 
 				if (this.node.alwaysOutputData) {
 					foundNodeSettings.push('alwaysOutputData');
-					Vue.set(this.nodeValues, 'alwaysOutputData', this.node.alwaysOutputData);
+					this.nodeValues = {
+						...this.nodeValues,
+						alwaysOutputData: this.node.alwaysOutputData,
+					};
 				}
 
 				if (this.node.executeOnce) {
 					foundNodeSettings.push('executeOnce');
-					Vue.set(this.nodeValues, 'executeOnce', this.node.executeOnce);
+					this.nodeValues = {
+						...this.nodeValues,
+						executeOnce: this.node.executeOnce,
+					};
 				}
 
 				if (this.node.continueOnFail) {
 					foundNodeSettings.push('continueOnFail');
-					Vue.set(this.nodeValues, 'continueOnFail', this.node.continueOnFail);
+					this.nodeValues = {
+						...this.nodeValues,
+						continueOnFail: this.node.continueOnFail,
+					};
 				}
 
 				if (this.node.notesInFlow) {
 					foundNodeSettings.push('notesInFlow');
-					Vue.set(this.nodeValues, 'notesInFlow', this.node.notesInFlow);
+					this.nodeValues = {
+						...this.nodeValues,
+						notesInFlow: this.node.notesInFlow,
+					};
 				}
 
 				if (this.node.retryOnFail) {
 					foundNodeSettings.push('retryOnFail');
-					Vue.set(this.nodeValues, 'retryOnFail', this.node.retryOnFail);
+					this.nodeValues = {
+						...this.nodeValues,
+						retryOnFail: this.node.retryOnFail,
+					};
 				}
 
 				if (this.node.maxTries) {
 					foundNodeSettings.push('maxTries');
-					Vue.set(this.nodeValues, 'maxTries', this.node.maxTries);
+					this.nodeValues = {
+						...this.nodeValues,
+						maxTries: this.node.maxTries,
+					};
 				}
 
 				if (this.node.waitBetweenTries) {
 					foundNodeSettings.push('waitBetweenTries');
-					Vue.set(this.nodeValues, 'waitBetweenTries', this.node.waitBetweenTries);
+					this.nodeValues = {
+						...this.nodeValues,
+						waitBetweenTries: this.node.waitBetweenTries,
+					};
 				}
 
 				// Set default node settings
 				for (const nodeSetting of this.nodeSettings) {
 					if (!foundNodeSettings.includes(nodeSetting.name)) {
 						// Set default value
-						Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
+						this.nodeValues = {
+							...this.nodeValues,
+							[nodeSetting.name]: nodeSetting.default,
+						};
 					}
 				}
 
-				Vue.set(this.nodeValues, 'parameters', deepCopy(this.node.parameters));
+				this.nodeValues = {
+					...this.nodeValues,
+					parameters: deepCopy(this.node.parameters),
+				};
 			} else {
 				this.nodeValid = false;
 			}
@@ -886,8 +935,8 @@ export default defineComponent({
 		onMissingNodeLearnMoreLinkClick() {
 			this.$telemetry.track('user clicked cnr docs link', {
 				source: 'missing node modal source',
-				package_name: this.node.type.split('.')[0],
-				node_type: this.node.type,
+				package_name: this.node?.type.split('.')[0],
+				node_type: this.node?.type,
 			});
 		},
 		onStopExecution() {
@@ -904,7 +953,7 @@ export default defineComponent({
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });
@@ -926,8 +975,10 @@ export default defineComponent({
 }
 </style>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .node-settings {
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 	background-color: var(--color-background-xlight);
 	height: 100%;
@@ -960,7 +1011,6 @@ export default defineComponent({
 	}
 
 	.node-parameters-wrapper {
-		height: 100%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
 	}

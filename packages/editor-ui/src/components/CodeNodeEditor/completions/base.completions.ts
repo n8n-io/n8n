@@ -1,9 +1,8 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '../constants';
 import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
-import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -13,7 +12,7 @@ function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 		.map((node: INodeUi) => node.name);
 }
 
-export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const baseCompletions = defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore),
 	},
@@ -83,18 +82,6 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 				{
 					label: `${prefix}jmespath()`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$jmespath'),
-				},
-				{
-					label: `${prefix}if()`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$if'),
-				},
-				{
-					label: `${prefix}min()`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$min'),
-				},
-				{
-					label: `${prefix}max()`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$max'),
 				},
 				{
 					label: `${prefix}runIndex`,

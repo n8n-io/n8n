@@ -1,5 +1,5 @@
 import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import { NodeVM, makeResolverFromLegacyOptions } from 'vm2';
 import type { IExecuteFunctions, INodeExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { ValidationError } from './ValidationError';
@@ -10,16 +10,23 @@ import { Sandbox } from './Sandbox';
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
 
+export const vmResolver = makeResolverFromLegacyOptions({
+	external: external
+		? {
+				modules: external.split(','),
+				transitive: false,
+		  }
+		: false,
+	builtin: builtIn?.split(',') ?? [],
+});
+
 const getSandboxOptions = (
 	context: SandboxContext,
 	workflowMode: WorkflowExecuteMode,
 ): NodeVMOptions => ({
 	console: workflowMode === 'manual' ? 'redirect' : 'inherit',
 	sandbox: context,
-	require: {
-		builtin: builtIn ? builtIn.split(',') : [],
-		external: external ? { modules: external.split(','), transitive: false } : false,
-	},
+	require: vmResolver,
 });
 
 export class JavaScriptSandbox extends Sandbox {

@@ -22,12 +22,12 @@
 				<div :class="$style.header">
 					<div :class="$style.destinationInfo">
 						<InlineNameEdit
-							:name="headerLabel"
+							:modelValue="headerLabel"
 							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
 							:readonly="isTypeAbstract"
 							type="Credential"
 							data-test-id="subtitle-showing-type"
-							@input="onLabelChange"
+							@update:modelValue="onLabelChange"
 						/>
 					</div>
 					<div :class="$style.destinationActions">
@@ -39,7 +39,6 @@
 									? 'Event sent and returned OK'
 									: 'Event returned with error'
 							"
-							size="medium"
 							type="tertiary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
@@ -51,7 +50,6 @@
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="$locale.baseText('settings.log-streaming.delete')"
 								icon="trash"
-								size="medium"
 								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"
@@ -83,9 +81,9 @@
 						:underline="false"
 					>
 						<n8n-select
-							:value="typeSelectValue"
+							:modelValue="typeSelectValue"
 							:placeholder="typeSelectPlaceholder"
-							@change="onTypeSelectInput"
+							@update:modelValue="onTypeSelectInput"
 							data-test-id="select-destination-type"
 							name="name"
 							ref="typeSelectRef"
@@ -146,24 +144,21 @@
 						</template>
 					</div>
 					<div v-if="activeTab === 'events'" :class="$style.mainContent">
-						<template>
-							<div class="">
-								<n8n-input-label
-									class="mb-m mt-m"
-									:label="$locale.baseText('settings.log-streaming.tab.events.title')"
-									:bold="true"
-									size="medium"
-									:underline="false"
-								/>
-								<event-selection
-									class=""
-									:destinationId="destination.id"
-									@input="onInput"
-									@change="valueChanged"
-									:readonly="!isInstanceOwner"
-								/>
-							</div>
-						</template>
+						<div class="">
+							<n8n-input-label
+								class="mb-m mt-m"
+								:label="$locale.baseText('settings.log-streaming.tab.events.title')"
+								:bold="true"
+								size="medium"
+								:underline="false"
+							/>
+							<event-selection
+								:destinationId="destination.id"
+								@input="onInput"
+								@change="valueChanged"
+								:readonly="!isInstanceOwner"
+							/>
+						</div>
 					</div>
 				</template>
 			</div>
@@ -194,7 +189,7 @@ import {
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 import type { PropType } from 'vue';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables';
@@ -210,8 +205,8 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import type { EventBus } from '@/event-bus';
-import { createEventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'event-destination-settings-modal',
@@ -249,7 +244,9 @@ export default defineComponent({
 			showRemoveConfirm: false,
 			typeSelectValue: '',
 			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions),
+			nodeParameters: deepCopy(
+				defaultMessageEventBusDestinationOptions,
+			) as MessageEventBusDestinationOptions,
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
@@ -358,7 +355,7 @@ export default defineComponent({
 		onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
 			this.typeSelectValue = destinationType;
 		},
-		onContinueAddClicked() {
+		async onContinueAddClicked() {
 			let newDestination;
 			switch (this.typeSelectValue) {
 				case MessageEventBusDestinationTypeNames.syslog:
@@ -378,6 +375,7 @@ export default defineComponent({
 					);
 					break;
 			}
+
 			if (newDestination) {
 				this.headerLabel = newDestination?.label ?? this.headerLabel;
 				this.setupNode(newDestination);
@@ -387,9 +385,9 @@ export default defineComponent({
 			this.unchanged = false;
 			this.testMessageSent = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
-			const parameterPath = parameterData.name.startsWith('parameters.')
+			const parameterPath = parameterData.name?.startsWith('parameters.')
 				? parameterData.name.split('.').slice(1).join('.')
-				: parameterData.name;
+				: parameterData.name || '';
 
 			const nodeParameters = deepCopy(this.nodeParameters);
 
@@ -400,13 +398,13 @@ export default defineComponent({
 			// Apply the new value
 			if (parameterData.value === undefined && parameterPathArray !== null) {
 				// Delete array item
-				const path = parameterPathArray[1];
+				const path = parameterPathArray[1] as keyof MessageEventBusDestinationOptions;
 				const index = parameterPathArray[2];
 				const data = get(nodeParameters, path);
 
 				if (Array.isArray(data)) {
 					data.splice(parseInt(index, 10), 1);
-					Vue.set(nodeParameters, path, data);
+					nodeParameters[path] = data as never;
 				}
 			} else {
 				if (newValue === undefined) {

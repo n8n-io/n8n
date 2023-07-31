@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nAvatar from './Avatar.vue';
 
 export default {
@@ -13,14 +13,16 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nAvatar,
 	},
-	template: '<n8n-avatar v-bind="$props" />',
+	template: '<n8n-avatar v-bind="args" />',
 });
 
 export const Avatar = Template.bind({});
 Avatar.args = {
-	name: 'Sunny Side',
+	firstName: 'Sunny',
+	lastName: 'Side',
 };
