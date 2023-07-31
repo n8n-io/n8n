@@ -58,13 +58,16 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { createErrorExecution } from '@/GenericHelpers';
-import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
+import {
+	STARTING_NODES,
+	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+} from '@/constants';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
-import { STARTING_NODES } from './constants';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 import { WebhookRepository } from '@db/repositories';

@@ -38,7 +38,7 @@
 	border-radius: var(--border-radius-small);
 	box-shadow: var.$dialog-box-shadow;
 	box-sizing: border-box;
-	width: 50%;
+	width: var(#{getCssVarName('dialog-width')}, 50%);
 
 	@include mixins.when(fullscreen) {
 		width: 100%;
