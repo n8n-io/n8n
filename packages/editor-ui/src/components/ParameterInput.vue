@@ -486,6 +486,7 @@ export default defineComponent({
 			remoteParameterOptionsLoading: false,
 			remoteParameterOptionsLoadingIssues: null as string | null,
 			textEditDialogVisible: false,
+			editDialogClosing: false,
 			tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
 			CUSTOM_API_CALL_KEY,
 			activeCredentialType: '',
@@ -922,6 +923,11 @@ export default defineComponent({
 		},
 		closeCodeEditDialog() {
 			this.codeEditDialogVisible = false;
+
+			this.editDialogClosing = true;
+			void this.$nextTick(() => {
+				this.editDialogClosing = false;
+			});
 		},
 		closeExpressionEditDialog() {
 			this.expressionEditDialogVisible = false;
@@ -945,8 +951,18 @@ export default defineComponent({
 		},
 		closeTextEditDialog() {
 			this.textEditDialogVisible = false;
+
+			this.editDialogClosing = true;
+			void this.$nextTick(() => {
+				this.$refs.inputField?.blur?.();
+				this.editDialogClosing = false;
+			});
 		},
 		displayEditDialog() {
+			if (this.editDialogClosing) {
+				return;
+			}
+
 			if (this.editorType) {
 				this.codeEditDialogVisible = true;
 			} else {
@@ -975,7 +991,7 @@ export default defineComponent({
 		onResourceLocatorDrop(data: string) {
 			this.$emit('drop', data);
 		},
-		async setFocus() {
+		async setFocus(event: MouseEvent) {
 			if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 				this.displayEditDialog();
 				return;

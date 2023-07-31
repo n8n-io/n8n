@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-labels */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-continue */
-/* eslint-disable no-prototype-builtins */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-param-reassign */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import PCancelable from 'p-cancelable';
 
@@ -308,7 +303,6 @@ export class WorkflowExecute {
 			return;
 		}
 
-		// eslint-disable-next-line consistent-return
 		return this.additionalData.hooks.executeHookFunctions(hookName, parameters);
 	}
 
@@ -828,7 +822,7 @@ export class WorkflowExecute {
 					};
 
 					// Set the incoming data of the node that it can be saved correctly
-					// eslint-disable-next-line prefer-destructuring
+
 					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0];
 					this.runExecutionData.resultData = {
 						runData: {
@@ -1033,7 +1027,7 @@ export class WorkflowExecute {
 
 								if (runNodeData.closeFunction) {
 									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 									closeFunction = runNodeData.closeFunction();
 								}
 							}
@@ -1531,7 +1525,7 @@ export class WorkflowExecute {
 
 					// Check if static data changed
 					let newStaticData: IDataObject | undefined;
-					// eslint-disable-next-line no-underscore-dangle
+
 					if (workflow.staticData.__dataChanged === true) {
 						// Static data of workflow changed
 						newStaticData = workflow.staticData;
@@ -1539,7 +1533,6 @@ export class WorkflowExecute {
 					await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
 						// eslint-disable-next-line @typescript-eslint/no-shadow
 						(error) => {
-							// eslint-disable-next-line no-console
 							console.error('There was a problem running hook "workflowExecuteAfter"', error);
 						},
 					);
@@ -1549,7 +1542,6 @@ export class WorkflowExecute {
 							await closeFunction;
 						} catch (errorClose) {
 							Logger.error(
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
 								`There was a problem deactivating trigger of workflow "${workflow.id}": "${errorClose.message}"`,
 								{
 									workflowId: workflow.id,
@@ -1600,7 +1592,7 @@ export class WorkflowExecute {
 
 		// Check if static data changed
 		let newStaticData: IDataObject | undefined;
-		// eslint-disable-next-line no-underscore-dangle
+
 		if (workflow.staticData.__dataChanged === true) {
 			// Static data of workflow changed
 			newStaticData = workflow.staticData;
@@ -1612,7 +1604,6 @@ export class WorkflowExecute {
 				await closeFunction;
 			} catch (error) {
 				Logger.error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					`There was a problem deactivating trigger of workflow "${workflow.id}": "${error.message}"`,
 					{
 						workflowId: workflow.id,

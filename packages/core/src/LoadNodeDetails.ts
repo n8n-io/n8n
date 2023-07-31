@@ -76,7 +76,6 @@ export abstract class LoadNodeDetails {
 	}
 
 	protected getTempNode() {
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		return this.workflow.getNode(TEMP_NODE_NAME)!;
 	}
 }

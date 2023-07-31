@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
