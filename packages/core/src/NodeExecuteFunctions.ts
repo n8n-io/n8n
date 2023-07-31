@@ -2294,7 +2294,10 @@ const getRequestHelperFunctions = (
 					newResponse[key] = tempResponseData[key];
 				}
 
-				if (newResponse.body?.constructor.name === 'IncomingMessage') {
+				if (
+					newResponse.body?.constructor.name === 'IncomingMessage' &&
+					paginationOptions.binaryResult !== true
+				) {
 					const data = await this.helpers
 						.binaryToBuffer(newResponse.body as Buffer | Readable)
 						.then((body) => body.toString());

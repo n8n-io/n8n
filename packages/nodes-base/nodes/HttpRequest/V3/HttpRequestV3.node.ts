@@ -1679,6 +1679,10 @@ export class HttpRequestV3 implements INodeType {
 					paginationData.maxRequests = pagination.maxRequests;
 				}
 
+				if (responseFormat === 'file') {
+					paginationData.binaryResult = true;
+				}
+
 				const requestPromise = this.helpers.requestWithAuthenticationPaginated.call(
 					this,
 					requestOptions,

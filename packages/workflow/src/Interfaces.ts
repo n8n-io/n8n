@@ -525,6 +525,7 @@ export interface IHttpRequestOptions {
 }
 
 export interface PaginationOptions {
+	binaryResult?: boolean;
 	continue: boolean | string;
 	request: IRequestOptionsSimplifiedAuth;
 	maxRequests?: number;
