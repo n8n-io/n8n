@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -67,6 +67,7 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { STARTING_NODES } from './constants';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
+import { WebhookService } from './services/webhook.service';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -201,10 +202,7 @@ export class ActiveWorkflowRunner {
 			path = path.slice(0, -1);
 		}
 
-		let webhook = await Db.collections.Webhook.findOneBy({
-			webhookPath: path,
-			method: httpMethod,
-		});
+		let webhook = await Container.get(WebhookService).findWebhook(httpMethod, path);
 		let webhookId: string | undefined;
 
 		// check if path is dynamic
