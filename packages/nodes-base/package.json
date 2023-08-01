@@ -21,8 +21,8 @@
     "build:translations": "gulp build:translations",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint --quiet .; node ./scripts/validate-load-options-methods.js",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet --report-unused-disable-directives; node ./scripts/validate-load-options-methods.js",
+    "lintfix": "eslint . --fix --report-unused-disable-directives",
     "watch": "tsc-watch -p tsconfig.build.json --onSuccess \"pnpm n8n-generate-ui-types\"",
     "test": "jest"
   },
