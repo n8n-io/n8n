@@ -1,6 +1,5 @@
-import type { NodeVMOptions } from 'vm2';
 import { NodeVM, makeResolverFromLegacyOptions } from 'vm2';
-import type { IExecuteFunctions, INodeExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
@@ -20,23 +19,13 @@ export const vmResolver = makeResolverFromLegacyOptions({
 	builtin: builtIn?.split(',') ?? [],
 });
 
-const getSandboxOptions = (
-	context: SandboxContext,
-	workflowMode: WorkflowExecuteMode,
-): NodeVMOptions => ({
-	console: workflowMode === 'manual' ? 'redirect' : 'inherit',
-	sandbox: context,
-	require: vmResolver,
-});
-
 export class JavaScriptSandbox extends Sandbox {
-	readonly vm: NodeVM;
+	private readonly vm: NodeVM;
 
 	constructor(
 		context: SandboxContext,
 		private jsCode: string,
 		itemIndex: number | undefined,
-		workflowMode: WorkflowExecuteMode,
 		helpers: IExecuteFunctions['helpers'],
 	) {
 		super(
@@ -49,7 +38,13 @@ export class JavaScriptSandbox extends Sandbox {
 			itemIndex,
 			helpers,
 		);
-		this.vm = new NodeVM(getSandboxOptions(context, workflowMode));
+		this.vm = new NodeVM({
+			console: 'redirect',
+			sandbox: context,
+			require: vmResolver,
+		});
+
+		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
 	}
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
