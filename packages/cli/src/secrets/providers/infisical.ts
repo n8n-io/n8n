@@ -1,6 +1,7 @@
 import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/Interfaces';
 import InfisicalClient from 'infisical-node';
 import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
+import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 export interface InfisicalSettings {
@@ -13,6 +14,11 @@ export interface InfisicalSettings {
 interface InfisicalSecret {
 	secretName: string;
 	secretValue?: string;
+}
+
+interface InfisicalServiceToken {
+	environment?: string;
+	scopes?: Array<{ environment: string; path: string }>;
 }
 
 export class InfisicalProvider implements SecretsProvider {
@@ -59,6 +65,8 @@ export class InfisicalProvider implements SecretsProvider {
 
 	private settings: InfisicalSettings;
 
+	private environment: string;
+
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as InfisicalSettings;
 	}
@@ -70,7 +78,12 @@ export class InfisicalProvider implements SecretsProvider {
 		if (!(await this.test())[0]) {
 			throw new Error('Infisical provider test failed during update');
 		}
-		const secrets = (await this.client.getAllSecrets()) as InfisicalSecret[];
+		const secrets = (await this.client.getAllSecrets({
+			environment: this.environment,
+			path: '/',
+			attachToProcessEnv: false,
+			includeImports: true,
+		})) as InfisicalSecret[];
 		const newCache = Object.fromEntries(
 			secrets.map((s) => [s.secretName, s.secretValue]),
 		) as Record<string, string>;
@@ -84,10 +97,29 @@ export class InfisicalProvider implements SecretsProvider {
 	async connect(): Promise<void> {
 		this.client = new InfisicalClient(this.settings);
 		if ((await this.test())[0]) {
-			this.state = 'connected';
+			try {
+				this.environment = await this.getEnvironment();
+				this.state = 'connected';
+			} catch {
+				this.state = 'error';
+			}
 		} else {
 			this.state = 'error';
 		}
+	}
+
+	async getEnvironment(): Promise<string> {
+		const serviceTokenData = (await getServiceTokenData(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			this.client.clientConfig,
+		)) as InfisicalServiceToken;
+		if (serviceTokenData.environment) {
+			return serviceTokenData.environment;
+		}
+		if (serviceTokenData.scopes) {
+			return serviceTokenData.scopes[0].environment;
+		}
+		throw new Error("Couldn't find environment for Infisical");
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
