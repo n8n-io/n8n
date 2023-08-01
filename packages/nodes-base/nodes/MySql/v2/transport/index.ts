@@ -64,12 +64,12 @@ export async function createPool(
 		baseCredentials.ssl = {};
 
 		if (caCertificate) {
-			baseCredentials.ssl.ca = caCertificate;
+			baseCredentials.ssl.ca = sanitizePrivateKey(caCertificate as string);
 		}
 
 		if (clientCertificate || clientPrivateKey) {
-			baseCredentials.ssl.cert = clientCertificate;
-			baseCredentials.ssl.key = clientPrivateKey;
+			baseCredentials.ssl.cert = sanitizePrivateKey(clientCertificate as string);
+			baseCredentials.ssl.key = sanitizePrivateKey(clientPrivateKey as string);
 		}
 	}
 
