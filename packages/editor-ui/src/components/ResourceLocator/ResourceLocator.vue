@@ -762,10 +762,10 @@ export default defineComponent({
 
 			const inputRef = this.$refs.input as HTMLInputElement | undefined;
 			this.resourceDropdownHiding = true;
-			setTimeout(() => {
+			void this.$nextTick(() => {
 				inputRef?.blur?.();
 				this.resourceDropdownHiding = false;
-			}, 100);
+			});
 		},
 		showResourceDropdown() {
 			if (this.resourceDropdownVisible || this.resourceDropdownHiding) {
