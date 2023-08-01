@@ -41,12 +41,15 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-base:18-test-lint
+          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
     needs: install-and-build
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -61,15 +64,15 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-base:18-test-lint
+          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
 
-      - name: Use Node.js 18
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
-          node-version: 18.x
-          cache: pnpm
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
 
       - name: Test
         run: pnpm test
@@ -97,15 +100,15 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-base:18-test-lint
+          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
 
-      - name: Use Node.js 18
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
-          node-version: 18.x
-          cache: pnpm
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
 
       - name: Lint
         env:
@@ -116,6 +119,9 @@ jobs:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
     needs: [unit-test, lint]
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
