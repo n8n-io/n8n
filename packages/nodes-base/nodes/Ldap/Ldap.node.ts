@@ -32,7 +32,6 @@ export class Ldap implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'ldap',
 				required: true,
 				testedBy: 'ldapConnectionTest',
