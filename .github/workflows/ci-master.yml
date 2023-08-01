@@ -83,8 +83,6 @@ jobs:
     name: Lint changes
     runs-on: ubuntu-latest
     needs: install-and-build
-    env:
-      CI_LINT_MASTER: true
     steps:
       - uses: actions/checkout@v3
         with:
