@@ -11,7 +11,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
-import { sanitizePrivateKey } from '@utils/utilities';
+import { formatPrivateKey } from '@utils/utilities';
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
 import type { Readable } from 'stream';
@@ -469,7 +469,7 @@ export class Ftp implements INodeType {
 							host: credentials.host as string,
 							port: credentials.port as number,
 							username: credentials.username as string,
-							privateKey: sanitizePrivateKey(credentials.privateKey as string),
+							privateKey: formatPrivateKey(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
 						});
 					} else {
@@ -520,7 +520,7 @@ export class Ftp implements INodeType {
 						host: credentials.host as string,
 						port: credentials.port as number,
 						username: credentials.username as string,
-						privateKey: sanitizePrivateKey(credentials.privateKey as string),
+						privateKey: formatPrivateKey(credentials.privateKey as string),
 						passphrase: credentials.passphrase as string | undefined,
 					});
 				} else {
