@@ -1,4 +1,5 @@
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import { sanitizePrivateKey } from '@utils/utilities';
 
 import mysql2 from 'mysql2/promise';
 import type { Client, ConnectConfig } from 'ssh2';
@@ -20,10 +21,10 @@ async function createSshConnectConfig(credentials: IDataObject) {
 		await writeFile(path, credentials.privateKey as string);
 
 		const options: ConnectConfig = {
-			host: credentials.host as string,
-			username: credentials.username as string,
-			port: credentials.port as number,
-			privateKey: path,
+			host: credentials.sshHost as string,
+			username: credentials.sshUser as string,
+			port: credentials.sshPort as number,
+			privateKey: sanitizePrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {
