@@ -1100,7 +1100,7 @@ export const schema = {
 		enabled: {
 			doc: 'Whether AI features are enabled.',
 			format: Boolean,
-			default: false,
+			default: true,
 			env: 'N8N_AI_ENABLED',
 		},
 		endpoint: {

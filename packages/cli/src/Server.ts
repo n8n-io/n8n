@@ -97,7 +97,6 @@ import {
 	TagsController,
 	TranslationController,
 	UsersController,
-	AiController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
@@ -502,10 +501,6 @@ export class Server extends AbstractServer {
 			Container.get(SamlController),
 			Container.get(SourceControlController),
 		];
-
-		if (config.getEnv('ai.enabled')) {
-			controllers.push(new AiController({ logger }));
-		}
 
 		if (isLdapEnabled()) {
 			const { service, sync } = LdapManager.getInstance();

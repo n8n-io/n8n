@@ -31,20 +31,22 @@ async function onSubmit() {
 
 	try {
 		const { ndvInputData } = useNDVStore();
+		const version = useRootStore().versionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
 		const { getRestApiContext } = useRootStore();
-		const { code, mode } = await generateCodeForPrompt(getRestApiContext, {
-			prompt: prompt.value,
-			schema,
+		const { code } = await generateCodeForPrompt(getRestApiContext, {
+			question: prompt.value,
+			context: { schema },
 			model,
+			n8nVersion: version,
 		});
 
 		stopLoading();
-		emit('replaceCode', { code, mode });
+		emit('replaceCode', { code });
 	} catch (error) {
 		console.log('Failed to generate code', error);
 		stopLoading();
