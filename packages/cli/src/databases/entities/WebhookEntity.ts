@@ -1,3 +1,4 @@
+import { IHttpRequestMethods } from 'n8n-workflow';
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
 @Entity()
@@ -9,8 +10,8 @@ export class WebhookEntity {
 	@PrimaryColumn()
 	webhookPath: string;
 
-	@PrimaryColumn()
-	method: string;
+	@PrimaryColumn({ type: 'text' })
+	method: IHttpRequestMethods;
 
 	@Column()
 	node: string;
