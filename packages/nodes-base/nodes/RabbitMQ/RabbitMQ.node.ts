@@ -14,6 +14,7 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
@@ -376,12 +377,18 @@ export class RabbitMQ implements INodeType {
 						credentialData.protocol = 'amqps';
 
 						optsData.ca =
-							credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
+							credentials.ca === ''
+								? undefined
+								: [Buffer.from(formatPrivateKey(credentials.ca as string))];
 						if (credentials.passwordless === true) {
 							optsData.cert =
-								credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
+								credentials.cert === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.cert as string));
 							optsData.key =
-								credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
+								credentials.key === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.key as string));
 							optsData.passphrase =
 								credentials.passphrase === '' ? undefined : credentials.passphrase;
 							optsData.credentials = amqplib.credentials.external();

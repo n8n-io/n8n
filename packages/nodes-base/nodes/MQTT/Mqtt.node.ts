@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 
 import mqtt from 'mqtt';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class Mqtt implements INodeType {
 	description: INodeTypeDescription = {
@@ -118,9 +119,9 @@ export class Mqtt implements INodeType {
 						(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 					const clean = credentials.clean as boolean;
 					const ssl = credentials.ssl as boolean;
-					const ca = credentials.ca as string;
-					const cert = credentials.cert as string;
-					const key = credentials.key as string;
+					const ca = formatPrivateKey(credentials.ca as string);
+					const cert = formatPrivateKey(credentials.cert as string);
+					const key = formatPrivateKey(credentials.key as string);
 					const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
 
 					let client: mqtt.MqttClient;
