@@ -185,7 +185,7 @@ import {
 	EVENT_CONNECTION_MOVED,
 	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
-import type { MessageBoxInputData } from 'element-plus';
+import type { MessageBoxInputData, ElNotification } from 'element-plus';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -315,7 +315,6 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
-import type { ElNotification } from 'element-plus';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 
 interface AddNodeOptions {
@@ -634,7 +633,7 @@ export default defineComponent({
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
-			readOnlyNotification: null as null | ElNotification,
+			readOnlyNotification: null as null | typeof ElNotification,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -2247,6 +2246,11 @@ export default defineComponent({
 				});
 			});
 		},
+		isConnectionActive(connection: Connection | null) {
+			if (!connection?.id || !this.activeConnection?.id) return false;
+
+			return this.activeConnection?.id === connection.id;
+		},
 		onConnectionMouseOver(connection: Connection) {
 			try {
 				if (this.exitTimer !== undefined) {
@@ -2255,17 +2259,19 @@ export default defineComponent({
 				}
 
 				if (
-					this.isReadOnlyRoute ||
-					this.readOnlyEnv ||
-					this.enterTimer ||
-					!connection ||
-					connection === this.activeConnection
+					this.isReadOnlyRoute ??
+					this.readOnlyEnv ??
+					this.enterTimer ??
+					!connection ??
+					this.isConnectionActive(connection)
 				)
 					return;
 
-				if (this.activeConnection) NodeViewUtils.hideConnectionActions(this.activeConnection);
-
 				this.enterTimer = setTimeout(() => {
+					// If there is already an active connection then hide it first
+					if (this.activeConnection && !this.isConnectionActive(connection)) {
+						NodeViewUtils.hideConnectionActions(this.activeConnection);
+					}
 					this.enterTimer = undefined;
 					if (connection) {
 						NodeViewUtils.showConnectionActions(connection);
@@ -2286,17 +2292,17 @@ export default defineComponent({
 				}
 
 				if (
-					this.isReadOnlyRoute ||
-					this.readOnlyEnv ||
-					!connection ||
-					this.activeConnection?.id !== connection.id
+					this.isReadOnlyRoute ??
+					this.readOnlyEnv ??
+					!connection ??
+					!this.isConnectionActive(connection)
 				)
 					return;
 
 				this.exitTimer = setTimeout(() => {
 					this.exitTimer = undefined;
 
-					if (connection && this.activeConnection === connection) {
+					if (connection && this.isConnectionActive(connection)) {
 						NodeViewUtils.hideConnectionActions(this.activeConnection);
 						this.activeConnection = null;
 					}
