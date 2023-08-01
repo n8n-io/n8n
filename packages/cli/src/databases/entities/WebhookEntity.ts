@@ -15,6 +15,8 @@ export class WebhookEntity {
 	@Column()
 	node: string;
 
+	// @TODO: Remove `?` below
+
 	@Column({ nullable: true })
 	webhookId?: string;
 

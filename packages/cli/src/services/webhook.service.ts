@@ -10,7 +10,6 @@ export class WebhookService {
 	// @TODO Conflicting Prettier autofixes
 	// eslint-disable-next-line prettier/prettier
 	constructor(private webhookRepository: WebhookRepository, private cacheService: CacheService) {
-		console.log('constructor');
 		void this.primeCache();
 	}
 
@@ -40,11 +39,13 @@ export class WebhookService {
 
 		const cachedWebhook = await this.cacheService.get<WebhookEntity>(cacheKey);
 
-		console.log('cachedWebhook', cachedWebhook);
+		console.log('CACHE HIT ->', cachedWebhook);
 
 		if (cachedWebhook) return this.webhookRepository.create(cachedWebhook);
 
-		let dbWebhook = await this.webhookRepository.findOneBy({ webhookPath: path, method });
+		console.log('CACHE MISS');
+
+		let dbWebhook = await this.findStaticWebhook(path, method);
 
 		if (dbWebhook === null) {
 			dbWebhook = await this.findDynamicWebhook(method, path);
@@ -58,7 +59,15 @@ export class WebhookService {
 	}
 
 	/**
-	 * Find a webhook containing at least one dynamic segment, e.g. `<id>/user/:id/create`
+	 * Find a webhook having zero dynamic path segments, e.g. `<uuid>` or `user/create`
+	 */
+	private async findStaticWebhook(method: string, path: string) {
+		return this.webhookRepository.findOneBy({ webhookPath: path, method });
+	}
+
+	/**
+	 * Find a webhook having 1+ dynamic path segments, e.g. `<uuid>/user/:id/create`
+	 * `<uuid>/` at the base is mandatory for dynamic webhooks.
 	 */
 	private async findDynamicWebhook(method: string, path: string) {
 		const [idSegment, ...remainingSegments] = path.split('/');
