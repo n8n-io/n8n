@@ -147,7 +147,6 @@ export class CacheService {
 			for (let i = 0; i < keys.length; i++) {
 				newKV.push([keys[i], refreshValues[i]]);
 			}
-			console.log('setMany', newKV);
 			await this.setMany(newKV, options.refreshTtl);
 			return refreshValues;
 		}
