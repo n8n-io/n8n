@@ -44,9 +44,6 @@ export class Sftp implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-			typeOptions: {
-				password: true,
-			},
 			description:
 				'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format)',
 		},
