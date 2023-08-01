@@ -113,10 +113,9 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name/ID',
+				displayName: 'Priority',
 				name: 'priorityId',
 				type: 'options',
-
 				options: [
 					{
 						name: 'Urgent',
@@ -127,12 +126,12 @@ export const issueFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Medium',
+						name: 'Normal',
 						value: 3,
 					},
 					{
 						name: 'Low',
-						value: 3,
+						value: 4,
 					},
 					{
 						name: 'No Priority',
