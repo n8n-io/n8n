@@ -15,7 +15,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
@@ -105,9 +104,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
-				open: false,
-			},
-			[EXECUTIONS_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SHARE_MODAL_KEY]: {
