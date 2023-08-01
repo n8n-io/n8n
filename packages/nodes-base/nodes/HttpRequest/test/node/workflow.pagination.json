@@ -22,6 +22,11 @@
 					]
 				},
 				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
 					"pagination": {
 						"pagination": {
 							"parameters": {
@@ -58,6 +63,11 @@
 					]
 				},
 				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
 					"pagination": {
 						"pagination": {
 							"parameters": {
@@ -92,6 +102,11 @@
 					]
 				},
 				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
 					"pagination": {
 						"pagination": {
 							"parameters": {
@@ -129,6 +144,11 @@
 					]
 				},
 				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
 					"pagination": {
 						"pagination": {
 							"parameters": {
@@ -154,9 +174,9 @@
 		},
 		{
 			"parameters": {
-				"content": "### Next URL\nResponse Format: Autodetect",
+				"content": "### Next URL\nResponse Format: JSON",
 				"height": 223.6542431762359,
-				"width": 258.5274479049966
+				"width": 365.5274479049966
 			},
 			"id": "d028fb00-eac0-495e-b0a7-6a47958bf293",
 			"name": "Sticky Note",
@@ -166,9 +186,9 @@
 		},
 		{
 			"parameters": {
-				"content": "### Update a Parameter in Each Request\nResponse Format: Autodetect",
+				"content": "### Update a Parameter in Each Request\nResponse Format: JSON",
 				"height": 764.5257091080099,
-				"width": 323.21100909416833
+				"width": 354.2110090941684
 			},
 			"id": "2f48dfae-a194-4d50-9f62-e30768bc3d47",
 			"name": "Sticky Note1",
@@ -223,6 +243,11 @@
 					]
 				},
 				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
 					"pagination": {
 						"pagination": {
 							"paginationMode": "responseContainsNextURL",
@@ -242,26 +267,14 @@
 		{
 			"parameters": {
 				"content": "### Next URL\nResponse Format: Text",
-				"height": 223.6542431762359,
-				"width": 258.5274479049966
+				"height": 388.6542431762359,
+				"width": 363.5274479049966
 			},
 			"id": "51183fa5-a558-4fdc-9aae-60bd5f9a46e9",
 			"name": "Sticky Note2",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
 			"position": [840, 980]
-		},
-		{
-			"parameters": {
-				"content": "### Update a Parameter in Each Request\nResponse Format: JSON",
-				"height": 232.15942469988397,
-				"width": 323.21100909416833
-			},
-			"id": "029449f0-327b-4eca-acdb-e23d2e24fd86",
-			"name": "Sticky Note3",
-			"type": "n8n-nodes-base.stickyNote",
-			"typeVersion": 1,
-			"position": [840, -347.6337155918741]
 		},
 		{
 			"parameters": {
@@ -298,11 +311,58 @@
 					}
 				}
 			},
-			"id": "343443db-1650-4c50-81f1-f122d59b821b",
+			"id": "b0bcca37-a24d-4a21-b513-e4cd9ad2e9cd",
 			"name": "Complete Expression - JSON",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.1,
 			"position": [900, -280]
+		},
+		{
+			"parameters": {
+				"content": "### Update a Parameter in Each Request\nResponse Format: JSON",
+				"height": 232.15942469988397,
+				"width": 323.21100909416833
+			},
+			"id": "74ab84c6-4e01-4d02-bdbc-e0b1a8310eb2",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [840, -347.6337155918741]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"responseFormat": "text"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "201"
+						}
+					}
+				}
+			},
+			"id": "be7064ff-518f-4566-bd58-e588d863172d",
+			"name": "Response Empty - Text1",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 1220]
 		}
 	],
 	"pinData": {
@@ -673,80 +733,60 @@
 				}
 			}
 		],
-		"Complete Expression - JSON": [
+		"Response Empty - Text1": [
 			{
 				"json": {
-					"id": 0
+					"data": "[{\"id\":0},{\"id\":1},{\"id\":2},{\"id\":3}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=4&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": null
 				}
 			},
 			{
 				"json": {
-					"id": 1
+					"data": "[{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=8&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": null
 				}
 			},
 			{
 				"json": {
-					"id": 2
+					"data": "[{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=12&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": null
 				}
 			},
 			{
 				"json": {
-					"id": 3
+					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=16&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": null
 				}
 			},
 			{
 				"json": {
-					"id": 4
-				}
-			},
-			{
-				"json": {
-					"id": 5
-				}
-			},
-			{
-				"json": {
-					"id": 6
-				}
-			},
-			{
-				"json": {
-					"id": 7
-				}
-			},
-			{
-				"json": {
-					"id": 8
-				}
-			},
-			{
-				"json": {
-					"id": 9
-				}
-			},
-			{
-				"json": {
-					"id": 10
-				}
-			},
-			{
-				"json": {
-					"id": 11
-				}
-			},
-			{
-				"json": {
-					"id": 12
-				}
-			},
-			{
-				"json": {
-					"id": 13
-				}
-			},
-			{
-				"json": {
-					"id": 14
+					"data": "[]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=20&limit=4"
+					},
+					"statusCode": 201,
+					"statusMessage": null
 				}
 			}
 		]
@@ -789,6 +829,11 @@
 						"node": "Complete Expression - JSON",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Response Empty - Text1",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -798,7 +843,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "0939674b-036a-412d-be0e-46181e1c542d",
+	"versionId": "7aeedc66-dd50-4171-9776-03ecf4b98135",
 	"id": "ZKVF9JrrzoxXbUqu",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"

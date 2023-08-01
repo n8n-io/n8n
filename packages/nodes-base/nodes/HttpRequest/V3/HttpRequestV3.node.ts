@@ -970,7 +970,7 @@ export class HttpRequestV3 implements INodeType {
 										},
 										{
 											displayName:
-												'Use the variables $response.body, $response.header and $response.statusCode to access the data of the previous response (e.g. {{$reponse.body.nextCursor}}). <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+												'Use the variables $response.body, $response.header and $response.statusCode to access the data of the previous response (e.g. {{$response.body.nextCursor}}). <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 											name: 'webhookNotice',
 											displayOptions: {
 												hide: {
@@ -1637,6 +1637,17 @@ export class HttpRequestV3 implements INodeType {
 			} catch (e) {}
 
 			if (pagination && pagination.paginationMode !== 'off') {
+				if (autoDetectResponseFormat) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Pagination is not supported in combination with Response Format "Autodetect"!',
+						{
+							description:
+								'Please add the option "Response" under "Options" and set "Response Format" to the expected format',
+						},
+					);
+				}
+
 				let continueExpression = '={{false}}';
 				if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
 					// Split out comma separated list of status codes into array
@@ -1781,17 +1792,14 @@ export class HttpRequestV3 implements INodeType {
 							false,
 						) as boolean;
 
-						// TODO: Also check if we really want to do that
-						if (response.body!.constructor.name === 'IncomingMessage') {
-							const data = await this.helpers
-								.binaryToBuffer(response.body as Buffer | Readable)
-								.then((body) => body.toString());
-							response.body = jsonParse(data, {
-								...(neverError
-									? { fallbackValue: {} }
-									: { errorMessage: 'Invalid JSON in response body' }),
-							});
-						}
+						const data = await this.helpers
+							.binaryToBuffer(response.body as Buffer | Readable)
+							.then((body) => body.toString());
+						response.body = jsonParse(data, {
+							...(neverError
+								? { fallbackValue: {} }
+								: { errorMessage: 'Invalid JSON in response body' }),
+						});
 					} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 						responseFormat = 'file';
 					} else {
