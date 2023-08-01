@@ -7,7 +7,7 @@ on:
       - parallelize-ci-master
 
 jobs:
-  build:
+  install-and-build:
     runs-on: ubuntu-latest
 
     timeout-minutes: 30
@@ -46,7 +46,7 @@ jobs:
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
-    needs: install
+    needs: install-and-build
     steps:
       - uses: actions/checkout@v3
         with:
@@ -82,7 +82,7 @@ jobs:
   lint:
     name: Lint changes
     runs-on: ubuntu-latest
-    needs: install
+    needs: install-and-build
     env:
       CI_LINT_MASTER: true
     steps:
