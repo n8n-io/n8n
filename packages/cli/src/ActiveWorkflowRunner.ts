@@ -68,7 +68,6 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
-import { WebhookRepository } from '@db/repositories';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -85,12 +84,18 @@ export class ActiveWorkflowRunner {
 		[key: string]: IQueuedWorkflowActivations;
 	} = {};
 
+	private webhookService = Container.get(WebhookService); // @TODO: Inject
+
 	constructor(
 		private activeExecutions: ActiveExecutions,
 		private externalHooks: ExternalHooks,
 		private nodeTypes: NodeTypes,
-		private webhookRepository: WebhookRepository,
 	) {}
+
+	async getWebhookMethods(path: string): Promise<string[]> {
+		// @TOOD: Expose webhook service directly?
+		return this.webhookService.getWebhookMethods(path);
+	}
 
 	async init() {
 		// Get the active workflows from database
@@ -111,8 +116,7 @@ export class ActiveWorkflowRunner {
 			// instances if many of them start at the same time
 			// This is not officially supported but there is no reason
 			// it should not work.
-			// Clear up active workflow table
-			await this.webhookRepository.clear();
+			await this.webhookService.deleteAllWebhooks();
 		}
 
 		if (workflowsData.length !== 0) {
@@ -160,6 +164,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
+		await this.webhookService.primeCache();
 	}
 
 	/**
@@ -197,7 +202,7 @@ export class ActiveWorkflowRunner {
 
 		path = path.endsWith('/') ? path.slice(0, -1) : path; // no trailing slash
 
-		const webhook = await Container.get(WebhookService).findWebhook(httpMethod, path);
+		const webhook = await this.webhookService.findWebhook(httpMethod, path);
 
 		if (webhook === null) {
 			throw new ResponseHelper.NotFoundError(
@@ -277,19 +282,6 @@ export class ActiveWorkflowRunner {
 				},
 			);
 		});
-	}
-
-	/**
-	 * Gets all request methods associated with a single webhook
-	 */
-	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhooks = await this.webhookRepository.find({
-			select: ['method'],
-			where: { webhookPath: path },
-		});
-
-		// Gather all request methods in string array
-		return webhooks.map((webhook) => webhook.method);
 	}
 
 	/**
@@ -391,7 +383,7 @@ export class ActiveWorkflowRunner {
 
 			try {
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await this.webhookRepository.insert(webhook);
+				await this.webhookService.createWebhook(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
 					'checkExists',
 					webhookData,
@@ -500,9 +492,7 @@ export class ActiveWorkflowRunner {
 
 		await WorkflowHelpers.saveStaticData(workflow);
 
-		await this.webhookRepository.delete({
-			workflowId: workflowData.id,
-		});
+		await this.webhookService.deleteWebhooks(workflowId);
 	}
 
 	/**

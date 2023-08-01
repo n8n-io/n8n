@@ -3,17 +3,13 @@ import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
 
-const isDynamic = (path: string) => path.includes(':');
-
 @Service()
 export class WebhookService {
 	// @TODO Conflicting Prettier autofixes
 	// eslint-disable-next-line prettier/prettier
-	constructor(private webhookRepository: WebhookRepository, private cacheService: CacheService) {
-		void this.primeCache();
-	}
+	constructor(private webhookRepository: WebhookRepository, private cacheService: CacheService) {} // prime cache after workflow activation
 
-	private async primeCache() {
+	async primeCache() {
 		const allWebhooks = await this.webhookRepository.find({});
 
 		if (!allWebhooks) return;
@@ -22,14 +18,13 @@ export class WebhookService {
 			const { method } = webhook;
 
 			// @TODO `getPath` method on `WebhookEntity` accounting for dynamic paths
+			const isDynamic = (path: string) => path.includes(':');
 			const path = isDynamic(webhook.webhookPath)
 				? webhook.workflowId + webhook.webhookPath
 				: webhook.webhookPath;
 
 			return [`cache:webhook:${method}-${path}`, webhook];
 		});
-
-		console.log('allWebhookCacheKeys', allWebhookCacheKeys);
 
 		void this.cacheService.setMany(allWebhookCacheKeys);
 	}
@@ -39,13 +34,14 @@ export class WebhookService {
 
 		const cachedWebhook = await this.cacheService.get<WebhookEntity>(cacheKey);
 
-		console.log('CACHE HIT ->', cachedWebhook);
-
-		if (cachedWebhook) return this.webhookRepository.create(cachedWebhook);
+		if (cachedWebhook) {
+			console.log('CACHE HIT', cachedWebhook);
+			return this.webhookRepository.create(cachedWebhook);
+		}
 
 		console.log('CACHE MISS');
 
-		let dbWebhook = await this.findStaticWebhook(path, method);
+		let dbWebhook = await this.findStaticWebhook(method, path);
 
 		if (dbWebhook === null) {
 			dbWebhook = await this.findDynamicWebhook(method, path);
@@ -105,5 +101,23 @@ export class WebhookService {
 
 	async findWebhook(method: string, path: string) {
 		return this.findCached(method, path);
+	}
+
+	async createWebhook(webhook: WebhookEntity) {
+		return this.webhookRepository.insert(webhook);
+	}
+
+	async deleteWebhooks(workflowId: string) {
+		return this.webhookRepository.delete({ workflowId });
+	}
+
+	async deleteAllWebhooks() {
+		return this.webhookRepository.clear();
+	}
+
+	async getWebhookMethods(path: string) {
+		return this.webhookRepository
+			.find({ select: ['method'], where: { webhookPath: path } })
+			.then((webhooks) => webhooks.map((webhook) => webhook.method));
 	}
 }
