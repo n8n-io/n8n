@@ -25,6 +25,7 @@ import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
+import { VariablesService } from '../variables/variables.service';
 
 @Service()
 export class SourceControlImportService {
@@ -240,9 +241,7 @@ export class SourceControlImportService {
 	}
 
 	public async getLocalVariablesFromDb(): Promise<Variables[]> {
-		const localVariables = await Db.collections.Variables.find({
-			select: ['id', 'key', 'type', 'value'],
-		});
+		const localVariables = await Container.get(VariablesService).getAll();
 		return localVariables;
 	}
 
@@ -580,6 +579,8 @@ export class SourceControlImportService {
 				await Db.collections.Variables.save(newVariable);
 			}
 		}
+
+		await Container.get(VariablesService).updateCache();
 
 		return result;
 	}

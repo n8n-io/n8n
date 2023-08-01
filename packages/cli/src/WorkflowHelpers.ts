@@ -37,6 +37,7 @@ import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
+import { VariablesService } from './environments/variables/variables.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -571,8 +572,9 @@ export function validateWorkflowCredentialUsage(
 }
 
 export async function getVariables(): Promise<IDataObject> {
+	const variables = await Container.get(VariablesService).getAll();
 	return Object.freeze(
-		(await Db.collections.Variables.find()).reduce((prev, curr) => {
+		variables.reduce((prev, curr) => {
 			prev[curr.key] = curr.value;
 			return prev;
 		}, {} as IDataObject),

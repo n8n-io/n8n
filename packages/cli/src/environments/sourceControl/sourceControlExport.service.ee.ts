@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -25,6 +25,7 @@ import {
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
+import { VariablesService } from '../variables/variables.service';
 
 @Service()
 export class SourceControlExportService {
@@ -136,7 +137,7 @@ export class SourceControlExportService {
 	async exportVariablesToWorkFolder(): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
-			const variables = await Db.collections.Variables.find();
+			const variables = await Container.get(VariablesService).getAll();
 			// do not export empty variables
 			if (variables.length === 0) {
 				return {
