@@ -145,8 +145,8 @@ export const webinarFields: INodeProperties[] = [
 			{
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
+				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
 				type: 'boolean',
-				typeOptions: { password: true },
 				default: false,
 			},
 			{
