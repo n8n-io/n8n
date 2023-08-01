@@ -133,7 +133,6 @@ export default defineComponent({
 				return user.email;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			return `${user.fullName} (${user.email})`;
 		},
 	},

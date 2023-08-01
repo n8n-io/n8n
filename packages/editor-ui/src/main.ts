@@ -53,8 +53,8 @@ if (!import.meta.env.PROD) {
 			// not do anything about it anyway
 			return;
 		}
-		console.error('error caught in main.ts'); // eslint-disable-line no-console
-		console.error(message); // eslint-disable-line no-console
-		console.error(error); // eslint-disable-line no-console
+		console.error('error caught in main.ts');
+		console.error(message);
+		console.error(error);
 	};
 }
