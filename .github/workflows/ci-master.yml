@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - parallelize-ci-master
 
 jobs:
   build:
