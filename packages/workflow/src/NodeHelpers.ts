@@ -32,7 +32,7 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	FieldType,
 	INodePropertyOptions,
 	ResourceMapperValue,
@@ -870,8 +870,6 @@ export async function prepareOutputData(
 
 /**
  * Returns all the webhooks which should be created for the give node
- *
- *
  */
 export function getNodeWebhooks(
 	workflow: Workflow,
@@ -968,7 +966,7 @@ export function getNodeWebhooks(
 		}
 
 		returnData.push({
-			httpMethod: httpMethod.toString() as WebhookHttpMethod,
+			httpMethod: httpMethod.toString() as IHttpRequestMethods,
 			node: node.name,
 			path,
 			webhookDescription,
