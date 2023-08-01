@@ -495,7 +495,6 @@ export default defineComponent({
 					{
 						text: 'Today', // TODO
 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							picker.$emit('pick', new Date());
 						},
@@ -503,7 +502,6 @@ export default defineComponent({
 					{
 						text: 'Yesterday', // TODO
 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24);
@@ -513,7 +511,6 @@ export default defineComponent({
 					{
 						text: 'A week ago', // TODO
 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
