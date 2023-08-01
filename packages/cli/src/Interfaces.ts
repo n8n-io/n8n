@@ -49,6 +49,7 @@ import type {
 	ExecutionRepository,
 	InstalledNodesRepository,
 	InstalledPackagesRepository,
+	RoleRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -94,6 +95,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	ExecutionMetadata: ExecutionMetadataRepository;
 	InstalledNodes: InstalledNodesRepository;
 	InstalledPackages: InstalledPackagesRepository;
+	Role: RoleRepository;
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
 	SharedWorkflow: SharedWorkflowRepository;
