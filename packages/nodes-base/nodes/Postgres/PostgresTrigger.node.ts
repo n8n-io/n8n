@@ -1,16 +1,17 @@
-import type {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerFunctions,
-	ITriggerResponse,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type ITriggerFunctions,
+	type ITriggerResponse,
 } from 'n8n-workflow';
 import {
-	dropTriggerFunction,
 	pgTriggerFunction,
 	initDB,
 	searchSchema,
 	searchTables,
+	prepareNames,
 } from './PostgresTrigger.functions';
 
 export class PostgresTrigger implements INodeType {
@@ -34,7 +35,7 @@ export class PostgresTrigger implements INodeType {
 					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Postgres event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
 			},
 			activationHint:
-				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
+				"Once you've finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won't see those executions here).",
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -222,41 +223,108 @@ export class PostgresTrigger implements INodeType {
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
-		const db = await initDB.call(this);
-		if (triggerMode === 'createTrigger') {
-			await pgTriggerFunction.call(this, db);
-		}
-		const channelName =
-			triggerMode === 'createTrigger'
-				? additionalFields.channelName || `n8n_channel_${this.getNode().id.replace(/-/g, '_')}`
-				: (this.getNodeParameter('channelName', 0) as string);
+		// initialize and connect to database
+		const { db, pgp } = await initDB.call(this);
+		const connection = await db.connect({ direct: true });
 
-		const onNotification = async (data: any) => {
+		// prepare and set up listener
+		const onNotification = async (data: IDataObject) => {
 			if (data.payload) {
 				try {
-					data.payload = JSON.parse(data.payload as string);
+					data.payload = JSON.parse(data.payload as string) as IDataObject;
 				} catch (error) {}
 			}
 			this.emit([this.helpers.returnJsonArray([data])]);
 		};
 
-		const connection = await db.connect({ direct: true });
+		// create trigger, funstion and channel or use existing channel
+		const pgNames = prepareNames(this.getNode().id, this.getMode(), additionalFields);
+		if (triggerMode === 'createTrigger') {
+			await pgTriggerFunction.call(
+				this,
+				db,
+				additionalFields,
+				pgNames.functionName,
+				pgNames.triggerName,
+				pgNames.channelName,
+			);
+		} else {
+			pgNames.channelName = this.getNodeParameter('channelName', '') as string;
+		}
+
+		// listen to channel
+		await connection.none(`LISTEN ${pgNames.channelName}`);
+
+		const cleanUpDb = async () => {
+			try {
+				await connection.none('UNLISTEN $1:name', [pgNames.channelName]);
+				if (triggerMode === 'createTrigger') {
+					const functionName = pgNames.functionName.includes('(')
+						? pgNames.functionName.split('(')[0]
+						: pgNames.functionName;
+					await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [functionName]);
+
+					const schema = this.getNodeParameter('schema', undefined, {
+						extractValue: true,
+					}) as string;
+					const table = this.getNodeParameter('tableName', undefined, {
+						extractValue: true,
+					}) as string;
+
+					await connection.any('DROP TRIGGER IF EXISTS $1:name ON $2:name.$3:name CASCADE', [
+						pgNames.triggerName,
+						schema,
+						table,
+					]);
+				}
+				connection.client.removeListener('notification', onNotification);
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Postgres Trigger Error: ${(error as Error).message}`,
+				);
+			} finally {
+				pgp.end();
+			}
+		};
+
 		connection.client.on('notification', onNotification);
-		await connection.none(`LISTEN ${channelName}`);
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		const closeFunction = async () => {
-			connection.client.removeListener('notification', onNotification);
-			await connection.none(`UNLISTEN ${channelName}`);
-			if (triggerMode === 'createTrigger') {
-				await dropTriggerFunction.call(this, db);
-			}
-			await db.$pool.end();
+			await cleanUpDb();
+		};
+
+		const manualTriggerFunction = async () => {
+			await new Promise(async (resolve, reject) => {
+				const timeoutHandler = setTimeout(async () => {
+					reject(
+						new Error(
+							await (async () => {
+								await cleanUpDb();
+								return 'Aborted, no data received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.';
+							})(),
+						),
+					);
+				}, 30000);
+				connection.client.on('notification', async (data: IDataObject) => {
+					if (data.payload) {
+						try {
+							data.payload = JSON.parse(data.payload as string) as IDataObject;
+						} catch (error) {}
+					}
+
+					this.emit([this.helpers.returnJsonArray([data])]);
+					clearTimeout(timeoutHandler);
+					resolve(true);
+				});
+			});
 		};
 
 		return {
 			closeFunction,
+			manualTriggerFunction: this.getMode() === 'manual' ? manualTriggerFunction : undefined,
 		};
 	}
 }
