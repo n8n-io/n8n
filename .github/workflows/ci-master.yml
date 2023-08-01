@@ -42,15 +42,6 @@ jobs:
             ./packages
           key: ${{ github.sha }}-base:18-test-lint
 
-      - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
-        if: failure()
-        with:
-          status: ${{ job.status }}
-          channel: '#updates-build-alerts'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Master branch (build or test or lint) failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -124,3 +115,14 @@ jobs:
         env:
           ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
         run: pnpm lint
+
+  notify-on-failure:
+    name: Notify Slack on failure
+    needs: [unit-test, lint]
+    uses: act10ns/slack@v2.0.0
+    if: failure()
+    with:
+      status: ${{ job.status }}
+      channel: '#updates-build-alerts'
+      webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      message: Master branch (build or test or lint) failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
