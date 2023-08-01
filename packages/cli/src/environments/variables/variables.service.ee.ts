@@ -21,7 +21,7 @@ export class EEVariablesService extends VariablesService {
 		if (variable.key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
 			throw new VariablesValidationError('key can only contain characters A-Za-z0-9_');
 		}
-		if (variable.value.length > 255) {
+		if (variable.value?.length > 255) {
 			throw new VariablesValidationError('value cannot be longer than 255 characters');
 		}
 	}
@@ -42,7 +42,7 @@ export class EEVariablesService extends VariablesService {
 	static async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
 		this.validateVariable(variable);
 		await collections.Variables.update(id, variable);
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 		return (await this.get(id))!;
 	}
 }

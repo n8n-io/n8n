@@ -4,7 +4,7 @@ import { IsString, Length } from 'class-validator';
 import type { User } from './User';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
-import { AbstractEntity } from './AbstractEntity';
+import { WithTimestamps } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 
 export type RoleNames = 'owner' | 'member' | 'user' | 'editor';
@@ -12,7 +12,7 @@ export type RoleScopes = 'global' | 'workflow' | 'credential';
 
 @Entity()
 @Unique(['scope', 'name'])
-export class Role extends AbstractEntity {
+export class Role extends WithTimestamps {
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;
 

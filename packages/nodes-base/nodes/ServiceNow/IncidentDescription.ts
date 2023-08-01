@@ -75,7 +75,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {

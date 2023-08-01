@@ -19,9 +19,11 @@
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<keep-alive include="NodeView" :max="1">
-					<router-view />
-				</keep-alive>
+				<router-view v-slot="{ Component }">
+					<keep-alive include="NodeView" :max="1">
+						<component :is="Component" />
+					</keep-alive>
+				</router-view>
 			</div>
 			<Modals />
 			<Telemetry />
@@ -55,7 +57,7 @@ import {
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
-import { useRoute } from 'vue-router/composables';
+import { useRoute } from 'vue-router';
 import { useExternalHooks } from '@/composables';
 
 export default defineComponent({
@@ -73,6 +75,7 @@ export default defineComponent({
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...newVersions.setup?.(props),
 		};
 	},
@@ -98,13 +101,18 @@ export default defineComponent({
 	data() {
 		return {
 			postAuthenticateDone: false,
+			settingsInitialized: false,
 			loading: true,
 		};
 	},
 	methods: {
 		async initSettings(): Promise<void> {
+			// The settings should only be initialized once
+			if (this.settingsInitialized) return;
+
 			try {
 				await this.settingsStore.getSettings();
+				this.settingsInitialized = true;
 			} catch (e) {
 				this.showToast({
 					title: this.$locale.baseText('startupError'),
@@ -132,7 +140,7 @@ export default defineComponent({
 		},
 		logHiringBanner() {
 			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
-				console.log(HIRING_BANNER); // eslint-disable-line no-console
+				console.log(HIRING_BANNER);
 			}
 		},
 		async initialize(): Promise<void> {
@@ -149,15 +157,14 @@ export default defineComponent({
 
 			this.$telemetry.page(this.$route);
 		},
-		authenticate() {
+		async authenticate() {
 			// redirect to setup page. user should be redirected to this only once
 			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
 
-				void this.$router.replace({ name: VIEWS.SETUP });
-				return;
+				return this.$router.replace({ name: VIEWS.SETUP });
 			}
 
 			if (this.canUserAccessCurrentRoute()) {
@@ -170,8 +177,7 @@ export default defineComponent({
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-				return;
+				return this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 			}
 
 			// if cannot access page and is logged in, respect signin redirect
@@ -179,22 +185,23 @@ export default defineComponent({
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					void this.$router.replace(redirect);
-					return;
+					return this.$router.replace(redirect);
 				}
 			}
 
 			// if cannot access page and is logged in
-			void this.$router.replace({ name: VIEWS.HOMEPAGE });
+			return this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
-		redirectIfNecessary() {
+		async redirectIfNecessary() {
 			const redirect =
 				this.$route.meta &&
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
+
 			if (redirect) {
-				void this.$router.replace(redirect);
+				return this.$router.replace(redirect);
 			}
+			return;
 		},
 		setTheme() {
 			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
@@ -247,12 +254,12 @@ export default defineComponent({
 			this.postAuthenticateDone = true;
 		},
 	},
-	async mounted() {
+	async created() {
 		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
-		this.authenticate();
-		this.redirectIfNecessary();
+		await this.authenticate();
+		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
 		await this.initBanners();
@@ -262,6 +269,7 @@ export default defineComponent({
 
 		this.loading = false;
 
+		this.logHiringBanner();
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
 
@@ -275,9 +283,9 @@ export default defineComponent({
 				void this.postAuthenticate();
 			}
 		},
-		$route(route) {
-			this.authenticate();
-			this.redirectIfNecessary();
+		async $route(route) {
+			await this.initSettings();
+			await this.redirectIfNecessary();
 
 			this.trackPage();
 		},
@@ -317,6 +325,11 @@ export default defineComponent({
 	height: 100%;
 	width: 100%;
 	justify-content: center;
+
+	main {
+		width: 100%;
+		height: 100%;
+	}
 }
 
 .header {

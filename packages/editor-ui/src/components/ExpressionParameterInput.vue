@@ -1,5 +1,9 @@
 <template>
-	<div :class="$style['expression-parameter-input']" v-click-outside="onBlur" @keydown.tab="onBlur">
+	<div
+		:class="$style['expression-parameter-input']"
+		v-on-click-outside="onBlur"
+		@keydown.tab="onBlur"
+	>
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
 			<div
 				:class="[
@@ -11,7 +15,7 @@
 				<ExpressionFunctionIcon />
 			</div>
 			<InlineExpressionEditorInput
-				:value="value"
+				:modelValue="modelValue"
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
 				:isSingleLine="isForRecordLocator"
@@ -33,7 +37,6 @@
 
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:value="value"
 			:isReadOnly="isReadOnly"
 			:visible="isFocused"
 			:hoveringItemNumber="hoveringItemNumber"
@@ -74,7 +77,7 @@ export default defineComponent({
 		path: {
 			type: String,
 		},
-		value: {
+		modelValue: {
 			type: String,
 		},
 		isReadOnly: {
@@ -129,7 +132,7 @@ export default defineComponent({
 			if (wasFocused) {
 				const telemetryPayload = createExpressionTelemetryPayload(
 					this.segments,
-					this.value,
+					this.modelValue,
 					this.workflowsStore.workflowId,
 					this.ndvStore.sessionId,
 					this.ndvStore.activeNode?.type ?? '',
@@ -143,9 +146,9 @@ export default defineComponent({
 
 			this.segments = segments;
 
-			if (value === '=' + this.value) return; // prevent report on change of target item
+			if (value === '=' + this.modelValue) return; // prevent report on change of target item
 
-			this.$emit('valueChanged', value);
+			this.$emit('update:modelValue', value);
 		},
 	},
 });

@@ -26,7 +26,7 @@
 import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import { ASK_AI_MODAL_KEY, ASK_AI_WAITLIST_URL } from '../constants';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'AskAI',

@@ -1,13 +1,11 @@
 <template>
-	<ExpandableInputBase :value="value" :staticSize="true">
-		<template>
-			<input
-				:class="{ 'el-input__inner': true, clickable: true }"
-				:value="value"
-				:disabled="true"
-				size="4"
-			/>
-		</template>
+	<ExpandableInputBase :modelValue="modelValue" :staticSize="true">
+		<input
+			:class="{ 'el-input__inner': true, clickable: true }"
+			:value="modelValue"
+			:disabled="true"
+			size="4"
+		/>
 	</ExpandableInputBase>
 </template>
 
@@ -18,7 +16,7 @@ import ExpandableInputBase from './ExpandableInputBase.vue';
 export default defineComponent({
 	name: 'ExpandableInputPreview',
 	components: { ExpandableInputBase },
-	props: ['value'],
+	props: ['modelValue'],
 });
 </script>
 

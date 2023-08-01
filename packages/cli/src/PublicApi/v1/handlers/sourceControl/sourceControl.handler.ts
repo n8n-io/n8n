@@ -6,7 +6,11 @@ import { authorize } from '../../shared/middlewares/global.middleware';
 import type { ImportResult } from '@/environments/sourceControl/types/importResult';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
-import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
+import {
+	getTrackingInformationFromPullResult,
+	isSourceControlLicensed,
+} from '@/environments/sourceControl/sourceControlHelper.ee';
+import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	pull: [
@@ -32,12 +36,16 @@ export = {
 					force: req.body.force,
 					variables: req.body.variables,
 					userId: req.user.id,
-					importAfterPull: true,
 				});
-				if ((result as ImportResult)?.workflows) {
-					return res.status(200).send(result as ImportResult);
+
+				if (result.statusCode === 200) {
+					void Container.get(InternalHooks).onSourceControlUserPulledAPI({
+						...getTrackingInformationFromPullResult(result.statusResult),
+						forced: req.body.force ?? false,
+					});
+					return res.status(200).send(result.statusResult);
 				} else {
-					return res.status(409).send(result);
+					return res.status(409).send(result.statusResult);
 				}
 			} catch (error) {
 				return res.status(400).send((error as { message: string }).message);

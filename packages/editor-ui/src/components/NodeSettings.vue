@@ -9,11 +9,12 @@
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
+					v-if="node"
 					class="node-name"
-					:value="node && node.name"
+					:modelValue="node.name"
 					:nodeType="nodeType"
-					:isReadOnly="isReadOnly"
-					@input="nameChanged"
+					:readOnly="isReadOnly"
+					@update:modelValue="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
@@ -46,8 +47,8 @@
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n
-						path="nodeSettings.communityNodeUnknown.description"
+					<i18n-t
+						keypath="nodeSettings.communityNodeUnknown.description"
 						tag="span"
 						@click="onMissingNodeTextClick"
 					>
@@ -58,7 +59,7 @@
 								>{{ node.type.split('.')[0] }}</a
 							>
 						</template>
-					</i18n>
+					</i18n-t>
 				</div>
 				<n8n-link
 					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
@@ -67,7 +68,7 @@
 					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
 				</n8n-link>
 			</div>
-			<i18n v-else path="nodeSettings.nodeTypeUnknown.description" tag="span">
+			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
 				<template #action>
 					<a
 						:href="CUSTOM_NODES_DOCS_URL"
@@ -75,7 +76,7 @@
 						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
 					/>
 				</template>
-			</i18n>
+			</i18n-t>
 		</div>
 		<div class="node-parameters-wrapper" data-test-id="node-parameters" v-if="node && nodeValid">
 			<n8n-notice
@@ -290,10 +291,10 @@ export default defineComponent({
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.node.type);
+			return isCommunityPackageName(this.node?.type);
 		},
 		isTriggerNode(): boolean {
-			return this.nodeTypesStore.isTriggerNode(this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node?.type);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
@@ -471,7 +472,6 @@ export default defineComponent({
 
 				try {
 					parameters = JSON.parse(parameters) as {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						[key: string]: any;
 					};
 
@@ -524,7 +524,7 @@ export default defineComponent({
 				}
 			}
 
-			// Set the value via Vue.set that everything updates correctly in the UI
+			// Set the value so that everything updates correctly in the UI
 			if (nameParts.length === 0) {
 				// Data is on top level
 				if (value === null) {
@@ -613,7 +613,7 @@ export default defineComponent({
 			}
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
-			const nodeNameBefore = parameterData.node || this.node.name;
+			const nodeNameBefore = parameterData.node || this.node?.name;
 			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
 
 			if (node === null) {
@@ -934,8 +934,8 @@ export default defineComponent({
 		onMissingNodeLearnMoreLinkClick() {
 			this.$telemetry.track('user clicked cnr docs link', {
 				source: 'missing node modal source',
-				package_name: this.node.type.split('.')[0],
-				node_type: this.node.type,
+				package_name: this.node?.type.split('.')[0],
+				node_type: this.node?.type,
 			});
 		},
 		onStopExecution() {
@@ -952,7 +952,7 @@ export default defineComponent({
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });
@@ -974,7 +974,7 @@ export default defineComponent({
 }
 </style>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .node-settings {
 	display: flex;
 	flex-direction: column;
