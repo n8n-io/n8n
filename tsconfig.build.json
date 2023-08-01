@@ -2,6 +2,7 @@
 	"compilerOptions": {
 		"types": ["node"],
 		"noEmit": false,
+		"declaration": true,
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
 	"tsc-alias": {
