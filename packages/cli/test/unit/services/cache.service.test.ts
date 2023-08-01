@@ -10,6 +10,7 @@ const cacheService = Container.get(CacheService);
 
 function setDefaultConfig() {
 	config.set('executions.mode', 'regular');
+	config.set('cache.enabled', true);
 	config.set('cache.backend', 'memory');
 	config.set('cache.memory.maxSize', 1 * 1024 * 1024);
 }
@@ -70,12 +71,12 @@ describe('cacheService', () => {
 		await cacheService.init();
 		await expect(cacheService.getCache()).resolves.toBeDefined();
 		await cacheService.set('testString', 'test');
-		await cacheService.set('testNumber', 123);
+		await cacheService.set('testNumber1', 123);
 
 		await expect(cacheService.get('testString')).resolves.toBe('test');
 		expect(typeof (await cacheService.get('testString'))).toBe('string');
-		await expect(cacheService.get('testNumber')).resolves.toBe(123);
-		expect(typeof (await cacheService.get('testNumber'))).toBe('number');
+		await expect(cacheService.get('testNumber1')).resolves.toBe(123);
+		expect(typeof (await cacheService.get('testNumber1'))).toBe('number');
 	});
 
 	test('should honour ttl values', async () => {
@@ -83,22 +84,22 @@ describe('cacheService', () => {
 		config.set('cache.memory.ttl', 10);
 
 		await cacheService.set('testString', 'test');
-		await cacheService.set('testNumber', 123, 1000);
+		await cacheService.set('testNumber1', 123, 1000);
 
 		const store = (await cacheService.getCache())?.store;
 
 		expect(store).toBeDefined();
 
 		await expect(store!.ttl('testString')).resolves.toBeLessThanOrEqual(100);
-		await expect(store!.ttl('testNumber')).resolves.toBeLessThanOrEqual(1000);
+		await expect(store!.ttl('testNumber1')).resolves.toBeLessThanOrEqual(1000);
 
 		await expect(cacheService.get('testString')).resolves.toBe('test');
-		await expect(cacheService.get('testNumber')).resolves.toBe(123);
+		await expect(cacheService.get('testNumber1')).resolves.toBe(123);
 
 		await new Promise((resolve) => setTimeout(resolve, 20));
 
 		await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		await expect(cacheService.get('testNumber')).resolves.toBe(123);
+		await expect(cacheService.get('testNumber1')).resolves.toBe(123);
 	});
 
 	test('should set and remove values', async () => {
@@ -129,8 +130,6 @@ describe('cacheService', () => {
 	});
 
 	test('should set and get multiple values', async () => {
-		config.set('executions.mode', 'regular');
-		config.set('cache.backend', 'memory');
 		await cacheService.destroy();
 		expect(cacheService.isRedisCache()).toBe(false);
 
@@ -139,14 +138,14 @@ describe('cacheService', () => {
 			['testString2', 'test2'],
 		]);
 		await cacheService.setMany([
-			['testNumber', 123],
+			['testNumber1', 123],
 			['testNumber2', 456],
 		]);
 		await expect(cacheService.getMany(['testString', 'testString2'])).resolves.toStrictEqual([
 			'test',
 			'test2',
 		]);
-		await expect(cacheService.getMany(['testNumber', 'testNumber2'])).resolves.toStrictEqual([
+		await expect(cacheService.getMany(['testNumber1', 'testNumber2'])).resolves.toStrictEqual([
 			123, 456,
 		]);
 	});
@@ -190,4 +189,143 @@ describe('cacheService', () => {
 	// NOTE: mset and mget are not supported by ioredis-mock
 	// test('should set and get multiple values with redis', async () => {
 	// });
+
+	test('should return fallback value if key is not set', async () => {
+		await cacheService.reset();
+		await expect(cacheService.get('testString')).resolves.toBeUndefined();
+		await expect(
+			cacheService.get('testString', {
+				fallbackValue: 'fallback',
+			}),
+		).resolves.toBe('fallback');
+	});
+
+	test('should call refreshFunction if key is not set', async () => {
+		await cacheService.reset();
+		await expect(cacheService.get('testString')).resolves.toBeUndefined();
+		await expect(
+			cacheService.get('testString', {
+				refreshFunction: async () => 'refreshed',
+				fallbackValue: 'this should not be returned',
+			}),
+		).resolves.toBe('refreshed');
+	});
+
+	test('should transparently handle disabled cache', async () => {
+		await cacheService.disable();
+		await expect(cacheService.get('testString')).resolves.toBeUndefined();
+		await cacheService.set('testString', 'whatever');
+		await expect(cacheService.get('testString')).resolves.toBeUndefined();
+		await expect(
+			cacheService.get('testString', {
+				fallbackValue: 'fallback',
+			}),
+		).resolves.toBe('fallback');
+		await expect(
+			cacheService.get('testString', {
+				refreshFunction: async () => 'refreshed',
+				fallbackValue: 'this should not be returned',
+			}),
+		).resolves.toBe('refreshed');
+	});
+
+	test('should set and get partial results', async () => {
+		await cacheService.setMany([
+			['testNumber1', 123],
+			['testNumber2', 456],
+		]);
+		await expect(cacheService.getMany(['testNumber1', 'testNumber2'])).resolves.toStrictEqual([
+			123, 456,
+		]);
+		await expect(cacheService.getMany(['testNumber3', 'testNumber2'])).resolves.toStrictEqual([
+			undefined,
+			456,
+		]);
+	});
+
+	test('should getMany and fix partial results and set single key', async () => {
+		await cacheService.setMany([
+			['testNumber1', 123],
+			['testNumber2', 456],
+		]);
+		await expect(
+			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3']),
+		).resolves.toStrictEqual([123, 456, undefined]);
+		await expect(cacheService.get('testNumber3')).resolves.toBeUndefined();
+		await expect(
+			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3'], {
+				async refreshFunctionEach(key) {
+					return key === 'testNumber3' ? 789 : undefined;
+				},
+			}),
+		).resolves.toStrictEqual([123, 456, 789]);
+		await expect(cacheService.get('testNumber3')).resolves.toBe(789);
+	});
+
+	test('should getMany and set all keys', async () => {
+		await cacheService.setMany([
+			['testNumber1', 123],
+			['testNumber2', 456],
+		]);
+		await expect(
+			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3']),
+		).resolves.toStrictEqual([123, 456, undefined]);
+		await expect(cacheService.get('testNumber3')).resolves.toBeUndefined();
+		await expect(
+			cacheService.getMany(['testNumber1', 'testNumber2', 'testNumber3'], {
+				async refreshFunctionMany(keys) {
+					return [111, 222, 333];
+				},
+			}),
+		).resolves.toStrictEqual([111, 222, 333]);
+		await expect(cacheService.get('testNumber1')).resolves.toBe(111);
+		await expect(cacheService.get('testNumber2')).resolves.toBe(222);
+		await expect(cacheService.get('testNumber3')).resolves.toBe(333);
+	});
+
+	test('should set and get multiple values with fallbackValue', async () => {
+		await cacheService.disable();
+		await cacheService.setMany([
+			['testNumber1', 123],
+			['testNumber2', 456],
+		]);
+		await expect(cacheService.getMany(['testNumber1', 'testNumber2'])).resolves.toStrictEqual([
+			undefined,
+			undefined,
+		]);
+		await expect(
+			cacheService.getMany(['testNumber1', 'testNumber2'], {
+				fallbackValues: [123, 456],
+			}),
+		).resolves.toStrictEqual([123, 456]);
+		await expect(
+			cacheService.getMany(['testNumber1', 'testNumber2'], {
+				refreshFunctionMany: async () => [123, 456],
+				fallbackValues: [0, 1],
+			}),
+		).resolves.toStrictEqual([123, 456]);
+	});
+
+	test('should deal with unicode keys', async () => {
+		const key = '? > ":< ! withUnicodeԱԲԳ';
+		await cacheService.set(key, 'test');
+		await expect(cacheService.get(key)).resolves.toBe('test');
+		await cacheService.delete(key);
+		await expect(cacheService.get(key)).resolves.toBeUndefined();
+	});
+
+	test('should deal with unicode keys in redis', async () => {
+		config.set('cache.backend', 'redis');
+		config.set('executions.mode', 'queue');
+		await cacheService.destroy();
+		await cacheService.init();
+		const key = '? > ":< ! withUnicodeԱԲԳ';
+
+		expect(((await cacheService.getCache()) as RedisCache).store.client).toBeDefined();
+
+		await cacheService.set(key, 'test');
+		await expect(cacheService.get(key)).resolves.toBe('test');
+		await cacheService.delete(key);
+		await expect(cacheService.get(key)).resolves.toBeUndefined();
+	});
 });
