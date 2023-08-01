@@ -70,7 +70,7 @@ export default defineComponent({
 	},
 	beforeUnmount() {
 		if (this.enabled) {
-			this.observer?.disconnect(); // eslint-disable-line
+			this.observer?.disconnect();
 		}
 	},
 });

@@ -619,105 +619,89 @@ export default defineComponent({
 		},
 		async loadSaveDataErrorExecutionOptions() {
 			this.saveDataErrorExecutionOptions.length = 0;
-			this.saveDataErrorExecutionOptions.push.apply(
-				// eslint-disable-line no-useless-call
-				this.saveDataErrorExecutionOptions,
-				[
-					{
-						key: 'DEFAULT',
-						value: this.$locale.baseText(
-							'workflowSettings.saveDataErrorExecutionOptions.defaultSave',
-							{
-								interpolate: {
-									defaultValue:
-										this.defaultValues.saveDataErrorExecution === 'all'
-											? this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
-											: this.$locale.baseText(
-													'workflowSettings.saveDataErrorExecutionOptions.doNotSave',
-											  ),
-								},
+			this.saveDataErrorExecutionOptions.push.apply(this.saveDataErrorExecutionOptions, [
+				{
+					key: 'DEFAULT',
+					value: this.$locale.baseText(
+						'workflowSettings.saveDataErrorExecutionOptions.defaultSave',
+						{
+							interpolate: {
+								defaultValue:
+									this.defaultValues.saveDataErrorExecution === 'all'
+										? this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
+										: this.$locale.baseText(
+												'workflowSettings.saveDataErrorExecutionOptions.doNotSave',
+										  ),
 							},
-						),
-					},
-					{
-						key: 'all',
-						value: this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save'),
-					},
-					{
-						key: 'none',
-						value: this.$locale.baseText(
-							'workflowSettings.saveDataErrorExecutionOptions.doNotSave',
-						),
-					},
-				],
-			);
+						},
+					),
+				},
+				{
+					key: 'all',
+					value: this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save'),
+				},
+				{
+					key: 'none',
+					value: this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
+				},
+			]);
 		},
 		async loadSaveDataSuccessExecutionOptions() {
 			this.saveDataSuccessExecutionOptions.length = 0;
-			this.saveDataSuccessExecutionOptions.push.apply(
-				// eslint-disable-line no-useless-call
-				this.saveDataSuccessExecutionOptions,
-				[
-					{
-						key: 'DEFAULT',
-						value: this.$locale.baseText(
-							'workflowSettings.saveDataSuccessExecutionOptions.defaultSave',
-							{
-								interpolate: {
-									defaultValue:
-										this.defaultValues.saveDataSuccessExecution === 'all'
-											? this.$locale.baseText(
-													'workflowSettings.saveDataSuccessExecutionOptions.save',
-											  )
-											: this.$locale.baseText(
-													'workflowSettings.saveDataSuccessExecutionOptions.doNotSave',
-											  ),
-								},
+			this.saveDataSuccessExecutionOptions.push.apply(this.saveDataSuccessExecutionOptions, [
+				{
+					key: 'DEFAULT',
+					value: this.$locale.baseText(
+						'workflowSettings.saveDataSuccessExecutionOptions.defaultSave',
+						{
+							interpolate: {
+								defaultValue:
+									this.defaultValues.saveDataSuccessExecution === 'all'
+										? this.$locale.baseText('workflowSettings.saveDataSuccessExecutionOptions.save')
+										: this.$locale.baseText(
+												'workflowSettings.saveDataSuccessExecutionOptions.doNotSave',
+										  ),
 							},
-						),
-					},
-					{
-						key: 'all',
-						value: this.$locale.baseText('workflowSettings.saveDataSuccessExecutionOptions.save'),
-					},
-					{
-						key: 'none',
-						value: this.$locale.baseText(
-							'workflowSettings.saveDataSuccessExecutionOptions.doNotSave',
-						),
-					},
-				],
-			);
+						},
+					),
+				},
+				{
+					key: 'all',
+					value: this.$locale.baseText('workflowSettings.saveDataSuccessExecutionOptions.save'),
+				},
+				{
+					key: 'none',
+					value: this.$locale.baseText(
+						'workflowSettings.saveDataSuccessExecutionOptions.doNotSave',
+					),
+				},
+			]);
 		},
 		async loadSaveExecutionProgressOptions() {
 			this.saveExecutionProgressOptions.length = 0;
-			this.saveExecutionProgressOptions.push.apply(
-				// eslint-disable-line no-useless-call
-				this.saveExecutionProgressOptions,
-				[
-					{
-						key: 'DEFAULT',
-						value: this.$locale.baseText(
-							'workflowSettings.saveExecutionProgressOptions.defaultSave',
-							{
-								interpolate: {
-									defaultValue: this.defaultValues.saveExecutionProgress
-										? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes')
-										: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
-								},
+			this.saveExecutionProgressOptions.push.apply(this.saveExecutionProgressOptions, [
+				{
+					key: 'DEFAULT',
+					value: this.$locale.baseText(
+						'workflowSettings.saveExecutionProgressOptions.defaultSave',
+						{
+							interpolate: {
+								defaultValue: this.defaultValues.saveExecutionProgress
+									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes')
+									: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
 							},
-						),
-					},
-					{
-						key: true,
-						value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes'),
-					},
-					{
-						key: false,
-						value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
-					},
-				],
-			);
+						},
+					),
+				},
+				{
+					key: true,
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes'),
+				},
+				{
+					key: false,
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
+				},
+			]);
 		},
 		async loadSaveManualOptions() {
 			this.saveManualOptions.length = 0;

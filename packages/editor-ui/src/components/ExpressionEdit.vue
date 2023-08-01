@@ -147,7 +147,6 @@ export default defineComponent({
 		},
 
 		itemSelected(eventData: IVariableItemSelected) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
 			void this.$externalHooks().run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
@@ -225,7 +224,6 @@ export default defineComponent({
 			this.latestValue = this.modelValue;
 
 			const resolvedExpressionValue =
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
 				undefined;
 			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
