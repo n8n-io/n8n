@@ -157,8 +157,8 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Change Password At Next Login',
 				name: 'changePasswordAtNextLogin',
+				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
 				type: 'boolean',
-				typeOptions: { password: true },
 				default: false,
 				description: 'Whether the user is forced to change their password at next login',
 			},
@@ -683,8 +683,8 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Change Password At Next Login',
 				name: 'changePasswordAtNextLogin',
+				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
 				type: 'boolean',
-				typeOptions: { password: true },
 				default: false,
 				description: 'Whether the user is forced to change their password at next login',
 			},
