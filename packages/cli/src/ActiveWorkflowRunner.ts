@@ -1,8 +1,5 @@
 /* eslint-disable prefer-spread */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-restricted-syntax */
+
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -94,7 +91,6 @@ export class ActiveWorkflowRunner {
 		private webhookRepository: WebhookRepository,
 	) {}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async init() {
 		// Get the active workflows from database
 
@@ -141,7 +137,7 @@ export class ActiveWorkflowRunner {
 					Logger.info(
 						'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
 					);
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+
 					Logger.info(`               ${error.message}`);
 					Logger.error(
 						`Issue on initial workflow activation try "${workflowData.name}" (startup)`,
@@ -257,7 +253,7 @@ export class ActiveWorkflowRunner {
 			}
 
 			// @ts-ignore
-			// eslint-disable-next-line no-param-reassign
+
 			path = webhook.webhookPath;
 			// extracting params from path
 			// @ts-ignore
@@ -323,7 +319,7 @@ export class ActiveWorkflowRunner {
 				undefined,
 				req,
 				res,
-				// eslint-disable-next-line consistent-return
+
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);
@@ -445,7 +441,6 @@ export class ActiveWorkflowRunner {
 			}
 
 			try {
-				// eslint-disable-next-line no-await-in-loop
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
 				await this.webhookRepository.insert(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
@@ -478,7 +473,7 @@ export class ActiveWorkflowRunner {
 					// This means that further initializations will always fail
 					// when inserting to database. This is why we ignore this error
 					// as it's expected to happen.
-					// eslint-disable-next-line no-continue
+
 					continue;
 				}
 
@@ -487,7 +482,6 @@ export class ActiveWorkflowRunner {
 				} catch (error) {
 					ErrorReporter.error(error);
 					Logger.error(
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
 					);
 				}
@@ -566,7 +560,7 @@ export class ActiveWorkflowRunner {
 	 * Runs the given workflow
 	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 	async runWorkflow(
 		workflowData: IWorkflowDb,
 		node: INode,
@@ -634,7 +628,6 @@ export class ActiveWorkflowRunner {
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void WorkflowHelpers.saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
@@ -691,10 +684,9 @@ export class ActiveWorkflowRunner {
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void WorkflowHelpers.saveStaticData(workflow);
-				// eslint-disable-next-line id-denylist
+
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -983,7 +975,6 @@ export class ActiveWorkflowRunner {
 		} catch (error) {
 			ErrorReporter.error(error);
 			Logger.error(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
 			);
 		}

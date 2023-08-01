@@ -3,7 +3,6 @@ import path from 'path';
 import { UserSettings } from 'n8n-core';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
-import { copyTable } from '@db/utils/migrationHelpers';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	transaction = false as const;
@@ -118,7 +117,7 @@ export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigr
 				"data" text NOT NULL, "status" varchar,
 				FOREIGN KEY("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE
 			);`);
-		await copyTable({ tablePrefix, queryRunner }, 'execution_entity', 'TMP_execution_entity');
+		await context.copyTable('execution_entity', 'TMP_execution_entity');
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_entity";`);
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_execution_entity" RENAME TO "${tablePrefix}execution_entity";`,

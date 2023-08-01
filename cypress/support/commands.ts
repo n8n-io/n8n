@@ -103,19 +103,31 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 Cypress.Commands.add('drag', (selector, pos, options) => {
 	const index = options?.index || 0;
 	const [xDiff, yDiff] = pos;
-	const element = cy.get(selector).eq(index);
+	const element = typeof selector === 'string' ? cy.get(selector).eq(index) : selector;
 	element.should('exist');
 
-	const originalLocation = Cypress.$(selector)[index].getBoundingClientRect();
+	element.then(([$el]) => {
+		const originalLocation = $el.getBoundingClientRect();
+		const newPosition = {
+			x: options?.abs ? xDiff : originalLocation.right + xDiff,
+			y: options?.abs ? yDiff : originalLocation.top + yDiff,
+		}
 
-	element.trigger('mousedown', { force: true });
-	element.trigger('mousemove', {
-		which: 1,
-		pageX: options?.abs ? xDiff : originalLocation.right + xDiff,
-		pageY: options?.abs ? yDiff : originalLocation.top + yDiff,
-		force: true,
+		if(options?.realMouse) {
+			element.realMouseDown();
+			element.realMouseMove(newPosition.x, newPosition.y);
+			element.realMouseUp();
+		} else {
+			element.trigger('mousedown', {force: true});
+			element.trigger('mousemove', {
+				which: 1,
+				pageX: newPosition.x,
+				pageY: newPosition.y,
+				force: true,
+			});
+			element.trigger('mouseup', {force: true});
+		}
 	});
-	element.trigger('mouseup', { force: true });
 });
 
 Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
