@@ -96,9 +96,7 @@
     "@types/yamljs": "^0.2.31",
     "chokidar": "^3.5.2",
     "concurrently": "^8.2.0",
-    "ts-essentials": "^7.0.3",
-    "tsc-alias": "^1.8.7",
-    "tsconfig-paths": "^4.2.0"
+    "ts-essentials": "^7.0.3"
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",

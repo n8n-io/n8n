@@ -108,9 +108,15 @@ importers:
       ts-jest:
         specifier: ^29.1.1
         version: 29.1.1(@babel/core@7.22.9)(jest@29.6.2)(typescript@5.1.6)
+      tsc-alias:
+        specifier: ^1.8.7
+        version: 1.8.7
       tsc-watch:
         specifier: ^6.0.4
         version: 6.0.4(typescript@5.1.6)
+      tsconfig-paths:
+        specifier: ^4.2.0
+        version: 4.2.0
       turbo:
         specifier: 1.10.12
         version: 1.10.12
@@ -556,12 +562,6 @@ importers:
       ts-essentials:
         specifier: ^7.0.3
         version: 7.0.3(typescript@5.1.6)
-      tsc-alias:
-        specifier: ^1.8.7
-        version: 1.8.7
-      tsconfig-paths:
-        specifier: ^4.2.0
-        version: 4.2.0
 
   packages/core:
     dependencies:
@@ -19805,7 +19805,7 @@ packages:
     engines: {node: '>=6'}
     dependencies:
       json5: 2.2.3
-      minimist: 1.2.7
+      minimist: 1.2.8
       strip-bom: 3.0.0
     dev: true
 
