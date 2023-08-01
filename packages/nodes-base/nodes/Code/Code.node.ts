@@ -114,7 +114,8 @@ export class Code implements INodeType {
 				'output',
 				workflowMode === 'manual'
 					? this.sendMessageToUI
-					: (...args) => console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
+					: (...args) =>
+							console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
 			);
 			return sandbox;
 		};
