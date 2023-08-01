@@ -109,12 +109,7 @@ jobs:
           node-version: 18.x
           cache: pnpm
 
-      - name: Fetch base branch for `git diff`
-        run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
-
-      - name: Run ESLint on changes only
-        env:
-          ESLINT_PLUGIN_DIFF_COMMIT: ${{ github.event.pull_request.base.ref }}
+      - name: Lint
         run: pnpm lint
 
   notify-on-failure:
