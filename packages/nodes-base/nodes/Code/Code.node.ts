@@ -94,7 +94,7 @@ export class Code implements INodeType {
 
 		const node = this.getNode();
 		const language: CodeNodeEditorLanguage =
-			node?.typeVersion === 2
+			node.typeVersion === 2
 				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
@@ -114,7 +114,7 @@ export class Code implements INodeType {
 				'output',
 				workflowMode === 'manual'
 					? this.sendMessageToUI
-					: (...args) => console.log(`[Node "${node?.name}"]`, ...args),
+					: (...args) => console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
 			);
 			return sandbox;
 		};
