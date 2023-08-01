@@ -66,7 +66,6 @@ export class JavaScriptSandbox extends Sandbox {
 				error.message = (quoted as string) + '. Did you mean `$input.all()`?';
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			throw new ExecutionError(error);
 		}
 
@@ -111,7 +110,6 @@ export class JavaScriptSandbox extends Sandbox {
 				error.message = (quoted as string) + '. Did you mean `$input.item.json`?';
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			throw new ExecutionError(error, this.itemIndex);
 		}
 
