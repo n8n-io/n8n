@@ -194,106 +194,57 @@ export class ActiveWorkflowRunner {
 	): Promise<IResponseCallbackData> {
 		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 
-		// Reset request parameters
-		req.params = {};
+		path = path.endsWith('/') ? path.slice(0, -1) : path; // no trailing slash
 
-		// Remove trailing slash
-		if (path.endsWith('/')) {
-			path = path.slice(0, -1);
-		}
+		const webhook = await Container.get(WebhookService).findWebhook(httpMethod, path);
 
-		let webhook = await Container.get(WebhookService).findWebhook(httpMethod, path);
-		let webhookId: string | undefined;
-
-		// check if path is dynamic
 		if (webhook === null) {
-			// check if a dynamic webhook path exists
-			const pathElements = path.split('/');
-			webhookId = pathElements.shift();
-			const dynamicWebhooks = await Db.collections.Webhook.findBy({
-				webhookId,
-				method: httpMethod,
-				pathLength: pathElements.length,
-			});
-			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
-				// The requested webhook is not registered
-				throw new ResponseHelper.NotFoundError(
-					webhookNotFoundErrorMessage(path, httpMethod),
-					WEBHOOK_PROD_UNREGISTERED_HINT,
-				);
-			}
-
-			let maxMatches = 0;
-			const pathElementsSet = new Set(pathElements);
-			// check if static elements match in path
-			// if more results have been returned choose the one with the most static-route matches
-			dynamicWebhooks.forEach((dynamicWebhook) => {
-				const staticElements = dynamicWebhook.webhookPath
-					.split('/')
-					.filter((ele) => !ele.startsWith(':'));
-				const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
-
-				if (allStaticExist && staticElements.length > maxMatches) {
-					maxMatches = staticElements.length;
-					webhook = dynamicWebhook;
-				}
-				// handle routes with no static elements
-				else if (staticElements.length === 0 && !webhook) {
-					webhook = dynamicWebhook;
-				}
-			});
-			if (webhook === null) {
-				throw new ResponseHelper.NotFoundError(
-					webhookNotFoundErrorMessage(path, httpMethod),
-					WEBHOOK_PROD_UNREGISTERED_HINT,
-				);
-			}
-
-			// @ts-ignore
-			// eslint-disable-next-line no-param-reassign
-			path = webhook.webhookPath;
-			// extracting params from path
-			// @ts-ignore
-			webhook.webhookPath.split('/').forEach((ele, index) => {
-				if (ele.startsWith(':')) {
-					// write params to req.params
-					req.params[ele.slice(1)] = pathElements[index];
-				}
-			});
+			throw new ResponseHelper.NotFoundError(
+				webhookNotFoundErrorMessage(path, httpMethod),
+				WEBHOOK_PROD_UNREGISTERED_HINT,
+			);
 		}
 
-		const workflowData = await Db.collections.Workflow.findOne({
+		const pathSegments = path.split('/').slice(1);
+
+		// @TODO: Refactor legacy code after testing
+		const webhookPath = webhook.webhookPath;
+		req.params = {}; // reset request parameters
+		webhook.webhookPath.split('/').forEach((segment, index) => {
+			if (segment.startsWith(':')) req.params[segment.slice(1)] = pathSegments[index];
+		});
+
+		const dbWorkflow = await Db.collections.Workflow.findOne({
 			where: { id: webhook.workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
-		if (workflowData === null) {
+
+		if (dbWorkflow === null) {
 			throw new ResponseHelper.NotFoundError(
-				`Could not find workflow with id "${webhook.workflowId}"`,
+				`Could not find workflow with ID "${webhook.workflowId}"`,
 			);
 		}
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
+			name: dbWorkflow.name,
+			nodes: dbWorkflow.nodes,
+			connections: dbWorkflow.connections,
+			active: dbWorkflow.active,
 			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
+			staticData: dbWorkflow.staticData,
+			settings: dbWorkflow.settings,
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
+			dbWorkflow.shared[0].user.id,
 		);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		).filter((webhook) => {
-			return webhook.httpMethod === httpMethod && webhook.path === path;
-		})[0];
+		).filter((webhook) => webhook.httpMethod === httpMethod && webhook.path === webhookPath)[0];
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -308,7 +259,7 @@ export class ActiveWorkflowRunner {
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
-				workflowData,
+				dbWorkflow,
 				workflowStartNode,
 				executionMode,
 				undefined,

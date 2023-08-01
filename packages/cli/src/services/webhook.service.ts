@@ -58,22 +58,22 @@ export class WebhookService {
 	}
 
 	/**
-	 * Find a webhook containing at least one dynamic segment, e.g. `/user/:id/create`
+	 * Find a webhook containing at least one dynamic segment, e.g. `<id>/user/:id/create`
 	 */
 	private async findDynamicWebhook(method: string, path: string) {
-		const [firstSegment, ...remainingSegments] = path.split('/');
+		const [idSegment, ...remainingSegments] = path.split('/');
 
 		// @TODO: Sanity check on segments before DB query
 
 		const dynamicWebhooks = await this.webhookRepository.findBy({
-			webhookId: firstSegment,
+			webhookId: idSegment,
 			method,
 			pathLength: remainingSegments.length,
 		});
 
 		if (dynamicWebhooks.length === 0) return null;
 
-		// @TODO: Refactor legacy code below after testing
+		// @TODO: Refactor legacy code after testing
 
 		let webhook: WebhookEntity | null = null;
 		let maxMatches = 0;
