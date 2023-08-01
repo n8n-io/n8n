@@ -6,7 +6,6 @@ const tsJestOptions = {
 		...compilerOptions,
 		declaration: false,
 		sourceMap: true,
-		skipLibCheck: true,
 	},
 };
 

@@ -5,7 +5,6 @@
 		"outDir": "dist",
 		"target": "esnext",
 		"module": "esnext",
-		"skipLibCheck": true,
 		"allowJs": true,
 		"importHelpers": true,
 		"incremental": false,
