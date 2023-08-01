@@ -55,7 +55,7 @@ export class PermissionChecker {
 		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
 
 		if (!isSharingEnabled()) {
-			const role = await Container.get(RoleService).findCredentialOwnerRoleOrFail();
+			const role = await Container.get(RoleService).findCredentialOwnerRole();
 			// If credential sharing is not enabled, get only credentials owned by this user
 			credentialsWhere.roleId = role.id;
 		}

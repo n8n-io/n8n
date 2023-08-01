@@ -12,8 +12,4 @@ export class RoleRepository extends Repository<Role> {
 	async findRole(scope: RoleScopes, name: RoleNames) {
 		return this.findOne({ where: { scope, name } });
 	}
-
-	async findRoleOrFail(scope: RoleScopes, name: RoleNames) {
-		return this.findOneOrFail({ where: { scope, name } });
-	}
 }

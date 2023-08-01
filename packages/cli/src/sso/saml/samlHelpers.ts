@@ -101,7 +101,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Container.get(RoleService).findGlobalMemberRoleOrFail();
+	user.globalRole = await Container.get(RoleService).findGlobalMemberRole();
 	// generates a password that is not used or known to the user
 	user.password = await hashPassword(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;

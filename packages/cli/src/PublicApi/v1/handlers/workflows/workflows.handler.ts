@@ -39,7 +39,7 @@ export = {
 
 			addNodeIds(workflow);
 
-			const role = await Container.get(RoleService).findWorkflowOwnerRoleOrFail();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 

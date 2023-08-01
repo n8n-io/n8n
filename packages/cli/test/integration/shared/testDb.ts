@@ -275,23 +275,23 @@ export async function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export async function getGlobalOwnerRole() {
-	return Container.get(RoleService).findGlobalOwnerRoleOrFail();
+	return Container.get(RoleService).findGlobalOwnerRole();
 }
 
 export async function getGlobalMemberRole() {
-	return Container.get(RoleService).findGlobalMemberRoleOrFail();
+	return Container.get(RoleService).findGlobalMemberRole();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Container.get(RoleService).findWorkflowOwnerRoleOrFail();
+	return Container.get(RoleService).findWorkflowOwnerRole();
 }
 
 export async function getWorkflowEditorRole() {
-	return Container.get(RoleService).findWorkflowEditorRoleOrFail();
+	return Container.get(RoleService).findWorkflowEditorRole();
 }
 
 export async function getCredentialOwnerRole() {
-	return Container.get(RoleService).findCredentialOwnerRoleOrFail();
+	return Container.get(RoleService).findCredentialOwnerRole();
 }
 
 export async function getAllRoles() {

@@ -27,7 +27,7 @@ export function isSharingEnabled(): boolean {
 }
 
 export async function getInstanceOwner() {
-	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRoleOrFail();
+	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
 	return Db.collections.User.findOneOrFail({
 		relations: ['globalRole'],

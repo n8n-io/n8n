@@ -164,7 +164,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Container.get(RoleService).findWorkflowOwnerRoleOrFail();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -205,7 +205,7 @@ EEWorkflowController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
 		const [workflows, workflowOwnerRole] = await Promise.all([
 			EEWorkflows.getMany(req.user, req.query.filter),
-			Container.get(RoleService).findWorkflowOwnerRoleOrFail(),
+			Container.get(RoleService).findWorkflowOwnerRole(),
 		]);
 
 		return workflows.map((workflow) => {

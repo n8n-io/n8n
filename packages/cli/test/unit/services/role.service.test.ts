@@ -56,16 +56,6 @@ describe('RoleService', () => {
 			});
 		});
 
-		describe(`find${display.scope}${display.name}RoleOrFail() [${tag}]`, () => {
-			test(`should throw if the ${scope} ${name} role is not found`, async () => {
-				config.set('cache.enabled', cacheEnabled);
-
-				roleRepository.findRole.mockRejectedValueOnce(new Error());
-
-				await expect(roleRepository.findRole(scope, name)).rejects.toThrow();
-			});
-		});
-
 		describe(`findRoleByUserAndWorkflow() [${tag}]`, () => {
 			test('should return the role if a shared workflow is found', async () => {
 				config.set('cache.enabled', cacheEnabled);

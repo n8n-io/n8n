@@ -221,7 +221,7 @@ export class CredentialsService {
 
 		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Container.get(RoleService).findCredentialOwnerRoleOrFail();
+		const role = await Container.get(RoleService).findCredentialOwnerRole();
 
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
