@@ -70,7 +70,7 @@ export class ReadBinaryFile implements INodeType {
 
 				const stream = await this.helpers.createReadStream(filePath);
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(stream, filePath);
 				returnData.push(newItem);
 			} catch (error) {
