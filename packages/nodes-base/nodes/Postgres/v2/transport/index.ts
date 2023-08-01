@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { sanitizePrivateKey } from '@utils/utilities';
+import { formatPrivateKey } from '@utils/utilities';
 
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
@@ -26,7 +26,7 @@ async function createSshConnectConfig(credentials: IDataObject) {
 			host: credentials.sshHost as string,
 			username: credentials.sshUser as string,
 			port: credentials.sshPort as number,
-			privateKey: sanitizePrivateKey(credentials.privateKey as string),
+			privateKey: formatPrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {

@@ -1,11 +1,10 @@
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-import { sanitizePrivateKey } from '@utils/utilities';
+import { formatPrivateKey } from '@utils/utilities';
 
 import mysql2 from 'mysql2/promise';
 import type { Client, ConnectConfig } from 'ssh2';
-import { rm, writeFile } from 'fs/promises';
+import { rm } from 'fs/promises';
 
-import { file } from 'tmp-promise';
 import type { Mysql2Pool } from '../helpers/interfaces';
 
 async function createSshConnectConfig(credentials: IDataObject) {
@@ -17,14 +16,11 @@ async function createSshConnectConfig(credentials: IDataObject) {
 			password: credentials.sshPassword as string,
 		} as ConnectConfig;
 	} else {
-		const { path } = await file({ prefix: 'n8n-ssh-' });
-		await writeFile(path, credentials.privateKey as string);
-
 		const options: ConnectConfig = {
 			host: credentials.sshHost as string,
 			username: credentials.sshUser as string,
 			port: credentials.sshPort as number,
-			privateKey: sanitizePrivateKey(credentials.privateKey as string),
+			privateKey: formatPrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {
@@ -64,12 +60,12 @@ export async function createPool(
 		baseCredentials.ssl = {};
 
 		if (caCertificate) {
-			baseCredentials.ssl.ca = sanitizePrivateKey(caCertificate as string);
+			baseCredentials.ssl.ca = formatPrivateKey(caCertificate as string);
 		}
 
 		if (clientCertificate || clientPrivateKey) {
-			baseCredentials.ssl.cert = sanitizePrivateKey(clientCertificate as string);
-			baseCredentials.ssl.key = sanitizePrivateKey(clientPrivateKey as string);
+			baseCredentials.ssl.cert = formatPrivateKey(clientCertificate as string);
+			baseCredentials.ssl.key = formatPrivateKey(clientPrivateKey as string);
 		}
 	}
 

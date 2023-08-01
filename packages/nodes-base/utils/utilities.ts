@@ -218,17 +218,28 @@ export const keysToLowercase = <T>(headers: T) => {
 };
 
 /**
- * Sanitizes a private key string by adding the appropriate header and footer lines and replacing spaces with newlines in the body.
- *
- * @param privateKey - The private key string to sanitize.
- * @returns The sanitized private key string.
+ * Formats a private key by removing unnecessary whitespace and adding line breaks.
+ * @param privateKey - The private key to format.
+ * @returns The formatted private key.
  */
-export function sanitizePrivateKey(privateKey: string) {
-	const [openSshKey, bodySshKey, endSshKey] = privateKey
-		.split('-----')
-		.filter((item) => item !== '');
-
-	return `-----${openSshKey}-----\n${bodySshKey.replace(/ /g, '\n')}\n-----${endSshKey}-----`;
+export function formatPrivateKey(privateKey: string): string {
+	let formattedPrivateKey = '';
+	const parts = privateKey.split('-----').filter((item) => item !== '');
+	parts.forEach((part) => {
+		const regex = /(PRIVATE KEY|CERTIFICATE)/;
+		if (regex.test(part)) {
+			formattedPrivateKey += `-----${part}-----`;
+		} else {
+			const passRegex = /Proc-Type|DEK-Info/;
+			if (passRegex.test(part)) {
+				part = part.replace(/:\s+/g, ':');
+				formattedPrivateKey += part.replace(/\s+/g, '\n');
+			} else {
+				formattedPrivateKey += part.replace(/\s+/g, '\n');
+			}
+		}
+	});
+	return formattedPrivateKey;
 }
 
 /**
