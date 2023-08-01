@@ -16,8 +16,8 @@
 								fallback: node.displayName,
 							})
 						"
-						:value="!!nodeAccess[node.name]"
-						@change="(val) => onNodeAccessChange(node.name, val)"
+						:modelValue="!!nodeAccess[node.name]"
+						@update:modelValue="(val) => onNodeAccessChange(node.name, val)"
 					/>
 					<n8n-text v-else>
 						{{

@@ -25,7 +25,7 @@
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :value="checked" @change="handleCheckboxChange">{{
+				<el-checkbox :modelValue="checked" @update:modelValue="handleCheckboxChange">{{
 					$locale.baseText('generic.dontShowAgain')
 				}}</el-checkbox>
 				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
@@ -37,7 +37,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 import Modal from '@/components/Modal.vue';
 import {

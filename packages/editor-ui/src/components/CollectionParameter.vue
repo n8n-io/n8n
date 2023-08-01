@@ -5,15 +5,17 @@
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list
-				:parameters="getProperties"
-				:nodeValues="nodeValues"
-				:path="path"
-				:hideDelete="hideDelete"
-				:indent="true"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
-			/>
+			<Suspense>
+				<parameter-input-list
+					:parameters="getProperties"
+					:nodeValues="nodeValues"
+					:path="path"
+					:hideDelete="hideDelete"
+					:indent="true"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
+			</Suspense>
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -28,7 +30,7 @@
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
-						@change="optionSelected"
+						@update:modelValue="optionSelected"
 						filterable
 					>
 						<n8n-option
@@ -46,8 +48,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { Component } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -59,6 +60,8 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { get } from 'lodash-es';
 
 import { useNDVStore } from '@/stores/ndv.store';
+
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 export default defineComponent({
 	name: 'CollectionParameter',
@@ -72,7 +75,7 @@ export default defineComponent({
 		'isReadOnly', // boolean
 	],
 	components: {
-		ParameterInputList: async () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {

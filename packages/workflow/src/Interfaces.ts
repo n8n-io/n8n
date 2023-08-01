@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// eslint-disable-next-line max-classes-per-file
+
 import type * as express from 'express';
 import type FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
@@ -680,6 +680,11 @@ interface JsonHelperFunctions {
 export interface FileSystemHelperFunctions {
 	createReadStream(path: PathLike): Promise<Readable>;
 	getStoragePath(): string;
+	writeContentToFile(
+		path: PathLike,
+		content: string | Buffer | Readable,
+		flag?: string,
+	): Promise<void>;
 }
 
 export interface BinaryHelperFunctions {
@@ -1217,9 +1222,10 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
-		| Promise<string | NodeParameterValue>
-		| (string | NodeParameterValue);
+	(
+		this: IExecuteSingleFunctions,
+		value: string | NodeParameterValue,
+	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;

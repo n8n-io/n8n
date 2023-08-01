@@ -518,7 +518,7 @@ export class ExecuteBatch extends BaseCommand {
 	setOutput(key: string, value: any) {
 		// Temporary hack until we move to the new action.
 		const output = process.env.GITHUB_OUTPUT;
-		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+
 		fs.appendFileSync(output as unknown as fs.PathOrFileDescriptor, `${key}=${value}${os.EOL}`);
 	}
 
@@ -667,7 +667,6 @@ export class ExecuteBatch extends BaseCommand {
 
 					const resultError = data.data.resultData.error;
 					if (resultError) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						executionResult.error =
 							resultError.hasOwnProperty('description') && resultError.description !== null
 								? resultError.description

@@ -24,8 +24,8 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint --quiet .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet --report-unused-disable-directives",
+    "lintfix": "eslint . --fix --report-unused-disable-directives",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest"
   },

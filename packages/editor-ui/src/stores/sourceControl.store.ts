@@ -1,7 +1,9 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useSettingsStore, useRootStore, useUsersStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUsersStore } from '@/stores/users.store';
 import * as vcApi from '@/api/sourceControl';
 import type { SourceControlPreferences } from '@/Interface';
 
@@ -68,7 +70,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const makePreferencesAction =
-		(action: typeof vcApi.savePreferences | typeof vcApi.updatePreferences) =>
+		(action: typeof vcApi.savePreferences) =>
 		async (preferences: Partial<SourceControlPreferences>) => {
 			const data = await action(rootStore.getRestApiContext, preferences);
 			setPreferences(data);

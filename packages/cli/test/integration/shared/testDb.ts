@@ -219,7 +219,6 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
-	// eslint-disable-next-line prefer-const
 	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	if (!globalRole) {
 		globalRole = await getGlobalMemberRole();
@@ -577,7 +576,7 @@ export const getBootstrapDBOptions = (type: TestDBType) =>
 		name: type,
 		database: type,
 		...baseOptions(type),
-	} as const);
+	}) as const;
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,
