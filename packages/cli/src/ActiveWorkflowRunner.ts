@@ -362,6 +362,7 @@ export class ActiveWorkflowRunner {
 
 			path = webhookData.path;
 
+			// @ts-ignore @TODO
 			const webhook: WebhookEntity = {
 				workflowId: webhookData.workflowId,
 				webhookPath: path,

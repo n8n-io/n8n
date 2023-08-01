@@ -15,11 +15,13 @@ export class WebhookEntity {
 	@Column()
 	node: string;
 
-	// @TODO: Remove `?` below
-
 	@Column({ nullable: true })
 	webhookId?: string;
 
 	@Column({ nullable: true })
 	pathLength?: number;
+
+	get fullPath() {
+		return this.webhookPath.includes(':') ? this.workflowId + this.webhookPath : this.webhookPath;
+	}
 }

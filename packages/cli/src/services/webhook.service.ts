@@ -14,19 +14,12 @@ export class WebhookService {
 
 		if (!allWebhooks) return;
 
-		const allWebhookCacheKeys: Array<[string, WebhookEntity]> = allWebhooks.map((webhook) => {
-			const { method } = webhook;
-
-			// @TODO `getPath` method on `WebhookEntity` accounting for dynamic paths
-			const isDynamic = (path: string) => path.includes(':');
-			const path = isDynamic(webhook.webhookPath)
-				? webhook.workflowId + webhook.webhookPath
-				: webhook.webhookPath;
-
-			return [`cache:webhook:${method}-${path}`, webhook];
-		});
-
-		void this.cacheService.setMany(allWebhookCacheKeys);
+		void this.cacheService.setMany(
+			allWebhooks.map((webhook) => [
+				`cache:webhook:${webhook.method}-${webhook.fullPath}`,
+				webhook,
+			]),
+		);
 	}
 
 	private async findCached(method: string, path: string) {
@@ -34,10 +27,7 @@ export class WebhookService {
 
 		const cachedWebhook = await this.cacheService.get<WebhookEntity>(cacheKey);
 
-		if (cachedWebhook) {
-			console.log('CACHE HIT', cachedWebhook);
-			return this.webhookRepository.create(cachedWebhook);
-		}
+		if (cachedWebhook) return this.webhookRepository.create(cachedWebhook);
 
 		console.log('CACHE MISS');
 
