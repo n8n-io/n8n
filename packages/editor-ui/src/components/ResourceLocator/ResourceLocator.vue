@@ -865,12 +865,10 @@ $--mode-selector-width: 92px;
 .selectIcon {
 	cursor: pointer;
 	font-size: 14px;
-	transition: transform 0.3s, -webkit-transform 0.3s;
-	-webkit-transform: rotateZ(0);
+	transition: transform 0.3s;
 	transform: rotateZ(0);
 
 	&.isReverse {
-		-webkit-transform: rotateZ(180deg);
 		transform: rotateZ(180deg);
 	}
 }

@@ -267,7 +267,7 @@ export default defineComponent({
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
-	padding: 0;
+	padding: 0 !important;
 	border: var(--border-base);
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));
