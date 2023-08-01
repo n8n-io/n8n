@@ -21,7 +21,7 @@ const config = {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
 	},
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
-	moduleNameMapper: Object.entries(paths).reduce((acc, [path, [mapping]]) => {
+	moduleNameMapper: Object.entries(paths || {}).reduce((acc, [path, [mapping]]) => {
 		path = `^${path.replace(/\/\*$/, '/(.*)$')}`;
 		mapping = mapping.replace(/^\.\/(?:(.*)\/)?\*$/, '$1');
 		mapping = mapping ? `/${mapping}` : '';
