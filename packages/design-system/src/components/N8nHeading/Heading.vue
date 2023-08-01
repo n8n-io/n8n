@@ -40,14 +40,12 @@ export default defineComponent({
 		classes() {
 			const applied = [];
 			if (this.align) {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				applied.push(`align-${this.align}`);
 			}
 			if (this.color) {
 				applied.push(this.color);
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			applied.push(`size-${this.size}`);
 
 			applied.push(this.bold ? 'bold' : 'regular');
