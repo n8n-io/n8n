@@ -30,7 +30,6 @@ export const descriptions: INodeProperties[] = [
 				action: 'Append data to a sheet',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
 				name: 'Append or Update',
 				value: 'appendOrUpdate',
 				description: 'Append a new row or update the current one if it already exists (upsert)',
