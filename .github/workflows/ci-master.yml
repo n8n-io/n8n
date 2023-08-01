@@ -110,6 +110,8 @@ jobs:
           cache: pnpm
 
       - name: Lint
+        env:
+          CI_LINT_MASTER: true
         run: pnpm lint
 
   notify-on-failure:
