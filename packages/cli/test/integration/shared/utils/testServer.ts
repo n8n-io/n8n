@@ -1,6 +1,5 @@
 import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
-import bodyParser from 'body-parser';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 import type superagent from 'superagent';
@@ -31,7 +30,7 @@ import {
 	TagsController,
 	UsersController,
 } from '@/controllers';
-import { setupAuthMiddlewares } from '@/middlewares';
+import { rawBody, jsonParser, setupAuthMiddlewares } from '@/middlewares';
 
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -119,6 +118,9 @@ export const setupTestServer = ({
 	enabledFeatures,
 }: SetupProps): TestServer => {
 	const app = express();
+	app.use(rawBody);
+	app.use(cookieParser());
+
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
@@ -137,10 +139,6 @@ export const setupTestServer = ({
 		mockInstance(InternalHooks);
 		mockInstance(PostHogClient);
 
-		app.use(bodyParser.json());
-		app.use(bodyParser.urlencoded({ extended: true }));
-		app.use(cookieParser());
-
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -154,6 +152,8 @@ export const setupTestServer = ({
 		}
 
 		if (!endpointGroups) return;
+
+		app.use(jsonParser);
 
 		const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
