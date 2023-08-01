@@ -9,7 +9,7 @@ const tsJestOptions = {
 	},
 };
 
-const { baseUrl, paths } = require('get-tsconfig').getTsconfig().config.compilerOptions;
+const { baseUrl, paths } = require('get-tsconfig').getTsconfig().config?.compilerOptions;
 
 /** @type {import('jest').Config} */
 const config = {
