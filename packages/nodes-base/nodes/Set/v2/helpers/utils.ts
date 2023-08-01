@@ -1,4 +1,10 @@
-import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import type {
+	FieldType,
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { deepCopy, NodeOperationError, jsonParse, validateFieldType } from 'n8n-workflow';
 
 import set from 'lodash/set';
@@ -8,11 +14,11 @@ import { INCLUDE } from './interfaces';
 
 export const configureFieldSetter = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
-		return (item: IDataObject, key: string, value: any) => {
+		return (item: IDataObject, key: string, value: IDataObject) => {
 			set(item, key, value);
 		};
 	} else {
-		return (item: IDataObject, key: string, value: any) => {
+		return (item: IDataObject, key: string, value: IDataObject) => {
 			item[key] = value;
 		};
 	}
@@ -38,7 +44,7 @@ export function prepareItem(
 		Object.assign(newItem.binary, inputItem.binary);
 	}
 
-	const setField = configureFieldSetter(options.dotNotation);
+	const fieldSetter = configureFieldSetter(options.dotNotation);
 
 	switch (options.include) {
 		case INCLUDE.ALL:
@@ -50,7 +56,7 @@ export function prepareItem(
 				.map((item) => item.trim());
 
 			for (const key of includeFields) {
-				setField(newItem.json, key, inputItem.json[key]);
+				fieldSetter(newItem.json, key, inputItem.json[key] as IDataObject);
 			}
 			break;
 		case INCLUDE.EXCEPT:
@@ -60,7 +66,7 @@ export function prepareItem(
 
 			for (const key of Object.keys(inputItem.json)) {
 				if (excludeFields.includes(key)) continue;
-				setField(newItem.json, key, inputItem.json[key]);
+				fieldSetter(newItem.json, key, inputItem.json[key] as IDataObject);
 			}
 			break;
 		case INCLUDE.NONE:
@@ -70,7 +76,7 @@ export function prepareItem(
 	}
 
 	for (const key of Object.keys(newFields)) {
-		setField(newItem.json, key, newFields[key]);
+		fieldSetter(newItem.json, key, newFields[key] as IDataObject);
 	}
 
 	return newItem;
@@ -104,8 +110,9 @@ export const prepareEntry = (
 ) => {
 	const entryValue = entry[entry.type];
 	const name = entry.name;
+	const entryType = entry.type.replace('Value', '') as FieldType;
 
-	const validationResult = validateFieldType(name, entryValue, entry.type);
+	const validationResult = validateFieldType(name, entryValue, entryType);
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {

@@ -47,52 +47,52 @@ const properties: INodeProperties[] = [
 						options: [
 							{
 								name: 'String',
-								value: 'string',
+								value: 'stringValue',
 							},
 							{
 								name: 'Number',
-								value: 'number',
+								value: 'numberValue',
 							},
 							{
 								name: 'Boolean',
-								value: 'boolean',
+								value: 'booleanValue',
 							},
 							{
 								name: 'Array',
-								value: 'array',
+								value: 'arrayValue',
 							},
 							{
 								name: 'Object',
-								value: 'object',
+								value: 'objectValue',
 							},
 						],
-						default: 'string',
+						default: 'stringValue',
 					},
 					{
 						displayName: 'Value',
-						name: 'string',
+						name: 'stringValue',
 						type: 'string',
 						default: '',
 						displayOptions: {
 							show: {
-								type: ['string'],
+								type: ['stringValue'],
 							},
 						},
 					},
 					{
 						displayName: 'Value',
-						name: 'number',
+						name: 'numberValue',
 						type: 'number',
 						default: 0,
 						displayOptions: {
 							show: {
-								type: ['number'],
+								type: ['numberValue'],
 							},
 						},
 					},
 					{
 						displayName: 'Value',
-						name: 'boolean',
+						name: 'booleanValue',
 						type: 'options',
 						default: true,
 						options: [
@@ -107,35 +107,36 @@ const properties: INodeProperties[] = [
 						],
 						displayOptions: {
 							show: {
-								type: ['boolean'],
+								type: ['booleanValue'],
 							},
 						},
 					},
 					{
 						displayName: 'Value',
-						name: 'array',
+						name: 'arrayValue',
 						type: 'string',
 						// default: '={{[]}}',
 						default: '',
 						placeholder: 'e.g. [ arrayItem1, arrayItem2, arrayItem3 ]',
 						displayOptions: {
 							show: {
-								type: ['array'],
+								type: ['arrayValue'],
 							},
 						},
 					},
 					{
 						displayName: 'Value',
-						name: 'object',
+						name: 'objectValue',
 						type: 'string',
 						default: '{}',
 						typeOptions: {
 							editor: 'json',
+							editorLanguage: 'json',
 							rows: 2,
 						},
 						displayOptions: {
 							show: {
-								type: ['object'],
+								type: ['objectValue'],
 							},
 						},
 					},
@@ -173,7 +174,7 @@ export async function execute(
 		return prepareItem.call(this, i, items[i], newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
-			return { json: { error: error.message } };
+			return { json: { error: (error as Error).message } };
 		}
 		throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 	}

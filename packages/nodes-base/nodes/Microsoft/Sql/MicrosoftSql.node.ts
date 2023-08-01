@@ -11,8 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten, getResolvables } from '@utils/utilities';
-
 import mssql from 'mssql';
 
 import type { ITables } from './TableInterface';
@@ -27,6 +25,7 @@ import {
 	extractValues,
 	formatColumns,
 } from './GenericFunctions';
+import { chunk, flatten, getResolvables } from '@utils/utilities';
 
 export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {

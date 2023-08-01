@@ -9,13 +9,14 @@ import type { SetNodeOptions } from './helpers/interfaces';
 const properties: INodeProperties[] = [
 	{
 		displayName: 'JSON Output',
-		name: 'json',
+		name: 'jsonOutput',
 		type: 'string',
 		typeOptions: {
 			editor: 'json',
+			editorLanguage: 'json',
 			rows: 5,
 		},
-		default: '={\n  "key": "value"\n}',
+		default: '{\n  "key": "value"\n}',
 	},
 ];
 
@@ -34,13 +35,13 @@ export async function execute(
 	options: SetNodeOptions,
 ) {
 	try {
-		const json = this.getNodeParameter('json', i) as string;
+		const json = this.getNodeParameter('jsonOutput', i) as string;
 		const newData = parseJsonParameter(json, this.getNode(), i);
 
 		return prepareItem.call(this, i, items[i], newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
-			return { json: { error: error.message } };
+			return { json: { error: (error as Error).message } };
 		}
 		throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 	}

@@ -9,12 +9,12 @@ export type SetNodeOptions = {
 
 export type SetField = {
 	name: string;
-	type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-	string?: string;
-	number?: number;
-	boolean?: boolean;
-	array?: string[] | string | IDataObject | IDataObject[];
-	object?: string | IDataObject;
+	type: 'stringValue' | 'numberValue' | 'booleanValue' | 'arrayValue' | 'objectValue';
+	stringValue?: string;
+	numberValue?: number;
+	booleanValue?: boolean;
+	arrayValue?: string[] | string | IDataObject | IDataObject[];
+	objectValue?: string | IDataObject;
 };
 
 export const INCLUDE = {

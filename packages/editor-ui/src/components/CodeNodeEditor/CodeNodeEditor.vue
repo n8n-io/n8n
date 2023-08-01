@@ -266,7 +266,7 @@ export default defineComponent({
 		const [languageSupport, ...otherExtensions] = this.languageExtensions;
 		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
 
-		let doc = this.modelValue || this.placeholder;
+		let doc = this.modelValue ?? this.placeholder;
 
 		const lines = doc.split('\n');
 

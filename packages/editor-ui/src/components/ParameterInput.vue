@@ -123,12 +123,14 @@
 
 				<code-node-editor
 					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
-					:value="value"
+					:mode="node.parameters.mode"
+					:modelValue="modelValue"
 					:defaultValue="parameter.default"
-					:language="'json'"
+					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
-					:rows="getArgument('rows')"
+					:aiButtonEnabled="false"
 					@update:modelValue="valueChangedDebounced"
+					:rows="getArgument('rows')"
 				/>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
