@@ -385,6 +385,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'HTTP Password',
 				name: 'http_password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'The password used for password-protected web pages',
 			},

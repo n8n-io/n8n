@@ -42,6 +42,7 @@ export class Sftp implements ICredentialType {
 			displayName: 'Private Key',
 			name: 'privateKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			typeOptions: {
 				password: true,

@@ -198,7 +198,7 @@ export const pushConnection = defineComponent({
 
 			if (receivedData.type === 'sendConsoleMessage') {
 				const pushData = receivedData.data;
-				console.log(pushData.source, ...pushData.messages); // eslint-disable-line no-console
+				console.log(pushData.source, ...pushData.messages);
 				return true;
 			}
 
