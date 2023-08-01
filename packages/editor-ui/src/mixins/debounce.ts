@@ -8,7 +8,6 @@ export const debounceHelper = defineComponent({
 		};
 	},
 	methods: {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		async callDebounced(...inputParameters: any[]): Promise<void> {
 			const functionName = inputParameters.shift() as string;
 			const { trailing, debounceTime } = inputParameters.shift();

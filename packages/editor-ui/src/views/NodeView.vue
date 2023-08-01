@@ -361,8 +361,8 @@ export default defineComponent({
 		};
 	},
 	errorCaptured: (err, vm, info) => {
-		console.error('errorCaptured'); // eslint-disable-line no-console
-		console.error(err); // eslint-disable-line no-console
+		console.error('errorCaptured');
+		console.error(err);
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
@@ -812,8 +812,8 @@ export default defineComponent({
 
 				if (!nodeErrorFound && data.data.resultData.error.stack) {
 					// Display some more information for now in console to make debugging easier
-					console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
-					console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
+					console.error(`Execution ${executionId} error:`);
+					console.error(data.data.resultData.error.stack);
 					this.showMessage({
 						title: this.$locale.baseText('nodeView.showError.workflowError'),
 						message: data.data.resultData.error.message,
@@ -1569,7 +1569,6 @@ export default defineComponent({
 			source: string,
 			importTags = true,
 		): Promise<void> {
-			// eslint-disable-line @typescript-eslint/default-param-last
 			// If it is JSON check if it looks on the first look like data we can use
 			if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 				return;
@@ -2141,7 +2140,7 @@ export default defineComponent({
 					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
 				});
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onInterceptBeforeDrop(info: BeforeDropParams) {
@@ -2163,7 +2162,7 @@ export default defineComponent({
 
 				return true;
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 				return true;
 			}
 		},
@@ -2233,7 +2232,7 @@ export default defineComponent({
 					}, 0);
 				}
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onDragMove() {
@@ -2273,7 +2272,7 @@ export default defineComponent({
 					}
 				}, 150);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionMouseOut(connection: Connection) {
@@ -2302,7 +2301,7 @@ export default defineComponent({
 					}
 				}, 500);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionMoved(info: ConnectionMovedParams) {
@@ -2331,7 +2330,7 @@ export default defineComponent({
 
 				this.__removeConnection(connectionInfo, false);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onEndpointMouseOver(endpoint: Endpoint, mouse) {
@@ -2377,7 +2376,7 @@ export default defineComponent({
 					this.historyStore.pushCommandToUndo(removeCommand);
 				}
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionDrag(connection: Connection) {
@@ -2449,7 +2448,7 @@ export default defineComponent({
 				window.addEventListener('mouseup', onMouseUp);
 				window.addEventListener('touchend', onMouseMove);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionDragAbortDetached(connection: Connection) {
@@ -3284,8 +3283,8 @@ export default defineComponent({
 						console.error(
 							this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
 								`: "${node.name}"`,
-						); // eslint-disable-line no-console
-						console.error(e); // eslint-disable-line no-console
+						);
+						console.error(e);
 					}
 					node.parameters = nodeParameters !== null ? nodeParameters : {};
 
