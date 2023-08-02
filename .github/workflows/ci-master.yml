@@ -86,6 +86,9 @@ jobs:
     name: Lint changes
     runs-on: ubuntu-latest
     needs: install-and-build
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
     steps:
       - uses: actions/checkout@v3
         with:
