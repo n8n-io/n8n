@@ -1,8 +1,9 @@
 import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import dateformat from 'dateformat';
-
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables';
+import { useSourceControlStore } from '@/stores';
 
 export const genericHelpers = defineComponent({
 	setup() {
@@ -12,15 +13,18 @@ export const genericHelpers = defineComponent({
 	},
 	data() {
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			loadingService: null as any | null,
 		};
 	},
 	computed: {
+		...mapStores(useSourceControlStore),
 		isReadOnlyRoute(): boolean {
 			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOG_STREAMING_SETTINGS].includes(
 				this.$route.name as VIEWS,
 			);
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {
@@ -48,21 +52,6 @@ export const genericHelpers = defineComponent({
 			const formattedDate = dateformat(fullDate, mask);
 			const [date, time] = formattedDate.split('#');
 			return { date, time };
-		},
-		editAllowedCheck(): boolean {
-			if (this.isReadOnlyRoute) {
-				this.showMessage({
-					// title: 'Workflow can not be changed!',
-					title: this.$locale.baseText('genericHelpers.showMessage.title'),
-					message: this.$locale.baseText('genericHelpers.showMessage.message'),
-					type: 'info',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
-
-				return false;
-			}
-			return true;
 		},
 
 		/**

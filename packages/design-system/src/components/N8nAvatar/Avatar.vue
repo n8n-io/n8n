@@ -1,6 +1,6 @@
 <template>
-	<span :class="['n8n-avatar', $style.container]" v-on="$listeners">
-		<avatar
+	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
+		<Avatar
 			v-if="firstName"
 			:size="getSize(size)"
 			:name="firstName + ' ' + lastName"
@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-import Avatar from 'vue2-boring-avatars';
+import Avatar from 'vue-boring-avatars';
 
 const sizes: { [size: string]: number } = {
 	small: 28,
@@ -28,9 +28,11 @@ export default defineComponent({
 	props: {
 		firstName: {
 			type: String,
+			default: '',
 		},
 		lastName: {
 			type: String,
+			default: '',
 		},
 		size: {
 			type: String,
@@ -47,7 +49,7 @@ export default defineComponent({
 		},
 	},
 	components: {
-		Avatar, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		Avatar,
 	},
 	computed: {
 		initials() {

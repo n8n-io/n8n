@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
@@ -27,11 +24,12 @@ import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
+import { EventsService } from '@/services/events.service';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
-import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
-import { ExecutionRepository } from './databases/repositories';
+import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { ExecutionRepository } from '@db/repositories';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -53,12 +51,28 @@ function userToPayload(user: User): {
 export class InternalHooks implements IInternalHooksClass {
 	private instanceId: string;
 
+	public get telemetryInstanceId(): string {
+		return this.instanceId;
+	}
+
+	public get telemetryInstance(): Telemetry {
+		return this.telemetry;
+	}
+
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
 		private roleService: RoleService,
 		private executionRepository: ExecutionRepository,
-	) {}
+		eventsService: EventsService,
+	) {
+		eventsService.on('telemetry.onFirstProductionWorkflowSuccess', async (metrics) =>
+			this.onFirstProductionWorkflowSuccess(metrics),
+		);
+		eventsService.on('telemetry.onFirstWorkflowDataLoad', async (metrics) =>
+			this.onFirstWorkflowDataLoad(metrics),
+		);
+	}
 
 	async init(instanceId: string) {
 		this.instanceId = instanceId;
@@ -75,12 +89,10 @@ export class InternalHooks implements IInternalHooksClass {
 			db_type: diagnosticInfo.databaseType,
 			n8n_version_notifications_enabled: diagnosticInfo.notificationsEnabled,
 			n8n_disable_production_main_process: diagnosticInfo.disableProductionWebhooksOnMainProcess,
-			n8n_basic_auth_active: diagnosticInfo.basicAuthActive,
 			system_info: diagnosticInfo.systemInfo,
 			execution_variables: diagnosticInfo.executionVariables,
 			n8n_deployment_type: diagnosticInfo.deploymentType,
 			n8n_binary_data_mode: diagnosticInfo.binaryDataMode,
-			n8n_multi_user_allowed: diagnosticInfo.n8n_multi_user_allowed,
 			smtp_set_up: diagnosticInfo.smtp_set_up,
 			ldap_allowed: diagnosticInfo.ldap_allowed,
 			saml_enabled: diagnosticInfo.saml_enabled,
@@ -1035,5 +1047,54 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
 		return this.telemetry.track('User created variable', createData);
+	}
+
+	async onSourceControlSettingsUpdated(data: {
+		branch_name: string;
+		read_only_instance: boolean;
+		repo_type: 'github' | 'gitlab' | 'other';
+		connected: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User updated source control settings', data);
+	}
+
+	async onSourceControlUserStartedPullUI(data: {
+		workflow_updates: number;
+		workflow_conflicts: number;
+		cred_conflicts: number;
+	}): Promise<void> {
+		return this.telemetry.track('User started pull via UI', data);
+	}
+
+	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
+		return this.telemetry.track('User finished pull via UI', {
+			workflow_updates: data.workflow_updates,
+		});
+	}
+
+	async onSourceControlUserPulledAPI(data: {
+		workflow_updates: number;
+		forced: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User pulled via API', data);
+	}
+
+	async onSourceControlUserStartedPushUI(data: {
+		workflows_eligible: number;
+		workflows_eligible_with_conflicts: number;
+		creds_eligible: number;
+		creds_eligible_with_conflicts: number;
+		variables_eligible: number;
+	}): Promise<void> {
+		return this.telemetry.track('User started push via UI', data);
+	}
+
+	async onSourceControlUserFinishedPushUI(data: {
+		workflows_eligible: number;
+		workflows_pushed: number;
+		creds_pushed: number;
+		variables_pushed: number;
+	}): Promise<void> {
+		return this.telemetry.track('User finished push via UI', data);
 	}
 }

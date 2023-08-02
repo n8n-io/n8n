@@ -1,5 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { DRIVE, RLC_DRIVE_DEFAULT } from '../helpers/interfaces';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../../../constants';
 
 export const fileRLC: INodeProperties = {
 	displayName: 'File',
@@ -26,15 +27,13 @@ export const fileRLC: INodeProperties = {
 				'e.g. https://drive.google.com/file/d/1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A/edit',
 			extractValue: {
 				type: 'regex',
-				regex:
-					'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
-						regex:
-							'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 						errorMessage: 'Not a valid Google Drive File URL',
 					},
 				},
@@ -84,15 +83,13 @@ export const folderNoRootRLC: INodeProperties = {
 			placeholder: 'e.g. https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
 			extractValue: {
 				type: 'regex',
-				regex:
-					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
-						regex:
-							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 						errorMessage: 'Not a valid Google Drive Folder URL',
 					},
 				},
@@ -142,15 +139,13 @@ export const folderRLC: INodeProperties = {
 			placeholder: 'e.g. https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
 			extractValue: {
 				type: 'regex',
-				regex:
-					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
-						regex:
-							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 						errorMessage: 'Not a valid Google Drive Folder URL',
 					},
 				},
@@ -200,15 +195,13 @@ export const driveRLC: INodeProperties = {
 			placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
 			extractValue: {
 				type: 'regex',
-				regex:
-					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
-						regex:
-							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 						errorMessage: 'Not a valid Google Drive Drive URL',
 					},
 				},
@@ -258,15 +251,13 @@ export const sharedDriveRLC: INodeProperties = {
 			placeholder: 'e.g. https://drive.google.com/drive/u/1/folders/0AIjtcbwnjtcbwn9PVA',
 			extractValue: {
 				type: 'regex',
-				regex:
-					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
-						regex:
-							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						regex: GOOGLE_DRIVE_FOLDER_URL_REGEX,
 						errorMessage: 'Not a valid Google Drive Drive URL',
 					},
 				},

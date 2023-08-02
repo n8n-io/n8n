@@ -557,5 +557,19 @@ describe('AugmentObject', () => {
 				writable: true,
 			});
 		});
+
+		test('should return valid values on `has` calls', () => {
+			const originalObject = {
+				x: {
+					y: {},
+				},
+			};
+			const augmentedObject = augmentObject(originalObject);
+			expect('y' in augmentedObject.x).toBe(true);
+			expect('z' in augmentedObject.x).toBe(false);
+
+			augmentedObject.x.z = 5;
+			expect('z' in augmentedObject.x).toBe(true);
+		});
 	});
 });

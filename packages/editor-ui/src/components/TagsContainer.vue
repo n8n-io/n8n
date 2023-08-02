@@ -3,40 +3,47 @@
 		:threshold="1.0"
 		@observed="onObserved"
 		class="tags-container"
+		:style="style"
 		:enabled="responsive"
 		:event-bus="intersectionEventBus"
+		ref="tagsContainer"
 	>
-		<template>
-			<span class="tags">
-				<span
-					v-for="tag in tags"
-					:key="tag.id"
-					:class="{ clickable: !tag.hidden }"
-					@click="(e) => onClick(e, tag)"
+		<span class="tags">
+			<span
+				v-for="tag in tags"
+				:key="tag.id"
+				:class="{ clickable: !tag.hidden }"
+				@click="(e) => onClick(e, tag)"
+			>
+				<el-tag
+					:title="tag.title"
+					type="info"
+					size="small"
+					v-if="tag.isCount"
+					class="count-container"
+					:disable-transitions="true"
+				>
+					{{ tag.name }}
+				</el-tag>
+				<IntersectionObserved
+					:class="{ hidden: tag.hidden }"
+					:data-id="tag.id"
+					:enabled="responsive"
+					:event-bus="intersectionEventBus"
+					v-else
 				>
 					<el-tag
-						:title="tag.title"
+						:title="tag.name"
 						type="info"
 						size="small"
-						v-if="tag.isCount"
-						class="count-container"
+						:class="{ hoverable }"
+						:disable-transitions="true"
 					>
 						{{ tag.name }}
 					</el-tag>
-					<IntersectionObserved
-						:class="{ hidden: tag.hidden }"
-						:data-id="tag.id"
-						:enabled="responsive"
-						:event-bus="intersectionEventBus"
-						v-else
-					>
-						<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
-							{{ tag.name }}
-						</el-tag>
-					</IntersectionObserved>
-				</span>
+				</IntersectionObserved>
 			</span>
-		</template>
+		</span>
 	</IntersectionObserver>
 </template>
 
@@ -49,6 +56,7 @@ import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import { debounce } from 'lodash-es';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
@@ -65,12 +73,29 @@ export default defineComponent({
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],
 	data() {
 		return {
+			maxWidth: 320,
 			intersectionEventBus: createEventBus(),
 			visibility: {} as { [id: string]: boolean },
+			debouncedSetMaxWidth: () => {},
 		};
+	},
+	created() {
+		this.debouncedSetMaxWidth = debounce(this.setMaxWidth, 100);
+	},
+	mounted() {
+		this.setMaxWidth();
+		window.addEventListener('resize', this.debouncedSetMaxWidth);
+	},
+	beforeUnmount() {
+		window.removeEventListener('resize', this.debouncedSetMaxWidth);
 	},
 	computed: {
 		...mapStores(useTagsStore),
+		style() {
+			return {
+				'max-width': `${this.maxWidth}px`,
+			};
+		},
 		tags() {
 			const tags = this.tagIds
 				.map((tagId: string) => this.tagsStore.getTagById(tagId))
@@ -81,7 +106,7 @@ export default defineComponent({
 			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
 			toDisplay = toDisplay.map((tag: ITag) => ({
 				...tag,
-				hidden: this.responsive && !this.$data.visibility[tag.id],
+				hidden: this.responsive && !this.visibility[tag.id],
 			}));
 
 			let visibleCount = toDisplay.length;
@@ -111,9 +136,20 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		setMaxWidth() {
+			const container = this.$refs.tagsContainer.$el as HTMLElement;
+			const parent = container.parentNode as HTMLElement;
+
+			if (parent) {
+				this.maxWidth = 0;
+				void this.$nextTick(() => {
+					this.maxWidth = parent.clientWidth;
+				});
+			}
+		},
 		onObserved({ el, isIntersecting }: { el: HTMLElement; isIntersecting: boolean }) {
 			if (el.dataset.id) {
-				this.$data.visibility = { ...this.$data.visibility, [el.dataset.id]: isIntersecting };
+				this.visibility = { ...this.visibility, [el.dataset.id]: isIntersecting };
 			}
 		},
 		onClick(e: MouseEvent, tag: TagEl) {
@@ -132,12 +168,15 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .tags-container {
-	display: inline-flex;
-	overflow: hidden;
+	display: block;
+	max-width: 300px;
 }
 
 .tags {
-	display: flex;
+	display: block;
+	white-space: nowrap;
+	overflow: hidden;
+	max-width: 100%;
 
 	> span {
 		padding-right: 4px; // why not margin? for space between tags to be clickable

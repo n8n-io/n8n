@@ -8,7 +8,6 @@
 			:disabled="disabled"
 			:class="$style.button"
 			:type="type"
-			@click="$emit('click')"
 		/>
 	</span>
 </template>

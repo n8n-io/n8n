@@ -3,25 +3,9 @@ import type {
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	IExecuteFunctions as IExecuteFunctionsBase,
-	IExecuteSingleFunctions as IExecuteSingleFunctionsBase,
-	IHookFunctions as IHookFunctionsBase,
-	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
-	IPollFunctions as IPollFunctionsBase,
-	ITriggerFunctions as ITriggerFunctionsBase,
-	IWebhookFunctions as IWebhookFunctionsBase,
 	BinaryMetadata,
 	ValidationResult,
 } from 'n8n-workflow';
-
-// TODO: remove these after removing `n8n-core` dependency from `nodes-bases`
-export type IExecuteFunctions = IExecuteFunctionsBase;
-export type IExecuteSingleFunctions = IExecuteSingleFunctionsBase;
-export type IHookFunctions = IHookFunctionsBase;
-export type ILoadOptionsFunctions = ILoadOptionsFunctionsBase;
-export type IPollFunctions = IPollFunctionsBase;
-export type ITriggerFunctions = ITriggerFunctionsBase;
-export type IWebhookFunctions = IWebhookFunctionsBase;
 
 export interface IProcessMessage {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,7 +56,7 @@ export interface IBinaryDataManager {
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
-	deleteBinaryDataByExecutionId(executionId: string): Promise<void>;
+	deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<string[]>;
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
 }
 

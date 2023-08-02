@@ -2,14 +2,38 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.2.0
+
+### What changed?
+
+For the Linear node, priority in issue creation is `4` (previously incorrectly `3`) for `Low`.
+
+### When is action necessary?
+
+If you were using `Low`, you were setting a priority of `Normal`, so please double check you are setting the priority you intend.
+
+## 1.0.0
+
+### What changed?
+
+The minimum Node.js version required for n8n is now v18.
+
+### When is action necessary?
+
+If you're using n8n via npm or PM2 or if you're contributing to n8n.
+
+### How to upgrade:
+
+Update the Node.js version to v18 or above.
+
 ## 0.234.0
 
 ### What changed?
 
 This release introduces two irreversible changes:
 
-* The n8n database will use strings instead of numeric values to identify workflows and credentials
-* Execution data is split into a separate database table
+- The n8n database will use strings instead of numeric values to identify workflows and credentials
+- Execution data is split into a separate database table
 
 ### When is action necessary?
 

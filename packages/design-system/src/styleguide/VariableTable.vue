@@ -43,7 +43,10 @@ export default defineComponent({
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 
-				this.$set(this.values, variable, value);
+				this.values = {
+					...this.values,
+					[variable]: value,
+				};
 			});
 		};
 
@@ -62,7 +65,7 @@ export default defineComponent({
 			this.observer.observe(body, { attributes: true });
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.observer) {
 			this.observer.disconnect();
 		}

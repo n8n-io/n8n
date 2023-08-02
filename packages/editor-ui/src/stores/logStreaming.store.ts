@@ -1,5 +1,4 @@
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import {
 	deleteDestinationFromDb,
@@ -40,14 +39,14 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 	getters: {},
 	actions: {
 		addDestination(destination: MessageEventBusDestinationOptions) {
-			if (destination.id && destination.id in this.items) {
+			if (destination.id && this.items[destination.id]) {
 				this.items[destination.id].destination = destination;
 			} else {
 				this.setSelectionAndBuildItems(destination);
 			}
 		},
 		getDestination(destinationId: string): MessageEventBusDestinationOptions | undefined {
-			if (destinationId in this.items) {
+			if (this.items[destinationId]) {
 				return this.items[destinationId].destination;
 			} else {
 				return;
@@ -61,20 +60,20 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			return destinations;
 		},
 		updateDestination(destination: MessageEventBusDestinationOptions) {
-			if (destination.id && destination.id in this.items) {
+			if (destination.id && this.items[destination.id]) {
 				this.$patch((state) => {
-					if (destination.id && destination.id in this.items) {
+					if (destination.id && this.items[destination.id]) {
 						state.items[destination.id].destination = destination;
 					}
 					// to trigger refresh
-					state.items = deepCopy(state.items);
+					state.items = { ...state.items };
 				});
 			}
 		},
 		removeDestination(destinationId: string) {
 			if (!destinationId) return;
 			delete this.items[destinationId];
-			if (destinationId in this.items) {
+			if (this.items[destinationId]) {
 				this.$patch({
 					items: {
 						...this.items,
@@ -104,7 +103,7 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 		},
 		getSelectedEvents(destinationId: string): string[] {
 			const selectedEvents: string[] = [];
-			if (destinationId in this.items) {
+			if (this.items[destinationId]) {
 				for (const group of this.items[destinationId].eventGroups) {
 					if (group.selected) {
 						selectedEvents.push(group.name);
@@ -119,7 +118,7 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			return selectedEvents;
 		},
 		setSelectedInGroup(destinationId: string, name: string, isSelected: boolean) {
-			if (destinationId in this.items) {
+			if (this.items[destinationId]) {
 				const groupName = eventGroupFromEventName(name);
 				const groupIndex = this.items[destinationId].eventGroups.findIndex(
 					(e) => e.name === groupName,
@@ -166,7 +165,7 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 		},
 		setSelectionAndBuildItems(destination: MessageEventBusDestinationOptions) {
 			if (destination.id) {
-				if (!(destination.id in this.items)) {
+				if (!this.items[destination.id]) {
 					this.items[destination.id] = {
 						destination,
 						selectedEvents: new Set<string>(),

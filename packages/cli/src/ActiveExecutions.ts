@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
+import { Container, Service } from 'typedi';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -19,8 +18,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
-import Container, { Service } from 'typedi';
-import { ExecutionRepository } from './databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 @Service()
 export class ActiveExecutions {
@@ -94,7 +92,7 @@ export class ActiveExecutions {
 	 * Attaches an execution
 	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
 		if (this.activeExecutions[executionId] === undefined) {
 			throw new Error(
@@ -123,7 +121,6 @@ export class ActiveExecutions {
 			return;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.activeExecutions[executionId].responsePromise?.resolve(response);
 	}
 
@@ -137,7 +134,7 @@ export class ActiveExecutions {
 		}
 
 		// Resolve all the waiting promises
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const promise of this.activeExecutions[executionId].postExecutePromises) {
 			promise.resolve(fullRunData);
 		}
@@ -176,7 +173,6 @@ export class ActiveExecutions {
 			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
 
-		// eslint-disable-next-line consistent-return
 		return this.getPostExecutePromise(executionId);
 	}
 
@@ -196,7 +192,6 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
 		return waitPromise.promise();
 	}
 
@@ -208,7 +203,7 @@ export class ActiveExecutions {
 		const returnData: IExecutionsCurrentSummary[] = [];
 
 		let data;
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const id of Object.keys(this.activeExecutions)) {
 			data = this.activeExecutions[id];
 			returnData.push({

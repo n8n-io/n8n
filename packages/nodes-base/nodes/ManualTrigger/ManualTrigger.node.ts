@@ -19,7 +19,7 @@ export class ManualTrigger implements INodeType {
 			name: 'When clicking "Execute Workflow"',
 			color: '#909298',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: ['main'],
 		properties: [

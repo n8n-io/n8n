@@ -1,10 +1,11 @@
 import type Bull from 'bull';
-import type { RedisOptions } from 'ioredis';
+import { type RedisOptions } from 'ioredis';
 import { Service } from 'typedi';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { LoggerProxy, type IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import { getRedisClusterNodes, getRedisPrefix } from './GenericHelpers';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -31,23 +32,57 @@ export class Queue {
 	constructor(private activeExecutions: ActiveExecutions) {}
 
 	async init() {
-		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
-
+		const prefix = getRedisPrefix();
+		const clusterNodes = getRedisClusterNodes();
+		const usesRedisCluster = clusterNodes.length > 0;
+		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');
-
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Redis } = await import('ioredis');
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize
 		// redis is back up and resume working.
 		// More here: https://github.com/OptimalBits/bull/issues/890
-		// @ts-ignore
-		this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+
+		LoggerProxy.debug(
+			usesRedisCluster
+				? `Initialising Redis cluster connection with nodes: ${clusterNodes
+						.map((e) => `${e.host}:${e.port}`)
+						.join(',')}`
+				: `Initialising Redis client connection with host: ${host ?? 'localhost'} and port: ${
+						port ?? '6379'
+				  }`,
+		);
+		const sharedRedisOptions: RedisOptions = {
+			username,
+			password,
+			db,
+			enableReadyCheck: false,
+			maxRetriesPerRequest: null,
+		};
+		this.jobQueue = new Bull('jobs', {
+			prefix,
+			createClient: (type, clientConfig) =>
+				usesRedisCluster
+					? new Redis.Cluster(
+							clusterNodes.map((node) => ({ host: node.host, port: node.port })),
+							{
+								...clientConfig,
+								redisOptions: sharedRedisOptions,
+							},
+					  )
+					: new Redis({
+							...clientConfig,
+							host,
+							port,
+							...sharedRedisOptions,
+					  }),
+		});
 
 		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
 				WebhookHelpers.decodeWebhookResponse(progress.response),
 			);

@@ -30,8 +30,8 @@ import { AddTriggerCountColumn1669823906994 } from './1669823906994-AddTriggerCo
 import { RemoveWorkflowDataLoadedFlag1671726148420 } from './1671726148420-RemoveWorkflowDataLoadedFlag';
 import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
 import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
-import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
-import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
+import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
+import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-UpdateRunningExecutionStatus';
@@ -40,6 +40,9 @@ import { CreateVariables1677501636753 } from './1677501636753-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
+import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
+import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
+import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -83,4 +86,7 @@ export const mysqlMigrations: Migration[] = [
 	AddUserActivatedProperty1681134145996,
 	MigrateIntegerKeysToString1690000000001,
 	SeparateExecutionData1690000000030,
+	FixExecutionDataType1690000000031,
+	RemoveSkipOwnerSetup1681134145997,
+	RemoveResetPasswordColumns1690000000030,
 ];

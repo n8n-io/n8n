@@ -64,8 +64,7 @@ jobs:
         run: |
           cp n8n/assets/n8n-logo.png /tmp/n8n-logo.png
           cp n8n/assets/n8n-screenshot.png /tmp/n8n-screenshot.png
-          cp n8n/node_modules/pdf-parse/test/data/05-versions-space.pdf /tmp/05-versions-space.pdf
-          cp n8n/node_modules/pdf-parse/test/data/04-valid.pdf /tmp/04-valid.pdf
+          cp test-workflows/testData/pdfs/*.pdf /tmp/
         shell: bash
 
       - name: Run tests

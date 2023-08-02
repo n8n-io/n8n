@@ -1,10 +1,10 @@
-import { constructExecutionMetaData } from 'n8n-core';
-import type { IDataObject, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 
 import type { PgpDatabase } from '../../v2/helpers/interfaces';
 import { configureQueryRunner } from '../../v2/helpers/utils';
 
 import pgPromise from 'pg-promise';
+import { mock } from 'jest-mock-extended';
 
 const node: INode = {
 	id: '1',
@@ -41,7 +41,8 @@ describe('Test PostgresV2, runQueries', () => {
 
 		const dbMultiSpy = jest.spyOn(db, 'multi');
 
-		const runQueries = configureQueryRunner(node, constructExecutionMetaData, false, pgp, db);
+		const thisArg = mock<IExecuteFunctions>();
+		const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);
 
 		const result = await runQueries([{ query: 'SELECT * FROM table', values: [] }], [], {});
 

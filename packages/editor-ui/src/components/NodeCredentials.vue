@@ -17,7 +17,7 @@
 			>
 				<div v-if="readonly || isReadOnlyRoute">
 					<n8n-input
-						:value="getSelectedName(credentialTypeDescription.name)"
+						:modelValue="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
 						data-test-id="node-credentials-select"
@@ -29,8 +29,8 @@
 					data-test-id="node-credentials-select"
 				>
 					<n8n-select
-						:value="getSelectedId(credentialTypeDescription.name)"
-						@change="
+						:modelValue="getSelectedId(credentialTypeDescription.name)"
+						@update:modelValue="
 							(value) =>
 								onCredentialSelected(
 									credentialTypeDescription.name,
@@ -46,6 +46,7 @@
 							v-for="item in getCredentialOptions(
 								getAllRelatedCredentialTypes(credentialTypeDescription),
 							)"
+							:data-test-id="`node-credentials-select-item-${item.id}`"
 							:key="item.id"
 							:label="item.name"
 							:value="item.id"
@@ -56,6 +57,7 @@
 							</div>
 						</n8n-option>
 						<n8n-option
+							data-test-id="node-credentials-select-item-new"
 							:key="NEW_CREDENTIALS_TEXT"
 							:value="NEW_CREDENTIALS_TEXT"
 							:label="NEW_CREDENTIALS_TEXT"

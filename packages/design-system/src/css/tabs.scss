@@ -517,19 +517,19 @@
 .slideInLeft-transition {
 	display: inline-block;
 }
-.slideInRight-enter {
+.slideInRight-enter-from {
 	animation: slideInRight-enter 0.3s;
 }
-.slideInRight-leave {
+.slideInRight-leave-to {
 	position: absolute;
 	left: 0;
 	right: 0;
 	animation: slideInRight-leave 0.3s;
 }
-.slideInLeft-enter {
+.slideInLeft-enter-from {
 	animation: slideInLeft-enter 0.3s;
 }
-.slideInLeft-leave {
+.slideInLeft-leave-to {
 	position: absolute;
 	left: 0;
 	right: 0;

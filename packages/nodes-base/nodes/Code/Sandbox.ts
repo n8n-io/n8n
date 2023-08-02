@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { ValidationError } from './ValidationError';
 import { isObject } from './utils';
 
@@ -31,12 +32,14 @@ export function getSandboxContext(this: IExecuteFunctions, index: number): Sandb
 	};
 }
 
-export abstract class Sandbox {
+export abstract class Sandbox extends EventEmitter {
 	constructor(
 		private textKeys: SandboxTextKeys,
 		protected itemIndex: number | undefined,
-		private helpers: IExecuteFunctions['helpers'],
-	) {}
+		protected helpers: IExecuteFunctions['helpers'],
+	) {
+		super();
+	}
 
 	abstract runCodeAllItems(): Promise<INodeExecutionData[]>;
 

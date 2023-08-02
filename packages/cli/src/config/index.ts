@@ -18,7 +18,6 @@ if (inE2ETests) {
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
-		NODE_FUNCTION_ALLOW_EXTERNAL: 'node-fetch',
 	};
 } else if (inTest) {
 	const testsDir = join(tmpdir(), 'n8n-tests/');
@@ -27,6 +26,7 @@ if (inE2ETests) {
 	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.N8N_USER_FOLDER = mkdtempSync(testsDir);
+	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
 	dotenv.config();
 }

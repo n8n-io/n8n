@@ -189,7 +189,7 @@ export class TelegramTrigger implements INodeType {
 
 				let allowedUpdates = this.getNodeParameter('updates') as string[];
 
-				if (allowedUpdates.includes('*')) {
+				if ((allowedUpdates || []).includes('*')) {
 					allowedUpdates = [];
 				}
 

@@ -2,8 +2,8 @@
 import fs from 'fs';
 import os from 'os';
 import { flags } from '@oclif/command';
-import type { ITaskData } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import type { IRun, ITaskData } from 'n8n-workflow';
+import { jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -15,9 +15,15 @@ import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
-import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import type {
+	IExecutionResult,
+	INodeSpecialCase,
+	INodeSpecialCases,
+	IResult,
+	IWorkflowExecutionProgress,
+} from '../types/commands.types';
 
 const re = /\d+/;
 
@@ -176,9 +182,6 @@ export class ExecuteBatch extends BaseCommand {
 		await super.init();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
-
-		// Add event handlers
-		initEvents();
 	}
 
 	async run() {
@@ -229,7 +232,12 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.ids !== undefined) {
 			if (fs.existsSync(flags.ids)) {
 				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
-				ids.push(...contents.split(',').filter((id) => re.exec(id)));
+				ids.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				const paramIds = flags.ids.split(',');
 				const matchedIds = paramIds.filter((id) => re.exec(id));
@@ -248,7 +256,12 @@ export class ExecuteBatch extends BaseCommand {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(...contents.split(',').filter((id) => re.exec(id)));
+				skipIds.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				console.log('Skip list file not found. Exiting.');
 				return;
@@ -505,7 +518,7 @@ export class ExecuteBatch extends BaseCommand {
 	setOutput(key: string, value: any) {
 		// Temporary hack until we move to the new action.
 		const output = process.env.GITHUB_OUTPUT;
-		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+
 		fs.appendFileSync(output as unknown as fs.PathOrFileDescriptor, `${key}=${value}${os.EOL}`);
 	}
 
@@ -654,7 +667,6 @@ export class ExecuteBatch extends BaseCommand {
 
 					const resultError = data.data.resultData.error;
 					if (resultError) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						executionResult.error =
 							resultError.hasOwnProperty('description') && resultError.description !== null
 								? resultError.description
@@ -778,8 +790,9 @@ export class ExecuteBatch extends BaseCommand {
 							}${workflowData.id}-snapshot.json`;
 							if (fs.existsSync(fileName)) {
 								const contents = fs.readFileSync(fileName, { encoding: 'utf-8' });
-
-								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
+								const expected = jsonParse<IRun>(contents);
+								const received = jsonParse<IRun>(serializedData);
+								const changes = diff(expected, received, { keysOnly: true }) as object;
 
 								if (changes !== undefined) {
 									// If we had only additions with no removals

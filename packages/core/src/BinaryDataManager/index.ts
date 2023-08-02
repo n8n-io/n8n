@@ -178,14 +178,14 @@ export class BinaryDataManager {
 		}
 	}
 
-	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
+	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
+			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionIds(executionIds);
 		}
 	}
 
 	async duplicateBinaryData(
-		inputData: Array<INodeExecutionData[] | null> | unknown,
+		inputData: Array<INodeExecutionData[] | null>,
 		executionId: string,
 	): Promise<INodeExecutionData[][]> {
 		if (inputData && this.managers[this.binaryDataMode]) {

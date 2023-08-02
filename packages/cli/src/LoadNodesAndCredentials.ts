@@ -66,20 +66,22 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
-		// Load nodes from `n8n-nodes-base` and any other `n8n-nodes-*` package in the main `node_modules`
-		const pathsToScan = [
+		// Load nodes from `n8n-nodes-base`
+		const basePathsToScan = [
 			// In case "n8n" package is in same node_modules folder.
 			path.join(CLI_DIR, '..'),
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
 			path.join(CLI_DIR, 'node_modules'),
-			// Path where all community nodes are installed
-			path.join(this.downloadFolder, 'node_modules'),
 		];
 
-		for (const nodeModulesDir of pathsToScan) {
-			await this.loadNodesFromNodeModules(nodeModulesDir);
+		for (const nodeModulesDir of basePathsToScan) {
+			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 		}
+
+		// Load nodes from any other `n8n-nodes-*` packages in the download directory
+		// This includes the community nodes
+		await this.loadNodesFromNodeModules(path.join(this.downloadFolder, 'node_modules'));
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -127,12 +129,21 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
-	private async loadNodesFromNodeModules(nodeModulesDir: string): Promise<void> {
-		const globOptions = { cwd: nodeModulesDir, onlyDirectories: true };
-		const installedPackagePaths = [
-			...(await glob('n8n-nodes-*', { ...globOptions, deep: 1 })),
-			...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-		];
+	private async loadNodesFromNodeModules(
+		nodeModulesDir: string,
+		packageName?: string,
+	): Promise<void> {
+		const globOptions = {
+			cwd: nodeModulesDir,
+			onlyDirectories: true,
+			deep: 1,
+		};
+		const installedPackagePaths = packageName
+			? await glob(packageName, globOptions)
+			: [
+					...(await glob('n8n-nodes-*', globOptions)),
+					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
+			  ];
 
 		for (const packagePath of installedPackagePaths) {
 			try {
@@ -326,7 +337,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { types, directory } = loader;
+			const { known, types, directory } = loader;
 			this.types.nodes = this.types.nodes.concat(types.nodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
@@ -339,26 +350,30 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
 			}
 
-			// Nodes and credentials that will be lazy loaded
-			if (loader instanceof PackageDirectoryLoader) {
-				const { packageName, known } = loader;
+			for (const type in known.nodes) {
+				const { className, sourcePath } = known.nodes[type];
+				this.known.nodes[type] = {
+					className,
+					sourcePath: path.join(directory, sourcePath),
+				};
+			}
 
-				for (const type in known.nodes) {
-					const { className, sourcePath } = known.nodes[type];
-					this.known.nodes[type] = {
-						className,
-						sourcePath: path.join(directory, sourcePath),
-					};
-				}
-
-				for (const type in known.credentials) {
-					const { className, sourcePath, nodesToTestWith } = known.credentials[type];
-					this.known.credentials[type] = {
-						className,
-						sourcePath: path.join(directory, sourcePath),
-						nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
-					};
-				}
+			for (const type in known.credentials) {
+				const {
+					className,
+					sourcePath,
+					nodesToTestWith,
+					extends: extendsArr,
+				} = known.credentials[type];
+				this.known.credentials[type] = {
+					className,
+					sourcePath: path.join(directory, sourcePath),
+					nodesToTestWith:
+						loader instanceof PackageDirectoryLoader
+							? nodesToTestWith?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							: undefined,
+					extends: extendsArr,
+				};
 			}
 		}
 	}

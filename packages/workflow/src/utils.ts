@@ -1,10 +1,18 @@
-import type { BinaryFileType } from './Interfaces';
+import FormData from 'form-data';
+import type { BinaryFileType, JsonObject } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
+
+// NOTE: BigInt.prototype.toJSON is not available, which causes JSON.stringify to throw an error
+// as well as the flatted stringify method. This is a workaround for that.
+BigInt.prototype.toJSON = function () {
+	return this.toString();
+};
 
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {
+		if (obj instanceof FormData) return obj.getLengthSync() === 0;
 		if (Array.isArray(obj)) return obj.length === 0;
 		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
 		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
@@ -127,3 +135,29 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 		throw error;
 	}
 }
+
+export const isTraversableObject = (value: any): value is JsonObject => {
+	return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
+};
+
+export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
+	seen.add(obj);
+	Object.entries(obj).forEach(([key, value]) => {
+		if (isTraversableObject(value)) {
+			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+			seen.has(value) ? (obj[key] = { circularReference: true }) : removeCircularRefs(value, seen);
+			return;
+		}
+		if (Array.isArray(value)) {
+			value.forEach((val, index) => {
+				if (seen.has(val)) {
+					value[index] = { circularReference: true };
+					return;
+				}
+				if (isTraversableObject(val)) {
+					removeCircularRefs(val, seen);
+				}
+			});
+		}
+	});
+};

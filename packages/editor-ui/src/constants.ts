@@ -40,7 +40,6 @@ export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
-export const EXECUTIONS_MODAL_KEY = 'executions';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
@@ -518,14 +517,19 @@ export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
 
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
-export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
+export const KEEP_AUTH_IN_NDV_FOR_NODES = [
+	HTTP_REQUEST_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	WAIT_NODE_TYPE,
+];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const TEMPLATE_EXPERIMENT = {
-	name: '002_remove_templates',
+export const TEMPLATES_EXPERIMENT = {
+	name: '008_template_variants',
 	control: 'control',
 	variant: 'variant',
+	variantIds: ['1932', '1930', '1931', '1933', '1750', '1748', '1435'],
 };
 
 export const ONBOARDING_EXPERIMENT = {
@@ -534,7 +538,7 @@ export const ONBOARDING_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [TEMPLATES_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 
@@ -563,3 +567,6 @@ export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
 export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
+
+// A path that does not exist so that nothing is selected by default
+export const nonExistingJsonPath = '_!^&*';
