@@ -19,7 +19,8 @@
 	display: flex;
 	flex-direction: column;
 	align-items: inherit;
-	overflow: auto;
+	overflow-x: hidden;
+	overflow-y: auto;
 }
 
 @include mixins.b(overlay-message-box) {
