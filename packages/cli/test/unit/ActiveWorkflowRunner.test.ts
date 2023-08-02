@@ -24,7 +24,6 @@ import { mockInstance } from '../integration/shared/utils/';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
-import type { WebhookRepository } from '@/databases/repositories';
 import { WebhookService } from '@/services/webhook.service';
 
 /**
@@ -141,7 +140,6 @@ const workflowExecuteAdditionalDataExecuteErrorWorkflowSpy = jest.spyOn(
 describe('ActiveWorkflowRunner', () => {
 	let externalHooks: ExternalHooks;
 	let activeWorkflowRunner: ActiveWorkflowRunner;
-	let webhookRepository = mock<WebhookRepository>();
 	const webhookService = mockInstance(WebhookService);
 
 	beforeAll(async () => {
@@ -155,7 +153,6 @@ describe('ActiveWorkflowRunner', () => {
 			credentialTypes: {} as ICredentialTypes,
 		};
 		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
-		Container.set(WebhookService, webhookService);
 		mockInstance(Push);
 	});
 
