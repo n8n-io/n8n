@@ -351,7 +351,7 @@ export const schema = {
 		},
 		bull: {
 			prefix: {
-				doc: 'Prefix for all queue keys (wrap in {} for cluster mode)',
+				doc: 'Prefix for all bull queue keys',
 				format: String,
 				default: 'bull',
 				env: 'QUEUE_BULL_PREFIX',
@@ -1112,6 +1112,15 @@ export const schema = {
 		},
 	},
 
+	redis: {
+		prefix: {
+			doc: 'Prefix for all n8n related keys',
+			format: String,
+			default: 'n8n',
+			env: 'N8N_REDIS_KEY_PREFIX',
+		},
+	},
+
 	cache: {
 		enabled: {
 			doc: 'Whether caching is enabled',
@@ -1140,10 +1149,16 @@ export const schema = {
 			},
 		},
 		redis: {
+			prefix: {
+				doc: 'Prefix for all cache keys',
+				format: String,
+				default: 'cache',
+				env: 'N8N_CACHE_REDIS_KEY_PREFIX',
+			},
 			ttl: {
 				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
 				format: Number,
-				default: 0,
+				default: 3600 * 1000, // 1 hour
 				env: 'N8N_CACHE_REDIS_TTL',
 			},
 		},

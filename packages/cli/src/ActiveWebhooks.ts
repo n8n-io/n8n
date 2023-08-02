@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import type {
 	IWebhookData,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -102,7 +102,7 @@ export class ActiveWebhooks {
 	 *
 	 * @param {(string | undefined)} webhookId
 	 */
-	get(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): IWebhookData | undefined {
+	get(httpMethod: IHttpRequestMethods, path: string, webhookId?: string): IWebhookData | undefined {
 		const webhookKey = this.getWebhookKey(httpMethod, path, webhookId);
 		if (this.webhookUrls[webhookKey] === undefined) {
 			return undefined;
@@ -133,17 +133,10 @@ export class ActiveWebhooks {
 	/**
 	 * Gets all request methods associated with a single webhook
 	 */
-	getWebhookMethods(path: string): string[] {
-		const methods: string[] = [];
-
-		Object.keys(this.webhookUrls)
+	getWebhookMethods(path: string): IHttpRequestMethods[] {
+		return Object.keys(this.webhookUrls)
 			.filter((key) => key.includes(path))
-
-			.map((key) => {
-				methods.push(key.split('|')[0]);
-			});
-
-		return methods;
+			.map((key) => key.split('|')[0] as IHttpRequestMethods);
 	}
 
 	/**
@@ -159,7 +152,7 @@ export class ActiveWebhooks {
 	 *
 	 * @param {(string | undefined)} webhookId
 	 */
-	getWebhookKey(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): string {
+	getWebhookKey(httpMethod: IHttpRequestMethods, path: string, webhookId?: string): string {
 		if (webhookId) {
 			if (path.startsWith(webhookId)) {
 				const cutFromIndex = path.indexOf('/') + 1;
