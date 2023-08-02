@@ -10,10 +10,10 @@ export class RoleService {
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private cacheService: CacheService,
 	) {
-		void this.primeCache();
+		void this.populateCache();
 	}
 
-	async primeCache() {
+	async populateCache() {
 		const allRoles = await this.roleRepository.find({});
 
 		if (!allRoles) return;
