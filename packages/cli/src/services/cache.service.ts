@@ -128,6 +128,8 @@ export class CacheService {
 	}
 
 	async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+		if (value === null) return;
+
 		if (!this.cache) {
 			await this.init();
 		}

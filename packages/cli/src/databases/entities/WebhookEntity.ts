@@ -21,7 +21,18 @@ export class WebhookEntity {
 	@Column({ nullable: true })
 	pathLength?: number;
 
-	get fullPath() {
+	/**
+	 * Unique part of production webhook URL, excluding instance URL and base `webhook/` segment.
+	 */
+	get uniquePath() {
 		return this.webhookPath.includes(':') ? this.workflowId + this.webhookPath : this.webhookPath;
+	}
+
+	get cacheKey() {
+		return `cache:webhook:${this.method}-${this.uniquePath}`;
+	}
+
+	get staticSegments() {
+		return this.webhookPath.split('/').filter((s) => !s.includes(':'));
 	}
 }

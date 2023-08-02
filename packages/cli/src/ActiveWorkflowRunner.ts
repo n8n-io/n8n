@@ -93,8 +93,7 @@ export class ActiveWorkflowRunner {
 	) {}
 
 	async getWebhookMethods(path: string): Promise<string[]> {
-		// @TOOD: Expose webhook service directly?
-		return this.webhookService.getWebhookMethods(path);
+		return this.webhookService.getAllStoredMethods(path);
 	}
 
 	async init() {
@@ -116,7 +115,7 @@ export class ActiveWorkflowRunner {
 			// instances if many of them start at the same time
 			// This is not officially supported but there is no reason
 			// it should not work.
-			await this.webhookService.deleteAllWebhooks();
+			await this.webhookService.deleteInstanceWebhooks();
 		}
 
 		if (workflowsData.length !== 0) {
@@ -164,7 +163,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
-		await this.webhookService.primeCache();
+		await this.webhookService.populateCache();
 	}
 
 	/**
@@ -193,32 +192,34 @@ export class ActiveWorkflowRunner {
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
 	async executeWebhook(
-		httpMethod: WebhookHttpMethod,
+		method: WebhookHttpMethod,
 		path: string,
 		req: express.Request,
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
-		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
+		Logger.debug(`Received webhook "${method}" for path "${path}"`);
 
-		path = path.endsWith('/') ? path.slice(0, -1) : path; // no trailing slash
+		path = path.endsWith('/') ? path.slice(0, -1) : path; // remove trailing slash
 
-		const webhook = await this.webhookService.findWebhook(httpMethod, path);
+		const webhook = await this.webhookService.findWebhook(method, path);
 
 		if (webhook === null) {
 			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path, httpMethod),
+				webhookNotFoundErrorMessage(path, method),
 				WEBHOOK_PROD_UNREGISTERED_HINT,
 			);
 		}
 
-		const pathSegments = path.split('/').slice(1);
+		const reqPathSegments = path.split('/').slice(1); // remove uuid
 
-		// @TODO: Refactor legacy code after testing
-		const webhookPath = webhook.webhookPath;
-		req.params = {}; // reset request parameters
-		webhook.webhookPath.split('/').forEach((segment, index) => {
-			if (segment.startsWith(':')) req.params[segment.slice(1)] = pathSegments[index];
-		});
+		req.params = webhook.webhookPath
+			.split('/')
+			.reduce<Record<string, string>>((reqParams, segment, index) => {
+				if (segment.startsWith(':')) {
+					reqParams[segment.slice(1)] = reqPathSegments[index];
+				}
+				return reqParams;
+			}, {}); // reset and add dynamic params with values
 
 		const dbWorkflow = await Db.collections.Workflow.findOne({
 			where: { id: webhook.workflowId },
@@ -250,7 +251,7 @@ export class ActiveWorkflowRunner {
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		).filter((webhook) => webhook.httpMethod === httpMethod && webhook.path === webhookPath)[0];
+		).filter((w) => w.httpMethod === method && w.path === webhook.webhookPath)[0];
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -444,7 +445,7 @@ export class ActiveWorkflowRunner {
 				throw error;
 			}
 		}
-		// Save static data!
+		await this.webhookService.populateCache();
 		await WorkflowHelpers.saveStaticData(workflow);
 	}
 
@@ -493,7 +494,7 @@ export class ActiveWorkflowRunner {
 
 		await WorkflowHelpers.saveStaticData(workflow);
 
-		await this.webhookService.deleteWebhooks(workflowId);
+		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
 
 	/**
