@@ -127,13 +127,13 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
-	it.skip('should undo/redo moving nodes', () => {
+	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
-			.should('have.attr', 'style', 'left: 640px; top: 220px;');
+			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
@@ -141,7 +141,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
-			.should('have.attr', 'style', 'left: 740px; top: 220px;');
+			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
 	it('should undo/redo deleting a connection by pressing delete button', () => {
@@ -268,7 +268,7 @@ describe('Undo/Redo', () => {
 		});
 	});
 
-	it.skip('should undo/redo multiple steps', () => {
+	it('should undo/redo multiple steps', () => {
 		const initialPosition = 'left: 420px; top: 220px;';
 		const movedPosition = 'left: 540px; top: 360px;';
 
@@ -306,7 +306,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		// Second redo: Should move the first node
 		WorkflowPage.actions.hitRedo();
-		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', initialPosition);
+		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', movedPosition);
 		// Third redo: Should delete the Set node
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);

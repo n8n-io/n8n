@@ -112,6 +112,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 			x: options?.abs ? xDiff : originalLocation.right + xDiff,
 			y: options?.abs ? yDiff : originalLocation.top + yDiff,
 		}
+		const isDraggingANode = $el.classList.contains('node-wrapper');
 
 		if(options?.realMouse) {
 			element.realMouseDown();
@@ -125,7 +126,13 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				pageY: newPosition.y,
 				force: true,
 			});
-			element.trigger('mouseup', {force: true});
+			if (isDraggingANode) {
+				// Click to finish the drag
+				// For some reason, mouseup isn't working when moving nodes
+				cy.get('body').click(newPosition.x, newPosition.y);
+			} else {
+				element.trigger('mouseup', {force: true});
+			}
 		}
 	});
 });
