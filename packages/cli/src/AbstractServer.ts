@@ -17,9 +17,9 @@ import { webhookRequestHandler } from '@/WebhookHelpers';
 import { RedisService } from '@/services/redis.service';
 import { jsonParse } from 'n8n-workflow';
 import { eventBus } from './eventbus';
-import { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
+import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
-import { RedisServiceWorkerResponseObject } from './services/redis/RedisServiceCommands';
+import type { RedisServiceWorkerResponseObject } from './services/redis/RedisServiceCommands';
 import {
 	EVENT_BUS_REDIS_CHANNEL,
 	WORKER_RESPONSE_REDIS_CHANNEL,
