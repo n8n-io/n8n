@@ -41,12 +41,25 @@ describe('Undo/Redo', () => {
 			SET_NODE_NAME,
 		);
 		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.getters
+			.canvasNodeByName('Code')
+			.should('have.attr', 'style', 'left: 860px; top: 220px;');
 		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
+		// Last node should be added back to original position
+		WorkflowPage.getters
+			.canvasNodeByName('Code')
+			.should('have.attr', 'style', 'left: 860px; top: 220px;');
 	});
 
 	it('should undo/redo deleting node using delete button', () => {
@@ -117,7 +130,7 @@ describe('Undo/Redo', () => {
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], { clickToFinish: true });
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
 			.should('have.attr', 'style', 'left: 740px; top: 320px;');
@@ -271,7 +284,7 @@ describe('Undo/Redo', () => {
 		// Move first one
 		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', initialPosition);
 		WorkflowPage.getters.canvasNodes().first().click();
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150]);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], { clickToFinish: true });
 		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', movedPosition);
 		// Delete the set node
 		WorkflowPage.getters.canvasNodeByName(SET_NODE_NAME).click().click();
