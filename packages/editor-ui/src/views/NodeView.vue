@@ -1316,7 +1316,7 @@ export default defineComponent({
 			const workflow = this.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(sourceNodeName);
 			for (const nodeName of childNodes) {
-				const node = this.workflowsStore.nodesByName[nodeName] as INodeUi;
+				const node = this.workflowsStore.nodesByName[nodeName];
 				const oldPosition = node.position;
 
 				if (node.position[0] < sourceNode.position[0]) {
@@ -1334,11 +1334,11 @@ export default defineComponent({
 				this.onNodeMoved(node);
 
 				if (
-					(recordHistory && oldPosition[0] !== node.position[0]) ||
-					oldPosition[1] !== node.position[1]
+					(recordHistory && oldPosition[0] !== updateInformation.properties.position[0]) ||
+					oldPosition[1] !== updateInformation.properties.position[1]
 				) {
 					this.historyStore.pushCommandToUndo(
-						new MoveNodeCommand(nodeName, oldPosition, node.position, this),
+						new MoveNodeCommand(nodeName, oldPosition, updateInformation.properties.position),
 						recordHistory,
 					);
 				}
