@@ -13,16 +13,20 @@
 							interpolate: { currentVersionName: currentVersion.name },
 						})
 					}}
-					<strong><TimeAgo :date="currentVersion.createdAt" /></strong
-					>{{ $locale.baseText('updatesPanel.andIs') }}
-					<strong>{{
-						$locale.baseText('updatesPanel.version', {
-							interpolate: {
-								numberOfVersions: nextVersions.length,
-								howManySuffix: nextVersions.length > 1 ? 's' : '',
-							},
-						})
-					}}</strong>
+					<strong>
+						<TimeAgo :date="currentVersion.createdAt" />
+					</strong>
+					{{ $locale.baseText('updatesPanel.andIs') }}
+					<strong>
+						{{
+							$locale.baseText('updatesPanel.version', {
+								interpolate: {
+									numberOfVersions: nextVersions.length,
+									howManySuffix: nextVersions.length > 1 ? 's' : '',
+								},
+							})
+						}}
+					</strong>
 					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 

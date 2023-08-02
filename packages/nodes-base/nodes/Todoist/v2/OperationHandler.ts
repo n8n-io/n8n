@@ -148,6 +148,9 @@ export class GetAllHandler implements OperationHandler {
 		if (filters.projectId) {
 			qs.project_id = filters.projectId as string;
 		}
+		if (filters.sectionId) {
+			qs.section_id = filters.sectionId as string;
+		}
 		if (filters.labelId) {
 			qs.label = filters.labelId as string;
 		}

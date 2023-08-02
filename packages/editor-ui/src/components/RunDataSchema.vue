@@ -87,21 +87,19 @@ const onDragEnd = (el: HTMLElement) => {
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
-			<template>
-				<div :class="$style.schema">
-					<run-data-schema-item
-						:schema="schema"
-						:level="0"
-						:parent="null"
-						:paneType="paneType"
-						:subKey="`${schema.type}-0-0`"
-						:mappingEnabled="mappingEnabled"
-						:draggingPath="draggingPath"
-						:distanceFromActive="distanceFromActive"
-						:node="node"
-					/>
-				</div>
-			</template>
+			<div :class="$style.schema">
+				<run-data-schema-item
+					:schema="schema"
+					:level="0"
+					:parent="null"
+					:paneType="paneType"
+					:subKey="`${schema.type}-0-0`"
+					:mappingEnabled="mappingEnabled"
+					:draggingPath="draggingPath"
+					:distanceFromActive="distanceFromActive"
+					:node="node"
+				/>
+			</div>
 		</draggable>
 	</div>
 </template>

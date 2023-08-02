@@ -88,7 +88,6 @@ export function augmentObject<T extends object>(data: T): T {
 				return newData[key];
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const value = Reflect.get(target, key, receiver);
 
 			if (typeof value !== 'object' || value === null) return value;

@@ -30,6 +30,7 @@
 					<n8n-text :class="$style.statusLabel" size="small">{{
 						executionUIDetails.label
 					}}</n8n-text>
+					{{ ' ' }}
 					<n8n-text
 						v-if="executionUIDetails.name === 'running'"
 						:color="isActive ? 'text-dark' : 'text-base'"

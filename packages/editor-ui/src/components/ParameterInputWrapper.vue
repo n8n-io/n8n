@@ -4,7 +4,7 @@
 			ref="param"
 			:inputSize="inputSize"
 			:parameter="parameter"
-			:value="value"
+			:modelValue="modelValue"
 			:path="path"
 			:isReadOnly="isReadOnly"
 			:droppable="droppable"
@@ -19,12 +19,12 @@
 			:additionalExpressionData="resolvedAdditionalExpressionData"
 			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
-			:event-bus="internalEventBus"
+			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
 			@textInput="onTextInput"
-			@valueChanged="onValueChanged"
+			@update="onValueChanged"
 		/>
 		<input-hint
 			v-if="expressionOutput"
@@ -77,17 +77,6 @@ export default defineComponent({
 		ParameterInput,
 		InputHint,
 	},
-	data() {
-		return {
-			internalEventBus: createEventBus(),
-		};
-	},
-	mounted() {
-		this.eventBus.on('optionSelected', this.optionSelected);
-	},
-	beforeDestroy() {
-		this.eventBus.off('optionSelected', this.optionSelected);
-	},
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -102,7 +91,7 @@ export default defineComponent({
 		path: {
 			type: String,
 		},
-		value: {
+		modelValue: {
 			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 		},
 		droppable: {
@@ -150,21 +139,21 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
-			return isValueExpression(this.parameter, this.value);
+			return isValueExpression(this.parameter, this.modelValue);
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
 		selectedRLMode(): INodePropertyMode | undefined {
 			if (
-				typeof this.value !== 'object' ||
+				typeof this.modelValue !== 'object' ||
 				this.parameter.type !== 'resourceLocator' ||
-				!isResourceLocatorValue(this.value)
+				!isResourceLocatorValue(this.modelValue)
 			) {
 				return undefined;
 			}
 
-			const mode = this.value.mode;
+			const mode = this.modelValue.mode;
 			if (mode) {
 				return this.parameter.modes?.find((m: INodePropertyMode) => m.name === mode);
 			}
@@ -188,7 +177,9 @@ export default defineComponent({
 			return this.ndvStore.isInputParentOfActiveNode;
 		},
 		expressionValueComputed(): string | null {
-			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
+			const value = isResourceLocatorValue(this.modelValue)
+				? this.modelValue.value
+				: this.modelValue;
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
 				return null;
 			}
@@ -247,11 +238,8 @@ export default defineComponent({
 		onDrop(data: string) {
 			this.$emit('drop', data);
 		},
-		optionSelected(command: string) {
-			this.internalEventBus.emit('optionSelected', command);
-		},
 		onValueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
 			this.$emit('textInput', parameterData);

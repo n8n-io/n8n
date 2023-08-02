@@ -326,7 +326,6 @@ oauth2CredentialController.get(
 				decryptedDataOriginal.oauthTokenData = oauthToken.data;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			unset(decryptedDataOriginal, 'csrfSecret');
 
 			const credentials = new Credentials(

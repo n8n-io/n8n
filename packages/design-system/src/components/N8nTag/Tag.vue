@@ -1,5 +1,5 @@
 <template>
-	<span :class="['n8n-tag', $style.tag]" v-on="$listeners">
+	<span :class="['n8n-tag', $style.tag]" v-bind="$attrs">
 		{{ text }}
 	</span>
 </template>

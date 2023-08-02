@@ -1,4 +1,17 @@
 <script lang="ts">
-import { Option } from 'element-ui';
-export default Option;
+import { ElOption } from 'element-plus';
+import { defineComponent } from 'vue';
+
+export default defineComponent({
+	props: {
+		...ElOption.props,
+	},
+	components: {
+		ElOption,
+	},
+});
 </script>
+
+<template>
+	<el-option v-bind="{ ...$props, ...$attrs }"><slot /></el-option>
+</template>

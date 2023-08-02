@@ -1,5 +1,5 @@
 <template>
-	<component :is="tag" :class="['n8n-text', ...classes]" v-on="$listeners">
+	<component :is="tag" :class="['n8n-text', ...classes]" v-bind="$attrs">
 		<slot></slot>
 	</component>
 </template>
@@ -50,7 +50,6 @@ export default defineComponent({
 		classes() {
 			const applied = [];
 			if (this.align) {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				applied.push(`align-${this.align}`);
 			}
 			if (this.color) {
@@ -61,7 +60,6 @@ export default defineComponent({
 				applied.push('compact');
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			applied.push(`size-${this.size}`);
 
 			applied.push(this.bold ? 'bold' : 'regular');

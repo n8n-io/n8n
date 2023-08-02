@@ -76,12 +76,11 @@ export async function getToken(
 
 		return response.response.token;
 	} catch (error) {
-		let message
-		if ( error.statusCode === 502 ) {
-			message = 'The server is not responding. Is the DataAPI enabled?'
-		}
-		else if (error.error ) {
-			message = error.error.messages[0].code + ' - ' + error.error.messages[0].message
+		let message;
+		if (error.statusCode === 502) {
+			message = 'The server is not responding. Is the DataAPI enabled?';
+		} else if (error.error) {
+			message = error.error.messages[0].code + ' - ' + error.error.messages[0].message;
 		} else {
 			message = error.message;
 		}
@@ -267,7 +266,7 @@ export async function logout(
 	};
 
 	const response = await this.helpers.request(requestOptions);
-	return response
+	return response;
 }
 
 export function parseSort(this: IExecuteFunctions, i: number): object | null {

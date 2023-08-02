@@ -10,7 +10,7 @@ export class VariablesPage extends BasePage {
 		goToUpgrade: () => cy.getByTestId('go-to-upgrade'),
 		actionBox: () => cy.getByTestId('action-box'),
 		emptyResourcesListNewVariableButton: () => this.getters.emptyResourcesList().find('button'),
-		searchBar: () => cy.getByTestId('resources-list-search').find('input'),
+		searchBar: () => cy.getByTestId('resources-list-search'),
 		createVariableButton: () => cy.getByTestId('resources-list-add'),
 		variablesRows: () => cy.getByTestId('variables-row'),
 		variablesEditableRows: () =>

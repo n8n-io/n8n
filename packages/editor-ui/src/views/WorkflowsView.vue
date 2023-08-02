@@ -88,9 +88,9 @@
 				/>
 				<TagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:currentTagIds="filters.tags"
+					:modelValue="filters.tags"
 					:createEnabled="false"
-					@update="setKeyValue('tags', $event)"
+					@update:modelValue="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
@@ -101,7 +101,7 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="medium">
+				<n8n-select :modelValue="filters.status" @update:modelValue="setKeyValue('status', $event)">
 					<n8n-option
 						v-for="option in statusFilterOptions"
 						:key="option.label"
@@ -120,7 +120,6 @@ import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
@@ -132,7 +131,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 const StatusFilter = {
 	ACTIVE: true,
@@ -225,12 +224,13 @@ const WorkflowsView = defineComponent({
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
-					filters.tags.every((tag) =>
-						(resource.tags as ITag[])?.find((resourceTag) =>
-							typeof resourceTag === 'object'
-								? `${resourceTag.id}` === `${tag}`
-								: `${resourceTag}` === `${tag}`,
-						),
+					filters.tags.every(
+						(tag) =>
+							(resource.tags as ITag[])?.find((resourceTag) =>
+								typeof resourceTag === 'object'
+									? `${resourceTag.id}` === `${tag}`
+									: `${resourceTag}` === `${tag}`,
+							),
 					);
 			}
 
