@@ -269,7 +269,6 @@ export default defineComponent({
 
 		this.loading = false;
 
-		this.logHiringBanner();
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
 
