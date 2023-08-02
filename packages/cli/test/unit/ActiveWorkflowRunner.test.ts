@@ -165,6 +165,7 @@ describe('ActiveWorkflowRunner', () => {
 			new ActiveExecutions(),
 			externalHooks,
 			Container.get(NodeTypes),
+			webhookService,
 		);
 	});
 

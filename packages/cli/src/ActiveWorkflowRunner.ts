@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -83,12 +83,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		[key: string]: IQueuedWorkflowActivations;
 	} = {};
 
-	private webhookService = Container.get(WebhookService); // @TODO: Inject
-
 	constructor(
 		private activeExecutions: ActiveExecutions,
 		private externalHooks: ExternalHooks,
 		private nodeTypes: NodeTypes,
+		private webhookService: WebhookService,
 	) {}
 
 	async getWebhookMethods(path: string) {
