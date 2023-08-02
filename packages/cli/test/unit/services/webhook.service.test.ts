@@ -125,7 +125,7 @@ describe('WebhookService', () => {
 		});
 	});
 
-	describe('getAllStoredMethods()', () => {
+	describe('getWebhookMethods()', () => {
 		test('should return all methods for webhook', async () => {
 			const path = 'user/profile';
 
