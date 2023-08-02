@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { wufooApiRequest } from './GenericFunctions';
 
@@ -107,7 +107,7 @@ export class WufooTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const formHash = this.getNodeParameter('form') as IDataObject;
 				const endpoint = `forms/${formHash}/webhooks.json`;

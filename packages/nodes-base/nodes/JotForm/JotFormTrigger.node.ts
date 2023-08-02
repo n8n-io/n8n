@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	MultiPartFormData,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { jotformApiRequest } from './GenericFunctions';
 
@@ -125,7 +125,7 @@ export class JotFormTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('form') as string;
 				const endpoint = `/form/${formId}/webhooks`;

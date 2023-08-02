@@ -406,7 +406,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const event = this.getNodeParameter('event') as string;
 				const objectType = this.getNodeParameter('objectType') as string;
 				const endpoint = '/webhooks';
