@@ -572,7 +572,7 @@ export function validateWorkflowCredentialUsage(
 }
 
 export async function getVariables(): Promise<IDataObject> {
-	const variables = await Container.get(VariablesService).getAll();
+	const variables = await Container.get(VariablesService).getAllCached();
 	return Object.freeze(
 		variables.reduce((prev, curr) => {
 			prev[curr.key] = curr.value;

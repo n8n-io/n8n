@@ -41,6 +41,6 @@ export class EEVariablesService extends VariablesService {
 		this.validateVariable(variable);
 		await this.variablesRepository.update(id, variable);
 		await this.updateCache();
-		return (await this.get(id))!;
+		return (await this.getCached(id))!;
 	}
 }

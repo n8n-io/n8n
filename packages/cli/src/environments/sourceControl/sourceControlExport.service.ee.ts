@@ -137,7 +137,7 @@ export class SourceControlExportService {
 	async exportVariablesToWorkFolder(): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
-			const variables = await this.variablesService.getAll();
+			const variables = await this.variablesService.getAllCached();
 			// do not export empty variables
 			if (variables.length === 0) {
 				return {

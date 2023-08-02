@@ -29,7 +29,7 @@ variablesController.use(EEVariablesController);
 variablesController.get(
 	'/',
 	ResponseHelper.send(async () => {
-		return Container.get(VariablesService).getAll();
+		return Container.get(VariablesService).getAllCached();
 	}),
 );
 
@@ -44,7 +44,7 @@ variablesController.get(
 	'/:id(\\w+)',
 	ResponseHelper.send(async (req: VariablesRequest.Get) => {
 		const id = req.params.id;
-		const variable = await Container.get(VariablesService).get(id);
+		const variable = await Container.get(VariablesService).getCached(id);
 		if (variable === null) {
 			throw new ResponseHelper.NotFoundError(`Variable with id ${req.params.id} not found`);
 		}

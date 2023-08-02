@@ -11,7 +11,7 @@ export class VariablesService {
 		protected variablesRepository: VariablesRepository,
 	) {}
 
-	async getAll(): Promise<Variables[]> {
+	async getAllCached(): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
 			async refreshFunction() {
 				// TODO: log refresh cache metric
@@ -24,11 +24,11 @@ export class VariablesService {
 	}
 
 	async getCount(): Promise<number> {
-		return (await this.getAll()).length;
+		return (await this.getAllCached()).length;
 	}
 
-	async get(id: string): Promise<Variables | null> {
-		const variables = await this.getAll();
+	async getCached(id: string): Promise<Variables | null> {
+		const variables = await this.getAllCached();
 		const foundVariable = variables.find((variable) => variable.id === id);
 		if (!foundVariable) {
 			return null;
