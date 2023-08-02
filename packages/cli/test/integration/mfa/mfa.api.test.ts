@@ -1,26 +1,24 @@
-import type express from 'express';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import * as testDb from './../shared/testDb';
-import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
 import { randomDigit, randomValidPassword, uniqueId } from '../shared/random';
 import { TOTPService } from '@/Mfa/totp.service';
+import { TestServer } from '../shared/types';
 
 jest.mock('@/telemetry');
 
-let app: express.Application;
+let testServer: TestServer;
 let globalOwnerRole: Role;
 let owner: User;
-let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'] });
-
-	authAgent = utils.createAuthAgent(app);
+	testServer = await utils.setupTestServer({
+		endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'],
+	});
 });
 
 beforeEach(async () => {
@@ -38,26 +36,24 @@ afterAll(async () => {
 describe('Enable MFA setup', () => {
 	describe('Step one', () => {
 		test('GET /qr should fail due to unauthenticated user', async () => {
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent.get('/mfa/qr');
+			const response = await testServer.authlessAgent.get('/mfa/qr');
 
 			expect(response.statusCode).toBe(401);
 		});
 
 		test('GET /qr should reuse secret and recovery codes until setup is complete', async () => {
-			const firstCall = await authAgent(owner).get('/mfa/qr');
+			const firstCall = await testServer.authAgentFor(owner).get('/mfa/qr');
 
-			const secondCall = await authAgent(owner).get('/mfa/qr');
+			const secondCall = await testServer.authAgentFor(owner).get('/mfa/qr');
 
 			expect(firstCall.body.data.secret).toBe(secondCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).toBe(
 				secondCall.body.data.recoveryCodes.join(''),
 			);
 
-			await authAgent(owner).delete('/mfa/disable');
+			await testServer.authAgentFor(owner).delete('/mfa/disable');
 
-			const thirdCall = await authAgent(owner).get('/mfa/qr');
+			const thirdCall = await testServer.authAgentFor(owner).get('/mfa/qr');
 
 			expect(firstCall.body.data.secret).not.toBe(thirdCall.body.data.secret);
 			expect(firstCall.body.data.recoveryCodes.join('')).not.toBe(
@@ -66,7 +62,7 @@ describe('Enable MFA setup', () => {
 		});
 
 		test('GET /qr should return qr, secret and recocery codes', async () => {
-			const response = await authAgent(owner).get('/mfa/qr');
+			const response = await testServer.authAgentFor(owner).get('/mfa/qr');
 
 			expect(response.statusCode).toBe(200);
 
@@ -82,35 +78,39 @@ describe('Enable MFA setup', () => {
 
 	describe('Step two', () => {
 		test('POST /verify should fail due to unauthenticated user', async () => {
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent.post('/mfa/verify');
+			const response = await testServer.authlessAgent.post('/mfa/verify');
 
 			expect(response.statusCode).toBe(401);
 		});
 
 		test('POST /verify should fail due to missing token parameter', async () => {
-			const response = await authAgent(owner).post('/mfa/verify').send({ token: '123' });
+			const response = await testServer
+				.authAgentFor(owner)
+				.post('/mfa/verify')
+				.send({ token: '123' });
 
 			expect(response.statusCode).toBe(400);
 		});
 
 		test('POST /verify should fail due to invalid MFA token', async () => {
-			await authAgent(owner).get('/mfa/qr');
+			await testServer.authAgentFor(owner).get('/mfa/qr');
 
-			const response = await authAgent(owner).post('/mfa/verify').send({ token: '' });
+			const response = await testServer.authAgentFor(owner).post('/mfa/verify').send({ token: '' });
 
 			expect(response.statusCode).toBe(400);
 		});
 
 		test('POST /verify should validate MFA token', async () => {
-			const response = await authAgent(owner).get('/mfa/qr');
+			const response = await testServer.authAgentFor(owner).get('/mfa/qr');
 
 			const { secret } = response.body.data;
 
 			const token = new TOTPService().generateTOTP(secret);
 
-			const { statusCode } = await authAgent(owner).post('/mfa/verify').send({ token });
+			const { statusCode } = await testServer
+				.authAgentFor(owner)
+				.post('/mfa/verify')
+				.send({ token });
 
 			expect(statusCode).toBe(200);
 		});
@@ -118,43 +118,47 @@ describe('Enable MFA setup', () => {
 
 	describe('Step three', () => {
 		test('POST /enable should fail due to unauthenticated user', async () => {
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent.post('/mfa/enable');
+			const response = await testServer.authlessAgent.post('/mfa/enable');
 
 			expect(response.statusCode).toBe(401);
 		});
 
 		test('POST /verify should fail due to missing token parameter', async () => {
-			const response = await authAgent(owner).post('/mfa/verify').send({ token: '123' });
+			const response = await testServer
+				.authAgentFor(owner)
+				.post('/mfa/verify')
+				.send({ token: '123' });
 
 			expect(response.statusCode).toBe(400);
 		});
 
 		test('POST /enable should fail due to invalid MFA token', async () => {
-			await authAgent(owner).get('/mfa/qr');
+			await testServer.authAgentFor(owner).get('/mfa/qr');
 
-			const response = await authAgent(owner).post('/mfa/enable').send({ token: '' });
+			const response = await testServer.authAgentFor(owner).post('/mfa/enable').send({ token: '' });
 
 			expect(response.statusCode).toBe(400);
 		});
 
 		test('POST /enable should fail due to empty secret and recovery codes', async () => {
-			const response = await authAgent(owner).post('/mfa/enable');
+			const response = await testServer.authAgentFor(owner).post('/mfa/enable');
 
 			expect(response.statusCode).toBe(400);
 		});
 
 		test('POST /enable should enable MFA in account', async () => {
-			const response = await authAgent(owner).get('/mfa/qr');
+			const response = await testServer.authAgentFor(owner).get('/mfa/qr');
 
 			const { secret } = response.body.data;
 
 			const token = new TOTPService().generateTOTP(secret);
 
-			await authAgent(owner).post('/mfa/verify').send({ token });
+			await testServer.authAgentFor(owner).post('/mfa/verify').send({ token });
 
-			const { statusCode } = await authAgent(owner).post('/mfa/enable').send({ token });
+			const { statusCode } = await testServer
+				.authAgentFor(owner)
+				.post('/mfa/enable')
+				.send({ token });
 
 			expect(statusCode).toBe(200);
 
