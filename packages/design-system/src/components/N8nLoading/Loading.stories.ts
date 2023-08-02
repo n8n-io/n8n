@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nLoading from './Loading.vue';
 
 export default {
@@ -18,24 +18,25 @@ export default {
 		rows: {
 			control: {
 				type: 'select',
-				options: [1, 2, 3, 4, 5],
 			},
+			options: [1, 2, 3, 4, 5],
 		},
 		variant: {
 			control: {
 				type: 'select',
-				options: ['button', 'h1', 'image', 'p'],
 			},
+			options: ['button', 'h1', 'image', 'p'],
 		},
 	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nLoading,
 	},
-	template: '<n8n-loading v-bind="$props"></n8n-loading>',
+	template: '<n8n-loading v-bind="args"></n8n-loading>',
 });
 
 export const Loading = Template.bind({});

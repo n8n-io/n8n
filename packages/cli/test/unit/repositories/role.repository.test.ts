@@ -1,9 +1,10 @@
 import { Container } from 'typedi';
 import { DataSource, EntityManager } from 'typeorm';
 import { mock } from 'jest-mock-extended';
-import { Role, RoleNames, RoleScopes } from '@db/entities/Role';
+import type { RoleNames, RoleScopes } from '@db/entities/Role';
+import { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories/role.repository';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../integration/shared/utils/';
 import { randomInteger } from '../../integration/shared/random';
 
 describe('RoleRepository', () => {
@@ -38,7 +39,7 @@ describe('RoleRepository', () => {
 
 		test('should throw otherwise', async () => {
 			entityManager.findOneOrFail.mockRejectedValueOnce(new Error());
-			expect(() => roleRepository.findRoleOrFail('global', 'owner')).rejects.toThrow();
+			await expect(async () => roleRepository.findRoleOrFail('global', 'owner')).rejects.toThrow();
 		});
 	});
 

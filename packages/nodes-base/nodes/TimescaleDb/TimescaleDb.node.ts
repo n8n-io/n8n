@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { pgInsert, pgQuery, pgUpdate } from '../Postgres/v1/genericFunctions';
+import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
 
 import pgPromise from 'pg-promise';
 
@@ -65,6 +65,11 @@ export class TimescaleDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
+				typeOptions: {
+					editor: 'sqlEditor',
+					sqlDialect: 'PostgreSQL',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -275,13 +280,9 @@ export class TimescaleDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {

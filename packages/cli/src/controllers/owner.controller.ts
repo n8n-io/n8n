@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
-import { Get, Post, RestController } from '@/decorators';
+import { Authorized, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
 import {
 	hashPassword,
@@ -13,13 +13,9 @@ import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
 import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
-import type {
-	CredentialsRepository,
-	SettingsRepository,
-	UserRepository,
-	WorkflowRepository,
-} from '@db/repositories';
+import type { SettingsRepository, UserRepository } from '@db/repositories';
 
+@Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
 	private readonly config: Config;
@@ -32,10 +28,6 @@ export class OwnerController {
 
 	private readonly settingsRepository: SettingsRepository;
 
-	private readonly credentialsRepository: CredentialsRepository;
-
-	private readonly workflowsRepository: WorkflowRepository;
-
 	constructor({
 		config,
 		logger,
@@ -45,28 +37,13 @@ export class OwnerController {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'Settings' | 'Credentials' | 'Workflow'>;
+		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
 		this.settingsRepository = repositories.Settings;
-		this.credentialsRepository = repositories.Credentials;
-		this.workflowsRepository = repositories.Workflow;
-	}
-
-	@Get('/pre-setup')
-	async preSetup(): Promise<{ credentials: number; workflows: number }> {
-		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-			throw new BadRequestError('Instance owner already setup');
-		}
-
-		const [credentials, workflows] = await Promise.all([
-			this.credentialsRepository.countBy({}),
-			this.workflowsRepository.countBy({}),
-		]);
-		return { credentials, workflows };
 	}
 
 	/**
@@ -148,18 +125,10 @@ export class OwnerController {
 		return sanitizeUser(owner);
 	}
 
-	/**
-	 * Persist that the instance owner setup has been skipped
-	 */
-	@Post('/skip-setup')
-	async skipSetup() {
-		await this.settingsRepository.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: JSON.stringify(true) },
-		);
-
-		this.config.set('userManagement.skipInstanceOwnerSetup', true);
-
-		return { success: true };
+	@Post('/dismiss-banner')
+	async dismissBanner(req: OwnerRequest.DismissBanner) {
+		const bannerName = 'banner' in req.body ? (req.body.banner as string) : '';
+		const response = await this.settingsRepository.dismissBanner({ bannerName });
+		return response;
 	}
 }

@@ -7,7 +7,7 @@
 		@mouseleave="showTooltip = false"
 	>
 		<div :class="$style.tooltip">
-			<n8n-tooltip placement="top" manual :value="showTooltip">
+			<n8n-tooltip placement="top" :visible="showTooltip">
 				<template #content>
 					<div v-text="nodeType.displayName"></div>
 				</template>
@@ -40,12 +40,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import { ITemplatesNode } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { ITemplatesNode } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 interface NodeIconData {
 	type: string;
@@ -54,7 +54,7 @@ interface NodeIconData {
 	fileBuffer?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'HoverableNodeIcon',
 	props: {
 		circle: {

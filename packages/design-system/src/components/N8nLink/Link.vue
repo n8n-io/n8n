@@ -1,5 +1,5 @@
 <template>
-	<n8n-route :to="to" :newWindow="newWindow" v-on="$listeners" class="n8n-link">
+	<n8n-route :to="to" :newWindow="newWindow" v-bind="$attrs" class="n8n-link">
 		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
 			<n8n-text :size="size" :bold="bold">
 				<slot></slot>

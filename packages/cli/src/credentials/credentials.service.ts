@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 import { Credentials, UserSettings } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -7,7 +6,7 @@ import type {
 	INodeCredentialTestResult,
 	INodeProperties,
 } from 'n8n-workflow';
-import { deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
@@ -111,7 +110,6 @@ export class CredentialsService {
 	static async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These
@@ -300,7 +298,11 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData') {
-				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
 				continue;
 			}
 			const prop = properties.find((v) => v.name === dataKey);
@@ -308,8 +310,11 @@ export class CredentialsService {
 				continue;
 			}
 			if (prop.typeOptions?.password) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
 			}
 		}
 
@@ -320,8 +325,7 @@ export class CredentialsService {
 	private static unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			if (value === CREDENTIAL_BLANKING_VALUE) {
+			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
 			} else if (
@@ -333,7 +337,7 @@ export class CredentialsService {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				replacement[key] !== null
 			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				this.unredactRestoreValues(value, replacement[key]);
 			}
 		}

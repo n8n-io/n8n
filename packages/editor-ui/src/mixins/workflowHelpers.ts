@@ -1,14 +1,15 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import {
-	ERROR_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 } from '@/constants';
 
-import {
+import type {
 	IConnections,
 	IDataObject,
 	INode,
@@ -19,20 +20,17 @@ import {
 	INodeCredentials,
 	INodeType,
 	INodeTypes,
-	INodeTypeData,
-	IPinData,
 	IRunExecutionData,
 	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	NodeHelpers,
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
-	deepCopy,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
-import {
+import type {
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowData,
@@ -44,31 +42,27 @@ import {
 } from '../Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { restApi } from '@/mixins/restApi';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { IWorkflowSettings } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv';
-import { useTemplatesStore } from '@/stores/templates';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
-import { ICredentialsResponse } from '@/Interface';
-import { useEnvironmentsStore } from '@/stores';
-
-let cachedWorkflowKey: string | null = '';
-let cachedWorkflow: Workflow | null = null;
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useUsersStore } from '@/stores/users.store';
+import { getWorkflowPermissions } from '@/permissions';
+import type { IPermissions } from '@/permissions';
+import type { ICredentialsResponse } from '@/Interface';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -88,10 +82,6 @@ export function resolveParameter(
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 	const executionData = useWorkflowsStore().getWorkflowExecution;
-
-	if (opts?.inputNodeName && !parentNode.includes(opts.inputNodeName)) {
-		return null;
-	}
 
 	let runIndexParent = opts?.inputRunIndex ?? 0;
 	const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
@@ -184,84 +174,20 @@ export function resolveParameter(
 }
 
 function getCurrentWorkflow(copyData?: boolean): Workflow {
-	const nodes = getNodes();
-	const connections = useWorkflowsStore().allConnections;
-	const cacheKey = JSON.stringify({ nodes, connections });
-	if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
-		return cachedWorkflow;
-	}
-	cachedWorkflowKey = cacheKey;
-
-	return getWorkflow(nodes, connections, copyData);
+	return useWorkflowsStore().getCurrentWorkflow(copyData);
 }
 
-// Returns a shallow copy of the nodes which means that all the data on the lower
-// levels still only gets referenced but the top level object is a different one.
-// This has the advantage that it is very fast and does not cause problems with vuex
-// when the workflow replaces the node-parameters.
 function getNodes(): INodeUi[] {
-	const nodes = useWorkflowsStore().allNodes;
-	const returnNodes: INodeUi[] = [];
-
-	for (const node of nodes) {
-		returnNodes.push(Object.assign({}, node));
-	}
-
-	return returnNodes;
+	return useWorkflowsStore().getNodes();
 }
 
 // Returns a workflow instance.
 function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
-	const nodeTypes = getNodeTypes();
-	let workflowId: string | undefined = useWorkflowsStore().workflowId;
-	if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		workflowId = undefined;
-	}
-
-	const workflowName = useWorkflowsStore().workflowName;
-
-	cachedWorkflow = new Workflow({
-		id: workflowId,
-		name: workflowName,
-		nodes: copyData ? deepCopy(nodes) : nodes,
-		connections: copyData ? deepCopy(connections) : connections,
-		active: false,
-		nodeTypes,
-		settings: useWorkflowsStore().workflowSettings,
-		// @ts-ignore
-		pinData: useWorkflowsStore().getPinData,
-	});
-
-	return cachedWorkflow;
+	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
 }
 
 function getNodeTypes(): INodeTypes {
-	const nodeTypes: INodeTypes = {
-		nodeTypes: {},
-		init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-		// @ts-ignore
-		getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-			const nodeTypeDescription = useNodeTypesStore().getNodeType(nodeType, version);
-
-			if (nodeTypeDescription === null) {
-				return undefined;
-			}
-
-			return {
-				description: nodeTypeDescription,
-				// As we do not have the trigger/poll functions available in the frontend
-				// we use the information available to figure out what are trigger nodes
-				// @ts-ignore
-				trigger:
-					(![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) &&
-						nodeTypeDescription.inputs.length === 0 &&
-						!nodeTypeDescription.webhooks) ||
-					undefined,
-			};
-		},
-	};
-
-	return nodeTypes;
+	return useWorkflowsStore().getNodeTypes();
 }
 
 // Returns connectionInputData to be able to execute an expression.
@@ -298,32 +224,36 @@ function connectionInputData(
 		}
 	}
 
-	const parentPinData = parentNode.reduce((acc: INodeExecutionData[], parentNodeName, index) => {
-		const pinData = useWorkflowsStore().pinDataByNodeName(parentNodeName);
+	const workflowsStore = useWorkflowsStore();
 
-		if (pinData) {
-			acc.push({
-				json: pinData[0],
-				pairedItem: {
-					item: index,
-					input: 1,
-				},
-			});
-		}
+	if (workflowsStore.shouldReplaceInputDataWithPinData) {
+		const parentPinData = parentNode.reduce<INodeExecutionData[]>((acc, parentNodeName, index) => {
+			const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
 
-		return acc;
-	}, []);
+			if (pinData) {
+				acc.push({
+					json: pinData[0],
+					pairedItem: {
+						item: index,
+						input: 1,
+					},
+				});
+			}
 
-	if (parentPinData.length > 0) {
-		if (connectionInputData && connectionInputData.length > 0) {
-			parentPinData.forEach((parentPinDataEntry) => {
-				connectionInputData![0].json = {
-					...connectionInputData![0].json,
-					...parentPinDataEntry.json,
-				};
-			});
-		} else {
-			connectionInputData = parentPinData;
+			return acc;
+		}, []);
+
+		if (parentPinData.length > 0) {
+			if (connectionInputData && connectionInputData.length > 0) {
+				parentPinData.forEach((parentPinDataEntry) => {
+					connectionInputData![0].json = {
+						...connectionInputData![0].json,
+						...parentPinDataEntry.json,
+					};
+				});
+			} else {
+				connectionInputData = parentPinData;
+			}
 		}
 	}
 
@@ -346,21 +276,24 @@ function executeData(
 		// Add the input data to be able to also resolve the short expression format
 		// which does not use the node name
 		const parentNodeName = parentNode[0];
+		const workflowsStore = useWorkflowsStore();
 
-		const parentPinData = useWorkflowsStore().getPinData![parentNodeName];
+		if (workflowsStore.shouldReplaceInputDataWithPinData) {
+			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
-		// populate `executeData` from `pinData`
+			// populate `executeData` from `pinData`
 
-		if (parentPinData) {
-			executeData.data = { main: [parentPinData] };
-			executeData.source = { main: [{ previousNode: parentNodeName }] };
+			if (parentPinData) {
+				executeData.data = { main: [parentPinData] };
+				executeData.source = { main: [{ previousNode: parentNodeName }] };
 
-			return executeData;
+				return executeData;
+			}
 		}
 
 		// populate `executeData` from `runData`
 
-		const workflowRunData = useWorkflowsStore().getWorkflowRunData;
+		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
 		}
@@ -396,7 +329,14 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showMessage).extend({
+export const workflowHelpers = defineComponent({
+	mixins: [externalHooks, nodeHelpers, genericHelpers],
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -534,7 +474,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		},
 
 		// Returns the currently loaded workflow as JSON.
-		getWorkflowDataToSave(): Promise<IWorkflowData> {
+		async getWorkflowDataToSave(): Promise<IWorkflowData> {
 			const workflowNodes = this.workflowsStore.allNodes;
 			const workflowConnections = this.workflowsStore.allConnections;
 
@@ -542,12 +482,8 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 			const nodes = [];
 			for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-				try {
-					// @ts-ignore
-					nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
-				} catch (e) {
-					return Promise.reject(e);
-				}
+				// @ts-ignore
+				nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
 
 				nodes.push(nodeData);
 			}
@@ -568,7 +504,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				data.id = workflowId;
 			}
 
-			return Promise.resolve(data);
+			return data;
 		},
 
 		// Returns all node-types
@@ -728,14 +664,19 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 			return returnData['__xxxxxxx__'];
 		},
 
-		async updateWorkflow({ workflowId, active }: { workflowId: string; active?: boolean }) {
+		async updateWorkflow(
+			{ workflowId, active }: { workflowId: string; active?: boolean },
+			partialData = false,
+		) {
 			let data: IWorkflowDataUpdate = {};
 
 			const isCurrentWorkflow = workflowId === this.workflowsStore.workflowId;
 			if (isCurrentWorkflow) {
-				data = await this.getWorkflowDataToSave();
+				data = partialData
+					? { versionId: this.workflowsStore.workflowVersionId }
+					: await this.getWorkflowDataToSave();
 			} else {
-				const { versionId } = await this.restApi().getWorkflow(workflowId);
+				const { versionId } = await this.workflowsStore.fetchWorkflow(workflowId);
 				data.versionId = versionId;
 			}
 
@@ -743,7 +684,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				data.active = active;
 			}
 
-			const workflow = await this.restApi().updateWorkflow(workflowId, data);
+			const workflow = await this.workflowsStore.updateWorkflow(workflowId, data);
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 			if (isCurrentWorkflow) {
@@ -763,7 +704,12 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 			redirect = true,
 			forceSave = false,
 		): Promise<boolean> {
+			if (this.readOnlyEnv) {
+				return;
+			}
+
 			const currentWorkflow = id || this.$route.params.name;
+			const isLoading = this.loadingService !== null;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 				return this.saveAsNewWorkflow({ name, tags }, redirect);
@@ -771,6 +717,9 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 			// Workflow exists already so update it
 			try {
+				if (!forceSave && isLoading) {
+					return true;
+				}
 				this.uiStore.addActiveAction('workflowSaving');
 
 				const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
@@ -785,7 +734,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 				workflowDataRequest.versionId = this.workflowsStore.workflowVersionId;
 
-				const workflowData = await this.restApi().updateWorkflow(
+				const workflowData = await this.workflowsStore.updateWorkflow(
 					currentWorkflow,
 					workflowDataRequest,
 					forceSave,
@@ -804,10 +753,12 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
+				console.error(error);
+
 				this.uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 100) {
@@ -821,26 +772,32 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 						params: { name: currentWorkflow },
 					}).href;
 
-					const overwrite = await this.confirmMessage(
+					const overwrite = await this.confirm(
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message', {
 							interpolate: {
 								url,
 							},
 						}),
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
-						null,
-						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
-						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.cancelButtonText'),
+						{
+							dangerouslyUseHTMLString: true,
+							confirmButtonText: this.$locale.baseText(
+								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+							),
+						},
 					);
 
-					if (overwrite) {
+					if (overwrite === MODAL_CONFIRM) {
 						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
 					return false;
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: error.message,
 					type: 'error',
@@ -902,7 +859,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				if (tags) {
 					workflowDataRequest.tags = tags;
 				}
-				const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
+				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
 
@@ -955,7 +912,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				}
 
 				if (redirect) {
-					this.$router.replace({
+					void this.$router.replace({
 						name: VIEWS.WORKFLOW,
 						params: { name: workflowData.id as string, action: 'workflowSave' },
 					});
@@ -963,14 +920,14 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;
 			} catch (e) {
 				this.uiStore.removeActiveAction('workflowSaving');
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: (e as Error).message,
 					type: 'error',
@@ -1015,7 +972,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		async dataHasChanged(id: string) {
 			const currentData = await this.getWorkflowDataToSave();
 
-			const data: IWorkflowDb = await this.restApi().getWorkflow(id);
+			const data: IWorkflowDb = await this.workflowsStore.fetchWorkflow(id);
 
 			if (data !== undefined) {
 				const x = {

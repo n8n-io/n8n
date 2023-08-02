@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container" v-on="$listeners">
+	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
@@ -33,7 +33,11 @@
 				v-if="$slots.options && label"
 				:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
 			/>
-			<div v-if="$slots.options" :class="{ [$style.options]: true, [$style.visible]: showOptions }">
+			<div
+				v-if="$slots.options"
+				:class="{ [$style.options]: true, [$style.visible]: showOptions }"
+				data-test-id="parameter-input-options-container"
+			>
 				<slot name="options" />
 			</div>
 		</label>

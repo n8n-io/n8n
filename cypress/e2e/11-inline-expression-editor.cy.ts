@@ -3,17 +3,14 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Inline expression editor', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openInlineExpressionEditor();
+
+		cy.on('uncaught:exception', (err) => err.name !== 'ExpressionError');
 	});
 
 	it('should resolve primitive resolvables', () => {
@@ -54,7 +51,7 @@ describe('Inline expression editor', () => {
 	it('should resolve array resolvables', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
-		WorkflowPage.getters.inlineExpressionEditorInput().type('[1, 2, 3]');
+		WorkflowPage.getters.inlineExpressionEditorInput().type('[1, 2, 3]', { timeout: 20000 });
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^\[Array: \[1,2,3\]\]$/);
 
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
@@ -68,7 +65,8 @@ describe('Inline expression editor', () => {
 	it('should resolve $parameter[]', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
-		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
-		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^getAll$/);
+		// Resolving $parameter is slow, especially on CI runner
+		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]', { timeout: 35000 });
+		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
 	});
 });

@@ -4,7 +4,7 @@
 			v-for="tag in visibleTags"
 			:key="tag.id"
 			:text="tag.name"
-			@click="$emit('click', tag.id, $event)"
+			@click="$emit('click:tag', tag.id, $event)"
 		/>
 		<n8n-link
 			v-if="truncate && !showAll && hiddenTagsLength > 0"
@@ -22,7 +22,8 @@
 import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
 import Locale from '../../mixins/locale';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 export interface ITag {
 	id: string;

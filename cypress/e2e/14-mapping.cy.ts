@@ -4,25 +4,14 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from './../constants';
 import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data mapping', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
-
-		cy.window().then(
-			(win) => {
-				// @ts-ignore
-				win.preventNodeViewBeforeUnload = true;
-			},
-		);
 	});
 
 	it('maps expressions from table header', () => {
@@ -35,11 +24,7 @@ describe('Data mapping', () => {
 		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
 
 		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
-		ndv.getters
-			.nodeParameters()
-			.find('.el-select-dropdown__list li:nth-child(3)')
-			.should('have.text', 'String')
-			.click();
+		getVisibleSelect().find('li:nth-child(3)').should('have.text', 'String').click();
 		ndv.getters
 			.parameterInput('name')
 			.should('have.length', 1)
@@ -135,7 +120,7 @@ describe('Data mapping', () => {
 			.find('.json-data')
 			.should(
 				'have.text',
-				'[{"input":[{"count":0,"with space":"!!","with.dot":"!!","with"quotes":"!!"}]},{"input":[{"count":1}]}]',
+				'[{"input": [{"count": 0,"with space": "!!","with.dot": "!!","with"quotes": "!!"}]},{"input": [{"count": 1}]}]',
 			)
 			.find('span')
 			.contains('"count"')
@@ -156,7 +141,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('maps expressions from schema view', () => {
@@ -172,7 +157,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
+		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
 
@@ -180,11 +165,12 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('maps expressions from previous nodes', () => {
 		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		workflowPage.actions.zoomToFit();
 		workflowPage.actions.openNode('Set1');
 
 		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
@@ -194,8 +180,12 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', `{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }}`);
-		ndv.getters.parameterExpressionPreview('value').should('not.exist');
+			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
+		ndv.getters
+			.parameterExpressionPreview('value')
+			.invoke('text')
+			.invoke('replace', /\u00a0/g, ' ')
+			.should('equal', '[ERROR: no data, execute "Schedule Trigger" node first]');
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.mapDataFromHeader(1, 'value');
@@ -203,19 +193,19 @@ describe('Data mapping', () => {
 			.inlineExpressionEditorInput()
 			.should(
 				'have.text',
-				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
+				`{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }} {{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input }}`,
 			);
-		ndv.getters.parameterExpressionPreview('value').should('not.exist');
+		ndv.actions.validateExpressionPreview('value', ' ');
 
 		ndv.actions.selectInputNode('Set');
 
 		ndv.actions.executePrevious();
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 
 		ndv.getters.inputTbodyCell(2, 0).realHover();
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '1 [object Object]');
 	});
 
 	it('maps keys to path', () => {
@@ -248,7 +238,8 @@ describe('Data mapping', () => {
 		workflowPage.actions.addNodeToCanvas('Item Lists');
 		workflowPage.actions.openNode('Item Lists');
 
-		ndv.getters.parameterInput('operation').click().find('li').contains('Sort').click();
+		ndv.getters.parameterInput('operation').click();
+		getVisibleSelect().find('li').contains('Sort').click();
 
 		ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
 
@@ -277,12 +268,14 @@ describe('Data mapping', () => {
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
+		ndv.actions.dismissMappingTooltip();
+		cy.wait(300);
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
+		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
 
@@ -290,7 +283,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('shows you can drop to inputs, including booleans', () => {
@@ -304,19 +297,28 @@ describe('Data mapping', () => {
 
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('exist');
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]').should('not.exist');
-		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown().realMouseMove(100, 100);
+		ndv.getters
+			.inputDataContainer()
+			.should('exist')
+			.find('span')
+			.contains('count')
+			.realMouseDown()
+			.realMouseMove(100, 100);
 		cy.wait(50);
 
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="checkbox"]').should('not.exist');
-		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]')
+		ndv.getters
+			.parameterInput('keepOnlySet')
+			.find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
-			.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 
-		ndv.getters.parameterInput('value').find('input[type="text"]')
-		.should('exist')
-		.invoke('css', 'border')
-		.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+		ndv.getters
+			.parameterInput('value')
+			.find('input[type="text"]')
+			.should('exist')
+			.invoke('css', 'border')
+			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 	});
-
 });

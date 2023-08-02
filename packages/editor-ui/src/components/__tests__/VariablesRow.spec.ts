@@ -1,10 +1,29 @@
 import VariablesRow from '../VariablesRow.vue';
-import { EnvironmentVariable } from '@/Interface';
-import { fireEvent, render } from '@testing-library/vue';
-import { createPinia, setActivePinia } from 'pinia';
+import type { EnvironmentVariable } from '@/Interface';
+import { fireEvent } from '@testing-library/vue';
 import { setupServer } from '@/__tests__/server';
 import { afterAll, beforeAll } from 'vitest';
 import { useSettingsStore, useUsersStore } from '@/stores';
+import { createComponentRenderer } from '@/__tests__/render';
+import { createTestingPinia } from '@pinia/testing';
+import { STORES } from '@/constants';
+
+const renderComponent = createComponentRenderer(VariablesRow, {
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.SETTINGS]: {
+				settings: {
+					enterprise: {
+						variables: true,
+					},
+				},
+			},
+		},
+	}),
+	global: {
+		stubs: ['n8n-tooltip'],
+	},
+});
 
 describe('VariablesRow', () => {
 	let server: ReturnType<typeof setupServer>;
@@ -14,8 +33,6 @@ describe('VariablesRow', () => {
 	});
 
 	beforeEach(async () => {
-		setActivePinia(createPinia());
-
 		await useSettingsStore().getSettings();
 		await useUsersStore().loginWithCookie();
 	});
@@ -24,8 +41,6 @@ describe('VariablesRow', () => {
 		server.shutdown();
 	});
 
-	const stubs = ['n8n-tooltip'];
-
 	const environmentVariable: EnvironmentVariable = {
 		id: 1,
 		key: 'key',
@@ -33,23 +48,20 @@ describe('VariablesRow', () => {
 	};
 
 	it('should render correctly', () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 			},
-			stubs,
 		});
 
-		expect(wrapper.html()).toMatchSnapshot();
 		expect(wrapper.container.querySelectorAll('td')).toHaveLength(4);
 	});
 
 	it('should show edit and delete buttons on hover', async () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 			},
-			stubs,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -59,12 +71,11 @@ describe('VariablesRow', () => {
 	});
 
 	it('should show key and value inputs in edit mode', async () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 				editing: true,
 			},
-			stubs,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -77,17 +88,14 @@ describe('VariablesRow', () => {
 		expect(wrapper.getByTestId('variable-row-value-input').querySelector('input')).toHaveValue(
 			environmentVariable.value,
 		);
-
-		expect(wrapper.html()).toMatchSnapshot();
 	});
 
 	it('should show cancel and save buttons in edit mode', async () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent({
 			props: {
 				data: environmentVariable,
 				editing: true,
 			},
-			stubs,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);

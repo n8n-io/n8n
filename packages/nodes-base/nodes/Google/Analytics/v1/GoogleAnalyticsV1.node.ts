@@ -16,6 +16,8 @@ import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './G
 import moment from 'moment-timezone';
 import type { IData } from './Interfaces';
 
+import { oldVersionNotice } from '@utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
 	name: 'googleAnalytics',
@@ -36,6 +38,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Resource',
 			name: 'resource',
@@ -244,7 +247,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 						if (simple) {
 							responseData = simplify(responseData);
 						} else if (returnAll && responseData.length > 1) {
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							responseData = merge(responseData);
 						}
 					}

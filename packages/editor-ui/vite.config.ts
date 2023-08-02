@@ -1,7 +1,5 @@
-import vue from '@vitejs/plugin-vue2';
-import legacy from '@vitejs/plugin-legacy';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
-import path, { resolve } from 'path';
+import vue from '@vitejs/plugin-vue';
+import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
@@ -13,11 +11,10 @@ const { coverageReporters } = require('../../jest.config.js');
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
-	'vue2-boring-avatars',
-	'vue-template-compiler',
-	'jquery',
 	'@fontsource/open-sans',
 	'normalize-wheel',
+	'@vueuse/components',
+	// TODO: remove this. It's currently required by xml2js in NodeErrors
 	'stream-browserify',
 ];
 
@@ -48,10 +45,14 @@ const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
 	{
+		find: /^n8n-design-system$/,
+		replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.ts'),
+	},
+	{
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 	},
-	...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
+	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
 		replacement: require.resolve(`lodash-es/${name}`),
 	})),
@@ -59,39 +60,9 @@ const alias = [
 		find: /^lodash\.(.+)$/,
 		replacement: 'lodash-es/$1',
 	},
-	{
-		find: 'vue2-boring-avatars',
-		replacement: require.resolve('vue2-boring-avatars'),
-	},
-	{
-		find: /element-ui\/(packages|lib)\/button$/,
-		replacement: path.resolve(
-			__dirname,
-			'..',
-			'design-system/src/components/N8nButton/overrides/ElButton.ts',
-		),
-	},
 ];
 
-// https://github.com/vitest-dev/vitest/discussions/1806
-if (NODE_ENV === 'test') {
-	alias.push({
-		find: /^monaco-editor$/,
-		replacement: __dirname + '/node_modules/monaco-editor/esm/vs/editor/editor.api',
-	});
-}
-
-const plugins = [
-	vue(),
-	legacy({
-		targets: ['>1%', 'last 3 versions', 'not dead'],
-	}),
-	monacoEditorPlugin({
-		publicPath: 'assets/monaco-editor',
-		customDistPath: (root: string, buildOutDir: string, base: string) =>
-			`${root}/${buildOutDir}/assets/monaco-editor`,
-	}),
-];
+const plugins = [vue()];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {
@@ -114,8 +85,8 @@ export default mergeConfig(
 	defineConfig({
 		define: {
 			// This causes test to fail but is required for actually running it
-			...(NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
-			...(NODE_ENV === 'development' ? { process: { env: {} } } : {}),
+			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
+			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
 			BASE_PATH: `'${publicPath}'`,
 		},
 		plugins,
@@ -151,9 +122,8 @@ export default mergeConfig(
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
 			coverage: {
-				provider: 'c8',
+				provider: 'v8',
 				reporter: coverageReporters,
-				include: ['src/**/*.ts'],
 				all: true,
 			},
 			css: {

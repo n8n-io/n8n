@@ -28,7 +28,9 @@ import { labelFields, labelOperations } from './LabelDescription';
 
 import { draftFields, draftOperations } from './DraftDescription';
 
-import isEmpty from 'lodash.isempty';
+import isEmpty from 'lodash/isEmpty';
+
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -64,6 +66,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',

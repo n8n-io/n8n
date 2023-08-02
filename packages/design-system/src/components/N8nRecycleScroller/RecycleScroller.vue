@@ -1,17 +1,8 @@
 <script lang="ts">
 /* eslint-disable @typescript-eslint/no-use-before-define */
 
-import {
-	computed,
-	defineComponent,
-	onMounted,
-	onBeforeMount,
-	ref,
-	PropType,
-	nextTick,
-	watch,
-	ComponentPublicInstance,
-} from 'vue';
+import type { PropType, ComponentPublicInstance } from 'vue';
+import { computed, defineComponent, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
 export default defineComponent({
 	name: 'n8n-recycle-scroller',
@@ -173,7 +164,7 @@ export default defineComponent({
 		}
 
 		function onUpdateItemSize(item: { [key: string]: string }) {
-			nextTick(() => {
+			void nextTick(() => {
 				const itemId = item[props.itemKey];
 				const itemRef = itemRefs.value[itemId] as HTMLElement;
 				const previousSize = itemSizeCache.value[itemId];
@@ -195,7 +186,7 @@ export default defineComponent({
 		function onWindowResize() {
 			if (wrapperRef.value) {
 				wrapperHeight.value = wrapperRef.value.offsetHeight;
-				nextTick(() => {
+				void nextTick(() => {
 					updateItemSizeCache(visibleItems.value);
 				});
 			}

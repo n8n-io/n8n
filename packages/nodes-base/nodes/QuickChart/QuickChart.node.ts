@@ -18,7 +18,6 @@ import {
 } from './constants';
 import type { IDataset } from './types';
 
-import _ from 'lodash';
 export class QuickChart implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'QuickChart',

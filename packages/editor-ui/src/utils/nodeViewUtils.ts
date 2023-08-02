@@ -1,12 +1,12 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber } from '@/utils';
-import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from '@/constants';
-import { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
-import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import { Endpoint, Connection, ConnectionEstablishedParams } from '@jsplumb/core';
+import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
+import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
+import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
+import type { Endpoint, Connection } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
-import {
+import type {
 	IConnection,
 	INode,
 	ITaskData,
@@ -15,6 +15,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
+import { useUIStore } from '@/stores';
 
 /*
 	Canvas constants and functions.
@@ -689,6 +690,7 @@ export const getZoomToFit = (
 	const { minX, minY, maxX, maxY } = getWorkflowCorners(nodes);
 	const { editorWidth, editorHeight } = getContentDimensions();
 	const footerHeight = addFooterPadding ? 200 : 100;
+	const uiStore = useUIStore();
 
 	const PADDING = NODE_SIZE * 4;
 
@@ -704,7 +706,10 @@ export const getZoomToFit = (
 	xOffset += (editorWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
 	let yOffset = minY * -1 * zoomLevel; // find top right corner
-	yOffset += (editorHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
+	yOffset +=
+		(editorHeight -
+			(maxY - minY + footerHeight - uiStore.headerHeight + uiStore.bannersHeight) * zoomLevel) /
+		2; // add padding to center workflow
 
 	return {
 		zoomLevel,

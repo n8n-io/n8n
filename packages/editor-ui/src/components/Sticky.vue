@@ -5,6 +5,7 @@
 		:ref="data.name"
 		:style="stickyPosition"
 		:data-name="data.name"
+		data-test-id="sticky"
 	>
 		<div
 			:class="{
@@ -22,7 +23,7 @@
 				v-touch:end="touchEnd"
 			>
 				<n8n-sticky
-					:content.sync="node.parameters.content"
+					:modelValue="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
@@ -31,17 +32,22 @@
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
 					:gridSize="gridSize"
-					@input="onInputChange"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
 					@markdown-click="onMarkdownClick"
+					@update:modelValue="onInputChange"
 				/>
 			</div>
 
 			<div v-show="showActions" class="sticky-options no-select-on-click">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')">
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					data-test-id="delete-sticky"
+					:title="$locale.baseText('node.deleteNode')"
+				>
 					<font-awesome-icon icon="trash" />
 				</div>
 			</div>
@@ -50,31 +56,32 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
-import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { getStyleTokenValue, isNumber, isString } from '@/utils';
-import {
+import { isNumber, isString } from '@/utils';
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	XYPosition,
 } from '@/Interface';
 
-import { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
+export default defineComponent({
 	name: 'Sticky',
+	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
+
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -155,11 +162,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		};
 	},
 	methods: {
-		deleteNode() {
-			Vue.nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('removeNode', this.data.name);
-			});
+		async deleteNode() {
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('removeNode', this.data.name);
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
@@ -183,6 +189,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		},
 		onInputChange(content: string) {
+			this.node.parameters.content = content;
 			this.setParameters({ content });
 		},
 		onResizeStart() {

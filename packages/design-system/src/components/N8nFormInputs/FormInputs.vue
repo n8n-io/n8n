@@ -22,12 +22,13 @@
 						v-bind="input.properties"
 						:name="input.name"
 						:label="input.properties.label || ''"
-						:value="values[input.name]"
+						:modelValue="values[input.name]"
 						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
-						@input="(value) => onInput(input.name, value)"
+						:teleported="teleported"
+						:tagSize="tagSize"
+						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
-						@change="(value) => onInput(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>
@@ -37,11 +38,13 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
-import { createEventBus, EventBus } from '../../utils';
+import type { EventBus } from '../../utils';
+import { createEventBus } from '../../utils';
 
 export default defineComponent({
 	name: 'n8n-form-inputs',
@@ -67,6 +70,15 @@ export default defineComponent({
 			default: '',
 			validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
 		},
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+		tagSize: {
+			type: String,
+			default: 'small',
+			validator: (value: string): boolean => ['small', 'medium'].includes(value),
+		},
 	},
 	data() {
 		return {
@@ -78,7 +90,10 @@ export default defineComponent({
 	mounted() {
 		this.inputs.forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
-				this.$set(this.values, input.name, input.initialValue);
+				this.values = {
+					...this.values,
+					[input.name]: input.initialValue,
+				};
 			}
 		});
 
@@ -103,15 +118,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onInput(name: string, value: unknown) {
+		onUpdateModelValue(name: string, value: unknown) {
 			this.values = {
 				...this.values,
 				[name]: value,
 			};
-			this.$emit('input', { name, value });
+			this.$emit('update', { name, value });
 		},
 		onValidate(name: string, valid: boolean) {
-			this.$set(this.validity, name, valid);
+			this.validity = {
+				...this.validity,
+				[name]: valid,
+			};
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;

@@ -9,9 +9,11 @@ import { In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { getRoleId, getWorkflowOwner, isSharingEnabled } from './UserManagementHelper';
+import { getRoleId, isSharingEnabled } from './UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { UserService } from '@/user/user.service';
+import { OwnershipService } from '@/services/ownership.service';
+import Container from 'typedi';
 
 export class PermissionChecker {
 	/**
@@ -44,6 +46,7 @@ export class PermissionChecker {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
+				select: ['userId'],
 			});
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
@@ -71,6 +74,7 @@ export class PermissionChecker {
 
 		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
 			description: 'Please recreate the credential or ask its owner to share it with you.',
+			severity: 'warning',
 		});
 	}
 
@@ -99,7 +103,9 @@ export class PermissionChecker {
 			policy = 'workflowsFromSameOwner';
 		}
 
-		const subworkflowOwner = await getWorkflowOwner(subworkflow.id);
+		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
+			subworkflow.id,
+		);
 
 		const errorToThrow = new SubworkflowOperationError(
 			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,

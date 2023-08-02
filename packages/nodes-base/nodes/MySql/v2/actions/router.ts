@@ -1,6 +1,5 @@
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions } from 'n8n-core';
 
 import { Client } from 'ssh2';
 
@@ -18,6 +17,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter<MySqlType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 	const nodeOptions = this.getNodeParameter('options', 0);
+
+	nodeOptions.nodeVersion = this.getNode().typeVersion;
 
 	const credentials = await this.getCredentials('mySql');
 

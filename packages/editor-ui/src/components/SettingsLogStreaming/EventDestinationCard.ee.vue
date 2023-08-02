@@ -2,7 +2,7 @@
 	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
 		<template #header>
 			<div>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+				<n8n-heading tag="h2" bold :class="$style.cardHeading">
 					{{ destination.label }}
 				</n8n-heading>
 				<div :class="$style.cardDescription">
@@ -26,8 +26,8 @@
 				<el-switch
 					class="mr-s"
 					:disabled="!isInstanceOwner"
-					:value="nodeParameters.enabled"
-					@change="onEnabledSwitched($event, destination.id)"
+					:modelValue="nodeParameters.enabled"
+					@update:modelValue="onEnabledSwitched($event, destination.id)"
 					:title="
 						nodeParameters.enabled
 							? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -47,30 +47,32 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { EnterpriseEditionFeature } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
-import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import { useMessage } from '@/composables';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import {
-	deepCopy,
-	defaultMessageEventBusDestinationOptions,
-	MessageEventBusDestinationOptions,
-} from 'n8n-workflow';
-import { BaseTextKey } from '../../plugins/i18n';
-import { EventBus } from '@/event-bus';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { BaseTextKey } from '@/plugins/i18n';
+import type { EventBus } from 'n8n-design-system';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	data() {
 		return {
 			EnterpriseEditionFeature,
 			nodeParameters: {} as MessageEventBusDestinationOptions,
+		};
+	},
+	setup() {
+		return {
+			...useMessage(),
 		};
 	},
 	components: {},
@@ -94,7 +96,7 @@ export default mixins(showMessage).extend({
 		);
 		this.eventBus?.on('destinationWasSaved', this.onDestinationWasSaved);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('destinationWasSaved', this.onDestinationWasSaved);
 	},
 	computed: {
@@ -142,7 +144,7 @@ export default mixins(showMessage).extend({
 		},
 		onEnabledSwitched(state: boolean, destinationId: string) {
 			this.nodeParameters.enabled = state;
-			this.saveDestination();
+			void this.saveDestination();
 		},
 		async saveDestination() {
 			await this.logStreamingStore.saveDestination(this.nodeParameters);
@@ -151,17 +153,23 @@ export default mixins(showMessage).extend({
 			if (action === DESTINATION_LIST_ITEM_ACTIONS.OPEN) {
 				this.$emit('edit', this.destination.id);
 			} else if (action === DESTINATION_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirmMessage(
+				const deleteConfirmed = await this.confirm(
 					this.$locale.baseText('settings.log-streaming.destinationDelete.message', {
 						interpolate: { destinationName: this.destination.label },
 					}),
 					this.$locale.baseText('settings.log-streaming.destinationDelete.headline'),
-					'warning',
-					this.$locale.baseText('settings.log-streaming.destinationDelete.confirmButtonText'),
-					this.$locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
+					{
+						type: 'warning',
+						confirmButtonText: this.$locale.baseText(
+							'settings.log-streaming.destinationDelete.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'settings.log-streaming.destinationDelete.cancelButtonText',
+						),
+					},
 				);
 
-				if (deleteConfirmed === false) {
+				if (deleteConfirmed !== MODAL_CONFIRM) {
 					return;
 				}
 

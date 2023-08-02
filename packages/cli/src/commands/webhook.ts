@@ -16,6 +16,8 @@ export class Webhook extends BaseCommand {
 		help: flags.help({ char: 'h' }),
 	};
 
+	protected server = new WebhookServer();
+
 	/**
 	 * Stops n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
@@ -44,7 +46,7 @@ export class Webhook extends BaseCommand {
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
@@ -75,13 +77,14 @@ export class Webhook extends BaseCommand {
 		await this.initCrashJournal();
 		await super.init();
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 	}
 
 	async run() {
 		await Container.get(Queue).init();
-		await new WebhookServer().start();
+		await this.server.start();
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close

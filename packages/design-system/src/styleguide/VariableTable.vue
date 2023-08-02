@@ -16,7 +16,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'variable-table',
@@ -42,7 +43,10 @@ export default defineComponent({
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 
-				this.$set(this.values, variable, value);
+				this.values = {
+					...this.values,
+					[variable]: value,
+				};
 			});
 		};
 
@@ -61,7 +65,7 @@ export default defineComponent({
 			this.observer.observe(body, { attributes: true });
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.observer) {
 			this.observer.disconnect();
 		}

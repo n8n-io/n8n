@@ -17,7 +17,7 @@
 						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.button,
 					)
 				"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</div>
 		<div v-else-if="isDefaultUser">
@@ -27,7 +27,7 @@
 					$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')
 				"
 				:buttonText="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
-				@click="goToUsersSettings"
+				@click:button="goToUsersSettings"
 			/>
 		</div>
 		<div v-else>
@@ -62,7 +62,7 @@
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
 				data-test-id="credential-sharing-modal-users-select"
-				@input="onAddSharee"
+				@update:modelValue="onAddSharee"
 			>
 				<template #prefix>
 					<n8n-icon icon="search" />
@@ -80,19 +80,18 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction, UIState } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import type { IUser, IUserListAction } from '@/Interface';
+import { defineComponent } from 'vue';
+import { useMessage } from '@/composables';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
-import { useUIStore } from '@/stores/ui';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useUsageStore } from '@/stores/usage';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { BaseTextKey } from '@/plugins/i18n';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'CredentialSharing',
 	props: [
 		'credential',
@@ -102,6 +101,11 @@ export default mixins(showMessage).extend({
 		'credentialPermissions',
 		'modalBus',
 	],
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useUsageStore, useUIStore, useSettingsStore),
 		usersListActions(): IUserListAction[] {
@@ -149,21 +153,22 @@ export default mixins(showMessage).extend({
 			const user = this.usersStore.getUserById(userId);
 
 			if (user) {
-				const confirm = await this.confirmMessage(
+				const confirm = await this.confirm(
 					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', {
 						interpolate: { name: user.fullName || '' },
 					}),
 					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
-					null,
-					this.$locale.baseText(
-						'credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText',
-					),
-					this.$locale.baseText(
-						'credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText',
-					),
+					{
+						confirmButtonText: this.$locale.baseText(
+							'credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText',
+						),
+					},
 				);
 
-				if (confirm) {
+				if (confirm === MODAL_CONFIRM) {
 					this.$emit(
 						'change',
 						this.credentialData.sharedWith.filter((sharee: IUser) => {
@@ -177,7 +182,7 @@ export default mixins(showMessage).extend({
 			await this.usersStore.fetchUsers();
 		},
 		goToUsersSettings() {
-			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			void this.$router.push({ name: VIEWS.USERS_SETTINGS });
 			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
@@ -185,7 +190,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.loadUsers();
+		void this.loadUsers();
 	},
 });
 </script>

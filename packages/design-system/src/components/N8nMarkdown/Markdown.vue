@@ -3,7 +3,6 @@
 		<div
 			v-if="!loading"
 			ref="editor"
-			class="ph-no-capture"
 			:class="$style[theme]"
 			v-html="htmlContent"
 			@click="onClick"
@@ -19,13 +18,15 @@
 
 <script lang="ts">
 import N8nLoading from '../N8nLoading';
-import Markdown, { PluginSimple } from 'markdown-it';
+import type { PluginSimple } from 'markdown-it';
+import Markdown from 'markdown-it';
 
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
 import markdownTasklists from 'markdown-it-task-lists';
 
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 import xss, { friendlyAttrValue } from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';

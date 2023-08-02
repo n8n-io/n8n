@@ -11,6 +11,8 @@ export const eventNamesWorkflow = [
 ] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
 export const eventNamesAudit = [
+	'n8n.audit.user.login.success',
+	'n8n.audit.user.login.failed',
 	'n8n.audit.user.signedup',
 	'n8n.audit.user.updated',
 	'n8n.audit.user.deleted',

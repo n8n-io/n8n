@@ -1,29 +1,32 @@
-/* eslint-disable consistent-return */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-param-reassign */
 import type express from 'express';
 import { Service } from 'typedi';
 
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
-import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
+import type {
+	IResponseCallbackData,
+	IWebhookManager,
+	IWorkflowDb,
+	WebhookRequest,
+} from '@/Interfaces';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import { webhookNotFoundErrorMessage } from './utils';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
 
 @Service()
-export class TestWebhooks {
+export class TestWebhooks implements IWebhookManager {
 	private testWebhookData: {
 		[key: string]: {
 			sessionId?: string;
@@ -34,7 +37,10 @@ export class TestWebhooks {
 		};
 	} = {};
 
-	constructor(private activeWebhooks: ActiveWebhooks, private push: Push) {
+	constructor(
+		private activeWebhooks: ActiveWebhooks,
+		private push: Push,
+	) {
 		activeWebhooks.testWebhooks = true;
 	}
 
@@ -43,14 +49,12 @@ export class TestWebhooks {
 	 * data gets additionally send to the UI. After the request got handled it
 	 * automatically remove the test-webhook.
 	 */
-	async callTestWebhook(
-		httpMethod: WebhookHttpMethod,
-		path: string,
-		request: express.Request,
+	async executeWebhook(
+		request: WebhookRequest,
 		response: express.Response,
 	): Promise<IResponseCallbackData> {
-		// Reset request parameters
-		request.params = {};
+		const httpMethod = request.method;
+		let path = request.params.path;
 
 		// Remove trailing slash
 		if (path.endsWith('/')) {
@@ -65,12 +69,13 @@ export class TestWebhooks {
 		if (webhookData === undefined) {
 			const pathElements = path.split('/');
 			const webhookId = pathElements.shift();
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 			webhookData = activeWebhooks.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
+				const methods = await this.getWebhookMethods(path);
 				throw new ResponseHelper.NotFoundError(
-					`The requested webhook "${httpMethod} ${path}" is not registered.`,
+					webhookNotFoundErrorMessage(path, httpMethod, methods),
 					WEBHOOK_TEST_UNREGISTERED_HINT,
 				);
 			}
@@ -80,6 +85,7 @@ export class TestWebhooks {
 			path.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
+					// @ts-ignore
 					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});
@@ -95,8 +101,9 @@ export class TestWebhooks {
 		// TODO: Clean that duplication up one day and improve code generally
 		if (testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
+			const methods = await this.getWebhookMethods(path);
 			throw new ResponseHelper.NotFoundError(
-				`The requested webhook "${httpMethod} ${path}" is not registered.`,
+				webhookNotFoundErrorMessage(path, httpMethod, methods),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}
@@ -111,7 +118,6 @@ export class TestWebhooks {
 			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
-		// eslint-disable-next-line no-async-promise-executor
 		return new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
@@ -155,12 +161,12 @@ export class TestWebhooks {
 	/**
 	 * Gets all request methods associated with a single test webhook
 	 */
-	async getWebhookMethods(path: string): Promise<string[]> {
+	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
 		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
 		if (!webhookMethods.length) {
 			// The requested webhook is not registered
 			throw new ResponseHelper.NotFoundError(
-				`The requested webhook "${path}" is not registered.`,
+				webhookNotFoundErrorMessage(path),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}
@@ -205,7 +211,7 @@ export class TestWebhooks {
 
 		let key: string;
 		const activatedKey: string[] = [];
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const webhookData of webhooks) {
 			key = `${activeWebhooks.getWebhookKey(
 				webhookData.httpMethod,
@@ -224,11 +230,10 @@ export class TestWebhooks {
 			};
 
 			try {
-				// eslint-disable-next-line no-await-in-loop
 				await activeWebhooks.add(workflow, webhookData, mode, activation);
 			} catch (error) {
 				activatedKey.forEach((deleteKey) => delete testWebhookData[deleteKey]);
-				// eslint-disable-next-line no-await-in-loop
+
 				await activeWebhooks.removeWorkflow(workflow);
 				throw error;
 			}
@@ -244,12 +249,11 @@ export class TestWebhooks {
 	cancelTestWebhook(workflowId: string): boolean {
 		let foundWebhook = false;
 		const { activeWebhooks, push, testWebhookData } = this;
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const webhookKey of Object.keys(testWebhookData)) {
 			const { sessionId, timeout, workflow, workflowData } = testWebhookData[webhookKey];
 
 			if (workflowData.id !== workflowId) {
-				// eslint-disable-next-line no-continue
 				continue;
 			}
 
@@ -269,8 +273,7 @@ export class TestWebhooks {
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				activeWebhooks.removeWorkflow(workflow);
+				void activeWebhooks.removeWorkflow(workflow);
 			}
 
 			foundWebhook = true;

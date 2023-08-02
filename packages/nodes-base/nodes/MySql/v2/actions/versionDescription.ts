@@ -8,7 +8,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'mySql',
 	icon: 'file:mysql.svg',
 	group: ['input'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{ $parameter["operation"] }}',
 	description: 'Get, add and update data in MySQL',
 	defaults: {

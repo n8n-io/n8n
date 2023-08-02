@@ -12,8 +12,8 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable @typescript-eslint/unbound-method */
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;

@@ -20,7 +20,7 @@
 			:label="buttonText"
 			:type="buttonType"
 			size="large"
-			@click="$emit('click', $event)"
+			@click="$emit('click:button', $event)"
 		/>
 		<n8n-callout
 			v-if="calloutText"

@@ -1,9 +1,11 @@
 <script lang="ts">
-import { DefineComponent, defineComponent } from 'vue';
-import { Pagination as ElPagination } from 'element-ui';
+import { defineComponent } from 'vue';
+import { ElPagination } from 'element-plus';
 
 export default defineComponent({
-	props: (ElPagination as unknown as DefineComponent).props,
+	props: {
+		...ElPagination.props,
+	},
 	components: {
 		ElPagination,
 	},
@@ -12,9 +14,8 @@ export default defineComponent({
 
 <template>
 	<el-pagination
-		background
+		class="is-background"
 		layout="prev, pager, next"
-		v-bind="[$props, $attrs]"
-		v-on="$listeners"
+		v-bind="{ ...$props, ...$attrs }"
 	/>
 </template>

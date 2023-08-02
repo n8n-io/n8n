@@ -1,9 +1,9 @@
 <template>
-	<div ref="htmlEditor" class="ph-no-capture"></div>
+	<div ref="htmlEditor"></div>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import prettier from 'prettier/standalone';
 import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
@@ -18,7 +18,9 @@ import {
 	indentOnInput,
 	LanguageSupport,
 } from '@codemirror/language';
-import { EditorState, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	dropCursor,
 	EditorView,
@@ -26,7 +28,6 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
 
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
@@ -38,10 +39,11 @@ import { theme } from './theme';
 import { nonTakenRanges } from './utils';
 import type { Range, Section } from './types';
 
-export default mixins(expressionManager).extend({
+export default defineComponent({
 	name: 'HtmlEditor',
+	mixins: [expressionManager],
 	props: {
-		html: {
+		modelValue: {
 			type: String,
 			required: true,
 		},
@@ -104,10 +106,12 @@ export default mixins(expressionManager).extend({
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
 
+					this.editorState = this.editor.state;
+
 					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
 					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 
-					this.$emit('valueChanged', this.doc);
+					this.$emit('update:modelValue', this.doc);
 				}),
 			];
 		},
@@ -169,11 +173,12 @@ export default mixins(expressionManager).extend({
 
 	methods: {
 		root() {
-			const root = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			const rootRef = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			if (!rootRef) {
+				throw new Error('Expected div with ref "htmlEditor"');
+			}
 
-			if (!root) throw new Error('Expected div with ref "htmlEditor"');
-
-			return root;
+			return rootRef;
 		},
 
 		isMissingHtmlTags() {
@@ -258,20 +263,21 @@ export default mixins(expressionManager).extend({
 	mounted() {
 		htmlEditorEventBus.on('format-html', this.format);
 
-		let doc = this.html;
+		let doc = this.modelValue;
 
-		if (this.html === '' && this.rows > 0) {
+		if (this.modelValue === '' && this.rows > 0) {
 			doc = '\n'.repeat(this.rows - 1);
 		}
 
 		const state = EditorState.create({ doc, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.root(), state });
+		this.editorState = this.editor.state;
 
 		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 	},
 
-	destroyed() {
+	beforeUnmount() {
 		htmlEditorEventBus.off('format-html', this.format);
 	},
 });

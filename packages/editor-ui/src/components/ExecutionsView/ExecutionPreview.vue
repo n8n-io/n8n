@@ -6,7 +6,7 @@
 		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
+		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
@@ -33,6 +33,7 @@
 				>
 					{{ executionUIDetails.label }}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
@@ -126,19 +127,22 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
-import { showMessage } from '@/mixins/showMessage';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
-import { VIEWS } from '@/constants';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { Dropdown as ElDropdown } from 'element-ui';
-import { IAbstractEventMessage } from 'n8n-workflow';
 
-export default mixins(restApi, showMessage, executionHelpers).extend({
+import { useMessage } from '@/composables';
+import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { ElDropdown } from 'element-plus';
+
+type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
+
+export default defineComponent({
 	name: 'execution-preview',
+	mixins: [executionHelpers],
 	components: {
 		ElDropdown,
 		WorkflowPreview,
@@ -146,6 +150,11 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	data() {
 		return {
 			VIEWS,
+		};
+	},
+	setup() {
+		return {
+			...useMessage(),
 		};
 	},
 	computed: {
@@ -162,14 +171,18 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	},
 	methods: {
 		async onDeleteExecution(): Promise<void> {
-			const deleteConfirmed = await this.confirmMessage(
+			const deleteConfirmed = await this.confirm(
 				this.$locale.baseText('executionDetails.confirmMessage.message'),
 				this.$locale.baseText('executionDetails.confirmMessage.headline'),
-				'warning',
-				this.$locale.baseText('executionDetails.confirmMessage.confirmButtonText'),
-				'',
+				{
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'executionDetails.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: '',
+				},
 			);
-			if (!deleteConfirmed) {
+			if (deleteConfirmed !== MODAL_CONFIRM) {
 				return;
 			}
 			this.$emit('deleteCurrentExecution');
@@ -182,9 +195,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
-			const retryDropdown = this.$refs.retryDropdown as (Vue & { hide: () => void }) | undefined;
-			if (retryDropdown && event.relatedTarget === null) {
-				retryDropdown.hide();
+			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
+			if (retryDropdownRef && event.relatedTarget === null) {
+				retryDropdownRef.hide();
 			}
 		},
 	},

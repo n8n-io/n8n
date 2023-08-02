@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-import type { Application } from 'express';
+import type { Application, Request, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -13,7 +12,6 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	ITelemetrySettings,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
@@ -23,8 +21,8 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
-	WorkflowSettings,
-	AuthenticationMethod,
+	IUserSettings,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -32,10 +30,11 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator } from 'typeorm';
+import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
+import type { DatabaseType } from '@db/types';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { Role } from '@db/entities/Role';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -46,6 +45,7 @@ import type {
 	AuthProviderSyncHistoryRepository,
 	CredentialsRepository,
 	EventDestinationsRepository,
+	ExecutionDataRepository,
 	ExecutionMetadataRepository,
 	ExecutionRepository,
 	InstalledNodesRepository,
@@ -57,11 +57,11 @@ import type {
 	TagRepository,
 	UserRepository,
 	VariablesRepository,
-	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
+import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 
 export interface IActivationError {
 	time: number;
@@ -85,12 +85,14 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
-export interface IDatabaseCollections {
+/* eslint-disable @typescript-eslint/naming-convention */
+export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	AuthIdentity: AuthIdentityRepository;
 	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
 	Credentials: CredentialsRepository;
 	EventDestinations: EventDestinationsRepository;
 	Execution: ExecutionRepository;
+	ExecutionData: ExecutionDataRepository;
 	ExecutionMetadata: ExecutionMetadataRepository;
 	InstalledNodes: InstalledNodesRepository;
 	InstalledPackages: InstalledPackagesRepository;
@@ -101,11 +103,11 @@ export interface IDatabaseCollections {
 	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
-	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 // ----------------------------------
 //               tags
@@ -162,7 +164,6 @@ export type ICredentialsDecryptedDb = ICredentialsBase & ICredentialsDecrypted;
 
 export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 
-export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
@@ -218,19 +219,6 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 }
 
-export interface IExecutionResponseApi {
-	id: string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId?: string;
-	finished: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	data?: object;
-	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
-}
 export interface IExecutionsListResponse {
 	count: number;
 	// results: IExecutionShortResponse[];
@@ -313,12 +301,24 @@ export interface IExternalHooksClass {
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
+export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
+
+export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
+
+export type WaitingWebhookRequest = WebhookRequest & {
+	params: WebhookRequest['path'] & { suffix?: string };
+};
+
+export interface IWebhookManager {
+	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
+	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
+}
+
 export interface IDiagnosticInfo {
 	versionCli: string;
 	databaseType: DatabaseType;
 	notificationsEnabled: boolean;
 	disableProductionWebhooksOnMainProcess: boolean;
-	basicAuthActive: boolean;
 	systemInfo: {
 		os: {
 			type?: string;
@@ -336,9 +336,9 @@ export interface IDiagnosticInfo {
 	};
 	deploymentType: string;
 	binaryDataMode: string;
-	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
+	saml_enabled: boolean;
 }
 
 export interface ITelemetryUserDeletionData {
@@ -469,90 +469,6 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface IN8nUISettings {
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
-	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
-	saveManualExecutions: boolean;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
-	oauthCallbackUrls: {
-		oauth1: string;
-		oauth2: string;
-	};
-	timezone: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	versionCli: string;
-	n8nMetadata?: {
-		[key: string]: string | number | undefined;
-	};
-	versionNotifications: IVersionNotificationSettings;
-	instanceId: string;
-	telemetry: ITelemetrySettings;
-	posthog: {
-		enabled: boolean;
-		apiHost: string;
-		apiKey: string;
-		autocapture: boolean;
-		disableSessionRecording: boolean;
-		debug: boolean;
-	};
-	personalizationSurveyEnabled: boolean;
-	userActivationSurveyEnabled: boolean;
-	defaultLocale: string;
-	userManagement: IUserManagementSettings;
-	sso: {
-		saml: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-		ldap: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-	};
-	publicApi: IPublicApiSettings;
-	workflowTagsDisabled: boolean;
-	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
-	hiringBannerEnabled: boolean;
-	templates: {
-		enabled: boolean;
-		host: string;
-	};
-	onboardingCallPromptEnabled: boolean;
-	missingPackages?: boolean;
-	executionMode: 'regular' | 'queue';
-	pushBackend: 'sse' | 'websocket';
-	communityNodesEnabled: boolean;
-	deployment: {
-		type: string;
-	};
-	isNpmAvailable: boolean;
-	allowedModules: {
-		builtIn?: string;
-		external?: string;
-	};
-	enterprise: {
-		sharing: boolean;
-		ldap: boolean;
-		saml: boolean;
-		logStreaming: boolean;
-		advancedExecutionFilters: boolean;
-		variables: boolean;
-		versionControl: boolean;
-	};
-	hideUsagePage: boolean;
-	license: {
-		environment: 'production' | 'staging';
-	};
-	variables: {
-		limit: number;
-	};
-}
-
 export interface IPersonalizationSurveyAnswers {
 	email: string | null;
 	codingSkill: string | null;
@@ -563,29 +479,8 @@ export interface IPersonalizationSurveyAnswers {
 	workArea: string[] | string | null;
 }
 
-export interface IUserSettings {
-	isOnboarded?: boolean;
-	showUserActivationSurvey?: boolean;
-	firstSuccessfulWorkflowId?: string;
-	userActivated?: boolean;
-}
-
-export interface IUserManagementSettings {
-	enabled: boolean;
-	showSetupOnFirstLoad?: boolean;
-	smtpSetup: boolean;
-	authenticationMethod: AuthenticationMethod;
-}
 export interface IActiveDirectorySettings {
 	enabled: boolean;
-}
-export interface IPublicApiSettings {
-	enabled: boolean;
-	latestVersion: number;
-	path: string;
-	swaggerUi: {
-		enabled: boolean;
-	};
 }
 
 export interface IPackageVersions {
@@ -772,22 +667,8 @@ export interface IWorkflowExecuteProcess {
 	workflowExecute: WorkflowExecute;
 }
 
-export interface IWorkflowStatisticsCounts {
-	productionSuccess: number;
-	productionError: number;
-	manualSuccess: number;
-	manualError: number;
-}
-
 export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
-}
-
-export interface IWorkflowStatisticsTimestamps {
-	productionSuccess: Date | null;
-	productionError: Date | null;
-	manualSuccess: Date | null;
-	manualError: Date | null;
 }
 
 export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
@@ -833,6 +714,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 // ----------------------------------
 //               license
 // ----------------------------------
+
+type ValuesOf<T> = T[keyof T];
+
+export type BooleanLicenseFeature = ValuesOf<typeof LICENSE_FEATURES>;
+export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
 
 export interface ILicenseReadResponse {
 	usage: {
@@ -890,3 +776,5 @@ export interface N8nApp {
 	externalHooks: IExternalHooksClass;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
+
+export type UserSettings = Pick<User, 'id' | 'settings'>;

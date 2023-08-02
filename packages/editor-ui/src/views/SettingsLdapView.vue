@@ -6,17 +6,13 @@
 			</n8n-heading>
 		</div>
 
-		<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right">
-			<div>
-				LDAP allows users to authenticate with their centralized account. It's compatible with
-				services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.
-			</div>
-			<br />
+		<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right" class="mb-l">
+			{{ $locale.baseText('settings.ldap.note') }}
 		</n8n-info-tip>
 		<n8n-action-box
 			:description="$locale.baseText('settings.ldap.disabled.description')"
 			:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
-			@click="onContactUsClick"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
@@ -32,9 +28,7 @@
 			</div>
 			<div :class="$style.docsInfoTip">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
 				</n8n-info-tip>
 			</div>
 			<div :class="$style.settingsForm">
@@ -45,7 +39,7 @@
 					:eventBus="formBus"
 					:columnView="true"
 					verticalSpacing="l"
-					@input="onInput"
+					@update="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
@@ -147,9 +141,10 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { convertToDisplayDate } from '@/utils';
-import { showMessage } from '@/mixins/showMessage';
-import {
+import { useToast, useMessage } from '@/composables';
+import type {
 	ILdapConfig,
 	ILdapSyncData,
 	ILdapSyncTable,
@@ -157,44 +152,23 @@ import {
 	IFormInputs,
 	IUser,
 } from '@/Interface';
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { MODAL_CONFIRM } from '@/constants';
 
 import humanizeDuration from 'humanize-duration';
-import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
+import { ElTable, ElTableColumn } from 'element-plus';
 import { capitalizeFirstLetter } from '@/utils';
-import InfiniteLoading from 'vue-infinite-loading';
+import InfiniteLoading from 'v3-infinite-loading';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
-import { getLdapSynchronizations } from '@/api/ldap';
-import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
-import { createEventBus } from '@/event-bus';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores';
+import { createEventBus } from 'n8n-design-system/utils';
+import type { N8nFormInputs } from 'n8n-design-system';
+import type { CellStyle } from 'element-plus';
 
-type FormValues = {
-	loginEnabled: boolean;
-	loginLabel: string;
-	serverAddress: string;
-	baseDn: string;
-	bindingType: string;
-	adminDn: string;
-	adminPassword: string;
-	loginId: string;
-	email: string;
-	lastName: string;
-	firstName: string;
-	ldapId: string;
-	synchronizationEnabled: boolean;
-	allowUnauthorizedCerts: boolean;
-	synchronizationInterval: number;
-	userFilter: string;
-	pageSize: number;
-	searchTimeout: number;
-	port: number;
-	connectionSecurity: string;
-};
+type N8nFormInputsRef = InstanceType<typeof N8nFormInputs>;
 
-type tableRow = {
+type TableRow = {
 	status: string;
 	startAt: string;
 	endedAt: string;
@@ -202,14 +176,18 @@ type tableRow = {
 	runMode: string;
 };
 
-type rowType = rowCallbackParams & tableRow;
-
-type cellType = cellCallbackParams & { property: keyof tableRow };
-
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsLdapView',
 	components: {
 		InfiniteLoading,
+		ElTable,
+		ElTableColumn,
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -234,7 +212,7 @@ export default mixins(showMessage).extend({
 		await this.getLdapConfig();
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
+		...mapStores(useUsersStore, useSettingsStore, useUIStore),
 		currentUser(): null | IUser {
 			return this.usersStore.currentUser;
 		},
@@ -243,11 +221,10 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		onContactUsClick(event: MouseEvent): void {
-			const email = this.settingsStore.isCloudDeployment ? N8N_CONTACT_EMAIL : N8N_SALES_EMAIL;
-			location.href = `mailto:${email}`;
+		goToUpgrade() {
+			this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
 		},
-		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
+		cellClassStyle({ row, column }: CellStyle<TableRow>) {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
 					return { color: 'green' };
@@ -295,45 +272,53 @@ export default mixins(showMessage).extend({
 		async onSubmit(): Promise<void> {
 			// We want to save all form values (incl. the hidden onces), so we are using
 			// `values` data prop of the `FormInputs` child component since they are all preserved there
-			const formInputs = this.$refs.ldapConfigForm as (Vue & { values: FormValues }) | undefined;
-			if (!this.hasAnyChanges || !formInputs) {
+			const formInputsRef = this.$refs.ldapConfigForm as N8nFormInputsRef | undefined;
+			if (!this.hasAnyChanges || !formInputsRef) {
 				return;
 			}
 
 			const newConfiguration: ILdapConfig = {
-				loginEnabled: formInputs.values.loginEnabled,
-				loginLabel: formInputs.values.loginLabel,
-				connectionUrl: formInputs.values.serverAddress,
-				allowUnauthorizedCerts: formInputs.values.allowUnauthorizedCerts,
-				connectionPort: +formInputs.values.port,
-				connectionSecurity: formInputs.values.connectionSecurity,
-				baseDn: formInputs.values.baseDn,
-				bindingAdminDn: formInputs.values.bindingType === 'admin' ? formInputs.values.adminDn : '',
+				loginEnabled: formInputsRef.values.loginEnabled,
+				loginLabel: formInputsRef.values.loginLabel,
+				connectionUrl: formInputsRef.values.serverAddress,
+				allowUnauthorizedCerts: formInputsRef.values.allowUnauthorizedCerts,
+				connectionPort: +formInputsRef.values.port,
+				connectionSecurity: formInputsRef.values.connectionSecurity,
+				baseDn: formInputsRef.values.baseDn,
+				bindingAdminDn:
+					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminDn : '',
 				bindingAdminPassword:
-					formInputs.values.bindingType === 'admin' ? formInputs.values.adminPassword : '',
-				emailAttribute: formInputs.values.email,
-				firstNameAttribute: formInputs.values.firstName,
-				lastNameAttribute: formInputs.values.lastName,
-				loginIdAttribute: formInputs.values.loginId,
-				ldapIdAttribute: formInputs.values.ldapId,
-				userFilter: formInputs.values.userFilter,
-				synchronizationEnabled: formInputs.values.synchronizationEnabled,
-				synchronizationInterval: +formInputs.values.synchronizationInterval,
-				searchPageSize: +formInputs.values.pageSize,
-				searchTimeout: +formInputs.values.searchTimeout,
+					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminPassword : '',
+				emailAttribute: formInputsRef.values.email,
+				firstNameAttribute: formInputsRef.values.firstName,
+				lastNameAttribute: formInputsRef.values.lastName,
+				loginIdAttribute: formInputsRef.values.loginId,
+				ldapIdAttribute: formInputsRef.values.ldapId,
+				userFilter: formInputsRef.values.userFilter,
+				synchronizationEnabled: formInputsRef.values.synchronizationEnabled,
+				synchronizationInterval: +formInputsRef.values.synchronizationInterval,
+				searchPageSize: +formInputsRef.values.pageSize,
+				searchTimeout: +formInputsRef.values.searchTimeout,
 			};
 
 			let saveForm = true;
 
 			try {
 				if (this.adConfig.loginEnabled === true && newConfiguration.loginEnabled === false) {
-					saveForm = await this.confirmMessage(
+					const confirmAction = await this.confirm(
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.message'),
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.headline'),
-						null,
-						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText'),
-						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText'),
+						{
+							cancelButtonText: this.$locale.baseText(
+								'settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText',
+							),
+							confirmButtonText: this.$locale.baseText(
+								'settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText',
+							),
+						},
 					);
+
+					saveForm = confirmAction === MODAL_CONFIRM;
 				}
 
 				if (!saveForm) {
@@ -341,13 +326,13 @@ export default mixins(showMessage).extend({
 				}
 
 				this.adConfig = await this.settingsStore.updateLdapConfig(newConfiguration);
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('settings.ldap.updateConfiguration'),
 					message: '',
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
+				this.showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			} finally {
 				if (saveForm) {
 					this.hasAnyChanges = false;
@@ -361,13 +346,13 @@ export default mixins(showMessage).extend({
 			this.loadingTestConnection = true;
 			try {
 				await this.settingsStore.testLdapConnection();
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('settings.ldap.connectionTest'),
 					message: this.$locale.baseText('settings.ldap.toast.connection.success'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('settings.ldap.connectionTestError'),
 					message: error.message,
 					type: 'error',
@@ -380,13 +365,13 @@ export default mixins(showMessage).extend({
 			this.loadingDryRun = true;
 			try {
 				await this.settingsStore.runLdapSync({ type: 'dry' });
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: this.$locale.baseText('settings.ldap.toast.sync.success'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingDryRun = false;
 				await this.reloadLdapSynchronizations();
@@ -396,13 +381,13 @@ export default mixins(showMessage).extend({
 			this.loadingLiveRun = true;
 			try {
 				await this.settingsStore.runLdapSync({ type: 'live' });
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: this.$locale.baseText('settings.ldap.toast.sync.success'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingLiveRun = false;
 				await this.reloadLdapSynchronizations();
@@ -695,7 +680,7 @@ export default mixins(showMessage).extend({
 					},
 				];
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
+				this.showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
 		async getLdapSynchronizations(state: any) {
@@ -714,7 +699,7 @@ export default mixins(showMessage).extend({
 				}
 				this.loadingTable = false;
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			}
 		},
 		async reloadLdapSynchronizations() {
@@ -723,7 +708,7 @@ export default mixins(showMessage).extend({
 				this.tableKey += 1;
 				this.dataTable = [];
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			}
 		},
 	},

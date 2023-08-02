@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
@@ -28,15 +26,13 @@ import type {
 	IRunExecutionData,
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames, EventMessageTypeNames } from 'n8n-workflow';
-import type { User } from '@db/entities/User';
-import * as ResponseHelper from '@/ResponseHelper';
 import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
-import { RestController, Get, Post, Delete } from '@/decorators';
+import { RestController, Get, Post, Delete, Authorized } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
-import { isOwnerMiddleware } from '../middlewares/isOwner';
 import type { DeleteResult } from 'typeorm';
+import { AuthenticatedRequest } from '@/requests';
 
 // ----------------------------------------
 // TypeGuards
@@ -74,12 +70,14 @@ const isMessageEventBusDestinationOptions = (
 // Controller
 // ----------------------------------------
 
+@Authorized()
 @RestController('/eventbus')
 export class EventBusController {
 	// ----------------------------------------
 	// Events
 	// ----------------------------------------
-	@Get('/event', { middlewares: [isOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Get('/event')
 	async getEvents(
 		req: express.Request,
 	): Promise<EventMessageTypes[] | Record<string, EventMessageTypes[]>> {
@@ -132,7 +130,8 @@ export class EventBusController {
 		return;
 	}
 
-	@Post('/event', { middlewares: [isOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Post('/event')
 	async postEvent(req: express.Request): Promise<EventMessageTypes | undefined> {
 		let msg: EventMessageTypes | undefined;
 		if (isEventMessageOptions(req.body)) {
@@ -172,12 +171,9 @@ export class EventBusController {
 		}
 	}
 
-	@Post('/destination', { middlewares: [isOwnerMiddleware] })
-	async postDestination(req: express.Request): Promise<any> {
-		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError('Invalid request');
-		}
-
+	@Authorized(['global', 'owner'])
+	@Post('/destination')
+	async postDestination(req: AuthenticatedRequest): Promise<any> {
 		let result: MessageEventBusDestination | undefined;
 		if (isMessageEventBusDestinationOptions(req.body)) {
 			switch (req.body.__type) {
@@ -204,7 +200,6 @@ export class EventBusController {
 					break;
 				default:
 					throw new BadRequestError(
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						`Body is missing ${req.body.__type} options or type ${req.body.__type} is unknown`,
 					);
 			}
@@ -228,11 +223,9 @@ export class EventBusController {
 		return false;
 	}
 
-	@Delete('/destination', { middlewares: [isOwnerMiddleware] })
-	async deleteDestination(req: express.Request): Promise<DeleteResult | undefined> {
-		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError('Invalid request');
-		}
+	@Authorized(['global', 'owner'])
+	@Delete('/destination')
+	async deleteDestination(req: AuthenticatedRequest): Promise<DeleteResult | undefined> {
 		if (isWithIdString(req.query)) {
 			return eventBus.removeDestination(req.query.id);
 		} else {

@@ -16,46 +16,38 @@
 			@resize="onResize"
 			@resizestart="onResizeStart"
 		>
-			<template>
-				<div
-					v-show="!editMode"
-					class="ph-no-capture"
-					:class="$style.wrapper"
-					@dblclick.stop="onDoubleClick"
-				>
-					<n8n-markdown
-						theme="sticky"
-						:content="content"
-						:withMultiBreaks="true"
-						@markdown-click="onMarkdownClick"
-					/>
-				</div>
-				<div
-					v-show="editMode"
-					@click.stop
-					@mousedown.stop
-					@mouseup.stop
-					@keydown.esc="onInputBlur"
-					@keydown.stop
-					@wheel.stop
-					class="sticky-textarea ph-no-capture"
-					:class="{ 'full-height': !shouldShowFooter }"
-				>
-					<n8n-input
-						:value="content"
-						type="textarea"
-						:rows="5"
-						@blur="onInputBlur"
-						@input="onInput"
-						ref="input"
-					/>
-				</div>
-				<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-					<n8n-text size="xsmall" aligh="right">
-						<span v-html="t('sticky.markdownHint')"></span>
-					</n8n-text>
-				</div>
-			</template>
+			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+				<n8n-markdown
+					theme="sticky"
+					:content="modelValue"
+					:withMultiBreaks="true"
+					@markdown-click="onMarkdownClick"
+				/>
+			</div>
+			<div
+				v-show="editMode"
+				@click.stop
+				@mousedown.stop
+				@mouseup.stop
+				@keydown.esc="onInputBlur"
+				@keydown.stop
+				@wheel.stop
+				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
+			>
+				<n8n-input
+					:modelValue="modelValue"
+					type="textarea"
+					:rows="5"
+					@blur="onInputBlur"
+					@update:modelValue="onUpdateModelValue"
+					ref="input"
+				/>
+			</div>
+			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
+				<n8n-text size="xsmall" aligh="right">
+					<span v-html="t('sticky.markdownHint')"></span>
+				</n8n-text>
+			</div>
 		</n8n-resize-wrapper>
 	</div>
 </template>
@@ -72,7 +64,7 @@ export default defineComponent({
 	name: 'n8n-sticky',
 	mixins: [Locale],
 	props: {
-		content: {
+		modelValue: {
 			type: String,
 		},
 		height: {
@@ -160,8 +152,8 @@ export default defineComponent({
 				this.$emit('edit', false);
 			}
 		},
-		onInput(value: string) {
-			this.$emit('input', value);
+		onUpdateModelValue(value: string) {
+			this.$emit('update:modelValue', value);
 		},
 		onMarkdownClick(link: string, event: Event) {
 			this.$emit('markdown-click', link, event);
@@ -183,7 +175,7 @@ export default defineComponent({
 			setTimeout(() => {
 				if (newMode && !prevMode && this.$refs.input) {
 					const textarea = this.$refs.input as HTMLTextAreaElement;
-					if (this.defaultText === this.content) {
+					if (this.defaultText === this.modelValue) {
 						textarea.select();
 					}
 					textarea.focus();

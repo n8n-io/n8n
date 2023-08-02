@@ -41,68 +41,68 @@
 						@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
 						data-test-id="canvas-add-button"
 					/>
-					<template v-for="nodeData in nodes">
-						<node
-							v-if="nodeData.type !== STICKY_NODE_TYPE"
-							@duplicateNode="duplicateNode"
-							@deselectAllNodes="deselectAllNodes"
-							@deselectNode="nodeDeselectedByName"
-							@nodeSelected="nodeSelectedByName"
-							@removeNode="(name) => removeNode(name, true)"
-							@runWorkflow="onRunNode"
-							@moved="onNodeMoved"
-							@run="onNodeRun"
-							:key="`${nodeData.id}_node`"
-							:name="nodeData.name"
-							:isReadOnly="isReadOnly"
-							:instance="instance"
-							:isActive="!!activeNode && activeNode.name === nodeData.name"
-							:hideActions="pullConnActive"
-							:isProductionExecutionPreview="isProductionExecutionPreview"
-						>
-							<template #custom-tooltip>
-								<span
-									v-text="
-										$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')
-									"
-								/>
-							</template>
-						</node>
-						<sticky
-							v-else
-							@deselectAllNodes="deselectAllNodes"
-							@deselectNode="nodeDeselectedByName"
-							@nodeSelected="nodeSelectedByName"
-							@removeNode="(name) => removeNode(name, true)"
-							:key="`${nodeData.id}_sticky`"
-							:name="nodeData.name"
-							:isReadOnly="isReadOnly"
-							:instance="instance"
-							:isActive="!!activeNode && activeNode.name === nodeData.name"
-							:nodeViewScale="nodeViewScale"
-							:gridSize="GRID_SIZE"
-							:hideActions="pullConnActive"
-						/>
-					</template>
+					<node
+						v-for="nodeData in nodesToRender"
+						@duplicateNode="duplicateNode"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="(name) => removeNode(name, true)"
+						@runWorkflow="onRunNode"
+						@moved="onNodeMoved"
+						@run="onNodeRun"
+						:key="`${nodeData.id}_node`"
+						:name="nodeData.name"
+						:isReadOnly="isReadOnlyRoute || readOnlyEnv"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === nodeData.name"
+						:hideActions="pullConnActive"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
+					>
+						<template #custom-tooltip>
+							<span
+								v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
+							/>
+						</template>
+					</node>
+					<sticky
+						v-for="stickyData in stickiesToRender"
+						@deselectAllNodes="deselectAllNodes"
+						@deselectNode="nodeDeselectedByName"
+						@nodeSelected="nodeSelectedByName"
+						@removeNode="(name) => removeNode(name, true)"
+						:key="`${stickyData.id}_sticky`"
+						:name="stickyData.name"
+						:isReadOnly="isReadOnlyRoute || readOnlyEnv"
+						:instance="instance"
+						:isActive="!!activeNode && activeNode.name === stickyData.name"
+						:nodeViewScale="nodeViewScale"
+						:gridSize="GRID_SIZE"
+						:hideActions="pullConnActive"
+					/>
 				</div>
 			</div>
 			<node-details-view
-				:readOnly="isReadOnly"
+				:readOnly="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:isProductionExecutionPreview="isProductionExecutionPreview"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
-			<node-creation
-				v-if="!isReadOnly"
-				:create-node-active="createNodeActive"
-				:node-view-scale="nodeViewScale"
-				@toggleNodeCreator="onToggleNodeCreator"
-				@addNode="onAddNode"
-			/>
-			<canvas-controls />
-			<div class="workflow-execute-wrapper" v-if="!isReadOnly">
+			<Suspense>
+				<NodeCreation
+					v-if="!isReadOnlyRoute && !readOnlyEnv"
+					:create-node-active="createNodeActive"
+					:node-view-scale="nodeViewScale"
+					@toggleNodeCreator="onToggleNodeCreator"
+					@addNode="onAddNode"
+				/>
+			</Suspense>
+			<Suspense>
+				<CanvasControls />
+			</Suspense>
+			<div class="workflow-execute-wrapper" v-if="!isReadOnlyRoute && !readOnlyEnv">
 				<span
 					@mouseenter="showTriggerMissingToltip(true)"
 					@mouseleave="showTriggerMissingToltip(false)"
@@ -149,7 +149,13 @@
 				/>
 
 				<n8n-icon-button
-					v-if="!isReadOnly && workflowExecution && !workflowRunning && !allTriggersDisabled"
+					v-if="
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						workflowExecution &&
+						!workflowRunning &&
+						!allTriggersDisabled
+					"
 					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
 					icon="trash"
 					size="large"
@@ -162,29 +168,31 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 
-import {
+import type {
 	Endpoint,
 	Connection,
-	EVENT_CONNECTION,
 	ConnectionEstablishedParams,
-	EVENT_CONNECTION_DETACHED,
-	EVENT_CONNECTION_MOVED,
-	INTERCEPT_BEFORE_DROP,
 	BeforeDropParams,
 	ConnectionDetachedParams,
 	ConnectionMovedParams,
 } from '@jsplumb/core';
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import {
+	EVENT_CONNECTION,
+	EVENT_CONNECTION_DETACHED,
+	EVENT_CONNECTION_MOVED,
+	INTERCEPT_BEFORE_DROP,
+} from '@jsplumb/core';
+import type { MessageBoxInputData, ElNotification } from 'element-plus';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
-	MODAL_CONFIRMED,
+	MODAL_CONFIRM,
 	NODE_OUTPUT_DEFAULT_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	ONBOARDING_PROMPT_TIMEBOX,
@@ -194,10 +202,9 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_CREATOR_VIEW,
 	EnterpriseEditionFeature,
-	ASSUMPTION_EXPERIMENT,
-	REGULAR_NODE_FILTER,
+	REGULAR_NODE_CREATOR_VIEW,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
@@ -205,27 +212,28 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
-import { restApi } from '@/mixins/restApi';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
-import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
-
+import {
+	useGlobalLinkActions,
+	useCanvasMouseSelect,
+	useMessage,
+	useToast,
+	useTitleChange,
+} from '@/composables';
+import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
+import { useI18n } from '@/composables/useI18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
-import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
-import {
-	deepCopy,
+import type {
 	IConnection,
 	IConnections,
 	IDataObject,
+	IExecutionsSummary,
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
@@ -237,10 +245,9 @@ import {
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	NodeHelpers,
-	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -254,7 +261,6 @@ import type {
 	ITag,
 	INewWorkflowData,
 	IWorkflowTemplate,
-	IExecutionsSummary,
 	IWorkflowToShare,
 	IUser,
 	INodeUpdatePropertiesInformation,
@@ -262,26 +268,28 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { Route, RawLocation } from 'vue-router';
+import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
-import { useSegment } from '@/stores/segment';
-import { useTemplatesStore } from '@/stores/templates';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useTagsStore } from '@/stores/tags';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { useCanvasStore } from '@/stores/canvas';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { useEnvironmentsStore } from '@/stores';
+import {
+	useEnvironmentsStore,
+	useWorkflowsEEStore,
+	useCanvasStore,
+	useNodeCreatorStore,
+	useTagsStore,
+	useCredentialsStore,
+	useNodeTypesStore,
+	useTemplatesStore,
+	useSegment,
+	useNDVStore,
+	useRootStore,
+	useWorkflowsStore,
+	useUsersStore,
+	useSettingsStore,
+	useUIStore,
+	useHistoryStore,
+} from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
-import { useHistoryStore } from '@/stores/history';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -291,6 +299,7 @@ import {
 	RenameNodeCommand,
 	historyBus,
 } from '@/models/history';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import {
 	EVENT_ENDPOINT_MOUSEOVER,
 	EVENT_ENDPOINT_MOUSEOUT,
@@ -299,67 +308,73 @@ import {
 	EVENT_CONNECTION_ABORT,
 	EVENT_CONNECTION_MOUSEOUT,
 	EVENT_CONNECTION_MOUSEOVER,
-	BrowserJsPlumbInstance,
 	ready,
 } from '@jsplumb/browser-ui';
+import type { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
 import {
-	N8nPlusEndpoint,
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
-import { usePostHog } from '@/stores/posthog';
+import { sourceControlEventBus } from '@/event-bus/source-control';
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
 
-const NodeCreator = () => import('@/components/Node/NodeCreator/NodeCreator.vue');
-const NodeCreation = () => import('@/components/Node/NodeCreation.vue');
-const CanvasControls = () => import('@/components/CanvasControls.vue');
+const NodeCreation = defineAsyncComponent(async () => import('@/components/Node/NodeCreation.vue'));
+const CanvasControls = defineAsyncComponent(async () => import('@/components/CanvasControls.vue'));
 
-export default mixins(
-	copyPaste,
-	externalHooks,
-	genericHelpers,
-	moveNodeWorkflow,
-	restApi,
-	showMessage,
-	titleChange,
-	workflowHelpers,
-	workflowRun,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'NodeView',
+	mixins: [
+		copyPaste,
+		externalHooks,
+		genericHelpers,
+		moveNodeWorkflow,
+		workflowHelpers,
+		workflowRun,
+		debounceHelper,
+	],
 	components: {
 		NodeDetailsView,
 		Node,
-		NodeCreator,
-		NodeSettings,
 		Sticky,
 		CanvasAddButton,
 		NodeCreation,
 		CanvasControls,
 	},
-	setup() {
+	setup(props) {
+		const locale = useI18n();
+
 		return {
+			locale,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
+			...useTitleChange(),
+			...useToast(),
+			...useMessage(),
+			...useUniqueNodeName(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...workflowRun.setup?.(props),
 		};
 	},
 	errorCaptured: (err, vm, info) => {
-		console.error('errorCaptured'); // eslint-disable-line no-console
-		console.error(err); // eslint-disable-line no-console
+		console.error('errorCaptured');
+		console.error(err);
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
 		$route(to: Route, from: Route) {
+			this.readOnlyEnvRouteCheck();
+
 			const currentTab = getNodeViewTab(to);
 			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
 			let workflowChanged =
 				from.params.name !== to.params.name &&
 				// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
 				!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) &&
+				!(from.name === VIEWS.NEW_WORKFLOW) &&
 				// Also ignore if workflow id changes when saving new workflow
 				to.params.action !== 'workflowSave';
 			const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
@@ -373,8 +388,8 @@ export default mixins(
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
-					this.loadCredentials();
-					this.initView().then(() => {
+					void this.loadCredentials();
+					void this.initView().then(() => {
 						this.stopLoading();
 						if (this.blankRedirect) {
 							this.blankRedirect = false;
@@ -403,9 +418,9 @@ export default mixins(
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 		},
 		nodeViewScale(newScale) {
-			const element = this.$refs.nodeView as HTMLDivElement;
-			if (element) {
-				element.style.transform = `scale(${newScale})`;
+			const elementRef = this.$refs.nodeView as HTMLDivElement | undefined;
+			if (elementRef) {
+				elementRef.style.transform = `scale(${newScale})`;
 			}
 		},
 	},
@@ -414,16 +429,22 @@ export default mixins(
 			next();
 			return;
 		}
-		if (this.uiStore.stateIsDirty) {
-			const confirmModal = await this.confirmModal(
+		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
+			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-				'warning',
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-				true,
+				{
+					title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'generic.unsavedWork.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: this.$locale.baseText(
+						'generic.unsavedWork.confirmMessage.cancelButtonText',
+					),
+					showClose: true,
+				},
 			);
-			if (confirmModal === MODAL_CONFIRMED) {
+			if (confirmModal === MODAL_CONFIRM) {
 				// Make sure workflow id is empty when leaving the editor
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.saveCurrentWorkflow({}, false);
@@ -435,12 +456,12 @@ export default mixins(
 				if (from.name === VIEWS.NEW_WORKFLOW) {
 					// Replace the current route with the new workflow route
 					// before navigating to the new route when saving new workflow.
-					this.$router.replace(
+					await this.$router.replace(
 						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
 						() => {
 							// We can't use next() here since vue-router
 							// would prevent the navigation with an error
-							this.$router.push(to as RawLocation);
+							void this.$router.push(to as RawLocation);
 						},
 					);
 				} else {
@@ -448,7 +469,7 @@ export default mixins(
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				await this.resetWorkspace();
+				this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 				next();
 			}
@@ -476,16 +497,10 @@ export default mixins(
 			useHistoryStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
-			return this.rootStore.nativelyNumberSuffixedDefaults;
+			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
-		},
-		defaultLocale(): string {
-			return this.rootStore.defaultLocale;
-		},
-		isEnglishLocale(): boolean {
-			return this.defaultLocale === 'en';
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
@@ -497,13 +512,21 @@ export default mixins(
 			return this.$route.name === VIEWS.DEMO;
 		},
 		showCanvasAddButton(): boolean {
-			return this.loadingService === null && !this.containsTrigger && !this.isDemo;
+			return (
+				this.loadingService === null && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
+			);
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
 		},
 		nodes(): INodeUi[] {
 			return this.workflowsStore.allNodes;
+		},
+		nodesToRender(): INodeUi[] {
+			return this.workflowsStore.allNodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+		},
+		stickiesToRender(): INodeUi[] {
+			return this.workflowsStore.allNodes.filter((node) => node.type === STICKY_NODE_TYPE);
 		},
 		runButtonText(): string {
 			if (!this.workflowRunning) {
@@ -610,6 +633,7 @@ export default mixins(
 			isProductionExecutionPreview: false,
 			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
+			readOnlyNotification: null as null | typeof ElNotification,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -617,15 +641,33 @@ export default mixins(
 			NODE_CREATOR_OPEN_SOURCES,
 		};
 	},
-	beforeDestroy() {
-		this.resetWorkspace();
-		// Make sure the event listeners get removed again else we
-		// could add up with them registered multiple times
-		document.removeEventListener('keydown', this.keyDown);
-		document.removeEventListener('keyup', this.keyUp);
-		this.unregisterCustomAction('showNodeCreator');
-	},
 	methods: {
+		editAllowedCheck(): boolean {
+			if (this.readOnlyNotification?.visible) {
+				return;
+			}
+			if (this.isReadOnlyRoute || this.readOnlyEnv) {
+				this.readOnlyNotification = this.showMessage({
+					title: this.$locale.baseText(
+						this.readOnlyEnv
+							? `readOnlyEnv.showMessage.${this.isReadOnlyRoute ? 'executions' : 'workflows'}.title`
+							: 'readOnly.showMessage.executions.title',
+					),
+					message: this.$locale.baseText(
+						this.readOnlyEnv
+							? `readOnlyEnv.showMessage.${
+									this.isReadOnlyRoute ? 'executions' : 'workflows'
+							  }.message`
+							: 'readOnly.showMessage.executions.message',
+					),
+					type: 'info',
+					dangerouslyUseHTMLString: true,
+				});
+
+				return false;
+			}
+			return true;
+		},
 		showTriggerMissingToltip(isVisible: boolean) {
 			this.showTriggerMissingTooltip = isVisible;
 		},
@@ -637,11 +679,11 @@ export default mixins(
 				source: 'canvas',
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
-			this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
-			this.runWorkflow(nodeName, source);
+			void this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
+			void this.runWorkflow(nodeName, source);
 		},
 		async onRunWorkflow() {
-			this.getWorkflowDataToSave().then((workflowData) => {
+			void this.getWorkflowDataToSave().then((workflowData) => {
 				const telemetryPayload = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
@@ -650,7 +692,7 @@ export default mixins(
 					),
 				};
 				this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
-				this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
+				void this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
 			await this.runWorkflow();
@@ -663,10 +705,13 @@ export default mixins(
 					? this.$locale.baseText('nodeView.addOrEnableTriggerNode')
 					: this.$locale.baseText('nodeView.addATriggerNodeFirst');
 
-			this.registerCustomAction('showNodeCreator', () =>
-				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
-			);
-			const notice = this.$showMessage({
+			this.registerCustomAction({
+				key: 'showNodeCreator',
+				action: () =>
+					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
+			});
+
+			const notice = this.showMessage({
 				type: 'info',
 				title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
 				message,
@@ -676,83 +721,12 @@ export default mixins(
 						// Close the creator panel if user clicked on the link
 						if (this.createNodeActive) notice.close();
 					}, 0),
+				dangerouslyUseHTMLString: true,
 			});
 		},
 		clearExecutionData() {
 			this.workflowsStore.workflowExecutionData = null;
 			this.updateNodesExecutionIssues();
-		},
-		translateName(type: string, originalName: string) {
-			return this.$locale.headerText({
-				key: `headers.${this.$locale.shortNodeType(type)}.displayName`,
-				fallback: originalName,
-			});
-		},
-		getUniqueNodeName({
-			originalName,
-			additionalUsedNames = [],
-			type = '',
-		}: {
-			originalName: string;
-			additionalUsedNames?: string[];
-			type?: string;
-		}) {
-			const allNodeNamesOnCanvas = this.workflowsStore.allNodes.map((n: INodeUi) => n.name);
-			originalName = this.isEnglishLocale ? originalName : this.translateName(type, originalName);
-
-			if (
-				!allNodeNamesOnCanvas.includes(originalName) &&
-				!additionalUsedNames.includes(originalName)
-			) {
-				return originalName; // already unique
-			}
-
-			let natives: string[] = this.nativelyNumberSuffixedDefaults;
-			natives = this.isEnglishLocale
-				? natives
-				: natives.map((name) => {
-						const type = name.toLowerCase().replace('_', '');
-						return this.translateName(type, name);
-				  });
-
-			const found = natives.find((n) => originalName.startsWith(n));
-
-			let ignore, baseName, nameIndex, uniqueName;
-			let index = 1;
-
-			if (found) {
-				// name natively ends with number
-				nameIndex = originalName.split(found).pop();
-				if (nameIndex) {
-					index = parseInt(nameIndex, 10);
-				}
-				baseName = uniqueName = found;
-			} else {
-				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
-
-				if (nameMatch === null) {
-					// name is only a number
-					index = parseInt(originalName, 10);
-					baseName = '';
-					uniqueName = baseName + index;
-				} else {
-					// name is string or string/number combination
-					[ignore, baseName, nameIndex] = nameMatch;
-					if (nameIndex !== '') {
-						index = parseInt(nameIndex, 10);
-					}
-					uniqueName = baseName;
-				}
-			}
-
-			while (
-				allNodeNamesOnCanvas.includes(uniqueName) ||
-				additionalUsedNames.includes(uniqueName)
-			) {
-				uniqueName = baseName + index++;
-			}
-
-			return uniqueName;
 		},
 		async onSaveKeyboardShortcut(e: KeyboardEvent) {
 			let saved = await this.saveCurrentWorkflow();
@@ -766,7 +740,7 @@ export default mixins(
 					saved = true;
 				}
 				if (saved) {
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('generic.workflowSaved'),
 						type: 'success',
 					});
@@ -775,7 +749,7 @@ export default mixins(
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
-			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
+			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
@@ -784,9 +758,9 @@ export default mixins(
 			this.resetWorkspace();
 			let data: IExecutionResponse | undefined;
 			try {
-				data = await this.restApi().getExecution(executionId);
+				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
+				this.showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
 				return;
 			}
 			if (data === undefined) {
@@ -806,11 +780,10 @@ export default mixins(
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
 			);
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-				this.uiStore.stateIsDirty = false;
-			});
-			this.$externalHooks().run('execution.open', {
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = false;
+			void this.$externalHooks().run('execution.open', {
 				workflowId: data.workflowData.id,
 				workflowName: data.workflowData.name,
 				executionId,
@@ -838,13 +811,18 @@ export default mixins(
 
 				if (!nodeErrorFound && data.data.resultData.error.stack) {
 					// Display some more information for now in console to make debugging easier
-					// TODO: Improve this in the future by displaying in UI
-					console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
-					console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
+					console.error(`Execution ${executionId} error:`);
+					console.error(data.data.resultData.error.stack);
+					this.showMessage({
+						title: this.$locale.baseText('nodeView.showError.workflowError'),
+						message: data.data.resultData.error.message,
+						type: 'error',
+						duration: 0,
+					});
 				}
 			}
 			if ((data as IExecutionsSummary).waitTill) {
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
 					message: `<a data-action="reload">${this.$locale.baseText(
 						'nodeView.refresh',
@@ -872,9 +850,8 @@ export default mixins(
 				this.workflowsStore.setWorkflowPinData(data.workflow.pinData);
 			}
 
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
 		},
 		async openWorkflowTemplate(templateId: string) {
 			this.startLoading();
@@ -886,7 +863,7 @@ export default mixins(
 
 			let data: IWorkflowTemplate | undefined;
 			try {
-				this.$externalHooks().run('template.requested', { templateId });
+				void this.$externalHooks().run('template.requested', { templateId });
 				data = await this.templatesStore.getWorkflowTemplate(templateId);
 
 				if (!data) {
@@ -897,24 +874,29 @@ export default mixins(
 					);
 				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+				this.showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
+				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
 
 			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
 
+			data.workflow.nodes?.forEach((node) => {
+				if (node.credentials) {
+					delete node.credentials;
+				}
+			});
+
 			this.blankRedirect = true;
-			this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
+			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
 			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
-			this.$nextTick(() => {
-				this.canvasStore.zoomToFit();
-				this.uiStore.stateIsDirty = true;
-			});
+			await this.$nextTick();
+			this.canvasStore.zoomToFit();
+			this.uiStore.stateIsDirty = true;
 
-			this.$externalHooks().run('template.open', {
+			void this.$externalHooks().run('template.open', {
 				templateId,
 				templateName: data.name,
 				workflow: data.workflow,
@@ -965,7 +947,7 @@ export default mixins(
 				this.uiStore.stateIsDirty = false;
 			}
 			this.canvasStore.zoomToFit();
-			this.$externalHooks().run('workflow.open', {
+			void this.$externalHooks().run('workflow.open', {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 			});
@@ -1015,11 +997,11 @@ export default mixins(
 				e.stopPropagation();
 				e.preventDefault();
 
-				if (this.isReadOnly) {
+				if (this.isReadOnlyRoute || this.readOnlyEnv) {
 					return;
 				}
 
-				this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
+				void this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
 
 				return;
 			}
@@ -1047,7 +1029,7 @@ export default mixins(
 			if (e.key === 'Escape') {
 				this.createNodeActive = false;
 				if (this.activeNode) {
-					this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+					void this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 					this.ndvStore.activeNodeName = null;
 				}
 
@@ -1060,40 +1042,44 @@ export default mixins(
 			}
 
 			if (e.key === 'd') {
-				this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
+				void this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 			} else if (e.key === 'Delete' || e.key === 'Backspace') {
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
+				void this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 			} else if (e.key === 'Tab') {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
-					createNodeActive: !this.createNodeActive && !this.isReadOnly,
+					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute && !this.readOnlyEnv,
 				});
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
 			} else if (e.key === ' ') {
 				this.moveCanvasKeyPressed = true;
-			} else if (e.key === 'F2' && !this.isReadOnly) {
+			} else if (e.key === 'F2' && !this.isReadOnlyRoute && !this.readOnlyEnv) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
-					this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
+					void this.callDebounced(
+						'renameNodePrompt',
+						{ debounceTime: 1500 },
+						lastSelectedNode.name,
+					);
 				}
 			} else if (e.key === 'a' && this.isCtrlKeyPressed(e) === true) {
 				// Select all nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('selectAllNodes', { debounceTime: 1000 });
+				void this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 			} else if (e.key === 'c' && this.isCtrlKeyPressed(e)) {
-				this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
+				void this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 			} else if (e.key === 'x' && this.isCtrlKeyPressed(e)) {
 				// Cut nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
+				void this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
 			} else if (e.key === 'n' && this.isCtrlKeyPressed(e) && e.altKey) {
 				// Create a new workflow
 				e.stopPropagation();
@@ -1103,12 +1089,12 @@ export default mixins(
 				}
 
 				if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
-					this.$root.$emit('newWorkflow');
+					nodeViewEventBus.emit('newWorkflow');
 				} else {
-					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
 					type: 'success',
 				});
@@ -1117,7 +1103,10 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 
 				if (lastSelectedNode !== null) {
-					if (lastSelectedNode.type === STICKY_NODE_TYPE && this.isReadOnly) {
+					if (
+						lastSelectedNode.type === STICKY_NODE_TYPE &&
+						(this.isReadOnlyRoute || this.readOnlyEnv)
+					) {
 						return;
 					}
 					this.ndvStore.activeNodeName = lastSelectedNode.name;
@@ -1127,7 +1116,7 @@ export default mixins(
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
 			} else if (e.key === 'ArrowRight') {
 				// Set child node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1143,7 +1132,7 @@ export default mixins(
 					return;
 				}
 
-				this.callDebounced(
+				void this.callDebounced(
 					'nodeSelectedByName',
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
@@ -1155,7 +1144,7 @@ export default mixins(
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
 			} else if (e.key === 'ArrowLeft') {
 				// Set parent node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1175,7 +1164,7 @@ export default mixins(
 					return;
 				}
 
-				this.callDebounced(
+				void this.callDebounced(
 					'nodeSelectedByName',
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
@@ -1247,7 +1236,7 @@ export default mixins(
 				}
 
 				if (nextSelectNode !== null) {
-					this.callDebounced(
+					void this.callDebounced(
 						'nodeSelectedByName',
 						{ debounceTime: 100 },
 						nextSelectNode,
@@ -1357,7 +1346,7 @@ export default mixins(
 		},
 
 		cutSelectedNodes() {
-			const deleteCopiedNodes = !this.isReadOnly;
+			const deleteCopiedNodes = !this.isReadOnlyRoute && !this.readOnlyEnv;
 			this.copySelectedNodes(deleteCopiedNodes);
 			if (deleteCopiedNodes) {
 				this.deleteSelectedNodes();
@@ -1365,7 +1354,7 @@ export default mixins(
 		},
 
 		copySelectedNodes(isCut: boolean) {
-			this.getSelectedNodesToSave().then((data) => {
+			void this.getSelectedNodesToSave().then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
 						instanceId: this.rootStore.instanceId,
@@ -1383,7 +1372,7 @@ export default mixins(
 				this.copyToClipboard(nodeData);
 				if (data.nodes.length > 0) {
 					if (!isCut) {
-						this.$showMessage({
+						this.showMessage({
 							title: 'Copied!',
 							message: '',
 							type: 'success',
@@ -1404,14 +1393,14 @@ export default mixins(
 
 			try {
 				this.stopExecutionInProgress = true;
-				await this.restApi().stopCurrentExecution(executionId);
-				this.$showMessage({
+				await this.workflowsStore.stopCurrentExecution(executionId);
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
 					type: 'success',
 				});
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
-				const execution = await this.restApi().getExecution(executionId);
+				const execution = await this.workflowsStore.getExecution(executionId);
 
 				if (execution === undefined) {
 					// execution finished but was not saved (e.g. due to low connectivity)
@@ -1423,8 +1412,8 @@ export default mixins(
 					this.workflowsStore.executingNode = null;
 					this.uiStore.removeActiveAction('workflowRunning');
 
-					this.$titleSet(this.workflowsStore.workflowName, 'IDLE');
-					this.$showMessage({
+					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 						message: this.$locale.baseText(
 							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
@@ -1447,22 +1436,22 @@ export default mixins(
 						retryOf: execution.retryOf,
 					} as IPushDataExecutionFinished;
 					this.workflowsStore.finishActiveExecution(pushData);
-					this.$titleSet(execution.workflowData.name, 'IDLE');
+					this.titleSet(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode = null;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 						message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
 						type: 'success',
 					});
 				} else {
-					this.$showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
+					this.showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
 				}
 			}
 			this.stopExecutionInProgress = false;
 
-			this.getWorkflowDataToSave().then((workflowData) => {
+			void this.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
@@ -1477,9 +1466,9 @@ export default mixins(
 
 		async stopWaitingForWebhook() {
 			try {
-				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
+				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.title'),
 				);
@@ -1490,6 +1479,10 @@ export default mixins(
 		 * This method gets called when data got pasted into the window
 		 */
 		async receivedCopyPasteData(plainTextData: string): Promise<void> {
+			if (this.readOnlyEnv) {
+				return;
+			}
+
 			const currentTab = getNodeViewTab(this.$route);
 			if (currentTab === MAIN_HEADER_TABS.WORKFLOW) {
 				let workflowData: IWorkflowDataUpdate | undefined;
@@ -1504,19 +1497,24 @@ export default mixins(
 						return;
 					}
 
-					const importConfirm = await this.confirmMessage(
+					const importConfirm = await this.confirm(
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.message', {
 							interpolate: { plainTextData },
 						}),
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
-						'warning',
-						this.$locale.baseText(
-							'nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText',
-						),
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
+						{
+							type: 'warning',
+							confirmButtonText: this.$locale.baseText(
+								'nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText',
+							),
+							dangerouslyUseHTMLString: true,
+						},
 					);
 
-					if (!importConfirm) {
+					if (importConfirm !== MODAL_CONFIRM) {
 						return;
 					}
 
@@ -1550,10 +1548,10 @@ export default mixins(
 
 			this.startLoading();
 			try {
-				workflowData = await this.restApi().getWorkflowFromUrl(url);
+				workflowData = await this.workflowsStore.getWorkflowFromUrl(url);
 			} catch (error) {
 				this.stopLoading();
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
 				);
@@ -1570,7 +1568,6 @@ export default mixins(
 			source: string,
 			importTags = true,
 		): Promise<void> {
-			// eslint-disable-line @typescript-eslint/default-param-last
 			// If it is JSON check if it looks on the first look like data we can use
 			if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 				return;
@@ -1671,10 +1668,7 @@ export default mixins(
 					this.workflowsStore.addWorkflowTagIds(tagIds);
 				}
 			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('nodeView.showError.importWorkflowData.title'),
-				);
+				this.showError(error, this.$locale.baseText('nodeView.showError.importWorkflowData.title'));
 			}
 		},
 		onDragOver(event: DragEvent) {
@@ -1738,7 +1732,7 @@ export default mixins(
 		},
 		showMaxNodeTypeError(nodeTypeData: INodeTypeDescription) {
 			const maxNodes = nodeTypeData.maxNodes;
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
 				message: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
 					adjustToNumber: maxNodes,
@@ -1750,13 +1744,19 @@ export default mixins(
 		},
 
 		async getNewNodeWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
+			let nodeVersion = nodeTypeData.defaultVersion;
+
+			if (nodeVersion === undefined) {
+				nodeVersion = Array.isArray(nodeTypeData.version)
+					? nodeTypeData.version.slice(-1)[0]
+					: nodeTypeData.version;
+			}
+
 			const newNodeData: INodeUi = {
 				id: uuid(),
 				name: nodeTypeData.defaults.name as string,
 				type: nodeTypeData.name,
-				typeVersion: Array.isArray(nodeTypeData.version)
-					? nodeTypeData.version.slice(-1)[0]
-					: nodeTypeData.version,
+				typeVersion: nodeVersion,
 				position: [0, 0],
 				parameters: {},
 			};
@@ -1842,7 +1842,7 @@ export default mixins(
 				this.nodeTypesStore.getNodeType(nodeTypeName);
 
 			if (nodeTypeData === null) {
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.addNodeButton.title'),
 					message: this.$locale.baseText('nodeView.showMessage.addNodeButton.message', {
 						interpolate: { nodeTypeName },
@@ -1935,11 +1935,9 @@ export default mixins(
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
 
-			// Check if node-name is unique else find one that is
-			newNodeData.name = this.getUniqueNodeName({
-				originalName: newNodeData.name,
-				type: newNodeData.type,
-			});
+			const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
+
+			newNodeData.name = this.uniqueNodeName(localizedName);
 
 			if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
 				newNodeData.webhookId = uuid();
@@ -1955,7 +1953,7 @@ export default mixins(
 					workflow_id: this.workflowsStore.workflowId,
 				});
 			} else {
-				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+				void this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
 				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
@@ -2073,7 +2071,7 @@ export default mixins(
 
 			// If a node is last selected then connect between the active and its child ones
 			if (lastSelectedNode) {
-				await Vue.nextTick();
+				await this.$nextTick();
 
 				if (lastSelectedConnection && lastSelectedConnection.__meta) {
 					this.__deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
@@ -2141,7 +2139,7 @@ export default mixins(
 					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
 				});
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onInterceptBeforeDrop(info: BeforeDropParams) {
@@ -2163,7 +2161,7 @@ export default mixins(
 
 				return true;
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 				return true;
 			}
 		},
@@ -2206,7 +2204,7 @@ export default mixins(
 				if (!this.suspendRecordingDetachedConnections) {
 					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 				}
-				if (!this.isReadOnly) {
+				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
 					NodeViewUtils.addConnectionActionsOverlay(
 						info.connection,
 						() => {
@@ -2233,7 +2231,7 @@ export default mixins(
 					}, 0);
 				}
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onDragMove() {
@@ -2247,6 +2245,11 @@ export default mixins(
 				});
 			});
 		},
+		isConnectionActive(connection: Connection | null) {
+			if (!connection?.id || !this.activeConnection?.id) return false;
+
+			return this.activeConnection?.id === connection.id;
+		},
 		onConnectionMouseOver(connection: Connection) {
 			try {
 				if (this.exitTimer !== undefined) {
@@ -2255,16 +2258,19 @@ export default mixins(
 				}
 
 				if (
-					this.isReadOnly ||
-					this.enterTimer ||
-					!connection ||
-					connection === this.activeConnection
+					this.isReadOnlyRoute ??
+					this.readOnlyEnv ??
+					this.enterTimer ??
+					!connection ??
+					this.isConnectionActive(connection)
 				)
 					return;
 
-				if (this.activeConnection) NodeViewUtils.hideConnectionActions(this.activeConnection);
-
 				this.enterTimer = setTimeout(() => {
+					// If there is already an active connection then hide it first
+					if (this.activeConnection && !this.isConnectionActive(connection)) {
+						NodeViewUtils.hideConnectionActions(this.activeConnection);
+					}
 					this.enterTimer = undefined;
 					if (connection) {
 						NodeViewUtils.showConnectionActions(connection);
@@ -2272,7 +2278,7 @@ export default mixins(
 					}
 				}, 150);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionMouseOut(connection: Connection) {
@@ -2284,18 +2290,24 @@ export default mixins(
 					this.enterTimer = undefined;
 				}
 
-				if (this.isReadOnly || !connection || this.activeConnection?.id !== connection.id) return;
+				if (
+					this.isReadOnlyRoute ??
+					this.readOnlyEnv ??
+					!connection ??
+					!this.isConnectionActive(connection)
+				)
+					return;
 
 				this.exitTimer = setTimeout(() => {
 					this.exitTimer = undefined;
 
-					if (connection && this.activeConnection === connection) {
+					if (connection && this.isConnectionActive(connection)) {
 						NodeViewUtils.hideConnectionActions(this.activeConnection);
 						this.activeConnection = null;
 					}
 				}, 500);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionMoved(info: ConnectionMovedParams) {
@@ -2324,7 +2336,7 @@ export default mixins(
 
 				this.__removeConnection(connectionInfo, false);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onEndpointMouseOver(endpoint: Endpoint, mouse) {
@@ -2370,7 +2382,7 @@ export default mixins(
 					this.historyStore.pushCommandToUndo(removeCommand);
 				}
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionDrag(connection: Connection) {
@@ -2442,7 +2454,7 @@ export default mixins(
 				window.addEventListener('mouseup', onMouseUp);
 				window.addEventListener('touchend', onMouseMove);
 			} catch (e) {
-				console.error(e); // eslint-disable-line no-console
+				console.error(e);
 			}
 		},
 		onConnectionDragAbortDetached(connection: Connection) {
@@ -2532,14 +2544,14 @@ export default mixins(
 		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
-			await this.resetWorkspace();
+			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
-			this.tryToAddWelcomeSticky();
+			await this.tryToAddWelcomeSticky();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.workflowsStore.activeWorkflowExecution = null;
@@ -2554,7 +2566,7 @@ export default mixins(
 				// In case the workflow got saved we do not have to run init
 				// as only the route changed but all the needed data is already loaded
 				this.uiStore.stateIsDirty = false;
-				return Promise.resolve();
+				return;
 			}
 			if (this.blankRedirect) {
 				this.blankRedirect = false;
@@ -2562,21 +2574,26 @@ export default mixins(
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId);
 			} else {
-				const result = this.uiStore.stateIsDirty;
-				if (result) {
-					const confirmModal = await this.confirmModal(
+				if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
+					const confirmModal = await this.confirm(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-						'warning',
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-						true,
+						{
+							title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+							type: 'warning',
+							confirmButtonText: this.$locale.baseText(
+								'generic.unsavedWork.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'generic.unsavedWork.confirmMessage.cancelButtonText',
+							),
+							showClose: true,
+						},
 					);
-					if (confirmModal === MODAL_CONFIRMED) {
+					if (confirmModal === MODAL_CONFIRM) {
 						const saved = await this.saveCurrentWorkflow();
 						if (saved) await this.settingsStore.fetchPromptsData();
 					} else if (confirmModal === MODAL_CLOSE) {
-						return Promise.resolve();
+						return;
 					}
 				}
 				// Load a workflow
@@ -2587,17 +2604,17 @@ export default mixins(
 				if (workflowId !== null) {
 					let workflow: IWorkflowDb | undefined = undefined;
 					try {
-						workflow = await this.restApi().getWorkflow(workflowId);
+						workflow = await this.workflowsStore.fetchWorkflow(workflowId);
 					} catch (error) {
-						this.$showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+						this.showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
 
-						this.$router.push({
+						void this.$router.push({
 							name: VIEWS.NEW_WORKFLOW,
 						});
 					}
 
 					if (workflow) {
-						this.$titleSet(workflow.name, 'IDLE');
+						this.titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflow);
 					}
@@ -2640,7 +2657,7 @@ export default mixins(
 			// Create connections in DOM
 			this.instance?.connect({
 				uuids: uuid,
-				detachable: !this.isReadOnly,
+				detachable: !this.isReadOnlyRoute && !this.readOnlyEnv,
 			});
 
 			setTimeout(() => {
@@ -2736,11 +2753,9 @@ export default mixins(
 				const newNodeData = deepCopy(this.getNodeDataToSave(node));
 				newNodeData.id = uuid();
 
-				// Check if node-name is unique else find one that is
-				newNodeData.name = this.getUniqueNodeName({
-					originalName: newNodeData.name,
-					type: newNodeData.type,
-				});
+				const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
+
+				newNodeData.name = this.uniqueNodeName(localizedName);
 
 				newNodeData.position = NodeViewUtils.getNewNodePosition(
 					this.nodes,
@@ -2997,7 +3012,7 @@ export default mixins(
 					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
-				this.$externalHooks().run('node.deleteNode', { node });
+				void this.$externalHooks().run('node.deleteNode', { node });
 				this.$telemetry.track('User deleted node', {
 					node_type: node.type,
 					workflow_id: this.workflowsStore.workflowId,
@@ -3036,7 +3051,7 @@ export default mixins(
 				}
 			}
 
-			setTimeout(() => {
+			void nextTick(() => {
 				// Suspend drawing
 				this.instance?.setSuspendDrawing(true);
 				(this.instance?.endpointsByElement[node.id] || [])
@@ -3058,7 +3073,8 @@ export default mixins(
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node));
 				}
-			}, 0); // allow other events to finish like drag stop
+			}); // allow other events to finish like drag stop
+
 			if (trackHistory && trackBulk) {
 				const recordingTimeout = waitForNewConnection ? 100 : 0;
 				setTimeout(() => {
@@ -3070,12 +3086,12 @@ export default mixins(
 			if (parameterData.name === 'name' && parameterData.oldValue) {
 				// The name changed so we have to take care that
 				// the connections get changed.
-				this.renameNode(parameterData.oldValue as string, parameterData.value as string);
+				void this.renameNode(parameterData.oldValue as string, parameterData.value as string);
 			}
 		},
 		async renameNodePrompt(currentName: string) {
 			try {
-				const promptResponsePromise = this.$prompt(
+				const promptResponsePromise = this.prompt(
 					this.$locale.baseText('nodeView.prompt.newName') + ':',
 					this.$locale.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
 					{
@@ -3088,7 +3104,7 @@ export default mixins(
 				);
 
 				// Wait till it had time to display
-				await Vue.nextTick();
+				await this.$nextTick();
 
 				// Get the input and select the text in it
 				const nameInput = document.querySelector('.rename-prompt .el-input__inner') as
@@ -3101,7 +3117,9 @@ export default mixins(
 
 				const promptResponse = (await promptResponsePromise) as MessageBoxInputData;
 
-				this.renameNode(currentName, promptResponse.value, true);
+				if (promptResponse?.action !== MODAL_CONFIRM) return;
+
+				await this.renameNode(currentName, promptResponse.value, true);
 			} catch (e) {}
 		},
 		async renameNode(currentName: string, newName: string, trackHistory = false) {
@@ -3120,10 +3138,7 @@ export default mixins(
 				this.renamingActive = true;
 			}
 
-			// Check if node-name is unique else find one that is
-			newName = this.getUniqueNodeName({
-				originalName: newName,
-			});
+			newName = this.uniqueNodeName(newName);
 
 			// Rename the node and update the connections
 			const workflow = this.getCurrentWorkflow(true);
@@ -3143,7 +3158,7 @@ export default mixins(
 			this.workflowsStore.removeAllNodes({ removePinData: false, setStateDirty: true });
 
 			// Wait a tick that the old nodes had time to get removed
-			await Vue.nextTick();
+			await this.$nextTick();
 
 			// Add the new updated nodes
 			await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode, false);
@@ -3274,8 +3289,8 @@ export default mixins(
 						console.error(
 							this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
 								`: "${node.name}"`,
-						); // eslint-disable-line no-console
-						console.error(e); // eslint-disable-line no-console
+						);
+						console.error(e);
 					}
 					node.parameters = nodeParameters !== null ? nodeParameters : {};
 
@@ -3301,7 +3316,7 @@ export default mixins(
 			});
 
 			// Wait for the node to be rendered
-			await Vue.nextTick();
+			await this.$nextTick();
 
 			// Suspend drawing
 			this.instance?.setSuspendDrawing(true);
@@ -3390,11 +3405,10 @@ export default mixins(
 				}
 
 				oldName = node.name;
-				newName = this.getUniqueNodeName({
-					originalName: node.name,
-					additionalUsedNames: newNodeNames,
-					type: node.type,
-				});
+
+				const localized = this.locale.localizeNodeName(node.name, node.type);
+
+				newName = this.uniqueNodeName(localized, newNodeNames);
 
 				newNodeNames.push(newName);
 				nodeNameTable[oldName] = newName;
@@ -3476,7 +3490,7 @@ export default mixins(
 				connections: tempWorkflow.connectionsBySourceNode,
 			};
 		},
-		getSelectedNodesToSave(): Promise<IWorkflowData> {
+		async getSelectedNodesToSave(): Promise<IWorkflowData> {
 			const data: IWorkflowData = {
 				nodes: [],
 				connections: {},
@@ -3487,12 +3501,8 @@ export default mixins(
 			const exportNodeNames: string[] = [];
 
 			for (const node of this.uiStore.getSelectedNodes) {
-				try {
-					nodeData = this.getNodeDataToSave(node);
-					exportNodeNames.push(node.name);
-				} catch (e) {
-					return Promise.reject(e);
-				}
+				nodeData = this.getNodeDataToSave(node);
+				exportNodeNames.push(node.name);
 
 				data.nodes.push(nodeData);
 			}
@@ -3542,7 +3552,7 @@ export default mixins(
 				}
 			});
 
-			return Promise.resolve(data);
+			return data;
 		},
 		resetWorkspace() {
 			this.workflowsStore.resetWorkflow();
@@ -3553,42 +3563,22 @@ export default mixins(
 			// Reset nodes
 			this.deleteEveryEndpoint();
 
+			// Make sure that if there is a waiting test-webhook that it gets removed
 			if (this.executionWaitingForWebhook) {
-				// Make sure that if there is a waiting test-webhook that
-				// it gets removed
-				this.restApi()
-					.removeTestWebhook(this.workflowsStore.workflowId)
-					.catch(() => {
-						// Ignore all errors
-					});
+				try {
+					void this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
+				} catch (error) {}
 			}
-			this.workflowsStore.removeAllConnections({ setStateDirty: false });
-			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
-
-			// Reset workflow execution data
-			this.workflowsStore.setWorkflowExecutionData(null);
-			this.workflowsStore.resetAllNodesIssues();
-
-			this.workflowsStore.setActive(false);
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings({});
-			this.workflowsStore.setWorkflowTagIds([]);
-
-			this.workflowsStore.activeExecutionId = null;
-			this.workflowsStore.executingNode = null;
-			this.workflowsStore.executionWaitingForWebhook = false;
+			this.workflowsStore.resetState();
 			this.uiStore.removeActiveAction('workflowRunning');
 
 			this.uiStore.resetSelectedNodes();
 			this.uiStore.nodeViewOffsetPosition = [0, 0];
 
 			this.credentialsUpdated = false;
-			return Promise.resolve();
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.workflowsStore.activeWorkflows = activeWorkflows;
+			await this.workflowsStore.fetchActiveWorkflows();
 		},
 		async loadNodeTypes(): Promise<void> {
 			await this.nodeTypesStore.getNodeTypes();
@@ -3643,7 +3633,7 @@ export default mixins(
 								'*',
 							);
 						}
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('openWorkflow.workflowImportError'),
 							message: (e as Error).message,
 							type: 'error',
@@ -3667,12 +3657,14 @@ export default mixins(
 								'*',
 							);
 						}
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('nodeView.showError.openExecution.title'),
 							message: (e as Error).message,
 							type: 'error',
 						});
 					}
+				} else if (json?.command === 'setActiveExecution') {
+					this.workflowsStore.activeWorkflowExecution = json.execution;
 				}
 			} catch (e) {}
 		},
@@ -3733,16 +3725,16 @@ export default mixins(
 
 			// Default to the trigger tab in node creator if there's no trigger node yet
 			this.nodeCreatorStore.setSelectedView(
-				this.containsTrigger ? REGULAR_NODE_FILTER : TRIGGER_NODE_FILTER,
+				this.containsTrigger ? REGULAR_NODE_CREATOR_VIEW : TRIGGER_NODE_CREATOR_VIEW,
 			);
 
 			this.createNodeActive = createNodeActive;
 
 			const mode =
-				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'regular';
+				this.nodeCreatorStore.selectedView === TRIGGER_NODE_CREATOR_VIEW ? 'trigger' : 'regular';
 
-			this.nodeCreatorStore.openSource = source || '';
-			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
+			if (createNodeActive === true) this.nodeCreatorStore.setOpenSource(source);
+			void this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,
 				createNodeActive,
@@ -3761,7 +3753,7 @@ export default mixins(
 			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
 				const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
 				const openNDV = !isManualTrigger && (nodeTypes.length === 1 || index > 0);
-				this.addNode(
+				void this.addNode(
 					nodeTypeName,
 					{ position, dragAndDrop },
 					openNDV,
@@ -3774,13 +3766,9 @@ export default mixins(
 				// exist
 				const actionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
 					if (name === 'addNode' && args[0].type === nodeTypeName) {
-						after(() => {
+						after(async () => {
 							const lastAddedNode = this.nodes[this.nodes.length - 1];
 							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
-
-							this.$nextTick(() =>
-								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0),
-							);
 
 							// Position the added node to the right side of the previously added one
 							lastAddedNode.position = [
@@ -3789,6 +3777,9 @@ export default mixins(
 									NodeViewUtils.GRID_SIZE,
 								previouslyAddedNode.position[1],
 							];
+							await this.$nextTick();
+							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
+
 							actionWatcher();
 						});
 					}
@@ -3844,11 +3835,52 @@ export default mixins(
 				this.disableNodes([node]);
 			}
 		},
+		onPageShow(e: PageTransitionEvent) {
+			// Page was restored from the bfcache (back-forward cache)
+			if (e.persisted) {
+				this.stopLoading();
+			}
+		},
+		readOnlyEnvRouteCheck() {
+			if (
+				this.readOnlyEnv &&
+				[VIEWS.NEW_WORKFLOW, VIEWS.TEMPLATE_IMPORT].includes(this.$route.name)
+			) {
+				void this.$nextTick(async () => {
+					this.resetWorkspace();
+					this.uiStore.stateIsDirty = false;
+
+					await this.$router.replace({ name: VIEWS.WORKFLOWS });
+				});
+			}
+		},
+	},
+	async onSourceControlPull() {
+		let workflowId = null as string | null;
+		if (this.$route.params.name) {
+			workflowId = this.$route.params.name;
+		}
+
+		try {
+			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
+
+			if (workflowId !== null && !this.uiStore.stateIsDirty) {
+				const workflow: IWorkflowDb | undefined = await this.workflowsStore.fetchWorkflow(
+					workflowId,
+				);
+				if (workflow) {
+					this.titleSet(workflow.name, 'IDLE');
+					await this.openWorkflow(workflow);
+				}
+			}
+		} catch (error) {
+			console.error(error);
+		}
 	},
 	async mounted() {
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
-		this.$titleReset();
+		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.startLoading();
@@ -3856,8 +3888,8 @@ export default mixins(
 			this.loadActiveWorkflows(),
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
+			this.loadVariables(),
 		];
-		this.loadVariables();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -3866,13 +3898,14 @@ export default mixins(
 		try {
 			await Promise.all(loadPromises);
 		} catch (error) {
-			this.$showError(
+			this.showError(
 				error,
 				this.$locale.baseText('nodeView.showError.mounted1.title'),
 				this.$locale.baseText('nodeView.showError.mounted1.message') + ':',
 			);
 			return;
 		}
+
 		ready(async () => {
 			try {
 				try {
@@ -3886,7 +3919,7 @@ export default mixins(
 					);
 				}
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.mounted2.title'),
 					this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
@@ -3895,13 +3928,13 @@ export default mixins(
 			this.stopLoading();
 
 			setTimeout(() => {
-				this.usersStore.showPersonalizationSurvey();
+				void this.usersStore.showPersonalizationSurvey();
 				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
 			}, 0);
 		});
 
 		// TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
-		this.$externalHooks()
+		void this.$externalHooks()
 			.run('nodeView.mount')
 			.catch((e) => {});
 
@@ -3917,7 +3950,7 @@ export default mixins(
 
 			if (onboardingResponse.title && onboardingResponse.description) {
 				setTimeout(async () => {
-					this.$showToast({
+					this.showToast({
 						type: 'info',
 						title: onboardingResponse.title,
 						message: onboardingResponse.description,
@@ -3936,6 +3969,10 @@ export default mixins(
 				}, promptTimeout);
 			}
 		}
+
+		sourceControlEventBus.on('pull', this.onSourceControlPull);
+
+		this.readOnlyEnvRouteCheck();
 	},
 	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
@@ -3947,10 +3984,11 @@ export default mixins(
 		document.addEventListener('keydown', this.keyDown);
 		document.addEventListener('keyup', this.keyUp);
 		window.addEventListener('message', this.onPostMessageReceived);
+		window.addEventListener('pageshow', this.onPageShow);
 
-		this.$root.$on('newWorkflow', this.newWorkflow);
-		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.on('newWorkflow', this.newWorkflow);
+		nodeViewEventBus.on('importWorkflowData', this.onImportWorkflowDataEvent);
+		nodeViewEventBus.on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		historyBus.on('nodeMove', this.onMoveNode);
 		historyBus.on('revertAddNode', this.onRevertAddNode);
 		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
@@ -3971,10 +4009,11 @@ export default mixins(
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
 		window.removeEventListener('beforeunload', this.onBeforeUnload);
+		window.removeEventListener('pageshow', this.onPageShow);
 
-		this.$root.$off('newWorkflow', this.newWorkflow);
-		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
+		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
+		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		historyBus.off('nodeMove', this.onMoveNode);
 		historyBus.off('revertAddNode', this.onRevertAddNode);
 		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
@@ -3987,16 +4026,23 @@ export default mixins(
 		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
-	destroyed() {
+	beforeUnmount() {
+		// Make sure the event listeners get removed again else we
+		// could add up with them registered multiple times
+		document.removeEventListener('keydown', this.keyDown);
+		document.removeEventListener('keyup', this.keyUp);
+		this.unregisterCustomAction('showNodeCreator');
+
 		this.resetWorkspace();
 		this.instance.unbind();
 		this.instance.destroy();
 		this.uiStore.stateIsDirty = false;
 		window.removeEventListener('message', this.onPostMessageReceived);
-		this.$root.$off('newWorkflow', this.newWorkflow);
-		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
+		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
+		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		sourceControlEventBus.off('pull', this.onSourceControlPull);
 	},
 });
 </script>
@@ -4053,7 +4099,7 @@ export default mixins(
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: 110px;
+	bottom: var(--spacing-2xl);
 	width: auto;
 
 	@media (max-width: $breakpoint-2xs) {

@@ -1,13 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
 
-import {
-	ICredentialTypes,
-	INodesAndCredentials,
-	LoggerProxy,
-	NodeOperationError,
-	Workflow,
-} from 'n8n-workflow';
+import type { ICredentialTypes, INode, INodesAndCredentials } from 'n8n-workflow';
+import { LoggerProxy, NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -22,13 +17,14 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
-import { ExternalHooks } from '@/ExternalHooks';
+import type { ExternalHooks } from '@/ExternalHooks';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../integration/shared/utils/';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
+import type { WebhookRepository } from '@/databases/repositories';
 
 /**
  * TODO:
@@ -56,7 +52,7 @@ const generateWorkflows = (count: number): WorkflowEntity[] => {
 	for (let i = 0; i < count; i++) {
 		const workflow = new WorkflowEntity();
 		Object.assign(workflow, {
-			id: i + 1,
+			id: (i + 1).toString(),
 			name: randomName(),
 			active: true,
 			createdAt: new Date(),
@@ -99,12 +95,11 @@ jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Workflow: {
-				find: jest.fn(async () => Promise.resolve(generateWorkflows(databaseActiveWorkflowsCount))),
+				find: jest.fn(async () => generateWorkflows(databaseActiveWorkflowsCount)),
 				findOne: jest.fn(async (searchParams) => {
-					const foundWorkflow = databaseActiveWorkflowsList.find(
+					return databaseActiveWorkflowsList.find(
 						(workflow) => workflow.id.toString() === searchParams.where.id.toString(),
 					);
-					return Promise.resolve(foundWorkflow);
 				}),
 				update: jest.fn(),
 				createQueryBuilder: jest.fn(() => {
@@ -112,7 +107,7 @@ jest.mock('@/Db', () => {
 						update: () => fakeQueryBuilder,
 						set: () => fakeQueryBuilder,
 						where: () => fakeQueryBuilder,
-						execute: () => Promise.resolve(),
+						execute: async () => {},
 					};
 					return fakeQueryBuilder;
 				}),
@@ -145,6 +140,7 @@ const workflowExecuteAdditionalDataExecuteErrorWorkflowSpy = jest.spyOn(
 describe('ActiveWorkflowRunner', () => {
 	let externalHooks: ExternalHooks;
 	let activeWorkflowRunner: ActiveWorkflowRunner;
+	let webhookRepository = mock<WebhookRepository>();
 
 	beforeAll(async () => {
 		LoggerProxy.init(getLogger());
@@ -166,6 +162,7 @@ describe('ActiveWorkflowRunner', () => {
 			new ActiveExecutions(),
 			externalHooks,
 			Container.get(NodeTypes),
+			webhookRepository,
 		);
 	});
 
@@ -180,7 +177,7 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		expect(await activeWorkflowRunner.getActiveWorkflows()).toHaveLength(0);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(Db.collections.Webhook.clear)).toHaveBeenCalled();
+		expect(mocked(webhookRepository.clear)).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 	});
 
@@ -191,7 +188,7 @@ describe('ActiveWorkflowRunner', () => {
 			databaseActiveWorkflowsCount,
 		);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(Db.collections.Webhook.clear)).toHaveBeenCalled();
+		expect(mocked(webhookRepository.clear)).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalled();
 	});
 
@@ -246,7 +243,7 @@ describe('ActiveWorkflowRunner', () => {
 		const workflow = generateWorkflows(1);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase('fake-user-id');
 
-		workflowRunnerRun.mockImplementationOnce(() => Promise.resolve('invalid-execution-id'));
+		workflowRunnerRun.mockResolvedValueOnce('invalid-execution-id');
 
 		await activeWorkflowRunner.runWorkflow(
 			workflow[0],
@@ -265,5 +262,36 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		activeWorkflowRunner.executeErrorWorkflow(error, workflowData, 'trigger');
 		expect(workflowExecuteAdditionalDataExecuteErrorWorkflowSpy).toHaveBeenCalledTimes(1);
+	});
+
+	describe('init()', () => {
+		it('should execute error workflow on failure to activate due to 401', async () => {
+			databaseActiveWorkflowsCount = 1;
+
+			jest.spyOn(ActiveWorkflowRunner.prototype, 'add').mockImplementation(() => {
+				throw new NodeApiError(
+					{
+						id: 'a75dcd1b-9fed-4643-90bd-75933d67936c',
+						name: 'Github Trigger',
+						type: 'n8n-nodes-base.githubTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					} as INode,
+					{
+						httpCode: '401',
+						message: 'Authorization failed - please check your credentials',
+					},
+				);
+			});
+
+			const executeSpy = jest.spyOn(ActiveWorkflowRunner.prototype, 'executeErrorWorkflow');
+
+			await activeWorkflowRunner.init();
+
+			const [error, workflow] = executeSpy.mock.calls[0];
+
+			expect(error.message).toContain('Authorization');
+			expect(workflow.id).toBe('1');
+		});
 	});
 });

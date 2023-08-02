@@ -1,22 +1,10 @@
 import { VariablesPage } from '../pages/variables';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 
 const variablesPage = new VariablesPage();
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
-
 describe('Variables', () => {
-	before(() => {
-		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	it('should show the unlicensed action box when the feature is disabled', () => {
-		cy.signin({ email, password });
+		cy.disableFeature('variables', false);
 		cy.visit(variablesPage.url);
 
 		variablesPage.getters.unavailableResourcesList().should('be.visible');
@@ -25,12 +13,14 @@ describe('Variables', () => {
 
 	describe('licensed', () => {
 		before(() => {
-			cy.enableFeature('feat:variables');
+			cy.enableFeature('variables');
 		});
 
 		beforeEach(() => {
-			cy.signin({ email, password });
+			cy.intercept('GET', '/rest/variables').as('loadVariables');
+
 			cy.visit(variablesPage.url);
+			cy.wait(['@loadVariables', '@loadSettings']);
 		});
 
 		it('should show the licensed action box when the feature is enabled', () => {

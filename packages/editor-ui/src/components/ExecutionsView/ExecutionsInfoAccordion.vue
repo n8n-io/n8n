@@ -5,7 +5,7 @@
 		:items="accordionItems"
 		:initiallyExpanded="shouldExpandAccordion"
 		:headerIcon="accordionIcon"
-		@click="onAccordionClick"
+		@click:body="onAccordionClick"
 		@tooltipClick="onItemTooltipClick"
 	>
 		<template #customContent>
@@ -36,14 +36,15 @@
 </template>
 
 <script lang="ts">
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from '@/stores/settings';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { deepCopy, IWorkflowSettings } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 interface IWorkflowSaveSettings {
@@ -52,8 +53,9 @@ interface IWorkflowSaveSettings {
 	saveTestExecutions: boolean;
 }
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'executions-info-accordion',
+	mixins: [workflowHelpers],
 	props: {
 		initiallyExpanded: {
 			type: Boolean,
@@ -214,7 +216,7 @@ export default mixins(workflowHelpers).extend({
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
 			});
-			if (saved) this.settingsStore.fetchPromptsData();
+			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 	},
 });

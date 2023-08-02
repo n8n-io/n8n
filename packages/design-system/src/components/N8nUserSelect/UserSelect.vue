@@ -1,15 +1,15 @@
 <template>
 	<n8n-select
-		:value="value"
+		v-bind="$attrs"
+		:modelValue="modelValue"
 		:filterable="true"
 		:filterMethod="setFilter"
 		:placeholder="placeholder"
 		:default-first-option="true"
-		:popper-append-to-body="true"
+		teleported
 		:popper-class="$style.limitPopperWidth"
 		:noDataText="t('nds.userSelect.noMatchingUsers')"
 		:size="size"
-		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
@@ -33,10 +33,11 @@
 import N8nUserInfo from '../N8nUserInfo';
 import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
-import { IUser } from '../../types';
+import type { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'n8n-user-select',
@@ -51,7 +52,7 @@ export default defineComponent({
 			type: Array as PropType<IUser[]>,
 			default: () => [],
 		},
-		value: {
+		modelValue: {
 			type: String,
 			default: '',
 		},
@@ -121,9 +122,6 @@ export default defineComponent({
 		setFilter(value: string) {
 			this.filter = value;
 		},
-		onChange(value: string) {
-			this.$emit('input', value);
-		},
 		onBlur() {
 			this.$emit('blur');
 		},
@@ -135,7 +133,6 @@ export default defineComponent({
 				return user.email;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			return `${user.fullName} (${user.email})`;
 		},
 	},

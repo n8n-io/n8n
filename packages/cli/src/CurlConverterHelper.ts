@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import curlconverter from 'curlconverter';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
@@ -80,7 +79,7 @@ type HttpNodeHeaders = Pick<HttpNodeParameters, 'sendHeaders' | 'headerParameter
 
 type HttpNodeQueries = Pick<HttpNodeParameters, 'sendQuery' | 'queryParameters'>;
 
-enum ContentTypes {
+const enum ContentTypes {
 	applicationJson = 'application/json',
 	applicationFormUrlEncoded = 'application/x-www-form-urlencoded',
 	applicationMultipart = 'multipart/form-data',

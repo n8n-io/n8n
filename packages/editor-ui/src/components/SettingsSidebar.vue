@@ -21,19 +21,20 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
-import { IFakeDoor } from '@/Interface';
-import { IMenuItem } from 'n8n-design-system';
-import { BaseTextKey } from '@/plugins/i18n';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
+import type { IFakeDoor } from '@/Interface';
+import type { IMenuItem } from 'n8n-design-system';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default mixins(userHelpers).extend({
+export default defineComponent({
 	name: 'SettingsSidebar',
+	mixins: [userHelpers],
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
@@ -74,12 +75,20 @@ export default mixins(userHelpers).extend({
 					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
 				{
-					id: 'settings-version-control',
-					icon: 'code-branch',
-					label: this.$locale.baseText('settings.versionControl.title'),
+					id: 'settings-audit-logs',
+					icon: 'clipboard-list',
+					label: this.$locale.baseText('settings.auditLogs.title'),
 					position: 'top',
-					available: this.canAccessVersionControl(),
-					activateOnRouteNames: [VIEWS.VERSION_CONTROL],
+					available: this.canAccessAuditLogs(),
+					activateOnRouteNames: [VIEWS.AUDIT_LOGS],
+				},
+				{
+					id: 'settings-source-control',
+					icon: 'code-branch',
+					label: this.$locale.baseText('settings.sourceControl.title'),
+					position: 'top',
+					available: this.canAccessSourceControl(),
+					activateOnRouteNames: [VIEWS.SOURCE_CONTROL],
 				},
 				{
 					id: 'settings-sso',
@@ -155,8 +164,11 @@ export default mixins(userHelpers).extend({
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
-		canAccessVersionControl(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
+		canAccessSourceControl(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.SOURCE_CONTROL);
+		},
+		canAccessAuditLogs(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.AUDIT_LOGS);
 		},
 		canAccessSso(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.SSO_SETTINGS);
@@ -171,52 +183,56 @@ export default mixins(userHelpers).extend({
 			switch (key) {
 				case 'settings-personal':
 					if (this.$router.currentRoute.name !== VIEWS.PERSONAL_SETTINGS) {
-						this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+						await this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
 					}
 					break;
 				case 'settings-users':
 					if (this.$router.currentRoute.name !== VIEWS.USERS_SETTINGS) {
-						this.$router.push({ name: VIEWS.USERS_SETTINGS });
+						await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 					}
 					break;
 				case 'settings-api':
 					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
-						this.$router.push({ name: VIEWS.API_SETTINGS });
+						await this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
 				case 'settings-ldap':
 					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
-						this.$router.push({ name: VIEWS.LDAP_SETTINGS });
+						void this.$router.push({ name: VIEWS.LDAP_SETTINGS });
 					}
 					break;
 				case 'settings-log-streaming':
 					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
-						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
+						void this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
 					}
 					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
-				case 'environments':
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
 					break;
 				case 'settings-community-nodes':
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
-						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+						await this.$router.push({ name: VIEWS.COMMUNITY_NODES });
 					}
 					break;
 				case 'settings-usage-and-plan':
 					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
-						this.$router.push({ name: VIEWS.USAGE });
+						void this.$router.push({ name: VIEWS.USAGE });
 					}
 					break;
 				case 'settings-sso':
 					if (this.$router.currentRoute.name !== VIEWS.SSO_SETTINGS) {
-						this.$router.push({ name: VIEWS.SSO_SETTINGS });
+						void this.$router.push({ name: VIEWS.SSO_SETTINGS });
 					}
 					break;
-				case 'settings-version-control':
-					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
-						this.$router.push({ name: VIEWS.VERSION_CONTROL });
+				case 'settings-source-control':
+					if (this.$router.currentRoute.name !== VIEWS.SOURCE_CONTROL) {
+						void this.$router.push({ name: VIEWS.SOURCE_CONTROL });
+					}
+					break;
+				case 'settings-audit-logs':
+					if (this.$router.currentRoute.name !== VIEWS.AUDIT_LOGS) {
+						void this.$router.push({ name: VIEWS.AUDIT_LOGS });
 					}
 					break;
 				default:
@@ -230,7 +246,7 @@ export default mixins(userHelpers).extend({
 <style lang="scss" module>
 .container {
 	min-width: $sidebar-expanded-width;
-	height: 100vh;
+	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
@@ -245,8 +261,11 @@ export default mixins(userHelpers).extend({
 	}
 }
 
+.versionContainer {
+	padding: var(--spacing-xs) var(--spacing-l);
+}
+
 @media screen and (max-height: 420px) {
-	.updatesSubmenu,
 	.versionContainer {
 		display: none;
 	}

@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-restricted-syntax */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import type {
 	ICredentialDataDecryptedObject,
@@ -110,7 +109,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialType.authenticate) {
 			if (typeof credentialType.authenticate === 'function') {
 				// Special authentication function is defined
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
 			}
 
@@ -172,7 +171,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
 		);
 
-		if (expirableProperty === undefined || expirableProperty.name === undefined) {
+		if (expirableProperty?.name === undefined) {
 			return undefined;
 		}
 
@@ -411,7 +410,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
 			} catch (e) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				e.message += ' [Error resolving credentials]';
 				throw e;
 			}
@@ -452,12 +450,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
-
-		if (!Db.isInitialized) {
-			// The first time executeWorkflow gets called the Database has
-			// to get initialized first
-			await Db.init();
-		}
 
 		credentials.setData(data, this.encryptionKey);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
@@ -542,10 +534,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
-			return Promise.resolve({
+			return {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
-			});
+			};
 		}
 
 		if (credentialsDecrypted.data) {
@@ -558,7 +550,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
 			const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+
 			return credentialTestFunction.call(credentialTestFunctions, credentialsDecrypted);
 		}
 
@@ -693,9 +685,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					return {
 						status: 'Error',
 						message:
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							errorResponseData.statusMessage ||
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received HTTP status code: ${errorResponseData.statusCode}`,
 					};
 				}

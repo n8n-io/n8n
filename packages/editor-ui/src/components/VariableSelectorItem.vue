@@ -41,6 +41,7 @@
 					:key="option.key"
 					:extendAll="extendAll"
 					:allowParentSelect="option.allowParentSelect"
+					:redactValues="redactValues"
 					class="sub-level"
 					@itemSelected="forwardItemSelected"
 				></variable-selector-item>
@@ -51,7 +52,7 @@
 				{{ item.name }}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
-			<div class="item-value ph-no-capture">
+			<div :class="{ 'ph-no-capture': redactValues, 'item-value': true }">
 				{{ item.value !== undefined ? item.value : $locale.baseText('variableSelectorItem.empty') }}
 			</div>
 		</div>
@@ -59,13 +60,14 @@
 </template>
 
 <script lang="ts">
-import { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'VariableSelectorItem',
-	props: ['allowParentSelect', 'extendAll', 'item'],
+	mixins: [externalHooks],
+	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
 	mounted() {
 		if (this.extended) return;
 

@@ -1,5 +1,6 @@
 <template>
 	<Modal
+		id="tags-manager-modal"
 		:title="$locale.baseText('tagsManager.manageTags')"
 		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
@@ -28,24 +29,28 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-import { ITag } from '@/Interface';
+import type { ITag } from '@/Interface';
 
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
-import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
+import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
-import { useTagsStore } from '@/stores/tags';
-import { createEventBus } from '@/event-bus';
+import { useTagsStore } from '@/stores/tags.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'TagsManager',
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	created() {
-		this.tagsStore.fetchAll({ force: true, withUsageCount: true });
+		void this.tagsStore.fetchAll({ force: true, withUsageCount: true });
 	},
 	data() {
 		const tagIds = useTagsStore().allTags.map((tag) => tag.id);
@@ -67,9 +72,7 @@ export default mixins(showMessage).extend({
 			return this.tagsStore.isLoading;
 		},
 		tags(): ITag[] {
-			return this.$data.tagIds
-				.map((tagId: string) => this.tagsStore.getTagById(tagId))
-				.filter(Boolean); // if tag is deleted from store
+			return this.tagIds.map((tagId: string) => this.tagsStore.getTagById(tagId)).filter(Boolean); // if tag is deleted from store
 		},
 		hasTags(): boolean {
 			return this.tags.length > 0;
@@ -77,11 +80,11 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		onEnableCreate() {
-			this.$data.isCreating = true;
+			this.isCreating = true;
 		},
 
 		onDisableCreate() {
-			this.$data.isCreating = false;
+			this.isCreating = false;
 		},
 
 		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
@@ -91,11 +94,11 @@ export default mixins(showMessage).extend({
 				}
 
 				const newTag = await this.tagsStore.create(name);
-				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
+				this.tagIds = [newTag.id].concat(this.tagIds);
 				cb(newTag);
 			} catch (error) {
 				const escapedName = escape(name);
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onCreate.title'),
 					this.$locale.baseText('tagsManager.showError.onCreate.message', {
@@ -123,13 +126,13 @@ export default mixins(showMessage).extend({
 				const updatedTag = await this.tagsStore.rename({ id, name });
 				cb(!!updatedTag);
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onUpdate.title'),
 					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(oldName);
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onUpdate.title'),
 					this.$locale.baseText('tagsManager.showError.onUpdate.message', {
@@ -150,17 +153,17 @@ export default mixins(showMessage).extend({
 					throw new Error(this.$locale.baseText('tagsManager.couldNotDeleteTag'));
 				}
 
-				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
+				this.tagIds = this.tagIds.filter((tagId: string) => tagId !== id);
 
 				cb(deleted);
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onDelete.title'),
 					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(name);
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onDelete.title'),
 					this.$locale.baseText('tagsManager.showError.onDelete.message', {

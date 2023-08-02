@@ -1,13 +1,13 @@
 <template>
 	<div
-		:class="$style['code-node-editor-container']"
+		:class="['code-node-editor', $style['code-node-editor-container'], language]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
 	>
-		<div ref="codeNodeEditor" class="ph-no-capture"></div>
+		<div ref="codeNodeEditor" class="code-node-editor-input"></div>
 		<n8n-button
-			v-if="isCloud && (isEditorHovered || isEditorFocused)"
+			v-if="aiButtonEnabled && (isEditorHovered || isEditorFocused)"
 			size="small"
 			type="tertiary"
 			:class="$style['ask-ai-button']"
@@ -19,91 +19,118 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
+import type { LanguageSupport } from '@codemirror/language';
+import type { Extension, Line } from '@codemirror/state';
 import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView, ViewUpdate } from '@codemirror/view';
+import type { ViewUpdate } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
+import { json } from '@codemirror/lang-json';
+import { python } from '@codemirror/lang-python';
+import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 
-import { baseExtensions } from './baseExtensions';
-import { linterExtension } from './linter';
-import { completerExtension } from './completer';
-import { CODE_NODE_EDITOR_THEME } from './theme';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
-import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
-import Modal from '../Modal.vue';
-import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
+import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
+import { CODE_PLACEHOLDERS } from './constants';
+import { linterExtension } from './linter';
+import { completerExtension } from './completer';
+import { codeNodeEditorTheme } from './theme';
+
+export default defineComponent({
 	name: 'code-node-editor',
-	components: { Modal },
+	mixins: [linterExtension, completerExtension, workflowHelpers],
 	props: {
+		aiButtonEnabled: {
+			type: Boolean,
+			default: false,
+		},
 		mode: {
-			type: String,
-			validator: (value: string): boolean =>
-				['runOnceForAllItems', 'runOnceForEachItem'].includes(value),
+			type: String as PropType<CodeExecutionMode>,
+			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
+		},
+		language: {
+			type: String as PropType<CodeNodeEditorLanguage>,
+			default: 'javaScript' as CodeNodeEditorLanguage,
+			validator: (value: CodeNodeEditorLanguage): boolean => CODE_LANGUAGES.includes(value),
 		},
 		isReadOnly: {
 			type: Boolean,
 			default: false,
 		},
-		jsCode: {
+		modelValue: {
 			type: String,
 		},
 	},
 	data() {
 		return {
 			editor: null as EditorView | null,
+			languageCompartment: new Compartment(),
 			linterCompartment: new Compartment(),
 			isEditorHovered: false,
 			isEditorFocused: false,
 		};
 	},
 	watch: {
-		mode() {
+		mode(newMode, previousMode: CodeExecutionMode) {
 			this.reloadLinter();
-			this.refreshPlaceholder();
+
+			if (this.content.trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]) {
+				this.refreshPlaceholder();
+			}
+		},
+		language(newLanguage, previousLanguage: CodeNodeEditorLanguage) {
+			if (this.content.trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]) {
+				this.refreshPlaceholder();
+			}
+
+			const [languageSupport] = this.languageExtensions;
+			this.editor?.dispatch({
+				effects: this.languageCompartment.reconfigure(languageSupport),
+			});
 		},
 	},
 	computed: {
 		...mapStores(useRootStore),
-		isCloud() {
-			return useSettingsStore().deploymentType === 'cloud';
-		},
 		content(): string {
 			if (!this.editor) return '';
 
 			return this.editor.state.doc.toString();
 		},
 		placeholder(): string {
-			return {
-				runOnceForAllItems: ALL_ITEMS_PLACEHOLDER,
-				runOnceForEachItem: EACH_ITEM_PLACEHOLDER,
-			}[this.mode];
+			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
 		},
-		previousPlaceholder(): string {
-			return {
-				runOnceForAllItems: EACH_ITEM_PLACEHOLDER,
-				runOnceForEachItem: ALL_ITEMS_PLACEHOLDER,
-			}[this.mode];
+		languageExtensions(): [LanguageSupport, ...Extension[]] {
+			switch (this.language) {
+				case 'json':
+					return [json()];
+				case 'javaScript':
+					return [javascript(), this.autocompletionExtension('javaScript')];
+				case 'python':
+					return [python(), this.autocompletionExtension('python')];
+			}
 		},
 	},
 	methods: {
 		onMouseOver(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
 
-			if (!ref.contains(fromElement)) this.isEditorHovered = true;
+			if (!ref?.contains(fromElement)) this.isEditorHovered = true;
 		},
 		onMouseOut(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
 
-			if (!ref.contains(fromElement)) this.isEditorHovered = false;
+			if (!ref?.contains(fromElement)) this.isEditorHovered = false;
 		},
 		onAskAiButtonClick() {
 			this.$telemetry.track('User clicked ask ai button', { source: 'code' });
@@ -113,31 +140,43 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		reloadLinter() {
 			if (!this.editor) return;
 
-			this.editor.dispatch({
-				effects: this.linterCompartment.reconfigure(this.linterExtension()),
-			});
+			const linter = this.createLinter(this.language);
+			if (linter) {
+				this.editor.dispatch({
+					effects: this.linterCompartment.reconfigure(linter),
+				});
+			}
 		},
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
-			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
-				this.editor.dispatch({
-					changes: { from: 0, to: this.content.length, insert: this.placeholder },
-				});
+			this.editor.dispatch({
+				changes: { from: 0, to: this.content.length, insert: this.placeholder },
+			});
+		},
+		line(lineNumber: number): Line | null {
+			try {
+				return this.editor?.state.doc.line(lineNumber) ?? null;
+			} catch {
+				return null;
 			}
 		},
-		highlightLine(line: number | 'final') {
+		highlightLine(lineNumber: number | 'final') {
 			if (!this.editor) return;
 
-			if (line === 'final') {
+			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: this.content.trim().length },
+					selection: { anchor: (this.modelValue ?? this.content).length },
 				});
 				return;
 			}
 
+			const line = this.line(lineNumber);
+
+			if (!line) return;
+
 			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(line).from },
+				selection: { anchor: line.from },
 			});
 		},
 		trackCompletion(viewUpdate: ViewUpdate) {
@@ -162,6 +201,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 					insertedText = full.slice(lastDotIndex + 1);
 				}
 
+				// TODO: Still has to get updated for Python and JSON
 				this.$telemetry.track('User autocompleted code', {
 					instance_id: this.rootStore.instanceId,
 					node_type: CODE_NODE_TYPE,
@@ -173,46 +213,57 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			} catch {}
 		},
 	},
-	destroyed() {
-		codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
+	beforeUnmount() {
+		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
 	},
 	mounted() {
-		codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
-
-		const stateBasedExtensions = [
-			this.linterCompartment.of(this.linterExtension()),
-			EditorState.readOnly.of(this.isReadOnly),
-			EditorView.domEventHandlers({
-				focus: () => {
-					this.isEditorFocused = true;
-				},
-				blur: () => {
-					this.isEditorFocused = false;
-				},
-			}),
-			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-				if (!viewUpdate.docChanged) return;
-
-				this.trackCompletion(viewUpdate);
-
-				this.$emit('valueChanged', this.content);
-			}),
-		];
+		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
 		// empty on first load, default param value
-		if (this.jsCode === '') {
-			this.$emit('valueChanged', this.placeholder);
+		if (!this.modelValue) {
+			this.$emit('update:modelValue', this.placeholder);
 		}
 
+		const { isReadOnly, language } = this;
+		const extensions: Extension[] = [
+			...readOnlyEditorExtensions,
+			EditorState.readOnly.of(isReadOnly),
+			EditorView.editable.of(!isReadOnly),
+			codeNodeEditorTheme({ isReadOnly }),
+		];
+
+		if (!isReadOnly) {
+			const linter = this.createLinter(language);
+			if (linter) {
+				extensions.push(this.linterCompartment.of(linter));
+			}
+
+			extensions.push(
+				...writableEditorExtensions,
+				EditorView.domEventHandlers({
+					focus: () => {
+						this.isEditorFocused = true;
+					},
+					blur: () => {
+						this.isEditorFocused = false;
+					},
+				}),
+				EditorView.updateListener.of((viewUpdate) => {
+					if (!viewUpdate.docChanged) return;
+
+					this.trackCompletion(viewUpdate);
+
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
+				}),
+			);
+		}
+
+		const [languageSupport, ...otherExtensions] = this.languageExtensions;
+		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
+
 		const state = EditorState.create({
-			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
-			extensions: [
-				...baseExtensions,
-				...stateBasedExtensions,
-				CODE_NODE_EDITOR_THEME,
-				javascript(),
-				this.autocompletionExtension(),
-			],
+			doc: this.modelValue || this.placeholder,
+			extensions,
 		});
 
 		this.editor = new EditorView({
@@ -226,6 +277,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 <style lang="scss" module>
 .code-node-editor-container {
 	position: relative;
+
+	& > div {
+		height: 100%;
+	}
 }
 
 .ask-ai-button {

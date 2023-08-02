@@ -64,6 +64,10 @@ async function callRecursiveList(
 
 		// Is directory
 		if (item.type === 'd') {
+			// ignore . and .. to prevent infinite loop
+			if (item.name === '.' || item.name === '..') {
+				return;
+			}
 			pathArray.push(currentPath);
 		}
 
@@ -601,11 +605,11 @@ export class Ftp implements INodeType {
 							await sftp!.get(path, createWriteStream(binaryFile.path));
 
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-							const filePathDownload = this.getNodeParameter('path', i) as string;
+							const remoteFilePath = this.getNodeParameter('path', i) as string;
 
 							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
-								filePathDownload,
+								basename(remoteFilePath),
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -697,11 +701,11 @@ export class Ftp implements INodeType {
 							await streamPipeline(stream, createWriteStream(binaryFile.path));
 
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-							const filePathDownload = this.getNodeParameter('path', i) as string;
+							const remoteFilePath = this.getNodeParameter('path', i) as string;
 
 							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
-								filePathDownload,
+								basename(remoteFilePath),
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(

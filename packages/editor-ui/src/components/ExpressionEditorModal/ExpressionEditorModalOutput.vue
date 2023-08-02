@@ -1,11 +1,12 @@
 <template>
-	<div ref="root" class="ph-no-capture"></div>
+	<div ref="root"></div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { outputTheme } from './theme';
@@ -13,7 +14,7 @@ import { outputTheme } from './theme';
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { forceParse } from '@/utils/forceParse';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ExpressionEditorModalOutput',
 	props: {
 		segments: {
@@ -53,7 +54,7 @@ export default Vue.extend({
 			}),
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	computed: {
@@ -76,8 +77,7 @@ export default Vue.extend({
 					cursor +=
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
-							: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-							segment.resolved
+							: segment.resolved
 							? (segment.resolved as any).toString().length
 							: 0;
 

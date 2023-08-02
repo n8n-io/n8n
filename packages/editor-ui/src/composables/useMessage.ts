@@ -1,11 +1,16 @@
-import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
-import { Message, MessageBox } from 'element-ui';
+import type { ElMessageBoxOptions } from 'element-plus';
+import { ElMessageBox as MessageBox } from 'element-plus';
 
 export function useMessage() {
+	const handleCancelOrClose = (e: unknown) => {
+		if (e instanceof Error) throw e;
+		else return e;
+	};
+
 	async function alert(
 		message: string,
-		configOrTitle: string | ElMessageBoxOptions | undefined,
-		config: ElMessageBoxOptions | undefined,
+		configOrTitle?: string | ElMessageBoxOptions,
+		config?: ElMessageBoxOptions,
 	) {
 		const resolvedConfig = {
 			...(config || (typeof configOrTitle === 'object' ? configOrTitle : {})),
@@ -14,15 +19,15 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.alert(message, configOrTitle, resolvedConfig);
+			return MessageBox.alert(message, configOrTitle, resolvedConfig).catch(handleCancelOrClose);
 		}
-		return await MessageBox.alert(message, resolvedConfig);
+		return MessageBox.alert(message, resolvedConfig).catch(handleCancelOrClose);
 	}
 
 	async function confirm(
 		message: string,
-		configOrTitle: string | ElMessageBoxOptions | undefined,
-		config: ElMessageBoxOptions | undefined,
+		configOrTitle?: string | ElMessageBoxOptions,
+		config?: ElMessageBoxOptions,
 	) {
 		const resolvedConfig = {
 			...(config || (typeof configOrTitle === 'object' ? configOrTitle : {})),
@@ -34,15 +39,15 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.confirm(message, configOrTitle, resolvedConfig);
+			return MessageBox.confirm(message, configOrTitle, resolvedConfig).catch(handleCancelOrClose);
 		}
-		return await MessageBox.confirm(message, resolvedConfig);
+		return MessageBox.confirm(message, resolvedConfig).catch(handleCancelOrClose);
 	}
 
 	async function prompt(
 		message: string,
-		configOrTitle: string | ElMessageBoxOptions | undefined,
-		config: ElMessageBoxOptions | undefined,
+		configOrTitle?: string | ElMessageBoxOptions,
+		config?: ElMessageBoxOptions,
 	) {
 		const resolvedConfig = {
 			...(config || (typeof configOrTitle === 'object' ? configOrTitle : {})),
@@ -51,15 +56,15 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.prompt(message, configOrTitle, resolvedConfig);
+			return MessageBox.prompt(message, configOrTitle, resolvedConfig).catch(handleCancelOrClose);
 		}
-		return await MessageBox.prompt(message, resolvedConfig);
+		return MessageBox.prompt(message, resolvedConfig).catch(handleCancelOrClose);
 	}
 
 	return {
 		alert,
 		confirm,
 		prompt,
-		message: Message,
+		message: MessageBox,
 	};
 }

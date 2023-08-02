@@ -1,21 +1,21 @@
 <template>
 	<n8n-popover
 		placement="bottom"
+		:teleported="false"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
+		:visible="show"
 		trigger="manual"
-		v-click-outside="onClickOutside"
+		data-test-id="resource-locator-dropdown"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input
-				size="medium"
-				:value="filter"
+				:modelValue="filter"
 				:clearable="true"
-				@input="onFilterInput"
+				@update:modelValue="onFilterInput"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 			>
@@ -44,10 +44,9 @@
 				:key="result.value"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === value,
+					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
-				class="ph-no-capture"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -78,16 +77,19 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
-		value: {
+		modelValue: {
 			type: [String, Number],
 		},
 		show: {
@@ -118,6 +120,10 @@ export default Vue.extend({
 		width: {
 			type: Number,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	data() {
 		return {
@@ -126,7 +132,10 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		this.$on('keyDown', this.onKeyDown);
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeUnmount() {
+		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
@@ -138,7 +147,7 @@ export default Vue.extend({
 					}
 					seen.add(item.value);
 
-					if (this.value && item.value === this.value) {
+					if (this.modelValue && item.value === this.modelValue) {
 						acc.selected = item;
 					} else {
 						acc.notSelected.push(item);
@@ -167,18 +176,21 @@ export default Vue.extend({
 			window.open(url, '_blank');
 		},
 		onKeyDown(e: KeyboardEvent) {
-			const container = this.$refs.resultsContainer as HTMLElement;
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
 
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
 					this.hoverIndex++;
 
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop + item.clientHeight > container.scrollTop + container.offsetHeight) {
-							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
-							container.scrollTo({ top });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (
+							item.offsetTop + item.clientHeight >
+							containerRef.scrollTop + containerRef.offsetHeight
+						) {
+							const top = item.offsetTop - containerRef.offsetHeight + item.clientHeight;
+							containerRef.scrollTo({ top });
 						}
 					}
 				}
@@ -187,26 +199,23 @@ export default Vue.extend({
 					this.hoverIndex--;
 
 					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop <= container.scrollTop + searchOffset) {
-							container.scrollTo({ top: item.offsetTop - searchOffset });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (item.offsetTop <= containerRef.scrollTop + searchOffset) {
+							containerRef.scrollTo({ top: item.offsetTop - searchOffset });
 						}
 					}
 				}
 			} else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
+				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
 			}
 		},
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onClickOutside() {
-			this.$emit('hide');
-		},
 		onItemClick(selected: string) {
-			this.$emit('input', selected);
+			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
@@ -225,9 +234,10 @@ export default Vue.extend({
 				return;
 			}
 
-			const container = this.$refs.resultsContainer as HTMLElement;
-			if (container) {
-				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
+			if (containerRef) {
+				const diff =
+					containerRef.offsetHeight - (containerRef.scrollHeight - containerRef.scrollTop);
 				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
 					this.$emit('loadMore');
 				}
@@ -235,19 +245,20 @@ export default Vue.extend({
 		},
 	},
 	watch: {
-		show(toShow) {
-			if (toShow) {
+		show(value) {
+			if (value) {
 				this.hoverIndex = 0;
 				this.showHoverUrl = false;
+
+				setTimeout(() => {
+					if (value && this.filterable && this.$refs.search) {
+						(this.$refs.search as HTMLElement).focus();
+					}
+				}, 0);
 			}
-			setTimeout(() => {
-				if (toShow && this.filterable && this.$refs.search) {
-					(this.$refs.search as HTMLElement).focus();
-				}
-			}, 0);
 		},
 		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
 		},
 	},
 });
@@ -256,7 +267,7 @@ export default Vue.extend({
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
-	padding: 0;
+	padding: 0 !important;
 	border: var(--border-base);
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));

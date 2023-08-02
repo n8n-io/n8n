@@ -11,7 +11,6 @@ import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 
 export class LinkedIn implements INodeType {
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
@@ -107,16 +106,12 @@ export class LinkedIn implements INodeType {
 							lifecycleState: 'PUBLISHED',
 							distribution: {
 								feedDistribution: 'MAIN_FEED',
-								targetEnties: [],
 								thirdPartyDistributionChannels: [],
 							},
 							visibility,
 						};
 
 						if (shareMediaCategory === 'IMAGE') {
-							if (additionalFields.description) {
-								description = additionalFields.description as string;
-							}
 							if (additionalFields.title) {
 								title = additionalFields.title as string;
 							}
@@ -146,7 +141,6 @@ export class LinkedIn implements INodeType {
 									media: {
 										title,
 										id: image,
-										description,
 									},
 								},
 								commentary: text,

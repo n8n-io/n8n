@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { ComponentPublicInstance, computed, nextTick, onMounted, PropType, ref, watch } from 'vue';
-import { EnvironmentVariable, IValidator, Rule, RuleGroup, Validatable } from '@/Interface';
+import type { ComponentPublicInstance, PropType } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
 import { useI18n, useToast, useCopyToClipboard } from '@/composables';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore, useUsersStore } from '@/stores';
@@ -78,12 +79,11 @@ const valueValidationRules: Array<Rule | RuleGroup> = [
 
 watch(
 	() => modelValue.value.key,
-	() => {
-		nextTick(() => {
-			if (formValidationStatus.value.key) {
-				updateUsageSyntax();
-			}
-		});
+	async () => {
+		await nextTick();
+		if (formValidationStatus.value.key) {
+			updateUsageSyntax();
+		}
 	},
 );
 

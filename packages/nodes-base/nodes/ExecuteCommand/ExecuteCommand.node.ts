@@ -75,6 +75,7 @@ export class ExecuteCommand implements INodeType {
 				default: '',
 				placeholder: 'echo "test"',
 				description: 'The command to execute',
+				required: true,
 			},
 		],
 	};

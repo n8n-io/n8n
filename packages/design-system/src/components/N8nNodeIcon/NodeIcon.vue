@@ -7,14 +7,14 @@
 				[$style.disabled]: disabled,
 			}"
 			:style="iconStyleData"
-			v-on="$listeners"
+			v-bind="$attrs"
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
 			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+					<font-awesome-icon v-else :icon="name" :class="$style.iconFa" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
@@ -126,7 +126,16 @@ export default defineComponent({
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	pointer-events: none;
+
+	svg {
+		max-width: 100%;
+		max-height: 100%;
+	}
+
+	img,
+	svg {
+		pointer-events: none;
+	}
 }
 .nodeIconPlaceholder {
 	text-align: center;

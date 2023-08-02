@@ -20,7 +20,11 @@
 							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</n8n-text>
 					</div>
-					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
+					<el-radio
+						:modelValue="operation"
+						label="transfer"
+						@update:modelValue="() => setOperation('transfer')"
+					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
 						}}</n8n-text>
@@ -29,14 +33,18 @@
 						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
 							<n8n-user-select
 								:users="usersStore.allUsers"
-								:value="transferId"
+								:modelValue="transferId"
 								:ignoreIds="ignoreIds"
 								:currentUserId="usersStore.currentUserId"
-								@input="setTransferId"
+								@update:modelValue="setTransferId"
 							/>
 						</n8n-input-label>
 					</div>
-					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
+					<el-radio
+						:modelValue="operation"
+						label="delete"
+						@update:modelValue="() => setOperation('delete')"
+					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
 						}}</n8n-text>
@@ -48,9 +56,9 @@
 					>
 						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
 							<n8n-input
-								:value="deleteConfirmText"
+								:modelValue="deleteConfirmText"
 								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-								@input="setConfirmText"
+								@update:modelValue="setConfirmText"
 							/>
 						</n8n-input-label>
 					</div>
@@ -70,20 +78,19 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-import { showMessage } from '@/mixins/showMessage';
-import Modal from './Modal.vue';
-import { IUser } from '../Interface';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
+import Modal from '@/components/Modal.vue';
+import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { createEventBus } from '@/event-bus';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	name: 'DeleteUserModal',
 	components: {
 		Modal,
 	},
-	name: 'DeleteUserModal',
 	props: {
 		modalName: {
 			type: String,
@@ -91,6 +98,11 @@ export default mixins(showMessage).extend({
 		activeId: {
 			type: String,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -169,7 +181,7 @@ export default mixins(showMessage).extend({
 					}
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.userDeleted'),
 					message,
@@ -177,7 +189,7 @@ export default mixins(showMessage).extend({
 
 				this.modalBus.emit('close');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.users.userDeletedError'));
+				this.showError(error, this.$locale.baseText('settings.users.userDeletedError'));
 			}
 			this.loading = false;
 		},

@@ -1,15 +1,16 @@
-import _Vue from 'vue';
-import { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
-import { Route } from 'vue-router';
+import type { Plugin } from 'vue';
+import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type { RouteLocation } from 'vue-router';
 
-import type { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useTelemetryStore } from '@/stores/telemetry';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTelemetryStore } from '@/stores/telemetry.store';
+import { SLACK_NODE_TYPE } from '@/constants';
 
 export class Telemetry {
-	private pageEventQueue: Array<{ route: Route }>;
+	private pageEventQueue: Array<{ route: RouteLocation }>;
 	private previousPath: string;
 
 	private get rudderStack() {
@@ -136,10 +137,6 @@ export class Telemetry {
 						this.track('User opened nodes panel', properties);
 					}
 					break;
-				case 'nodeCreateList.selectedTypeChanged':
-					this.userNodesPanelSession.data.filterMode = properties.new_filter as string;
-					this.track('User changed nodes panel filter', properties);
-					break;
 				case 'nodeCreateList.destroyed':
 					if (
 						this.userNodesPanelSession.data.nodeFilter.length > 0 &&
@@ -183,10 +180,7 @@ export class Telemetry {
 					this.track('User added action', properties);
 					break;
 				case 'nodeCreateList.onSubcategorySelected':
-					const selectedProperties = (properties.selected as IDataObject).properties as IDataObject;
-					if (selectedProperties && selectedProperties.subcategory) {
-						properties.category_name = selectedProperties.subcategory;
-					}
+					properties.category_name = properties.subcategory;
 					properties.is_subcategory = true;
 					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 					delete properties.selected;
@@ -198,6 +192,23 @@ export class Telemetry {
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);
 					break;
+				default:
+					break;
+			}
+		}
+	}
+
+	// We currently do not support tracking directly from within node implementation
+	// so we are using this method as centralized way to track node parameters changes
+	trackNodeParametersValuesChange(nodeType: string, change: IUpdateInformation) {
+		if (this.rudderStack) {
+			switch (nodeType) {
+				case SLACK_NODE_TYPE:
+					if (change.name === 'parameters.includeLinkToWorkflow') {
+						this.track('User toggled n8n reference option');
+					}
+					break;
+
 				default:
 					break;
 			}
@@ -272,15 +283,8 @@ export class Telemetry {
 
 export const telemetry = new Telemetry();
 
-export function TelemetryPlugin(vue: typeof _Vue): void {
-	Object.defineProperty(vue, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-}
+export const TelemetryPlugin: Plugin<{}> = {
+	install(app) {
+		app.config.globalProperties.$telemetry = telemetry;
+	},
+};

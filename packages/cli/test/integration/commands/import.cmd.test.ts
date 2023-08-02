@@ -1,7 +1,7 @@
 import * as testDb from '../shared/testDb';
-import { mockInstance } from '../shared/utils';
+import { mockInstance } from '../shared/utils/';
 import { InternalHooks } from '@/InternalHooks';
-import { ImportWorkflowsCommand } from '../../../src/commands/import/workflow';
+import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import * as Config from '@oclif/config';
 
 beforeAll(async () => {
@@ -25,7 +25,7 @@ test('import:workflow should import active workflow and deactivate it', async ()
 		['--separate', '--input=./test/integration/commands/importWorkflows/separate'],
 		config,
 	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation((number) => {
+	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
 		throw new Error('process.exit');
 	});
 
@@ -52,7 +52,7 @@ test('import:workflow should import active workflow from combined file and deact
 		['--input=./test/integration/commands/importWorkflows/combined/combined.json'],
 		config,
 	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation((number) => {
+	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
 		throw new Error('process.exit');
 	});
 

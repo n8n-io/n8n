@@ -1,14 +1,11 @@
-import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils';
+import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 
-let app: Application;
 let owner: User;
 let user1: User;
 let user2: User;
@@ -17,19 +14,16 @@ let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
 
-beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['publicApi'],
-		applyAuth: false,
-		enablePublicAPI: true,
-	});
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
+beforeAll(async () => {
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	const globalUserRole = await testDb.getGlobalMemberRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
 	user1 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 	user2 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 
+	// TODO: mock BinaryDataManager instead
 	await utils.initBinaryManager();
 	await utils.initNodeTypes();
 
@@ -46,42 +40,18 @@ beforeEach(async () => {
 		'Settings',
 	]);
 
-	authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
-
-	authUser1Agent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: user1,
-		version: 1,
-	});
-
-	authUser2Agent = utils.createAgent(app, {
-		apiPath: 'public',
-		auth: true,
-		user: user2,
-		version: 1,
-	});
-
-	config.set('userManagement.disabled', false);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
+	authOwnerAgent = testServer.publicApiAgentFor(owner);
+	authUser1Agent = testServer.publicApiAgentFor(user1);
+	authUser2Agent = testServer.publicApiAgentFor(user2);
 });
 
 afterEach(async () => {
 	await workflowRunner?.removeAll();
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
+		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);
 	};
@@ -213,7 +183,7 @@ describe('GET /executions', () => {
 
 		await testDb.createErrorExecution(workflow);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			status: 'success',
 		});
 
@@ -245,6 +215,7 @@ describe('GET /executions', () => {
 	});
 
 	// failing on Postgres and MySQL - ref: https://github.com/n8n-io/n8n/pull/3834
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test.skip('should paginate two executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
@@ -254,7 +225,7 @@ describe('GET /executions', () => {
 
 		await testDb.createErrorExecution(workflow);
 
-		const firstExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+		const firstExecutionResponse = await authOwnerAgent.get('/executions').query({
 			status: 'success',
 			limit: 1,
 		});
@@ -263,7 +234,7 @@ describe('GET /executions', () => {
 		expect(firstExecutionResponse.body.data.length).toBe(1);
 		expect(firstExecutionResponse.body.nextCursor).toBeDefined();
 
-		const secondExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+		const secondExecutionResponse = await authOwnerAgent.get('/executions').query({
 			status: 'success',
 			limit: 1,
 			cursor: firstExecutionResponse.body.nextCursor,
@@ -308,7 +279,7 @@ describe('GET /executions', () => {
 
 		const errorExecution = await testDb.createErrorExecution(workflow);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			status: 'error',
 		});
 
@@ -348,7 +319,7 @@ describe('GET /executions', () => {
 
 		const waitingExecution = await testDb.createWaitingExecution(workflow);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			status: 'waiting',
 		});
 
@@ -389,7 +360,7 @@ describe('GET /executions', () => {
 		);
 		await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			workflowId: workflow.id,
 		});
 
@@ -439,7 +410,7 @@ describe('GET /executions', () => {
 		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
 		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
 
-		const response = await authOwnerAgent.get(`/executions`);
+		const response = await authOwnerAgent.get('/executions');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(8);
@@ -463,7 +434,7 @@ describe('GET /executions', () => {
 		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
 		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
 
-		const response = await authUser1Agent.get(`/executions`);
+		const response = await authUser1Agent.get('/executions');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(4);
@@ -489,7 +460,7 @@ describe('GET /executions', () => {
 
 		await testDb.shareWorkflowWithUsers(firstWorkflowForUser2, [user1]);
 
-		const response = await authUser1Agent.get(`/executions`);
+		const response = await authUser1Agent.get('/executions');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(6);

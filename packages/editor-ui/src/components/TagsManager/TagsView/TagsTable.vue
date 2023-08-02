@@ -1,5 +1,6 @@
 <template>
 	<el-table
+		class="tags-table"
 		stripe
 		max-height="450"
 		ref="table"
@@ -15,9 +16,9 @@
 					<transition name="fade" mode="out-in">
 						<n8n-input
 							v-if="scope.row.create || scope.row.update"
-							:value="newName"
+							:modelValue="newName"
 							:maxlength="maxLength"
-							@input="onNewNameChange"
+							@update:modelValue="onNewNameChange"
 							ref="nameInput"
 						></n8n-input>
 						<span v-else-if="scope.row.delete">
@@ -107,14 +108,19 @@
 </template>
 
 <script lang="ts">
+import type { ElTable } from 'element-plus';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import { ITagRow } from '@/Interface';
-import Vue from 'vue';
+import type { ITagRow } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { N8nInput } from 'n8n-design-system';
+
+type TableRef = InstanceType<typeof ElTable>;
+type N8nInputRef = InstanceType<typeof N8nInput>;
 
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TagsTable',
 	props: ['rows', 'isLoading', 'newName', 'isSaving'],
 	data() {
@@ -173,26 +179,28 @@ export default Vue.extend({
 
 		focusOnInput(): void {
 			setTimeout(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const input = this.$refs.nameInput as any;
-				if (input && input.focus) {
-					input.focus();
+				const inputRef = this.$refs.nameInput as N8nInputRef | undefined;
+				if (inputRef && inputRef.focus) {
+					inputRef.focus();
 				}
 			}, INPUT_TRANSITION_TIMEOUT);
 		},
 
 		focusOnDelete(): void {
 			setTimeout(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const input = this.$refs.deleteHiddenInput as any;
-				if (input && input.focus) {
-					input.focus();
+				const inputRef = this.$refs.deleteHiddenInput as N8nInputRef | undefined;
+				if (inputRef && inputRef.focus) {
+					inputRef.focus();
 				}
 			}, DELETE_TRANSITION_TIMEOUT);
 		},
 
 		focusOnCreate(): void {
-			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
+			const bodyWrapperRef = (this.$refs.table as TableRef).$refs.bodyWrapper as HTMLElement;
+			if (bodyWrapperRef) {
+				bodyWrapperRef.scrollTop = 0;
+			}
+
 			this.focusOnInput();
 		},
 	},
@@ -207,6 +215,12 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
+.tags-table {
+	:deep(tr.disabled) {
+		pointer-events: none;
+	}
+}
+
 .name {
 	min-height: 45px;
 	display: flex;
@@ -239,10 +253,6 @@ export default Vue.extend({
 .ops.main {
 	display: none;
 	margin-left: 2px;
-}
-
-::v-deep tr.disabled {
-	pointer-events: none;
 }
 
 tr:hover .ops:not(.disabled) {

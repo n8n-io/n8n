@@ -1,10 +1,11 @@
 import express from 'express';
-import { Get, Post, RestController } from '@/decorators';
+import { Container, Service } from 'typedi';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
-	samlLicensedOwnerMiddleware,
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
@@ -23,11 +24,16 @@ import {
 } from '../serviceProvider.ee';
 import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
+import { InternalHooks } from '@/InternalHooks';
+import url from 'url';
+import querystring from 'querystring';
 
+@Service()
 @RestController('/sso/saml')
 export class SamlController {
 	constructor(private samlService: SamlService) {}
 
+	@NoAuthRequired()
 	@Get(SamlUrls.metadata)
 	async getServiceProviderMetadata(req: express.Request, res: express.Response) {
 		return res
@@ -39,7 +45,8 @@ export class SamlController {
 	 * GET /sso/saml/config
 	 * Return SAML config
 	 */
-	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized('any')
+	@Get(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
 	async configGet() {
 		const prefs = this.samlService.samlPreferences;
 		return {
@@ -53,7 +60,8 @@ export class SamlController {
 	 * POST /sso/saml/config
 	 * Set SAML config
 	 */
-	@Post(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Post(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
 	async configPost(req: SamlConfiguration.Update) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
@@ -71,7 +79,8 @@ export class SamlController {
 	 * POST /sso/saml/config/toggle
 	 * Set SAML config
 	 */
-	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedMiddleware] })
 	async toggleEnabledPost(req: SamlConfiguration.Toggle, res: express.Response) {
 		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
@@ -84,6 +93,7 @@ export class SamlController {
 	 * GET /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
+	@NoAuthRequired()
 	@Get(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsGet(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return this.acsHandler(req, res, 'redirect');
@@ -93,6 +103,7 @@ export class SamlController {
 	 * POST /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
+	@NoAuthRequired()
 	@Post(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsPost(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return this.acsHandler(req, res, 'post');
@@ -119,23 +130,36 @@ export class SamlController {
 				}
 			}
 			if (loginResult.authenticatedUser) {
+				void Container.get(InternalHooks).onUserLoginSuccess({
+					user: loginResult.authenticatedUser,
+					authenticationMethod: 'saml',
+				});
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(SamlUrls.samlOnboarding);
+						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {
-						return res.redirect(SamlUrls.defaultRedirect);
+						const redirectUrl = req.body?.RelayState ?? SamlUrls.defaultRedirect;
+						return res.redirect(getInstanceBaseUrl() + redirectUrl);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
 				}
 			}
+			void Container.get(InternalHooks).onUserLoginFailed({
+				user: loginResult.attributes.email ?? 'unknown',
+				authenticationMethod: 'saml',
+			});
 			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
 				return res.send(getSamlConnectionTestFailedView((error as Error).message));
 			}
+			void Container.get(InternalHooks).onUserLoginFailed({
+				user: 'unknown',
+				authenticationMethod: 'saml',
+			});
 			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
 		}
 	}
@@ -145,9 +169,25 @@ export class SamlController {
 	 * Access URL for implementing SP-init SSO
 	 * This endpoint is available if SAML is licensed and enabled
 	 */
+	@NoAuthRequired()
 	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async initSsoGet(req: express.Request, res: express.Response) {
-		return this.handleInitSSO(res);
+		let redirectUrl = '';
+		try {
+			const refererUrl = req.headers.referer;
+			if (refererUrl) {
+				const parsedUrl = url.parse(refererUrl);
+				if (parsedUrl?.query) {
+					const parsedQueryParams = querystring.parse(parsedUrl.query);
+					if (parsedQueryParams.redirect && typeof parsedQueryParams.redirect === 'string') {
+						redirectUrl = querystring.unescape(parsedQueryParams.redirect);
+					}
+				}
+			}
+		} catch {
+			// ignore
+		}
+		return this.handleInitSSO(res, redirectUrl);
 	}
 
 	/**
@@ -155,13 +195,14 @@ export class SamlController {
 	 * Test SAML config
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
 	 */
-	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Get(SamlUrls.configTest, { middlewares: [samlLicensedMiddleware] })
 	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
 		return this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
 	}
 
 	private async handleInitSSO(res: express.Response, relayState?: string) {
-		const result = this.samlService.getLoginRequestUrl(relayState);
+		const result = await this.samlService.getLoginRequestUrl(relayState);
 		if (result?.binding === 'redirect') {
 			return result.context.context;
 		} else if (result?.binding === 'post') {

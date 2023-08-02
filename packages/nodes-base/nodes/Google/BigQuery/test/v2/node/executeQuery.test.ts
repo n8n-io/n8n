@@ -1,8 +1,8 @@
 import type { INodeTypes } from 'n8n-workflow';
 
-import { setup, workflowToTests } from '../../../../../../test/nodes/Helpers';
-import type { WorkflowTestData } from '../../../../../../test/nodes/types';
-import { executeWorkflow } from '../../../../../../test/nodes/ExecuteWorkflow';
+import { setup, workflowToTests } from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 import * as transport from '../../../v2/transport';
 
@@ -14,21 +14,20 @@ jest.mock('../../../v2/transport', () => {
 		...originalModule,
 		googleApiRequest: jest.fn(async (method: string, resource: string) => {
 			if (resource === '/v2/projects/test-project/jobs' && method === 'POST') {
-				return Promise.resolve({
+				return {
 					jobReference: {
 						jobId: 'job_123',
 					},
 					status: {
 						state: 'DONE',
 					},
-				});
+				};
 			}
 			if (resource === '/v2/projects/test-project/queries/job_123' && method === 'GET') {
-				return Promise.resolve({});
+				return {};
 			}
-			return Promise.resolve();
 		}),
-		// googleApiRequestAllItems: jest.fn(async () => Promise.resolve()),
+		// googleApiRequestAllItems: jest.fn(async () => {}),
 	};
 });
 

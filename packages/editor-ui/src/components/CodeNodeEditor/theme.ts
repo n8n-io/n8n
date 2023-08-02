@@ -29,7 +29,12 @@ const BASE_STYLING = {
 
 const cssStyleDeclaration = getComputedStyle(document.documentElement);
 
-export const CODE_NODE_EDITOR_THEME = [
+interface ThemeSettings {
+	isReadOnly?: boolean;
+	customMaxHeight?: string;
+}
+
+export const codeNodeEditorTheme = ({ isReadOnly, customMaxHeight }: ThemeSettings) => [
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
@@ -37,6 +42,7 @@ export const CODE_NODE_EDITOR_THEME = [
 			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
+			height: '100%',
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
@@ -47,6 +53,9 @@ export const CODE_NODE_EDITOR_THEME = [
 		},
 		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
 			backgroundColor: 'var(--color-code-selection)',
+		},
+		'&.cm-editor': {
+			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
 		},
 		'&.cm-editor.cm-focused': {
 			outline: 'none',
@@ -59,7 +68,9 @@ export const CODE_NODE_EDITOR_THEME = [
 			backgroundColor: 'var(--color-code-lineHighlight)',
 		},
 		'.cm-gutters': {
-			backgroundColor: 'var(--color-code-gutterBackground)',
+			backgroundColor: isReadOnly
+				? 'var(--color-code-background-readonly)'
+				: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
 			borderRadius: 'var(--border-radius-base)',
 		},
@@ -69,7 +80,8 @@ export const CODE_NODE_EDITOR_THEME = [
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-			maxHeight: BASE_STYLING.maxHeight,
+			maxHeight: customMaxHeight ?? '100%',
+			...(isReadOnly ? {} : { minHeight: '10em' }),
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,

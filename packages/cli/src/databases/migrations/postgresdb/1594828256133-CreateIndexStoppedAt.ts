@@ -1,18 +1,13 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateIndexStoppedAt1594828256133 implements MigrationInterface {
-	name = 'CreateIndexStoppedAt1594828256133';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+export class CreateIndexStoppedAt1594828256133 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE INDEX IF NOT EXISTS IDX_${tablePrefix}33228da131bb1112247cf52a42 ON ${tablePrefix}execution_entity ("stoppedAt") `,
 		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX IDX_${tablePrefix}33228da131bb1112247cf52a42`);
 	}
 }

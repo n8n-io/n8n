@@ -7,18 +7,19 @@
 			[$style.menuCollapsed]: mainSidebarCollapsed,
 		}"
 	>
-		<n8n-radio-buttons :value="activeTab" :options="items" @input="onSelect" />
+		<n8n-radio-buttons :modelValue="activeTab" :options="items" @update:modelValue="onSelect" />
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import { ITabBarItem } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { ITabBarItem } from '@/Interface';
 import { MAIN_HEADER_TABS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'tab-bar',
 	data() {
 		return {
@@ -53,7 +54,7 @@ export default Vue.extend({
 .container {
 	position: absolute;
 	top: 47px;
-	left: calc(50% + 100px);
+	left: 50%;
 	transform: translateX(-50%);
 	min-height: 30px;
 	display: flex;
@@ -61,10 +62,6 @@ export default Vue.extend({
 	background-color: var(--color-foreground-base);
 	border-radius: var(--border-radius-base);
 	transition: all 150ms ease-in-out;
-
-	&.menuCollapsed {
-		left: 52%;
-	}
 }
 
 @media screen and (max-width: 430px) {

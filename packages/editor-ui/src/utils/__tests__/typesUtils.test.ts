@@ -1,6 +1,6 @@
 import jp from 'jsonpath';
 import { isEmpty, intersection, getSchema, isValidDate } from '@/utils';
-import { Schema } from '@/Interface';
+import type { Schema } from '@/Interface';
 
 describe('Types Utils', () => {
 	describe('isEmpty', () => {

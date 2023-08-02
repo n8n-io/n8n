@@ -1,22 +1,27 @@
-import Vue from 'vue';
-import { Diagnostic, linter as createLinter } from '@codemirror/lint';
-import * as esprima from 'esprima-next';
-
-import {
-	DEFAULT_LINTER_DELAY_IN_MS,
-	DEFAULT_LINTER_SEVERITY,
-	OFFSET_FOR_SCRIPT_WRAPPER,
-} from './constants';
-import { walk } from './utils';
-
+import { defineComponent } from 'vue';
+import type { Diagnostic } from '@codemirror/lint';
+import { linter as createLinter } from '@codemirror/lint';
+import { jsonParseLinter } from '@codemirror/lang-json';
 import type { EditorView } from '@codemirror/view';
+import * as esprima from 'esprima-next';
 import type { Node } from 'estree';
-import type { CodeNodeEditorMixin, RangeNode } from './types';
+import type { CodeNodeEditorLanguage } from 'n8n-workflow';
 
-export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
+import { DEFAULT_LINTER_DELAY_IN_MS, DEFAULT_LINTER_SEVERITY } from './constants';
+import { OFFSET_FOR_SCRIPT_WRAPPER } from './constants';
+import { walk } from './utils';
+import type { RangeNode } from './types';
+
+export const linterExtension = defineComponent({
 	methods: {
-		linterExtension() {
-			return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
+		createLinter(language: CodeNodeEditorLanguage) {
+			switch (language) {
+				case 'javaScript':
+					return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
+				case 'json':
+					return createLinter(jsonParseLinter());
+			}
+			return undefined;
 		},
 
 		lintSource(editorView: EditorView): Diagnostic[] {

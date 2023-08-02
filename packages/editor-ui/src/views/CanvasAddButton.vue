@@ -7,11 +7,10 @@
 	>
 		<n8n-tooltip
 			placement="top"
-			:value="showTooltip"
-			manual
+			:visible="showTooltip"
 			:disabled="nodeCreatorStore.showScrim"
 			:popper-class="$style.tooltip"
-			:open-delay="700"
+			:show-after="700"
 		>
 			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
@@ -26,8 +25,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { XYPosition } from '@/Interface';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import type { XYPosition } from '@/Interface';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 export interface Props {
 	showTooltip: boolean;

@@ -2,18 +2,20 @@
  * Creates event listeners for `data-action` attribute to allow for actions to be called from locale without using
  * unsafe onclick attribute
  */
-import { reactive, del, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { reactive, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { globalLinkActionsEventBus } from '@/event-bus';
 
 const state = reactive({
 	customActions: {} as Record<string, Function>,
 });
 
 export default () => {
-	function registerCustomAction(key: string, action: Function) {
+	function registerCustomAction({ key, action }: { key: string; action: Function }) {
 		state.customActions[key] = action;
 	}
 	function unregisterCustomAction(key: string) {
-		del(state.customActions, key);
+		const { [key]: _, ...rest } = state.customActions;
+		state.customActions = rest;
 	}
 	function delegateClick(e: MouseEvent) {
 		const clickedElement = e.target;
@@ -42,13 +44,15 @@ export default () => {
 	onMounted(() => {
 		const instance = getCurrentInstance();
 		window.addEventListener('click', delegateClick);
-		instance?.proxy.$root.$on('registerGlobalLinkAction', registerCustomAction);
+
+		globalLinkActionsEventBus.on('registerGlobalLinkAction', registerCustomAction);
 	});
 
 	onUnmounted(() => {
 		const instance = getCurrentInstance();
 		window.removeEventListener('click', delegateClick);
-		instance?.proxy.$root.$off('registerGlobalLinkAction', registerCustomAction);
+
+		globalLinkActionsEventBus.off('registerGlobalLinkAction', registerCustomAction);
 	});
 
 	return {

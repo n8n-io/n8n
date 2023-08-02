@@ -4,7 +4,6 @@
 			[$style.creatorNode]: true,
 			[$style.hasAction]: !showActionArrow,
 		}"
-		v-on="$listeners"
 		v-bind="$attrs"
 	>
 		<div :class="$style.nodeIcon">
@@ -92,16 +91,11 @@ defineEmits<{
 }
 .nodeIcon {
 	display: flex;
-	margin-right: var(--spacing-s);
-
-	& > :global(*) {
-		min-width: 25px;
-		max-width: 25px;
-	}
+	margin-right: var(--node-icon-margin-right, var(--spacing-s));
 }
 .name {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
+	font-weight: var(--node-creator-name-weight, var(--font-weight-bold));
+	font-size: var(--node-creator-name-size, var(--font-size-s));
 	line-height: 1.115rem;
 }
 .description {

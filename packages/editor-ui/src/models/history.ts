@@ -1,12 +1,12 @@
-import { INodeUi } from '@/Interface';
-import { IConnection } from 'n8n-workflow';
-import { XYPosition } from '../Interface';
-import { createEventBus } from '@/event-bus';
+import type { INodeUi } from '@/Interface';
+import type { IConnection } from 'n8n-workflow';
+import type { XYPosition } from '../Interface';
+import { createEventBus } from 'n8n-design-system/utils';
 
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack
 // when debugging
-export enum COMMANDS {
+export const enum COMMANDS {
 	MOVE_NODE = 'moveNode',
 	ADD_NODE = 'addNode',
 	REMOVE_NODE = 'removeNode',

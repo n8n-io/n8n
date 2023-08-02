@@ -9,7 +9,7 @@
 					</template>
 					<div>
 						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled"
+							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
 							:label="$locale.baseText('settings.users.invite')"
 							@click="onInvite"
 							size="large"
@@ -19,7 +19,7 @@
 				</n8n-tooltip>
 			</div>
 		</div>
-		<div v-if="!settingsStore.isUserManagementEnabled" :class="$style.setupInfoContainer">
+		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
@@ -32,52 +32,52 @@
 				:buttonText="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
 				"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</div>
-		<div v-else-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
-			<n8n-action-box
-				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
-				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
-				:description="`${
-					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
-				}`"
-				@click="redirectToSetup"
-			/>
-		</div>
-		<div :class="$style.usersContainer" v-else>
+		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
+		-->
+		<div
+			:class="$style.usersContainer"
+			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
+		>
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="usersStore.allUsers"
 				:currentUserId="usersStore.currentUserId"
+				:isSamlLoginEnabled="ssoStore.isSamlLoginEnabled"
 				@delete="onDelete"
 				@reinvite="onReinvite"
 				@copyInviteLink="onCopyInviteLink"
+				@copyPasswordResetLink="onCopyPasswordResetLink"
+				@allowSSOManualLogin="onAllowSSOManualLogin"
+				@disallowSSOManualLogin="onDisallowSSOManualLogin"
 			/>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import PageAlert from '../components/PageAlert.vue';
-import { IUser, IUserListAction } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import type { IUser, IUserListAction } from '@/Interface';
+import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { BaseTextKey } from '@/plugins/i18n';
-import { useUsageStore } from '@/stores/usage';
-import { useSSOStore } from '@/stores/sso';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useSSOStore } from '@/stores/sso.store';
 
-export default mixins(showMessage, copyPaste).extend({
+export default defineComponent({
 	name: 'SettingsUsersView',
-	components: {
-		PageAlert,
+	mixins: [copyPaste],
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	async mounted() {
 		if (!this.usersStore.showUMSetupWarning) {
@@ -94,23 +94,44 @@ export default mixins(showMessage, copyPaste).extend({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyInviteLink'),
 					value: 'copyInviteLink',
-					guard: (user) => !user.firstName && !!user.inviteAcceptUrl,
+					guard: (user) =>
+						this.settingsStore.isBelowUserQuota && !user.firstName && !!user.inviteAcceptUrl,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.reinvite'),
 					value: 'reinvite',
-					guard: (user) => !user.firstName && this.settingsStore.isSmtpSetup,
+					guard: (user) =>
+						this.settingsStore.isBelowUserQuota &&
+						!user.firstName &&
+						this.settingsStore.isSmtpSetup,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.delete'),
 					value: 'delete',
+				},
+				{
+					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
+					value: 'copyPasswordResetLink',
+					guard: () => this.settingsStore.isBelowUserQuota,
+				},
+				{
+					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),
+					value: 'allowSSOManualLogin',
+					guard: (user) =>
+						this.settingsStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
+				},
+				{
+					label: this.$locale.baseText('settings.users.actions.disallowSSOManualLogin'),
+					value: 'disallowSSOManualLogin',
+					guard: (user) =>
+						this.settingsStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
 				},
 			];
 		},
 	},
 	methods: {
 		redirectToSetup() {
-			this.$router.push({ name: VIEWS.SETUP });
+			void this.$router.push({ name: VIEWS.SETUP });
 		},
 		onInvite() {
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
@@ -127,7 +148,7 @@ export default mixins(showMessage, copyPaste).extend({
 				try {
 					await this.usersStore.reinviteUser({ id: user.id });
 
-					this.$showToast({
+					this.showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),
 						message: this.$locale.baseText('settings.users.emailSentTo', {
@@ -135,7 +156,7 @@ export default mixins(showMessage, copyPaste).extend({
 						}),
 					});
 				} catch (e) {
-					this.$showError(e, this.$locale.baseText('settings.users.userReinviteError'));
+					this.showError(e, this.$locale.baseText('settings.users.userReinviteError'));
 				}
 			}
 		},
@@ -144,15 +165,56 @@ export default mixins(showMessage, copyPaste).extend({
 			if (user?.inviteAcceptUrl) {
 				this.copyToClipboard(user.inviteAcceptUrl);
 
-				this.$showToast({
+				this.showToast({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.inviteUrlCreated'),
 					message: this.$locale.baseText('settings.users.inviteUrlCreated.message'),
 				});
 			}
 		},
+		async onCopyPasswordResetLink(userId: string) {
+			const user = this.usersStore.getUserById(userId) as IUser | null;
+			if (user) {
+				const url = await this.usersStore.getUserPasswordResetLink(user);
+				this.copyToClipboard(url.link);
+
+				this.showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.passwordResetUrlCreated'),
+					message: this.$locale.baseText('settings.users.passwordResetUrlCreated.message'),
+				});
+			}
+		},
+		async onAllowSSOManualLogin(userId: string) {
+			const user = this.usersStore.getUserById(userId) as IUser | null;
+			if (user) {
+				if (!user.settings) {
+					user.settings = {};
+				}
+				user.settings.allowSSOManualLogin = true;
+				await this.usersStore.updateOtherUserSettings(userId, user.settings);
+
+				this.showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.allowSSOManualLogin'),
+					message: this.$locale.baseText('settings.users.allowSSOManualLogin.message'),
+				});
+			}
+		},
+		async onDisallowSSOManualLogin(userId: string) {
+			const user = this.usersStore.getUserById(userId) as IUser | null;
+			if (user?.settings) {
+				user.settings.allowSSOManualLogin = false;
+				await this.usersStore.updateOtherUserSettings(userId, user.settings);
+				this.showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.disallowSSOManualLogin'),
+					message: this.$locale.baseText('settings.users.disallowSSOManualLogin.message'),
+				});
+			}
+		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('users', 'upgrade-users');
+			this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
 		},
 	},
 });

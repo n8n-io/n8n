@@ -1,3 +1,4 @@
+import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import type {
@@ -26,16 +27,16 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
-
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
 import { RoleRepository } from '@db/repositories';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
-import omit from 'lodash.omit';
+import omit from 'lodash/omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { RoleNames } from '@db/entities/Role';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -95,7 +96,6 @@ export async function executeErrorWorkflow(
 		if (workflowData === null) {
 			// The error workflow could not be found
 			Logger.error(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
 				{ workflowId },
 			);
@@ -141,7 +141,6 @@ export async function executeErrorWorkflow(
 
 		if (workflowStartNode === undefined) {
 			Logger.error(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
 			);
 			return;
@@ -190,7 +189,7 @@ export async function executeErrorWorkflow(
 	} catch (error) {
 		ErrorReporter.error(error);
 		Logger.error(
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
 		);
@@ -206,13 +205,13 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 		if (isWorkflowIdValid(workflow.id)) {
 			// Workflow is saved so update in database
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-use-before-define, @typescript-eslint/no-non-null-assertion
+				// eslint-disable-next-line @typescript-eslint/no-use-before-define
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (error) {
 				ErrorReporter.error(error);
 				Logger.error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);
@@ -272,7 +271,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 
 	// for loop to run DB fetches sequential and use cache to keep pressure off DB
 	// trade-off: longer response time for less DB queries
-	/* eslint-disable no-await-in-loop */
+
 	for (const node of nodes) {
 		if (!node.credentials || node.disabled) {
 			continue;
@@ -372,16 +371,24 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  * Get the IDs of the workflows that have been shared with the user.
  * Returns all IDs if user is global owner (see `whereClause`)
  */
-export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
+export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
+	const where: FindOptionsWhere<SharedWorkflow> = {};
+	if (user.globalRole?.name !== 'owner') {
+		where.userId = user.id;
+	}
+	if (roles?.length) {
+		const roleIds = await Db.collections.Role.find({
+			select: ['id'],
+			where: { name: In(roles), scope: 'workflow' },
+		}).then((data) => data.map(({ id }) => id));
+		where.roleId = In(roleIds);
+	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		relations: ['workflow', 'role'],
-		where: whereClause({ user, entityType: 'workflow', roles }),
+		where,
 		select: ['workflowId'],
 	});
-
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
-
 /**
  * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
  * If user does, set flag in its settings.

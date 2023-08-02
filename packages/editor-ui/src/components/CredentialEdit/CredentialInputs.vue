@@ -17,19 +17,19 @@
 				:showValidationWarnings="showValidationWarnings"
 				:label="label"
 				eventSource="credentials"
-				@change="valueChanged"
+				@update="valueChanged"
 			/>
 		</form>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { IParameterLabel } from 'n8n-workflow';
-import { IUpdateInformation } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { IParameterLabel } from 'n8n-workflow';
+import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'CredentialsInput',
 	props: [
 		'credentialProperties',
@@ -51,7 +51,7 @@ export default Vue.extend({
 		valueChanged(parameterData: IUpdateInformation) {
 			const name = parameterData.name.split('.').pop();
 
-			this.$emit('change', {
+			this.$emit('update', {
 				name,
 				value: parameterData.value,
 			});

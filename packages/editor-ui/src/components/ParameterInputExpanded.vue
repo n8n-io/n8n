@@ -15,57 +15,60 @@
 				:isReadOnly="false"
 				:showOptions="true"
 				:isValueExpression="isValueExpression"
-				@optionSelected="optionSelected"
+				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<template>
-			<parameter-input-wrapper
-				ref="param"
-				inputSize="large"
-				:parameter="parameter"
-				:value="value"
-				:path="parameter.name"
-				:hideIssues="true"
-				:documentationUrl="documentationUrl"
-				:errorHighlight="showRequiredErrors"
-				:isForCredential="true"
-				:eventSource="eventSource"
-				:hint="!showRequiredErrors ? hint : ''"
-				@focus="onFocus"
-				@blur="onBlur"
-				@textInput="valueChanged"
-				@valueChanged="valueChanged"
-			/>
-			<div :class="$style.errors" v-if="showRequiredErrors">
-				<n8n-text color="danger" size="small">
-					{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-					<n8n-link
-						v-if="documentationUrl"
-						:to="documentationUrl"
-						size="small"
-						:underline="true"
-						@click="onDocumentationUrlClick"
-					>
-						{{ $locale.baseText('parameterInputExpanded.openDocs') }}
-					</n8n-link>
-				</n8n-text>
-			</div>
-		</template>
+		<parameter-input-wrapper
+			ref="param"
+			inputSize="large"
+			:parameter="parameter"
+			:modelValue="value"
+			:path="parameter.name"
+			:hideIssues="true"
+			:documentationUrl="documentationUrl"
+			:errorHighlight="showRequiredErrors"
+			:isForCredential="true"
+			:eventSource="eventSource"
+			:hint="!showRequiredErrors ? hint : ''"
+			:event-bus="eventBus"
+			@focus="onFocus"
+			@blur="onBlur"
+			@textInput="valueChanged"
+			@update="valueChanged"
+		/>
+		<div :class="$style.errors" v-if="showRequiredErrors">
+			<n8n-text color="danger" size="small">
+				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				<n8n-link
+					v-if="documentationUrl"
+					:to="documentationUrl"
+					size="small"
+					:underline="true"
+					@click="onDocumentationUrlClick"
+				>
+					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+				</n8n-link>
+			</n8n-text>
+		</div>
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
-import { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation } from '@/Interface';
 import ParameterOptions from './ParameterOptions.vue';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from '@/utils';
-import { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
+import type { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default Vue.extend({
+type ParamRef = InstanceType<typeof ParameterInputWrapper>;
+
+export default defineComponent({
 	name: 'parameter-input-expanded',
 	components: {
 		ParameterOptions,
@@ -97,6 +100,7 @@ export default Vue.extend({
 			focused: false,
 			blurredEver: false,
 			menuExpanded: false,
+			eventBus: createEventBus(),
 		};
 	},
 	computed: {
@@ -144,12 +148,10 @@ export default Vue.extend({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
+			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('change', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onDocumentationUrlClick(): void {
 			this.$telemetry.track('User clicked credential modal docs link', {

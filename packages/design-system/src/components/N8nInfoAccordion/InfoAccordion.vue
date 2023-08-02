@@ -41,7 +41,10 @@
 <script lang="ts">
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { EventBus } from '../../utils';
+import { createEventBus } from '../../utils';
 
 export interface IAccordionItem {
 	id: string;
@@ -76,9 +79,13 @@ export default defineComponent({
 			type: Object as PropType<{ icon: string; color: string }>,
 			required: false,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	mounted() {
-		this.$on('expand', () => {
+		this.eventBus.on('expand', () => {
 			this.expanded = true;
 		});
 		this.expanded = this.initiallyExpanded;
@@ -93,7 +100,7 @@ export default defineComponent({
 			this.expanded = !this.expanded;
 		},
 		onClick(e: MouseEvent) {
-			this.$emit('click', e);
+			this.$emit('click:body', e);
 		},
 		onTooltipClick(item: string, event: MouseEvent) {
 			this.$emit('tooltipClick', item, event);

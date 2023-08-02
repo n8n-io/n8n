@@ -88,8 +88,12 @@ export function augmentObject<T extends object>(data: T): T {
 				return newData[key];
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const value = Reflect.get(target, key, receiver);
+
+			if (typeof value !== 'object' || value === null) return value;
+			if (value instanceof RegExp) return value.toString();
+			if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
+
 			const newValue = augment(value);
 			if (newValue !== value) {
 				Object.assign(newData, { [key]: newValue });
@@ -128,7 +132,11 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return true;
 		},
-
+		has(target, key) {
+			if (deletedProperties.indexOf(key) !== -1) return false;
+			const newKeys = Object.keys(newData);
+			return Reflect.has(newKeys.length ? newData : target, key);
+		},
 		ownKeys(target) {
 			const originalKeys = Reflect.ownKeys(target);
 			const newKeys = Object.keys(newData);
@@ -138,7 +146,8 @@ export function augmentObject<T extends object>(data: T): T {
 		},
 
 		getOwnPropertyDescriptor(target, key) {
-			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
+			if (deletedProperties.indexOf(key) !== -1) return undefined;
+			return Object.getOwnPropertyDescriptor(key in newData ? newData : data, key);
 		},
 	});
 
