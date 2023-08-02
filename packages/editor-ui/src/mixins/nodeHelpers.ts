@@ -522,15 +522,19 @@ export const nodeHelpers = defineComponent({
 			}
 
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
-				return workflow.expression.getSimpleParameterValue(
-					data as INode,
-					nodeType.subtitle,
-					'internal',
-					this.rootStore.timezone,
-					{},
-					undefined,
-					PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-				) as string | undefined;
+				try {
+					return workflow.expression.getSimpleParameterValue(
+						data as INode,
+						nodeType.subtitle,
+						'internal',
+						this.rootStore.timezone,
+						{},
+						undefined,
+						PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					) as string | undefined;
+				} catch (e) {
+					return undefined;
+				}
 			}
 
 			if (data.parameters.operation !== undefined) {

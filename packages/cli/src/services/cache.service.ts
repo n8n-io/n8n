@@ -163,6 +163,9 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
+		if (value === undefined || value === null) {
+			return;
+		}
 		if (this.isRedisCache()) {
 			if (!(this.cache as RedisCache)?.store?.isCacheable(value)) {
 				throw new Error('Value is not cacheable');
@@ -180,15 +183,17 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const nonNullValues = values.filter(([_key, value]) => value !== undefined && value !== null);
 		if (this.isRedisCache()) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			values.forEach(([_key, value]) => {
+			nonNullValues.forEach(([_key, value]) => {
 				if (!(this.cache as RedisCache)?.store?.isCacheable(value)) {
 					throw new Error('Value is not cacheable');
 				}
 			});
 		}
-		await this.cache?.store.mset(values, ttl);
+		await this.cache?.store.mset(nonNullValues, ttl);
 	}
 
 	/**

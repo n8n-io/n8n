@@ -69,7 +69,7 @@ export default defineComponent({
 
 			return 'SM';
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		value(): any | undefined {
 			if (this.valueXS !== undefined && this.width < BREAKPOINT_SM) {
 				return this.valueXS;

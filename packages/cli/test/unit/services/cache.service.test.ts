@@ -328,4 +328,14 @@ describe('cacheService', () => {
 		await cacheService.delete(key);
 		await expect(cacheService.get(key)).resolves.toBeUndefined();
 	});
+
+	test('should not cache null or undefined values', async () => {
+		await cacheService.set('nullValue', null);
+		await cacheService.set('undefValue', undefined);
+		await cacheService.set('normalValue', 'test');
+
+		await expect(cacheService.get('normalValue')).resolves.toBe('test');
+		await expect(cacheService.get('undefValue')).resolves.toBeUndefined();
+		await expect(cacheService.get('nullValue')).resolves.toBeUndefined();
+	});
 });
