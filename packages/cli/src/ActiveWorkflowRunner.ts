@@ -1,6 +1,3 @@
-/* eslint-disable prefer-spread */
-
-/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -21,10 +18,11 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
+	IWebhookData,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -41,8 +39,10 @@ import type {
 	IActivationError,
 	IQueuedWorkflowActivations,
 	IResponseCallbackData,
+	IWebhookManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
+	WebhookRequest,
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -73,7 +73,7 @@ const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 
 @Service()
-export class ActiveWorkflowRunner {
+export class ActiveWorkflowRunner implements IWebhookManager {
 	private activeWorkflows = new ActiveWorkflows();
 
 	private activationErrors: {
@@ -168,7 +168,7 @@ export class ActiveWorkflowRunner {
 		let activeWorkflowIds: string[] = [];
 		Logger.verbose('Call to remove all active workflows received (removeAll)');
 
-		activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
+		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
 
 		const activeWorkflows = await this.getActiveWorkflows();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
@@ -187,15 +187,13 @@ export class ActiveWorkflowRunner {
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
 	async executeWebhook(
-		httpMethod: WebhookHttpMethod,
-		path: string,
-		req: express.Request,
-		res: express.Response,
+		request: WebhookRequest,
+		response: express.Response,
 	): Promise<IResponseCallbackData> {
-		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
+		const httpMethod = request.method;
+		let path = request.params.path;
 
-		// Reset request parameters
-		req.params = {};
+		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 
 		// Remove trailing slash
 		if (path.endsWith('/')) {
@@ -245,6 +243,7 @@ export class ActiveWorkflowRunner {
 					webhook = dynamicWebhook;
 				}
 			});
+
 			if (webhook === null) {
 				throw new ResponseHelper.NotFoundError(
 					webhookNotFoundErrorMessage(path, httpMethod),
@@ -253,14 +252,14 @@ export class ActiveWorkflowRunner {
 			}
 
 			// @ts-ignore
-
 			path = webhook.webhookPath;
 			// extracting params from path
 			// @ts-ignore
 			webhook.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
-					req.params[ele.slice(1)] = pathElements[index];
+					// @ts-ignore
+					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});
 		}
@@ -294,9 +293,7 @@ export class ActiveWorkflowRunner {
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		).filter((webhook) => {
-			return webhook.httpMethod === httpMethod && webhook.path === path;
-		})[0];
+		).find((w) => w.httpMethod === httpMethod && w.path === path) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -317,9 +314,8 @@ export class ActiveWorkflowRunner {
 				undefined,
 				undefined,
 				undefined,
-				req,
-				res,
-
+				request,
+				response,
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);
@@ -333,7 +329,7 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Gets all request methods associated with a single webhook
 	 */
-	async getWebhookMethods(path: string): Promise<string[]> {
+	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
 		const webhooks = await this.webhookRepository.find({
 			select: ['method'],
 			where: { webhookPath: path },
@@ -479,10 +475,10 @@ export class ActiveWorkflowRunner {
 
 				try {
 					await this.removeWorkflowWebhooks(workflow.id as string);
-				} catch (error) {
-					ErrorReporter.error(error);
+				} catch (error1) {
+					ErrorReporter.error(error1);
 					Logger.error(
-						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
+						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
 					);
 				}
 
