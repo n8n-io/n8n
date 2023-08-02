@@ -20,7 +20,7 @@ import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
-import { ExternalSecretsManager } from '@/secrets/SecretsManager.ee';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';

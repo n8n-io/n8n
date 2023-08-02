@@ -800,5 +800,6 @@ export abstract class SecretsProvider {
 	abstract update(): Promise<void>;
 	abstract test(): Promise<[boolean] | [boolean, string]>;
 	abstract getSecret(name: string): IDataObject | undefined;
+	abstract hasSecret(name: string): boolean;
 	abstract getSecretNames(): string[];
 }

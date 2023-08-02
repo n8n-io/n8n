@@ -531,6 +531,10 @@ export class VaultProvider extends SecretsProvider {
 		return this.cachedSecrets[name];
 	}
 
+	hasSecret(name: string): boolean {
+		return name in this.cachedSecrets;
+	}
+
 	getSecretNames(): string[] {
 		const getKeys = ([k, v]: [string, IDataObject]): string[] => {
 			if (typeof v === 'object') {

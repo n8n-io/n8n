@@ -4,7 +4,7 @@ import type { ExternalSecretsRequest } from '@/requests';
 import type { IDataObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { ExternalSecretsManager } from './SecretsManager.ee';
+import { ExternalSecretsManager } from './ExternalSecretsManager.ee';
 
 export class ProviderNotFoundError extends Error {
 	constructor(public providerName: string, options?: ErrorOptions) {
@@ -13,7 +13,7 @@ export class ProviderNotFoundError extends Error {
 }
 
 @Service()
-export class SecretsService {
+export class ExternalSecretsService {
 	constructor(private readonly secretsManager: ExternalSecretsManager) {}
 
 	getProvider(providerName: string): ExternalSecretsRequest.GetProviderResponse | null {

@@ -12,8 +12,6 @@ import { AES, enc } from 'crypto-js';
 import { getLogger } from '@/Logger';
 
 import type { IDataObject } from 'n8n-workflow';
-import { InfisicalProvider } from './providers/infisical';
-import { VaultProvider } from './providers/vault';
 import {
 	EXTERNAL_SECRETS_INITIAL_BACKOFF,
 	EXTERNAL_SECRETS_MAX_BACKOFF,
@@ -21,13 +19,9 @@ import {
 } from './constants';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
+import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
 
 const logger = getLogger();
-
-const PROVIDER_MAP: Record<string, { new (): SecretsProvider }> = {
-	infisical: InfisicalProvider,
-	vault: VaultProvider,
-};
 
 @Service()
 export class ExternalSecretsManager {
@@ -43,7 +37,11 @@ export class ExternalSecretsManager {
 
 	initRetryTimeouts: Record<string, NodeJS.Timer> = {};
 
-	constructor(private settingsRepo: SettingsRepository, private license: License) {}
+	constructor(
+		private settingsRepo: SettingsRepository,
+		private license: License,
+		private secretsProviders: ExternalSecretsProviders,
+	) {}
 
 	async init(): Promise<void> {
 		if (!this.initialized) {
@@ -66,7 +64,8 @@ export class ExternalSecretsManager {
 	shutdown() {
 		clearInterval(this.updateInterval);
 		Object.values(this.providers).forEach((p) => {
-			void p.disconnect();
+			// Disregard any errors as we're shutting down anyway
+			void p.disconnect().catch(() => {});
 		});
 		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
 	}
@@ -122,7 +121,7 @@ export class ExternalSecretsManager {
 		providerSettings: SecretsProviderSettings,
 		currentBackoff = EXTERNAL_SECRETS_INITIAL_BACKOFF,
 	) {
-		const providerClass = PROVIDER_MAP[name];
+		const providerClass = this.secretsProviders.getProvider(name);
 		if (!providerClass) {
 			return null;
 		}
@@ -203,6 +202,10 @@ export class ExternalSecretsManager {
 		return this.getProvider(provider)?.getSecret(name);
 	}
 
+	hasSecret(provider: string, name: string): boolean {
+		return this.getProvider(provider)?.hasSecret(name) ?? false;
+	}
+
 	getSecretNames(provider: string): string[] | undefined {
 		return this.getProvider(provider)?.getSecretNames();
 	}
@@ -220,7 +223,7 @@ export class ExternalSecretsManager {
 		provider: SecretsProvider;
 		settings: SecretsProviderSettings;
 	}> {
-		return Object.entries(PROVIDER_MAP).map(([k, c]) => ({
+		return Object.entries(this.secretsProviders.getAllProviders()).map(([k, c]) => ({
 			provider: this.getProvider(k) ?? new c(),
 			settings: this.cachedSettings[k] ?? {},
 		}));
@@ -232,11 +235,12 @@ export class ExternalSecretsManager {
 				settings: SecretsProviderSettings;
 		  }
 		| undefined {
-		if (!(provider in PROVIDER_MAP)) {
+		const providerConstructor = this.secretsProviders.getProvider(provider);
+		if (!providerConstructor) {
 			return undefined;
 		}
 		return {
-			provider: this.getProvider(provider) ?? new PROVIDER_MAP[provider](),
+			provider: this.getProvider(provider) ?? new providerConstructor(),
 			settings: this.cachedSettings[provider] ?? {},
 		};
 	}

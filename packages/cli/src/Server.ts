@@ -100,7 +100,7 @@ import {
 	WorkflowStatisticsController,
 } from '@/controllers';
 
-import { ExternalSecretsController } from '@/secrets/secrets.controller.ee';
+import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
@@ -165,7 +165,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { isExternalSecretsEnabled } from './secrets/externalSecretsHelper.ee';
+import { isExternalSecretsEnabled } from './ExternalSecrets/externalSecretsHelper.ee';
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';

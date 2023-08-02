@@ -3,13 +3,13 @@ import { ExternalSecretsRequest } from '@/requests';
 import { NotFoundError } from '@/ResponseHelper';
 import { Response } from 'express';
 import { Service } from 'typedi';
-import { ProviderNotFoundError, SecretsService } from './secrets.service.ee';
+import { ProviderNotFoundError, ExternalSecretsService } from './ExternalSecrets.service.ee';
 
 @Service()
 @Authorized(['global', 'owner'])
 @RestController('/external-secrets')
 export class ExternalSecretsController {
-	constructor(private readonly secretsService: SecretsService) {}
+	constructor(private readonly secretsService: ExternalSecretsService) {}
 
 	@Get('/providers')
 	async getProviders() {

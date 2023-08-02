@@ -1,6 +1,6 @@
 import type { IDataObject, SecretsHelpersBase } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { ExternalSecretsManager } from './secrets/SecretsManager.ee';
+import { ExternalSecretsManager } from './ExternalSecrets/ExternalSecretsManager.ee';
 
 @Service()
 export class SecretsHelper implements SecretsHelpersBase {
@@ -15,6 +15,10 @@ export class SecretsHelper implements SecretsHelpersBase {
 
 	getSecret(provider: string, name: string): IDataObject | undefined {
 		return this.service.getSecret(provider, name);
+	}
+
+	hasSecret(provider: string, name: string): boolean {
+		return this.service.hasSecret(provider, name);
 	}
 
 	hasProvider(provider: string): boolean {

@@ -148,4 +148,8 @@ export class InfisicalProvider implements SecretsProvider {
 	getSecretNames(): string[] {
 		return Object.keys(this.cachedSecrets);
 	}
+
+	hasSecret(name: string): boolean {
+		return name in this.cachedSecrets;
+	}
 }
