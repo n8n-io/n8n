@@ -195,18 +195,21 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		request: WebhookRequest,
 		response: express.Response,
 	): Promise<IResponseCallbackData> {
-		const { method } = request;
+		const httpMethod = request.method;
 		let path = request.params.path;
 
-		Logger.debug(`Received webhook "${method}" for path "${path}"`);
+		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 
-		path = path.endsWith('/') ? path.slice(0, -1) : path; // remove trailing slash
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
+		}
 
-		const webhook = await this.webhookService.findWebhook(method, path);
+		const webhook = await this.webhookService.findWebhook(httpMethod, path);
 
 		if (webhook === null) {
 			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path, method),
+				webhookNotFoundErrorMessage(path, httpMethod),
 				WEBHOOK_PROD_UNREGISTERED_HINT,
 			);
 		}
@@ -223,12 +226,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 		});
 
-		const dbWorkflow = await Db.collections.Workflow.findOne({
+		const workflowData = await Db.collections.Workflow.findOne({
 			where: { id: webhook.workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 
-		if (dbWorkflow === null) {
+		if (workflowData === null) {
 			throw new ResponseHelper.NotFoundError(
 				`Could not find workflow with ID "${webhook.workflowId}"`,
 			);
@@ -236,24 +239,24 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
-			name: dbWorkflow.name,
-			nodes: dbWorkflow.nodes,
-			connections: dbWorkflow.connections,
-			active: dbWorkflow.active,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: workflowData.active,
 			nodeTypes: this.nodeTypes,
-			staticData: dbWorkflow.staticData,
-			settings: dbWorkflow.settings,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			dbWorkflow.shared[0].user.id,
+			workflowData.shared[0].user.id,
 		);
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		).filter((w) => w.httpMethod === method && w.path === webhook.webhookPath)[0];
+		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -268,7 +271,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
-				dbWorkflow,
+				workflowData,
 				workflowStartNode,
 				executionMode,
 				undefined,
