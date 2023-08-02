@@ -1,7 +1,7 @@
 import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositories';
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
-import type { Role, RoleNames, RoleScopes } from '@/databases/entities/Role';
+import type { RoleNames, RoleScopes } from '@/databases/entities/Role';
 
 @Service()
 export class RoleService {
@@ -18,15 +18,13 @@ export class RoleService {
 
 		if (!allRoles) return;
 
-		void this.cacheService.setMany<Role>(
-			allRoles.map((role) => [`cache:role:${role.scope}:${role.name}`, role]),
-		);
+		void this.cacheService.setMany(allRoles.map((r) => [r.cacheKey, r]));
 	}
 
 	private async findCached(scope: RoleScopes, name: RoleNames) {
 		const cacheKey = `cache:role:${scope}:${name}`;
 
-		const cachedRole = await this.cacheService.get<Role>(cacheKey);
+		const cachedRole = await this.cacheService.get(cacheKey);
 
 		if (cachedRole) return this.roleRepository.create(cachedRole);
 
