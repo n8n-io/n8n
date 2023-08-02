@@ -208,10 +208,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/workflow',
-		redirect: '/workflow/new',
-	},
-	{
 		path: '/workflows',
 		name: VIEWS.WORKFLOWS,
 		components: {
@@ -227,25 +223,8 @@ export const routes = [
 		},
 	},
 	{
-		path: '/workflow/new',
-		name: VIEWS.NEW_WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			nodeView: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
-		},
-	},
-	{
-		path: '/workflow/:name',
-		name: VIEWS.WORKFLOW,
+		path: '/workflow/:name/debug/:executionId',
+		name: VIEWS.EXECUTION_DEBUG,
 		components: {
 			default: NodeView,
 			header: MainHeader,
@@ -310,20 +289,6 @@ export const routes = [
 		],
 	},
 	{
-		path: '/workflows/demo',
-		name: VIEWS.DEMO,
-		components: {
-			default: NodeView,
-		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
-		},
-	},
-	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
@@ -340,6 +305,58 @@ export const routes = [
 				},
 			},
 		},
+	},
+	{
+		path: '/workflow/new',
+		name: VIEWS.NEW_WORKFLOW,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflows/demo',
+		name: VIEWS.DEMO,
+		components: {
+			default: NodeView,
+		},
+		meta: {
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflow/:name',
+		name: VIEWS.WORKFLOW,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflow',
+		redirect: '/workflow/new',
 	},
 	{
 		path: '/signin',
@@ -471,7 +488,7 @@ export const routes = [
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
 								return (
-									settingsStore.settings.hideUsagePage === true ||
+									settingsStore.settings.hideUsagePage ||
 									settingsStore.settings.deployment?.type === 'cloud'
 								);
 							},
@@ -548,7 +565,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isPublicApiEnabled === false;
+								return !settingsStore.isPublicApiEnabled;
 							},
 						},
 					},
@@ -641,7 +658,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isCommunityNodesFeatureEnabled === false;
+								return !settingsStore.isCommunityNodesFeatureEnabled;
 							},
 						},
 					},
@@ -658,7 +675,7 @@ export const routes = [
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
-								feature: route.params['featureId'],
+								feature: route.params.featureId,
 							};
 						},
 					},

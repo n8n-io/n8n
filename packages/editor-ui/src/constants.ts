@@ -348,6 +348,7 @@ export const enum VIEWS {
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
+	EXECUTION_DEBUG = 'ExecutionPreview',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',

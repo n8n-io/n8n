@@ -32,6 +32,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
+	NodeMetadataMap,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -84,7 +85,6 @@ import { useNDVStore } from './ndv.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { NodeMetadataMap } from '@/Interface';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -157,25 +157,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		workflowTriggerNodes(): INodeUi[] {
 			return this.workflow.nodes.filter((node: INodeUi) => {
 				const nodeTypesStore = useNodeTypesStore();
-				const nodeType = nodeTypesStore.getNodeType(
-					node.type as string,
-					node.typeVersion as number,
-				);
-				return nodeType && nodeType.group.includes('trigger');
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				return nodeType?.group.includes('trigger');
 			});
 		},
 		currentWorkflowHasWebhookNode(): boolean {
 			return !!this.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
 		},
 		getWorkflowRunData(): IRunData | null {
-			if (
-				!this.workflowExecutionData ||
-				!this.workflowExecutionData.data ||
-				!this.workflowExecutionData.data.resultData
-			) {
-				return null;
-			}
-			return this.workflowExecutionData.data.resultData.runData;
+			return this.workflowExecutionData?.data?.resultData.runData || null;
 		},
 		getWorkflowResultDataByNodeName() {
 			return (nodeName: string): ITaskData[] | null => {
@@ -260,13 +250,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return this.workflowExecutionData ? this.workflowExecutionData.executedNode : undefined;
 		},
 		getParametersLastUpdate(): (name: string) => number | undefined {
-			return (nodeName: string) =>
-				this.nodeMetadata[nodeName] && this.nodeMetadata[nodeName].parametersLastUpdatedAt;
+			return (nodeName: string) => this.nodeMetadata[nodeName]?.parametersLastUpdatedAt;
 		},
 
 		isNodePristine(): (name: string) => boolean {
 			return (nodeName: string) =>
-				this.nodeMetadata[nodeName] === undefined || this.nodeMetadata[nodeName].pristine === true;
+				this.nodeMetadata[nodeName] === undefined || this.nodeMetadata[nodeName].pristine;
 		},
 		// Executions getters
 		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
@@ -452,7 +441,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflow.usedCredentials = data;
 			this.usedCredentials = data.reduce<{ [name: string]: IUsedCredential }>(
 				(accu, credential) => {
-					accu[credential.id!] = credential;
+					accu[credential.id] = credential;
 					return accu;
 				},
 				{},
@@ -488,7 +477,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode)
 					.credentials;
 
-				if (!nodeCredentials || !nodeCredentials[data.type]) {
+				if (!nodeCredentials?.[data.type]) {
 					return;
 				}
 
@@ -763,7 +752,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				break;
 			}
 			// Add the new connection if it does not exist already
-			if (connectionExists === false) {
+			if (!connectionExists) {
 				this.workflow.connections[sourceData.node][sourceData.type][sourceData.index].push(
 					destinationData,
 				);
@@ -859,8 +848,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			// If node has any WorkflowResultData rename also that one that the data
 			// does still get displayed also after node got renamed
 			if (
-				this.workflowExecutionData !== null &&
-				this.workflowExecutionData.data &&
+				this.workflowExecutionData?.data &&
 				this.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)
 			) {
 				this.workflowExecutionData.data.resultData.runData[nameData.new] =
@@ -920,11 +908,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return false;
 			}
 
-			const node = this.workflow.nodes[nodeIndex!];
+			const node = this.workflow.nodes[nodeIndex];
 
 			if (nodeIssueData.value === null) {
 				// Remove the value if one exists
-				if (node.issues === undefined || node.issues[nodeIssueData.type] === undefined) {
+				if (node.issues?.[nodeIssueData.type] === undefined) {
 					// No values for type exist so nothing has to get removed
 					return true;
 				}
@@ -1098,7 +1086,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {
-			if (this.workflowExecutionData === null || !this.workflowExecutionData.data) {
+			if (!this.workflowExecutionData?.data) {
 				throw new Error('The "workflowExecutionData" is not initialized!');
 			}
 			if (this.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
@@ -1120,7 +1108,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 		clearNodeExecutionData(nodeName: string): void {
-			if (this.workflowExecutionData === null || !this.workflowExecutionData.data) {
+			if (!this.workflowExecutionData?.data) {
 				return;
 			}
 
@@ -1139,7 +1127,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
-			if (!this.workflow.pinData || !this.workflow.pinData[nodeName]) return undefined;
+			if (!this.workflow.pinData?.[nodeName]) return undefined;
 
 			return this.workflow.pinData[nodeName].map((item) => item.json) as INodeExecutionData[];
 		},
