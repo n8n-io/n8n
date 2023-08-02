@@ -20,15 +20,14 @@ jobs:
       - uses: actions/checkout@v3
 
       - uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
@@ -67,6 +66,8 @@ jobs:
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -103,6 +104,8 @@ jobs:
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
