@@ -93,7 +93,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {}
 
 	async getWebhookMethods(path: string) {
-		return this.webhookService.getAllStoredMethods(path);
+		return this.webhookService.getWebhookMethods(path);
 	}
 
 	async init() {
@@ -214,7 +214,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			);
 		}
 
-		const reqPathSegments = path.split('/').slice(1); // remove uuid
+		const pathElements = path.split('/').slice(1);
 
 		// extracting params from path
 		// @ts-ignore
@@ -222,7 +222,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			if (ele.startsWith(':')) {
 				// write params to req.params
 				// @ts-ignore
-				request.params[ele.slice(1)] = reqPathSegments[index];
+				request.params[ele.slice(1)] = pathElements[index];
 			}
 		});
 
@@ -233,7 +233,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		if (workflowData === null) {
 			throw new ResponseHelper.NotFoundError(
-				`Could not find workflow with ID "${webhook.workflowId}"`,
+				`Could not find workflow with id "${webhook.workflowId}"`,
 			);
 		}
 

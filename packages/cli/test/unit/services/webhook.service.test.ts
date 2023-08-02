@@ -136,7 +136,7 @@ describe('WebhookService', () => {
 				createWebhook('PATCH', path),
 			]);
 
-			const returnedMethods = await webhookService.getAllStoredMethods(path);
+			const returnedMethods = await webhookService.getWebhookMethods(path);
 
 			expect(returnedMethods).toEqual(['GET', 'POST', 'PUT', 'PATCH']);
 		});
@@ -144,7 +144,7 @@ describe('WebhookService', () => {
 		test('should return empty array if no webhooks found', async () => {
 			webhookRepository.find.mockResolvedValue([]);
 
-			const returnedMethods = await webhookService.getAllStoredMethods('user/profile');
+			const returnedMethods = await webhookService.getWebhookMethods('user/profile');
 
 			expect(returnedMethods).toEqual([]);
 		});

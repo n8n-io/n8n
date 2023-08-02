@@ -111,7 +111,7 @@ export class WebhookService {
 		return this.webhookRepository.remove(webhooks);
 	}
 
-	async getAllStoredMethods(path: string) {
+	async getWebhookMethods(path: string) {
 		return this.webhookRepository
 			.find({ select: ['method'], where: { webhookPath: path } })
 			.then((rows) => rows.map((r) => r.method));
