@@ -6,16 +6,17 @@ export const description: INodeProperties[] = [
 	{
 		displayName: 'Type',
 		name: 'folderType',
-		description: 'Folder Type',
 		type: 'options',
 		options: [
 			{
 				name: 'Folder',
 				value: 'folder',
+				description: 'Stores messages selected manually by the user or through rules',
 			},
 			{
 				name: 'Search Folder',
 				value: 'searchFolder',
+				description: 'Virtually aggregates messages based on specific search criteria',
 			},
 		],
 		displayOptions: {
@@ -27,12 +28,13 @@ export const description: INodeProperties[] = [
 		default: 'folder',
 	},
 	{
-		displayName: 'Display Name',
+		displayName: 'Name',
 		name: 'displayName',
 		description: 'Name of the folder',
 		type: 'string',
 		required: true,
 		default: '',
+		placeholder: 'e.g. My Folder',
 		displayOptions: {
 			show: {
 				resource: ['folder'],
@@ -74,9 +76,10 @@ export const description: INodeProperties[] = [
 	{
 		displayName: 'Filter Query',
 		name: 'filterQuery',
-		description: 'The OData query to filter the messages',
+		hint: 'Search query to filter messages. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 		type: 'string',
 		default: '',
+		placeholder: "e.g. from/emailAddress/address eq 'john@example.com'",
 		required: true,
 		displayOptions: {
 			show: {

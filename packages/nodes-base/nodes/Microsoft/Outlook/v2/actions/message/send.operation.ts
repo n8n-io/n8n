@@ -11,6 +11,20 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
+		displayName: 'To',
+		name: 'toRecipients',
+		description: 'Comma-separated list of email addresses of recipients',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['send'],
+			},
+		},
+		required: true,
+		default: '',
+	},
+	{
 		displayName: 'Subject',
 		name: 'subject',
 		description: 'The subject of the message',
@@ -24,30 +38,19 @@ export const description: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Body Content',
+		displayName: 'Message',
 		name: 'bodyContent',
 		description: 'Message body content',
 		type: 'string',
+		typeOptions: {
+			rows: 2,
+		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
 				operation: ['send'],
 			},
 		},
-		default: '',
-	},
-	{
-		displayName: 'Recipients',
-		name: 'toRecipients',
-		description: 'Email addresses of recipients. Multiple can be added separated by comma.',
-		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['send'],
-			},
-		},
-		required: true,
 		default: '',
 	},
 	{
@@ -78,12 +81,12 @@ export const description: INodeProperties[] = [
 						displayName: 'Attachment',
 						values: [
 							{
-								displayName: 'Binary Property Name',
+								displayName: 'Input Data Field Name',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
-								description:
-									'Name of the binary property containing the data to be added to the email as an attachment',
+								placeholder: 'e.g. data',
+								hint: 'The name of the input field containing the binary file data to be attached',
 							},
 						],
 					},
@@ -92,26 +95,9 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'BCC Recipients',
 				name: 'bccRecipients',
-				description: 'Email addresses of BCC recipients',
+				description: 'Comma-separated list of email addresses of BCC recipients',
 				type: 'string',
 				default: '',
-			},
-			{
-				displayName: 'Body Content Type',
-				name: 'bodyContentType',
-				description: 'Message body content type',
-				type: 'options',
-				options: [
-					{
-						name: 'HTML',
-						value: 'html',
-					},
-					{
-						name: 'Text',
-						value: 'Text',
-					},
-				],
-				default: 'html',
 			},
 			{
 				displayName: 'Category Names or IDs',
@@ -127,7 +113,7 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'CC Recipients',
 				name: 'ccRecipients',
-				description: 'Email addresses of CC recipients',
+				description: 'Comma-separated list of email addresses of CC recipients',
 				type: 'string',
 				default: '',
 			},
@@ -167,7 +153,7 @@ export const description: INodeProperties[] = [
 				displayName: 'From',
 				name: 'from',
 				description:
-					'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
+					'The owner of the mailbox from which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -193,6 +179,23 @@ export const description: INodeProperties[] = [
 				default: 'Low',
 			},
 			{
+				displayName: 'Message Type',
+				name: 'bodyContentType',
+				description: 'Message body content type',
+				type: 'options',
+				options: [
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+					{
+						name: 'Text',
+						value: 'Text',
+					},
+				],
+				default: 'html',
+			},
+			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
 				description: 'Whether a read receipt is requested for the message',
@@ -200,16 +203,9 @@ export const description: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Recipients',
-				name: 'toRecipients',
-				description: 'Email addresses of recipients. Multiple can be added separated by comma.',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Reply To',
 				name: 'replyTo',
-				description: 'Email addresses to use when replying',
+				description: 'Email address to use when replying',
 				type: 'string',
 				default: '',
 			},

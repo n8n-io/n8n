@@ -34,6 +34,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'multiOptions',
+		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -63,7 +64,7 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: 'attachment_',
 				description:
-					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+					'Prefix for name of the output fields to put the binary files data in. An index starting from 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Download Attachments',

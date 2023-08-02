@@ -23,7 +23,7 @@ export const description: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new contact',
-				action: 'Create a new contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
@@ -34,13 +34,13 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a single contact',
+				description: 'Retrieve a contact',
 				action: 'Get a contact',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many contacts',
+				description: 'List and search contacts',
 				action: 'Get many contacts',
 			},
 			{

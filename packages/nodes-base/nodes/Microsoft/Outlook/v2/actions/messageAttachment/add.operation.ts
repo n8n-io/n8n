@@ -11,12 +11,13 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Data Field Name',
 		name: 'binaryPropertyName',
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the input field containing the binary file data to be attached',
 		type: 'string',
 		required: true,
 		default: 'data',
+		placeholder: 'e.g. data',
 		displayOptions: {
 			show: {
 				resource: ['messageAttachment'],

@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Display Name',
+				displayName: 'Name',
 				name: 'displayName',
 				description: 'Name of the folder',
 				type: 'string',
@@ -26,7 +26,7 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'Filter Query',
 				name: 'filterQuery',
-				description: 'The OData query to filter the messages. Only for search folders.',
+				hint: 'Search query to filter messages. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 				type: 'string',
 				default: '',
 			},

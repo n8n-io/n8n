@@ -4,7 +4,7 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Folders Name or ID',
+		displayName: 'Folder Name or ID',
 		name: 'folderId',
 		type: 'options',
 		typeOptions: {
@@ -12,7 +12,7 @@ export const description: INodeProperties[] = [
 		},
 		default: [],
 		description:
-			'The folder to get the messages from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The folder to move the message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['message'],

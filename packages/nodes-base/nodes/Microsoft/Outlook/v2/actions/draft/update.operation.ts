@@ -20,33 +20,10 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'BCC Recipients',
 				name: 'bccRecipients',
-				description: 'Email addresses of BCC recipients',
+				description: 'Comma-separated list of email addresses of BCC recipients',
 				type: 'string',
+				placeholder: 'e.g. john@example.com',
 				default: '',
-			},
-			{
-				displayName: 'Body Content',
-				name: 'bodyContent',
-				description: 'Message body content',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Body Content Type',
-				name: 'bodyContentType',
-				description: 'Message body content type',
-				type: 'options',
-				options: [
-					{
-						name: 'HTML',
-						value: 'html',
-					},
-					{
-						name: 'Text',
-						value: 'Text',
-					},
-				],
-				default: 'html',
 			},
 			{
 				displayName: 'Category Names or IDs',
@@ -62,8 +39,9 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'CC Recipients',
 				name: 'ccRecipients',
-				description: 'Email addresses of CC recipients',
+				description: 'Comma-separated list of email addresses of CC recipients',
 				type: 'string',
+				placeholder: 'e.g. john@example.com',
 				default: '',
 			},
 			{
@@ -102,8 +80,9 @@ export const description: INodeProperties[] = [
 				displayName: 'From',
 				name: 'from',
 				description:
-					'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
+					'The owner of the mailbox from which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
+				placeholder: 'e.g. john@example.com',
 				default: '',
 			},
 			{
@@ -130,9 +109,36 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'Is Read',
 				name: 'isRead',
-				description: 'Whether the message has been read',
+				description: 'Whether the message must be marked as read',
 				type: 'boolean',
 				default: false,
+			},
+			{
+				displayName: 'Message',
+				name: 'bodyContent',
+				description: 'Message body content',
+				type: 'string',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Message Type',
+				name: 'bodyContentType',
+				description: 'Message body content type',
+				type: 'options',
+				options: [
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+					{
+						name: 'Text',
+						value: 'Text',
+					},
+				],
+				default: 'html',
 			},
 			{
 				displayName: 'Read Receipt Requested',
@@ -142,17 +148,11 @@ export const description: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Recipients',
-				name: 'toRecipients',
-				description: 'Email addresses of recipients. Multiple can be added separated by comma.',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Reply To',
 				name: 'replyTo',
-				description: 'Email addresses to use when replying',
+				description: 'Email address to use when replying',
 				type: 'string',
+				placeholder: 'e.g. replyto@example.com',
 				default: '',
 			},
 			{
@@ -160,6 +160,14 @@ export const description: INodeProperties[] = [
 				name: 'subject',
 				description: 'The subject of the message',
 				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'To',
+				name: 'toRecipients',
+				description: 'Comma-separated list of email addresses of recipients',
+				type: 'string',
+				placeholder: 'e.g. john@example.com',
 				default: '',
 			},
 		],

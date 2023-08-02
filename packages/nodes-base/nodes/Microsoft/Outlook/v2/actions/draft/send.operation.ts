@@ -18,9 +18,9 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Recipients',
+				displayName: 'To',
 				name: 'recipients',
-				description: 'Email addresses of recipients. Mutiple can be set separated by comma.',
+				description: 'Comma-separated list of email addresses of recipients',
 				type: 'string',
 				default: '',
 			},

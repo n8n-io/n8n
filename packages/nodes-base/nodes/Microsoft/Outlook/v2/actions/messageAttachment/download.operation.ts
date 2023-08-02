@@ -4,9 +4,9 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output in Field',
 		name: 'binaryPropertyName',
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output field to put the binary file data in',
 		type: 'string',
 		required: true,
 		default: 'data',

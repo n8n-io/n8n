@@ -59,8 +59,7 @@ export const description: INodeProperties[] = [
 						value: 'lightYellow',
 					},
 				],
-				description:
-					'Specify the color theme to distinguish the calendar from other calendars in a UI',
+				description: 'Specify the color to distinguish the calendar from the others',
 			},
 			{
 				displayName: 'Default Calendar',
@@ -73,6 +72,8 @@ export const description: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. My Calendar',
+				description: 'The name of the calendar',
 			},
 		],
 	},

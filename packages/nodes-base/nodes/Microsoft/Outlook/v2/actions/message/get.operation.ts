@@ -39,6 +39,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'multiOptions',
+		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -68,7 +69,7 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: 'attachment_',
 				description:
-					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+					'Prefix for name of the output fields to put the binary files data in. An index starting from 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Download Attachments',
@@ -89,12 +90,11 @@ export const description: INodeProperties[] = [
 						name: 'values',
 						values: [
 							{
-								displayName: 'Binary Property',
+								displayName: 'Put Output in Field',
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
-								description:
-									'Name of the binary property to which to write the data of the read file',
+								hint: 'The name of the output field to put the binary file data in',
 							},
 							{
 								displayName: 'File Name',

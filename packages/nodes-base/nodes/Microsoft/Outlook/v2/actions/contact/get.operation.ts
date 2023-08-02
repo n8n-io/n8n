@@ -34,6 +34,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'multiOptions',
+		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
