@@ -1,20 +1,26 @@
 import type { Variables } from '@db/entities/Variables';
-import { collections } from '@/Db';
 import { CacheService } from '@/services/cache.service';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
+import { VariablesRepository } from '@/databases/repositories';
+import type { DeepPartial } from 'typeorm';
 
 @Service()
 export class VariablesService {
-	constructor(private cacheService: CacheService) {}
+	constructor(
+		protected cacheService: CacheService,
+		protected variablesRepository: VariablesRepository,
+	) {}
 
 	async getAll(): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
 			async refreshFunction() {
 				// TODO: log refresh cache metric
-				return collections.Variables.find();
+				return Container.get(VariablesService).findAll();
 			},
 		});
-		return variables as Variables[];
+		return (variables as Array<DeepPartial<Variables>>).map((v) =>
+			this.variablesRepository.create(v),
+		);
 	}
 
 	async getCount(): Promise<number> {
@@ -23,17 +29,25 @@ export class VariablesService {
 
 	async get(id: string): Promise<Variables | null> {
 		const variables = await this.getAll();
-		return variables.find((variable) => variable.id === id) ?? null;
+		const foundVariable = variables.find((variable) => variable.id === id);
+		if (!foundVariable) {
+			return null;
+		}
+		return this.variablesRepository.create(foundVariable as DeepPartial<Variables>);
 	}
 
 	async delete(id: string): Promise<void> {
-		await collections.Variables.delete(id);
+		await this.variablesRepository.delete(id);
 		await this.updateCache();
 	}
 
 	async updateCache(): Promise<void> {
 		// TODO: log update cache metric
-		const variables = await collections.Variables.find();
+		const variables = await this.findAll();
 		await this.cacheService.set('variables', variables);
+	}
+
+	async findAll(): Promise<Variables[]> {
+		return this.variablesRepository.find();
 	}
 }

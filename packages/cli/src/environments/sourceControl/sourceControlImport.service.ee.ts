@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -35,7 +35,10 @@ export class SourceControlImportService {
 
 	private credentialExportFolder: string;
 
-	constructor() {
+	constructor(
+		private readonly variablesService: VariablesService,
+		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -241,7 +244,7 @@ export class SourceControlImportService {
 	}
 
 	public async getLocalVariablesFromDb(): Promise<Variables[]> {
-		const localVariables = await Container.get(VariablesService).getAll();
+		const localVariables = await this.variablesService.getAll();
 		return localVariables;
 	}
 
@@ -279,7 +282,7 @@ export class SourceControlImportService {
 
 	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
-		const workflowRunner = Container.get(ActiveWorkflowRunner);
+		const workflowRunner = this.activeWorkflowRunner;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await Db.collections.Workflow.find({
 			where: {
@@ -580,7 +583,7 @@ export class SourceControlImportService {
 			}
 		}
 
-		await Container.get(VariablesService).updateCache();
+		await this.variablesService.updateCache();
 
 		return result;
 	}

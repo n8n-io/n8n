@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -35,7 +35,7 @@ export class SourceControlExportService {
 
 	private credentialExportFolder: string;
 
-	constructor() {
+	constructor(private readonly variablesService: VariablesService) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -137,7 +137,7 @@ export class SourceControlExportService {
 	async exportVariablesToWorkFolder(): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
-			const variables = await Container.get(VariablesService).getAll();
+			const variables = await this.variablesService.getAll();
 			// do not export empty variables
 			if (variables.length === 0) {
 				return {

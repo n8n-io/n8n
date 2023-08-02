@@ -1,6 +1,5 @@
 import { Container, Service } from 'typedi';
 import type { Variables } from '@db/entities/Variables';
-import { collections } from '@/Db';
 import { InternalHooks } from '@/InternalHooks';
 import { generateNanoId } from '@db/utils/generators';
 import { canCreateNewVariable } from './enviromentHelpers';
@@ -30,7 +29,7 @@ export class EEVariablesService extends VariablesService {
 		this.validateVariable(variable);
 
 		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
-		const saveResult = await collections.Variables.save({
+		const saveResult = await this.variablesRepository.save({
 			...variable,
 			id: generateNanoId(),
 		});
@@ -40,7 +39,7 @@ export class EEVariablesService extends VariablesService {
 
 	async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
 		this.validateVariable(variable);
-		await collections.Variables.update(id, variable);
+		await this.variablesRepository.update(id, variable);
 		await this.updateCache();
 		return (await this.get(id))!;
 	}
