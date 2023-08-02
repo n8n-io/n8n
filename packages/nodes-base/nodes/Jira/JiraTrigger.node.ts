@@ -44,7 +44,6 @@ export class JiraTrigger implements INodeType {
 				},
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'httpQueryAuth',
 				required: true,
 				displayOptions: {

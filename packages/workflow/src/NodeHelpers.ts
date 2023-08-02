@@ -32,7 +32,7 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	FieldType,
 	INodePropertyOptions,
 	ResourceMapperValue,
@@ -635,7 +635,7 @@ export function getNodeParameters(
 							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
-						nodeValues[nodeProperties.name] || nodeProperties.default;
+						nodeValues[nodeProperties.name] ?? nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else if (
@@ -870,8 +870,6 @@ export async function prepareOutputData(
 
 /**
  * Returns all the webhooks which should be created for the give node
- *
- *
  */
 export function getNodeWebhooks(
 	workflow: Workflow,
@@ -968,7 +966,7 @@ export function getNodeWebhooks(
 		}
 
 		returnData.push({
-			httpMethod: httpMethod.toString() as WebhookHttpMethod,
+			httpMethod: httpMethod.toString() as IHttpRequestMethods,
 			node: node.name,
 			path,
 			webhookDescription,

@@ -54,7 +54,6 @@ export async function sendGridApiRequestAllItems(
 	let uri;
 
 	do {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri); // possible bug, as function does not have uri parameter
 		uri = responseData._metadata.next;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);

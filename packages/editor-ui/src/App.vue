@@ -140,7 +140,7 @@ export default defineComponent({
 		},
 		logHiringBanner() {
 			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
-				console.log(HIRING_BANNER); // eslint-disable-line no-console
+				console.log(HIRING_BANNER);
 			}
 		},
 		async initialize(): Promise<void> {
@@ -269,7 +269,6 @@ export default defineComponent({
 
 		this.loading = false;
 
-		this.logHiringBanner();
 		this.trackPage();
 		void this.externalHooks.run('app.mount');
 
