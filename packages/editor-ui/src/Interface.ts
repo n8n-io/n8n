@@ -1534,6 +1534,8 @@ export interface ExternalSecretsProviderSecret {
 	key: string;
 }
 
+export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
+
 export interface ExternalSecretsProvider {
 	icon: string;
 	name: string;
@@ -1541,7 +1543,7 @@ export interface ExternalSecretsProvider {
 	connected: boolean;
 	connectedAt: string | false;
 	state: 'connected' | 'tested' | 'initializing' | 'error';
-	data?: Record<string, IUpdateInformation['value']>;
+	data?: ExternalSecretsProviderData;
 }
 
 export interface ExternalSecretsProviderWithProperties extends ExternalSecretsProvider {

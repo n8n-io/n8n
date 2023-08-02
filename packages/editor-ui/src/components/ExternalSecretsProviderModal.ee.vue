@@ -1,19 +1,24 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, onMounted, Ref, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
-import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
+import { useExternalSecretsProvider, useI18n, useMessage, useToast } from '@/composables';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores';
-import { useRoute } from 'vue-router/composables';
+import { useRoute } from 'vue-router';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
-import type { IUpdateInformation, ExternalSecretsProviderWithProperties } from '@/Interface';
+import type {
+	IUpdateInformation,
+	ExternalSecretsProviderWithProperties,
+	ExternalSecretsProviderData,
+} from '@/Interface';
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
+import type { ExternalSecretsProvider } from '@/Interface';
 
 const props = defineProps({
 	data: {
@@ -28,11 +33,10 @@ const defaultProviderData = {
 	},
 };
 
-const loadingService = useLoadingService();
 const externalSecretsStore = useExternalSecretsStore();
 const uiStore = useUIStore();
 const toast = useToast();
-const { i18n: locale } = useI18n();
+const i18n = useI18n();
 const route = useRoute();
 const { confirm } = useMessage();
 
@@ -42,27 +46,17 @@ const eventBus = createEventBus();
 
 const labelSize: IParameterLabel = { size: 'medium' };
 
-const provider = computed(() =>
-	externalSecretsStore.providers.find((provider) => provider.name === props.data.name),
-);
-
-const initialConnectionState = ref<ExternalSecretsProviderWithProperties['state'] | undefined>(
-	'initializing',
-);
-const connectionState = ref<ExternalSecretsProviderWithProperties['state']>();
-
-const providerData = ref<Record<string, IUpdateInformation['value']>>({});
-
-const normalizedProviderData = computed(() => {
-	return Object.entries(providerData.value).reduce((acc, [key, value]) => {
-		const property = provider.value.properties?.find((property) => property.name === key);
-		if (shouldDisplay(property)) {
-			acc[key] = value;
-		}
-
-		return acc;
-	}, {} as Record<string, IUpdateInformation['value']>);
-});
+const provider = computed<ExternalSecretsProvider | undefined>(() =>
+	externalSecretsStore.providers.find((p) => p.name === props.data.name),
+) as Ref<ExternalSecretsProvider>;
+const providerData = ref<ExternalSecretsProviderData>({});
+const {
+	connectionState,
+	initialConnectionState,
+	normalizedProviderData,
+	shouldDisplayProperty,
+	testConnection,
+} = useExternalSecretsProvider(provider, providerData);
 
 const providerDataUpdated = computed(() => {
 	return Object.keys(providerData.value).find((key) => {
@@ -76,7 +70,7 @@ const providerDataUpdated = computed(() => {
 const canSave = computed(
 	() =>
 		provider.value.properties
-			?.filter((property) => property.required && shouldDisplay(property))
+			?.filter((property) => property.required && shouldDisplayProperty(property))
 			.every((property) => {
 				const value = providerData.value[property.name];
 				return !!value;
@@ -85,7 +79,6 @@ const canSave = computed(
 
 onMounted(async () => {
 	try {
-		loadingService.startLoading();
 		const provider = await externalSecretsStore.getProvider(props.data.name);
 		providerData.value = {
 			...(defaultProviderData[props.data.name] || {}),
@@ -99,32 +92,8 @@ onMounted(async () => {
 		}
 	} catch (error) {
 		toast.showError(error, 'Error');
-	} finally {
-		loadingService.stopLoading();
 	}
 });
-
-function shouldDisplay(property: ExternalSecretsProviderWithProperties['properties'][0]): boolean {
-	let visible = true;
-
-	if (property.displayOptions?.show) {
-		visible =
-			visible &&
-			Object.entries(property.displayOptions.show).every(([key, value]) => {
-				return value.includes(providerData.value[key]);
-			});
-	}
-
-	if (property.displayOptions?.hide) {
-		visible =
-			visible &&
-			!Object.entries(property.displayOptions.hide).every(([key, value]) => {
-				return value.includes(providerData.value[key]);
-			});
-	}
-
-	return visible;
-}
 
 function close() {
 	uiStore.closeModal(EXTERNAL_SECRETS_PROVIDER_MODAL_KEY);
@@ -135,20 +104,6 @@ function onValueChange(updateInformation: IUpdateInformation) {
 		...providerData.value,
 		[updateInformation.name]: updateInformation.value,
 	};
-}
-
-async function testConnection() {
-	try {
-		const { testState } = await externalSecretsStore.testProviderConnection(
-			props.data.name,
-			normalizedProviderData.value,
-		);
-		connectionState.value = testState;
-		return testState;
-	} catch (error) {
-		connectionState.value = 'error';
-		return 'error';
-	}
 }
 
 async function save() {
@@ -175,17 +130,17 @@ async function save() {
 async function onBeforeClose() {
 	if (providerDataUpdated.value) {
 		const confirmModal = await confirm(
-			locale.baseText('settings.externalSecrets.provider.closeWithoutSaving.description', {
+			i18n.baseText('settings.externalSecrets.provider.closeWithoutSaving.description', {
 				interpolate: {
 					provider: provider.value.displayName,
 				},
 			}),
 			{
-				title: locale.baseText('settings.externalSecrets.provider.closeWithoutSaving.title'),
-				confirmButtonText: locale.baseText(
+				title: i18n.baseText('settings.externalSecrets.provider.closeWithoutSaving.title'),
+				confirmButtonText: i18n.baseText(
 					'settings.externalSecrets.provider.closeWithoutSaving.confirm',
 				),
-				cancelButtonText: locale.baseText(
+				cancelButtonText: i18n.baseText(
 					'settings.externalSecrets.provider.closeWithoutSaving.cancel',
 				),
 			},
@@ -229,7 +184,7 @@ async function onBeforeClose() {
 						@click="save"
 					>
 						{{
-							locale.baseText(
+							i18n.baseText(
 								`settings.externalSecrets.provider.buttons.${saving ? 'saving' : 'save'}`,
 							)
 						}}
@@ -247,7 +202,7 @@ async function onBeforeClose() {
 						theme="success"
 					>
 						{{
-							locale.baseText(
+							i18n.baseText(
 								`settings.externalSecrets.provider.testConnection.success${
 									provider.connected ? '.connected' : ''
 								}`,
@@ -261,14 +216,16 @@ async function onBeforeClose() {
 						}}
 						<span v-if="provider.connected">
 							<br />
-							<i18n path="settings.externalSecrets.provider.testConnection.success.connected.usage">
+							<i18n-t
+								keypath="settings.externalSecrets.provider.testConnection.success.connected.usage"
+							>
 								<template #code>
 									<code>{{ `\{\{ \$secrets\.${provider.name}\.secret_name \}\}` }}</code>
 								</template>
-							</i18n>
-							<n8n-link :href="locale.baseText('settings.externalSecrets.docs')" size="small">
+							</i18n-t>
+							<n8n-link :href="i18n.baseText('settings.externalSecrets.docs')" size="small">
 								{{
-									locale.baseText(
+									i18n.baseText(
 										'settings.externalSecrets.provider.testConnection.success.connected.docs',
 									)
 								}}
@@ -277,7 +234,7 @@ async function onBeforeClose() {
 					</n8n-callout>
 					<n8n-callout v-else-if="connectionState === 'error'" theme="danger">
 						{{
-							locale.baseText(
+							i18n.baseText(
 								`settings.externalSecrets.provider.testConnection.error${
 									provider.connected ? '.connected' : ''
 								}`,
@@ -291,7 +248,7 @@ async function onBeforeClose() {
 
 				<form
 					v-for="property in provider.properties"
-					v-show="shouldDisplay(property)"
+					v-show="shouldDisplayProperty(property)"
 					:key="property.name"
 					autocomplete="off"
 					data-test-id="external-secrets-provider-properties-form"
@@ -305,7 +262,7 @@ async function onBeforeClose() {
 						:value="providerData[property.name]"
 						:label="labelSize"
 						eventSource="external-secrets-provider"
-						@change="onValueChange"
+						@update="onValueChange"
 					/>
 				</form>
 			</div>
