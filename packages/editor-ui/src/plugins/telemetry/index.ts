@@ -1,6 +1,6 @@
-import type _Vue from 'vue';
+import type { Plugin } from 'vue';
 import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
-import type { Route } from 'vue-router';
+import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
@@ -10,7 +10,7 @@ import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
 
 export class Telemetry {
-	private pageEventQueue: Array<{ route: Route }>;
+	private pageEventQueue: Array<{ route: RouteLocation }>;
 	private previousPath: string;
 
 	private get rudderStack() {
@@ -283,15 +283,8 @@ export class Telemetry {
 
 export const telemetry = new Telemetry();
 
-export function TelemetryPlugin(vue: typeof _Vue): void {
-	Object.defineProperty(vue, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-}
+export const TelemetryPlugin: Plugin<{}> = {
+	install(app) {
+		app.config.globalProperties.$telemetry = telemetry;
+	},
+};

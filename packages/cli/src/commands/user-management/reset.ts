@@ -11,7 +11,6 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
-	resetPasswordToken: null,
 };
 
 export class Reset extends BaseCommand {

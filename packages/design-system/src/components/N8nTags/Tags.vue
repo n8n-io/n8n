@@ -4,7 +4,7 @@
 			v-for="tag in visibleTags"
 			:key="tag.id"
 			:text="tag.name"
-			@click="$emit('click', tag.id, $event)"
+			@click="$emit('click:tag', tag.id, $event)"
 		/>
 		<n8n-link
 			v-if="truncate && !showAll && hiddenTagsLength > 0"

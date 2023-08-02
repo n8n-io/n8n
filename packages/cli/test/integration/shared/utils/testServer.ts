@@ -1,6 +1,5 @@
 import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
-import bodyParser from 'body-parser';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 import type superagent from 'superagent';
@@ -31,7 +30,7 @@ import {
 	TagsController,
 	UsersController,
 } from '@/controllers';
-import { setupAuthMiddlewares } from '@/middlewares';
+import { rawBody, jsonParser, setupAuthMiddlewares } from '@/middlewares';
 
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -50,6 +49,7 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
+import { JwtService } from '@/services/jwt.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -118,6 +118,9 @@ export const setupTestServer = ({
 	enabledFeatures,
 }: SetupProps): TestServer => {
 	const app = express();
+	app.use(rawBody);
+	app.use(cookieParser());
+
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
@@ -136,10 +139,6 @@ export const setupTestServer = ({
 		mockInstance(InternalHooks);
 		mockInstance(PostHogClient);
 
-		app.use(bodyParser.json());
-		app.use(bodyParser.urlencoded({ extended: true }));
-		app.use(cookieParser());
-
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -153,6 +152,8 @@ export const setupTestServer = ({
 		}
 
 		if (!endpointGroups) return;
+
+		app.use(jsonParser);
 
 		const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
@@ -182,6 +183,7 @@ export const setupTestServer = ({
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
+			const jwtService = Container.get(JwtService);
 			const repositories = Db.collections;
 
 			for (const group of functionEndpoints) {
@@ -238,6 +240,7 @@ export const setupTestServer = ({
 								internalHooks,
 								mailer,
 								repositories,
+								jwtService,
 							}),
 						);
 						break;
@@ -260,6 +263,7 @@ export const setupTestServer = ({
 								repositories,
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
+								jwtService,
 							}),
 						);
 						break;

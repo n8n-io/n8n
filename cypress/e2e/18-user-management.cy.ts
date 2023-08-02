@@ -58,19 +58,19 @@ describe('User Management', { disableAutoLogin: true }, () => {
 	it('should delete user and their data', () => {
 		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[0].email);
-		usersSettingsPage.getters.deleteDataRadioButton().realClick();
+		usersSettingsPage.getters.deleteDataRadioButton().click();
 		usersSettingsPage.getters.deleteDataInput().type('delete all data');
-		usersSettingsPage.getters.deleteUserButton().realClick();
+		usersSettingsPage.getters.deleteUserButton().click();
 		workflowPage.getters.successToast().should('contain', 'User deleted');
 	});
 
 	it('should delete user and transfer their data', () => {
 		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[1].email);
-		usersSettingsPage.getters.transferDataRadioButton().realClick();
-		usersSettingsPage.getters.userSelectDropDown().realClick();
-		usersSettingsPage.getters.userSelectOptions().first().realClick();
-		usersSettingsPage.getters.deleteUserButton().realClick();
+		usersSettingsPage.getters.transferDataRadioButton().click();
+		usersSettingsPage.getters.userSelectDropDown().click();
+		usersSettingsPage.getters.userSelectOptions().first().click();
+		usersSettingsPage.getters.deleteUserButton().click();
 		workflowPage.getters.successToast().should('contain', 'User deleted');
 	});
 
@@ -88,6 +88,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it(`shouldn't allow user to set weak password`, () => {
 		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		personalSettingsPage.getters.changePasswordLink().click();
 		for (let weakPass of updatedPersonalData.invalidPasswords) {
 			personalSettingsPage.actions.tryToSetWeakPassword(INSTANCE_OWNER.password, weakPass);
 		}
@@ -95,6 +96,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it(`shouldn't allow user to change password if old password is wrong`, () => {
 		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		personalSettingsPage.getters.changePasswordLink().click();
 		personalSettingsPage.actions.updatePassword('iCannotRemember', updatedPersonalData.newPassword);
 		workflowPage.getters
 			.errorToast()
@@ -104,6 +106,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 
 	it(`should change current user password`, () => {
 		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		personalSettingsPage.getters.changePasswordLink().click();
 		personalSettingsPage.actions.updatePassword(
 			INSTANCE_OWNER.password,
 			updatedPersonalData.newPassword,

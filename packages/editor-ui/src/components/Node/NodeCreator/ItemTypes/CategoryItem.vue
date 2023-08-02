@@ -21,7 +21,7 @@ const categoryName = computed(() => {
 <template>
 	<div
 		:class="$style.categoryWrapper"
-		v-on="$listeners"
+		v-bind="$attrs"
 		data-keyboard-nav="true"
 		data-test-id="node-creator-category-item"
 	>

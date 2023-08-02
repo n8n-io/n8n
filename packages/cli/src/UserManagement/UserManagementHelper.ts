@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
@@ -15,17 +13,6 @@ import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import type { PostHogClient } from '@/posthog';
-
-export async function getWorkflowOwner(workflowId: string): Promise<User> {
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
-
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflowId, roleId: workflowOwnerRole?.id ?? undefined },
-		relations: ['user', 'user.globalRole'],
-	});
-
-	return sharedWorkflow.user;
-}
 
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
@@ -111,15 +98,7 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const {
-		password,
-		resetPasswordToken,
-		resetPasswordTokenExpiration,
-		updatedAt,
-		apiKey,
-		authIdentities,
-		...rest
-	} = user;
+	const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 	if (withoutKeys) {
 		withoutKeys.forEach((key) => {
 			// @ts-ignore
@@ -204,7 +183,6 @@ export function rightDiff<T1, T2>(
 ): T2[] {
 	// create map { itemKey => true } for fast lookup for diff
 	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
-		// eslint-disable-next-line no-param-reassign
 		map[keyExtractor1(item)] = true;
 		return map;
 	}, {});

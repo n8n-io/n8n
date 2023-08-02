@@ -67,24 +67,24 @@
 		}
 	}
 
-	.el-icon-success {
+	.el-icon.el-notification--success {
 		color: var.$notification-success-icon-color;
 	}
 
-	.el-icon-error {
+	.el-icon.el-notification--error {
 		color: var.$notification-danger-icon-color;
 	}
 
-	.el-icon-info {
+	.el-icon.el-notification--info {
 		color: var.$notification-info-icon-color;
 	}
 
-	.el-icon-warning {
+	.el-icon.el-notification--warning {
 		color: var.$notification-warning-icon-color;
 	}
 }
 
-.el-notification-fade-enter {
+.el-notification-fade-enter-from {
 	&.right {
 		right: 0;
 		transform: translateX(100%);

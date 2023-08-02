@@ -23,7 +23,7 @@ vi.mock('@/stores/history.store', () => {
 	};
 });
 vi.mock('@/stores/ui.store');
-vi.mock('vue-router/composables', () => ({
+vi.mock('vue-router', () => ({
 	useRoute: () => ({}),
 }));
 
