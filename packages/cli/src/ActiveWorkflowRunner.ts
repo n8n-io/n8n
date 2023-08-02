@@ -282,6 +282,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 	}
 
+	async getWebhookMethods(path: string) {
+		return this.webhookService.getWebhookMethods(path);
+	}
+
 	/**
 	 * Returns the ids of the currently active workflows
 	 */
