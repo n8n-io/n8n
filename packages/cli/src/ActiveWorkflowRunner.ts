@@ -51,7 +51,6 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { createErrorExecution } from '@/GenericHelpers';
 import {
@@ -365,13 +364,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			path = webhookData.path;
 
-			// @ts-ignore @TODO
-			const webhook: WebhookEntity = {
+			const webhook = this.webhookService.createWebhook({
 				workflowId: webhookData.workflowId,
 				webhookPath: path,
 				node: node.name,
 				method: webhookData.httpMethod,
-			};
+			});
 
 			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
@@ -387,7 +385,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			try {
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await this.webhookService.createWebhook(webhook);
+				await this.webhookService.storeWebhook(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
 					'checkExists',
 					webhookData,

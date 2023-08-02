@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import type { DeepPartial } from 'typeorm';
 
 type Method = NonNullable<IHttpRequestMethods>;
 
@@ -90,10 +91,14 @@ export class WebhookService {
 		return this.findCached(method, path);
 	}
 
-	async createWebhook(webhook: WebhookEntity) {
+	async storeWebhook(webhook: WebhookEntity) {
 		void this.cacheService.set(webhook.cacheKey, webhook);
 
 		return this.webhookRepository.insert(webhook);
+	}
+
+	createWebhook(data: DeepPartial<WebhookEntity>) {
+		return this.webhookRepository.create(data);
 	}
 
 	async deleteWorkflowWebhooks(workflowId: string) {

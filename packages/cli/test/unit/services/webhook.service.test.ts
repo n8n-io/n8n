@@ -206,7 +206,7 @@ describe('WebhookService', () => {
 		test('should create the webhook', async () => {
 			const mockWebhook = createWebhook('GET', 'user/:id');
 
-			await webhookService.createWebhook(mockWebhook);
+			await webhookService.storeWebhook(mockWebhook);
 
 			expect(webhookRepository.insert).toHaveBeenCalledWith(mockWebhook);
 		});
