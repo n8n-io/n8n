@@ -89,10 +89,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private webhookService: WebhookService,
 	) {}
 
-	async getWebhookMethods(path: string) {
-		return this.webhookService.getWebhookMethods(path);
-	}
-
 	async init() {
 		// Get the active workflows from database
 
