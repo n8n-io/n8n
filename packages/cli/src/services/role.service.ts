@@ -3,6 +3,8 @@ import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import type { RoleNames, RoleScopes } from '@/databases/entities/Role';
 
+class InvalidRoleError extends Error {}
+
 @Service()
 export class RoleService {
 	constructor(
@@ -31,6 +33,10 @@ export class RoleService {
 		let dbRole = await this.roleRepository.findRole(scope, name);
 
 		if (dbRole === null) {
+			if (!this.isValid(scope, name)) {
+				throw new InvalidRoleError(`${scope}:${name} is not a valid role`);
+			}
+
 			const toSave = this.roleRepository.create({ scope, name });
 			dbRole = await this.roleRepository.save(toSave);
 		}
@@ -38,6 +44,19 @@ export class RoleService {
 		void this.cacheService.set(cacheKey, dbRole);
 
 		return dbRole;
+	}
+
+	private roles: Array<{ name: RoleNames; scope: RoleScopes }> = [
+		{ scope: 'global', name: 'owner' },
+		{ scope: 'global', name: 'member' },
+		{ scope: 'workflow', name: 'owner' },
+		{ scope: 'credential', name: 'owner' },
+		{ scope: 'credential', name: 'user' },
+		{ scope: 'workflow', name: 'editor' },
+	];
+
+	private isValid(scope: RoleScopes, name: RoleNames) {
+		return this.roles.some((r) => r.scope === scope && r.name === name);
 	}
 
 	async findGlobalOwnerRole() {
