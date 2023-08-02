@@ -8,7 +8,10 @@ type Method = NonNullable<IHttpRequestMethods>;
 
 @Service()
 export class WebhookService {
-	constructor(private webhookRepository: WebhookRepository, private cacheService: CacheService) {}
+	constructor(
+		private webhookRepository: WebhookRepository,
+		private cacheService: CacheService,
+	) {}
 
 	async populateCache() {
 		const allWebhooks = await this.webhookRepository.find();
