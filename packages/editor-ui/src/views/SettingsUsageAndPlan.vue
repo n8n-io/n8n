@@ -209,6 +209,7 @@ const openPricingPage = () => {
 				@opened="onDialogOpened"
 				v-model="activationKeyModal"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
+				:modal-class="$style.center"
 			>
 				<template #default>
 					<n8n-input
@@ -232,6 +233,10 @@ const openPricingPage = () => {
 
 <style lang="scss" module>
 @import '@/styles/css-animation-helpers.scss';
+
+.center > div {
+	justify-content: center;
+}
 
 .actionBox {
 	margin: var(--spacing-2xl) 0 0;

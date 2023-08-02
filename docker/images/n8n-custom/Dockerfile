@@ -3,7 +3,7 @@ ARG NODE_VERSION=18
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
 
-COPY --chown=node:node turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig.json ./
+COPY --chown=node:node turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig*.json ./
 COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node packages ./packages
 COPY --chown=node:node patches ./patches

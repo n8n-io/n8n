@@ -19,6 +19,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 			displayName: 'Session Token',
 			name: 'sessionToken',
 			type: 'hidden',
+			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
 			typeOptions: {
 				expirable: true,
 			},
@@ -27,8 +28,8 @@ export class CiscoUmbrellaApi implements ICredentialType {
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			// eslint-disable-next-line n8n-nodes-base/cred-class-field-unobscured-sensitive-input
 			type: 'string',
+			typeOptions: { password: true },
 			required: true,
 			default: '',
 		},
