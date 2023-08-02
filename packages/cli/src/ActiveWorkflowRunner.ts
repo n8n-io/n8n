@@ -282,6 +282,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 	}
 
+	/**
+	 * Gets all request methods associated with a single webhook
+	 */
 	async getWebhookMethods(path: string) {
 		return this.webhookService.getWebhookMethods(path);
 	}
