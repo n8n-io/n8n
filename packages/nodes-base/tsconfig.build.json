@@ -1,10 +1,7 @@
 {
-	"extends": "./tsconfig.json",
+	"extends": ["./tsconfig.json", "../../tsconfig.build.json"],
 	"compilerOptions": {
-		"outDir": "dist",
-		"types": ["node"],
-		"noEmit": false,
-		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+		"outDir": "dist"
 	},
 	"include": [
 		"credentials/**/*.ts",

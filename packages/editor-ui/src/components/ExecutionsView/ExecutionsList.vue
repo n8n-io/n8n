@@ -622,8 +622,8 @@ export default defineComponent({
 						console.error(
 							this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
 								`: "${node.name}"`,
-						); // eslint-disable-line no-console
-						console.error(e); // eslint-disable-line no-console
+						);
+						console.error(e);
 					}
 					node.parameters = nodeParameters !== null ? nodeParameters : {};
 

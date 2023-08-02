@@ -108,9 +108,15 @@ importers:
       ts-jest:
         specifier: ^29.1.1
         version: 29.1.1(@babel/core@7.22.9)(jest@29.6.2)(typescript@5.1.6)
+      tsc-alias:
+        specifier: ^1.8.7
+        version: 1.8.7
       tsc-watch:
         specifier: ^6.0.4
         version: 6.0.4(typescript@5.1.6)
+      tsconfig-paths:
+        specifier: ^4.2.0
+        version: 4.2.0
       turbo:
         specifier: 1.10.12
         version: 1.10.12
@@ -219,12 +225,6 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
-      body-parser:
-        specifier: ^1.20.1
-        version: 1.20.1
-      body-parser-xml:
-        specifier: ^2.0.3
-        version: 2.0.3
       bull:
         specifier: ^4.10.2
         version: 4.10.2
@@ -252,6 +252,12 @@ importers:
       connect-history-api-fallback:
         specifier: ^1.6.0
         version: 1.6.0
+      content-disposition:
+        specifier: ^0.5.4
+        version: 0.5.4
+      content-type:
+        specifier: ^1.0.4
+        version: 1.0.4
       convict:
         specifier: ^6.2.4
         version: 6.2.4
@@ -291,6 +297,9 @@ importers:
       flatted:
         specifier: ^3.2.4
         version: 3.2.7
+      formidable:
+        specifier: ^3.5.0
+        version: 3.5.0
       google-timezones-json:
         specifier: ^1.1.0
         version: 1.1.0
@@ -360,9 +369,6 @@ importers:
       p-cancelable:
         specifier: ^2.0.0
         version: 2.1.1
-      parseurl:
-        specifier: ^1.3.3
-        version: 1.3.3
       passport:
         specifier: ^0.6.0
         version: 0.6.0
@@ -390,6 +396,9 @@ importers:
       psl:
         specifier: ^1.8.0
         version: 1.9.0
+      raw-body:
+        specifier: ^2.5.1
+        version: 2.5.1
       reflect-metadata:
         specifier: ^0.1.13
         version: 0.1.13
@@ -444,6 +453,9 @@ importers:
       ws:
         specifier: ^8.12.0
         version: 8.12.0
+      xml2js:
+        specifier: ^0.5.0
+        version: 0.5.0
       xmllint-wasm:
         specifier: ^3.0.1
         version: 3.0.1
@@ -463,15 +475,18 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.2
         version: 2.4.2
-      '@types/body-parser-xml':
-        specifier: ^2.0.2
-        version: 2.0.2
       '@types/compression':
         specifier: 1.0.1
         version: 1.0.1
       '@types/connect-history-api-fallback':
         specifier: ^1.3.1
         version: 1.3.5
+      '@types/content-disposition':
+        specifier: ^0.5.5
+        version: 0.5.5
+      '@types/content-type':
+        specifier: ^1.1.5
+        version: 1.1.5
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
@@ -481,6 +496,9 @@ importers:
       '@types/express':
         specifier: ^4.17.6
         version: 4.17.14
+      '@types/formidable':
+        specifier: ^3.4.0
+        version: 3.4.0
       '@types/json-diff':
         specifier: ^1.0.0
         version: 1.0.0
@@ -493,9 +511,6 @@ importers:
       '@types/lodash':
         specifier: ^4.14.195
         version: 4.14.195
-      '@types/parseurl':
-        specifier: ^1.3.1
-        version: 1.3.1
       '@types/passport-jwt':
         specifier: ^3.0.6
         version: 3.0.7
@@ -532,6 +547,9 @@ importers:
       '@types/ws':
         specifier: ^8.5.4
         version: 8.5.4
+      '@types/xml2js':
+        specifier: ^0.4.11
+        version: 0.4.11
       '@types/yamljs':
         specifier: ^0.2.31
         version: 0.2.31
@@ -547,12 +565,6 @@ importers:
       ts-essentials:
         specifier: ^7.0.3
         version: 7.0.3(typescript@5.1.6)
-      tsc-alias:
-        specifier: ^1.8.7
-        version: 1.8.7
-      tsconfig-paths:
-        specifier: ^4.2.0
-        version: 4.2.0
 
   packages/core:
     dependencies:
@@ -1016,9 +1028,6 @@ importers:
       fflate:
         specifier: ^0.7.0
         version: 0.7.4
-      formidable:
-        specifier: ^1.2.1
-        version: 1.2.6
       get-system-fonts:
         specifier: ^2.0.2
         version: 2.0.2
@@ -1182,9 +1191,6 @@ importers:
       '@types/express':
         specifier: ^4.17.6
         version: 4.17.14
-      '@types/formidable':
-        specifier: ^1.0.31
-        version: 1.2.5
       '@types/gm':
         specifier: ^1.25.0
         version: 1.25.0
@@ -5976,16 +5982,6 @@ packages:
     resolution: {integrity: sha512-g2qEd+zkfkTEudA2SrMAeAvY7CrFqtbsLILm2dT2VIeKTqMqVzcdfURlvu6FU3srRgbmXN1Srm94pg34EIehww==}
     dev: true
 
-  /@types/body-parser-xml@2.0.2:
-    resolution: {integrity: sha512-LlmFkP3BTfacofFevInpM8iZ6+hALZ9URUt5JpSw76irhHCdbqbcBtbxbu2MO8HUGoIROQ5wuB55rLS99xNgCg==}
-    dependencies:
-      '@types/body-parser': 1.19.2
-      '@types/connect': 3.4.35
-      '@types/express-serve-static-core': 4.17.31
-      '@types/node': 18.16.16
-      '@types/xml2js': 0.4.11
-    dev: true
-
   /@types/body-parser@1.19.2:
     resolution: {integrity: sha512-ALYone6pm6QmwZoAgeyNksccT9Q4AWZQ6PvfwR37GT6r6FWUPguq6sUmNGSMV2Wr761oQoBxwGGa6DR5o1DC9g==}
     dependencies:
@@ -6035,6 +6031,14 @@ packages:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
       '@types/node': 18.16.16
+
+  /@types/content-disposition@0.5.5:
+    resolution: {integrity: sha512-v6LCdKfK6BwcqMo+wYW05rLS12S0ZO0Fl4w1h4aaZMD7bqT3gVUns6FvLJKGZHQmYn3SX55JWGpziwJRwVgutA==}
+    dev: true
+
+  /@types/content-type@1.1.5:
+    resolution: {integrity: sha512-dgMN+syt1xb7Hk8LU6AODOfPlvz5z1CbXpPuJE5ZrX9STfBOIXF09pEB8N7a97WT9dbngt3ksDCm6GW6yMrxfQ==}
+    dev: true
 
   /@types/convict@6.1.1:
     resolution: {integrity: sha512-R+JLaTvhsD06p4jyjUDtbd5xMtZTRE3c0iI+lrFWZogSVEjgTWPYwvJPVf+t92E+yrlbXa4X4Eg9ro6gPdUt4w==}
@@ -6148,8 +6152,8 @@ packages:
     resolution: {integrity: sha512-frsJrz2t/CeGifcu/6uRo4b+SzAwT4NYCVPu1GN8IB9XTzrpPkGuV0tmh9mN+/L0PklAlsC3u5Fxt0ju00LXIw==}
     dev: true
 
-  /@types/formidable@1.2.5:
-    resolution: {integrity: sha512-zu3mQJa4hDNubEMViSj937602XdDGzK7Q5pJ5QmLUbNxclbo9tZGt5jtwM352ssZ+pqo5V4H14TBvT/ALqQQcA==}
+  /@types/formidable@3.4.0:
+    resolution: {integrity: sha512-JXP+LsspYYBIJJxZ9VJsswb5U1hkUUhLmtAb6EB1SWcDDbJQlWRhGoZYasMSnk2NsqtUEHd3uuaiImmSys+8AQ==}
     dependencies:
       '@types/node': 18.16.16
     dev: true
@@ -6396,12 +6400,6 @@ packages:
 
   /@types/parse-json@4.0.0:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
-    dev: true
-
-  /@types/parseurl@1.3.1:
-    resolution: {integrity: sha512-sAfjGAYgJ/MZsk95f3ByThfJgasZk1hWJROghBwfKnLLNANEAG/WHckAcT6HNqx2sHwVlci7OAX7k1KYpOcgMw==}
-    dependencies:
-      '@types/node': 18.16.16
     dev: true
 
   /@types/passport-jwt@3.0.7:
@@ -8364,13 +8362,6 @@ packages:
     resolution: {integrity: sha512-eXRvHzWyYPBuB4NBy0cmYQjGitUrtqwbvlzP3G6VFnNRbsZQIxQ10PbKKHt8gZ/HW/D/747aDl+QkDqg3KQLMQ==}
     dev: false
 
-  /body-parser-xml@2.0.3:
-    resolution: {integrity: sha512-tWvcAbh8QPd/lj+yfGZBMY/roof/e2iSXrJbYXYjxVhHQ88D2CF3AxDTdwhb9wcNdHVNbCttaWipchJPEs5r0g==}
-    engines: {node: '>=10'}
-    dependencies:
-      xml2js: 0.5.0
-    dev: false
-
   /body-parser@1.20.1:
     resolution: {integrity: sha512-jWi7abTbYwajOytWCQc37VulmWiRae5RyTpaCyDcS5/lMdtwSz5lOpDE67srw/HYe35f1z3fDQw+3txg7gNtWw==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
@@ -10034,7 +10025,6 @@ packages:
     dependencies:
       asap: 2.0.6
       wrappy: 1.0.2
-    dev: true
 
   /diff-sequences@29.4.3:
     resolution: {integrity: sha512-ofrBgwpPhCD85kMKtE9RYFFq6OC1A89oW2vvgWZNCwxrUpRUILopY7lsYyMDSjc8g6U6aiO0Qubg6r4Wgt5ZnA==}
@@ -11771,11 +11761,6 @@ packages:
       combined-stream: 1.0.8
       mime-types: 2.1.35
 
-  /formidable@1.2.6:
-    resolution: {integrity: sha512-KcpbcpuLNOwrEjnbpMC0gS+X8ciDoZE1kkqzat4a8vrprf+s9pKNQ/QIwWfbfs4ltgmFl3MD177SNTkve3BwGQ==}
-    deprecated: 'Please upgrade to latest, formidable@v2 or formidable@v3! Check these notes: https://bit.ly/2ZEqIau'
-    dev: false
-
   /formidable@2.1.2:
     resolution: {integrity: sha512-CM3GuJ57US06mlpQ47YcunuUZ9jpm8Vx+P2CGt2j7HpgkKZO/DJYQ0Bobim8G6PFQmK5lOqOOdUXboU+h73A4g==}
     dependencies:
@@ -11784,6 +11769,14 @@ packages:
       once: 1.4.0
       qs: 6.11.0
     dev: true
+
+  /formidable@3.5.0:
+    resolution: {integrity: sha512-WwsMWvPmY+Kv37C3+KP3A+2Ym1aZoac4nz4ZEe5z0UPBoCg0O/wHay3eeYkZr4KJIbCzpSUeno+STMhde+KCfw==}
+    dependencies:
+      dezalgo: 1.0.4
+      hexoid: 1.0.0
+      once: 1.4.0
+    dev: false
 
   /formstream@1.1.1:
     resolution: {integrity: sha512-yHRxt3qLFnhsKAfhReM4w17jP+U1OlhUjnKPPtonwKbIJO7oBP0MvoxkRUwb8AU9n0MIkYy5X5dK6pQnbj+R2Q==}
@@ -12530,7 +12523,6 @@ packages:
   /hexoid@1.0.0:
     resolution: {integrity: sha512-QFLV0taWQOZtvIRIAdBChesmogZrtuXvVWsFHZTk2SU+anspqZ2vMnoLg7IE1+Uk16N19APic1BuF8bC8c2m5g==}
     engines: {node: '>=8'}
-    dev: true
 
   /highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
@@ -19854,7 +19846,7 @@ packages:
     engines: {node: '>=6'}
     dependencies:
       json5: 2.2.3
-      minimist: 1.2.7
+      minimist: 1.2.8
       strip-bom: 3.0.0
     dev: true
 

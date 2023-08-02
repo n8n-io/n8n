@@ -105,7 +105,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils';
@@ -158,9 +158,7 @@ export default defineComponent({
 		},
 		hasIssues(): boolean {
 			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
+				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
 			);
 		},
 		serviceName(): string {
@@ -174,38 +172,28 @@ export default defineComponent({
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
 		},
 		webhookHttpMethod(): string | undefined {
-			if (
-				!this.node ||
-				!this.nodeType ||
-				!this.nodeType.webhooks ||
-				!this.nodeType.webhooks.length
-			) {
+			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
 			return this.getWebhookExpressionValue(this.nodeType.webhooks[0], 'httpMethod');
 		},
 		webhookTestUrl(): string | undefined {
-			if (
-				!this.node ||
-				!this.nodeType ||
-				!this.nodeType.webhooks ||
-				!this.nodeType.webhooks.length
-			) {
+			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
 			return this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
 		},
 		isWebhookBasedNode(): boolean {
-			return Boolean(this.nodeType && this.nodeType.webhooks && this.nodeType.webhooks.length);
+			return Boolean(this.nodeType?.webhooks?.length);
 		},
 		isPollingNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.polling);
 		},
 		isListeningForEvents(): boolean {
-			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook as boolean;
-			const executedNode = this.workflowsStore.executedNode as string | undefined;
+			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook;
+			const executedNode = this.workflowsStore.executedNode;
 			return (
 				!!this.node &&
 				!this.node.disabled &&
@@ -232,11 +220,7 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.trigger.pollingNode.fetchingEvent');
 			}
 
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				typeof this.nodeType.triggerPanel.header === 'string'
-			) {
+			if (this.nodeType?.triggerPanel && typeof this.nodeType.triggerPanel.header === 'string') {
 				return this.nodeType.triggerPanel.header;
 			}
 
@@ -259,11 +243,7 @@ export default defineComponent({
 			return '';
 		},
 		executionsHelp(): string {
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				this.nodeType.triggerPanel.executionsHelp !== undefined
-			) {
+			if (this.nodeType?.triggerPanel?.executionsHelp !== undefined) {
 				if (typeof this.nodeType.triggerPanel.executionsHelp === 'string') {
 					return this.nodeType.triggerPanel.executionsHelp;
 				}
@@ -306,11 +286,7 @@ export default defineComponent({
 				return '';
 			}
 
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				this.nodeType.triggerPanel.activationHint
-			) {
+			if (this.nodeType?.triggerPanel?.activationHint) {
 				if (typeof this.nodeType.triggerPanel.activationHint === 'string') {
 					return this.nodeType.triggerPanel.activationHint;
 				}
@@ -368,7 +344,7 @@ export default defineComponent({
 			const target = e.target as HTMLElement;
 			if (target.localName !== 'a') return;
 
-			if (target.dataset && target.dataset.key) {
+			if (target.dataset?.key) {
 				e.stopPropagation();
 				e.preventDefault();
 
@@ -382,7 +358,9 @@ export default defineComponent({
 						type: 'open-executions-log',
 					});
 					this.ndvStore.activeNodeName = null;
-					this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
+					void this.$router.push({
+						name: VIEWS.EXECUTIONS,
+					});
 				} else if (target.dataset.key === 'settings') {
 					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 				}

@@ -394,6 +394,7 @@ import { htmlEditorEventBus } from '@/event-bus';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables';
+import type { N8nInput } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'parameter-input',
@@ -495,7 +496,6 @@ export default defineComponent({
 					{
 						text: 'Today', // TODO
 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							picker.$emit('pick', new Date());
 						},
@@ -503,7 +503,6 @@ export default defineComponent({
 					{
 						text: 'Yesterday', // TODO
 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24);
@@ -513,7 +512,6 @@ export default defineComponent({
 					{
 						text: 'A week ago', // TODO
 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
@@ -1008,10 +1006,16 @@ export default defineComponent({
 			}
 
 			await this.$nextTick();
-			// @ts-ignore
-			if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
-				// @ts-ignore
-				this.$refs.inputField.focus();
+
+			// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+			const inputRef = this.$refs.inputField as InstanceType<N8nInput> | undefined;
+			if (inputRef?.$el) {
+				if (inputRef.focusOnInput) {
+					inputRef.focusOnInput();
+				} else if (inputRef.focus) {
+					inputRef.focus();
+				}
+
 				this.isFocused = true;
 			}
 

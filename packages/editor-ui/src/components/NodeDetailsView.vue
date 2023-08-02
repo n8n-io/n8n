@@ -696,12 +696,12 @@ export default defineComponent({
 <style lang="scss">
 .ndv-wrapper {
 	overflow: visible;
-	padding-top: var(--spacing-2xs);
 	margin-top: 0;
 }
 
 .data-display-wrapper {
 	height: calc(100% - var(--spacing-2xl));
+	margin-top: var(--spacing-xl) !important;
 	width: 100%;
 	background: none;
 	border: none;
