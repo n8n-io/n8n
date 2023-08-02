@@ -108,6 +108,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			// instances if many of them start at the same time
 			// This is not officially supported but there is no reason
 			// it should not work.
+			// Clear up active workflow table
 			await this.webhookService.deleteInstanceWebhooks();
 		}
 
@@ -449,6 +450,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 		}
 		await this.webhookService.populateCache();
+		// Save static data!
 		await WorkflowHelpers.saveStaticData(workflow);
 	}
 
