@@ -23,9 +23,9 @@ export class WebhookEntity {
 	pathLength?: number;
 
 	/**
-	 * Unique part of production webhook URL, excluding instance URL and base `webhook/` segment.
+	 * Unique path section of production webhook URL, excluding instance URL and base `webhook/` segment.
 	 */
-	get uniquePath() {
+	private get uniquePath() {
 		return this.webhookPath.includes(':') ? this.workflowId + this.webhookPath : this.webhookPath;
 	}
 
@@ -34,6 +34,13 @@ export class WebhookEntity {
 	}
 
 	get staticSegments() {
-		return this.webhookPath.split('/').filter((s) => !s.includes(':'));
+		return this.webhookPath.split('/').filter((s) => !s.startsWith(':'));
+	}
+
+	/**
+	 * Whether the webhook has at least one dynamic path segment, e.g. `:id` in `<uuid>/user/:id/posts`.
+	 */
+	get isDynamic() {
+		return this.webhookPath.split('/').some((s) => s.startsWith(':'));
 	}
 }
