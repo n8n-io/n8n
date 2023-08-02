@@ -121,6 +121,14 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
+				<json-editor
+					v-else-if="editorType === 'jsonEditor'"
+					:modelValue="modelValue"
+					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
+					@valueChanged="valueChangedDebounced"
+				/>
+
 				<code-node-editor
 					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
 					:mode="node.parameters.mode"
@@ -392,6 +400,7 @@ import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -423,6 +432,7 @@ export default defineComponent({
 		CodeNodeEditor,
 		HtmlEditor,
 		SqlEditor,
+		JsonEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		CredentialsSelect,

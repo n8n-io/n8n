@@ -1030,7 +1030,13 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorType = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'sqlEditor' | 'json';
+export type EditorType =
+	| 'code'
+	| 'codeNodeEditor'
+	| 'htmlEditor'
+	| 'sqlEditor'
+	| 'json'
+	| 'jsonEditor';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect =
@@ -1204,10 +1210,9 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(
-		this: IExecuteSingleFunctions,
-		value: string | NodeParameterValue,
-	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
+	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
+		| Promise<string | NodeParameterValue>
+		| (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;

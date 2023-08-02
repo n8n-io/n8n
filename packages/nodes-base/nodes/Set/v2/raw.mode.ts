@@ -18,6 +18,16 @@ const properties: INodeProperties[] = [
 		},
 		default: '{\n  "key": "value"\n}',
 	},
+	// {
+	// 	displayName: 'JSON Output',
+	// 	name: 'jsonRaw',
+	// 	type: 'string',
+	// 	typeOptions: {
+	// 		editor: 'jsonEditor',
+	// 		rows: 5,
+	// 	},
+	// 	default: '{\n  "key": "value"\n}',
+	// },
 ];
 
 const displayOptions = {
