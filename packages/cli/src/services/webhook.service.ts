@@ -11,7 +11,7 @@ export class WebhookService {
 	constructor(private webhookRepository: WebhookRepository, private cacheService: CacheService) {}
 
 	async populateCache() {
-		const allWebhooks = await this.webhookRepository.find({});
+		const allWebhooks = await this.webhookRepository.find();
 
 		if (!allWebhooks) return;
 
@@ -100,7 +100,7 @@ export class WebhookService {
 	}
 
 	async deleteInstanceWebhooks() {
-		const webhooks = await this.webhookRepository.find({});
+		const webhooks = await this.webhookRepository.find();
 
 		return this.deleteWebhooks(webhooks);
 	}
@@ -114,6 +114,6 @@ export class WebhookService {
 	async getAllStoredMethods(path: string) {
 		return this.webhookRepository
 			.find({ select: ['method'], where: { webhookPath: path } })
-			.then((webhooks) => webhooks.map((w) => w.method));
+			.then((rows) => rows.map((r) => r.method));
 	}
 }
