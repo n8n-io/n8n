@@ -34,6 +34,6 @@ export class Role extends WithTimestamps {
 	sharedCredentials: SharedCredentials[];
 
 	get cacheKey() {
-		return `cache:role:${this.scope}:${this.name}`;
+		return `role:${this.scope}:${this.name}`;
 	}
 }

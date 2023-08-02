@@ -24,7 +24,7 @@ export class RoleService {
 	}
 
 	private async findCached(scope: RoleScopes, name: RoleNames) {
-		const cacheKey = `cache:role:${scope}:${name}`;
+		const cacheKey = `role:${scope}:${name}`;
 
 		const cachedRole = await this.cacheService.get(cacheKey);
 
