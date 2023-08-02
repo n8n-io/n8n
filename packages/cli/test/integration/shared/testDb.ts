@@ -34,6 +34,7 @@ import type {
 } from './types';
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
+import { VariablesService } from '@/environments/variables/variables.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -514,11 +515,13 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 // ----------------------------------
 
 export async function createVariable(key: string, value: string) {
-	return Db.collections.Variables.save({
+	const result = await Db.collections.Variables.save({
 		id: generateNanoId(),
 		key,
 		value,
 	});
+	await Container.get(VariablesService).updateCache();
+	return result;
 }
 
 export async function getVariableByKey(key: string) {
