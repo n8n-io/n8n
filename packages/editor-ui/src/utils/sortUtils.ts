@@ -202,7 +202,7 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 	}
 
 	const segments = prop.split('.');
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let result: any = obj;
 	let i = 0;
 	while (result && i < segments.length) {
