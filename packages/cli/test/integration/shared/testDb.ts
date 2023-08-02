@@ -34,7 +34,7 @@ import type {
 } from './types';
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
-import { VariablesService } from '../../../src/environments/variables/variables.service';
+import { VariablesService } from '@/environments/variables/variables.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
