@@ -92,7 +92,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private nodeTypes: NodeTypes,
 	) {}
 
-	async getWebhookMethods(path: string): Promise<string[]> {
+	async getWebhookMethods(path: string) {
 		return this.webhookService.getAllStoredMethods(path);
 	}
 
@@ -192,11 +192,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
 	async executeWebhook(
-		method: WebhookHttpMethod,
-		path: string,
-		req: express.Request,
-		res: express.Response,
+		request: WebhookRequest,
+		response: express.Response,
 	): Promise<IResponseCallbackData> {
+		const { method } = request;
+		let path = request.params.path;
+
 		Logger.debug(`Received webhook "${method}" for path "${path}"`);
 
 		path = path.endsWith('/') ? path.slice(0, -1) : path; // remove trailing slash
@@ -212,14 +213,15 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const reqPathSegments = path.split('/').slice(1); // remove uuid
 
-		req.params = webhook.webhookPath
-			.split('/')
-			.reduce<Record<string, string>>((reqParams, segment, index) => {
-				if (segment.startsWith(':')) {
-					reqParams[segment.slice(1)] = reqPathSegments[index];
-				}
-				return reqParams;
-			}, {}); // reset and add dynamic params with values
+		// extracting params from path
+		// @ts-ignore
+		webhook.webhookPath.split('/').forEach((ele, index) => {
+			if (ele.startsWith(':')) {
+				// write params to req.params
+				// @ts-ignore
+				request.params[ele.slice(1)] = reqPathSegments[index];
+			}
+		});
 
 		const dbWorkflow = await Db.collections.Workflow.findOne({
 			where: { id: webhook.workflowId },
