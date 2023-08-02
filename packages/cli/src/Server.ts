@@ -609,11 +609,11 @@ export class Server extends AbstractServer {
 		}
 
 		await handleLdapInit();
-        
-        await handleMfaDisable();
+
+		await handleMfaDisable();
 
 		await this.registerControllers(ignoredEndpoints);
-		
+
 		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);

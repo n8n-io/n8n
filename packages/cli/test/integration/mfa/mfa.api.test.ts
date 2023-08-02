@@ -5,8 +5,10 @@ import type { User } from '@db/entities/User';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
-import { randomDigit, randomValidPassword, uniqueId } from '../shared/random';
+import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
 import { TOTPService } from '@/Mfa/totp.service';
+import Container from 'typedi';
+import { JwtService } from '@/services/jwt.service';
 
 jest.mock('@/telemetry');
 
@@ -266,13 +268,16 @@ describe('Change password with MFA enabled', () => {
 
 		const newPassword = randomValidPassword();
 
-		const resetPasswordToken = uniqueId();
+		config.set('userManagement.jwtSecret', randomString(5, 10));
+
+		const jwtService = Container.get(JwtService);
+
+		const resetPasswordToken = jwtService.signData({ sub: user.id });
 
 		const mfaToken = new TOTPService().generateTOTP(rawSecret);
 
 		const response = await testServer.authlessAgent.post('/change-password').send({
 			password: newPassword,
-			userId: user.id,
 			token: resetPasswordToken,
 			mfaToken,
 		});

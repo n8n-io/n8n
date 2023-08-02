@@ -3,7 +3,9 @@ import { AES, enc } from 'crypto-js';
 import type { Repository } from 'typeorm';
 import type { User } from '@db/entities/User';
 import type { TOTPService } from './totp.service';
+import { Service } from 'typedi';
 
+@Service()
 export class MfaService {
 	constructor(
 		private userRepository: Repository<User>,

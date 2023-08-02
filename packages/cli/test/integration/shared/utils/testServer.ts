@@ -23,6 +23,7 @@ import { registerController } from '@/decorators';
 import {
 	AuthController,
 	LdapController,
+	MFAController,
 	MeController,
 	NodesController,
 	OwnerController,
@@ -50,6 +51,9 @@ import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } f
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
+import { MfaService } from '@/Mfa/mfa.service';
+import { TOTPService } from '@/Mfa/totp.service';
+import { UserSettings } from 'n8n-core';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -180,11 +184,13 @@ export const setupTestServer = ({
 		}
 
 		if (functionEndpoints.length) {
+			const encryptionKey = await UserSettings.getEncryptionKey();
+			const repositories = Db.collections;
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
 			const jwtService = Container.get(JwtService);
-			const repositories = Db.collections;
+			const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
 
 			for (const group of functionEndpoints) {
 				switch (group) {
@@ -195,9 +201,11 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new AuthController({ config, logger, internalHooks, repositories }),
+							new AuthController({ config, logger, internalHooks, repositories, mfaService }),
 						);
 						break;
+					case 'mfa':
+						registerController(app, config, new MFAController(mfaService));
 					case 'ldap':
 						Container.get(License).isLdapEnabled = () => true;
 						await handleLdapInit();
@@ -226,7 +234,7 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new MeController({ logger, externalHooks, internalHooks, repositories }),
+							new MeController({ logger, externalHooks, internalHooks, repositories, mfaService }),
 						);
 						break;
 					case 'passwordReset':
@@ -241,6 +249,7 @@ export const setupTestServer = ({
 								mailer,
 								repositories,
 								jwtService,
+								mfaService,
 							}),
 						);
 						break;
