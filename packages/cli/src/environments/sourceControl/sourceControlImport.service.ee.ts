@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -26,6 +26,7 @@ import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkfl
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
+import { VariablesService } from '../variables/variables.service';
 
 @Service()
 export class SourceControlImportService {
@@ -35,7 +36,10 @@ export class SourceControlImportService {
 
 	private credentialExportFolder: string;
 
-	constructor() {
+	constructor(
+		private readonly variablesService: VariablesService,
+		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -235,10 +239,7 @@ export class SourceControlImportService {
 	}
 
 	public async getLocalVariablesFromDb(): Promise<Variables[]> {
-		const localVariables = await Db.collections.Variables.find({
-			select: ['id', 'key', 'type', 'value'],
-		});
-		return localVariables;
+		return this.variablesService.getAllCached();
 	}
 
 	public async getRemoteTagsAndMappingsFromFile(): Promise<{
@@ -275,7 +276,7 @@ export class SourceControlImportService {
 
 	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
 		const ownerWorkflowRole = await this.getWorkflowOwnerRole();
-		const workflowRunner = Container.get(ActiveWorkflowRunner);
+		const workflowRunner = this.activeWorkflowRunner;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await Db.collections.Workflow.find({
 			where: {
@@ -575,6 +576,8 @@ export class SourceControlImportService {
 				await Db.collections.Variables.save(newVariable);
 			}
 		}
+
+		await this.variablesService.updateCache();
 
 		return result;
 	}

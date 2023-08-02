@@ -38,6 +38,7 @@ import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
 import { RoleService } from './services/role.service';
 import { RoleRepository } from './databases/repositories';
+import { VariablesService } from './environments/variables/variables.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -575,8 +576,9 @@ export function validateWorkflowCredentialUsage(
 }
 
 export async function getVariables(): Promise<IDataObject> {
+	const variables = await Container.get(VariablesService).getAllCached();
 	return Object.freeze(
-		(await Db.collections.Variables.find()).reduce((prev, curr) => {
+		variables.reduce((prev, curr) => {
 			prev[curr.key] = curr.value;
 			return prev;
 		}, {} as IDataObject),
