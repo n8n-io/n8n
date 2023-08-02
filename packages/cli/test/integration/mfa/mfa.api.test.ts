@@ -7,18 +7,14 @@ import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
 import { randomDigit, randomValidPassword, uniqueId } from '../shared/random';
 import { TOTPService } from '@/Mfa/totp.service';
-import { TestServer } from '../shared/types';
 
 jest.mock('@/telemetry');
 
-let testServer: TestServer;
 let globalOwnerRole: Role;
 let owner: User;
 
-beforeAll(async () => {
-	testServer = await utils.setupTestServer({
-		endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'],
-	});
+const testServer = utils.setupTestServer({
+	endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'],
 });
 
 beforeEach(async () => {
@@ -178,9 +174,7 @@ describe('Disable MFA setup', () => {
 	test('POST /disable should disable login with MFA', async () => {
 		const { user } = await testDb.createUserWithMfaEnabled();
 
-		const authAgent = utils.createAuthAgent(app);
-
-		const response = await authAgent(user).delete('/mfa/disable');
+		const response = await testServer.authAgentFor(user).delete('/mfa/disable');
 
 		expect(response.statusCode).toBe(200);
 
@@ -201,9 +195,8 @@ describe('Change password with MFA enabled', () => {
 
 		const newPassword = randomPassword();
 
-		const authAgent = utils.createAuthAgent(app);
-
-		const response = await authAgent(user)
+		const response = await testServer
+			.authAgentFor(user)
 			.patch('/me/password')
 			.send({ currentPassword: rawPassword, newPassword });
 
@@ -215,9 +208,8 @@ describe('Change password with MFA enabled', () => {
 
 		const newPassword = randomValidPassword();
 
-		const authAgent = utils.createAuthAgent(app);
-
-		const response = await authAgent(user)
+		const response = await testServer
+			.authAgentFor(user)
 			.patch('/me/password')
 			.send({ currentPassword: rawPassword, newPassword, mfaToken: randomDigit() });
 
@@ -231,9 +223,8 @@ describe('Change password with MFA enabled', () => {
 
 		const newPassword = randomValidPassword();
 
-		const authAgent = utils.createAuthAgent(app);
-
-		const response = await authAgent(user)
+		const response = await testServer
+			.authAgentFor(user)
 			.patch('/me/password')
 			.send({ currentPassword: rawPassword, newPassword, token });
 
@@ -245,20 +236,11 @@ describe('Change password with MFA enabled', () => {
 
 		const newPassword = randomValidPassword();
 
-		const authlessAgent = utils.createAgent(app);
-
-		const oneMinuteFromNow = new Date().getTime() / 1000 + 60;
-
 		const resetPasswordToken = uniqueId();
 
-		await Db.collections.User.update(user.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration: oneMinuteFromNow,
-		});
-
-		const response = await authlessAgent
+		const response = await testServer.authlessAgent
 			.post('/change-password')
-			.send({ password: newPassword, userId: user.id, token: resetPasswordToken });
+			.send({ password: newPassword, token: resetPasswordToken });
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -268,20 +250,10 @@ describe('Change password with MFA enabled', () => {
 
 		const newPassword = randomValidPassword();
 
-		const authlessAgent = utils.createAgent(app);
-
-		const oneMinuteFromNow = new Date().getTime() / 1000 + 60;
-
 		const resetPasswordToken = uniqueId();
 
-		await Db.collections.User.update(user.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration: oneMinuteFromNow,
-		});
-
-		const response = await authlessAgent.post('/change-password').send({
+		const response = await testServer.authlessAgent.post('/change-password').send({
 			password: newPassword,
-			userId: user.id,
 			token: resetPasswordToken,
 			mfaToken: randomDigit(),
 		});
@@ -294,20 +266,11 @@ describe('Change password with MFA enabled', () => {
 
 		const newPassword = randomValidPassword();
 
-		const authlessAgent = utils.createAgent(app);
-
-		const oneMinuteFromNow = new Date().getTime() / 1000 + 60;
-
 		const resetPasswordToken = uniqueId();
 
 		const mfaToken = new TOTPService().generateTOTP(rawSecret);
 
-		await Db.collections.User.update(user.id, {
-			resetPasswordToken,
-			resetPasswordTokenExpiration: oneMinuteFromNow,
-		});
-
-		const response = await authlessAgent.post('/change-password').send({
+		const response = await testServer.authlessAgent.post('/change-password').send({
 			password: newPassword,
 			userId: user.id,
 			token: resetPasswordToken,
@@ -316,9 +279,8 @@ describe('Change password with MFA enabled', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const authAgent = utils.createAuthAgent(app);
-
-		const loginResponse = await authAgent(user)
+		const loginResponse = await testServer
+			.authAgentFor(user)
 			.post('/login')
 			.send({
 				email: user.email,
@@ -333,19 +295,19 @@ describe('Change password with MFA enabled', () => {
 
 describe('Login', () => {
 	test('POST /login with email/password should succeed when mfa is disabled', async () => {
-		const authlessAgent = utils.createAgent(app);
-
 		const password = randomPassword();
 
 		const user = await testDb.createUser({ password });
 
-		const response = await authlessAgent.post('/login').send({ email: user.email, password });
+		const response = await testServer.authlessAgent
+			.post('/login')
+			.send({ email: user.email, password });
 
 		expect(response.statusCode).toBe(200);
 	});
 
 	test('GET /login should include hasRecoveryCodesLeft property in response', async () => {
-		const response = await authAgent(owner).get('/login');
+		const response = await testServer.authAgentFor(owner).get('/login');
 
 		const { data } = response.body;
 
@@ -355,7 +317,7 @@ describe('Login', () => {
 	});
 
 	test('GET /login should not include mfaSecret and mfaRecoveryCodes property in response', async () => {
-		const response = await authAgent(owner).get('/login');
+		const response = await testServer.authAgentFor(owner).get('/login');
 
 		const { data } = response.body;
 
@@ -368,9 +330,7 @@ describe('Login', () => {
 	test('POST /login with email/password should fail when mfa is enabled', async () => {
 		const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
 
-		const authlessAgent = utils.createAgent(app);
-
-		const response = await authlessAgent
+		const response = await testServer.authlessAgent
 			.post('/login')
 			.send({ email: user.email, password: rawPassword });
 
@@ -382,9 +342,7 @@ describe('Login', () => {
 		test('POST /login should fail due to invalid MFA token', async () => {
 			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
 
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent
+			const response = await testServer.authlessAgent
 				.post('/login')
 				.send({ email: user.email, password: rawPassword, mfaToken: '' });
 
@@ -395,11 +353,9 @@ describe('Login', () => {
 		test('POST /login should succeed with MFA token', async () => {
 			const { user, rawSecret, rawPassword } = await testDb.createUserWithMfaEnabled();
 
-			const authlessAgent = utils.createAgent(app);
-
 			const token = new TOTPService().generateTOTP(rawSecret);
 
-			const response = await authlessAgent
+			const response = await testServer.authlessAgent
 				.post('/login')
 				.send({ email: user.email, password: rawPassword, mfaToken: token });
 
@@ -414,9 +370,7 @@ describe('Login', () => {
 		test('POST /login should fail due to invalid MFA recovery code', async () => {
 			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
 
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent
+			const response = await testServer.authlessAgent
 				.post('/login')
 				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: '' });
 
@@ -427,9 +381,7 @@ describe('Login', () => {
 		test('POST /login should succeed with MFA recovery code', async () => {
 			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled();
 
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent
+			const response = await testServer.authlessAgent
 				.post('/login')
 				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
 
@@ -454,9 +406,7 @@ describe('Login', () => {
 				numberOfRecoveryCodes: 1,
 			});
 
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent
+			const response = await testServer.authlessAgent
 				.post('/login')
 				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
 
