@@ -11,7 +11,7 @@ anything to everything.
 
 ## Demo
 
-[:tv: A short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok) that goes over key concepts of
+[:tv: A short video (< 5 min)](https://www.youtube.com/watch?v=1MwSoB0gnM4) that goes over key concepts of
 creating workflows in n8n.
 
 ## Available integrations

@@ -1,9 +1,3 @@
-/* eslint-disable prefer-spread */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -24,10 +18,11 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
+	IWebhookData,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -44,8 +39,10 @@ import type {
 	IActivationError,
 	IQueuedWorkflowActivations,
 	IResponseCallbackData,
+	IWebhookManager,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
+	WebhookRequest,
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -76,7 +73,7 @@ const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 
 @Service()
-export class ActiveWorkflowRunner {
+export class ActiveWorkflowRunner implements IWebhookManager {
 	private activeWorkflows = new ActiveWorkflows();
 
 	private activationErrors: {
@@ -94,7 +91,6 @@ export class ActiveWorkflowRunner {
 		private webhookRepository: WebhookRepository,
 	) {}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async init() {
 		// Get the active workflows from database
 
@@ -141,7 +137,7 @@ export class ActiveWorkflowRunner {
 					Logger.info(
 						'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
 					);
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+
 					Logger.info(`               ${error.message}`);
 					Logger.error(
 						`Issue on initial workflow activation try "${workflowData.name}" (startup)`,
@@ -172,7 +168,7 @@ export class ActiveWorkflowRunner {
 		let activeWorkflowIds: string[] = [];
 		Logger.verbose('Call to remove all active workflows received (removeAll)');
 
-		activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
+		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
 
 		const activeWorkflows = await this.getActiveWorkflows();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
@@ -191,15 +187,13 @@ export class ActiveWorkflowRunner {
 	 * Checks if a webhook for the given method and path exists and executes the workflow.
 	 */
 	async executeWebhook(
-		httpMethod: WebhookHttpMethod,
-		path: string,
-		req: express.Request,
-		res: express.Response,
+		request: WebhookRequest,
+		response: express.Response,
 	): Promise<IResponseCallbackData> {
-		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
+		const httpMethod = request.method;
+		let path = request.params.path;
 
-		// Reset request parameters
-		req.params = {};
+		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 
 		// Remove trailing slash
 		if (path.endsWith('/')) {
@@ -249,6 +243,7 @@ export class ActiveWorkflowRunner {
 					webhook = dynamicWebhook;
 				}
 			});
+
 			if (webhook === null) {
 				throw new ResponseHelper.NotFoundError(
 					webhookNotFoundErrorMessage(path, httpMethod),
@@ -257,14 +252,14 @@ export class ActiveWorkflowRunner {
 			}
 
 			// @ts-ignore
-			// eslint-disable-next-line no-param-reassign
 			path = webhook.webhookPath;
 			// extracting params from path
 			// @ts-ignore
 			webhook.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
-					req.params[ele.slice(1)] = pathElements[index];
+					// @ts-ignore
+					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});
 		}
@@ -298,9 +293,7 @@ export class ActiveWorkflowRunner {
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		).filter((webhook) => {
-			return webhook.httpMethod === httpMethod && webhook.path === path;
-		})[0];
+		).find((w) => w.httpMethod === httpMethod && w.path === path) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -321,9 +314,8 @@ export class ActiveWorkflowRunner {
 				undefined,
 				undefined,
 				undefined,
-				req,
-				res,
-				// eslint-disable-next-line consistent-return
+				request,
+				response,
 				(error: Error | null, data: object) => {
 					if (error !== null) {
 						return reject(error);
@@ -337,7 +329,7 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Gets all request methods associated with a single webhook
 	 */
-	async getWebhookMethods(path: string): Promise<string[]> {
+	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
 		const webhooks = await this.webhookRepository.find({
 			select: ['method'],
 			where: { webhookPath: path },
@@ -445,7 +437,6 @@ export class ActiveWorkflowRunner {
 			}
 
 			try {
-				// eslint-disable-next-line no-await-in-loop
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
 				await this.webhookRepository.insert(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
@@ -478,17 +469,16 @@ export class ActiveWorkflowRunner {
 					// This means that further initializations will always fail
 					// when inserting to database. This is why we ignore this error
 					// as it's expected to happen.
-					// eslint-disable-next-line no-continue
+
 					continue;
 				}
 
 				try {
 					await this.removeWorkflowWebhooks(workflow.id as string);
-				} catch (error) {
-					ErrorReporter.error(error);
+				} catch (error1) {
+					ErrorReporter.error(error1);
 					Logger.error(
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
+						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
 					);
 				}
 
@@ -566,7 +556,7 @@ export class ActiveWorkflowRunner {
 	 * Runs the given workflow
 	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 	async runWorkflow(
 		workflowData: IWorkflowDb,
 		node: INode,
@@ -634,7 +624,6 @@ export class ActiveWorkflowRunner {
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void WorkflowHelpers.saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
@@ -691,10 +680,9 @@ export class ActiveWorkflowRunner {
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void WorkflowHelpers.saveStaticData(workflow);
-				// eslint-disable-next-line id-denylist
+
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -983,7 +971,6 @@ export class ActiveWorkflowRunner {
 		} catch (error) {
 			ErrorReporter.error(error);
 			Logger.error(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
 			);
 		}

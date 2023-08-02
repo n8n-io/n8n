@@ -1,5 +1,5 @@
 import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { IMenuItem } from 'n8n-design-system';
 import type {
 	GenericValue,

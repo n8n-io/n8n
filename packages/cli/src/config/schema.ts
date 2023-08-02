@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
@@ -353,7 +351,7 @@ export const schema = {
 		},
 		bull: {
 			prefix: {
-				doc: 'Prefix for all queue keys (wrap in {} for cluster mode)',
+				doc: 'Prefix for all bull queue keys',
 				format: String,
 				default: 'bull',
 				env: 'QUEUE_BULL_PREFIX',
@@ -484,6 +482,18 @@ export const schema = {
 	},
 
 	security: {
+		restrictFileAccessTo: {
+			doc: 'If set only files in that directories can be accessed. Multiple directories can be separated by semicolon (";").',
+			format: String,
+			default: '',
+			env: 'N8N_RESTRICT_FILE_ACCESS_TO',
+		},
+		blockFileAccessToN8nFiles: {
+			doc: 'If set to true it will block access to all files in the ".n8n" directory and user defined config files.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES',
+		},
 		audit: {
 			daysAbandonedWorkflow: {
 				doc: 'Days for a workflow to be considered abandoned if not executed',
@@ -1111,6 +1121,15 @@ export const schema = {
 		},
 	},
 
+	redis: {
+		prefix: {
+			doc: 'Prefix for all n8n related keys',
+			format: String,
+			default: 'n8n',
+			env: 'N8N_REDIS_KEY_PREFIX',
+		},
+	},
+
 	cache: {
 		enabled: {
 			doc: 'Whether caching is enabled',
@@ -1139,10 +1158,16 @@ export const schema = {
 			},
 		},
 		redis: {
+			prefix: {
+				doc: 'Prefix for all cache keys',
+				format: String,
+				default: 'cache',
+				env: 'N8N_CACHE_REDIS_KEY_PREFIX',
+			},
 			ttl: {
 				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
 				format: Number,
-				default: 0,
+				default: 3600 * 1000, // 1 hour
 				env: 'N8N_CACHE_REDIS_TTL',
 			},
 		},

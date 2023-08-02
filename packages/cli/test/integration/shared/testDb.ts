@@ -34,6 +34,7 @@ import type {
 } from './types';
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
+import { VariablesService } from '@/environments/variables/variables.service';
 
 import { v4 as uuid } from 'uuid';
 import { randomPassword } from '@/Ldap/helpers';
@@ -254,7 +255,6 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
-	// eslint-disable-next-line prefer-const
 	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	if (!globalRole) {
 		globalRole = await getGlobalMemberRole();
@@ -550,11 +550,13 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 // ----------------------------------
 
 export async function createVariable(key: string, value: string) {
-	return Db.collections.Variables.save({
+	const result = await Db.collections.Variables.save({
 		id: generateNanoId(),
 		key,
 		value,
 	});
+	await Container.get(VariablesService).updateCache();
+	return result;
 }
 
 export async function getVariableByKey(key: string) {

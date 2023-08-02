@@ -2,9 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable prefer-const */
-/* eslint-disable @typescript-eslint/no-invalid-void-type */
+
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-var-requires */
+
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -204,6 +204,9 @@ export class Server extends AbstractServer {
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
+
+		this.testWebhooksEnabled = true;
+		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -562,8 +565,6 @@ export class Server extends AbstractServer {
 			'healthz',
 			'metrics',
 			'e2e',
-			this.endpointWebhook,
-			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
 			isApiEnabled() ? '' : publicApiEndpoint,
 			...excludeEndpoints.split(':'),
@@ -955,7 +956,6 @@ export class Server extends AbstractServer {
 
 				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
 
-				// eslint-disable-next-line new-cap
 				const oauth = new clientOAuth1(oAuthOptions);
 
 				const options: RequestOptions = {
@@ -1410,17 +1410,6 @@ export class Server extends AbstractServer {
 			await eventBus.initialize();
 		}
 
-		// ----------------------------------------
-		// Webhooks
-		// ----------------------------------------
-
-		if (!config.getEnv('endpoints.disableProductionWebhooksOnMainProcess')) {
-			this.setupWebhookEndpoint();
-			this.setupWaitingWebhookEndpoint();
-		}
-
-		this.setupTestWebhookEndpoint();
-
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			this.app.post(
@@ -1429,7 +1418,7 @@ export class Server extends AbstractServer {
 					if (!this.presetCredentialsLoaded) {
 						const body = req.body as ICredentialsOverwrite;
 
-						if (req.headers['content-type'] !== 'application/json') {
+						if (req.contentType !== 'application/json') {
 							ResponseHelper.sendErrorResponse(
 								res,
 								new Error(

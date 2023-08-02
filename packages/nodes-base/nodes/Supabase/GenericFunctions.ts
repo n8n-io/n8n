@@ -71,7 +71,7 @@ export function getFilters(
 		includeNoneOption = true,
 		filterTypeDisplayName = 'Filter',
 		filterFixedCollectionDisplayName = 'Filters',
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 		filterStringDisplayName = 'Filters (String)',
 		mustMatchOptions = [
 			{

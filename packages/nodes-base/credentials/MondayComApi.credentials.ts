@@ -12,6 +12,7 @@ export class MondayComApi implements ICredentialType {
 			displayName: 'Token V2',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

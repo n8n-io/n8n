@@ -29,8 +29,8 @@
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint --quiet .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet --report-unused-disable-directives",
+    "lintfix": "eslint . --fix --report-unused-disable-directives",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:dev": "jest --watch"

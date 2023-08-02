@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
@@ -70,8 +69,8 @@ export class ConflictError extends ResponseError {
 }
 
 export class UnprocessableRequestError extends ResponseError {
-	constructor(message: string) {
-		super(message, 422);
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 422, 422, hint);
 	}
 }
 
@@ -216,7 +215,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 		workflowId: fullExecutionData.workflowId,
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 		workflowData: fullExecutionData.workflowData!,
 		status: fullExecutionData.status,
 	};

@@ -65,10 +65,6 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="EXECUTIONS_MODAL_KEY">
-			<ExecutionsModal />
-		</ModalRoot>
-
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
 			<ActivationModal />
 		</ModalRoot>
@@ -142,7 +138,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
@@ -178,7 +173,6 @@ import UpdatesPanel from './UpdatesPanel.vue';
 import ValueSurvey from './ValueSurvey.vue';
 import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
-import ExecutionsModal from './ExecutionsModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import MfaSetupModal from './MfaSetupModal.vue';
@@ -202,7 +196,6 @@ export default defineComponent({
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
 		InviteUsersModal,
-		ExecutionsModal,
 		ModalRoot,
 		OnboardingCallSignupModal,
 		PersonalizationModal,
@@ -236,7 +229,6 @@ export default defineComponent({
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		WORKFLOW_SHARE_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
-		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
