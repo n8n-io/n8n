@@ -479,7 +479,9 @@ export default defineComponent({
 	},
 	watch: {
 		workflow(workflow) {
-			this.sharedWith = workflow.sharedWith;
+			if (workflow.sharedWith) {
+				this.sharedWith = workflow.sharedWith;
+			}
 		},
 	},
 });
