@@ -23,7 +23,7 @@ export class WebhookService {
 	}
 
 	private async findCached(method: Method, path: string) {
-		const cacheKey = `cache:webhook:${method}-${path}`;
+		const cacheKey = `webhook:${method}-${path}`;
 
 		const cachedWebhook = await this.cacheService.get(cacheKey);
 

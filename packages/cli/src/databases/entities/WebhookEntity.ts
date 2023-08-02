@@ -30,7 +30,7 @@ export class WebhookEntity {
 	}
 
 	get cacheKey() {
-		return `cache:webhook:${this.method}-${this.uniquePath}`;
+		return `webhook:${this.method}-${this.uniquePath}`;
 	}
 
 	get staticSegments() {
