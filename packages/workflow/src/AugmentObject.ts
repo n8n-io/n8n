@@ -33,7 +33,7 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Reflect.deleteProperty(getData(), key);
 		},
 		get(target, key: string, receiver): unknown {
-			const value = Reflect.get(newData !== undefined ? newData : target, key, receiver) as unknown;
+			const value = Reflect.get(newData ?? target, key, receiver) as unknown;
 			const newValue = augment(value);
 			if (newValue !== value) {
 				newData = getData();
@@ -54,10 +54,10 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
 		},
 		has(target, key) {
-			return Reflect.has(newData !== undefined ? newData : target, key);
+			return Reflect.has(newData ?? target, key);
 		},
 		ownKeys(target) {
-			return Reflect.ownKeys(newData !== undefined ? newData : target);
+			return Reflect.ownKeys(newData ?? target);
 		},
 		set(target, key: string, newValue: unknown) {
 			// Always proxy all objects. Like that we can check in get simply if it
