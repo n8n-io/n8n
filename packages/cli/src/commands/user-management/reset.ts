@@ -3,8 +3,8 @@ import { Not } from 'typeorm';
 import * as Db from '@/Db';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import { BaseCommand } from '../BaseCommand';
+import { RoleService } from '@/services/role.service';
 
 const defaultUserProps = {
 	firstName: null,
@@ -21,8 +21,8 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
-		const ownerCredentialRole = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
+		const ownerWorkflowRole = await Container.get(RoleService).findWorkflowOwnerRole();
+		const ownerCredentialRole = await Container.get(RoleService).findCredentialOwnerRole();
 
 		await Db.collections.SharedWorkflow.update(
 			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
@@ -60,7 +60,7 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
+		const globalRole = await Container.get(RoleService).findGlobalOwnerRole();
 
 		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
 

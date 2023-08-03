@@ -16,7 +16,7 @@ export function randomApiKey() {
 	return `n8n_api_${randomBytes(20).toString('hex')}`;
 }
 
-const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
+export const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
 
 export const randomInteger = (max = 1000) => Math.floor(Math.random() * max);
 

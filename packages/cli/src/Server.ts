@@ -170,6 +170,7 @@ import { SourceControlController } from '@/environments/sourceControl/sourceCont
 import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { JwtService } from './services/jwt.service';
+import { RoleService } from './services/role.service';
 
 const exec = promisify(callbackExec);
 
@@ -496,6 +497,7 @@ export class Server extends AbstractServer {
 				logger,
 				postHog,
 				jwtService,
+				roleService: Container.get(RoleService),
 			}),
 			Container.get(SamlController),
 			Container.get(SourceControlController),

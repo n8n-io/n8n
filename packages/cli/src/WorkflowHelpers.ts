@@ -30,13 +30,14 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import omit from 'lodash/omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
+import { RoleService } from './services/role.service';
+import { RoleRepository } from './databases/repositories';
 import { VariablesService } from './environments/variables/variables.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -378,10 +379,13 @@ export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Pro
 		where.userId = user.id;
 	}
 	if (roles?.length) {
-		const roleIds = await Db.collections.Role.find({
-			select: ['id'],
-			where: { name: In(roles), scope: 'workflow' },
-		}).then((data) => data.map(({ id }) => id));
+		const roleIds = await Container.get(RoleRepository)
+			.find({
+				select: ['id'],
+				where: { name: In(roles), scope: 'workflow' },
+			})
+			.then((role) => role.map(({ id }) => id));
+
 		where.roleId = In(roleIds);
 	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
@@ -398,7 +402,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
+	const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
 		where: {
 			userId: user.id,
