@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
+import * as mqtt from 'mqtt';
 
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {

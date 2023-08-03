@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
+import * as mqtt from 'mqtt';
 
 export class Mqtt implements INodeType {
 	description: INodeTypeDescription = {
