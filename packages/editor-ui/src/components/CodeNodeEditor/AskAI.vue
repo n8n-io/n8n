@@ -18,7 +18,7 @@ const props = defineProps<{
 }>();
 
 const { getWorkflowSchema, getSchemaForExecutionData } = useDataSchema();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const maxLength = 600;
 const loadingDurationMs = 10000;
 

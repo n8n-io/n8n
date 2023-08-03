@@ -15,7 +15,7 @@
 				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
 			</el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.askAi')" name="ask-ai">
-				<AskAI @replaceCode="onReplaceCode" :has-changes="initialValue !== content" />
+				<AskAI @replaceCode="onReplaceCode" :has-changes="hasChanges" />
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
@@ -113,6 +113,9 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useRootStore, usePostHog),
+		hasChanges():boolean {
+			return this.modelValue !== this.content;
+		},
 		content(): string {
 			if (!this.editor) return '';
 
