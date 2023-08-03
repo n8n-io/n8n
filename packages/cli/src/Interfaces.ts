@@ -1,4 +1,4 @@
-import type { Application } from 'express';
+import type { Application, Request, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -23,6 +23,7 @@ import type {
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -299,6 +300,19 @@ export interface IExternalHooksClass {
 	init(): Promise<void>;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
+}
+
+export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
+
+export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
+
+export type WaitingWebhookRequest = WebhookRequest & {
+	params: WebhookRequest['path'] & { suffix?: string };
+};
+
+export interface IWebhookManager {
+	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
+	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
 }
 
 export interface IDiagnosticInfo {

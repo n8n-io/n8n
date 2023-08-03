@@ -182,7 +182,7 @@ function chunk(value: unknown[], extraArgs: number[]) {
 	const chunks: unknown[][] = [];
 	for (let i = 0; i < value.length; i += chunkSize) {
 		// I have no clue why eslint thinks 2 numbers could be anything but that but here we are
-		// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+
 		chunks.push(value.slice(i, i + chunkSize));
 	}
 	return chunks;
@@ -275,7 +275,6 @@ function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = Array.from(value);
 	for (const v of others) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		if (newArr.findIndex((w) => deepEqual(w, v, { strict: true })) === -1) {
 			newArr.push(v);
 		}
@@ -313,7 +312,6 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 		}
 	}
 	for (const v of others) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		if (value.findIndex((w) => deepEqual(w, v, { strict: true })) !== -1) {
 			newArr.push(v);
 		}

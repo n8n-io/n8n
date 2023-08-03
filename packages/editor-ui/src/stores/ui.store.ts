@@ -15,7 +15,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
@@ -56,7 +55,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils';
+import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { Banners } from 'n8n-workflow';
 
@@ -106,9 +105,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
-				open: false,
-			},
-			[EXECUTIONS_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SHARE_MODAL_KEY]: {

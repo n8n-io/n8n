@@ -1,6 +1,5 @@
-/* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import fs from 'fs';
 import path from 'path';
@@ -58,7 +57,6 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 
 	userSettings.instanceId = await generateInstanceId(userSettings.encryptionKey);
 
-	// eslint-disable-next-line no-console
 	console.log(`UserSettings were generated and saved to: ${settingsPath}`);
 
 	return writeUserSettings(userSettings, settingsPath);
@@ -77,7 +75,7 @@ export async function getEncryptionKey(): Promise<string> {
 
 	const userSettings = await getUserSettings();
 
-	if (userSettings === undefined || userSettings.encryptionKey === undefined) {
+	if (userSettings?.encryptionKey === undefined) {
 		throw new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 	}
 
@@ -202,7 +200,6 @@ export async function getUserSettings(
 	const settingsFile = await fsReadFile(settingsPath, 'utf8');
 
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		settingsCache = JSON.parse(settingsFile);
 	} catch (error) {
 		throw new Error(

@@ -7,7 +7,7 @@ import type { SourceControlAggregatedFile } from '@/Interface';
 import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores';
-import { useRoute, useRouter } from 'vue-router/composables';
+import { useRoute, useRouter } from 'vue-router';
 import { computed, nextTick, ref } from 'vue';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 
@@ -23,7 +23,7 @@ const incompleteFileTypes = ['variables', 'credential'];
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const toast = useToast();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const sourceControlStore = useSourceControlStore();
 const router = useRouter();
 const route = useRoute();
@@ -63,7 +63,7 @@ async function pullWorkfolder() {
 		});
 
 		if (hasVariablesOrCredentials) {
-			nextTick(() => {
+			void nextTick(() => {
 				toast.showMessage({
 					message: i18n.baseText('settings.sourceControl.pull.oneLastStep.description'),
 					title: i18n.baseText('settings.sourceControl.pull.oneLastStep.title'),

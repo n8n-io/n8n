@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
@@ -202,7 +200,6 @@ export class EventBusController {
 					break;
 				default:
 					throw new BadRequestError(
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						`Body is missing ${req.body.__type} options or type ${req.body.__type} is unknown`,
 					);
 			}

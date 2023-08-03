@@ -196,12 +196,9 @@
 
 	@include mixins.e(main-wrapper) {
 		margin-bottom: 6px;
-
-		&::after {
-			content: '';
-			display: table;
-			clear: both;
-		}
+		display: flex;
+		flex-direction: row-reverse;
+		justify-content: space-between;
 	}
 
 	@include mixins.e(btns) {

@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 								displayName: 'Google Docs',
 								name: 'docsToFormat',
 								type: 'options',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 								options: [
 									{
 										name: 'HTML',

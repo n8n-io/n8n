@@ -12,7 +12,6 @@ export class Credentials extends ICredentials {
 	 * Returns if the given nodeType has access to data
 	 */
 	hasNodeAccess(nodeType: string): boolean {
-		// eslint-disable-next-line no-restricted-syntax
 		for (const accessData of this.nodesAccess) {
 			if (accessData.nodeType === nodeType) {
 				return true;
@@ -81,7 +80,6 @@ export class Credentials extends ICredentials {
 			throw new Error('No data was set.');
 		}
 
-		// eslint-disable-next-line no-prototype-builtins
 		if (!fullData.hasOwnProperty(key)) {
 			throw new Error(`No data for key "${key}" exists.`);
 		}

@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
-import type { ExternalSecretsProvider } from '@/Interface';
+import type { PropType, Ref } from 'vue';
+import type { ExternalSecretsProvider, ExternalSecretsProviderData } from '@/Interface';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { useExternalSecretsStore, useUIStore } from '@/stores';
-import { useI18n, useLoadingService, useToast } from '@/composables';
+import { useExternalSecretsProvider, useI18n, useToast } from '@/composables';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
-import { computed } from 'vue';
+import { computed, nextTick, onMounted, ref, toRef, toRefs } from 'vue';
 
 const props = defineProps({
 	provider: {
@@ -16,11 +16,15 @@ const props = defineProps({
 	},
 });
 
-const loadingService = useLoadingService();
 const externalSecretsStore = useExternalSecretsStore();
-const { i18n } = useI18n();
+const i18n = useI18n();
 const uiStore = useUIStore();
 const toast = useToast();
+
+const { provider } = toRefs(props) as Ref<ExternalSecretsProvider>;
+const providerData = computed(() => provider.value.data);
+const { connectionState, initialConnectionState, normalizedProviderData, testConnection } =
+	useExternalSecretsProvider(provider, providerData);
 
 const actionDropdownOptions = computed(() => [
 	{
@@ -44,6 +48,22 @@ const canConnect = computed(() => {
 const formattedDate = computed((provider: ExternalSecretsProvider) => {
 	return DateTime.fromISO(props.provider.connectedAt!).toFormat('dd LLL yyyy');
 });
+
+onMounted(() => {
+	connectionState.value = props.provider.state;
+});
+
+async function onBeforeConnectionUpdate() {
+	if (props.provider.connected) {
+		return true;
+	}
+
+	await externalSecretsStore.getProvider(props.provider.name);
+	await nextTick();
+	const status = await testConnection();
+
+	return status !== 'error';
+}
 
 function openExternalSecretProvider() {
 	uiStore.openModalWithData({
@@ -108,7 +128,11 @@ async function onActionDropdownClick(id: string) {
 				</n8n-text>
 			</div>
 			<div :class="$style.cardActions" v-if="canConnect">
-				<ExternalSecretsProviderConnectionSwitch :provider="provider" />
+				<ExternalSecretsProviderConnectionSwitch
+					:provider="provider"
+					:beforeUpdate="onBeforeConnectionUpdate"
+					:disabled="connectionState === 'error' && !provider.connected"
+				/>
 				<n8n-action-toggle
 					class="ml-s"
 					theme="dark"
