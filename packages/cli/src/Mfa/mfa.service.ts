@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { AES, enc } from 'crypto-js';
-import type { Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import type { User } from '@db/entities/User';
-import type { TOTPService } from './totp.service';
+import { TOTPService } from './totp.service';
 import { Service } from 'typedi';
 
 @Service()
