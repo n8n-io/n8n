@@ -218,6 +218,7 @@ import {
 	useMessage,
 	useToast,
 	useTitleChange,
+	useExecutionDebugging,
 } from '@/composables';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
@@ -355,6 +356,7 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
+			...useExecutionDebugging(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
@@ -752,60 +754,6 @@ export default defineComponent({
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
-		},
-		async pinExecutionData(
-			workflow: IWorkflowDb,
-			execution: IExecutionResponse | undefined,
-		): Promise<IWorkflowDb> {
-			// If no execution data is available, return the workflow as is
-			if (!execution?.data?.resultData) {
-				return workflow;
-			}
-
-			const { runData, pinData } = execution.data.resultData;
-
-			// Get nodes from execution data and apply their pinned data or the first execution data
-			const executionNodesData = Object.entries(runData).map(([name, data]) => ({
-				name,
-				data: pinData?.[name] ?? data?.[0].data?.main[0],
-			}));
-			const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
-
-			// Check if any of the workflow nodes have pinned data already
-			if (executionNodesData.some((eNode) => workflowPinnedNodeNames.includes(eNode.name))) {
-				const overWritePinnedDataConfirm = await this.confirm(
-					this.$locale.baseText('nodeView.confirmMessage.debug.message'),
-					this.$locale.baseText('nodeView.confirmMessage.debug.headline'),
-					{
-						type: 'warning',
-						confirmButtonText: this.$locale.baseText(
-							'nodeView.confirmMessage.debug.confirmButtonText',
-						),
-						cancelButtonText: this.$locale.baseText(
-							'nodeView.confirmMessage.debug.cancelButtonText',
-						),
-						dangerouslyUseHTMLString: true,
-					},
-				);
-
-				if (overWritePinnedDataConfirm !== MODAL_CONFIRM) {
-					return workflow;
-				}
-			}
-
-			// Overwrite the workflow pinned data with the execution data
-			workflow.pinData = executionNodesData.reduce(
-				(acc, { name, data }) => {
-					// Only add data if it exists and the node is in the workflow
-					if (acc && data && workflow.nodes.some((node) => node.name === name)) {
-						acc[name] = data;
-					}
-					return acc;
-				},
-				{} as IWorkflowDb['pinData'],
-			);
-
-			return workflow;
 		},
 		async openExecution(executionId: string) {
 			this.startLoading();
