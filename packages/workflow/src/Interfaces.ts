@@ -1204,10 +1204,9 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(
-		this: IExecuteSingleFunctions,
-		value: string | NodeParameterValue,
-	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
+	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
+		| Promise<string | NodeParameterValue>
+		| (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
@@ -2185,6 +2184,7 @@ export interface IN8nUISettings {
 		variables: boolean;
 		sourceControl: boolean;
 		auditLogs: boolean;
+		showNonProdBanner: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
