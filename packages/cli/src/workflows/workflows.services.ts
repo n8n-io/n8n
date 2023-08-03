@@ -197,7 +197,6 @@ export class WorkflowsService {
 
 		filter.id = In(sharedWorkflowIds);
 
-		// @TODO: Add index? Or premature optimization?
 		if (filter.name) filter.name = Like(`%${filter.name}%`);
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
