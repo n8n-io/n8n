@@ -197,7 +197,8 @@ interface NodeOperationErrorOptions {
 	severity?: Severity;
 }
 
-const COMMON_NODE_JS_ERRORS: IDataObject = {
+const COMMON_ERRORS: IDataObject = {
+	// nodeJS errors
 	ECONNREFUSED:
 		'The connection could not be established because the specified address is not reachable, perhaps the server is offline',
 	ECONNRESET:
@@ -218,9 +219,11 @@ const COMMON_NODE_JS_ERRORS: IDataObject = {
 	EACCES: 'Forbidden by access permissions, make sure you have the right permissions',
 	EEXIST: 'The file or directory already exists',
 	EPERM: 'Operation not permitted, make sure you have the right permissions',
+	// other errors
+	GETADDRINFO: 'The server closed the connection unexpectedly',
 };
 
-function setCommonNodeJsErrorMessage(
+function setDescriptiveErrorMessage(
 	message: string,
 	description: string | undefined | null,
 	code?: string | null,
@@ -228,15 +231,15 @@ function setCommonNodeJsErrorMessage(
 	let newMessage = message;
 	let newDescription = description as string;
 
-	// if code is provided and it is in the list of common node js errors set the message and return early
-	if (code && COMMON_NODE_JS_ERRORS[code]) {
-		newMessage = COMMON_NODE_JS_ERRORS[code] as string;
+	// if code is provided and it is in the list of common errors set the message and return early
+	if (code && COMMON_ERRORS[code.toUpperCase()]) {
+		newMessage = COMMON_ERRORS[code] as string;
 		newDescription = `${message}; ${description}`;
 		return [newMessage, newDescription];
 	}
 
-	// check if message contains any of the common node js errors and set the message and description
-	for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_NODE_JS_ERRORS)) {
+	// check if message contains any of the common errors and set the message and description
+	for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
 		if ((message || '').toUpperCase().includes(errorCode)) {
 			newMessage = errorDescriptiveMessage as string;
 			newDescription = `${message}; ${description ?? ''}`;
@@ -265,7 +268,7 @@ export class NodeOperationError extends NodeError {
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
 
-		[this.message, this.description] = setCommonNodeJsErrorMessage(this.message, this.description);
+		[this.message, this.description] = setDescriptiveErrorMessage(this.message, this.description);
 	}
 }
 
@@ -398,8 +401,8 @@ export class NodeApiError extends NodeError {
 			}
 		}
 
-		// if message contain common nodeJS error code set descriptive message and update description
-		[this.message, this.description] = setCommonNodeJsErrorMessage(
+		// if message contain common error code set descriptive message and update description
+		[this.message, this.description] = setDescriptiveErrorMessage(
 			this.message,
 			this.description,
 			this.httpCode ||
