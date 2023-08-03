@@ -11,7 +11,6 @@ import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelp
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { RoleRepository } from '@db/repositories';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
@@ -20,6 +19,7 @@ import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -164,7 +164,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -205,7 +205,7 @@ EEWorkflowController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
 		const [workflows, workflowOwnerRole] = await Promise.all([
 			EEWorkflows.getMany(req.user, req.query.filter),
-			Container.get(RoleRepository).findWorkflowOwnerRoleOrFail(),
+			Container.get(RoleService).findWorkflowOwnerRole(),
 		]);
 
 		return workflows.map((workflow) => {
