@@ -25,6 +25,7 @@ import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
 import type { WebhookRepository } from '@/databases/repositories';
+import { VariablesService } from '../../src/environments/variables/variables.service';
 
 /**
  * TODO:
@@ -152,7 +153,11 @@ describe('ActiveWorkflowRunner', () => {
 			known: { nodes: {}, credentials: {} },
 			credentialTypes: {} as ICredentialTypes,
 		};
+		const mockVariablesService = {
+			getAllCached: jest.fn(() => []),
+		};
 		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
+		Container.set(VariablesService, mockVariablesService);
 		mockInstance(Push);
 	});
 
