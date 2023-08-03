@@ -1817,7 +1817,7 @@ export class HttpRequestV3 implements INodeType {
 					delete response.statusMessage;
 					response = response.body;
 					requestOptions.resolveWithFullResponse = false;
-				} else if (pagination && !fullResponse) {
+				} else if (pagination && pagination.paginationMode !== 'off' && !fullResponse) {
 					response = response.body;
 					requestOptions.resolveWithFullResponse = false;
 				}

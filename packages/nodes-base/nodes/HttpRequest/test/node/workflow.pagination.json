@@ -65,6 +65,7 @@
 				"options": {
 					"response": {
 						"response": {
+							"neverError": true,
 							"responseFormat": "json"
 						}
 					},
@@ -104,6 +105,7 @@
 				"options": {
 					"response": {
 						"response": {
+							"neverError": true,
 							"responseFormat": "json"
 						}
 					},
@@ -119,7 +121,7 @@
 								]
 							},
 							"paginationCompleteWhen": "receiveSpecificStatusCodes",
-							"statusCodesWhenComplete": "201",
+							"statusCodesWhenComplete": "404",
 							"limitPagesFetched": true
 						}
 					}
@@ -146,6 +148,7 @@
 				"options": {
 					"response": {
 						"response": {
+							"neverError": true,
 							"responseFormat": "json"
 						}
 					},
@@ -161,7 +164,7 @@
 								]
 							},
 							"paginationCompleteWhen": "other",
-							"completeExpression": "={{ $response.statusCode === 201 }}"
+							"completeExpression": "={{ $response.statusCode === 404 }}"
 						}
 					}
 				}
@@ -211,6 +214,7 @@
 				"options": {
 					"response": {
 						"response": {
+							"neverError": true,
 							"responseFormat": "text"
 						}
 					},
@@ -219,7 +223,7 @@
 							"paginationMode": "responseContainsNextURL",
 							"nextURL": "={{ $response.headers[\"next-url\"] }}",
 							"paginationCompleteWhen": "receiveSpecificStatusCodes",
-							"statusCodesWhenComplete": "201"
+							"statusCodesWhenComplete": "404"
 						}
 					}
 				}
@@ -291,6 +295,7 @@
 				"options": {
 					"response": {
 						"response": {
+							"neverError": true,
 							"responseFormat": "json"
 						}
 					},
@@ -306,7 +311,7 @@
 								]
 							},
 							"paginationCompleteWhen": "other",
-							"completeExpression": "={{ $response.statusCode === 201 }}"
+							"completeExpression": "={{ $response.statusCode === 404 }}"
 						}
 					}
 				}
@@ -345,6 +350,7 @@
 					"response": {
 						"response": {
 							"fullResponse": true,
+							"neverError": true,
 							"responseFormat": "text"
 						}
 					},
@@ -353,16 +359,87 @@
 							"paginationMode": "responseContainsNextURL",
 							"nextURL": "={{ $response.headers[\"next-url\"] }}",
 							"paginationCompleteWhen": "receiveSpecificStatusCodes",
-							"statusCodesWhenComplete": "201"
+							"statusCodesWhenComplete": "404"
 						}
 					}
 				}
 			},
 			"id": "be7064ff-518f-4566-bd58-e588d863172d",
-			"name": "Response Empty - Text1",
+			"name": "Response Empty - Include Full Response",
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.1,
 			"position": [900, 1220]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "off"
+						}
+					}
+				}
+			},
+			"id": "7102d906-c9b7-42c8-a95d-bf277cc88b51",
+			"name": "Pagination Off",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 1440]
+		},
+		{
+			"parameters": {
+				"content": "### Pagination Off",
+				"height": 373,
+				"width": 363
+			},
+			"id": "34fd6eb1-c480-4336-825c-062849a0c9e4",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [840, 1400]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"id": "d17b4ef6-b603-4c2d-a313-98f4ee0bb610",
+			"name": "Pagination Not Set",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 1620]
 		}
 	],
 	"pinData": {
@@ -733,7 +810,7 @@
 				}
 			}
 		],
-		"Response Empty - Text1": [
+		"Response Empty - Include Full Response": [
 			{
 				"json": {
 					"data": "[{\"id\":0},{\"id\":1},{\"id\":2},{\"id\":3}]",
@@ -785,8 +862,119 @@
 						"content-type": "application/json",
 						"next-url": "https://dummyjson.com/users?skip=20&limit=4"
 					},
-					"statusCode": 201,
+					"statusCode": 404,
 					"statusMessage": null
+				}
+			}
+		],
+		"Complete Expression - JSON": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
+		],
+		"Pagination Off": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			}
+		],
+		"Pagination Not Set": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
 				}
 			}
 		]
@@ -831,7 +1019,17 @@
 						"index": 0
 					},
 					{
-						"node": "Response Empty - Text1",
+						"node": "Response Empty - Include Full Response",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Pagination Off",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Pagination Not Set",
 						"type": "main",
 						"index": 0
 					}
@@ -843,7 +1041,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "7aeedc66-dd50-4171-9776-03ecf4b98135",
+	"versionId": "9a9970d0-aeba-45e4-a6a7-89189290ce56",
 	"id": "ZKVF9JrrzoxXbUqu",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"

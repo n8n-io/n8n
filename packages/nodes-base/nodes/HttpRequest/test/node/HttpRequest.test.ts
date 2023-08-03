@@ -135,7 +135,7 @@ describe('Test HTTP Request Node', () => {
 				}
 
 				if (!response.length) {
-					return [201, response, { 'next-url': nextUrl }];
+					return [404, response, { 'next-url': nextUrl }];
 				}
 
 				return [200, response, { 'next-url': nextUrl }];
