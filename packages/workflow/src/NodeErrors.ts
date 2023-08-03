@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-shadow */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { parseString } from 'xml2js';
@@ -56,6 +55,59 @@ const ERROR_STATUS_PROPERTIES = [
  * Properties where a nested object can be found in an API response.
  */
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
+
+/**
+ * Descriptive messages for common errors.
+ */
+const COMMON_ERRORS: IDataObject = {
+	// nodeJS errors
+	ECONNREFUSED:
+		'The connection could not be established because the specified address is not reachable, perhaps the server is offline',
+	ECONNRESET:
+		'The connection to the server wes closed unexpectedly, perhaps it is offline. You can retry request immidiately or wait and retry later.',
+	ENOTFOUND:
+		'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+	ETIMEDOUT:
+		"The connection timed out, consider setting 'Retry on Fail' option in the node settings",
+	ERRADDRINUSE:
+		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
+	EADDRNOTAVAIL: 'The address is not available, ensure that you have the right IP address',
+	ECONNABORTED: 'The connection was aborted, perhaps the server is offline',
+	EHOSTUNREACH: 'The host is unreachable, perhaps the server is offline',
+	EAI_AGAIN: 'The DNS server returned an error, perhaps the server is offline',
+	ENOENT: 'The file or directory does not exist',
+	EISDIR: 'The file path expected but a given path is a directory',
+	ENOTDIR: 'The directory path expected but a given path is a file',
+	EACCES: 'Forbidden by access permissions, make sure you have the right permissions',
+	EEXIST: 'The file or directory already exists',
+	EPERM: 'Operation not permitted, make sure you have the right permissions',
+	// other errors
+	GETADDRINFO: 'The server closed the connection unexpectedly',
+};
+
+/**
+ * Descriptive messages for common HTTP status codes.
+ */
+const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
+	'4XX': 'Your request is invalid or could not be processed by the service',
+	'400': 'Bad request - please check your parameters',
+	'401': 'Authorization failed - please check your credentials',
+	'402': 'Payment required - perhaps check your payment details?',
+	'403': 'Forbidden - perhaps check your credentials?',
+	'404': 'The resource you are requesting could not be found',
+	'405': 'Method not allowed - please check you are using the right HTTP method',
+	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
+
+	'5XX': 'The service failed to process your request',
+	'500': 'The service was not able to process your request',
+	'502': 'Bad gateway - the service failed to handle your request',
+	'503':
+		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
+	'504': 'Gateway timed out - perhaps try again later?',
+};
+
+const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
+const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 interface ExecutionBaseErrorOptions {
 	cause?: Error | JsonObject;
@@ -187,6 +239,37 @@ export abstract class NodeError extends ExecutionBaseError {
 
 		return null;
 	}
+
+	/**
+	 * Set descriptive error message if code is provided or if message contains any of the common errors,
+	 * update description to include original message plus the description
+	 */
+	protected setDescriptiveErrorMessage(
+		message: string,
+		description: string | undefined | null,
+		code?: string | null,
+	) {
+		let newMessage = message;
+		let newDescription = description as string;
+
+		// if code is provided and it is in the list of common errors set the message and return early
+		if (code && COMMON_ERRORS[code.toUpperCase()]) {
+			newMessage = COMMON_ERRORS[code] as string;
+			newDescription = `${message}; ${description}`;
+			return [newMessage, newDescription];
+		}
+
+		// check if message contains any of the common errors and set the message and description
+		for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
+			if ((message || '').toUpperCase().includes(errorCode)) {
+				newMessage = errorDescriptiveMessage as string;
+				newDescription = `${message}; ${description ?? ''}`;
+				break;
+			}
+		}
+
+		return [newMessage, newDescription];
+	}
 }
 
 interface NodeOperationErrorOptions {
@@ -195,59 +278,6 @@ interface NodeOperationErrorOptions {
 	runIndex?: number;
 	itemIndex?: number;
 	severity?: Severity;
-}
-
-const COMMON_ERRORS: IDataObject = {
-	// nodeJS errors
-	ECONNREFUSED:
-		'The connection could not be established because the specified address is not reachable, perhaps the server is offline',
-	ECONNRESET:
-		'The connection to the server wes closed unexpectedly, perhaps it is offline. You can retry request immidiately or wait and retry later.',
-	ENOTFOUND:
-		'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
-	ETIMEDOUT:
-		"The connection timed out, consider setting 'Retry on Fail' option in the node settings",
-	ERRADDRINUSE:
-		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
-	EADDRNOTAVAIL: 'The address is not available, ensure that you have the right IP address',
-	ECONNABORTED: 'The connection was aborted, perhaps the server is offline',
-	EHOSTUNREACH: 'The host is unreachable, perhaps the server is offline',
-	EAI_AGAIN: 'The DNS server returned an error, perhaps the server is offline',
-	ENOENT: 'The file or directory does not exist',
-	EISDIR: 'The file path expected but a given path is a directory',
-	ENOTDIR: 'The directory path expected but a given path is a file',
-	EACCES: 'Forbidden by access permissions, make sure you have the right permissions',
-	EEXIST: 'The file or directory already exists',
-	EPERM: 'Operation not permitted, make sure you have the right permissions',
-	// other errors
-	GETADDRINFO: 'The server closed the connection unexpectedly',
-};
-
-function setDescriptiveErrorMessage(
-	message: string,
-	description: string | undefined | null,
-	code?: string | null,
-) {
-	let newMessage = message;
-	let newDescription = description as string;
-
-	// if code is provided and it is in the list of common errors set the message and return early
-	if (code && COMMON_ERRORS[code.toUpperCase()]) {
-		newMessage = COMMON_ERRORS[code] as string;
-		newDescription = `${message}; ${description}`;
-		return [newMessage, newDescription];
-	}
-
-	// check if message contains any of the common errors and set the message and description
-	for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
-		if ((message || '').toUpperCase().includes(errorCode)) {
-			newMessage = errorDescriptiveMessage as string;
-			newDescription = `${message}; ${description ?? ''}`;
-			break;
-		}
-	}
-
-	return [newMessage, newDescription];
 }
 
 /**
@@ -268,30 +298,12 @@ export class NodeOperationError extends NodeError {
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
 
-		[this.message, this.description] = setDescriptiveErrorMessage(this.message, this.description);
+		[this.message, this.description] = this.setDescriptiveErrorMessage(
+			this.message,
+			this.description,
+		);
 	}
 }
-
-const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
-	'4XX': 'Your request is invalid or could not be processed by the service',
-	'400': 'Bad request - please check your parameters',
-	'401': 'Authorization failed - please check your credentials',
-	'402': 'Payment required - perhaps check your payment details?',
-	'403': 'Forbidden - perhaps check your credentials?',
-	'404': 'The resource you are requesting could not be found',
-	'405': 'Method not allowed - please check you are using the right HTTP method',
-	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
-
-	'5XX': 'The service failed to process your request',
-	'500': 'The service was not able to process your request',
-	'502': 'Bad gateway - the service failed to handle your request',
-	'503':
-		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
-	'504': 'Gateway timed out - perhaps try again later?',
-};
-
-const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
-const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
 	message?: string;
@@ -402,7 +414,7 @@ export class NodeApiError extends NodeError {
 		}
 
 		// if message contain common error code set descriptive message and update description
-		[this.message, this.description] = setDescriptiveErrorMessage(
+		[this.message, this.description] = this.setDescriptiveErrorMessage(
 			this.message,
 			this.description,
 			this.httpCode ||
