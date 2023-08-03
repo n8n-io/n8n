@@ -24,6 +24,7 @@ import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import { MAX_PAGINATED_ITEMS } from '@/constants';
 
 export const workflowsController = express.Router();
 
@@ -125,6 +126,10 @@ workflowsController.get(
 						take: Number(take),
 				  }
 				: undefined;
+
+		if (paginationOptions && paginationOptions.take > MAX_PAGINATED_ITEMS) {
+			paginationOptions.take = MAX_PAGINATED_ITEMS;
+		}
 
 		return WorkflowsService.getMany(req.user, filter, paginationOptions);
 	}),

@@ -20,6 +20,7 @@ import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import { MAX_PAGINATED_ITEMS } from '@/constants';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -212,6 +213,10 @@ EEWorkflowController.get(
 						take: Number(take),
 				  }
 				: undefined;
+
+		if (paginationOptions && paginationOptions.take > MAX_PAGINATED_ITEMS) {
+			paginationOptions.take = MAX_PAGINATED_ITEMS;
+		}
 
 		const [workflows, workflowOwnerRole] = await Promise.all([
 			EEWorkflows.getMany(req.user, filter, paginationOptions),
