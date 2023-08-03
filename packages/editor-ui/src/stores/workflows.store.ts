@@ -750,7 +750,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			let connectionExists = false;
 			connectionLoop: for (const existingConnection of this.workflow.connections[sourceData.node][
 				sourceData.type
-				][sourceData.index]) {
+			][sourceData.index]) {
 				for (propertyName of checkProperties) {
 					if (
 						(existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]
@@ -835,7 +835,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 							connectionData =
 								this.workflow.connections[sourceNode][type][parseInt(sourceIndex, 10)][
 									parseInt(connectionIndex, 10)
-									];
+								];
 							if (connectionData.node === node.name) {
 								indexesToRemove.push(connectionIndex);
 							}
