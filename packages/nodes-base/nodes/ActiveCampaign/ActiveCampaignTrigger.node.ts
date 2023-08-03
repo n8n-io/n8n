@@ -7,7 +7,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';

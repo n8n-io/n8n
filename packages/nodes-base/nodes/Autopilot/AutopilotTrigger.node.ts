@@ -5,7 +5,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { autopilotApiRequest } from './GenericFunctions';

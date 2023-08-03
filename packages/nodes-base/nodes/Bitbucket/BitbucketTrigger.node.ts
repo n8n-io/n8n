@@ -12,7 +12,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { bitbucketApiRequest, bitbucketApiRequestAllItems } from './GenericFunctions';
