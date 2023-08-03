@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import * as ResponseHelper from '@/ResponseHelper';

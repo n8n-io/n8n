@@ -3,8 +3,8 @@ import type { MetricsService } from '@/services/metrics.service';
 import config from '@/config';
 import * as testDb from './shared/testDb';
 import type { SuperAgentTest } from 'supertest';
-import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
+import type { Role } from '@/databases/entities/Role';
+import type { User } from '@/databases/entities/User';
 
 config.set('endpoints.metrics.enable', true);
 const testServer = utils.setupTestServer({ endpointGroups: ['metrics'] });
