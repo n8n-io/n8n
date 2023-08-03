@@ -86,7 +86,8 @@ const COMMON_ERRORS: IDataObject = {
 };
 
 /**
- * Descriptive messages for common HTTP status codes.
+ * Descriptive messages for common HTTP status codes
+ * this is used by NodeApiError class
  */
 const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'4XX': 'Your request is invalid or could not be processed by the service',
