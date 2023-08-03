@@ -1,11 +1,12 @@
 import { OwnershipService } from '@/services/ownership.service';
-import { RoleRepository, SharedWorkflowRepository, UserRepository } from '@/databases/repositories';
+import { SharedWorkflowRepository, UserRepository } from '@/databases/repositories';
 import { mockInstance } from '../../integration/shared/utils';
 import { Role } from '@/databases/entities/Role';
 import { randomInteger } from '../../integration/shared/random';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { CacheService } from '@/services/cache.service';
 import { User } from '@/databases/entities/User';
+import { RoleService } from '@/services/role.service';
 
 const wfOwnerRole = () =>
 	Object.assign(new Role(), {
@@ -16,14 +17,14 @@ const wfOwnerRole = () =>
 
 describe('OwnershipService', () => {
 	const cacheService = mockInstance(CacheService);
-	const roleRepository = mockInstance(RoleRepository);
+	const roleService = mockInstance(RoleService);
 	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 
 	const ownershipService = new OwnershipService(
 		cacheService,
 		userRepository,
-		roleRepository,
+		roleService,
 		sharedWorkflowRepository,
 	);
 
@@ -33,7 +34,7 @@ describe('OwnershipService', () => {
 
 	describe('getWorkflowOwner()', () => {
 		test('should retrieve a workflow owner', async () => {
-			roleRepository.findWorkflowOwnerRole.mockResolvedValueOnce(wfOwnerRole());
+			roleService.findWorkflowOwnerRole.mockResolvedValueOnce(wfOwnerRole());
 
 			const mockOwner = new User();
 			const mockNonOwner = new User();
@@ -52,13 +53,13 @@ describe('OwnershipService', () => {
 		});
 
 		test('should throw if no workflow owner role found', async () => {
-			roleRepository.findWorkflowOwnerRole.mockRejectedValueOnce(new Error());
+			roleService.findWorkflowOwnerRole.mockRejectedValueOnce(new Error());
 
 			await expect(ownershipService.getWorkflowOwnerCached('some-workflow-id')).rejects.toThrow();
 		});
 
 		test('should throw if no workflow owner found', async () => {
-			roleRepository.findWorkflowOwnerRole.mockResolvedValueOnce(wfOwnerRole());
+			roleService.findWorkflowOwnerRole.mockResolvedValueOnce(wfOwnerRole());
 
 			sharedWorkflowRepository.findOneOrFail.mockRejectedValue(new Error());
 
