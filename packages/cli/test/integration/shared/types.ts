@@ -25,7 +25,8 @@ export type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
-	| 'tags';
+	| 'tags'
+	| 'externalSecrets';
 
 export interface SetupProps {
 	applyAuth?: boolean;

@@ -51,6 +51,7 @@ import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } f
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
+import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -273,6 +274,9 @@ export const setupTestServer = ({
 							config,
 							new TagsController({ config, externalHooks, repositories }),
 						);
+						break;
+					case 'externalSecrets':
+						registerController(app, config, Container.get(ExternalSecretsController));
 						break;
 				}
 			}

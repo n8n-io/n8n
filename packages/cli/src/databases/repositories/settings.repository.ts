@@ -1,4 +1,4 @@
-import { EXTERNAL_SECRETS_DB_KEY } from '@/secrets/constants';
+import { EXTERNAL_SECRETS_DB_KEY } from '@/ExternalSecrets/constants';
 import { Service } from 'typedi';
 import { DataSource, Repository } from 'typeorm';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';

@@ -368,6 +368,9 @@ export class ExternalSecretsManager {
 		if (!this.license.isExternalSecretsEnabled()) {
 			return false;
 		}
+		if (!this.providers[provider] || this.providers[provider].state !== 'connected') {
+			return false;
+		}
 		try {
 			await this.providers[provider].update();
 			return true;
