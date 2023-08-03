@@ -155,7 +155,7 @@ export class Mqtt implements INodeType {
 						client = mqtt.connect(brokerUrl, clientOptions);
 					}
 
-					await new Promise((resolve, reject): any => {
+					await new Promise((resolve, reject) => {
 						client.on('connect', (test) => {
 							resolve(test);
 							client.end();
@@ -168,7 +168,7 @@ export class Mqtt implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -232,7 +232,7 @@ export class Mqtt implements INodeType {
 
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
-		const data = await new Promise((resolve, reject): any => {
+		const data = await new Promise((resolve, reject) => {
 			client.on('connect', () => {
 				for (let i = 0; i < length; i++) {
 					let message;
