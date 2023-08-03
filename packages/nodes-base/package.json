@@ -838,7 +838,7 @@
     "moment": "~2.29.2",
     "moment-timezone": "^0.5.28",
     "mongodb": "^4.9.1",
-    "mqtt": "4.2.6",
+    "mqtt": "^5.0.2",
     "mssql": "^8.1.2",
     "mysql2": "~2.3.0",
     "n8n-workflow": "workspace:*",

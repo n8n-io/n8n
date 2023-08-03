@@ -256,7 +256,7 @@ export class Mqtt implements INodeType {
 					resolve([items]);
 				});
 
-				client.on('error', (e: string | undefined) => {
+				client.on('error', (e) => {
 					reject(e);
 				});
 			});
