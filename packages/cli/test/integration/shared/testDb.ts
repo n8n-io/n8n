@@ -20,7 +20,6 @@ import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleRepository } from '@db/repositories';
 import type { ICredentialsDb } from '@/Interfaces';
 import { AES } from 'crypto-js';
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
@@ -34,6 +33,7 @@ import type {
 } from './types';
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
+import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
 
 import { v4 as uuid } from 'uuid';
@@ -155,7 +155,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Container.get(RoleRepository).findCredentialUserRole();
+	const role = await Container.get(RoleService).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			userId: user.id,
@@ -311,23 +311,23 @@ export async function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export async function getGlobalOwnerRole() {
-	return Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
+	return Container.get(RoleService).findGlobalOwnerRole();
 }
 
 export async function getGlobalMemberRole() {
-	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	return Container.get(RoleService).findGlobalMemberRole();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+	return Container.get(RoleService).findWorkflowOwnerRole();
 }
 
 export async function getWorkflowEditorRole() {
-	return Container.get(RoleRepository).findWorkflowEditorRoleOrFail();
+	return Container.get(RoleService).findWorkflowEditorRole();
 }
 
 export async function getCredentialOwnerRole() {
-	return Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
+	return Container.get(RoleService).findCredentialOwnerRole();
 }
 
 export async function getAllRoles() {

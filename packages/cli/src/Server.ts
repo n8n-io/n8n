@@ -174,6 +174,7 @@ import { JwtService } from './services/jwt.service';
 import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
+import { RoleService } from './services/role.service';
 
 const exec = promisify(callbackExec);
 
@@ -510,6 +511,7 @@ export class Server extends AbstractServer {
 				logger,
 				postHog,
 				jwtService,
+				roleService: Container.get(RoleService),
 			}),
 			Container.get(SamlController),
 			Container.get(SourceControlController),

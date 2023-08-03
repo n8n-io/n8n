@@ -54,6 +54,7 @@ import { JwtService } from '@/services/jwt.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { TOTPService } from '@/Mfa/totp.service';
 import { UserSettings } from 'n8n-core';
+import { RoleService } from '@/services/role.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -96,10 +97,8 @@ function createAgent(app: express.Application, options?: { auth: boolean; user: 
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		try {
-			const { token } = issueJWT(options.user);
-			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
-		} catch {}
+		const { token } = issueJWT(options.user);
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
 }
@@ -273,6 +272,7 @@ export const setupTestServer = ({
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
 								jwtService,
+								roleService: Container.get(RoleService),
 							}),
 						);
 						break;
