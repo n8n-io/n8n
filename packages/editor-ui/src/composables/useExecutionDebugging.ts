@@ -24,7 +24,7 @@ export const useExecutionDebugging = () => {
 		}));
 		const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
 
-		// Check if any of the workflow nodes have pinned data already
+		// Check if any of the workflow nodes have pinned data already and ask for confirmation
 		if (executionNodesData.some((eNode) => workflowPinnedNodeNames.includes(eNode.name))) {
 			const overWritePinnedDataConfirm = await message.confirm(
 				i18n.baseText('nodeView.confirmMessage.debug.message'),
