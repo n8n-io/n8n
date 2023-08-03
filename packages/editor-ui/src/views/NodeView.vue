@@ -756,7 +756,7 @@ export default defineComponent({
 		async pinExecutionData(
 			workflow: IWorkflowDb,
 			execution: IExecutionResponse | undefined,
-		): Promise<IWorkflowDb | undefined> {
+		): Promise<IWorkflowDb> {
 			// If no execution data is available, return the workflow as is
 			if (!execution?.data?.resultData) {
 				return workflow;
