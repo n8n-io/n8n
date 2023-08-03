@@ -143,7 +143,7 @@ import {
 	isLdapLoginEnabled,
 } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
-import { configureMetrics } from './metrics';
+import { MetricsService } from './metrics';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
@@ -525,7 +525,7 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
-		configureMetrics(this.app);
+		Container.get(MetricsService).configureMetrics(this.app);
 
 		this.instanceId = await UserSettings.getInstanceId();
 
