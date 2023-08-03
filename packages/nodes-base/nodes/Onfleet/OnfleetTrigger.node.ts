@@ -50,6 +50,7 @@ export class OnfleetTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [eventDisplay, eventNameField],
 	};
 
@@ -78,12 +79,6 @@ export class OnfleetTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 				// Webhook name according to the field
 				let newWebhookName = `n8n-webhook:${webhookUrl}`;
 

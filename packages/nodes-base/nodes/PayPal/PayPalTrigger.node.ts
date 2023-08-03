@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { payPalApiRequest, upperFist } from './GenericFunctions';
 
 export class PayPalTrigger implements INodeType {
@@ -39,6 +39,7 @@ export class PayPalTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Event Names or IDs',
@@ -117,13 +118,6 @@ export class PayPalTrigger implements INodeType {
 				let webhook;
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const events = this.getNodeParameter('events', []) as string[];
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body = {
 					url: webhookUrl,

@@ -1,5 +1,4 @@
 import {
-	NodeOperationError,
 	type IDataObject,
 	type IHookFunctions,
 	type ILoadOptionsFunctions,
@@ -46,6 +45,7 @@ export class EmeliaTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Campaign Name or ID',
@@ -140,13 +140,6 @@ export class EmeliaTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const campaignId = this.getNodeParameter('campaignId') as string;
 				const body = {

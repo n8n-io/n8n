@@ -5,7 +5,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { IFormstackWebhookResponseBody } from './GenericFunctions';
@@ -53,6 +52,7 @@ export class FormstackTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -126,13 +126,6 @@ export class FormstackTrigger implements INodeType {
 				const formId = this.getNodeParameter('formId') as string;
 
 				const endpoint = `form/${formId}/webhook.json`;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				// TODO: Add handshake key support
 				const body = {

@@ -5,7 +5,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { mailjetApiRequest } from './GenericFunctions';
@@ -37,6 +36,7 @@ export class MailjetTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Event',
@@ -100,13 +100,6 @@ export class MailjetTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
 				const endpoint = '/v3/rest/eventcallbackurl';
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body: IDataObject = {
 					Url: webhookUrl,

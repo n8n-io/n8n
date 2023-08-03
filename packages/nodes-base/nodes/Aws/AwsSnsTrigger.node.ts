@@ -42,6 +42,7 @@ export class AwsSnsTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Topic',
@@ -198,13 +199,6 @@ export class AwsSnsTrigger implements INodeType {
 				const topic = this.getNodeParameter('topic', undefined, {
 					extractValue: true,
 				}) as string;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				if (webhookUrl.includes('%20')) {
 					throw new NodeOperationError(

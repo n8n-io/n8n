@@ -5,7 +5,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { calendlyApiRequest, getAuthenticationType } from './GenericFunctions';
@@ -37,6 +36,7 @@ export class CalendlyTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Scope',
@@ -153,13 +153,6 @@ export class CalendlyTrigger implements INodeType {
 				const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
 
 				const authenticationType = getAuthenticationType(apiKey);
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				// remove condition once API Keys are deprecated
 				if (authenticationType === 'apiKey') {

@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 
@@ -53,6 +53,7 @@ export class FacebookTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'APP ID',
@@ -197,13 +198,6 @@ export class FacebookTrigger implements INodeType {
 				const appId = this.getNodeParameter('appId') as string;
 				const fields = this.getNodeParameter('fields') as string[];
 				const options = this.getNodeParameter('options') as IDataObject;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body = {
 					object: snakeCase(object),

@@ -40,6 +40,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Event Names or IDs',
@@ -128,12 +129,6 @@ export class ActiveCampaignTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events', []) as string[];
 				const sources = this.getNodeParameter('sources', '') as string[];

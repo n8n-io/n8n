@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,
@@ -62,6 +62,7 @@ export class TypeformTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -180,13 +181,6 @@ export class TypeformTrigger implements INodeType {
 				const webhookId = 'n8n-' + Math.random().toString(36).substring(2, 15);
 
 				const endpoint = `forms/${formId}/webhooks/${webhookId}`;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				// TODO: Add HMAC-validation once either the JSON data can be used for it or there is a way to access the binary-payload-data
 				const body = {

@@ -4,7 +4,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
@@ -44,6 +43,7 @@ export class TrelloTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Model ID',
@@ -90,13 +90,6 @@ export class TrelloTrigger implements INodeType {
 				const idModel = this.getNodeParameter('id') as string;
 
 				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body = {
 					description: `n8n Webhook - ${idModel}`,

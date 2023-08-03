@@ -64,6 +64,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -411,13 +412,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 				const objectType = this.getNodeParameter('objectType') as string;
 				const endpoint = '/webhooks';
 				const ids: string[] = [];
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				if (objectType === 'survey' && event !== 'survey_created') {
 					const surveyIds = this.getNodeParameter('surveyIds') as string[];

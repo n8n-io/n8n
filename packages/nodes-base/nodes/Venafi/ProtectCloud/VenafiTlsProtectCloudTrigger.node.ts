@@ -1,5 +1,4 @@
 import {
-	NodeOperationError,
 	type IHookFunctions,
 	type ILoadOptionsFunctions,
 	type INodePropertyOptions,
@@ -36,6 +35,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		inputs: [],
 		outputs: ['main'],
 		properties: [
@@ -124,13 +124,6 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const resource = this.getNodeParameter('resource') as string;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body = {
 					name: `n8n-webhook (${webhookUrl})`,

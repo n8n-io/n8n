@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
 
@@ -56,6 +56,7 @@ export class EventbriteTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -263,13 +264,6 @@ export class EventbriteTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				const actions = this.getNodeParameter('actions') as string[];
 				const endpoint = `/organizations/${organisation}/webhooks/`;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body: IDataObject = {
 					endpoint_url: webhookUrl,

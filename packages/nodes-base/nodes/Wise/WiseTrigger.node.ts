@@ -6,7 +6,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { Profile } from './GenericFunctions';
@@ -42,6 +41,7 @@ export class WiseTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Profile Name or ID',
@@ -124,13 +124,6 @@ export class WiseTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const profileId = this.getNodeParameter('profileId') as string;
 				const event = this.getNodeParameter('event') as string;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const trigger = getTriggerName(event);
 				const body: IDataObject = {

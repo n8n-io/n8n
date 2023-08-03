@@ -1204,10 +1204,9 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(
-		this: IExecuteSingleFunctions,
-		value: string | NodeParameterValue,
-	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
+	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
+		| Promise<string | NodeParameterValue>
+		| (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
@@ -1485,6 +1484,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 		deactivate?: INodeHookDescription[];
 	};
 	webhooks?: IWebhookDescription[];
+	allowLocalhost?: boolean; // If for a cloud only service we can block localhost
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
 	triggerPanel?: {

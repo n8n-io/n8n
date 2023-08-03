@@ -7,7 +7,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { clickupApiRequest } from './GenericFunctions';
@@ -55,6 +54,7 @@ export class ClickUpTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -287,13 +287,6 @@ export class ClickUpTrigger implements INodeType {
 				const teamId = this.getNodeParameter('team') as string;
 				const events = this.getNodeParameter('events') as string[];
 				const endpoint = `/team/${teamId}/webhook`;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body: IDataObject = {
 					endpoint: webhookUrl,

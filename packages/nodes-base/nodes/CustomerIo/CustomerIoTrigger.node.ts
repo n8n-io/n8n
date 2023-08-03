@@ -5,7 +5,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { customerIoApiRequest, eventExists } from './GenericFunctions';
@@ -46,6 +45,7 @@ export class CustomerIoTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Events',
@@ -260,13 +260,6 @@ export class CustomerIoTrigger implements INodeType {
 				const events = this.getNodeParameter('events', []) as string[];
 
 				const endpoint = '/reporting_webhooks';
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const data: IEvent = {
 					customer: {},

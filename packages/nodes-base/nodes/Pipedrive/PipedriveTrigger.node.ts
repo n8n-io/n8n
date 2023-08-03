@@ -6,7 +6,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { pipedriveApiRequest } from './GenericFunctions';
@@ -82,6 +81,7 @@ export class PipedriveTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -252,13 +252,6 @@ export class PipedriveTrigger implements INodeType {
 				const eventObject = this.getNodeParameter('object') as string;
 
 				const endpoint = '/webhooks';
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body = {
 					event_action: eventAction,

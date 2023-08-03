@@ -34,6 +34,23 @@ export class ActiveWebhooks {
 		if (workflow.id === undefined) {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
+
+		const node = workflow.getNode(webhookData.node);
+		const allowLocal =
+			node?.type && node?.typeVersion
+				? workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description
+						?.allowLocalhost ?? true
+				: true;
+
+		if (
+			webhookData.workflowExecuteAdditionalData.webhookBaseUrl.includes('//localhost') &&
+			!allowLocal
+		) {
+			throw new Error(
+				`The webhook for node "${node?.name}" cannot work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!`,
+			);
+		}
+
 		if (webhookData.path.endsWith('/')) {
 			webhookData.path = webhookData.path.slice(0, -1);
 		}

@@ -7,7 +7,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { workableApiRequest } from './GenericFunctions';
@@ -43,6 +42,7 @@ export class WorkableTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Trigger On',
@@ -148,13 +148,6 @@ export class WorkableTrigger implements INodeType {
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				const { stage, job } = this.getNodeParameter('filters') as IDataObject;
 				const endpoint = '/subscriptions';
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body: IDataObject = {
 					event: snakeCase(triggerOn).toLowerCase(),

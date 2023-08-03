@@ -5,7 +5,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { shopifyApiRequest } from './GenericFunctions';
@@ -63,6 +62,7 @@ export class ShopifyTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -360,13 +360,6 @@ export class ShopifyTrigger implements INodeType {
 						format: 'json',
 					},
 				};
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 

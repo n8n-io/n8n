@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { mailchimpApiRequest } from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {
@@ -59,6 +59,7 @@ export class MailchimpTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -213,13 +214,6 @@ export class MailchimpTrigger implements INodeType {
 				const listId = this.getNodeParameter('list') as string;
 				const events = this.getNodeParameter('events', []) as string[];
 				const sources = this.getNodeParameter('sources', []) as string[];
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				const body = {
 					url: webhookUrl,

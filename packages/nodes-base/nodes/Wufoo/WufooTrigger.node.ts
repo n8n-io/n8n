@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { wufooApiRequest } from './GenericFunctions';
 
@@ -44,6 +44,7 @@ export class WufooTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Forms Name or ID',
@@ -111,13 +112,6 @@ export class WufooTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const formHash = this.getNodeParameter('form') as IDataObject;
 				const endpoint = `forms/${formHash}/webhooks.json`;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
-					);
-				}
 
 				// Handshake key for webhook endpoint protection
 				webhookData.handshakeKey = randomBytes(20).toString('hex');
