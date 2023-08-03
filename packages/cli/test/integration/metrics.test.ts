@@ -1,33 +1,20 @@
-import * as utils from './shared/utils';
-import type { MetricsService } from '@/services/metrics.service';
+import { setupTestServer } from './shared/utils';
 import config from '@/config';
-import * as testDb from './shared/testDb';
-import type { SuperAgentTest } from 'supertest';
-import type { Role } from '@/databases/entities/Role';
-import type { User } from '@/databases/entities/User';
+import request from 'supertest';
 
 config.set('endpoints.metrics.enable', true);
-const testServer = utils.setupTestServer({ endpointGroups: ['metrics'] });
+config.set('endpoints.metrics.includeDefaultMetrics', true);
+const testServer = setupTestServer({ endpointGroups: ['metrics'] });
 
-let globalOwnerRole: Role;
-let ownerShell: User;
-let authOwnerAgent: SuperAgentTest;
+let testAgent = request.agent(testServer.app);
 
-let metricsService: MetricsService;
-
-describe('Metrics ', () => {
-	beforeAll(async () => {
-		const owner = await testDb.createOwner();
-		globalOwnerRole = await testDb.getGlobalOwnerRole();
-		ownerShell = await testDb.createUserShell(globalOwnerRole);
-		authOwnerAgent = testServer.authAgentFor(ownerShell);
-	});
-
-	beforeEach(async () => {});
+describe('Metrics', () => {
 	it('should return metrics', async () => {
-		const result = await authOwnerAgent.get('/metrics');
-		console.log(result.body);
-		// this returns 404 :(
-		// expect(result.status).toEqual(200);
+		const response = await testAgent.get('/metrics');
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = response.text.trim().split('\n');
+		expect(lines).toContain('nodejs_heap_space_size_total_bytes{space="read_only"} 0');
 	});
 });

@@ -1,21 +1,20 @@
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
-import * as ResponseHelper from '@/ResponseHelper';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
-import type { Counter } from 'prom-client';
+import promClient, { type Counter } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 import EventEmitter from 'events';
+import { LoggerProxy } from 'n8n-workflow';
+
 import { CacheService } from '@/services/cache.service';
 import type { EventMessageTypes } from '@/eventbus/EventMessageClasses';
-import { LoggerProxy } from 'n8n-workflow';
 import {
 	METRICS_EVENT_NAME,
 	getLabelsForEvent,
 } from '@/eventbus/MessageEventBusDestination/Helpers.ee';
-import { eventBus } from '../eventbus';
-import promClient from 'prom-client';
+import { eventBus } from '@/eventbus';
 
 @Service()
 export class MetricsService extends EventEmitter {
@@ -26,7 +25,6 @@ export class MetricsService extends EventEmitter {
 	counters: Record<string, Counter<string> | null> = {};
 
 	async configureMetrics(app: express.Application) {
-		console.log('Configuring metrics');
 		this.setupDefaultMetrics();
 		this.setupN8nVersionMetric();
 		this.setupCacheMetrics();
@@ -36,8 +34,6 @@ export class MetricsService extends EventEmitter {
 	}
 
 	private setupN8nVersionMetric() {
-		if (!promClient) return;
-
 		const n8nVersion = semverParse(N8N_VERSION || '0.0.0');
 
 		if (n8nVersion) {
@@ -60,14 +56,12 @@ export class MetricsService extends EventEmitter {
 	}
 
 	private setupDefaultMetrics() {
-		if (!promClient) return;
 		if (config.getEnv('endpoints.metrics.includeDefaultMetrics')) {
 			promClient.collectDefaultMetrics();
 		}
 	}
 
 	private setupApiMetrics(app: express.Application) {
-		if (!promClient) return;
 		if (config.getEnv('endpoints.metrics.includeApiEndpoints')) {
 			const metricsMiddleware = promBundle({
 				autoregister: false,
@@ -83,14 +77,13 @@ export class MetricsService extends EventEmitter {
 
 	mountMetricsEndpoint(app: express.Application) {
 		app.get('/metrics', async (req: express.Request, res: express.Response) => {
-			const response = await promClient.register.metrics();
+			const metrics = await promClient.register.metrics();
 			res.setHeader('Content-Type', promClient.register.contentType);
-			ResponseHelper.sendSuccessResponse(res, response, true, 200);
+			res.send(metrics).end();
 		});
 	}
 
 	private setupCacheMetrics() {
-		if (!promClient) return;
 		if (!config.getEnv('endpoints.metrics.includeCacheMetrics')) {
 			return;
 		}
@@ -154,7 +147,6 @@ export class MetricsService extends EventEmitter {
 	}
 
 	private setupMessageEventBusMetrics() {
-		if (!promClient) return;
 		if (!config.getEnv('endpoints.metrics.includeMessageEventBusMetrics')) {
 			return;
 		}
