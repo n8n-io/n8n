@@ -584,6 +584,12 @@ export const schema = {
 				env: 'N8N_METRICS_INCLUDE_CACHE_METRICS',
 				doc: 'Whether to include metrics for cache hits and misses. Default: false',
 			},
+			includeMessageEventBusMetrics: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
+				doc: 'Whether to include metrics for events. Default: false',
+			},
 		},
 		rest: {
 			format: String,

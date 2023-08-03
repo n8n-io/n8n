@@ -11,10 +11,7 @@ import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventB
 import EventEmitter from 'events';
 import config from '@/config';
 import * as Db from '@/Db';
-import {
-	messageEventBusDestinationFromDb,
-	incrementPrometheusMetric,
-} from '../MessageEventBusDestination/Helpers.ee';
+import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/MessageEventBusDestinationFromDb';
 import uniqby from 'lodash/uniqBy';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
@@ -29,6 +26,7 @@ import {
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
+import { MetricsCounterEvents } from '@/metrics/constants';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -225,7 +223,7 @@ export class MessageEventBus extends EventEmitter {
 
 	private async emitMessage(msg: EventMessageTypes) {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			await incrementPrometheusMetric(msg);
+			this.emit(MetricsCounterEvents.messageEventBusEvent, msg);
 		}
 
 		// generic emit for external modules to capture events

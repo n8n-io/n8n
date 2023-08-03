@@ -525,7 +525,9 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
-		Container.get(MetricsService).configureMetrics(this.app);
+		if (config.getEnv('endpoints.metrics.enable')) {
+			await Container.get(MetricsService).configureMetrics(this.app);
+		}
 
 		this.instanceId = await UserSettings.getInstanceId();
 

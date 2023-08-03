@@ -5,12 +5,11 @@ import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
 import { jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
-import { MetricsService } from '../metrics';
+import EventEmitter from 'events';
+import { MetricsCounterEvents } from '@/metrics/constants';
 
 @Service()
-export class CacheService {
-	constructor(private readonly metricsService: MetricsService) {}
-
+export class CacheService extends EventEmitter {
 	/**
 	 * Keys and values:
 	 * - `'cache:workflow-owner:${workflowId}'`: `User`
@@ -85,12 +84,12 @@ export class CacheService {
 	): Promise<unknown> {
 		const value = await this.cache?.store.get(key);
 		if (value !== undefined) {
-			this.metricsService.incrementCacheHitsTotal();
+			this.emit(MetricsCounterEvents.cacheHit);
 			return value;
 		}
-		this.metricsService.incrementCacheMissesTotal();
+		this.emit(MetricsCounterEvents.cacheMiss);
 		if (options.refreshFunction) {
-			this.metricsService.incrementCacheUpdatesTotal();
+			this.emit(MetricsCounterEvents.cacheUpdate);
 			const refreshValue = await options.refreshFunction(key);
 			await this.set(key, refreshValue, options.refreshTtl);
 			return refreshValue;
@@ -124,10 +123,10 @@ export class CacheService {
 			values = keys.map(() => undefined);
 		}
 		if (!values.includes(undefined)) {
-			this.metricsService.incrementCacheHitsTotal();
+			this.emit(MetricsCounterEvents.cacheHit);
 			return values;
 		}
-		this.metricsService.incrementCacheMissesTotal();
+		this.emit(MetricsCounterEvents.cacheMiss);
 		if (options.refreshFunctionEach) {
 			for (let i = 0; i < keys.length; i++) {
 				if (values[i] === undefined) {
@@ -147,7 +146,7 @@ export class CacheService {
 			return values;
 		}
 		if (options.refreshFunctionMany) {
-			this.metricsService.incrementCacheUpdatesTotal();
+			this.emit(MetricsCounterEvents.cacheUpdate);
 			const refreshValues: unknown[] = await options.refreshFunctionMany(keys);
 			if (keys.length !== refreshValues.length) {
 				throw new Error('refreshFunctionMany must return the same number of values as keys');

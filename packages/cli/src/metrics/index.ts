@@ -4,37 +4,50 @@ import { N8N_VERSION } from '@/constants';
 import * as ResponseHelper from '@/ResponseHelper';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
-import promClient from 'prom-client';
+import type { Counter } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
-
-export { promClient };
+import EventEmitter from 'events';
+import { CacheService } from '@/services/cache.service';
+import { MetricsCounterEvents } from './constants';
+import type { EventMessageTypes } from '@/eventbus/EventMessageClasses';
+import { LoggerProxy } from 'n8n-workflow';
+import { getLabelsForEvent } from '@/eventbus/MessageEventBusDestination/Helpers.ee';
+import { eventBus } from '../eventbus';
 
 @Service()
-export class MetricsService {
-	cacheHitsTotal: promClient.Counter<'cache'> | undefined;
+export class MetricsService extends EventEmitter {
+	constructor(private readonly cacheService: CacheService) {
+		super();
+	}
 
-	cacheMissesTotal: promClient.Counter<'cache'> | undefined;
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	promClient: typeof import('prom-client') | undefined;
 
-	cacheUpdatesTotal: promClient.Counter<'cache'> | undefined;
+	counters: Record<string, Counter<string> | null> = {};
 
-	configureMetrics(app: express.Application) {
+	async configureMetrics(app: express.Application) {
 		if (!config.getEnv('endpoints.metrics.enable')) {
 			return;
 		}
 
+		this.promClient = await import('prom-client');
+
 		this.setupDefaultMetrics();
 		this.setupN8nVersionMetric();
 		this.setupCacheMetrics();
+		this.setupMessageEventBusMetrics();
 		this.setupApiMetrics(app);
 		this.mountMetricsEndpoint(app);
 	}
 
 	private setupN8nVersionMetric() {
+		if (!this.promClient) return;
+
 		const n8nVersion = semverParse(N8N_VERSION || '0.0.0');
 
 		if (n8nVersion) {
-			const versionGauge = new promClient.Gauge({
+			const versionGauge = new this.promClient.Gauge({
 				name: config.getEnv('endpoints.metrics.prefix') + 'version_info',
 				help: 'n8n version info.',
 				labelNames: ['version', 'major', 'minor', 'patch'],
@@ -53,12 +66,14 @@ export class MetricsService {
 	}
 
 	private setupDefaultMetrics() {
+		if (!this.promClient) return;
 		if (config.getEnv('endpoints.metrics.includeDefaultMetrics')) {
-			promClient.collectDefaultMetrics();
+			this.promClient.collectDefaultMetrics();
 		}
 	}
 
 	private setupApiMetrics(app: express.Application) {
+		if (!this.promClient) return;
 		if (config.getEnv('endpoints.metrics.includeApiEndpoints')) {
 			const metricsMiddleware = promBundle({
 				autoregister: false,
@@ -73,46 +88,86 @@ export class MetricsService {
 	}
 
 	private mountMetricsEndpoint(app: express.Application) {
-		app.get('/metrics', async (req: express.Request, res: express.Response) => {
-			const response = await promClient.register.metrics();
-			res.setHeader('Content-Type', promClient.register.contentType);
-			ResponseHelper.sendSuccessResponse(res, response, true, 200);
-		});
+		app
+			.get('/metrics', async (req: express.Request, res: express.Response) => {
+				if (!this.promClient) return;
+				const response = await this.promClient.register.metrics();
+				res.setHeader('Content-Type', this.promClient.register.contentType);
+				ResponseHelper.sendSuccessResponse(res, response, true, 200);
+			})
+			.bind(this);
 	}
 
 	private setupCacheMetrics() {
+		if (!this.promClient) return;
 		if (!config.getEnv('endpoints.metrics.includeCacheMetrics')) {
 			return;
 		}
-		this.cacheHitsTotal = new promClient.Counter({
+		this.counters.cacheHitsTotal = new this.promClient.Counter({
 			name: config.getEnv('endpoints.metrics.prefix') + 'cache_hits_total',
 			help: 'Total number of cache hits.',
 			labelNames: ['cache'],
 		});
-		this.cacheHitsTotal.inc(0);
-		this.cacheMissesTotal = new promClient.Counter({
+		this.counters.cacheHitsTotal.inc(0);
+		this.cacheService.on(MetricsCounterEvents.cacheHit, (amount: number = 1) => {
+			this.counters.cacheHitsTotal?.inc(amount);
+		});
+
+		this.counters.cacheMissesTotal = new this.promClient.Counter({
 			name: config.getEnv('endpoints.metrics.prefix') + 'cache_misses_total',
 			help: 'Total number of cache misses.',
 			labelNames: ['cache'],
 		});
-		this.cacheMissesTotal.inc(0);
-		this.cacheUpdatesTotal = new promClient.Counter({
+		this.counters.cacheMissesTotal.inc(0);
+		this.cacheService.on(MetricsCounterEvents.cacheMiss, (amount: number = 1) => {
+			this.counters.cacheMissesTotal?.inc(amount);
+		});
+
+		this.counters.cacheUpdatesTotal = new this.promClient.Counter({
 			name: config.getEnv('endpoints.metrics.prefix') + 'cache_updates_total',
 			help: 'Total number of cache updates.',
 			labelNames: ['cache'],
 		});
-		this.cacheUpdatesTotal.inc(0);
+		this.counters.cacheUpdatesTotal.inc(0);
+		this.cacheService.on(MetricsCounterEvents.cacheUpdate, (amount: number = 1) => {
+			this.counters.cacheUpdatesTotal?.inc(amount);
+		});
 	}
 
-	incrementCacheHitsTotal(amount: number = 1) {
-		this.cacheHitsTotal?.inc(amount);
+	private getCounterForEvent(event: EventMessageTypes): Counter<string> | null {
+		if (!this.promClient) return null;
+		if (!this.counters[event.eventName]) {
+			const prefix = config.getEnv('endpoints.metrics.prefix');
+			const metricName =
+				prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
+
+			if (!this.promClient.validateMetricName(metricName)) {
+				LoggerProxy.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
+				this.counters[event.eventName] = null;
+				return null;
+			}
+
+			const counter = new this.promClient.Counter({
+				name: metricName,
+				help: `Total number of ${event.eventName} events.`,
+				labelNames: Object.keys(getLabelsForEvent(event)),
+			});
+			counter.inc(0);
+			this.counters[event.eventName] = counter;
+		}
+
+		return this.counters[event.eventName];
 	}
 
-	incrementCacheMissesTotal(amount: number = 1) {
-		this.cacheMissesTotal?.inc(amount);
-	}
-
-	incrementCacheUpdatesTotal(amount: number = 1) {
-		this.cacheUpdatesTotal?.inc(amount);
+	private setupMessageEventBusMetrics() {
+		if (!this.promClient) return;
+		if (!config.getEnv('endpoints.metrics.includeMessageEventBusMetrics')) {
+			return;
+		}
+		eventBus.on(MetricsCounterEvents.messageEventBusEvent, (event: EventMessageTypes) => {
+			const counter = this.getCounterForEvent(event);
+			if (!counter) return;
+			counter.inc(1);
+		});
 	}
 }
