@@ -15,7 +15,7 @@
 				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
 			</el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.askAi')" name="ask-ai">
-				<AskAI @replaceCode="onReplaceCode" />
+				<AskAI @replaceCode="onReplaceCode" :has-changes="initialValue !== content" />
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
@@ -142,24 +142,6 @@ export default defineComponent({
 	},
 	methods: {
 		async onReplaceCode({ code, mode }: { code: string; mode: CodeExecutionMode }) {
-			const hasChanges = this.initialValue !== this.content;
-
-			if (hasChanges) {
-				const confirmModal = await this.alert(
-					this.$locale.baseText('codeNodeEditor.askAi.areYouSureToReplace'),
-					{
-						title: this.$locale.baseText('codeNodeEditor.askAi.replaceCurrentCode'),
-						confirmButtonText: this.$locale.baseText('codeNodeEditor.askAi.generateCodeAndReplace'),
-						showClose: true,
-					},
-				);
-
-				if (confirmModal === 'cancel') {
-					this.activeTab = 'code';
-					return;
-				}
-			}
-
 			this.workflowsStore.updateNodeProperties({
 				name: this.ndvStore.activeNode.name,
 				properties: { parameters: { mode } },
@@ -350,15 +332,17 @@ export default defineComponent({
 		border-radius: 0px var(--border-radius-base) var(--border-radius-base);
 	}
 	:global(.el-tabs__header) {
-		border-bottom: 0;
+		border-bottom: 0 !important;
 	}
 	:global(.el-tabs__nav) {
 		padding: 0;
 	}
 	:global(.el-tabs__item) {
-		padding: var(--spacing-5xs) var(--spacing-2xs);
+		padding: var(--spacing-5xs) var(--spacing-2xs) !important;
 		height: auto;
 		line-height: var(--font-line-height-xloose);
+		font-weight: var(--font-weight-regular);
+		font-size: var(--font-size-2xs);
 
 		&:not([aria-selected='true']) {
 			background-color: var(--color-background-base);

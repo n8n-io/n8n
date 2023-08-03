@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { ref, defineEmits, computed } from 'vue';
-import { useDataSchema, useI18n } from '@/composables';
+import { useDataSchema, useI18n, useMessage, useToast } from '@/composables';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useNDVStore, usePostHog, useRootStore } from '@/stores';
 import CircleLoader from './CircleLoader.vue';
 import { ASK_AI_EXPERIMENT } from '@/constants';
+import { executionDataToJson } from '@/utils';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 const emit = defineEmits<{
 	submit: (code: string) => void;
+	replaceCode: (code: string) => void;
 }>();
+const props = defineProps<{
+	hasChanges: boolean;
+}>();
+
 const { getWorkflowSchema, getSchemaForExecutionData } = useDataSchema();
 const { i18n } = useI18n();
 const maxLength = 600;
@@ -23,32 +30,56 @@ const prompt = ref('');
 
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 const loadingString = computed(() =>
-	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}`),
+	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
 async function onSubmit() {
-	startLoading();
+	const { getRestApiContext } = useRootStore();
+	const { ndvInputData } = useNDVStore();
+	const { showMessage, showError } = useToast();
+	const { alert } = useMessage();
 	const schema = getWorkflowSchema();
 
+	if (props.hasChanges) {
+		const confirmModal = await alert(i18n.baseText('codeNodeEditor.askAi.areYouSureToReplace'), {
+			title: i18n.baseText('codeNodeEditor.askAi.replaceCurrentCode'),
+			confirmButtonText: i18n.baseText('codeNodeEditor.askAi.generateCodeAndReplace'),
+			showClose: true,
+			showCancelButton: true,
+		});
+
+		if (confirmModal === 'cancel') {
+			return;
+		}
+	}
+	startLoading();
 	try {
-		const { ndvInputData } = useNDVStore();
+		const inputSchema = getSchemaForExecutionData(executionDataToJson(ndvInputData));
 		const version = useRootStore().versionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
-		const { getRestApiContext } = useRootStore();
 		const { code } = await generateCodeForPrompt(getRestApiContext, {
 			question: prompt.value,
-			context: { schema },
+			context: { schema, inputSchema },
 			model,
 			n8nVersion: version,
 		});
 
 		stopLoading();
 		emit('replaceCode', { code });
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
+		});
 	} catch (error) {
 		console.log('Failed to generate code', error);
+		showError(
+			error,
+			i18n.baseText('codeNodeEditor.askAi.generationFailed'),
+			i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		);
 		stopLoading();
 	}
 }
@@ -115,24 +146,17 @@ function stopLoading() {
 					:class="$style.counter"
 					v-text="`${prompt.length} / ${maxLength}`"
 				/>
-				<n8n-tooltip placement="bottom">
-					<template #content>
-						<div>
-							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
-						</div>
-					</template>
-					<span :class="$style.help"
-						><n8n-icon icon="question-circle" color="text-light" size="large" />{{
-							$locale.baseText('codeNodeEditor.askAi.help')
-						}}
-					</span>
-				</n8n-tooltip>
+				<a href="https://docs.n8n.io/api" target="_blank" :class="$style.help">
+					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
+						$locale.baseText('codeNodeEditor.askAi.help')
+					}}
+				</a>
 			</div>
 			<N8nInput
 				v-model="prompt"
 				:class="$style.input"
 				type="textarea"
-				:rows="7"
+				:rows="6"
 				:maxlength="maxLength"
 				:placeholder="$locale.baseText('codeNodeEditor.askAi.placeholder')"
 			/>
@@ -146,7 +170,7 @@ function stopLoading() {
 			</div>
 			<n8n-tooltip :disabled="hasExecutionData" v-else>
 				<div>
-					<N8nButton :disabled="!hasExecutionData || !prompt" @click="onSubmit">{{
+					<N8nButton :disabled="!hasExecutionData || !prompt" @click="onSubmit" size="small">{{
 						$locale.baseText('codeNodeEditor.askAi.generateCode')
 					}}</N8nButton>
 				</div>
@@ -179,7 +203,10 @@ function stopLoading() {
 	border: 0 !important;
 }
 .input textarea {
+	font-size: var(--font-size-2xs);
 	padding-bottom: var(--spacing-2xl);
+	font-family: var(--font-family);
+	resize: none;
 }
 .intro {
 	font-weight: var(--font-weight-bold);
@@ -200,6 +227,7 @@ function stopLoading() {
 .help {
 	text-decoration: underline;
 	margin-left: auto;
+	color: #909399;
 }
 .meta {
 	display: flex;
@@ -207,7 +235,7 @@ function stopLoading() {
 	position: absolute;
 	bottom: var(--spacing-2xs);
 	left: var(--spacing-xs);
-	right: var(--spacing-m);
+	right: var(--spacing-xs);
 	z-index: 1;
 
 	* {
@@ -222,6 +250,6 @@ function stopLoading() {
 	padding: var(--spacing-2xs) var(--spacing-xs);
 	display: flex;
 	justify-content: flex-end;
-	border-top: 1px solid var(--color-foreground-dark);
+	border-top: 1px solid var(--border-color-base);
 }
 </style>
