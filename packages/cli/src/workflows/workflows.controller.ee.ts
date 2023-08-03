@@ -20,6 +20,7 @@ import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import * as utils from '@/utils';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -200,20 +201,18 @@ EEWorkflowController.post(
 /**
  * (EE) GET /workflows
  */
-EEWorkflowController.get(
-	'/',
-	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const [workflows, workflowOwnerRole] = await Promise.all([
-			EEWorkflows.getMany(req.user, req.query),
-			Container.get(RoleService).findWorkflowOwnerRole(),
-		]);
+EEWorkflowController.get('/', async (req: WorkflowRequest.GetMany, res: express.Response) => {
+	try {
+		const [workflows, total] = await EEWorkflows.getMany(req.user, req.query);
+		const role = await Container.get(RoleService).findWorkflowOwnerRole();
+		const data = workflows.map((w) => EEWorkflows.addOwnerId(w, role));
 
-		return workflows.map((workflow) => {
-			EEWorkflows.addOwnerId(workflow, workflowOwnerRole);
-			return workflow;
-		});
-	}),
-);
+		res.json({ total, data });
+	} catch (maybeError) {
+		const error = utils.toError(maybeError);
+		ResponseHelper.sendErrorResponse(res, error);
+	}
+});
 
 EEWorkflowController.patch(
 	'/:id(\\w+)',

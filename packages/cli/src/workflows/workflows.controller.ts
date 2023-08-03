@@ -24,6 +24,7 @@ import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import * as utils from '@/utils';
 
 export const workflowsController = express.Router();
 
@@ -113,12 +114,15 @@ workflowsController.post(
 /**
  * GET /workflows
  */
-workflowsController.get(
-	'/',
-	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		return WorkflowsService.getMany(req.user, req.query);
-	}),
-);
+workflowsController.get('/', async (req: WorkflowRequest.GetMany, res: express.Response) => {
+	try {
+		const [data, total] = await WorkflowsService.getMany(req.user, req.query);
+		res.json({ total, data });
+	} catch (maybeError) {
+		const error = utils.toError(maybeError);
+		ResponseHelper.sendErrorResponse(res, error);
+	}
+});
 
 /**
  * GET /workflows/new

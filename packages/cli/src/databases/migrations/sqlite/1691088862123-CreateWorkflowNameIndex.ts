@@ -5,7 +5,7 @@ export class CreateWorkflowNameIndex1691088862123 implements ReversibleMigration
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefix}${this.indexName}" ON "${tablePrefix}workflow_entity" ("name");`,
+			`CREATE INDEX "IDX_${tablePrefix}${this.indexName}" ON "${tablePrefix}workflow_entity" ("name");`,
 		);
 	}
 

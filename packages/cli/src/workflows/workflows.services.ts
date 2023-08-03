@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-base-to-string */
 import { Container } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { INode, IPinData, JsonValue } from 'n8n-workflow';
@@ -28,11 +26,11 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { TestWebhooks } from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
-import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/ResponseHelper';
 import * as utils from '@/utils';
 import { MAX_ITEMS } from '@/constants';
+import type { WorkflowForList } from './workflows.types';
 
 namespace QueryFilters {
 	export type GetAllWorkflows = Pick<FindOptionsWhere<WorkflowEntity>, 'id' | 'name' | 'active'>;
@@ -153,12 +151,12 @@ export class WorkflowsService {
 	static async getMany(
 		user: User,
 		options?: { filter?: string; skip?: string; take?: string },
-	): Promise<WorkflowForList[]> {
+	): Promise<[WorkflowForList[], number]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
-			return [];
+			return [[], 0];
 		}
 
 		let filter: QueryFilters.GetAllWorkflows;
@@ -183,7 +181,7 @@ export class WorkflowsService {
 		const workflowId = filter?.id?.toString();
 		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
 			LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
-			return [];
+			return [[], 0];
 		}
 
 		const select: FindOptionsSelect<WorkflowEntity> = {
@@ -209,7 +207,9 @@ export class WorkflowsService {
 
 		filter.id = In(sharedWorkflowIds);
 
-		if (filter.name) filter.name = Like(`%${filter.name}%`);
+		if (typeof filter.name === 'string' && filter.name !== '') {
+			filter.name = Like(`%${filter.name}%`);
+		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
 			select,
@@ -225,7 +225,7 @@ export class WorkflowsService {
 			findManyOptions.take = Math.min(take, MAX_ITEMS);
 		}
 
-		return Db.collections.Workflow.find(findManyOptions);
+		return Db.collections.Workflow.findAndCount(findManyOptions);
 	}
 
 	static async update(

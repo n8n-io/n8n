@@ -6,13 +6,13 @@ import { WorkflowsService } from '@/workflows/workflows.services';
 
 jest.mock('@/Db', () => {
 	return {
-		collections: { Workflow: { find: jest.fn() } },
+		collections: { Workflow: { findAndCount: jest.fn() } },
 	};
 });
 
 const MOCK_WORKFLOW_IDS = ['HaqwXxlWE2lJIrHk', 'IuFbmmTtnE22jcma'];
 
-const dbFind = Db.collections.Workflow.find;
+const dbFind = Db.collections.Workflow.findAndCount;
 
 describe('WorkflowService', () => {
 	beforeEach(() => {
@@ -24,7 +24,7 @@ describe('WorkflowService', () => {
 
 	describe('getMany()', () => {
 		describe('should query for workflows', () => {
-			test('no options', async () => {
+			test('no options passed', async () => {
 				await WorkflowsService.getMany(user);
 
 				const findManyOptions = expect.objectContaining({
@@ -49,7 +49,7 @@ describe('WorkflowService', () => {
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
 			});
 
-			test('filtered by name', async () => {
+			test('filter by name', async () => {
 				await WorkflowsService.getMany(user, { filter: '{"name":"My Workflow"}' });
 
 				const findManyOptions = expect.objectContaining({
@@ -62,7 +62,19 @@ describe('WorkflowService', () => {
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
 			});
 
-			test('paginated', async () => {
+			test('filter by name - empty string', async () => {
+				await WorkflowsService.getMany(user, { filter: '{"name":""}' });
+
+				const findManyOptions = expect.objectContaining({
+					where: expect.objectContaining({
+						id: expect.objectContaining({ _type: 'in', _value: MOCK_WORKFLOW_IDS }),
+					}),
+				});
+
+				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
+			});
+
+			test('paginate', async () => {
 				await WorkflowsService.getMany(user, { skip: '1', take: '2' });
 
 				const findManyOptions = expect.objectContaining({
@@ -76,7 +88,7 @@ describe('WorkflowService', () => {
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
 			});
 
-			test('filtered by name and paginated', async () => {
+			test('filter by name and paginate', async () => {
 				await WorkflowsService.getMany(user, {
 					filter: '{"name":"My Workflow"}',
 					skip: '1',
@@ -95,7 +107,7 @@ describe('WorkflowService', () => {
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
 			});
 
-			test(`\`take\` capped at ${MAX_ITEMS}`, async () => {
+			test(`paginate - \`take\` capped at ${MAX_ITEMS}`, async () => {
 				await WorkflowsService.getMany(user, { skip: '1', take: '51' });
 
 				const findManyOptions = expect.objectContaining({ skip: 1, take: 50 });
@@ -103,7 +115,7 @@ describe('WorkflowService', () => {
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
 			});
 
-			test('`skip` defaults to 0', async () => {
+			test('paginate - `skip` defaults to 0', async () => {
 				await WorkflowsService.getMany(user, { take: '50' });
 
 				const findManyOptions = expect.objectContaining({ skip: 0, take: 50 });

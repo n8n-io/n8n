@@ -100,7 +100,12 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter?: string; skip?: string; take?: string }>;
+	type GetMany = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ filter?: string; skip?: string; take?: string }
+	>;
 
 	type GetAllActive = AuthenticatedRequest;
 
