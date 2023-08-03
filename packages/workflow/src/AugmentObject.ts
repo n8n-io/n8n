@@ -134,8 +134,7 @@ export function augmentObject<T extends object>(data: T): T {
 		},
 		has(target, key) {
 			if (deletedProperties.indexOf(key) !== -1) return false;
-			const newKeys = Object.keys(newData);
-			return Reflect.has(newKeys.length ? newData : target, key);
+			return Reflect.has(newData, key) || Reflect.has(target, key);
 		},
 		ownKeys(target) {
 			const originalKeys = Reflect.ownKeys(target);
