@@ -2,6 +2,8 @@ import { EventMessageTypeNames } from 'n8n-workflow';
 import config from '@/config';
 import type { EventMessageTypes } from '../EventMessageClasses';
 
+export const METRICS_EVENT_NAME = 'metrics.messageEventBus.Event';
+
 export function getMetricNameForEvent(event: EventMessageTypes): string {
 	const prefix = config.getEnv('endpoints.metrics.prefix');
 	return prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';

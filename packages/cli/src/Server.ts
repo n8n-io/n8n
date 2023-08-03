@@ -143,7 +143,6 @@ import {
 	isLdapLoginEnabled,
 } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
-import { MetricsService } from './metrics';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
@@ -526,6 +525,8 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { MetricsService } = await import('@/services/metrics.service');
 			await Container.get(MetricsService).configureMetrics(this.app);
 		}
 

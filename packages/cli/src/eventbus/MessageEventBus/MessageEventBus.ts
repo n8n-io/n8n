@@ -26,7 +26,7 @@ import {
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
-import { MetricsCounterEvents } from '@/metrics/constants';
+import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -222,9 +222,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		if (config.getEnv('endpoints.metrics.enable')) {
-			this.emit(MetricsCounterEvents.messageEventBusEvent, msg);
-		}
+		this.emit(METRICS_EVENT_NAME, msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
