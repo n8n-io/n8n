@@ -130,7 +130,7 @@ export class E2EController {
 		];
 
 		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }] = await this.roleRepo.save(
-			roles.map(([name, scope], index) => ({ name, scope, id: index.toString() })),
+			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
 		);
 
 		const users = [];
@@ -150,6 +150,8 @@ export class E2EController {
 				}),
 			);
 		}
+
+		console.log('users', users);
 
 		await this.userRepo.insert(users);
 
