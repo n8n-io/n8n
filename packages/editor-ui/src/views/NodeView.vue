@@ -753,6 +753,60 @@ export default defineComponent({
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
+		async pinExecutionData(
+			workflow: IWorkflowDb,
+			execution: IExecutionResponse | undefined,
+		): Promise<IWorkflowDb | undefined> {
+			// If no execution data is available, return the workflow as is
+			if (!execution?.data?.resultData) {
+				return workflow;
+			}
+
+			const { runData, pinData } = execution.data.resultData;
+
+			// Get nodes from execution data and apply their pinned data or the first execution data
+			const executionNodesData = Object.entries(runData).map(([name, data]) => ({
+				name,
+				data: pinData?.[name] ?? data?.[0].data?.main[0],
+			}));
+			const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
+
+			// Check if any of the workflow nodes have pinned data already
+			if (executionNodesData.some((eNode) => workflowPinnedNodeNames.includes(eNode.name))) {
+				const overWritePinnedDataConfirm = await this.confirm(
+					this.$locale.baseText('nodeView.confirmMessage.debug.message'),
+					this.$locale.baseText('nodeView.confirmMessage.debug.headline'),
+					{
+						type: 'warning',
+						confirmButtonText: this.$locale.baseText(
+							'nodeView.confirmMessage.debug.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'nodeView.confirmMessage.debug.cancelButtonText',
+						),
+						dangerouslyUseHTMLString: true,
+					},
+				);
+
+				if (overWritePinnedDataConfirm !== MODAL_CONFIRM) {
+					return workflow;
+				}
+			}
+
+			// Overwrite the workflow pinned data with the execution data
+			workflow.pinData = executionNodesData.reduce(
+				(acc, { name, data }) => {
+					// Only add data if it exists and the node is in the workflow
+					if (acc && data && workflow.nodes.some((node) => node.name === name)) {
+						acc[name] = data;
+					}
+					return acc;
+				},
+				{} as IWorkflowDb['pinData'],
+			);
+
+			return workflow;
+		},
 		async openExecution(executionId: string) {
 			this.startLoading();
 			this.resetWorkspace();
@@ -2608,15 +2662,16 @@ export default defineComponent({
 
 					if (workflow) {
 						this.titleSet(workflow.name, 'IDLE');
-						// Open existing workflow
-						await this.openWorkflow(workflow);
-					}
 
-					if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-						console.log('debugging');
-						console.log(workflow);
-						const execData = await this.workflowsStore.getExecution(this.$route.params.executionId);
-						console.log(execData);
+						if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
+							this.titleSet(workflow.name, 'DEBUG');
+							const execution = await this.workflowsStore.getExecution(
+								this.$route.params.executionId as string,
+							);
+							workflow = await this.pinExecutionData(workflow, execution);
+						}
+
+						await this.openWorkflow(workflow);
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow
