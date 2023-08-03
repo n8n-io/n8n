@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-base-to-string */
 import { Container } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
-import { In } from 'typeorm';
+import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
+import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -28,23 +30,12 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
+import { BadRequestError } from '@/ResponseHelper';
+import * as utils from '@/utils';
 
-export type IGetWorkflowsQueryFilter = Pick<
-	FindOptionsWhere<WorkflowEntity>,
-	'id' | 'name' | 'active'
->;
-
-const schemaGetWorkflowsQueryFilter = {
-	$id: '/IGetWorkflowsQueryFilter',
-	type: 'object',
-	properties: {
-		id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
-		name: { type: 'string' },
-		active: { type: 'boolean' },
-	},
-};
-
-const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFilter.properties);
+namespace QueryFilters {
+	export type GetAllWorkflows = Pick<FindOptionsWhere<WorkflowEntity>, 'id' | 'name' | 'active'>;
+}
 
 export class WorkflowsService {
 	static async getSharing(
@@ -116,7 +107,55 @@ export class WorkflowsService {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string): Promise<WorkflowForList[]> {
+	private static schemas = {
+		queryFilters: {
+			getWorkflows: {
+				$id: 'GetWorkflowsQueryFilter',
+				type: 'object',
+				properties: {
+					id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+					name: { type: 'string' },
+					active: { type: 'boolean' },
+				},
+			},
+		},
+	};
+
+	static toFilter(rawFilter: string, user: User): QueryFilters.GetAllWorkflows {
+		try {
+			const filter = jsonParse<JsonObject>(rawFilter, { fallbackValue: {} });
+
+			const schema = WorkflowsService.schemas.queryFilters.getWorkflows;
+
+			const isFieldAllowed = (field: string) => Object.keys(schema.properties).includes(field);
+
+			const allowedKeysFilter = Object.fromEntries(
+				Object.keys(filter)
+					.filter(isFieldAllowed)
+					.map((field) => [field, filter[field]]),
+			);
+
+			const fitsSchema = jsonSchemaValidate(allowedKeysFilter, schema).valid;
+
+			if (!fitsSchema) throw new Error(`Filter does not fit schema: ${rawFilter}}`);
+
+			return allowedKeysFilter;
+		} catch (maybeError) {
+			LoggerProxy.error('Invalid filter parameter', {
+				userId: user.id,
+				filter: rawFilter,
+				error: utils.toError(maybeError),
+			});
+
+			throw new BadRequestError(`Invalid "filter" parameter: ${rawFilter}`);
+		}
+	}
+
+	static async getMany(
+		user: User,
+		rawFilter?: string,
+		paginationOptions?: { skip: number; take: number },
+	): Promise<WorkflowForList[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
@@ -124,28 +163,7 @@ export class WorkflowsService {
 			return [];
 		}
 
-		let filter: IGetWorkflowsQueryFilter = {};
-		if (rawFilter) {
-			try {
-				const filterJson: JsonObject = jsonParse(rawFilter);
-				if (filterJson) {
-					Object.keys(filterJson).map((key) => {
-						if (!allowedWorkflowsQueryFilterFields.includes(key)) delete filterJson[key];
-					});
-					if (jsonSchemaValidate(filterJson, schemaGetWorkflowsQueryFilter).valid) {
-						filter = filterJson as IGetWorkflowsQueryFilter;
-					}
-				}
-			} catch (error) {
-				LoggerProxy.error('Failed to parse filter', {
-					userId: user.id,
-					filter,
-				});
-				throw new ResponseHelper.InternalServerError(
-					'Parameter "filter" contained invalid JSON string.',
-				);
-			}
-		}
+		const filter = rawFilter ? this.toFilter(rawFilter, user) : {};
 
 		// safeguard against querying ids not shared with the user
 		const workflowId = filter?.id?.toString();
@@ -175,12 +193,23 @@ export class WorkflowsService {
 		}
 
 		filter.id = In(sharedWorkflowIds);
-		return Db.collections.Workflow.find({
+
+		// @TODO: Add index? Or premature optimization?
+		if (filter.name) filter.name = Like(`%${filter.name}%`);
+
+		const findManyOptions: FindManyOptions<WorkflowEntity> = {
 			select,
 			relations,
 			where: filter,
-			order: { updatedAt: 'DESC' },
-		});
+			order: { updatedAt: 'ASC' },
+		};
+
+		if (paginationOptions) {
+			findManyOptions.skip = paginationOptions.skip;
+			findManyOptions.take = paginationOptions.take;
+		}
+
+		return Db.collections.Workflow.find(findManyOptions);
 	}
 
 	static async update(

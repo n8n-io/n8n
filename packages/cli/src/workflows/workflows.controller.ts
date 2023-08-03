@@ -116,7 +116,17 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		return WorkflowsService.getMany(req.user, req.query.filter);
+		const { filter, skip, take } = req.query;
+
+		const paginationOptions =
+			skip && take
+				? {
+						skip: Number(skip),
+						take: Number(take),
+				  }
+				: undefined;
+
+		return WorkflowsService.getMany(req.user, filter, paginationOptions);
 	}),
 );
 

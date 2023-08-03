@@ -203,8 +203,18 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
+		const { filter, skip, take } = req.query;
+
+		const paginationOptions =
+			skip && take
+				? {
+						skip: Number(skip),
+						take: Number(take),
+				  }
+				: undefined;
+
 		const [workflows, workflowOwnerRole] = await Promise.all([
-			EEWorkflows.getMany(req.user, req.query.filter),
+			EEWorkflows.getMany(req.user, filter, paginationOptions),
 			Container.get(RoleService).findWorkflowOwnerRole(),
 		]);
 
