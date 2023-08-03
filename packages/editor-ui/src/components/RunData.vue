@@ -284,6 +284,14 @@
 					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
 					@click="showTooMuchData"
 				/>
+
+				<n8n-button
+					size="small"
+					type="secondary"
+					:label="$locale.baseText('runData.downloadBinaryData')"
+					class="binary-data-show-data-button"
+					@click="downloadJsonData()"
+				/>
 			</div>
 
 			<div
@@ -1289,6 +1297,18 @@ export default defineComponent({
 				const blob = await fetch(bufferString).then(async (d) => d.blob());
 				saveAs(blob, fileName);
 			}
+		},
+		async downloadJsonData() {
+			const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+
+			const bufferString = `data:application/json;base64,${btoa(
+				JSON.stringify(inputData, null, 2),
+			)}`;
+
+			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
+
+			const blob = await fetch(bufferString).then(async (d) => d.blob());
+			saveAs(blob, `${fileName}.json`);
 		},
 		displayBinaryData(index: number, key: string) {
 			this.binaryDataDisplayVisible = true;
