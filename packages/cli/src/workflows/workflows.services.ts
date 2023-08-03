@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-base-to-string */
 import { Container } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { INode, IPinData, JsonObject } from 'n8n-workflow';
+import type { INode, IPinData, JsonValue } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
@@ -37,6 +37,8 @@ import { MAX_ITEMS } from '@/constants';
 namespace QueryFilters {
 	export type GetAllWorkflows = Pick<FindOptionsWhere<WorkflowEntity>, 'id' | 'name' | 'active'>;
 }
+
+type ParsedJSON = JsonValue;
 
 export class WorkflowsService {
 	static async getSharing(
@@ -122,36 +124,30 @@ export class WorkflowsService {
 		},
 	};
 
-	static toQueryFilter(reqFilter: string | undefined, user: User): QueryFilters.GetAllWorkflows {
-		if (!reqFilter) return {};
+	static toQueryFilter(rawFilter?: string): QueryFilters.GetAllWorkflows {
+		if (!rawFilter) return {};
 
-		try {
-			const filter = jsonParse<JsonObject>(reqFilter, { fallbackValue: {} });
+		const parsedFilter = jsonParse<ParsedJSON>(rawFilter, {
+			errorMessage: 'Failed to parse JSON into filter object',
+		});
 
-			const schema = WorkflowsService.schemas.queryFilters.getWorkflows;
-
-			const isFieldAllowed = (field: string) => Object.keys(schema.properties).includes(field);
-
-			const allowedKeysFilter = Object.fromEntries(
-				Object.keys(filter)
-					.filter(isFieldAllowed)
-					.map((field) => [field, filter[field]]),
-			);
-
-			const fitsSchema = jsonSchemaValidate(allowedKeysFilter, schema).valid;
-
-			if (!fitsSchema) throw new Error(`Filter does not fit schema: ${reqFilter}}`);
-
-			return allowedKeysFilter;
-		} catch (maybeError) {
-			LoggerProxy.error('Invalid filter parameter', {
-				userId: user.id,
-				filter: reqFilter,
-				error: utils.toError(maybeError),
-			});
-
-			throw new BadRequestError(`Invalid "filter" parameter: ${reqFilter}`);
+		if (!utils.isObjectLiteral(parsedFilter)) {
+			throw new Error('Parsed filter is not an object');
 		}
+
+		const schema = WorkflowsService.schemas.queryFilters.getWorkflows;
+
+		const queryFilter = Object.fromEntries(
+			Object.keys(parsedFilter)
+				.filter((field) => Object.keys(schema.properties).includes(field))
+				.map((field) => [field, parsedFilter[field]]),
+		);
+
+		const fitsSchema = jsonSchemaValidate(queryFilter, schema).valid;
+
+		if (!fitsSchema) throw new Error('Parsed filter object does not fit schema');
+
+		return queryFilter;
 	}
 
 	static async getMany(
@@ -165,7 +161,23 @@ export class WorkflowsService {
 			return [];
 		}
 
-		const filter = this.toQueryFilter(options?.filter, user);
+		let filter: QueryFilters.GetAllWorkflows;
+
+		try {
+			filter = this.toQueryFilter(options?.filter);
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+
+			LoggerProxy.error('Invalid "filter" query string parameter', {
+				userId: user.id,
+				filter: options?.filter,
+				error,
+			});
+
+			throw new BadRequestError(
+				`Invalid "filter" query string parameter: ${options?.filter}. Error: ${error.message}`,
+			);
+		}
 
 		// safeguard against querying ids not shared with the user
 		const workflowId = filter?.id?.toString();
@@ -206,11 +218,11 @@ export class WorkflowsService {
 			order: { updatedAt: 'ASC' },
 		};
 
-		if (options?.skip && options?.take) {
-			const [skip, take] = [options.skip, options.take].map((o) => parseInt(o, 10));
+		if (options?.take) {
+			const [skip, take] = [options.skip ?? '0', options.take].map((o) => parseInt(o, 10));
 
-			findManyOptions.skip = skip > MAX_ITEMS ? MAX_ITEMS : skip;
-			findManyOptions.take = take > MAX_ITEMS ? MAX_ITEMS : take;
+			findManyOptions.skip = skip;
+			findManyOptions.take = Math.min(take, MAX_ITEMS);
 		}
 
 		return Db.collections.Workflow.find(findManyOptions);
