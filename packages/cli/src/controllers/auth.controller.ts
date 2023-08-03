@@ -80,6 +80,8 @@ export class AuthController {
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
+		console.log('LOGIN', email, password, mfaToken, mfaRecoveryCode);
+
 		let user: User | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
@@ -102,6 +104,8 @@ export class AuthController {
 			user = await handleEmailLogin(email, password);
 		}
 
+		console.log(user);
+
 		if (user) {
 			if (user.mfaEnabled) {
 				const { decryptedRecoveryCodes, decryptedSecret } =
@@ -113,6 +117,8 @@ export class AuthController {
 				const isMFATokenValid =
 					(await this.validateMfaToken(user, mfaToken)) ||
 					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
+
+				console.log('Valid Token', isMFATokenValid);
 
 				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
 			}
@@ -256,6 +262,8 @@ export class AuthController {
 	}
 
 	private async validateMfaToken(user: User, token: string) {
+		console.log('secret', user.mfaSecret);
+		console.log('token', token);
 		return this.mfaService.totp.verifySecret({
 			secret: user.mfaSecret ?? '',
 			token,

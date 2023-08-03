@@ -7,3 +7,4 @@ export * from './settings-users';
 export * from './settings-log-streaming';
 export * from './sidebar';
 export * from './ndv';
+export * from './signin';

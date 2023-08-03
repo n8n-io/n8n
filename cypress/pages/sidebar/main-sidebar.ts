@@ -32,7 +32,7 @@ export class MainSidebar extends BasePage {
 		signout: () => {
 			cy.visit(workflowsPage.url);
 			this.actions.openUserMenu();
-			cy.getByTestId('workflow-menu-item-logout').click();
+			cy.getByTestId('user-menu-item-logout').click();
 			cy.wrap(Cypress.session.clearAllSavedSessions());
 		},
 	};

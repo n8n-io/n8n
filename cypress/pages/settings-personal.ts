@@ -9,7 +9,6 @@ export class PersonalSettingsPage extends BasePage {
 	url = '/settings/personal';
 	secret = '';
 
-
 	getters = {
 		currentUserName: () => cy.getByTestId('current-user-name'),
 		firstNameInput: () => cy.getByTestId('firstName').find('input').first(),
@@ -61,14 +60,14 @@ export class PersonalSettingsPage extends BasePage {
 			cy.visit(this.url);
 			this.getters.enableMfaButton().click();
 			mfaSetupModal.getters.copySecretToClipboardButton().click();
-			mfaSetupModal.getters.secretInput().then($value => {
+			mfaSetupModal.getters.secretInput().then(($value) => {
 				const secret = $value.text();
 				cy.generateToken(secret).then((token) => {
 					mfaSetupModal.getters.tokenInput().type(token);
 					mfaSetupModal.getters.downloadRecoveryCodesButton().click();
 					mfaSetupModal.getters.saveButton().click();
 				});
-			})
+			});
 		},
 		disableMfa: () => {
 			cy.visit(this.url);

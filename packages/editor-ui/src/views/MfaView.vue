@@ -86,11 +86,21 @@ import { useToast } from '@/composables/useToast';
 export default defineComponent({
 	name: 'MfaView',
 	mixins: [genericHelpers],
+	props: {
+		email: {
+			type: String,
+			required: false,
+		},
+		password: {
+			type: String,
+			required: false,
+		},
+	},
 	components: {
 		Logo,
 	},
 	async mounted() {
-		const { email, password } = this.$route.params;
+		const { email, password } = window.history.state;
 		this.email = email;
 		this.password = password;
 		this.formInputs = [
@@ -167,7 +177,7 @@ export default defineComponent({
 				},
 			];
 		},
-		onInput({ value, name }: { name: string; value: string }) {
+		onInput({ target: { value, name } }: { target: { value: string; name: string } }) {
 			const isSubmittingMfaToken = name === 'token';
 			const inputValidLength = isSubmittingMfaToken
 				? MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH

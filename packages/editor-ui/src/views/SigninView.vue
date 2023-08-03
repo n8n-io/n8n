@@ -85,6 +85,9 @@ export default defineComponent({
 	},
 	methods: {
 		async onSubmit(values: { [key: string]: string }) {
+			console.log('VALUES');
+			console.log(values);
+
 			try {
 				this.loading = true;
 				await this.usersStore.loginWithCreds(values as { email: string; password: string });
@@ -104,9 +107,11 @@ export default defineComponent({
 				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
 				if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
+					console.log('mamando');
+					console.log({ email: values.email, password: values.password });
 					void this.$router.push({
 						name: VIEWS.MFA_VIEW,
-						params: { email: values.email, password: values.password },
+						state: { email: values.email, password: values.password },
 					});
 					return;
 				}

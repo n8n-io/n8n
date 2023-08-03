@@ -20,7 +20,7 @@
 				</div>
 				<div>
 					<n8n-text size="medium" :bold="false">
-						<i18n path="mfa.setup.step1.instruction1.subtitle" tag="span">
+						<i18n-t keypath="mfa.setup.step1.instruction1.subtitle" tag="span">
 							<template #part1>
 								{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
 							</template>
@@ -37,7 +37,7 @@
 									secret
 								}}</span>
 							</template>
-						</i18n>
+						</i18n-t>
 					</n8n-text>
 				</div>
 				<div :class="$style.qrContainer">

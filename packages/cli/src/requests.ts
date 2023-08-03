@@ -187,6 +187,9 @@ export interface UserSetupPayload {
 	password: string;
 	firstName: string;
 	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
 }
 
 // ----------------------------------

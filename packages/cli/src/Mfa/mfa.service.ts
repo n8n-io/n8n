@@ -1,14 +1,13 @@
 import { v4 as uuid } from 'uuid';
 import { AES, enc } from 'crypto-js';
-import { Repository } from 'typeorm';
-import type { User } from '@db/entities/User';
 import { TOTPService } from './totp.service';
 import { Service } from 'typedi';
+import { UserRepository } from '@/databases/repositories';
 
 @Service()
 export class MfaService {
 	constructor(
-		private userRepository: Repository<User>,
+		private userRepository: UserRepository,
 		public totp: TOTPService,
 		private encryptionKey: string,
 	) {}
@@ -24,14 +23,25 @@ export class MfaService {
 	}
 
 	public async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
-		const encryptedSecret = AES.encrypt(secret, this.encryptionKey).toString(),
-			encryptedRecoveryCodes = recoveryCodes.map((code) =>
-				AES.encrypt(code, this.encryptionKey).toString(),
-			);
+		const { encryptedSecret, encryptedRecoveryCodes } = this.encryptSecretAndRecoveryCodes(
+			secret,
+			recoveryCodes,
+		);
 		return this.userRepository.update(userId, {
 			mfaSecret: encryptedSecret,
 			mfaRecoveryCodes: encryptedRecoveryCodes,
 		});
+	}
+
+	public encryptSecretAndRecoveryCodes(rawSecret: string, rawRecoveryCodes: string[]) {
+		const encryptedSecret = AES.encrypt(rawSecret, this.encryptionKey).toString(),
+			encryptedRecoveryCodes = rawRecoveryCodes.map((code) =>
+				AES.encrypt(code, this.encryptionKey).toString(),
+			);
+		return {
+			encryptedRecoveryCodes,
+			encryptedSecret,
+		};
 	}
 
 	private decryptSecretAndRecoveryCodes(mfaSecret: string, mfaRecoveryCodes: string[]) {
