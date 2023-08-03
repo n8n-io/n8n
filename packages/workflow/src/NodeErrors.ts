@@ -321,9 +321,15 @@ export class NodeApiError extends NodeError {
 		if (severity) this.severity = severity;
 		else if (httpCode?.charAt(0) !== '5') this.severity = 'warning';
 
+		// only for request library error
 		if (error.error) {
-			// only for request library error
 			removeCircularRefs(error.error as JsonObject);
+		}
+
+		// if not description provided, try to find it in the error object
+		if (!description && (error.description || (error?.reason as IDataObject)?.description)) {
+			this.description = (error.description ||
+				(error?.reason as IDataObject)?.description) as string;
 		}
 
 		// if not message provided, try to find it in the error object or set description as message
@@ -331,12 +337,6 @@ export class NodeApiError extends NodeError {
 			this.message = (error.message ||
 				(error?.reason as IDataObject)?.message ||
 				description) as string;
-		}
-
-		// if not description provided, try to find it in the error object
-		if (!description && (error.description || (error?.reason as IDataObject)?.description)) {
-			this.description = (error.description ||
-				(error?.reason as IDataObject)?.description) as string;
 		}
 
 		// Set generic error message for 502 Bad Gateway
@@ -364,31 +364,41 @@ export class NodeApiError extends NodeError {
 			}
 		}
 
-		if (message) {
-			this.message = message;
-			this.description = description;
-			this.httpCode = httpCode ?? null;
-			return;
-		}
-
+		// set http code of this error
 		if (httpCode) {
 			this.httpCode = httpCode;
 		} else {
-			this.httpCode = this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES);
+			this.httpCode =
+				this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) || null;
 		}
 
-		this.setMessage();
-
-		if (parseXml) {
-			this.setDescriptionFromXml(error.error as string);
-			return;
+		// set message of this error
+		if (message) {
+			this.message = message;
 		}
 
-		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+		if (!this.message) {
+			this.setMessage();
+		}
 
-		if (runIndex !== undefined) this.context.runIndex = runIndex;
-		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
+		// set description of this error
+		if (description) {
+			this.description = description;
+		}
 
+		if (!this.description) {
+			if (parseXml) {
+				this.setDescriptionFromXml(error.error as string);
+			} else {
+				this.description = this.findProperty(
+					error,
+					ERROR_MESSAGE_PROPERTIES,
+					ERROR_NESTING_PROPERTIES,
+				);
+			}
+		}
+
+		// if message contain common nodeJS error code set descriptive message and update description
 		[this.message, this.description] = setCommonNodeJsErrorMessage(
 			this.message,
 			this.description,
@@ -397,6 +407,9 @@ export class NodeApiError extends NodeError {
 				((error?.reason as JsonObject)?.code as string) ||
 				undefined,
 		);
+
+		if (runIndex !== undefined) this.context.runIndex = runIndex;
+		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
 	}
 
 	private setDescriptionFromXml(xml: string) {
