@@ -388,15 +388,6 @@ export class NodeApiError extends NodeError {
 				this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) || null;
 		}
 
-		// set message of this error
-		if (message) {
-			this.message = message;
-		}
-
-		if (!this.message) {
-			this.setMessage();
-		}
-
 		// set description of this error
 		if (description) {
 			this.description = description;
@@ -412,6 +403,15 @@ export class NodeApiError extends NodeError {
 					ERROR_NESTING_PROPERTIES,
 				);
 			}
+		}
+
+		// set message of this error
+		if (message) {
+			this.message = message;
+		}
+
+		if (!this.message) {
+			this.setMessage();
 		}
 
 		// if message contain common error code set descriptive message and update description
