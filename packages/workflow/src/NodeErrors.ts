@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-shadow */
 
@@ -196,6 +197,56 @@ interface NodeOperationErrorOptions {
 	severity?: Severity;
 }
 
+const COMMON_NODE_JS_ERRORS: IDataObject = {
+	ECONNREFUSED:
+		'The connection could not be established because the specified address is not reachable, perhaps the server is offline',
+	ECONNRESET:
+		'The connection to the server wes closed unexpectedly, perhaps it is offline. You can retry request immidiately or wait and retry later.',
+	ENOTFOUND:
+		'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+	ETIMEDOUT:
+		"The connection timed out, consider setting 'Retry on Fail' option in the node settings",
+	ERRADDRINUSE:
+		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
+	EADDRNOTAVAIL: 'The address is not available, ensure that you have the right IP address',
+	ECONNABORTED: 'The connection was aborted, perhaps the server is offline',
+	EHOSTUNREACH: 'The host is unreachable, perhaps the server is offline',
+	EAI_AGAIN: 'The DNS server returned an error, perhaps the server is offline',
+	ENOENT: 'The file or directory does not exist',
+	EISDIR: 'The file path expected but a given path is a directory',
+	ENOTDIR: 'The directory path expected but a given path is a file',
+	EACCES: 'Forbidden by access permissions, make sure you have the right permissions',
+	EEXIST: 'The file or directory already exists',
+	EPERM: 'Operation not permitted, make sure you have the right permissions',
+};
+
+function setCommonNodeJsErrorMessage(
+	message: string,
+	description: string | undefined | null,
+	code?: string | null,
+) {
+	let newMessage = message;
+	let newDescription = description as string;
+
+	// if code is provided and it is in the list of common node js errors set the message and return early
+	if (code && COMMON_NODE_JS_ERRORS[code]) {
+		newMessage = COMMON_NODE_JS_ERRORS[code] as string;
+		newDescription = `${message}; ${description}`;
+		return [newMessage, newDescription];
+	}
+
+	// check if message contains any of the common node js errors and set the message and description
+	for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_NODE_JS_ERRORS)) {
+		if ((message || '').toUpperCase().includes(errorCode)) {
+			newMessage = errorDescriptiveMessage as string;
+			newDescription = `${message}; ${description ?? ''}`;
+			break;
+		}
+	}
+
+	return [newMessage, newDescription];
+}
+
 /**
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
@@ -213,6 +264,8 @@ export class NodeOperationError extends NodeError {
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
+
+		[this.message, this.description] = setCommonNodeJsErrorMessage(this.message, this.description);
 	}
 }
 
@@ -232,8 +285,6 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'503':
 		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
 	'504': 'Gateway timed out - perhaps try again later?',
-
-	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
 };
 
 const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
@@ -275,31 +326,20 @@ export class NodeApiError extends NodeError {
 			removeCircularRefs(error.error as JsonObject);
 		}
 
-		if ((!message && (error.message || (error?.reason as IDataObject)?.message)) || description) {
-			this.message = (error.message ??
-				(error?.reason as IDataObject)?.message ??
+		// if not message provided, try to find it in the error object or set description as message
+		if (!message && (error.message || (error?.reason as IDataObject)?.message || description)) {
+			this.message = (error.message ||
+				(error?.reason as IDataObject)?.message ||
 				description) as string;
 		}
 
+		// if not description provided, try to find it in the error object
 		if (!description && (error.description || (error?.reason as IDataObject)?.description)) {
-			this.description = (error.description ??
+			this.description = (error.description ||
 				(error?.reason as IDataObject)?.description) as string;
 		}
 
-		if (
-			!httpCode &&
-			!message &&
-			this.message &&
-			this.message.toUpperCase().includes('ECONNREFUSED')
-		) {
-			httpCode = 'ECONNREFUSED';
-
-			const originalMessage = this.message;
-			if (!description) {
-				this.description = `${originalMessage}; ${this.description ?? ''}`;
-			}
-		}
-
+		// Set generic error message for 502 Bad Gateway
 		if (
 			!httpCode &&
 			!message &&
@@ -348,6 +388,15 @@ export class NodeApiError extends NodeError {
 
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
+
+		[this.message, this.description] = setCommonNodeJsErrorMessage(
+			this.message,
+			this.description,
+			this.httpCode ||
+				(error?.code as string) ||
+				((error?.reason as JsonObject)?.code as string) ||
+				undefined,
+		);
 	}
 
 	private setDescriptionFromXml(xml: string) {
