@@ -134,8 +134,7 @@ export default defineComponent({
 				: this.$route.query.token;
 		},
 		getMfaEnabled() {
-			if (!this.$route.query.mfaEnabled)
-				return null;
+			if (!this.$route.query.mfaEnabled) return null;
 			return this.$route.query.mfaEnabled === 'true' ? true : false;
 		},
 		async onSubmit(values: { mfaToken: string }) {

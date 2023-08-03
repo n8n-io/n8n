@@ -86,16 +86,6 @@ import { useToast } from '@/composables/useToast';
 export default defineComponent({
 	name: 'MfaView',
 	mixins: [genericHelpers],
-	props: {
-		email: {
-			type: String,
-			required: false,
-		},
-		password: {
-			type: String,
-			required: false,
-		},
-	},
 	components: {
 		Logo,
 	},
