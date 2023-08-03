@@ -86,4 +86,7 @@ export const UNLIMITED_LICENSE_QUOTA = -1;
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
 
-export const MAX_PAGINATED_ITEMS = 50;
+/**
+ * Max items to return in a paginated list.
+ */
+export const MAX_ITEMS = 50;

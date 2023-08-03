@@ -32,6 +32,7 @@ import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/ResponseHelper';
 import * as utils from '@/utils';
+import { MAX_ITEMS } from '@/constants';
 
 namespace QueryFilters {
 	export type GetAllWorkflows = Pick<FindOptionsWhere<WorkflowEntity>, 'id' | 'name' | 'active'>;
@@ -121,9 +122,11 @@ export class WorkflowsService {
 		},
 	};
 
-	static toFilter(rawFilter: string, user: User): QueryFilters.GetAllWorkflows {
+	static toQueryFilter(reqFilter: string | undefined, user: User): QueryFilters.GetAllWorkflows {
+		if (!reqFilter) return {};
+
 		try {
-			const filter = jsonParse<JsonObject>(rawFilter, { fallbackValue: {} });
+			const filter = jsonParse<JsonObject>(reqFilter, { fallbackValue: {} });
 
 			const schema = WorkflowsService.schemas.queryFilters.getWorkflows;
 
@@ -137,24 +140,23 @@ export class WorkflowsService {
 
 			const fitsSchema = jsonSchemaValidate(allowedKeysFilter, schema).valid;
 
-			if (!fitsSchema) throw new Error(`Filter does not fit schema: ${rawFilter}}`);
+			if (!fitsSchema) throw new Error(`Filter does not fit schema: ${reqFilter}}`);
 
 			return allowedKeysFilter;
 		} catch (maybeError) {
 			LoggerProxy.error('Invalid filter parameter', {
 				userId: user.id,
-				filter: rawFilter,
+				filter: reqFilter,
 				error: utils.toError(maybeError),
 			});
 
-			throw new BadRequestError(`Invalid "filter" parameter: ${rawFilter}`);
+			throw new BadRequestError(`Invalid "filter" parameter: ${reqFilter}`);
 		}
 	}
 
 	static async getMany(
 		user: User,
-		rawFilter?: string,
-		paginationOptions?: { skip: number; take: number },
+		options?: { filter?: string; skip?: string; take?: string },
 	): Promise<WorkflowForList[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
@@ -163,7 +165,7 @@ export class WorkflowsService {
 			return [];
 		}
 
-		const filter = rawFilter ? this.toFilter(rawFilter, user) : {};
+		const filter = this.toQueryFilter(options?.filter, user);
 
 		// safeguard against querying ids not shared with the user
 		const workflowId = filter?.id?.toString();
@@ -179,6 +181,7 @@ export class WorkflowsService {
 			createdAt: true,
 			updatedAt: true,
 		};
+
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
@@ -204,9 +207,11 @@ export class WorkflowsService {
 			order: { updatedAt: 'ASC' },
 		};
 
-		if (paginationOptions) {
-			findManyOptions.skip = paginationOptions.skip;
-			findManyOptions.take = paginationOptions.take;
+		if (options?.skip && options?.take) {
+			const [skip, take] = [options.skip, options.take].map((o) => parseInt(o, 10));
+
+			findManyOptions.skip = skip > MAX_ITEMS ? MAX_ITEMS : skip;
+			findManyOptions.take = take > MAX_ITEMS ? MAX_ITEMS : take;
 		}
 
 		return Db.collections.Workflow.find(findManyOptions);
