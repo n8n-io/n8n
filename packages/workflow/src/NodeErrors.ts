@@ -256,7 +256,7 @@ export abstract class NodeError extends ExecutionBaseError {
 		// if code is provided and it is in the list of common errors set the message and return early
 		if (code && COMMON_ERRORS[code.toUpperCase()]) {
 			newMessage = COMMON_ERRORS[code] as string;
-			newDescription = `${message}; ${description}`;
+			newDescription = `${message}${description ? ` ${description}` : ''}`;
 			return [newMessage, newDescription];
 		}
 
@@ -264,7 +264,7 @@ export abstract class NodeError extends ExecutionBaseError {
 		for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
 			if ((message || '').toUpperCase().includes(errorCode)) {
 				newMessage = errorDescriptiveMessage as string;
-				newDescription = `${message}; ${description ?? ''}`;
+				newDescription = `${message}${description ? ` ${description}` : ''}`;
 				break;
 			}
 		}
@@ -412,6 +412,11 @@ export class NodeApiError extends NodeError {
 
 		if (!this.message) {
 			this.setMessage();
+		}
+
+		// if message and description are the same, unset redundant description
+		if (this.message === this.description) {
+			this.description = undefined;
 		}
 
 		// if message contain common error code set descriptive message and update description
