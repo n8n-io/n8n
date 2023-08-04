@@ -1,41 +1,68 @@
 import Container from 'typedi';
+import type { RedisStore } from 'cache-manager-ioredis-yet';
+import { mock } from 'jest-mock-extended';
 import { CacheService } from '@/services/cache.service';
 
 const cacheService = Container.get(CacheService);
+const store = mock<RedisStore>({ isCacheable: () => true });
+Object.assign(cacheService, { cache: { store } });
 
-describe('cacheService (Mock)', () => {
-	test('should prevent use of empty keys', async () => {
-		const cache = await cacheService.getCache();
-		expect(cache).toBeDefined();
-		if (!cache) {
-			throw new Error('cache is undefined');
-		}
+describe('CacheService (Mock)', () => {
+	beforeEach(() => jest.clearAllMocks());
 
-		const spyGet = jest.spyOn(cache.store, 'get').mockImplementation(() => {
-			throw new Error('should not be called');
+	describe('should prevent use of empty keys', () => {
+		test('get', async () => {
+			await cacheService.get('');
+			expect(store.get).not.toHaveBeenCalled();
+
+			await cacheService.get('key');
+			expect(store.get).toHaveBeenCalledWith('key');
 		});
 
-		const spySet = jest.spyOn(cache.store, 'set').mockImplementation(() => {
-			throw new Error('should not be called');
+		test('getMany', async () => {
+			await cacheService.getMany([]);
+			expect(store.mget).not.toHaveBeenCalled();
+
+			await cacheService.getMany(['key1', 'key2']);
+			expect(store.mget).toHaveBeenCalledWith('key1', 'key2');
 		});
 
-		// confirm mock is working
-		try {
-			await cacheService.set('test', 'test');
-		} catch {
-			expect(spySet).toThrowError();
-		}
+		test('set', async () => {
+			await cacheService.set('', '');
+			expect(store.set).not.toHaveBeenCalled();
 
-		await cacheService.set('', 'test');
+			await cacheService.set('key', 'value');
+			expect(store.set).toHaveBeenCalledWith('key', 'value', undefined);
 
-		await expect(cacheService.get('')).resolves.toBeUndefined();
-		await cacheService.setMany([
-			['', 'something'],
-			['', 'something'],
-		]);
-		await expect(cacheService.getMany([''])).resolves.toStrictEqual([undefined]);
-		await cacheService.setMany([]);
-		await expect(cacheService.getMany([])).resolves.toStrictEqual([]);
-		expect(spyGet).not.toHaveBeenCalled();
+			await cacheService.set('key', 'value', 123);
+			expect(store.set).toHaveBeenCalledWith('key', 'value', 123);
+		});
+
+		test('setMany', async () => {
+			await cacheService.setMany([]);
+			expect(store.mset).not.toHaveBeenCalled();
+
+			await cacheService.setMany([['key', 'value']]);
+			expect(store.mset).toHaveBeenCalledWith([['key', 'value']], undefined);
+
+			await cacheService.setMany([['key', 'value']], 123);
+			expect(store.mset).toHaveBeenCalledWith([['key', 'value']], 123);
+		});
+
+		test('delete', async () => {
+			await cacheService.delete('');
+			expect(store.del).not.toHaveBeenCalled();
+
+			await cacheService.delete('key');
+			expect(store.del).toHaveBeenCalledWith('key');
+		});
+
+		test('deleteMany', async () => {
+			await cacheService.deleteMany([]);
+			expect(store.mdel).not.toHaveBeenCalled();
+
+			await cacheService.deleteMany(['key1', 'key2']);
+			expect(store.mdel).toHaveBeenCalledWith('key1', 'key2');
+		});
 	});
 });
