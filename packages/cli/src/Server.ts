@@ -923,7 +923,19 @@ export class Server extends AbstractServer {
 					signature_method: signatureMethod,
 					// eslint-disable-next-line @typescript-eslint/naming-convention
 					hash_function(base, key) {
-						const algorithm = signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
+						let algorithm: string;
+						switch (signatureMethod) {
+							case 'HMAC-SHA256':
+								algorithm = 'sha256';
+								break;
+							case 'HMAC-SHA512':
+								algorithm = 'sha512';
+								break;
+							default:
+								algorithm = 'sha1';
+								break;
+						}
+
 						return createHmac(algorithm, key).update(base).digest('base64');
 					},
 				};
@@ -949,15 +961,17 @@ export class Server extends AbstractServer {
 				// @ts-ignore
 				options.headers = data;
 
-				const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
+				const response = await axios.request(options as Partial<AxiosRequestConfig>);
 
 				// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-				const paramsParser = new URLSearchParams(response);
+				const paramsParser = new URLSearchParams(response.data);
 
 				const responseJson = Object.fromEntries(paramsParser.entries());
 
-				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
+				const returnUri = `${oauthCredentials.authUrl as string}?oauth_token=${
+					responseJson.oauth_token
+				}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(
