@@ -1,10 +1,10 @@
 import { Service } from 'typedi';
 import { DataSource } from 'typeorm';
 import { WorkflowEntity } from '../entities/WorkflowEntity';
-import { BaseWorkflowEntity } from './AbstractRepository';
+import { BaseWorkflowRepository } from './AbstractRepository';
 
 @Service()
-export class WorkflowRepository extends BaseWorkflowEntity {
+export class WorkflowRepository extends BaseWorkflowRepository {
 	constructor(dataSource: DataSource) {
 		super(WorkflowEntity, dataSource.manager);
 	}
@@ -26,13 +26,13 @@ export class WorkflowRepository extends BaseWorkflowEntity {
 	static toQueryFilter(rawFilter: string) {
 		const schema = this.schemas.queryFilters.getWorkflows;
 
-		return BaseWorkflowEntity.toQueryFilter(rawFilter, schema);
+		return BaseWorkflowRepository.toQueryFilter(rawFilter, schema);
 	}
 
 	static toQuerySelect(rawSelect: string) {
 		const schema = this.schemas.queryFilters.getWorkflows;
 
-		return BaseWorkflowEntity.toQuerySelect(rawSelect, schema);
+		return BaseWorkflowRepository.toQuerySelect(rawSelect, schema);
 	}
 }
 

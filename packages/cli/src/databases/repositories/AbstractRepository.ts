@@ -62,4 +62,4 @@ function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
-export const BaseWorkflowEntity = mixinQueryMethods(Repository<WorkflowEntity>);
+export const BaseWorkflowRepository = mixinQueryMethods(Repository<WorkflowEntity>);
