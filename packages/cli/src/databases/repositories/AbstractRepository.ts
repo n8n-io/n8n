@@ -25,32 +25,31 @@ namespace WorkflowsQuery {
 
 		@IsOptional()
 		@IsString()
-		id?: string;
+		id?: string = undefined;
 
 		@IsOptional()
 		@IsString()
-		name?: string;
+		name?: string = undefined;
 
 		@IsOptional()
 		@IsBoolean()
-		active?: boolean;
+		active?: boolean = undefined;
 
 		@IsOptional()
 		@IsArray()
 		@IsString({ each: true })
-		nodes?: string[];
+		nodes?: string[] = undefined;
 
 		@IsOptional()
 		@IsDateString()
-		createdAt?: Date;
+		createdAt?: Date = undefined;
 
 		@IsOptional()
 		@IsDateString()
-		updatedAt?: Date;
+		updatedAt?: Date = undefined;
 
 		static getFieldNames() {
-			// @TODO: How to get these dynamically?
-			return ['id', 'name', 'active', 'nodes', 'createdAt', 'updatedAt'];
+			return Object.getOwnPropertyNames(new Filter());
 		}
 	}
 }
