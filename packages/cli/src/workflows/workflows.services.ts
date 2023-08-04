@@ -1,7 +1,6 @@
 import { Container } from 'typedi';
-import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { INode, IPinData, JsonValue } from 'n8n-workflow';
-import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
+import type { INode, IPinData } from 'n8n-workflow';
+import { NodeApiError, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
@@ -29,14 +28,9 @@ import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHe
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/ResponseHelper';
 import * as utils from '@/utils';
-import { MAX_ITEMS } from '@/constants';
 import type { WorkflowForList } from './workflows.types';
-
-namespace QueryFilters {
-	export type GetAllWorkflows = Pick<FindOptionsWhere<WorkflowEntity>, 'id' | 'name' | 'active'>;
-}
-
-type ParsedJSON = JsonValue;
+import { WorkflowRepository } from '@/databases/repositories';
+import type { QueryFilters } from '@/databases/types';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -108,63 +102,6 @@ export class WorkflowsService {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	private static schemas = {
-		queryFilters: {
-			getWorkflows: {
-				$id: 'GetWorkflowsQueryFilter',
-				type: 'object',
-				properties: {
-					id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
-					name: { type: 'string' },
-					active: { type: 'boolean' },
-				},
-			},
-		},
-	};
-
-	static toQueryFilter(rawFilter?: string): QueryFilters.GetAllWorkflows {
-		if (!rawFilter) return {};
-
-		const parsedFilter = jsonParse<ParsedJSON>(rawFilter, {
-			errorMessage: 'Failed to parse JSON into filter object',
-		});
-
-		if (!utils.isObjectLiteral(parsedFilter)) {
-			throw new Error('Parsed filter is not an object');
-		}
-
-		const schema = WorkflowsService.schemas.queryFilters.getWorkflows;
-
-		const queryFilter = Object.fromEntries(
-			Object.keys(parsedFilter)
-				.filter((field) => Object.keys(schema.properties).includes(field))
-				.map((field) => [field, parsedFilter[field]]),
-		);
-
-		const fitsSchema = jsonSchemaValidate(queryFilter, schema).valid;
-
-		if (!fitsSchema) throw new Error('Parsed filter object does not fit schema');
-
-		return queryFilter;
-	}
-
-	static toQuerySelect(rawSelect: string): FindOptionsSelect<WorkflowEntity> {
-		const parsedSelect = jsonParse<Array<keyof WorkflowEntity>>(rawSelect, {
-			errorMessage: 'Failed to parse JSON into select array',
-		});
-
-		if (!Array.isArray(parsedSelect)) {
-			throw new Error('Parsed select is not an array');
-		}
-
-		const keys = Object.keys(WorkflowsService.schemas.queryFilters.getWorkflows.properties);
-
-		return parsedSelect.reduce<Record<string, boolean>>((acc, field) => {
-			if (!keys.includes(field)) return acc;
-			return (acc[field] = true), acc;
-		}, {});
-	}
-
 	static async getMany(
 		user: User,
 		options?: {
@@ -181,10 +118,10 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		let filter: QueryFilters.GetAllWorkflows;
+		let filter: QueryFilters.GetAllWorkflows = {};
 
 		try {
-			filter = this.toQueryFilter(options?.filter);
+			filter = WorkflowRepository.toQueryFilter(options?.filter);
 		} catch (maybeError) {
 			const error = utils.toError(maybeError);
 
@@ -216,7 +153,7 @@ export class WorkflowsService {
 
 		if (options?.select) {
 			try {
-				select = this.toQuerySelect(options.select);
+				select = WorkflowRepository.toQuerySelect(options.select);
 			} catch (maybeError) {
 				const error = utils.toError(maybeError);
 
@@ -259,10 +196,10 @@ export class WorkflowsService {
 		};
 
 		if (options?.take) {
-			const [skip, take] = [options.skip ?? '0', options.take].map((o) => parseInt(o, 10));
+			const { skip, take } = WorkflowRepository.toPaginationOptions(options.take, options.skip);
 
 			findManyOptions.skip = skip;
-			findManyOptions.take = Math.min(take, MAX_ITEMS);
+			findManyOptions.take = take;
 		}
 
 		return Db.collections.Workflow.findAndCount(findManyOptions);

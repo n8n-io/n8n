@@ -1,6 +1,7 @@
 import type { Logger } from '@/Logger';
 import type { INodeTypes } from 'n8n-workflow';
-import type { QueryRunner, ObjectLiteral } from 'typeorm';
+import type { QueryRunner, ObjectLiteral, FindOptionsWhere } from 'typeorm';
+import type { WorkflowEntity } from './entities/WorkflowEntity';
 
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 
@@ -61,3 +62,7 @@ export interface Migration extends Function {
 }
 
 export type InsertResult = Array<{ insertId: number }>;
+
+export namespace QueryFilters {
+	export type GetAllWorkflows = Pick<FindOptionsWhere<WorkflowEntity>, 'id' | 'name' | 'active'>;
+}

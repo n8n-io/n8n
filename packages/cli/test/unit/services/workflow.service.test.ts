@@ -1,6 +1,5 @@
 import * as Db from '@/Db';
 import config from '@/config';
-import { MAX_ITEMS } from '@/constants';
 import { User } from '@/databases/entities/User';
 import { WorkflowsService } from '@/workflows/workflows.services';
 
@@ -107,7 +106,7 @@ describe('WorkflowService', () => {
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
 			});
 
-			test(`paginate - \`take\` capped at ${MAX_ITEMS}`, async () => {
+			test('paginate - `take` capped at 50', async () => {
 				await WorkflowsService.getMany(user, { skip: '1', take: '51' });
 
 				const findManyOptions = expect.objectContaining({ skip: 1, take: 50 });
@@ -131,59 +130,6 @@ describe('WorkflowService', () => {
 				});
 
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
-			});
-		});
-	});
-
-	describe('toQueryFilter()', () => {
-		describe('should return a query filter', () => {
-			test('handle arg-less call', () => {
-				const filter = WorkflowsService.toQueryFilter();
-				expect(filter).toEqual({});
-			});
-
-			test('parse valid filter', () => {
-				const filter = WorkflowsService.toQueryFilter('{"name":"My Workflow", "active":true}');
-				expect(filter).toEqual({ name: 'My Workflow', active: true });
-			});
-
-			test('ignore invalid filter', () => {
-				const filter = WorkflowsService.toQueryFilter('{"name":"My Workflow","foo":"bar"}');
-				expect(filter).toEqual({ name: 'My Workflow' });
-			});
-
-			test('throw on invalid JSON', () => {
-				const call = () => WorkflowsService.toQueryFilter('{"name":"My Workflow"');
-				expect(call).toThrowError('Failed to parse JSON into filter object');
-			});
-
-			test('throw on non-object JSON for filter', () => {
-				const call = () => WorkflowsService.toQueryFilter('"My Workflow"');
-				expect(call).toThrowError('Parsed filter is not an object');
-			});
-		});
-	});
-
-	describe('toQuerySelect()', () => {
-		describe('should return a query select', () => {
-			test('parse valid select', () => {
-				const select = WorkflowsService.toQuerySelect('["name", "id"]');
-				expect(select).toEqual({ name: true, id: true });
-			});
-
-			test('ignore invalid select', () => {
-				const select = WorkflowsService.toQuerySelect('["name", "foo"]');
-				expect(select).toEqual({ name: true });
-			});
-
-			test('throw on invalid JSON', () => {
-				const call = () => WorkflowsService.toQuerySelect('["name"');
-				expect(call).toThrowError('Failed to parse JSON into select array');
-			});
-
-			test('throw on non-array JSON for select', () => {
-				const call = () => WorkflowsService.toQuerySelect('"name"');
-				expect(call).toThrowError('Parsed select is not an array');
 			});
 		});
 	});
