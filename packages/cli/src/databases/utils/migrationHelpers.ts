@@ -3,12 +3,13 @@ import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
 import type { ObjectLiteral } from 'typeorm';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
+import { createSchemaBuilder } from '@db/dsl';
 import { getLogger } from '@/Logger';
 import { NodeTypes } from '@/NodeTypes';
-import { jsonParse } from 'n8n-workflow';
 
 const logger = getLogger();
 
@@ -99,6 +100,7 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 	dbName,
 	migrationName: migration.name,
 	queryRunner,
+	schemaBuilder: createSchemaBuilder(tablePrefix, queryRunner),
 	nodeTypes: Container.get(NodeTypes),
 	loadSurveyFromDisk,
 	parseJson,
