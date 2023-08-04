@@ -315,7 +315,7 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
-				showNonProdBanner: false
+				showNonProdBanner: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -435,7 +435,9 @@ export class Server extends AbstractServer {
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
 			sourceControl: isSourceControlLicensed(),
-			showNonProdBanner: Container.get(License).isFeatureEnabled(LICENSE_FEATURES.SHOW_NON_PROD_BANNER)
+			showNonProdBanner: Container.get(License).isFeatureEnabled(
+				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
+			),
 		});
 
 		if (isLdapEnabled()) {
