@@ -20,7 +20,7 @@ abstract class TableOperation<R = void> extends LazyPromise<R> {
 export class CreateTable extends TableOperation {
 	private columns: Column[] = [];
 
-	private indicesOn = new Set<TableIndexOptions>();
+	private indices = new Set<TableIndexOptions>();
 
 	private foreignKeys = new Set<TableForeignKeyOptions>();
 
@@ -39,7 +39,7 @@ export class CreateTable extends TableOperation {
 
 	withIndexOn(columnName: string | string[], isUnique = false) {
 		const columnNames = Array.isArray(columnName) ? columnName : [columnName];
-		this.indicesOn.add({ columnNames, isUnique });
+		this.indices.add({ columnNames, isUnique });
 		return this;
 	}
 
@@ -60,12 +60,12 @@ export class CreateTable extends TableOperation {
 
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
-		const { columns, tableName: name, prefix, indicesOn, foreignKeys } = this;
+		const { columns, tableName: name, prefix, indices, foreignKeys } = this;
 		return queryRunner.createTable(
 			new Table({
 				name: `${prefix}${name}`,
 				columns: columns.map((c) => c.toOptions(driver)),
-				...(indicesOn.size ? { indices: [...indicesOn] } : {}),
+				...(indices.size ? { indices: [...indices] } : {}),
 				...(foreignKeys.size ? { foreignKeys: [...foreignKeys] } : {}),
 				...('mysql' in driver ? { engine: 'InnoDB' } : {}),
 			}),

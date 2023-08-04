@@ -41,9 +41,9 @@ export class Column {
 		return this;
 	}
 
-	timestamp(length?: number) {
+	timestamp(msPrecision?: number) {
 		this.type = 'timestamp';
-		this.length = length ?? 'auto';
+		this.length = msPrecision ?? 'auto';
 		return this;
 	}
 
@@ -89,8 +89,8 @@ export class Column {
 			options.type = 'integer';
 		} else if (type === 'boolean' && isMysql) {
 			options.type = 'tinyint(1)';
-		} else if (type === 'timestamp' && !isPostgres) {
-			options.type = 'datetime';
+		} else if (type === 'timestamp') {
+			options.type = isPostgres ? 'timestamptz' : 'datetime';
 		} else if (type === 'json' && isSqlite) {
 			options.type = 'text';
 		}
@@ -109,7 +109,13 @@ export class Column {
 		}
 
 		if (this.defaultValue !== undefined) {
-			options.default = this.defaultValue;
+			if (type === 'timestamp' && this.defaultValue === 'NOW()') {
+				options.default = isSqlite
+					? "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
+					: 'CURRENT_TIMESTAMP(3)';
+			} else {
+				options.default = this.defaultValue;
+			}
 		}
 
 		return options;
