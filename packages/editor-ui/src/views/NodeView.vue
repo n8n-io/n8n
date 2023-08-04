@@ -213,12 +213,12 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 import {
-  useGlobalLinkActions,
-  useCanvasMouseSelect,
-  useMessage,
-  useToast,
-  useTitleChange,
-  useExecutionDebugging,
+	useGlobalLinkActions,
+	useCanvasMouseSelect,
+	useMessage,
+	useToast,
+	useTitleChange,
+	useExecutionDebugging,
 } from '@/composables';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
@@ -356,7 +356,7 @@ export default defineComponent({
 			...useToast(),
 			...useMessage(),
 			...useUniqueNodeName(),
-      ...useExecutionDebugging(),
+			...useExecutionDebugging(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
@@ -2615,19 +2615,19 @@ export default defineComponent({
 						});
 					}
 
-          if (workflow) {
-            this.titleSet(workflow.name, 'IDLE');
+					if (workflow) {
+						this.titleSet(workflow.name, 'IDLE');
 
-            if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-              this.titleSet(workflow.name, 'DEBUG');
-              const execution = await this.workflowsStore.getExecution(
-                  this.$route.params.executionId as string,
-              );
-              workflow = await this.pinExecutionData(workflow, execution);
-            }
+						if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
+							this.titleSet(workflow.name, 'DEBUG');
+							const execution = await this.workflowsStore.getExecution(
+								this.$route.params.executionId as string,
+							);
+							workflow = await this.pinExecutionData(workflow, execution);
+						}
 
-            await this.openWorkflow(workflow);
-          }
+						await this.openWorkflow(workflow);
+					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow
 					await this.newWorkflow();
