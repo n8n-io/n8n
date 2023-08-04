@@ -1,9 +1,8 @@
 <template>
-	<div :class="$style.sqlEditor" v-click-outside="onBlur">
-		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
+	<div :class="$style.sqlEditor" v-on-click-outside="onBlur">
+		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
-			:value="query"
 			:isReadOnly="isReadOnly"
 			:visible="isFocused"
 			:hoveringItemNumber="hoveringItemNumber"
@@ -17,6 +16,7 @@ import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocompl
 import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
+import type { Line } from '@codemirror/state';
 import type { Extension } from '@codemirror/state';
 import {
 	dropCursor,
@@ -26,6 +26,7 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	MSSQL,
 	MySQL,
@@ -72,7 +73,7 @@ export default defineComponent({
 	},
 	mixins: [expressionManager],
 	props: {
-		query: {
+		modelValue: {
 			type: String,
 			required: true,
 		},
@@ -102,7 +103,7 @@ export default defineComponent({
 				changes: {
 					from: 0,
 					to: this.editor.state.doc.length,
-					insert: this.query,
+					insert: this.modelValue,
 				},
 			});
 
@@ -165,13 +166,15 @@ export default defineComponent({
 					foldGutter(),
 					dropCursor(),
 					bracketMatching(),
-					EditorView.updateListener.of((viewUpdate) => {
+					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 						if (!viewUpdate.docChanged || !this.editor) return;
+
+						this.editorState = this.editor.state;
 
 						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
 						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 
-						this.$emit('valueChanged', this.doc);
+						this.$emit('update:modelValue', this.editor?.state.doc.toString());
 					}),
 				);
 			}
@@ -181,26 +184,38 @@ export default defineComponent({
 	mounted() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
-		const state = EditorState.create({ doc: this.query, extensions: this.extensions });
+		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
+		this.editorState = this.editor.state;
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 	},
 	methods: {
 		onBlur() {
 			this.isFocused = false;
 		},
-		highlightLine(line: number | 'final') {
+		line(lineNumber: number): Line | null {
+			try {
+				return this.editor?.state.doc.line(lineNumber) ?? null;
+			} catch {
+				return null;
+			}
+		},
+		highlightLine(lineNumber: number | 'final') {
 			if (!this.editor) return;
 
-			if (line === 'final') {
+			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: this.query.length },
+					selection: { anchor: this.modelValue.length },
 				});
 				return;
 			}
 
+			const line = this.line(lineNumber);
+
+			if (!line) return;
+
 			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(line).from },
+				selection: { anchor: line.from },
 			});
 		},
 	},

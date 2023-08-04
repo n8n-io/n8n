@@ -5,7 +5,7 @@
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
 	>
-		<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture"></div>
+		<div ref="codeNodeEditor" class="code-node-editor-input"></div>
 		<n8n-button
 			v-if="aiButtonEnabled && (isEditorHovered || isEditorFocused)"
 			size="small"
@@ -24,7 +24,7 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
 import type { LanguageSupport } from '@codemirror/language';
-import type { Extension } from '@codemirror/state';
+import type { Extension, Line } from '@codemirror/state';
 import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
@@ -66,7 +66,7 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		value: {
+		modelValue: {
 			type: String,
 		},
 	},
@@ -154,18 +154,29 @@ export default defineComponent({
 				changes: { from: 0, to: this.content.length, insert: this.placeholder },
 			});
 		},
-		highlightLine(line: number | 'final') {
+		line(lineNumber: number): Line | null {
+			try {
+				return this.editor?.state.doc.line(lineNumber) ?? null;
+			} catch {
+				return null;
+			}
+		},
+		highlightLine(lineNumber: number | 'final') {
 			if (!this.editor) return;
 
-			if (line === 'final') {
+			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: this.content.length },
+					selection: { anchor: (this.modelValue ?? this.content).length },
 				});
 				return;
 			}
 
+			const line = this.line(lineNumber);
+
+			if (!line) return;
+
 			this.editor.dispatch({
-				selection: { anchor: this.editor.state.doc.line(line).from },
+				selection: { anchor: line.from },
 			});
 		},
 		trackCompletion(viewUpdate: ViewUpdate) {
@@ -202,15 +213,15 @@ export default defineComponent({
 			} catch {}
 		},
 	},
-	destroyed() {
+	beforeUnmount() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
 	},
 	mounted() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
 		// empty on first load, default param value
-		if (!this.value) {
-			this.$emit('valueChanged', this.placeholder);
+		if (!this.modelValue) {
+			this.$emit('update:modelValue', this.placeholder);
 		}
 
 		const { isReadOnly, language } = this;
@@ -242,7 +253,7 @@ export default defineComponent({
 
 					this.trackCompletion(viewUpdate);
 
-					this.$emit('valueChanged', this.editor?.state.doc.toString());
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
 				}),
 			);
 		}
@@ -251,7 +262,7 @@ export default defineComponent({
 		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
 
 		const state = EditorState.create({
-			doc: this.value || this.placeholder,
+			doc: this.modelValue || this.placeholder,
 			extensions,
 		});
 

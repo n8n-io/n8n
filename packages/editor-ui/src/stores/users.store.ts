@@ -226,15 +226,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await sendForgotPasswordEmail(rootStore.getRestApiContext, params);
 		},
-		async validatePasswordToken(params: { token: string; userId: string }): Promise<void> {
+		async validatePasswordToken(params: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await validatePasswordToken(rootStore.getRestApiContext, params);
 		},
-		async changePassword(params: {
-			token: string;
-			password: string;
-			userId: string;
-		}): Promise<void> {
+		async changePassword(params: { token: string; password: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await changePassword(rootStore.getRestApiContext, params);
 		},

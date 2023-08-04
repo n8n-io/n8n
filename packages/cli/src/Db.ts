@@ -1,8 +1,5 @@
-/* eslint-disable import/no-mutable-exports */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-case-declarations */
-/* eslint-disable @typescript-eslint/naming-convention */
+
 import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
@@ -41,7 +38,6 @@ import {
 	TagRepository,
 	UserRepository,
 	VariablesRepository,
-	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
@@ -173,24 +169,27 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 
 	collections.AuthIdentity = Container.get(AuthIdentityRepository);
 	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
-	collections.Credentials = Container.get(CredentialsRepository);
 	collections.EventDestinations = Container.get(EventDestinationsRepository);
 	collections.Execution = Container.get(ExecutionRepository);
 	collections.ExecutionData = Container.get(ExecutionDataRepository);
 	collections.ExecutionMetadata = Container.get(ExecutionMetadataRepository);
 	collections.InstalledNodes = Container.get(InstalledNodesRepository);
 	collections.InstalledPackages = Container.get(InstalledPackagesRepository);
-	collections.Role = Container.get(RoleRepository);
-	collections.Settings = Container.get(SettingsRepository);
 	collections.SharedCredentials = Container.get(SharedCredentialsRepository);
 	collections.SharedWorkflow = Container.get(SharedWorkflowRepository);
 	collections.Tag = Container.get(TagRepository);
-	collections.User = Container.get(UserRepository);
 	collections.Variables = Container.get(VariablesRepository);
-	collections.Webhook = Container.get(WebhookRepository);
-	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
+
+	/**
+	 * @important Do not remove these collections until cloud hooks are backwards compatible.
+	 */
+	collections.Role = Container.get(RoleRepository);
+	collections.User = Container.get(UserRepository);
+	collections.Settings = Container.get(SettingsRepository);
+	collections.Credentials = Container.get(CredentialsRepository);
+	collections.Workflow = Container.get(WorkflowRepository);
 }
 
 export async function migrate() {

@@ -10,7 +10,7 @@
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
-							:value="workflowName"
+							:modelValue="workflowName"
 							:previewValue="shortenedName"
 							:isEditEnabled="isNameEditEnabled"
 							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
@@ -26,20 +26,18 @@
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<div v-if="isTagsEditEnabled && !readOnly">
-				<TagsDropdown
-					:createEnabled="true"
-					:currentTagIds="appliedTagIds"
-					:eventBus="tagsEditBus"
-					@blur="onTagsBlur"
-					@update="onTagsUpdate"
-					@esc="onTagsEditEsc"
-					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
-					ref="dropdown"
-					class="tags-edit"
-					data-test-id="workflow-tags-dropdown"
-				/>
-			</div>
+			<TagsDropdown
+				v-if="isTagsEditEnabled && !readOnly"
+				v-model="appliedTagIds"
+				:createEnabled="true"
+				:eventBus="tagsEditBus"
+				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
+				ref="dropdown"
+				class="tags-edit"
+				data-test-id="workflow-tags-dropdown"
+				@blur="onTagsBlur"
+				@esc="onTagsEditEsc"
+			/>
 			<div v-else-if="currentWorkflowTagIds.length === 0 && !readOnly">
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
@@ -58,67 +56,65 @@
 		<span v-else class="tags"></span>
 
 		<PushConnectionTracker class="actions">
-			<template>
-				<span class="activator">
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
-				</span>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-button
-						type="secondary"
-						class="mr-2xs"
-						@click="onShareButtonClick"
-						data-test-id="workflow-share-button"
-					>
-						{{ $locale.baseText('workflowDetails.share') }}
-					</n8n-button>
-					<template #fallback>
-						<n8n-tooltip>
-							<n8n-button type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
-								{{ $locale.baseText('workflowDetails.share') }}
-							</n8n-button>
-							<template #content>
-								<i18n
-									:path="
-										contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
-									"
-									tag="span"
-								>
-									<template #action>
-										<a @click="goToUpgrade">
-											{{
-												$locale.baseText(
-													contextBasedTranslationKeys.workflows.sharing.unavailable.button,
-												)
-											}}
-										</a>
-									</template>
-								</i18n>
-							</template>
-						</n8n-tooltip>
-					</template>
-				</enterprise-edition>
-				<SaveButton
-					type="primary"
-					:saved="!isDirty && !isNewWorkflow"
-					:disabled="isSaveButtonDisabled"
-					data-test-id="workflow-save-button"
-					@click="onSaveButtonClick"
+			<span class="activator">
+				<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
+			</span>
+			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<n8n-button
+					type="secondary"
+					class="mr-2xs"
+					@click="onShareButtonClick"
+					data-test-id="workflow-share-button"
+				>
+					{{ $locale.baseText('workflowDetails.share') }}
+				</n8n-button>
+				<template #fallback>
+					<n8n-tooltip>
+						<n8n-button type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
+							{{ $locale.baseText('workflowDetails.share') }}
+						</n8n-button>
+						<template #content>
+							<i18n-t
+								:keypath="
+									contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
+								"
+								tag="span"
+							>
+								<template #action>
+									<a @click="goToUpgrade">
+										{{
+											$locale.baseText(
+												contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+											)
+										}}
+									</a>
+								</template>
+							</i18n-t>
+						</template>
+					</n8n-tooltip>
+				</template>
+			</enterprise-edition>
+			<SaveButton
+				type="primary"
+				:saved="!isDirty && !isNewWorkflow"
+				:disabled="isSaveButtonDisabled"
+				data-test-id="workflow-save-button"
+				@click="onSaveButtonClick"
+			/>
+			<div :class="$style.workflowMenuContainer">
+				<input
+					:class="$style.hiddenInput"
+					type="file"
+					ref="importFile"
+					data-test-id="workflow-import-input"
+					@change="handleFileImport()"
 				/>
-				<div :class="$style.workflowMenuContainer">
-					<input
-						:class="$style.hiddenInput"
-						type="file"
-						ref="importFile"
-						data-test-id="workflow-import-input"
-						@change="handleFileImport()"
-					/>
-					<n8n-action-dropdown
-						:items="workflowMenuItems"
-						data-test-id="workflow-menu"
-						@select="onWorkflowMenuSelect"
-					/>
-				</div>
-			</template>
+				<n8n-action-dropdown
+					:items="workflowMenuItems"
+					data-test-id="workflow-menu"
+					@select="onWorkflowMenuSelect"
+				/>
+			</div>
 		</PushConnectionTracker>
 	</div>
 </template>
@@ -152,8 +148,8 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { useTitleChange, useToast, useMessage, useLoadingService } from '@/composables';
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import { useTitleChange, useToast, useMessage } from '@/composables';
+import type { MessageBoxInputData } from 'element-plus';
 import {
 	useUIStore,
 	useSettingsStore,
@@ -166,9 +162,10 @@ import {
 } from '@/stores';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useCloudPlanStore } from '@/stores';
 import { nodeViewEventBus } from '@/event-bus';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -181,7 +178,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 
 export default defineComponent({
 	name: 'WorkflowDetails',
-	mixins: [workflowHelpers],
+	mixins: [workflowHelpers, genericHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
@@ -199,10 +196,7 @@ export default defineComponent({
 		},
 	},
 	setup() {
-		const loadingService = useLoadingService();
-
 		return {
-			loadingService,
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
@@ -246,6 +240,9 @@ export default defineComponent({
 		},
 		isDirty(): boolean {
 			return this.uiStore.stateIsDirty;
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		currentWorkflowTagIds(): string[] {
 			return this.workflowsStore.workflowTags;
@@ -315,7 +312,8 @@ export default defineComponent({
 				disabled:
 					!this.sourceControlStore.isEnterpriseSourceControlEnabled ||
 					!this.onWorkflowPage ||
-					this.onExecutionsTab,
+					this.onExecutionsTab ||
+					this.readOnlyEnv,
 			});
 
 			actions.push({
@@ -368,31 +366,28 @@ export default defineComponent({
 			});
 		},
 		onTagsEditEnable() {
-			this.$data.appliedTagIds = this.currentWorkflowTagIds;
-			this.$data.isTagsEditEnabled = true;
+			this.appliedTagIds = this.currentWorkflowTagIds;
+			this.isTagsEditEnabled = true;
 
 			setTimeout(() => {
 				// allow name update to occur before disabling name edit
-				this.$data.isNameEditEnabled = false;
-				this.$data.tagsEditBus.emit('focus');
+				this.isNameEditEnabled = false;
+				this.tagsEditBus.emit('focus');
 			}, 0);
-		},
-		async onTagsUpdate(tags: string[]) {
-			this.$data.appliedTagIds = tags;
 		},
 
 		async onTagsBlur() {
 			const current = this.currentWorkflowTagIds;
-			const tags = this.$data.appliedTagIds;
+			const tags = this.appliedTagIds;
 			if (!hasChanged(current, tags)) {
-				this.$data.isTagsEditEnabled = false;
+				this.isTagsEditEnabled = false;
 
 				return;
 			}
-			if (this.$data.tagsSaving) {
+			if (this.tagsSaving) {
 				return;
 			}
-			this.$data.tagsSaving = true;
+			this.tagsSaving = true;
 
 			const saved = await this.saveCurrentWorkflow({ tags });
 			this.$telemetry.track('User edited workflow tags', {
@@ -400,26 +395,32 @@ export default defineComponent({
 				new_tag_count: tags.length,
 			});
 
-			this.$data.tagsSaving = false;
+			this.tagsSaving = false;
 			if (saved) {
-				this.$data.isTagsEditEnabled = false;
+				this.isTagsEditEnabled = false;
 			}
 		},
 		onTagsEditEsc() {
-			this.$data.isTagsEditEnabled = false;
+			this.isTagsEditEnabled = false;
 		},
 		onNameToggle() {
-			this.$data.isNameEditEnabled = !this.$data.isNameEditEnabled;
-			if (this.$data.isNameEditEnabled) {
-				if (this.$data.isTagsEditEnabled) {
+			this.isNameEditEnabled = !this.isNameEditEnabled;
+			if (this.isNameEditEnabled) {
+				if (this.isTagsEditEnabled) {
 					// @ts-ignore
 					void this.onTagsBlur();
 				}
 
-				this.$data.isTagsEditEnabled = false;
+				this.isTagsEditEnabled = false;
 			}
 		},
-		async onNameSubmit(name: string, cb: (saved: boolean) => void) {
+		async onNameSubmit({
+			name,
+			onSubmit: cb,
+		}: {
+			name: string;
+			onSubmit: (saved: boolean) => void;
+		}) {
 			const newName = name.trim();
 			if (!newName) {
 				this.showMessage({
@@ -433,7 +434,7 @@ export default defineComponent({
 			}
 
 			if (newName === this.workflowName) {
-				this.$data.isNameEditEnabled = false;
+				this.isNameEditEnabled = false;
 
 				cb(true);
 				return;
@@ -441,7 +442,7 @@ export default defineComponent({
 
 			const saved = await this.saveCurrentWorkflow({ name });
 			if (saved) {
-				this.$data.isNameEditEnabled = false;
+				this.isNameEditEnabled = false;
 			}
 			cb(saved);
 		},
@@ -531,25 +532,20 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.PUSH: {
-					this.loadingService.startLoading();
+					this.startLoading();
 					try {
 						await this.onSaveButtonClick();
 
 						const status = await this.sourceControlStore.getAggregatedStatus();
-						const workflowStatus = status.filter(
-							(s) =>
-								(s.id === this.currentWorkflowId && s.type === 'workflow') || s.type !== 'workflow',
-						);
 
 						this.uiStore.openModalWithData({
 							name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-							data: { eventBus: this.eventBus, status: workflowStatus },
+							data: { eventBus: this.eventBus, status },
 						});
 					} catch (error) {
 						this.showError(error, this.$locale.baseText('error'));
 					} finally {
-						this.loadingService.stopLoading();
-						this.loadingService.setLoadingText(this.$locale.baseText('genericHelpers.loading'));
+						this.stopLoading();
 					}
 
 					break;
@@ -606,8 +602,8 @@ export default defineComponent({
 	},
 	watch: {
 		currentWorkflowId() {
-			this.$data.isTagsEditEnabled = false;
-			this.$data.isNameEditEnabled = false;
+			this.isTagsEditEnabled = false;
+			this.isNameEditEnabled = false;
 		},
 	},
 });
@@ -661,12 +657,16 @@ $--header-spacing: 20px;
 }
 
 .tags {
+	display: flex;
+	align-items: center;
+	width: 100%;
 	flex: 1;
 	margin-right: $--header-spacing;
 }
 
 .tags-edit {
 	min-width: 100px;
+	width: 100%;
 	max-width: 460px;
 }
 

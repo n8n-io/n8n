@@ -1,5 +1,6 @@
 <template>
 	<Modal
+		id="tags-manager-modal"
 		:title="$locale.baseText('tagsManager.manageTags')"
 		:name="TAGS_MANAGER_MODAL_KEY"
 		:eventBus="modalBus"
@@ -39,7 +40,7 @@ import Modal from '@/components/Modal.vue';
 import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'TagsManager',
@@ -71,9 +72,7 @@ export default defineComponent({
 			return this.tagsStore.isLoading;
 		},
 		tags(): ITag[] {
-			return this.$data.tagIds
-				.map((tagId: string) => this.tagsStore.getTagById(tagId))
-				.filter(Boolean); // if tag is deleted from store
+			return this.tagIds.map((tagId: string) => this.tagsStore.getTagById(tagId)).filter(Boolean); // if tag is deleted from store
 		},
 		hasTags(): boolean {
 			return this.tags.length > 0;
@@ -81,11 +80,11 @@ export default defineComponent({
 	},
 	methods: {
 		onEnableCreate() {
-			this.$data.isCreating = true;
+			this.isCreating = true;
 		},
 
 		onDisableCreate() {
-			this.$data.isCreating = false;
+			this.isCreating = false;
 		},
 
 		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
@@ -95,7 +94,7 @@ export default defineComponent({
 				}
 
 				const newTag = await this.tagsStore.create(name);
-				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
+				this.tagIds = [newTag.id].concat(this.tagIds);
 				cb(newTag);
 			} catch (error) {
 				const escapedName = escape(name);
@@ -154,7 +153,7 @@ export default defineComponent({
 					throw new Error(this.$locale.baseText('tagsManager.couldNotDeleteTag'));
 				}
 
-				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
+				this.tagIds = this.tagIds.filter((tagId: string) => tagId !== id);
 
 				cb(deleted);
 

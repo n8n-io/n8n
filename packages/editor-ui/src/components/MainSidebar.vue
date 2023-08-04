@@ -29,7 +29,7 @@
 			<template #beforeLowerMenu>
 				<ExecutionsUsage
 					:cloud-plan-data="currentPlanAndUsageData"
-					v-if="!isCollapsed && userIsTrialing"
+					v-if="fullyExpanded && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
 				<div>
@@ -111,7 +111,7 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import {
 	useUIStore,
@@ -138,6 +138,7 @@ export default defineComponent({
 	setup(props) {
 		return {
 			...useMessage(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
 	},
@@ -202,10 +203,11 @@ export default defineComponent({
 			};
 
 			if (this.sourceControlStore.preferences.branchReadOnly) {
-				workflows.secondaryIcon = { name: 'lock' };
-				workflows.tooltip = {
-					content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-					bindTo: 'secondaryIcon',
+				workflows.secondaryIcon = {
+					name: 'lock',
+					tooltip: {
+						content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
+					},
 				};
 			}
 
@@ -335,23 +337,26 @@ export default defineComponent({
 			};
 		},
 	},
-	async mounted() {
+	mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
 			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 		}
-		if (window.innerWidth < 900 || this.uiStore.isNodeView) {
-			this.uiStore.sidebarMenuCollapsed = true;
-		} else {
-			this.uiStore.sidebarMenuCollapsed = false;
-		}
-		await Vue.nextTick();
-		this.fullyExpanded = !this.isCollapsed;
+
+		void this.$nextTick(() => {
+			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
+				this.uiStore.sidebarMenuCollapsed = true;
+			} else {
+				this.uiStore.sidebarMenuCollapsed = false;
+			}
+
+			this.fullyExpanded = !this.isCollapsed;
+		});
 	},
 	created() {
 		window.addEventListener('resize', this.onResize);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('resize', this.onResize);
 	},
 	methods: {
@@ -425,9 +430,9 @@ export default defineComponent({
 				case 'settings': {
 					const defaultRoute = this.findFirstAccessibleSettingsRoute();
 					if (defaultRoute) {
-						const routeProps = this.$router.resolve({ name: defaultRoute });
+						const route = this.$router.resolve({ name: defaultRoute });
 						if (this.$router.currentRoute.name !== defaultRoute) {
-							this.goToRoute(routeProps.route.path);
+							this.goToRoute(route.path);
 						}
 					}
 					break;
@@ -450,6 +455,7 @@ export default defineComponent({
 		},
 		goToRoute(route: string | { name: string }) {
 			this.$router.push(route).catch((failure) => {
+				console.log(failure);
 				// Catch navigation failures caused by route guards
 				if (!isNavigationFailure(failure)) {
 					console.error(failure);
@@ -457,37 +463,33 @@ export default defineComponent({
 			});
 		},
 		findFirstAccessibleSettingsRoute() {
-			// Get all settings rotes by filtering them by pageCategory property
 			const settingsRoutes = this.$router
 				.getRoutes()
-				.filter(
-					(category) =>
-						category.meta.telemetry && category.meta.telemetry.pageCategory === 'settings',
-				)
-				.map((route) => route.name || '');
-			let defaultSettingsRoute = null;
+				.find((route) => route.path === '/settings')!
+				.children.map((route) => route.name || '');
 
+			let defaultSettingsRoute = null;
 			for (const route of settingsRoutes) {
 				if (this.canUserAccessRouteByName(route)) {
 					defaultSettingsRoute = route;
 					break;
 				}
 			}
+
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
 			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
 		},
-		onResizeEnd(event: UIEvent) {
+		async onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;
-			this.checkWidthAndAdjustSidebar(browserWidth);
+			await this.checkWidthAndAdjustSidebar(browserWidth);
 		},
-		checkWidthAndAdjustSidebar(width: number) {
+		async checkWidthAndAdjustSidebar(width: number) {
 			if (width < 900) {
 				this.uiStore.sidebarMenuCollapsed = true;
-				Vue.nextTick(() => {
-					this.fullyExpanded = !this.isCollapsed;
-				});
+				await this.$nextTick();
+				this.fullyExpanded = !this.isCollapsed;
 			}
 		},
 	},

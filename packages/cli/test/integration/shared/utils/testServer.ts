@@ -1,6 +1,5 @@
 import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
-import bodyParser from 'body-parser';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 import type superagent from 'superagent';
@@ -28,9 +27,10 @@ import {
 	NodesController,
 	OwnerController,
 	PasswordResetController,
+	TagsController,
 	UsersController,
 } from '@/controllers';
-import { setupAuthMiddlewares } from '@/middlewares';
+import { rawBody, jsonParser, setupAuthMiddlewares } from '@/middlewares';
 
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -49,6 +49,8 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
+import { JwtService } from '@/services/jwt.service';
+import { RoleService } from '@/services/role.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -91,10 +93,8 @@ function createAgent(app: express.Application, options?: { auth: boolean; user: 
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		try {
-			const { token } = issueJWT(options.user);
-			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
-		} catch {}
+		const { token } = issueJWT(options.user);
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
 }
@@ -117,6 +117,9 @@ export const setupTestServer = ({
 	enabledFeatures,
 }: SetupProps): TestServer => {
 	const app = express();
+	app.use(rawBody);
+	app.use(cookieParser());
+
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
@@ -135,10 +138,6 @@ export const setupTestServer = ({
 		mockInstance(InternalHooks);
 		mockInstance(PostHogClient);
 
-		app.use(bodyParser.json());
-		app.use(bodyParser.urlencoded({ extended: true }));
-		app.use(cookieParser());
-
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -152,6 +151,8 @@ export const setupTestServer = ({
 		}
 
 		if (!endpointGroups) return;
+
+		app.use(jsonParser);
 
 		const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
@@ -181,6 +182,7 @@ export const setupTestServer = ({
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
+			const jwtService = Container.get(JwtService);
 			const repositories = Db.collections;
 
 			for (const group of functionEndpoints) {
@@ -237,6 +239,7 @@ export const setupTestServer = ({
 								internalHooks,
 								mailer,
 								repositories,
+								jwtService,
 							}),
 						);
 						break;
@@ -259,8 +262,18 @@ export const setupTestServer = ({
 								repositories,
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
+								jwtService,
+								roleService: Container.get(RoleService),
 							}),
 						);
+						break;
+					case 'tags':
+						registerController(
+							app,
+							config,
+							new TagsController({ config, externalHooks, repositories }),
+						);
+						break;
 				}
 			}
 		}

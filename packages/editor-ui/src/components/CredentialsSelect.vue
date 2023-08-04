@@ -4,14 +4,14 @@
 			<n8n-select
 				:size="inputSize"
 				filterable
-				:value="displayValue"
+				:modelValue="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
 				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				ref="innerSelect"
-				@change="(value) => $emit('valueChanged', value)"
+				@update:modelValue="(value) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"

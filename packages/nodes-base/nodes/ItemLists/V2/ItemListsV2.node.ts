@@ -1207,7 +1207,7 @@ return 0;`,
 						({
 							json: { ...item.json, __INDEX: index },
 							pairedItem: { item: index },
-						} as INodeExecutionData),
+						}) as INodeExecutionData,
 				);
 				//sort items using the compare keys
 				newItems.sort((a, b) => {

@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
@@ -14,7 +12,6 @@ import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
@@ -26,6 +23,7 @@ import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
 
 export const workflowsController = express.Router();
 
@@ -81,7 +79,7 @@ workflowsController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -169,8 +167,7 @@ workflowsController.get(
 
 		// Do a very basic check if it is really a n8n-workflow-json
 		if (
-			workflowData === undefined ||
-			workflowData.nodes === undefined ||
+			workflowData?.nodes === undefined ||
 			!Array.isArray(workflowData.nodes) ||
 			workflowData.connections === undefined ||
 			typeof workflowData.connections !== 'object' ||

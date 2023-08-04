@@ -48,7 +48,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		workflowPage.actions.setWorkflowName('Workflow W1');
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.actions.addNodeToCanvas('Notion', true, true);
-		ndv.getters.credentialInput().should('contain', 'Credential C1');
+		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C1');
 		ndv.actions.close();
 
 		workflowPage.actions.openShareModal();
@@ -69,9 +69,9 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
-		credentialsModal.getters.newCredentialTypeOption('Airtable API').click();
+		credentialsModal.getters.newCredentialTypeOption('Airtable Personal Access Token API').click();
 		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
+		credentialsModal.getters.connectionParameter('Access Token').type('1234567890');
 		credentialsModal.actions.setName('Credential C2');
 		credentialsModal.actions.changeTab('Sharing');
 		credentialsModal.actions.addUser(INSTANCE_OWNER.email);
@@ -87,16 +87,12 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		workflowsPage.getters.workflowCards().should('have.length', 1);
 		workflowsPage.getters.workflowCard('Workflow W1').click();
 		workflowPage.actions.addNodeToCanvas('Airtable', true, true);
-		ndv.getters.credentialInput().should('contain', 'Credential C2');
+		ndv.getters.credentialInput().find('input').should('have.value', 'Credential C2');
 		ndv.actions.close();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
 		workflowPage.actions.openNode('Notion');
-		ndv.getters
-			.credentialInput()
-			.find('input')
-			.should('have.value', 'Credential C1')
-			.should('be.disabled');
+		ndv.getters.credentialInput().should('have.value', 'Credential C1').should('be.disabled');
 		ndv.actions.close();
 	});
 
@@ -116,11 +112,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		workflowsPage.getters.workflowCards().should('have.length', 2);
 		workflowsPage.getters.workflowCard('Workflow W1').click();
 		workflowPage.actions.openNode('Notion');
-		ndv.getters
-			.credentialInput()
-			.find('input')
-			.should('have.value', 'Credential C1')
-			.should('be.disabled');
+		ndv.getters.credentialInput().should('have.value', 'Credential C1').should('be.disabled');
 		ndv.actions.close();
 
 		cy.waitForLoad();

@@ -15,6 +15,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
+import { useUIStore } from '@/stores';
 
 /*
 	Canvas constants and functions.

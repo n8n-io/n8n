@@ -3,7 +3,6 @@ import config from '@/config';
 import * as Db from '@/Db';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import { License } from '@/License';
 import { AuthError, InternalServerError } from '@/ResponseHelper';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
@@ -20,6 +19,7 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
+import { RoleService } from '@/services/role.service';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -97,10 +97,11 @@ export function generatePassword(): string {
 export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
 	const user = new User();
 	const authIdentity = new AuthIdentity();
-	user.email = attributes.email;
+	const lowerCasedEmail = attributes.email?.toLowerCase() ?? '';
+	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	user.globalRole = await Container.get(RoleService).findGlobalMemberRole();
 	// generates a password that is not used or known to the user
 	user.password = await hashPassword(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;

@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
 	position: absolute;
 	width: 210px;
 	height: 42px;
-	bottom: 42px;
+	bottom: var(--spacing-2xl);
 	left: 35px;
 	line-height: 25px;
 	color: #444;

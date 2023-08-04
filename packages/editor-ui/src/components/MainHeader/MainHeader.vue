@@ -41,7 +41,9 @@ export default defineComponent({
 	mixins: [pushConnection, workflowHelpers],
 	setup(props) {
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowHelpers.setup?.(props),
 		};
 	},
@@ -91,7 +93,7 @@ export default defineComponent({
 		// Initialize the push connection
 		this.pushConnect();
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.pushDisconnect();
 	},
 	watch: {
@@ -169,6 +171,7 @@ export default defineComponent({
 }
 
 .top-menu {
+	position: relative;
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;

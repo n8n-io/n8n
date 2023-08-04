@@ -61,6 +61,7 @@ export class E2EController {
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
+		[LICENSE_FEATURES.WORKFLOW_HISTORY]: false,
 	};
 
 	constructor(
@@ -76,7 +77,6 @@ export class E2EController {
 
 	@Post('/reset')
 	async reset(req: ResetRequest) {
-		config.set('ui.banners.v1.dismissed', true);
 		this.resetFeatures();
 		await this.resetLogStreaming();
 		await this.removeActiveWorkflows();
@@ -131,7 +131,7 @@ export class E2EController {
 		];
 
 		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }] = await this.roleRepo.save(
-			roles.map(([name, scope], index) => ({ name, scope, id: index.toString() })),
+			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
 		);
 
 		const users = [];
@@ -151,6 +151,8 @@ export class E2EController {
 				}),
 			);
 		}
+
+		console.log('users', users);
 
 		await this.userRepo.insert(users);
 

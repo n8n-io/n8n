@@ -1,6 +1,6 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
-import { BASE_URL, N8N_AUTH_COOKIE } from '../constants';
+import { BACKEND_BASE_URL, N8N_AUTH_COOKIE } from '../constants';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
@@ -41,24 +41,31 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	Cypress.session.clearAllSavedSessions();
-	cy.session([email, password], () => cy.request('POST', '/rest/login', { email, password }), {
-		validate() {
-			cy.getCookie(N8N_AUTH_COOKIE).should('exist');
+	cy.session(
+		[email, password],
+		() => cy.request('POST', `${BACKEND_BASE_URL}/rest/login`, { email, password }),
+		{
+			validate() {
+				cy.getCookie(N8N_AUTH_COOKIE).should('exist');
+			},
 		},
-	});
+	);
 });
 
 Cypress.Commands.add('signout', () => {
-	cy.request('POST', '/rest/logout');
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/logout`);
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 
 Cypress.Commands.add('interceptREST', (method, url) => {
-	cy.intercept(method, `http://localhost:5678/rest${url}`);
+	cy.intercept(method, `${BACKEND_BASE_URL}/rest${url}`);
 });
 
 const setFeature = (feature: string, enabled: boolean) =>
-	cy.request('PATCH', `${BASE_URL}/rest/e2e/feature`, { feature: `feat:${feature}`, enabled });
+	cy.request('PATCH', `${BACKEND_BASE_URL}/rest/e2e/feature`, {
+		feature: `feat:${feature}`,
+		enabled,
+	});
 
 Cypress.Commands.add('enableFeature', (feature: string) => setFeature(feature, true));
 Cypress.Commands.add('disableFeature', (feature): string => setFeature(feature, false));
@@ -96,19 +103,36 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 Cypress.Commands.add('drag', (selector, pos, options) => {
 	const index = options?.index || 0;
 	const [xDiff, yDiff] = pos;
-	const element = cy.get(selector).eq(index);
+	const element = typeof selector === 'string' ? cy.get(selector).eq(index) : selector;
 	element.should('exist');
 
-	const originalLocation = Cypress.$(selector)[index].getBoundingClientRect();
-
-	element.trigger('mousedown');
-	element.trigger('mousemove', {
-		which: 1,
-		pageX: options?.abs ? xDiff : originalLocation.right + xDiff,
-		pageY: options?.abs ? yDiff : originalLocation.top + yDiff,
-		force: true,
+	element.then(([$el]) => {
+		const originalLocation = $el.getBoundingClientRect();
+		const newPosition = {
+			x: options?.abs ? xDiff : originalLocation.right + xDiff,
+			y: options?.abs ? yDiff : originalLocation.top + yDiff,
+		}
+		if(options?.realMouse) {
+			element.realMouseDown();
+			element.realMouseMove(newPosition.x, newPosition.y);
+			element.realMouseUp();
+		} else {
+			element.trigger('mousedown', {force: true});
+			element.trigger('mousemove', {
+				which: 1,
+				pageX: newPosition.x,
+				pageY: newPosition.y,
+				force: true,
+			});
+			if (options?.clickToFinish) {
+				// Click to finish the drag
+				// For some reason, mouseup isn't working when moving nodes
+				cy.get('body').click(newPosition.x, newPosition.y);
+			} else {
+				element.trigger('mouseup', {force: true});
+			}
+		}
 	});
-	element.trigger('mouseup', { force: true });
 });
 
 Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {

@@ -754,7 +754,6 @@ export const workflowStoreSetupFactory = () => ({
 			][sourceData.index]) {
 				for (propertyName of checkProperties) {
 					if (
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]
 					) {
 						continue connectionLoop;
@@ -966,6 +965,7 @@ export const workflowStoreSetupFactory = () => ({
 		},
 
 		removeNode(node: INodeUi): void {
+			const uiStore = useUIStore();
 			const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = this.nodeMetadata;
 			this.nodeMetadata = remainingNodeMetadata;
 
@@ -979,8 +979,11 @@ export const workflowStoreSetupFactory = () => ({
 
 			for (let i = 0; i < this.workflow.nodes.length; i++) {
 				if (this.workflow.nodes[i].name === node.name) {
-					this.workflow.nodes.splice(i, 1);
-					const uiStore = useUIStore();
+					this.workflow = {
+						...this.workflow,
+						nodes: [...this.workflow.nodes.slice(0, i), ...this.workflow.nodes.slice(i + 1)],
+					};
+
 					uiStore.stateIsDirty = true;
 					return;
 				}
@@ -1137,6 +1140,7 @@ export const workflowStoreSetupFactory = () => ({
 
 		pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
 			if (!this.workflow.pinData || !this.workflow.pinData[nodeName]) return undefined;
+
 			return this.workflow.pinData[nodeName].map((item) => item.json) as INodeExecutionData[];
 		},
 

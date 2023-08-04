@@ -1,5 +1,5 @@
 <template>
-	<div ref="htmlEditor" class="ph-no-capture"></div>
+	<div ref="htmlEditor"></div>
 </template>
 
 <script lang="ts">
@@ -43,7 +43,7 @@ export default defineComponent({
 	name: 'HtmlEditor',
 	mixins: [expressionManager],
 	props: {
-		html: {
+		modelValue: {
 			type: String,
 			required: true,
 		},
@@ -106,10 +106,13 @@ export default defineComponent({
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
 
+					this.editorState = this.editor.state;
+
 					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
 					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 
-					this.$emit('valueChanged', this.doc);
+					// eslint-disable-next-line @typescript-eslint/no-base-to-string
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
 				}),
 			];
 		},
@@ -261,20 +264,21 @@ export default defineComponent({
 	mounted() {
 		htmlEditorEventBus.on('format-html', this.format);
 
-		let doc = this.html;
+		let doc = this.modelValue;
 
-		if (this.html === '' && this.rows > 0) {
+		if (this.modelValue === '' && this.rows > 0) {
 			doc = '\n'.repeat(this.rows - 1);
 		}
 
 		const state = EditorState.create({ doc, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.root(), state });
+		this.editorState = this.editor.state;
 
 		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 	},
 
-	destroyed() {
+	beforeUnmount() {
 		htmlEditorEventBus.off('format-html', this.format);
 	},
 });

@@ -25,7 +25,7 @@
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :open-delay="1000">
+						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
 							<template #content>
 								<div>
 									<img src="/static/data-mapping-gif.gif" />
@@ -65,14 +65,14 @@
 						<n8n-tooltip placement="bottom-end">
 							<template #content>
 								<div>
-									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
 												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
 											}}</a>
 										</template>
-									</i18n>
+									</i18n-t>
 								</div>
 							</template>
 							<span>
@@ -102,66 +102,60 @@
 						:can-drop="canDrop"
 					/>
 				</template>
-				<template>
-					<tr
-						v-for="(row, index1) in tableData.data"
-						:key="index1"
-						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-						:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+				<tr
+					v-for="(row, index1) in tableData.data"
+					:key="index1"
+					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+				>
+					<td
+						v-for="(data, index2) in row"
+						:key="index2"
+						:data-row="index1"
+						:data-col="index2"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
+						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 					>
-						<td
-							v-for="(data, index2) in row"
-							:key="index2"
-							:data-row="index1"
-							:data-col="index2"
-							@mouseenter="onMouseEnterCell"
-							@mouseleave="onMouseLeaveCell"
-							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
+						<span
+							v-if="isSimple(data)"
+							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+							>{{ getValueToRender(data) }}</span
 						>
-							<span
-								v-if="isSimple(data)"
-								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-								class="ph-no-capture"
-								>{{ getValueToRender(data) }}</span
-							>
-							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
-								<template #label="{ label, path }">
-									<span
-										@mouseenter="() => onMouseEnterKey(path, index2)"
-										@mouseleave="onMouseLeaveKey"
-										:class="{
-											[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
-											[$style.draggingKey]: isDraggingKey(path, index2),
-											[$style.dataKey]: true,
-											[$style.mappable]: mappingEnabled,
-										}"
-										data-target="mappable"
-										:data-name="getCellPathName(path, index2)"
-										:data-value="getCellExpression(path, index2)"
-										:data-depth="path.length"
-										>{{ label || $locale.baseText('runData.unnamedField') }}</span
-									>
-								</template>
-								<template #value="{ value }">
-									<span
-										:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-										class="ph-no-capture"
-										>{{ getValueToRender(value) }}</span
-									>
-								</template>
-							</n8n-tree>
-						</td>
-						<td v-if="columnLimitExceeded"></td>
-						<td :class="$style.tableRightMargin"></td>
-					</tr>
-				</template>
+						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
+							<template #label="{ label, path }">
+								<span
+									@mouseenter="() => onMouseEnterKey(path, index2)"
+									@mouseleave="onMouseLeaveKey"
+									:class="{
+										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
+										[$style.draggingKey]: isDraggingKey(path, index2),
+										[$style.dataKey]: true,
+										[$style.mappable]: mappingEnabled,
+									}"
+									data-target="mappable"
+									:data-name="getCellPathName(path, index2)"
+									:data-value="getCellExpression(path, index2)"
+									:data-depth="path.length"
+									>{{ label || $locale.baseText('runData.unnamedField') }}</span
+								>
+							</template>
+							<template #value="{ value }">
+								<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">
+									{{ getValueToRender(value) }}
+								</span>
+							</template>
+						</n8n-tree>
+					</td>
+					<td v-if="columnLimitExceeded"></td>
+					<td :class="$style.tableRightMargin"></td>
+				</tr>
 			</draggable>
 		</table>
 	</div>
 </template>
 
 <script lang="ts">
-/* eslint-disable prefer-spread */
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';

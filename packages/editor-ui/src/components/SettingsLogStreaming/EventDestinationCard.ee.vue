@@ -2,7 +2,7 @@
 	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
 		<template #header>
 			<div>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+				<n8n-heading tag="h2" bold :class="$style.cardHeading">
 					{{ destination.label }}
 				</n8n-heading>
 				<div :class="$style.cardDescription">
@@ -26,8 +26,8 @@
 				<el-switch
 					class="mr-s"
 					:disabled="!isInstanceOwner"
-					:value="nodeParameters.enabled"
-					@change="onEnabledSwitched($event, destination.id)"
+					:modelValue="nodeParameters.enabled"
+					@update:modelValue="onEnabledSwitched($event, destination.id)"
 					:title="
 						nodeParameters.enabled
 							? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -96,7 +96,7 @@ export default defineComponent({
 		);
 		this.eventBus?.on('destinationWasSaved', this.onDestinationWasSaved);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('destinationWasSaved', this.onDestinationWasSaved);
 	},
 	computed: {
