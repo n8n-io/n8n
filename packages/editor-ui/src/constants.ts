@@ -507,6 +507,7 @@ export const enum STORES {
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
+	EXECUTIONS = 'executions',
 }
 
 export const enum SignInType {

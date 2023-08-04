@@ -60,7 +60,16 @@ import { getActivatableTriggerNodes } from '@/utils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
-	props: ['workflowActive', 'workflowId'],
+	props: {
+		workflowActive: {
+			type: Boolean,
+			default: false,
+		},
+		workflowId: {
+			type: String,
+			default: undefined,
+		},
+	},
 	mixins: [workflowActivate],
 	setup(props) {
 		return {

@@ -353,6 +353,10 @@ export default defineComponent({
 			type: Object as () => IWorkflowDb,
 			required: false,
 		},
+		workflowsStore: {
+			type: Object as () => ReturnType<typeof useWorkflowsStore>,
+			required: false,
+		},
 		executionId: {
 			type: String,
 			required: false,
@@ -372,6 +376,7 @@ export default defineComponent({
 			...useUniqueNodeName(),
 			...useI18n(),
 			...workflowRun.setup?.(props),
+			...(props.workflowsStore ?? useWorkflowsStore()),
 		};
 	},
 	errorCaptured: (err, vm, info) => {
@@ -467,7 +472,6 @@ export default defineComponent({
 			useSettingsStore,
 			useTemplatesStore,
 			useUIStore,
-			useWorkflowsStore,
 			useUsersStore,
 			useNodeCreatorStore,
 			useEnvironmentsStore,

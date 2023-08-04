@@ -32,6 +32,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
+	NodeMetadataMap,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -84,7 +85,6 @@ import { useNDVStore } from './ndv.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { NodeMetadataMap } from '@/Interface';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -110,7 +110,7 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
-export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
+export const workflowStoreSetupFactory = () => ({
 	state: (): WorkflowsState => ({
 		workflow: createEmptyWorkflow(),
 		workflowCached: false,
@@ -1400,3 +1400,5 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 	},
 });
+
+export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, workflowStoreSetupFactory());
