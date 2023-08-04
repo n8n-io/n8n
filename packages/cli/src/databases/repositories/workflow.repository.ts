@@ -8,30 +8,4 @@ export class WorkflowRepository extends BaseWorkflowRepository {
 	constructor(dataSource: DataSource) {
 		super(WorkflowEntity, dataSource.manager);
 	}
-
-	private static schemas = {
-		queryFilters: {
-			getWorkflows: {
-				$id: 'GetWorkflowsQueryFilter',
-				type: 'object',
-				properties: {
-					id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
-					name: { type: 'string' },
-					active: { type: 'boolean' },
-				},
-			},
-		},
-	};
-
-	static toQueryFilter(rawFilter: string) {
-		const schema = this.schemas.queryFilters.getWorkflows;
-
-		return super.toQueryFilter(rawFilter, schema);
-	}
-
-	static toQuerySelect(rawSelect: string) {
-		const schema = this.schemas.queryFilters.getWorkflows;
-
-		return super.toQuerySelect(rawSelect, schema);
-	}
 }

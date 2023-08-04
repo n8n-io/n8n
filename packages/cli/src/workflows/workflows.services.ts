@@ -140,7 +140,7 @@ export class WorkflowsService {
 
 		if (options?.filter) {
 			try {
-				filter = WorkflowRepository.toQueryFilter(options.filter);
+				filter = await WorkflowRepository.toQueryFilter(options.filter);
 			} catch (error) {
 				WorkflowsService.handleQueryParamError('filter', options.filter, error);
 			}

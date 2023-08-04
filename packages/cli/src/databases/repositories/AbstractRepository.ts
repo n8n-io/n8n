@@ -1,50 +1,72 @@
 import { Repository } from 'typeorm';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 import { jsonParse } from 'n8n-workflow';
-import type { JsonValue } from 'n8n-workflow';
 import * as utils from '@/utils';
-import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { Constructor } from '@/Interfaces';
+import { IsString, IsBoolean, IsOptional, validate, IsArray, IsDateString } from 'class-validator';
 
-type ParsedJSON = JsonValue;
+namespace WorkflowsQuery {
+	export class Filter {
+		@IsString()
+		id: string;
+
+		@IsOptional()
+		@IsString()
+		name: string;
+
+		@IsOptional()
+		@IsBoolean()
+		active: boolean;
+
+		@IsOptional()
+		@IsArray()
+		@IsString({ each: true })
+		nodes: string[];
+
+		@IsOptional()
+		@IsDateString()
+		createdAt: Date;
+
+		@IsOptional()
+		@IsDateString()
+		updatedAt: Date;
+
+		static getFieldNames() {
+			// @TODO: How to get these dynamically?
+			return ['id', 'name', 'active', 'nodes', 'createdAt', 'updatedAt'];
+		}
+	}
+}
 
 function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
 	class Derived extends base {
-		static toQueryFilter(rawFilter: string, schema: { properties: object }) {
-			const parsedFilter = jsonParse<ParsedJSON>(rawFilter, {
-				errorMessage: 'Failed to parse JSON into filter object',
+		static async toQueryFilter(rawFilter: string) {
+			const parsedFilter = jsonParse<WorkflowsQuery.Filter>(rawFilter, {
+				errorMessage: 'Failed to parse filter JSON',
 			});
 
-			if (!utils.isObjectLiteral(parsedFilter)) {
-				throw new Error('Parsed filter is not an object');
-			}
+			const result = await validate(parsedFilter, { forbidUnknownValues: false });
 
-			const queryFilter = Object.fromEntries(
+			if (result.length > 0) throw new Error('Parsed filter does not fit the schema');
+
+			return Object.fromEntries(
 				Object.keys(parsedFilter)
-					.filter((field) => Object.keys(schema.properties).includes(field))
-					.map((field) => [field, parsedFilter[field]]),
+					.filter((field) => WorkflowsQuery.Filter.getFieldNames().includes(field))
+					.map((field: keyof WorkflowsQuery.Filter) => [field, parsedFilter[field]]),
 			);
-
-			const fitsSchema = jsonSchemaValidate(queryFilter, schema).valid;
-
-			if (!fitsSchema) throw new Error('Parsed filter object does not fit schema');
-
-			return queryFilter;
 		}
 
-		static toQuerySelect(rawSelect: string, schema: { properties: object }) {
-			const parsedSelect = jsonParse(rawSelect, {
-				errorMessage: 'Failed to parse JSON into select array',
+		static toQuerySelect(rawSelect: string) {
+			const parsedSelect = jsonParse<string[]>(rawSelect, {
+				errorMessage: 'Failed to parse select JSON',
 			});
 
 			if (!utils.isStringArray(parsedSelect)) {
 				throw new Error('Parsed select is not a string array');
 			}
 
-			const keys = Object.keys(schema.properties);
-
-			return parsedSelect.reduce<Record<string, boolean>>((acc, field) => {
-				if (!keys.includes(field)) return acc;
+			return parsedSelect.reduce<Record<string, true>>((acc, field) => {
+				if (!WorkflowsQuery.Filter.getFieldNames().includes(field)) return acc;
 				return (acc[field] = true), acc;
 			}, {});
 		}
