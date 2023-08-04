@@ -1,10 +1,10 @@
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {

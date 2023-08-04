@@ -1,12 +1,12 @@
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { clickupApiRequest } from './GenericFunctions';

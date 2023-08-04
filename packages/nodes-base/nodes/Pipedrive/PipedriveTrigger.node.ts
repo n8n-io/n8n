@@ -1,11 +1,11 @@
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type ICredentialDataDecryptedObject,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { pipedriveApiRequest } from './GenericFunctions';

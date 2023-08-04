@@ -1,17 +1,17 @@
 import type { OptionsWithUri } from 'request';
 
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type ICredentialsDecrypted,
-	type ICredentialTestFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeCredentialTestResult,
-	type INodePropertyOptions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { bitbucketApiRequest, bitbucketApiRequestAllItems } from './GenericFunctions';

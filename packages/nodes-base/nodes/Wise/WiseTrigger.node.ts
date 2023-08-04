@@ -1,11 +1,11 @@
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type IDataObject,
-	type ILoadOptionsFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import type { Profile } from './GenericFunctions';

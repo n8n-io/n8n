@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	type IHookFunctions,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 import { BrevoWebhookApi } from './GenericFunctions';
 
