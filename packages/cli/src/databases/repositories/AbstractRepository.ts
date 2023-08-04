@@ -49,10 +49,10 @@ function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
 			}, {});
 		}
 
-		static toPaginationOptions(rawTake: string, rawSkip?: string) {
+		static toPaginationOptions(rawTake: string, rawSkip: string = '0') {
 			const MAX_ITEMS = 50;
 
-			const [take, skip] = [rawTake, rawSkip ?? '0'].map((o) => parseInt(o, 10));
+			const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
 
 			return { skip, take: Math.min(take, MAX_ITEMS) };
 		}
