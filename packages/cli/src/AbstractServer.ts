@@ -15,7 +15,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { RedisService } from '@/services/redis.service';
-import { jsonParse } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import { eventBus } from './eventbus';
 import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
@@ -24,6 +24,7 @@ import {
 	EVENT_BUS_REDIS_CHANNEL,
 	WORKER_RESPONSE_REDIS_CHANNEL,
 } from './services/redis/RedisServiceHelper';
+import { generateNanoId } from './databases/utils/generators';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -56,6 +57,8 @@ export abstract class AbstractServer {
 
 	protected testWebhooksEnabled = false;
 
+	readonly serverId: string;
+
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -70,6 +73,9 @@ export abstract class AbstractServer {
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+
+		this.serverId = generateNanoId();
+		LoggerProxy.debug(`Server ID: ${this.serverId}`);
 	}
 
 	async configure(): Promise<void> {
