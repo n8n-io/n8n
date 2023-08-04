@@ -6,14 +6,24 @@ import {
 	IsString,
 	IsBoolean,
 	IsOptional,
-	validate,
 	IsArray,
 	IsDateString,
 	isArray,
+	validateSync,
 } from 'class-validator';
 
 namespace WorkflowsQuery {
 	export class Filter {
+		constructor(data: unknown) {
+			Object.assign(this, data);
+			const result = validateSync(this, { whitelist: true }); // strip unknown properties
+
+			if (result.length > 0) {
+				throw new Error('Parsed filter does not fit the schema');
+			}
+		}
+
+		@IsOptional()
 		@IsString()
 		id: string;
 
@@ -47,19 +57,16 @@ namespace WorkflowsQuery {
 
 function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
 	class Derived extends base {
-		static async toQueryFilter(rawFilter: string) {
-			const parsedFilter = jsonParse<WorkflowsQuery.Filter>(rawFilter, {
-				errorMessage: 'Failed to parse filter JSON',
-			});
-
-			const result = await validate(parsedFilter, { forbidUnknownValues: false });
-
-			if (result.length > 0) throw new Error('Parsed filter does not fit the schema');
+		static toQueryFilter(rawFilter: string) {
+			const parsedFilter = new WorkflowsQuery.Filter(
+				jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' }),
+			);
 
 			return Object.fromEntries(
-				Object.keys(parsedFilter)
-					.filter((field) => WorkflowsQuery.Filter.getFieldNames().includes(field))
-					.map((field: keyof WorkflowsQuery.Filter) => [field, parsedFilter[field]]),
+				Object.keys(parsedFilter).map((field: keyof WorkflowsQuery.Filter) => [
+					field,
+					parsedFilter[field],
+				]),
 			);
 		}
 

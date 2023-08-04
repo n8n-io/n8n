@@ -2,21 +2,19 @@ import { WorkflowRepository } from '@/databases/repositories';
 
 describe('toQueryFilter()', () => {
 	describe('should return a query filter', () => {
-		test('parse valid filter', async () => {
-			const filter = await WorkflowRepository.toQueryFilter(
-				'{"name":"My Workflow", "active":true}',
-			);
+		test('parse valid filter', () => {
+			const filter = WorkflowRepository.toQueryFilter('{"name":"My Workflow", "active":true}');
 			expect(filter).toEqual({ name: 'My Workflow', active: true });
 		});
 
-		test('ignore invalid filter', async () => {
-			const filter = await WorkflowRepository.toQueryFilter('{"name":"My Workflow","foo":"bar"}');
+		test('ignore invalid filter', () => {
+			const filter = WorkflowRepository.toQueryFilter('{"name":"My Workflow","foo":"bar"}');
 			expect(filter).toEqual({ name: 'My Workflow' });
 		});
 
-		test('throw on invalid JSON', async () => {
-			const call = async () => WorkflowRepository.toQueryFilter('{"name":"My Workflow"');
-			await expect(call).rejects.toThrowError('Failed to parse filter JSON');
+		test('throw on invalid JSON', () => {
+			const call = () => WorkflowRepository.toQueryFilter('{"name":"My Workflow"');
+			expect(call).toThrowError('Failed to parse filter JSON');
 		});
 	});
 });
