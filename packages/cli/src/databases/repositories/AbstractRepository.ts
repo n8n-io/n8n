@@ -8,9 +8,9 @@ import {
 	IsOptional,
 	IsArray,
 	IsDateString,
-	isArray,
 	validateSync,
 } from 'class-validator';
+import * as utils from '@/utils';
 
 namespace WorkflowsQuery {
 	export class Filter {
@@ -71,11 +71,9 @@ function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
 		}
 
 		static toQuerySelect(rawSelect: string) {
-			const parsedSelect = jsonParse<string[]>(rawSelect, {
-				errorMessage: 'Failed to parse select JSON',
-			});
+			const parsedSelect = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
 
-			if (!isArray(parsedSelect) || parsedSelect.some((i) => typeof i !== 'string')) {
+			if (!utils.isStringArray(parsedSelect)) {
 				throw new Error('Parsed select is not a string array');
 			}
 
