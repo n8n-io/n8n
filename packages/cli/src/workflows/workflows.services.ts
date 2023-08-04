@@ -157,13 +157,12 @@ export class WorkflowsService {
 			throw new Error('Parsed select is not an array');
 		}
 
-		const schema = WorkflowsService.schemas.queryFilters.getWorkflows;
+		const keys = Object.keys(WorkflowsService.schemas.queryFilters.getWorkflows.properties);
 
-		return parsedSelect
-			.filter((field) => Object.keys(schema.properties).includes(field))
-			.reduce<Record<string, boolean>>((acc, cur) => {
-				return (acc[cur] = true), acc;
-			}, {});
+		return parsedSelect.reduce<Record<string, boolean>>((acc, field) => {
+			if (!keys.includes(field)) return acc;
+			return (acc[field] = true), acc;
+		}, {});
 	}
 
 	static async getMany(
@@ -207,15 +206,31 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		const select = options?.select
-			? this.toQuerySelect(options.select)
-			: {
-					id: true,
-					name: true,
-					active: true,
-					createdAt: true,
-					updatedAt: true,
-			  };
+		let select: FindOptionsSelect<WorkflowEntity> = {
+			id: true,
+			name: true,
+			active: true,
+			createdAt: true,
+			updatedAt: true,
+		};
+
+		if (options?.select) {
+			try {
+				select = this.toQuerySelect(options.select);
+			} catch (maybeError) {
+				const error = utils.toError(maybeError);
+
+				LoggerProxy.error('Invalid "select" query string parameter', {
+					userId: user.id,
+					select: options?.select,
+					error,
+				});
+
+				throw new BadRequestError(
+					`Invalid "select" query string parameter: ${options?.select}. Error: ${error.message}`,
+				);
+			}
+		}
 
 		const relations: string[] = [];
 
