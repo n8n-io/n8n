@@ -26,12 +26,12 @@ export class WorkflowRepository extends BaseWorkflowRepository {
 	static toQueryFilter(rawFilter: string) {
 		const schema = this.schemas.queryFilters.getWorkflows;
 
-		return BaseWorkflowRepository.toQueryFilter(rawFilter, schema);
+		return super.toQueryFilter(rawFilter, schema);
 	}
 
 	static toQuerySelect(rawSelect: string) {
 		const schema = this.schemas.queryFilters.getWorkflows;
 
-		return BaseWorkflowRepository.toQuerySelect(rawSelect, schema);
+		return super.toQuerySelect(rawSelect, schema);
 	}
 }
