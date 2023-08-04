@@ -92,23 +92,23 @@ export class VaultProvider extends SecretsProvider {
 			default: '',
 		},
 		{
-			displayName: 'Base URL',
+			displayName: 'Vault URL',
 			name: 'url',
 			type: 'string',
-			hint: 'Base URL of the Vault instance',
+			hint: 'HashiCorp vault instance URL',
 			required: true,
 			noDataExpression: true,
-			placeholder: 'https://example.com/v1/',
+			placeholder: 'e.g. https://example.com/v1/',
 			default: '',
 		},
 		{
 			displayName: 'Vault Namespace',
 			name: 'namespace',
 			type: 'string',
-			hint: 'Namespace of the Vault you wish to use (e.g. ns1/ns2/)',
+			hint: 'Namespace of the vault you wish to use',
 			required: false,
 			noDataExpression: true,
-			placeholder: 'admin',
+			placeholder: 'e.g. admin',
 			default: '',
 		},
 		{
@@ -485,10 +485,7 @@ export class VaultProvider extends SecretsProvider {
 
 			if (token === null) {
 				if (tokenResp.status === 404) {
-					return [
-						false,
-						'Could not find auth path. Maybe try adding /v1/ to the end of your base URL?',
-					];
+					return [false, 'Could not find auth path. Try adding /v1/ to the end of your base URL.'];
 				}
 				return [false, 'Invalid credentials'];
 			}
