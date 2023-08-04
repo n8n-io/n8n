@@ -1,9 +1,16 @@
 import { Repository } from 'typeorm';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 import { jsonParse } from 'n8n-workflow';
-import * as utils from '@/utils';
 import type { Constructor } from '@/Interfaces';
-import { IsString, IsBoolean, IsOptional, validate, IsArray, IsDateString } from 'class-validator';
+import {
+	IsString,
+	IsBoolean,
+	IsOptional,
+	validate,
+	IsArray,
+	IsDateString,
+	isArray,
+} from 'class-validator';
 
 namespace WorkflowsQuery {
 	export class Filter {
@@ -61,7 +68,7 @@ function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
 				errorMessage: 'Failed to parse select JSON',
 			});
 
-			if (!utils.isStringArray(parsedSelect)) {
+			if (!isArray(parsedSelect) || parsedSelect.some((i) => typeof i !== 'string')) {
 				throw new Error('Parsed select is not a string array');
 			}
 
