@@ -26,12 +26,14 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
+// eslint-disable-next-line import/no-cycle
 import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
 import { RoleRepository } from '@db/repositories';
 import omit from 'lodash/omit';
+// eslint-disable-next-line import/no-cycle
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';

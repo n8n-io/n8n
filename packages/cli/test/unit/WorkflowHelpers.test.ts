@@ -1,5 +1,5 @@
 import type { INode } from 'n8n-workflow';
-import { LoggerProxy, Workflow } from 'n8n-workflow';
+import { LoggerProxy, type Workflow } from 'n8n-workflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import {
@@ -8,7 +8,7 @@ import {
 	validateWorkflowCredentialUsage,
 } from '@/WorkflowHelpers';
 import { getLogger } from '@/Logger';
-import { IWorkflowExecutionDataProcess } from '../../src/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '../../src/Interfaces';
 
 const FIRST_CREDENTIAL_ID = '1';
 const SECOND_CREDENTIAL_ID = '2';
