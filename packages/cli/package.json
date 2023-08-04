@@ -160,6 +160,7 @@
     "openapi-types": "^10.0.0",
     "otpauth": "^9.1.1",
     "p-cancelable": "^2.0.0",
+    "p-lazy": "^3.1.0",
     "passport": "^0.6.0",
     "passport-cookie": "^1.0.9",
     "passport-jwt": "^4.0.0",

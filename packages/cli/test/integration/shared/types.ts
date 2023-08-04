@@ -26,7 +26,8 @@ export type EndpointGroup =
 	| 'license'
 	| 'variables'
 	| 'tags'
-	| 'mfa';
+	| 'mfa'
+	| 'metrics';
 
 export interface SetupProps {
 	applyAuth?: boolean;

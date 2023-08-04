@@ -64,6 +64,7 @@ export class E2EController {
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
+		[LICENSE_FEATURES.WORKFLOW_HISTORY]: false,
 	};
 
 	constructor(

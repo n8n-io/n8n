@@ -55,6 +55,7 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { TOTPService } from '@/Mfa/totp.service';
 import { UserSettings } from 'n8n-core';
 import { RoleService } from '@/services/role.service';
+import { MetricsService } from '@/services/metrics.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -193,6 +194,9 @@ export const setupTestServer = ({
 
 			for (const group of functionEndpoints) {
 				switch (group) {
+					case 'metrics':
+						await Container.get(MetricsService).configureMetrics(app);
+						break;
 					case 'eventBus':
 						registerController(app, config, new EventBusController());
 						break;
