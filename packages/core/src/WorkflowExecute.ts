@@ -32,7 +32,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
+import { LoggerProxy as Logger, WorkflowOperationError, sleep } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
@@ -848,6 +848,9 @@ export class WorkflowExecute {
 				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
+					// This wait adds a break in the event-loop, giving the garbage-collector some time to cleanup.
+					await sleep(10);
+
 					if (
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp
