@@ -268,7 +268,7 @@ export abstract class NodeError extends ExecutionBaseError {
 
 		if (messageMapping) {
 			for (const [mapKey, mapMessage] of Object.entries(messageMapping)) {
-				if ((message || '').toUpperCase().includes(mapKey)) {
+				if ((message || '').toUpperCase().includes(mapKey.toUpperCase())) {
 					newMessage = mapMessage;
 					newDescription = this.updateDescription(message, description);
 					break;
@@ -288,7 +288,7 @@ export abstract class NodeError extends ExecutionBaseError {
 
 		// check if message contains any of the common errors and set the message and description
 		for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
-			if ((message || '').toUpperCase().includes(errorCode)) {
+			if ((message || '').toUpperCase().includes(errorCode.toUpperCase())) {
 				newMessage = errorDescriptiveMessage as string;
 				newDescription = this.updateDescription(message, description);
 				break;
