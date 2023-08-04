@@ -39,6 +39,7 @@ export async function getToken(
 	const db = credentials.db as string;
 	const login = credentials.login as string;
 	const password = credentials.password as string;
+	const allowUnauthorizedCerts = credentials.allowUnauthorizedCerts as boolean;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
@@ -48,7 +49,7 @@ export async function getToken(
 		headers: {},
 		method: 'POST',
 		json: true,
-		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
+		rejectUnauthorized: allowUnauthorizedCerts,
 	};
 	requestOptions.auth = {
 		user: login,
@@ -115,6 +116,7 @@ export async function layoutsApiRequest(
 
 	const host = credentials.host as string;
 	const db = credentials.db as string;
+	const allowUnauthorizedCerts = credentials.allowUnauthorizedCerts as boolean;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts`;
 	const options: OptionsWithUri = {
@@ -124,6 +126,7 @@ export async function layoutsApiRequest(
 		method: 'GET',
 		uri: url,
 		json: true,
+		rejectUnauthorized: allowUnauthorizedCerts,
 	};
 
 	try {
@@ -147,6 +150,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 
 	const host = credentials.host as string;
 	const db = credentials.db as string;
+	const allowUnauthorizedCerts = credentials.allowUnauthorizedCerts as boolean;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
 	const options: OptionsWithUri = {
@@ -156,6 +160,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 		method: 'GET',
 		uri: url,
 		json: true,
+		rejectUnauthorized: allowUnauthorizedCerts,
 	};
 
 	try {
@@ -178,6 +183,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 
 	const host = credentials.host as string;
 	const db = credentials.db as string;
+	const allowUnauthorizedCerts = credentials.allowUnauthorizedCerts as boolean;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
 	const options: OptionsWithUri = {
@@ -187,6 +193,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 		method: 'GET',
 		uri: url,
 		json: true,
+		rejectUnauthorized: allowUnauthorizedCerts,
 	};
 
 	try {
@@ -223,6 +230,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 
 	const host = credentials.host as string;
 	const db = credentials.db as string;
+	const allowUnauthorizedCerts = credentials.allowUnauthorizedCerts as boolean;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
 	const options: OptionsWithUri = {
@@ -232,6 +240,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 		method: 'GET',
 		uri: url,
 		json: true,
+		rejectUnauthorized: allowUnauthorizedCerts,
 	};
 
 	try {
@@ -253,6 +262,7 @@ export async function logout(
 
 	const host = credentials.host as string;
 	const db = credentials.db as string;
+	const allowUnauthorizedCerts = credentials.allowUnauthorizedCerts as boolean;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
@@ -262,7 +272,7 @@ export async function logout(
 		headers: {},
 		method: 'DELETE',
 		json: true,
-		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
+		rejectUnauthorized: allowUnauthorizedCerts,
 	};
 
 	const response = await this.helpers.request(requestOptions);
