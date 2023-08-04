@@ -14,7 +14,7 @@ import {
 
 namespace WorkflowsQuery {
 	export class Filter {
-		constructor(data: unknown) {
+		constructor(data: unknown = {}) {
 			Object.assign(this, data);
 			const result = validateSync(this, { whitelist: true }); // strip unknown properties
 
@@ -25,28 +25,28 @@ namespace WorkflowsQuery {
 
 		@IsOptional()
 		@IsString()
-		id: string;
+		id?: string;
 
 		@IsOptional()
 		@IsString()
-		name: string;
+		name?: string;
 
 		@IsOptional()
 		@IsBoolean()
-		active: boolean;
+		active?: boolean;
 
 		@IsOptional()
 		@IsArray()
 		@IsString({ each: true })
-		nodes: string[];
+		nodes?: string[];
 
 		@IsOptional()
 		@IsDateString()
-		createdAt: Date;
+		createdAt?: Date;
 
 		@IsOptional()
 		@IsDateString()
-		updatedAt: Date;
+		updatedAt?: Date;
 
 		static getFieldNames() {
 			// @TODO: How to get these dynamically?
