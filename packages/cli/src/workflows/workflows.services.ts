@@ -150,7 +150,12 @@ export class WorkflowsService {
 
 	static async getMany(
 		user: User,
-		options?: { filter?: string; skip?: string; take?: string },
+		options?: {
+			filter?: string;
+			skip?: string;
+			take?: string;
+			select?: Array<keyof WorkflowEntity>;
+		},
 	): Promise<[WorkflowForList[], number]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
@@ -184,13 +189,17 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		const select: FindOptionsSelect<WorkflowEntity> = {
-			id: true,
-			name: true,
-			active: true,
-			createdAt: true,
-			updatedAt: true,
-		};
+		const select: FindOptionsSelect<WorkflowEntity> = options?.select
+			? options.select.reduce<Record<string, boolean>>((acc, cur) => {
+					return (acc[cur] = true), acc;
+			  }, {})
+			: {
+					id: true,
+					name: true,
+					active: true,
+					createdAt: true,
+					updatedAt: true,
+			  };
 
 		const relations: string[] = [];
 

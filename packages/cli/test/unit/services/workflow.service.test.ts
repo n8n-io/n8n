@@ -122,6 +122,16 @@ describe('WorkflowService', () => {
 
 				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
 			});
+
+			test('select', async () => {
+				await WorkflowsService.getMany(user, { select: ['nodes'] });
+
+				const findManyOptions = expect.objectContaining({
+					select: expect.objectContaining({ nodes: true }),
+				});
+
+				expect(dbFind).toHaveBeenCalledWith(findManyOptions);
+			});
 		});
 	});
 
