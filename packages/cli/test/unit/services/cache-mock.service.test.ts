@@ -1,10 +1,9 @@
 import Container from 'typedi';
-import type { RedisStore } from 'cache-manager-ioredis-yet';
 import { mock } from 'jest-mock-extended';
 import { CacheService } from '@/services/cache.service';
 
 const cacheService = Container.get(CacheService);
-const store = mock<RedisStore>({ isCacheable: () => true });
+const store = mock<NonNullable<CacheService['cache']>['store']>({ isCacheable: () => true });
 Object.assign(cacheService, { cache: { store } });
 
 describe('CacheService (Mock)', () => {
