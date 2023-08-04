@@ -1,6 +1,7 @@
-import type { Logger } from '@/Logger';
 import type { INodeTypes } from 'n8n-workflow';
 import type { QueryRunner, ObjectLiteral } from 'typeorm';
+import type { Logger } from '@/Logger';
+import type { createSchemaBuilder } from './dsl';
 
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 
@@ -13,6 +14,7 @@ export interface MigrationContext {
 	dbName: string;
 	migrationName: string;
 	nodeTypes: INodeTypes;
+	schemaBuilder: ReturnType<typeof createSchemaBuilder>;
 	loadSurveyFromDisk(): string | null;
 	parseJson<T>(data: string | T): T;
 	escape: {
