@@ -3,10 +3,8 @@ import config from '@/config';
 import request from 'supertest';
 import Container from 'typedi';
 import { MetricsService } from '../../src/services/metrics.service';
-import { eventBus } from '../../src/eventbus';
 import { N8N_VERSION } from '../../src/constants';
 import { parse as semverParse } from 'semver';
-import { EventMessageGeneric } from '../../src/eventbus/EventMessageClasses/EventMessageGeneric';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 config.set('endpoints.metrics.enable', true);
