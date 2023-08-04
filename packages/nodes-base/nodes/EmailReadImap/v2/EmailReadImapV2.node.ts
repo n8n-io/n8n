@@ -12,6 +12,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	ITriggerResponse,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -501,7 +502,7 @@ export class EmailReadImapV2 implements INodeType {
 					// Return base64 string
 					newEmail = {
 						json: {
-							raw: part.body,
+							raw: part.body as string,
 						},
 					};
 
@@ -525,7 +526,9 @@ export class EmailReadImapV2 implements INodeType {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
 			if (options.customEmailConfig !== undefined) {
 				try {
-					searchCriteria = JSON.parse(options.customEmailConfig as string);
+					searchCriteria = JSON.parse(options.customEmailConfig as string) as Array<
+						string | string[]
+					>;
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 				}
@@ -568,7 +571,7 @@ export class EmailReadImapV2 implements INodeType {
 							}
 						} catch (error) {
 							this.logger.error('Email Read Imap node encountered an error fetching new emails', {
-								error,
+								error: error as Error,
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
@@ -611,8 +614,10 @@ export class EmailReadImapV2 implements INodeType {
 					}
 				});
 				conn.on('error', async (error) => {
-					const errorCode = error.code.toUpperCase();
-					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, { error });
+					const errorCode = ((error as JsonObject).code as string).toUpperCase();
+					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, {
+						error: error as Error,
+					});
 					// eslint-disable-next-line @typescript-eslint/no-use-before-define
 					await closeFunction();
 					this.emitError(error as Error);
@@ -627,22 +632,24 @@ export class EmailReadImapV2 implements INodeType {
 
 		let reconnectionInterval: NodeJS.Timeout | undefined;
 
+		const handleReconect = async () => {
+			this.logger.verbose('Forcing reconnect to IMAP server');
+			try {
+				isCurrentlyReconnecting = true;
+				if (connection.closeBox) await connection.closeBox(false);
+				connection.end();
+				connection = await establishConnection();
+				await connection.openBox(mailbox);
+			} catch (error) {
+				this.logger.error(error as string);
+			} finally {
+				isCurrentlyReconnecting = false;
+			}
+		};
+
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(
-				async () => {
-					this.logger.verbose('Forcing reconnect to IMAP server');
-					try {
-						isCurrentlyReconnecting = true;
-						if (connection.closeBox) await connection.closeBox(false);
-						connection.end();
-						connection = await establishConnection();
-						await connection.openBox(mailbox);
-					} catch (error) {
-						this.logger.error(error as string);
-					} finally {
-						isCurrentlyReconnecting = false;
-					}
-				},
+				handleReconect,
 				(options.forceReconnect as number) * 1000 * 60,
 			);
 		}
