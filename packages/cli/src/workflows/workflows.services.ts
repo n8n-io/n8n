@@ -148,13 +148,31 @@ export class WorkflowsService {
 		return queryFilter;
 	}
 
+	static toQuerySelect(rawSelect: string): FindOptionsSelect<WorkflowEntity> {
+		const parsedSelect = jsonParse<Array<keyof WorkflowEntity>>(rawSelect, {
+			errorMessage: 'Failed to parse JSON into select array',
+		});
+
+		if (!Array.isArray(parsedSelect)) {
+			throw new Error('Parsed select is not an array');
+		}
+
+		const schema = WorkflowsService.schemas.queryFilters.getWorkflows;
+
+		return parsedSelect
+			.filter((field) => Object.keys(schema.properties).includes(field))
+			.reduce<Record<string, boolean>>((acc, cur) => {
+				return (acc[cur] = true), acc;
+			}, {});
+	}
+
 	static async getMany(
 		user: User,
 		options?: {
 			filter?: string;
 			skip?: string;
 			take?: string;
-			select?: Array<keyof WorkflowEntity>;
+			select?: string;
 		},
 	): Promise<[WorkflowForList[], number]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
@@ -189,10 +207,8 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		const select: FindOptionsSelect<WorkflowEntity> = options?.select
-			? options.select.reduce<Record<string, boolean>>((acc, cur) => {
-					return (acc[cur] = true), acc;
-			  }, {})
+		const select = options?.select
+			? this.toQuerySelect(options.select)
 			: {
 					id: true,
 					name: true,

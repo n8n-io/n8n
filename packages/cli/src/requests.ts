@@ -104,7 +104,7 @@ export declare namespace WorkflowRequest {
 		{},
 		{},
 		{},
-		{ filter?: string; skip?: string; take?: string }
+		{ filter?: string; skip?: string; take?: string; select?: string }
 	>;
 
 	type GetAllActive = AuthenticatedRequest;
