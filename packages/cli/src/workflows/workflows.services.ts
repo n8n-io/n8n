@@ -120,20 +120,22 @@ export class WorkflowsService {
 
 		let filter: QueryFilters.GetAllWorkflows = {};
 
-		try {
-			filter = WorkflowRepository.toQueryFilter(options?.filter);
-		} catch (maybeError) {
-			const error = utils.toError(maybeError);
+		if (options?.filter) {
+			try {
+				filter = WorkflowRepository.toQueryFilter(options.filter);
+			} catch (maybeError) {
+				const error = utils.toError(maybeError);
 
-			LoggerProxy.error('Invalid "filter" query string parameter', {
-				userId: user.id,
-				filter: options?.filter,
-				error,
-			});
+				LoggerProxy.error('Invalid "filter" query string parameter', {
+					userId: user.id,
+					filter: options?.filter,
+					error,
+				});
 
-			throw new BadRequestError(
-				`Invalid "filter" query string parameter: ${options?.filter}. Error: ${error.message}`,
-			);
+				throw new BadRequestError(
+					`Invalid "filter" query string parameter: ${options?.filter}. Error: ${error.message}`,
+				);
+			}
 		}
 
 		// safeguard against querying ids not shared with the user

@@ -2,11 +2,6 @@ import { WorkflowRepository } from '@/databases/repositories';
 
 describe('toQueryFilter()', () => {
 	describe('should return a query filter', () => {
-		test('handle arg-less call', () => {
-			const filter = WorkflowRepository.toQueryFilter();
-			expect(filter).toEqual({});
-		});
-
 		test('parse valid filter', () => {
 			const filter = WorkflowRepository.toQueryFilter('{"name":"My Workflow", "active":true}');
 			expect(filter).toEqual({ name: 'My Workflow', active: true });
@@ -46,9 +41,9 @@ describe('toQuerySelect()', () => {
 			expect(call).toThrowError('Failed to parse JSON into select array');
 		});
 
-		test('throw on non-array JSON for select', () => {
+		test('throw on non-string-array JSON for select', () => {
 			const call = () => WorkflowRepository.toQuerySelect('"name"');
-			expect(call).toThrowError('Parsed select is not an array');
+			expect(call).toThrowError('Parsed select is not a string array');
 		});
 	});
 });
