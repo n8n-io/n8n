@@ -137,4 +137,40 @@ describe('NodeErrors tests', () => {
 
 		expect(nodeApiError.description).toEqual(undefined);
 	});
+
+	it('should return mapped message for MYMAPPEDMESSAGE, NodeOperationError', () => {
+		const nodeOperationError = new NodeOperationError(node, 'MYMAPPEDMESSAGE test error message', {
+			messageMapping: {
+				MYMAPPEDMESSAGE: 'test error message',
+			},
+		});
+
+		expect(nodeOperationError.message).toEqual('test error message');
+	});
+
+	it('should return mapped message for MYMAPPEDMESSAGE, NodeApiError', () => {
+		const nodeApiError = new NodeApiError(
+			node,
+			{ message: 'MYMAPPEDMESSAGE test error message' },
+			{
+				messageMapping: {
+					MYMAPPEDMESSAGE: 'test error message',
+				},
+			},
+		);
+
+		expect(nodeApiError.message).toEqual('test error message');
+	});
+
+	it('should return default message for EACCES, custom mapping not found, NodeOperationError', () => {
+		const nodeOperationError = new NodeOperationError(node, 'EACCES test error message', {
+			messageMapping: {
+				MYMAPPEDMESSAGE: 'test error message',
+			},
+		});
+
+		expect(nodeOperationError.message).toEqual(
+			'Forbidden by access permissions, make sure you have the right permissions',
+		);
+	});
 });

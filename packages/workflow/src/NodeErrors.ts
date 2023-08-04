@@ -116,6 +116,7 @@ interface NodeOperationErrorOptions {
 	runIndex?: number;
 	itemIndex?: number;
 	severity?: Severity;
+	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
@@ -260,9 +261,23 @@ export abstract class NodeError extends ExecutionBaseError {
 		message: string,
 		description: string | undefined | null,
 		code?: string | null,
+		messageMapping?: { [key: string]: string },
 	) {
 		let newMessage = message;
 		let newDescription = description as string;
+
+		if (messageMapping) {
+			for (const [mapKey, mapMessage] of Object.entries(messageMapping)) {
+				if ((message || '').toUpperCase().includes(mapKey)) {
+					newMessage = mapMessage;
+					newDescription = this.updateDescription(message, description);
+					break;
+				}
+			}
+			if (newMessage !== message) {
+				return [newMessage, newDescription];
+			}
+		}
 
 		// if code is provided and it is in the list of common errors set the message and return early
 		if (code && COMMON_ERRORS[code.toUpperCase()]) {
@@ -313,6 +328,8 @@ export class NodeOperationError extends NodeError {
 		[this.message, this.description] = this.setDescriptiveErrorMessage(
 			this.message,
 			this.description,
+			undefined,
+			options.messageMapping,
 		);
 	}
 }
@@ -335,6 +352,7 @@ export class NodeApiError extends NodeError {
 			runIndex,
 			itemIndex,
 			severity,
+			messageMapping,
 		}: NodeApiErrorOptions = {},
 	) {
 		super(node, error);
@@ -421,6 +439,7 @@ export class NodeApiError extends NodeError {
 				(error?.code as string) ||
 				((error?.reason as JsonObject)?.code as string) ||
 				undefined,
+			messageMapping,
 		);
 
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
