@@ -116,8 +116,8 @@ workflowsController.post(
  */
 workflowsController.get('/', async (req: WorkflowRequest.GetMany, res: express.Response) => {
 	try {
-		const [data, total] = await WorkflowsService.getMany(req.user, req.query);
-		res.json({ total, data });
+		const [data, count] = await WorkflowsService.getMany(req.user, req.query);
+		res.json({ count, data });
 	} catch (maybeError) {
 		const error = utils.toError(maybeError);
 		ResponseHelper.sendErrorResponse(res, error);

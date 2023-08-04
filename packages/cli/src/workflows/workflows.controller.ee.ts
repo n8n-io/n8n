@@ -203,11 +203,11 @@ EEWorkflowController.post(
  */
 EEWorkflowController.get('/', async (req: WorkflowRequest.GetMany, res: express.Response) => {
 	try {
-		const [workflows, total] = await EEWorkflows.getMany(req.user, req.query);
+		const [workflows, count] = await EEWorkflows.getMany(req.user, req.query);
 		const role = await Container.get(RoleService).findWorkflowOwnerRole();
 		const data = workflows.map((w) => EEWorkflows.addOwnerId(w, role));
 
-		res.json({ total, data });
+		res.json({ count, data });
 	} catch (maybeError) {
 		const error = utils.toError(maybeError);
 		ResponseHelper.sendErrorResponse(res, error);
