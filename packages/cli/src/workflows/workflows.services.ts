@@ -102,6 +102,24 @@ export class WorkflowsService {
 		return getSharedWorkflowIds(user, roles);
 	}
 
+	static handleQueryParamError(
+		paramName: 'filter' | 'select',
+		paramValue: string,
+		maybeError: unknown,
+	) {
+		const error = utils.toError(maybeError);
+
+		LoggerProxy.error(`Invalid "${paramName}" query string parameter`, {
+			paramName,
+			paramValue,
+			error,
+		});
+
+		throw new BadRequestError(
+			`Invalid "${paramName}" query string parameter: ${paramValue}. Error: ${error.message}`,
+		);
+	}
+
 	static async getMany(
 		user: User,
 		options?: {
@@ -123,18 +141,8 @@ export class WorkflowsService {
 		if (options?.filter) {
 			try {
 				filter = WorkflowRepository.toQueryFilter(options.filter);
-			} catch (maybeError) {
-				const error = utils.toError(maybeError);
-
-				LoggerProxy.error('Invalid "filter" query string parameter', {
-					userId: user.id,
-					filter: options?.filter,
-					error,
-				});
-
-				throw new BadRequestError(
-					`Invalid "filter" query string parameter: ${options?.filter}. Error: ${error.message}`,
-				);
+			} catch (error) {
+				WorkflowsService.handleQueryParamError('filter', options.filter, error);
 			}
 		}
 
@@ -156,18 +164,8 @@ export class WorkflowsService {
 		if (options?.select) {
 			try {
 				select = WorkflowRepository.toQuerySelect(options.select);
-			} catch (maybeError) {
-				const error = utils.toError(maybeError);
-
-				LoggerProxy.error('Invalid "select" query string parameter', {
-					userId: user.id,
-					select: options?.select,
-					error,
-				});
-
-				throw new BadRequestError(
-					`Invalid "select" query string parameter: ${options?.select}. Error: ${error.message}`,
-				);
+			} catch (error) {
+				WorkflowsService.handleQueryParamError('select', options.select, error);
 			}
 		}
 
