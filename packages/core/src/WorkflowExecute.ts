@@ -6,6 +6,9 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import PCancelable from 'p-cancelable';
 
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
+
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -35,6 +38,9 @@ import type {
 import { LoggerProxy as Logger, WorkflowOperationError, sleep } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+
+setFlagsFromString('--expose_gc');
+const gc: () => void = runInNewContext('gc');
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -1554,6 +1560,10 @@ export class WorkflowExecute {
 					}
 
 					return fullRunData;
+				})
+				.finally(async () => {
+					gc();
+					await sleep(500);
 				});
 
 			return returnPromise.then(resolve);
