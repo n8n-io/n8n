@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { parseString } from 'xml2js';
 import { removeCircularRefs, isTraversableObject } from './utils';
@@ -216,6 +214,7 @@ export abstract class NodeError extends ExecutionBaseError {
 				if (typeof value === 'number') return value.toString();
 				if (Array.isArray(value)) {
 					const resolvedErrors: string[] = value
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						.map((jsonError) => {
 							if (typeof jsonError === 'string') return jsonError;
 							if (typeof jsonError === 'number') return jsonError.toString();
@@ -285,7 +284,7 @@ export abstract class NodeError extends ExecutionBaseError {
 	}
 
 	protected updateDescription(message: string, description: string | undefined | null) {
-		return `${message}${description ? ` ${description}` : ''}`;
+		return `${message}${description ? ` - ${description}` : ''}`;
 	}
 }
 
@@ -306,6 +305,10 @@ export class NodeOperationError extends NodeError {
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
+
+		if (this.message === this.description) {
+			this.description = undefined;
+		}
 
 		[this.message, this.description] = this.setDescriptiveErrorMessage(
 			this.message,
@@ -431,7 +434,7 @@ export class NodeApiError extends NodeError {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
 				result[topLevelKey],
 				ERROR_MESSAGE_PROPERTIES,
 				['Error'].concat(ERROR_NESTING_PROPERTIES),
