@@ -586,7 +586,7 @@ export const schema = {
 			},
 			includeMessageEventBusMetrics: {
 				format: Boolean,
-				default: false,
+				default: true,
 				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
 				doc: 'Whether to include metrics for events. Default: false',
 			},
