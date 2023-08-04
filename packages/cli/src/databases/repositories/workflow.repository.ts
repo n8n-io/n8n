@@ -35,6 +35,3 @@ export class WorkflowRepository extends BaseWorkflowRepository {
 		return BaseWorkflowRepository.toQuerySelect(rawSelect, schema);
 	}
 }
-
-// : QueryFilters.GetAllWorkflows
-// : FindOptionsSelect<WorkflowEntity>
