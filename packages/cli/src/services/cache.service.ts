@@ -245,9 +245,6 @@ export class CacheService {
 		return this.cache;
 	}
 
-	/**
-	 * Delete all values from the cache, but leave the cache initialized.
-	 */
 	async reset(): Promise<void> {
 		await this.cache?.store.reset();
 	}

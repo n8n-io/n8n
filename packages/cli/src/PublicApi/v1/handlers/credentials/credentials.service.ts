@@ -5,11 +5,11 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
+import { RoleService } from '@/services/role.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Db.collections.Credentials.findOneBy({ id: credentialId });
@@ -58,7 +58,7 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
+	const role = await Container.get(RoleService).findCredentialOwnerRole();
 
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
