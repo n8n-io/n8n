@@ -80,6 +80,9 @@ export class CacheService {
 			refreshTtl?: number;
 		} = {},
 	): Promise<unknown> {
+		if (!key || key.length === 0) {
+			return;
+		}
 		const value = await this.cache?.store.get(key);
 		if (value !== undefined) {
 			return value;
@@ -113,6 +116,9 @@ export class CacheService {
 			refreshTtl?: number;
 		} = {},
 	): Promise<unknown[]> {
+		if (keys.length === 0) {
+			return [];
+		}
 		let values = await this.cache?.store.mget(...keys);
 		if (values === undefined) {
 			values = keys.map(() => undefined);
@@ -163,6 +169,9 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
+		if (!key || key.length === 0) {
+			return;
+		}
 		if (value === undefined || value === null) {
 			return;
 		}
@@ -183,8 +192,13 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
+		if (values.length === 0) {
+			return;
+		}
 		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const nonNullValues = values.filter(([_key, value]) => value !== undefined && value !== null);
+		const nonNullValues = values.filter(
+			([key, value]) => value !== undefined && value !== null && key && key.length > 0,
+		);
 		if (this.isRedisCache()) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			nonNullValues.forEach(([_key, value]) => {
@@ -201,6 +215,9 @@ export class CacheService {
 	 * @param key The key to delete
 	 */
 	async delete(key: string): Promise<void> {
+		if (!key || key.length === 0) {
+			return;
+		}
 		await this.cache?.store.del(key);
 	}
 
@@ -209,6 +226,9 @@ export class CacheService {
 	 * @param keys List of keys to delete
 	 */
 	async deleteMany(keys: string[]): Promise<void> {
+		if (keys.length === 0) {
+			return;
+		}
 		return this.cache?.store.mdel(...keys);
 	}
 
