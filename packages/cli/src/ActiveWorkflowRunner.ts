@@ -18,7 +18,6 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
-	IHttpRequestMethods,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
@@ -52,7 +51,6 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { createErrorExecution } from '@/GenericHelpers';
 import {
@@ -67,7 +65,7 @@ import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
-import { WebhookRepository } from '@db/repositories';
+import { WebhookService } from './services/webhook.service';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -88,7 +86,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private activeExecutions: ActiveExecutions,
 		private externalHooks: ExternalHooks,
 		private nodeTypes: NodeTypes,
-		private webhookRepository: WebhookRepository,
+		private webhookService: WebhookService,
 	) {}
 
 	async init() {
@@ -111,7 +109,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			// This is not officially supported but there is no reason
 			// it should not work.
 			// Clear up active workflow table
-			await this.webhookRepository.clear();
+			await this.webhookService.deleteInstanceWebhooks();
 		}
 
 		if (workflowsData.length !== 0) {
@@ -159,6 +157,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		}
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
+		await this.webhookService.populateCache();
 	}
 
 	/**
@@ -200,59 +199,18 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			path = path.slice(0, -1);
 		}
 
-		let webhook = await this.webhookRepository.findOneBy({
-			webhookPath: path,
-			method: httpMethod,
-		});
-		let webhookId: string | undefined;
+		const webhook = await this.webhookService.findWebhook(httpMethod, path);
 
-		// check if path is dynamic
 		if (webhook === null) {
-			// check if a dynamic webhook path exists
-			const pathElements = path.split('/');
-			webhookId = pathElements.shift();
-			const dynamicWebhooks = await this.webhookRepository.findBy({
-				webhookId,
-				method: httpMethod,
-				pathLength: pathElements.length,
-			});
-			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
-				// The requested webhook is not registered
-				throw new ResponseHelper.NotFoundError(
-					webhookNotFoundErrorMessage(path, httpMethod),
-					WEBHOOK_PROD_UNREGISTERED_HINT,
-				);
-			}
+			throw new ResponseHelper.NotFoundError(
+				webhookNotFoundErrorMessage(path, httpMethod),
+				WEBHOOK_PROD_UNREGISTERED_HINT,
+			);
+		}
 
-			let maxMatches = 0;
-			const pathElementsSet = new Set(pathElements);
-			// check if static elements match in path
-			// if more results have been returned choose the one with the most static-route matches
-			dynamicWebhooks.forEach((dynamicWebhook) => {
-				const staticElements = dynamicWebhook.webhookPath
-					.split('/')
-					.filter((ele) => !ele.startsWith(':'));
-				const allStaticExist = staticElements.every((staticEle) => pathElementsSet.has(staticEle));
+		if (webhook.isDynamic) {
+			const pathElements = path.split('/').slice(1);
 
-				if (allStaticExist && staticElements.length > maxMatches) {
-					maxMatches = staticElements.length;
-					webhook = dynamicWebhook;
-				}
-				// handle routes with no static elements
-				else if (staticElements.length === 0 && !webhook) {
-					webhook = dynamicWebhook;
-				}
-			});
-
-			if (webhook === null) {
-				throw new ResponseHelper.NotFoundError(
-					webhookNotFoundErrorMessage(path, httpMethod),
-					WEBHOOK_PROD_UNREGISTERED_HINT,
-				);
-			}
-
-			// @ts-ignore
-			path = webhook.webhookPath;
 			// extracting params from path
 			// @ts-ignore
 			webhook.webhookPath.split('/').forEach((ele, index) => {
@@ -268,6 +226,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			where: { id: webhook.workflowId },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
+
 		if (workflowData === null) {
 			throw new ResponseHelper.NotFoundError(
 				`Could not find workflow with id "${webhook.workflowId}"`,
@@ -293,7 +252,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		).find((w) => w.httpMethod === httpMethod && w.path === path) as IWebhookData;
+		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -329,14 +288,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	/**
 	 * Gets all request methods associated with a single webhook
 	 */
-	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
-		const webhooks = await this.webhookRepository.find({
-			select: ['method'],
-			where: { webhookPath: path },
-		});
-
-		// Gather all request methods in string array
-		return webhooks.map((webhook) => webhook.method);
+	async getWebhookMethods(path: string) {
+		return this.webhookService.getWebhookMethods(path);
 	}
 
 	/**
@@ -417,12 +370,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			path = webhookData.path;
 
-			const webhook: WebhookEntity = {
+			const webhook = this.webhookService.createWebhook({
 				workflowId: webhookData.workflowId,
 				webhookPath: path,
 				node: node.name,
 				method: webhookData.httpMethod,
-			};
+			});
 
 			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
@@ -438,7 +391,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			try {
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await this.webhookRepository.insert(webhook);
+				await this.webhookService.storeWebhook(webhook);
 				const webhookExists = await workflow.runWebhookMethod(
 					'checkExists',
 					webhookData,
@@ -498,6 +451,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				throw error;
 			}
 		}
+		await this.webhookService.populateCache();
 		// Save static data!
 		await WorkflowHelpers.saveStaticData(workflow);
 	}
@@ -547,9 +501,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		await WorkflowHelpers.saveStaticData(workflow);
 
-		await this.webhookRepository.delete({
-			workflowId: workflowData.id,
-		});
+		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
 
 	/**
