@@ -25,6 +25,7 @@ export class MetricsService extends EventEmitter {
 	counters: Record<string, Counter<string> | null> = {};
 
 	async configureMetrics(app: express.Application) {
+		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.setupDefaultMetrics();
 		this.setupN8nVersionMetric();
 		this.setupCacheMetrics();
