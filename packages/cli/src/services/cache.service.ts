@@ -5,14 +5,22 @@ import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
 import { jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
+import EventEmitter from 'events';
 
 @Service()
-export class CacheService {
+export class CacheService extends EventEmitter {
 	/**
 	 * Keys and values:
 	 * - `'cache:workflow-owner:${workflowId}'`: `User`
 	 */
 	private cache: RedisCache | MemoryCache | undefined;
+
+	metricsCounterEvents = {
+		cacheHit: 'metrics.cache.hit',
+
+		cacheMiss: 'metrics.cache.miss',
+		cacheUpdate: 'metrics.cache.update',
+	};
 
 	isRedisCache(): boolean {
 		return (this.cache as RedisCache)?.store?.isCacheable !== undefined;
@@ -80,11 +88,17 @@ export class CacheService {
 			refreshTtl?: number;
 		} = {},
 	): Promise<unknown> {
+		if (!key || key.length === 0) {
+			return;
+		}
 		const value = await this.cache?.store.get(key);
 		if (value !== undefined) {
+			this.emit(this.metricsCounterEvents.cacheHit);
 			return value;
 		}
+		this.emit(this.metricsCounterEvents.cacheMiss);
 		if (options.refreshFunction) {
+			this.emit(this.metricsCounterEvents.cacheUpdate);
 			const refreshValue = await options.refreshFunction(key);
 			await this.set(key, refreshValue, options.refreshTtl);
 			return refreshValue;
@@ -113,13 +127,18 @@ export class CacheService {
 			refreshTtl?: number;
 		} = {},
 	): Promise<unknown[]> {
+		if (keys.length === 0) {
+			return [];
+		}
 		let values = await this.cache?.store.mget(...keys);
 		if (values === undefined) {
 			values = keys.map(() => undefined);
 		}
 		if (!values.includes(undefined)) {
+			this.emit(this.metricsCounterEvents.cacheHit);
 			return values;
 		}
+		this.emit(this.metricsCounterEvents.cacheMiss);
 		if (options.refreshFunctionEach) {
 			for (let i = 0; i < keys.length; i++) {
 				if (values[i] === undefined) {
@@ -139,6 +158,7 @@ export class CacheService {
 			return values;
 		}
 		if (options.refreshFunctionMany) {
+			this.emit(this.metricsCounterEvents.cacheUpdate);
 			const refreshValues: unknown[] = await options.refreshFunctionMany(keys);
 			if (keys.length !== refreshValues.length) {
 				throw new Error('refreshFunctionMany must return the same number of values as keys');
@@ -163,6 +183,9 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
+		if (!key || key.length === 0) {
+			return;
+		}
 		if (value === undefined || value === null) {
 			return;
 		}
@@ -183,8 +206,12 @@ export class CacheService {
 		if (!this.cache) {
 			await this.init();
 		}
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const nonNullValues = values.filter(([_key, value]) => value !== undefined && value !== null);
+		if (values.length === 0) {
+			return;
+		}
+		const nonNullValues = values.filter(
+			([key, value]) => value !== undefined && value !== null && key && key.length > 0,
+		);
 		if (this.isRedisCache()) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			nonNullValues.forEach(([_key, value]) => {
@@ -201,6 +228,9 @@ export class CacheService {
 	 * @param key The key to delete
 	 */
 	async delete(key: string): Promise<void> {
+		if (!key || key.length === 0) {
+			return;
+		}
 		await this.cache?.store.del(key);
 	}
 
@@ -209,6 +239,9 @@ export class CacheService {
 	 * @param keys List of keys to delete
 	 */
 	async deleteMany(keys: string[]): Promise<void> {
+		if (keys.length === 0) {
+			return;
+		}
 		return this.cache?.store.mdel(...keys);
 	}
 
