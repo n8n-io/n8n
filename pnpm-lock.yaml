@@ -135,7 +135,7 @@ importers:
     dependencies:
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
 
   packages/@n8n_io/eslint-config:
     devDependencies:
@@ -216,7 +216,7 @@ importers:
         version: 7.28.1
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -571,7 +571,7 @@ importers:
         version: link:../@n8n/client-oauth2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
@@ -831,7 +831,7 @@ importers:
         version: 10.2.0(vue@3.3.4)
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -1131,6 +1131,9 @@ importers:
       redis:
         specifier: ^3.1.1
         version: 3.1.2
+      rfc2047:
+        specifier: ^4.0.1
+        version: 4.0.1
       rhea:
         specifier: ^1.0.11
         version: 1.0.24
@@ -1231,6 +1234,9 @@ importers:
       '@types/request-promise-native':
         specifier: ~1.0.15
         version: 1.0.18
+      '@types/rfc2047':
+        specifier: ^2.0.1
+        version: 2.0.1
       '@types/showdown':
         specifier: ^1.9.4
         version: 1.9.4
@@ -4445,7 +4451,7 @@ packages:
     dependencies:
       '@segment/loosely-validate-event': 2.0.0
       auto-changelog: 1.16.4
-      axios: 0.21.4
+      axios: 0.21.4(debug@4.3.2)
       axios-retry: 3.3.1
       bull: 3.29.3
       lodash.clonedeep: 4.5.0
@@ -6481,6 +6487,10 @@ packages:
       form-data: 2.5.1
     dev: true
 
+  /@types/rfc2047@2.0.1:
+    resolution: {integrity: sha512-slgtykv+XXME7EperkdqfdBBUGcs28ru+a21BK0zOQY4IoxE7tEqvIcvAFAz5DJVxyOmoAUXo30Oxpm3KS+TBQ==}
+    dev: true
+
   /@types/sanitize-html@2.9.0:
     resolution: {integrity: sha512-4fP/kEcKNj2u39IzrxWYuf/FnCCwwQCpif6wwY6ROUS1EPRIfWJjGkY3HIowY1EX/VbX5e86yq8AAE7UPMgATg==}
     dependencies:
@@ -8071,18 +8081,19 @@ packages:
       is-retry-allowed: 2.2.0
     dev: false
 
-  /axios@0.21.4:
-    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
-    dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
-    transitivePeerDependencies:
-      - debug
-    dev: false
-
   /axios@0.21.4(debug@4.3.2):
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
       follow-redirects: 1.15.2(debug@4.3.2)
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
+  /axios@0.27.2:
+    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
+    dependencies:
+      follow-redirects: 1.15.2(debug@4.3.2)
+      form-data: 4.0.0
     transitivePeerDependencies:
       - debug
     dev: false
@@ -8103,6 +8114,7 @@ packages:
       form-data: 4.0.0
     transitivePeerDependencies:
       - debug
+    dev: true
 
   /babel-core@7.0.0-bridge.0(@babel/core@7.22.9):
     resolution: {integrity: sha512-poPX9mZH/5CSanm50Q+1toVci6pv5KSRv/5TWCwtzQS5XEwn40BcCrgIeMFWP9CKKIniKXNxoIOnOq4VVlGXhg==}
@@ -11683,6 +11695,7 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.4(supports-color@8.1.1)
+    dev: true
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
@@ -12679,6 +12692,11 @@ packages:
     engines: {node: '>=0.10.0'}
     dependencies:
       safer-buffer: 2.1.2
+
+  /iconv-lite@0.4.5:
+    resolution: {integrity: sha512-LQ4GtDkFagYaac8u4rE73zWu7h0OUUmR0qVBOgzLyFSoJhoDG2xV9PZJWWyVVcYha/9/RZzQHUinFMbNKiOoAA==}
+    engines: {node: '>=0.8.0'}
+    dev: false
 
   /iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -17032,7 +17050,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2(debug@4.3.4)
+      axios: 0.27.2
     transitivePeerDependencies:
       - debug
     dev: false
@@ -18066,6 +18084,12 @@ packages:
   /reusify@1.0.4:
     resolution: {integrity: sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
+
+  /rfc2047@4.0.1:
+    resolution: {integrity: sha512-x5zHBAZtSSZDuBNAqGEAVpsQFV+YUluIkMWVaYRMEeGoLPxNVMmg67TxRnXwmRmCB7QaneyrkWXeKqbjfcK6RA==}
+    dependencies:
+      iconv-lite: 0.4.5
+    dev: false
 
   /rfdc@1.3.0:
     resolution: {integrity: sha512-V2hovdzFbOi77/WajaSMXk2OLm+xNIeQdMMuB7icj7bk6zi2F8GGAxigcnDFpJHbNyNcgyJDiP+8nOrY5cZGrA==}
