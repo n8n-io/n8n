@@ -19,7 +19,12 @@ export function useExternalSecretsProvider(
 	const initialConnectionState = ref<ExternalSecretsProviderWithProperties['state'] | undefined>(
 		'initializing',
 	);
-	const connectionState = ref<ExternalSecretsProviderWithProperties['state']>();
+	const connectionState = computed(
+		() => externalSecretsStore.connectionState[provider.value?.name],
+	);
+	const setConnectionState = (state: ExternalSecretsProviderWithProperties['state']) => {
+		externalSecretsStore.setConnectionState(provider.value?.name, state);
+	};
 
 	const normalizedProviderData = computed(() => {
 		return Object.entries(providerData.value).reduce((acc, [key, value]) => {
@@ -62,16 +67,23 @@ export function useExternalSecretsProvider(
 				provider.value.name,
 				normalizedProviderData.value,
 			);
-			connectionState.value = testState;
+			setConnectionState(testState);
+
 			return testState;
 		} catch (error) {
-			connectionState.value = 'error';
+			setConnectionState('error');
 
 			if (options.showError) {
 				toast.showError(error, 'Error', error.response?.data?.data.error);
 			}
 
 			return 'error';
+		} finally {
+			if (provider.value.connected && ['connected', 'error'].includes(connectionState.value)) {
+				externalSecretsStore.updateStoredProvider(provider.value.name, {
+					state: connectionState.value,
+				});
+			}
 		}
 	}
 
@@ -80,6 +92,7 @@ export function useExternalSecretsProvider(
 		connectionState,
 		normalizedProviderData,
 		testConnection,
+		setConnectionState,
 		shouldDisplayProperty,
 	};
 }

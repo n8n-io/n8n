@@ -23,8 +23,13 @@ const toast = useToast();
 
 const { provider } = toRefs(props) as Ref<ExternalSecretsProvider>;
 const providerData = computed(() => provider.value.data);
-const { connectionState, initialConnectionState, normalizedProviderData, testConnection } =
-	useExternalSecretsProvider(provider, providerData);
+const {
+	connectionState,
+	initialConnectionState,
+	normalizedProviderData,
+	testConnection,
+	setConnectionState,
+} = useExternalSecretsProvider(provider, providerData);
 
 const actionDropdownOptions = computed(() => [
 	{
@@ -50,7 +55,7 @@ const formattedDate = computed((provider: ExternalSecretsProvider) => {
 });
 
 onMounted(() => {
-	connectionState.value = props.provider.state;
+	setConnectionState(props.provider.state);
 });
 
 async function onBeforeConnectionUpdate() {

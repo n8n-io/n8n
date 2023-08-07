@@ -14,6 +14,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const state = reactive({
 		providers: [] as ExternalSecretsProvider[],
 		secrets: {} as Record<string, string[]>,
+		connectionState: {} as Record<string, ExternalSecretsProvider['state']>,
 	});
 
 	const isEnterpriseExternalSecretsEnabled = computed(() =>
@@ -22,6 +23,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	const secrets = computed(() => state.secrets);
 	const providers = computed(() => state.providers);
+	const connectionState = computed(() => state.connectionState);
 
 	const secretsAsObject = computed(() => {
 		return Object.keys(secrets.value).reduce<Record<string, Record<string, object | string>>>(
@@ -130,9 +132,14 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		updateStoredProvider(id, { data });
 	}
 
+	function setConnectionState(id: string, connectionState: ExternalSecretsProvider['state']) {
+		state.connectionState[id] = connectionState;
+	}
+
 	return {
 		providers,
 		secrets,
+		connectionState,
 		secretsAsObject,
 		isEnterpriseExternalSecretsEnabled,
 		fetchAllSecrets,
@@ -140,7 +147,9 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		getProviders,
 		testProviderConnection,
 		updateProvider,
+		updateStoredProvider,
 		updateProviderConnected,
 		reloadProvider,
+		setConnectionState,
 	};
 });

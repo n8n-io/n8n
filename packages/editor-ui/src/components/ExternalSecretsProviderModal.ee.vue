@@ -9,11 +9,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
-import type {
-	IUpdateInformation,
-	ExternalSecretsProviderWithProperties,
-	ExternalSecretsProviderData,
-} from '@/Interface';
+import type { IUpdateInformation, ExternalSecretsProviderData } from '@/Interface';
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
@@ -55,6 +51,7 @@ const {
 	initialConnectionState,
 	normalizedProviderData,
 	shouldDisplayProperty,
+	setConnectionState,
 	testConnection,
 } = useExternalSecretsProvider(provider, providerData);
 
@@ -85,7 +82,7 @@ onMounted(async () => {
 			...provider.data,
 		};
 
-		connectionState.value = provider.state;
+		setConnectionState(provider.state);
 
 		if (provider.connected) {
 			initialConnectionState.value = provider.state;
@@ -118,6 +115,8 @@ async function save() {
 		await externalSecretsStore.updateProvider(provider.value.name, {
 			data: normalizedProviderData.value,
 		});
+
+		setConnectionState(provider.value.state);
 	} catch (error) {
 		toast.showError(error, 'Error');
 	}
