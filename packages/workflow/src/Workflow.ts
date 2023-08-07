@@ -1004,7 +1004,9 @@ export class Workflow {
 
 		if (method === 'checkExists') {
 			const webhookUrl = thisArgs.getNodeWebhookUrl('default');
-			if (webhookUrl?.includes('//localhost') && !nodeType.description.allowLocalhost) {
+			const allowLocal = nodeType.description.allowLocalhost ?? false;
+
+			if (webhookUrl?.includes('//localhost') && !allowLocal) {
 				throw new NodeOperationError(
 					thisArgs.getNode(),
 					`The webhook for node "${node?.name}" cannot work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!`,
