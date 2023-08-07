@@ -195,7 +195,6 @@ export class CacheService {
 		if (values.length === 0) {
 			return;
 		}
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const nonNullValues = values.filter(
 			([key, value]) => value !== undefined && value !== null && key && key.length > 0,
 		);

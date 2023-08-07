@@ -24,6 +24,7 @@ import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import { TagRepository } from '@/databases/repositories';
 
 export const workflowsController = express.Router();
 
@@ -62,7 +63,7 @@ workflowsController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.find({
+			newWorkflow.tags = await Container.get(TagRepository).find({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),

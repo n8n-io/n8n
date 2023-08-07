@@ -35,6 +35,7 @@ import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
+import { TagRepository } from '@/databases/repositories';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -384,7 +385,7 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 export async function createTag(attributes: Partial<TagEntity> = {}) {
 	const { name } = attributes;
 
-	return Db.collections.Tag.save({
+	return Container.get(TagRepository).save({
 		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,

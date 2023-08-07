@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import type { Config } from '@/config';
 import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
-import type { IDatabaseCollections, IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
-import { TagEntity } from '@db/entities/TagEntity';
+import type { IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
+import type { TagEntity } from '@db/entities/TagEntity';
 import type { TagRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { BadRequestError } from '@/ResponseHelper';
@@ -20,15 +20,15 @@ export class TagsController {
 	constructor({
 		config,
 		externalHooks,
-		repositories,
+		tagRepository,
 	}: {
 		config: Config;
 		externalHooks: IExternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'Tag'>;
+		tagRepository: TagRepository;
 	}) {
 		this.config = config;
 		this.externalHooks = externalHooks;
-		this.tagsRepository = repositories.Tag;
+		this.tagsRepository = tagRepository;
 	}
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
@@ -63,8 +63,7 @@ export class TagsController {
 	// Creates a tag
 	@Post('/')
 	async createTag(req: TagsRequest.Create): Promise<TagEntity> {
-		const newTag = new TagEntity();
-		newTag.name = req.body.name.trim();
+		const newTag = this.tagsRepository.create({ name: req.body.name.trim() });
 
 		await this.externalHooks.run('tag.beforeCreate', [newTag]);
 		await validateEntity(newTag);
@@ -77,12 +76,7 @@ export class TagsController {
 	// Updates a tag
 	@Patch('/:id(\\w+)')
 	async updateTag(req: TagsRequest.Update): Promise<TagEntity> {
-		const { name } = req.body;
-		const { id } = req.params;
-
-		const newTag = new TagEntity();
-		newTag.id = id;
-		newTag.name = name.trim();
+		const newTag = this.tagsRepository.create({ id: req.params.id, name: req.body.name.trim() });
 
 		await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 		await validateEntity(newTag);

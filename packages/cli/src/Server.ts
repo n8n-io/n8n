@@ -2,9 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable prefer-const */
-
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -167,7 +164,7 @@ import {
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository, TagRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
@@ -485,7 +482,7 @@ export class Server extends AbstractServer {
 				logger,
 				jwtService,
 			}),
-			new TagsController({ config, repositories, externalHooks }),
+			new TagsController({ config, tagRepository: Container.get(TagRepository), externalHooks }),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,

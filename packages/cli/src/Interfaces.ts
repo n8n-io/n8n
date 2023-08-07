@@ -54,7 +54,6 @@ import type {
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	TagRepository,
 	UserRepository,
 	VariablesRepository,
 	WorkflowRepository,
@@ -100,7 +99,6 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
 	SharedWorkflow: SharedWorkflowRepository;
-	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
 	Workflow: WorkflowRepository;

@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -26,6 +26,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service';
+import { TagRepository } from '@/databases/repositories';
 
 @Service()
 export class SourceControlExportService {
@@ -167,7 +168,7 @@ export class SourceControlExportService {
 	async exportTagsToWorkFolder(): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
-			const tags = await Db.collections.Tag.find();
+			const tags = await Container.get(TagRepository).find();
 			// do not export empty tags
 			if (tags.length === 0) {
 				return {

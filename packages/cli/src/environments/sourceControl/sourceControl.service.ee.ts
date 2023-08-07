@@ -1,6 +1,5 @@
 import Container, { Service } from 'typedi';
 import path from 'path';
-import * as Db from '@/Db';
 import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
@@ -39,6 +38,7 @@ import type { Variables } from '@db/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
 import { InternalHooks } from '@/InternalHooks';
+import { TagRepository } from '@/databases/repositories';
 @Service()
 export class SourceControlService {
 	private sshKeyName: string;
@@ -682,7 +682,7 @@ export class SourceControlService {
 		options: SourceControlGetStatus,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
-		const lastUpdatedTag = await Db.collections.Tag.find({
+		const lastUpdatedTag = await Container.get(TagRepository).find({
 			order: { updatedAt: 'DESC' },
 			take: 1,
 			select: ['updatedAt'],
