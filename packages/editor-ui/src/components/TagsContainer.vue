@@ -21,6 +21,7 @@
 					size="small"
 					v-if="tag.isCount"
 					class="count-container"
+					:disable-transitions="true"
 				>
 					{{ tag.name }}
 				</el-tag>
@@ -31,7 +32,13 @@
 					:event-bus="intersectionEventBus"
 					v-else
 				>
-					<el-tag :title="tag.name" type="info" size="small" :class="{ hoverable }">
+					<el-tag
+						:title="tag.name"
+						type="info"
+						size="small"
+						:class="{ hoverable }"
+						:disable-transitions="true"
+					>
 						{{ tag.name }}
 					</el-tag>
 				</IntersectionObserved>

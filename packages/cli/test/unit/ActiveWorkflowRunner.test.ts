@@ -24,7 +24,8 @@ import { mockInstance } from '../integration/shared/utils/';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
-import type { WebhookRepository } from '@/databases/repositories';
+import { WebhookService } from '@/services/webhook.service';
+import { VariablesService } from '../../src/environments/variables/variables.service';
 
 /**
  * TODO:
@@ -140,7 +141,7 @@ const workflowExecuteAdditionalDataExecuteErrorWorkflowSpy = jest.spyOn(
 describe('ActiveWorkflowRunner', () => {
 	let externalHooks: ExternalHooks;
 	let activeWorkflowRunner: ActiveWorkflowRunner;
-	let webhookRepository = mock<WebhookRepository>();
+	const webhookService = mockInstance(WebhookService);
 
 	beforeAll(async () => {
 		LoggerProxy.init(getLogger());
@@ -152,7 +153,11 @@ describe('ActiveWorkflowRunner', () => {
 			known: { nodes: {}, credentials: {} },
 			credentialTypes: {} as ICredentialTypes,
 		};
+		const mockVariablesService = {
+			getAllCached: jest.fn(() => []),
+		};
 		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
+		Container.set(VariablesService, mockVariablesService);
 		mockInstance(Push);
 	});
 
@@ -162,7 +167,7 @@ describe('ActiveWorkflowRunner', () => {
 			new ActiveExecutions(),
 			externalHooks,
 			Container.get(NodeTypes),
-			webhookRepository,
+			webhookService,
 		);
 	});
 
@@ -177,7 +182,7 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		expect(await activeWorkflowRunner.getActiveWorkflows()).toHaveLength(0);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(webhookRepository.clear)).toHaveBeenCalled();
+		expect(webhookService.deleteInstanceWebhooks).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 	});
 
@@ -188,7 +193,7 @@ describe('ActiveWorkflowRunner', () => {
 			databaseActiveWorkflowsCount,
 		);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(webhookRepository.clear)).toHaveBeenCalled();
+		expect(webhookService.deleteInstanceWebhooks).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalled();
 	});
 

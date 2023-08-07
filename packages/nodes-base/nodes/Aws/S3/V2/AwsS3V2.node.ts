@@ -283,7 +283,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 						returnData.push(...executionData);
 					}
 				}

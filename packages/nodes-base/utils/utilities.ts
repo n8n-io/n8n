@@ -65,7 +65,7 @@ export function flatten<T>(nestedArray: T[][]) {
 	})(nestedArray);
 
 	//TODO: check logic in MicrosoftSql.node.ts
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
+
 	return result as any;
 }
 

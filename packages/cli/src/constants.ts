@@ -75,6 +75,7 @@ export const LICENSE_FEATURES = {
 	VARIABLES: 'feat:variables',
 	SOURCE_CONTROL: 'feat:sourceControl',
 	API_DISABLED: 'feat:apiDisabled',
+	WORKFLOW_HISTORY: 'feat:workflowHistory',
 } as const;
 
 export const LICENSE_QUOTAS = {

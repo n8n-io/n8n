@@ -554,7 +554,6 @@ export function getFields(object: string) {
 		],
 	} as { [key: string]: any };
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	return [{ name: '*', value: '*' }].concat(data[object] || []).map((fieldObject: IDataObject) => ({
 		...fieldObject,
 		name: fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,

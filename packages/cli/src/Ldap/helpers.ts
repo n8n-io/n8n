@@ -10,7 +10,6 @@ import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { RoleRepository } from '@db/repositories';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import { LdapManager } from './LdapManager.ee';
 
@@ -32,6 +31,7 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
 import { InternalServerError } from '../ResponseHelper';
+import { RoleService } from '@/services/role.service';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -92,7 +92,7 @@ export const randomPassword = (): string => {
  * Return the user role to be assigned to LDAP users
  */
 export const getLdapUserRole = async (): Promise<Role> => {
-	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	return Container.get(RoleService).findGlobalMemberRole();
 };
 
 /**

@@ -179,7 +179,7 @@ export const channelFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether the channel will be marked as public',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+
 			{
 				displayName: 'Temp ID',
 				name: 'temp_id',

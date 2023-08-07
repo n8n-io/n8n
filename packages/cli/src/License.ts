@@ -136,6 +136,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
 	}
 
+	isWorkflowHistoryLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
+	}
+
 	isAPIDisabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
 	}
