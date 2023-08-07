@@ -329,7 +329,7 @@ export default defineComponent({
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			this.ndvStore.disableMappingHint(false);
+			this.ndvStore.disableMappingHint();
 		},
 	},
 	watch: {
