@@ -176,9 +176,11 @@ async function onBeforeClose() {
 				</div>
 				<div :class="$style.providerActions">
 					<ExternalSecretsProviderConnectionSwitch
-						v-if="connectionState !== 'initializing'"
 						class="mr-s"
-						:disabled="connectionState === 'error' && !provider.connected"
+						:disabled="
+							(connectionState === 'initializing' || connectionState === 'error') &&
+							!provider.connected
+						"
 						:event-bus="eventBus"
 						:provider="provider"
 						@change="testConnection"
