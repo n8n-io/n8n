@@ -779,4 +779,4 @@ export interface N8nApp {
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
 
-export type Constructor<T> = new (...args: any[]) => T;
+export type Constructor<T = {}> = new (...args: any[]) => T;

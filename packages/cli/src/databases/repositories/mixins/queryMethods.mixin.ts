@@ -1,14 +1,13 @@
 import { jsonParse } from 'n8n-workflow';
 import type { Constructor } from '@/Interfaces';
 import * as utils from '@/utils';
-import type { WorkflowSchema } from '../workflow.repository';
 import type { Schema } from '../schema';
 
 function hasFieldNamesGetter(schema: unknown): schema is { getFieldNames(): string[] } {
-	return (schema as WorkflowSchema)?.getFieldNames !== undefined;
+	return (schema as Schema)?.getFieldNames !== undefined;
 }
 
-export function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
+export function mixinQueryMethods<T extends Constructor>(base: T) {
 	class Derived extends base {
 		static toQueryFilter(rawFilter: string, schema: typeof Schema) {
 			const asObj = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
@@ -27,9 +26,8 @@ export function mixinQueryMethods<T extends Constructor<{}>>(base: T) {
 				throw new Error('Parsed select is not a string array');
 			}
 
-			// strip out unknown fields
 			const validSelect = hasFieldNamesGetter(schema)
-				? asArr.filter((f) => schema.getFieldNames().includes(f))
+				? asArr.filter((f) => schema.getFieldNames().includes(f)) // strip out unknown fields
 				: asArr;
 
 			return validSelect.reduce<Record<string, true>>((acc, field) => {
