@@ -1,6 +1,3 @@
-/**
- *
- */
 export class Schema {
 	constructor(private data: unknown = {}) {}
 
