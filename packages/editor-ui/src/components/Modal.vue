@@ -7,6 +7,7 @@
 			scrollable: scrollable,
 			[getCustomClass()]: true,
 		}"
+		:center="center"
 		:width="width"
 		:show-close="showClose"
 		:close-on-click-modal="closeOnClickModal"
@@ -14,6 +15,7 @@
 		:style="styles"
 		:append-to-body="appendToBody"
 		:data-test-id="`${this.name}-modal`"
+		:modal-class="center ? $style.center : ''"
 	>
 		<template #header v-if="$slots.header">
 			<slot name="header" v-if="!loading" />
@@ -235,9 +237,7 @@ export default defineComponent({
 </style>
 
 <style lang="scss" module>
-.center {
-	display: flex;
-	align-items: center;
+.center > div {
 	justify-content: center;
 }
 

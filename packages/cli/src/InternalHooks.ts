@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
@@ -25,7 +22,6 @@ import type {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import { EventsService } from '@/services/events.service';
 import type { User } from '@db/entities/User';
@@ -33,6 +29,7 @@ import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from '@db/repositories';
+import { RoleService } from './services/role.service';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -178,7 +175,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (user.id && workflow.id) {
-			const role = await this.roleService.getUserRoleForWorkflow(user.id, workflow.id);
+			const role = await this.roleService.findRoleByUserAndWorkflow(user.id, workflow.id);
 			if (role) {
 				userRole = role.name === 'owner' ? 'owner' : 'sharee';
 			}
@@ -384,7 +381,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
+					const role = await this.roleService.findRoleByUserAndWorkflow(userId, workflow.id);
 					if (role) {
 						userRole = role.name === 'owner' ? 'owner' : 'sharee';
 					}

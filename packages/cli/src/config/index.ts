@@ -26,6 +26,7 @@ if (inE2ETests) {
 	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.N8N_USER_FOLDER = mkdtempSync(testsDir);
+	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
 	dotenv.config();
 }

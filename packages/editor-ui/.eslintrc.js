@@ -17,7 +17,6 @@ module.exports = {
 		'import/order': 'off',
 		'import/no-cycle': 'warn',
 		'import/no-duplicates': 'warn',
-		indent: 'warn',
 		'@typescript-eslint/ban-types': 'warn',
 		'@typescript-eslint/dot-notation': 'warn',
 		'@typescript-eslint/lines-between-class-members': 'warn',

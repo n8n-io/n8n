@@ -32,4 +32,8 @@ export class Role extends WithTimestamps {
 
 	@OneToMany('SharedCredentials', 'role')
 	sharedCredentials: SharedCredentials[];
+
+	get cacheKey() {
+		return `role:${this.scope}:${this.name}`;
+	}
 }

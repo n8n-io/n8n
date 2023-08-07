@@ -191,8 +191,8 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new Error('Git is not initialized (setGitUserDetails)');
 		}
-		await this.git.addConfig('user.email', name);
-		await this.git.addConfig('user.name', email);
+		await this.git.addConfig('user.email', email);
+		await this.git.addConfig('user.name', name);
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {

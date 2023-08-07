@@ -1,18 +1,11 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
-/* eslint-disable no-prototype-builtins */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-continue */
-/* eslint-disable no-restricted-syntax */
 
 import type {
 	IConnections,
@@ -214,7 +207,6 @@ export class Workflow {
 				continue;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			if (ignoreNodeTypes !== undefined && ignoreNodeTypes.includes(node.type)) {
 				continue;
 			}
@@ -482,7 +474,6 @@ export class Workflow {
 		const returnData: any = {};
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			returnData[parameterName] = this.renameNodeInParameterValue(
 				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,

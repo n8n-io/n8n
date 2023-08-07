@@ -30,13 +30,15 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import omit from 'lodash/omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
+import { RoleService } from './services/role.service';
+import { RoleRepository } from './databases/repositories';
+import { VariablesService } from './environments/variables/variables.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -96,7 +98,6 @@ export async function executeErrorWorkflow(
 		if (workflowData === null) {
 			// The error workflow could not be found
 			Logger.error(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find error workflow "${workflowId}"`,
 				{ workflowId },
 			);
@@ -142,7 +143,6 @@ export async function executeErrorWorkflow(
 
 		if (workflowStartNode === undefined) {
 			Logger.error(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
 			);
 			return;
@@ -191,7 +191,7 @@ export async function executeErrorWorkflow(
 	} catch (error) {
 		ErrorReporter.error(error);
 		Logger.error(
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
 		);
@@ -207,13 +207,13 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 		if (isWorkflowIdValid(workflow.id)) {
 			// Workflow is saved so update in database
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-use-before-define, @typescript-eslint/no-non-null-assertion
+				// eslint-disable-next-line @typescript-eslint/no-use-before-define
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (error) {
 				ErrorReporter.error(error);
 				Logger.error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);
@@ -273,7 +273,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 
 	// for loop to run DB fetches sequential and use cache to keep pressure off DB
 	// trade-off: longer response time for less DB queries
-	/* eslint-disable no-await-in-loop */
+
 	for (const node of nodes) {
 		if (!node.credentials || node.disabled) {
 			continue;
@@ -379,10 +379,13 @@ export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Pro
 		where.userId = user.id;
 	}
 	if (roles?.length) {
-		const roleIds = await Db.collections.Role.find({
-			select: ['id'],
-			where: { name: In(roles), scope: 'workflow' },
-		}).then((data) => data.map(({ id }) => id));
+		const roleIds = await Container.get(RoleRepository)
+			.find({
+				select: ['id'],
+				where: { name: In(roles), scope: 'workflow' },
+			})
+			.then((role) => role.map(({ id }) => id));
+
 		where.roleId = In(roleIds);
 	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
@@ -399,7 +402,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
+	const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
 		where: {
 			userId: user.id,
@@ -573,8 +576,9 @@ export function validateWorkflowCredentialUsage(
 }
 
 export async function getVariables(): Promise<IDataObject> {
+	const variables = await Container.get(VariablesService).getAllCached();
 	return Object.freeze(
-		(await Db.collections.Variables.find()).reduce((prev, curr) => {
+		variables.reduce((prev, curr) => {
 			prev[curr.key] = curr.value;
 			return prev;
 		}, {} as IDataObject),

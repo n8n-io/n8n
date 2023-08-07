@@ -12,7 +12,6 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable @typescript-eslint/unbound-method */
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 

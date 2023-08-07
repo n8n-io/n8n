@@ -88,7 +88,6 @@ export const hasNativeMethod = (method: string): boolean => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseWithEsprimaNext(source: string, options?: any): any {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	const ast = esprimaParse(source, {
 		loc: true,
 		locations: true,
@@ -451,7 +450,6 @@ interface FoundFunction {
 	function: Function;
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	let foundFunction: Function | undefined;
@@ -479,12 +477,7 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		const inputAny: any = input;
 		// This is likely a builtin we're implementing for another type
 		// (e.g. toLocaleString). We'll return that instead
-		if (
-			inputAny &&
-			functionName &&
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			typeof inputAny[functionName] === 'function'
-		) {
+		if (inputAny && functionName && typeof inputAny[functionName] === 'function') {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			return { type: 'native', function: inputAny[functionName] };
 		}
@@ -508,7 +501,6 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
  * ```
  */
 export function extend(input: unknown, functionName: string, args: unknown[]) {
-	// eslint-disable-next-line @typescript-eslint/ban-types
 	const foundFunction = findExtendedFunction(input, functionName);
 
 	// No type specific or generic function found. Check to see if
@@ -522,7 +514,6 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		}
 
 		if (haveFunction.length > 1) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const lastType = `"${haveFunction.pop()!.typeName}"`;
 			const typeNames = `${haveFunction.map((v) => `"${v.typeName}"`).join(', ')}, and ${lastType}`;
 			throw new ExpressionExtensionError(
