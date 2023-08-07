@@ -169,7 +169,7 @@ export default defineComponent({
 					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
-					click: mappingTooltipDismissHandler,
+					onClick: mappingTooltipDismissHandler,
 				},
 			},
 		];
@@ -329,7 +329,7 @@ export default defineComponent({
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			this.ndvStore.disableMappingHint();
+			this.ndvStore.disableMappingHint(false);
 		},
 	},
 	watch: {
