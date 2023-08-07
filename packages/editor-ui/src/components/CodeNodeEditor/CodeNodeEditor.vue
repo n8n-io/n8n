@@ -151,13 +151,13 @@ export default defineComponent({
 	},
 	methods: {
 		async onReplaceCode(code: string) {
-			prettier.format(code, {
+			const formattedCode = prettier.format(code, {
 				parser: 'babel',
 				plugins: [jsParser],
 			});
 
 			this.editor?.dispatch({
-				changes: { from: 0, to: (this.modelValue || '').length, insert: code },
+				changes: { from: 0, to: (this.modelValue || '').length, insert: formattedCode },
 			});
 
 			this.activeTab = 'code';
