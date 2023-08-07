@@ -5,14 +5,22 @@ import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';
 import { jsonStringify } from 'n8n-workflow';
 import { getDefaultRedisClient, getRedisPrefix } from './redis/RedisServiceHelper';
+import EventEmitter from 'events';
 
 @Service()
-export class CacheService {
+export class CacheService extends EventEmitter {
 	/**
 	 * Keys and values:
 	 * - `'cache:workflow-owner:${workflowId}'`: `User`
 	 */
 	private cache: RedisCache | MemoryCache | undefined;
+
+	metricsCounterEvents = {
+		cacheHit: 'metrics.cache.hit',
+
+		cacheMiss: 'metrics.cache.miss',
+		cacheUpdate: 'metrics.cache.update',
+	};
 
 	isRedisCache(): boolean {
 		return (this.cache as RedisCache)?.store?.isCacheable !== undefined;
@@ -85,9 +93,12 @@ export class CacheService {
 		}
 		const value = await this.cache?.store.get(key);
 		if (value !== undefined) {
+			this.emit(this.metricsCounterEvents.cacheHit);
 			return value;
 		}
+		this.emit(this.metricsCounterEvents.cacheMiss);
 		if (options.refreshFunction) {
+			this.emit(this.metricsCounterEvents.cacheUpdate);
 			const refreshValue = await options.refreshFunction(key);
 			await this.set(key, refreshValue, options.refreshTtl);
 			return refreshValue;
@@ -124,8 +135,10 @@ export class CacheService {
 			values = keys.map(() => undefined);
 		}
 		if (!values.includes(undefined)) {
+			this.emit(this.metricsCounterEvents.cacheHit);
 			return values;
 		}
+		this.emit(this.metricsCounterEvents.cacheMiss);
 		if (options.refreshFunctionEach) {
 			for (let i = 0; i < keys.length; i++) {
 				if (values[i] === undefined) {
@@ -145,6 +158,7 @@ export class CacheService {
 			return values;
 		}
 		if (options.refreshFunctionMany) {
+			this.emit(this.metricsCounterEvents.cacheUpdate);
 			const refreshValues: unknown[] = await options.refreshFunctionMany(keys);
 			if (keys.length !== refreshValues.length) {
 				throw new Error('refreshFunctionMany must return the same number of values as keys');
