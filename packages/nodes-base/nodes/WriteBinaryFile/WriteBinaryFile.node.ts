@@ -97,7 +97,7 @@ export class WriteBinaryFile implements INodeType {
 				}
 
 				// Write the file to disk
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 				await this.helpers.writeContentToFile(fileName, fileContent, flag);
 
 				if (item.binary !== undefined) {

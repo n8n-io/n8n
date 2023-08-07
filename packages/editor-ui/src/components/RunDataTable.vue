@@ -156,7 +156,6 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable prefer-spread */
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
