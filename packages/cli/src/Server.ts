@@ -498,7 +498,6 @@ export class Server extends AbstractServer {
 				jwtService,
 				roleService: Container.get(RoleService),
 			}),
-
 			Container.get(SamlController),
 			Container.get(SourceControlController),
 			Container.get(WorkflowStatisticsController),
