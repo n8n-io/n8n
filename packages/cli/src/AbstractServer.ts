@@ -16,7 +16,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { RedisService } from '@/services/redis.service';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { eventBus } from './eventbus';
 import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
@@ -26,7 +26,6 @@ import {
 	WORKER_RESPONSE_REDIS_CHANNEL,
 } from './services/redis/RedisServiceHelper';
 import { generateHostInstanceId } from './databases/utils/generators';
-import { getLogger } from './Logger';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -59,7 +58,7 @@ export abstract class AbstractServer {
 
 	protected testWebhooksEnabled = false;
 
-	readonly serverId: string;
+	readonly uniqueInstanceId: string;
 
 	constructor(instanceType: N8nInstanceType = 'main') {
 		this.app = express();
@@ -76,9 +75,7 @@ export abstract class AbstractServer {
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
-		this.serverId = generateHostInstanceId(instanceType);
-		LoggerProxy.init(getLogger());
-		LoggerProxy.debug(`Server ID: ${this.serverId}`);
+		this.uniqueInstanceId = generateHostInstanceId(instanceType);
 	}
 
 	async configure(): Promise<void> {

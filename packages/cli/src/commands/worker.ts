@@ -46,12 +46,11 @@ export class Worker extends BaseCommand {
 
 	static jobQueue: JobQueue;
 
-	readonly workerId: string;
+	readonly uniqueInstanceId: string;
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
-		this.workerId = generateHostInstanceId('worker');
-		LoggerProxy.debug(`Worker ID: ${this.workerId}`);
+		this.uniqueInstanceId = generateHostInstanceId('worker');
 	}
 
 	/**
@@ -238,6 +237,7 @@ export class Worker extends BaseCommand {
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
+		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
 		this.logger.debug('Starting n8n worker...');
 
 		await this.initLicense();
