@@ -45,7 +45,6 @@ export class EmeliaTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Campaign Name or ID',

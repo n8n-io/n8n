@@ -39,6 +39,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'API Version',

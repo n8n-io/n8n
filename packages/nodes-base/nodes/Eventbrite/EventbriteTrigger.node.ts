@@ -56,7 +56,6 @@ export class EventbriteTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',

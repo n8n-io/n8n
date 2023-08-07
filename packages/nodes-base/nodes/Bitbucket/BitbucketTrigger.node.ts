@@ -44,7 +44,6 @@ export class BitbucketTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Resource',

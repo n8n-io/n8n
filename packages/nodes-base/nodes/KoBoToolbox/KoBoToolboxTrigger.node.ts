@@ -44,6 +44,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'Form Name or ID',

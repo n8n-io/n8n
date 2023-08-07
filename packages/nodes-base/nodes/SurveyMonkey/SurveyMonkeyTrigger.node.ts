@@ -64,7 +64,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',

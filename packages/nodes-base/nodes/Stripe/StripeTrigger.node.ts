@@ -39,7 +39,6 @@ export class StripeTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Events',

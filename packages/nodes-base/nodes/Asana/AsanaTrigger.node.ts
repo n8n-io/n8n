@@ -57,7 +57,6 @@ export class AsanaTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',

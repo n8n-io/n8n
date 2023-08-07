@@ -36,7 +36,6 @@ export class CalendlyTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Scope',

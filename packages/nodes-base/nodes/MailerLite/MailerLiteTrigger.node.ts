@@ -37,7 +37,6 @@ export class MailerLiteTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Event',

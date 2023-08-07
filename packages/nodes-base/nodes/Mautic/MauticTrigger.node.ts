@@ -54,6 +54,7 @@ export class MauticTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'Authentication',

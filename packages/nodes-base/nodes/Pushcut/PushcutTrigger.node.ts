@@ -36,7 +36,6 @@ export class PushcutTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Action Name',

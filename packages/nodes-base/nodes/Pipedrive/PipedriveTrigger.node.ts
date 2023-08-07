@@ -81,7 +81,6 @@ export class PipedriveTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',

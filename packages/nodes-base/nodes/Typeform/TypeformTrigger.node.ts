@@ -62,7 +62,6 @@ export class TypeformTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Authentication',

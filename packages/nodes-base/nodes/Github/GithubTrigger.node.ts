@@ -55,7 +55,7 @@ export class GithubTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName:

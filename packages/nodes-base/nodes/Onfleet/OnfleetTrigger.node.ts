@@ -50,7 +50,6 @@ export class OnfleetTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [eventDisplay, eventNameField],
 	};
 

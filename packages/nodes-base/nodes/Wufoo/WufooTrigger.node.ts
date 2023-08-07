@@ -44,7 +44,6 @@ export class WufooTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Forms Name or ID',

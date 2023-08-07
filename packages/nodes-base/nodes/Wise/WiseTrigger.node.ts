@@ -41,7 +41,6 @@ export class WiseTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Profile Name or ID',

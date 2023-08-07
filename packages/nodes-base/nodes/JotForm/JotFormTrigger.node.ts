@@ -46,7 +46,6 @@ export class JotFormTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Form Name or ID',

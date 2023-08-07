@@ -120,6 +120,7 @@ export class GitlabTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'Authentication',

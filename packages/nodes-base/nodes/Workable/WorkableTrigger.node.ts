@@ -42,7 +42,6 @@ export class WorkableTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Trigger On',

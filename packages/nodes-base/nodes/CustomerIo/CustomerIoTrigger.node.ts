@@ -45,7 +45,6 @@ export class CustomerIoTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Events',

@@ -43,7 +43,6 @@ export class TrelloTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Model ID',

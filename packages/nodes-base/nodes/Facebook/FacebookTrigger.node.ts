@@ -53,7 +53,6 @@ export class FacebookTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'APP ID',

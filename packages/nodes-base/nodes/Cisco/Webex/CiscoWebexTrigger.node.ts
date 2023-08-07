@@ -46,7 +46,6 @@ export class CiscoWebexTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Resource',

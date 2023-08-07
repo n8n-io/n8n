@@ -61,6 +61,7 @@ export class JiraTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'Jira Version',

@@ -35,7 +35,6 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		inputs: [],
 		outputs: ['main'],
 		properties: [

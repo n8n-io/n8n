@@ -39,7 +39,6 @@ export class PayPalTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Event Names or IDs',

@@ -36,7 +36,6 @@ export class BrevoTrigger implements INodeType {
 				path: 'webhooks',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Resource',

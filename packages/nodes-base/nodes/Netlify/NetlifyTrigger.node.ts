@@ -41,7 +41,6 @@ export class NetlifyTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Site Name or ID',

@@ -39,7 +39,6 @@ export class TelegramTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Trigger On',

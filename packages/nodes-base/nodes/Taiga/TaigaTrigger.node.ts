@@ -43,6 +43,7 @@ export class TaigaTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'Project Name or ID',

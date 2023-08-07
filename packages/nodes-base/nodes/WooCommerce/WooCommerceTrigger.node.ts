@@ -38,6 +38,7 @@ export class WooCommerceTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [
 			{
 				displayName: 'Event',

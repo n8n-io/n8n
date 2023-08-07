@@ -39,7 +39,6 @@ export class LinearTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Team Name or ID',

@@ -42,7 +42,6 @@ export class AwsSnsTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Topic',

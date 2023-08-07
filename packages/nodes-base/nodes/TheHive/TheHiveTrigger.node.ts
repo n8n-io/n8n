@@ -29,6 +29,7 @@ export class TheHiveTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
+		allowLocalhost: true,
 		properties: [...eventsDescription],
 	};
 

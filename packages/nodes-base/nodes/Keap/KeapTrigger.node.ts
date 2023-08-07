@@ -42,7 +42,6 @@ export class KeapTrigger implements INodeType {
 				path: 'webhook',
 			},
 		],
-		allowLocalhost: false,
 		properties: [
 			{
 				displayName: 'Event Name or ID',
