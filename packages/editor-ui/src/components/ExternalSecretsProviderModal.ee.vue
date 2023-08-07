@@ -92,6 +92,10 @@ onMounted(async () => {
 		} else if (Object.keys(provider.data).length) {
 			await testConnection();
 		}
+
+		if (provider.state === 'connected') {
+			void externalSecretsStore.reloadProvider(props.data.name);
+		}
 	} catch (error) {
 		toast.showError(error, 'Error');
 	}
@@ -166,7 +170,6 @@ async function onBeforeClose() {
 	>
 		<template #header>
 			<div :class="$style.header">
-				{{ initialConnectionState }}
 				<div :class="$style.providerTitle">
 					<ExternalSecretsProviderImage :provider="provider" class="mr-xs" />
 					<span>{{ provider.displayName }}</span>
