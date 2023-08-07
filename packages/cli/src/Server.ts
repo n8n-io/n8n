@@ -192,7 +192,7 @@ export class Server extends AbstractServer {
 	push: Push;
 
 	constructor() {
-		super();
+		super('main');
 
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
@@ -339,6 +339,7 @@ export class Server extends AbstractServer {
 		this.push = Container.get(Push);
 
 		await super.start();
+		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
