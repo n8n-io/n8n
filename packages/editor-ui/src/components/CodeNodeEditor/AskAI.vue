@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
-import { ref, defineEmits, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useDataSchema, useI18n, useMessage, useToast } from '@/composables';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useNDVStore, usePostHog, useRootStore } from '@/stores';
@@ -32,6 +32,17 @@ const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).lengt
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
+
+function getErrorMessageByStatusCode(statusCode: number) {
+	const errorMessages: Record<number, string> = {
+		400: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		429: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
+		500: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+	};
+
+	return errorMessages[statusCode] || i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown');
+}
+
 async function onSubmit() {
 	const { getRestApiContext } = useRootStore();
 	const { ndvInputData } = useNDVStore();
@@ -68,18 +79,17 @@ async function onSubmit() {
 		});
 
 		stopLoading();
-		emit('replaceCode', { code });
+		emit('replaceCode', code);
 		showMessage({
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
 	} catch (error) {
-		console.log('Failed to generate code', error);
-		showError(
-			error,
-			i18n.baseText('codeNodeEditor.askAi.generationFailed'),
-			i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
-		);
+		showMessage({
+			type: 'error',
+			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
+			message: getErrorMessageByStatusCode(error.httpStatusCode),
+		});
 		stopLoading();
 	}
 }
@@ -185,7 +195,9 @@ function stopLoading() {
 <style scoped>
 .text-fade-in-out-enter-active,
 .text-fade-in-out-leave-active {
-	transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+	transition:
+		opacity 0.5s ease-in-out,
+		transform 0.5s ease-in-out;
 }
 .text-fade-in-out-enter,
 .text-fade-in-out-leave-to {

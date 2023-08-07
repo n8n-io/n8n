@@ -65,6 +65,7 @@ const vModel = reactive(
 				},
 				set(value) {
 					// TODO: find out what exactly is typechecker complaining about
+
 					// @ts-ignore
 					filter[key] = value;
 					emit('filterChanged', filter);

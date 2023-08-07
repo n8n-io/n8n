@@ -113,7 +113,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useRootStore, usePostHog),
-		hasChanges():boolean {
+		hasChanges(): boolean {
 			return this.modelValue !== this.content;
 		},
 		content(): string {
@@ -144,24 +144,17 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onReplaceCode({ code, mode }: { code: string; mode: CodeExecutionMode }) {
-			this.workflowsStore.updateNodeProperties({
-				name: this.ndvStore.activeNode.name,
-				properties: { parameters: { mode } },
-			});
-
+		async onReplaceCode(code: string) {
+			console.log('🚀 ~ file: CodeNodeEditor.vue:148 ~ onReplaceCode ~ code:', code);
 			this.editor?.dispatch({
-				changes: { from: 0, to: this.content.length, insert: code },
+				changes: { from: 0, to: (this.modelValue ?? this.content).length, insert: code },
 			});
 
 			this.initialValue = this.content;
 			this.activeTab = 'code';
-			this.formatCode();
-		},
-		switchMode(mode: string) {
-			this.workflowsStore.updateNodeProperties({
-				name: this.ndvStore.activeNode.name,
-				properties: { parameters: { mode } },
+			prettier.format(this.content, {
+				parser: 'babel',
+				plugins: [jsParser],
 			});
 		},
 		onMouseOver(event: MouseEvent) {
@@ -221,16 +214,6 @@ export default defineComponent({
 
 			this.editor.dispatch({
 				selection: { anchor: line.from },
-			});
-		},
-		formatCode() {
-			const formattedCode = prettier.format(this.content, {
-				parser: 'babel',
-				plugins: [jsParser],
-			});
-
-			this.editor?.dispatch({
-				changes: { from: 0, to: this.content.length, insert: formattedCode },
 			});
 		},
 		trackCompletion(viewUpdate: ViewUpdate) {
@@ -316,7 +299,7 @@ export default defineComponent({
 		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
 
 		const state = EditorState.create({
-			doc: this.modelValue || this.placeholder,
+			doc: this.modelValue ?? this.placeholder,
 			extensions,
 		});
 
