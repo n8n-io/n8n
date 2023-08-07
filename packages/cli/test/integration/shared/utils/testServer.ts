@@ -51,6 +51,7 @@ import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
+import { TagRepository } from '@/databases/repositories';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -271,7 +272,11 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new TagsController({ config, externalHooks, repositories }),
+							new TagsController({
+								config,
+								externalHooks,
+								tagRepository: Container.get(TagRepository),
+							}),
 						);
 						break;
 				}
