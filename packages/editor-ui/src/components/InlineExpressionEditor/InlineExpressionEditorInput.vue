@@ -5,10 +5,11 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { EditorView, keymap } from '@codemirror/view';
+import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { history, redo } from '@codemirror/commands';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
+import { debounce } from 'lodash-es';
 
 import { useNDVStore } from '@/stores/ndv.store';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -82,6 +83,30 @@ export default defineComponent({
 		},
 	},
 	mounted() {
+		const onViewUpdate = debounce(
+			(viewUpdate: ViewUpdate) => {
+				if (!this.editor || !viewUpdate.docChanged) return;
+
+				// Force segments value update by keeping track of editor state
+				this.editorState = this.editor.state;
+
+				highlighter.removeColor(this.editor, this.plaintextSegments);
+				highlighter.addColor(this.editor, this.resolvableSegments);
+
+				setTimeout(() => {
+					try {
+						this.trackCompletion(viewUpdate, this.path);
+					} catch {}
+				});
+
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
+			},
+			100,
+			{ trailing: true },
+		);
 		const extensions = [
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			Prec.highest(
@@ -111,26 +136,7 @@ export default defineComponent({
 					this.$emit('focus');
 				},
 			}),
-			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor || !viewUpdate.docChanged) return;
-
-				// Force segments value update by keeping track of editor state
-				this.editorState = this.editor.state;
-
-				highlighter.removeColor(this.editor, this.plaintextSegments);
-				highlighter.addColor(this.editor, this.resolvableSegments);
-
-				setTimeout(() => {
-					try {
-						this.trackCompletion(viewUpdate, this.path);
-					} catch {}
-				});
-
-				this.$emit('change', {
-					value: this.unresolvedExpression,
-					segments: this.displayableSegments,
-				});
-			}),
+			EditorView.updateListener.of(onViewUpdate),
 		];
 
 		this.editor = new EditorView({

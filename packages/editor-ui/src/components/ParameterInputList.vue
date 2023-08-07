@@ -198,6 +198,11 @@ export default defineComponent({
 			default: () => [],
 		},
 	},
+	data() {
+		return {
+			displayMap: new WeakMap<INodeProperties, boolean>(),
+		};
+	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore),
 		nodeTypeVersion(): number | null {
@@ -219,6 +224,7 @@ export default defineComponent({
 			return null;
 		},
 		filteredParameters(): INodeProperties[] {
+			// console.log('filteredParameters', this.parameters.map((p) => p.name).join());
 			return this.parameters.filter((parameter: INodeProperties) =>
 				this.displayNodeParameter(parameter),
 			);
@@ -321,89 +327,97 @@ export default defineComponent({
 			return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 		},
 		displayNodeParameter(parameter: INodeProperties): boolean {
-			if (parameter.type === 'hidden') {
-				return false;
-			}
+			if (this.displayMap.has(parameter)) return this.displayMap.get(parameter);
 
-			if (
-				this.isCustomApiCallSelected(this.nodeValues) &&
-				this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
-			) {
-				return false;
-			}
-
-			// Hide authentication related fields since it will now be part of credentials modal
-			if (
-				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
-				this.mainNodeAuthField &&
-				(parameter.name === this.mainNodeAuthField?.name ||
-					this.shouldHideAuthRelatedParameter(parameter))
-			) {
-				return false;
-			}
-
-			if (parameter.displayOptions === undefined) {
-				// If it is not defined no need to do a proper check
-				return true;
-			}
-
-			const nodeValues: INodeParameters = {};
-			let rawValues = this.nodeValues;
-			if (this.path) {
-				rawValues = get(this.nodeValues, this.path);
-			}
-
-			// Resolve expressions
-			const resolveKeys = Object.keys(rawValues);
-			let key: string;
-			let i = 0;
-			let parameterGotResolved = false;
-			do {
-				key = resolveKeys.shift() as string;
-				if (typeof rawValues[key] === 'string' && rawValues[key].charAt(0) === '=') {
-					// Contains an expression that
-					if (
-						rawValues[key].includes('$parameter') &&
-						resolveKeys.some((parameterName) => rawValues[key].includes(parameterName))
-					) {
-						// Contains probably an expression of a missing parameter so skip
-						resolveKeys.push(key);
-						continue;
-					} else {
-						// Contains probably no expression with a missing parameter so resolve
-						try {
-							nodeValues[key] = this.resolveExpression(
-								rawValues[key],
-								nodeValues,
-							) as NodeParameterValue;
-						} catch (e) {
-							// If expression is invalid ignore
-							nodeValues[key] = '';
-						}
-						parameterGotResolved = true;
-					}
-				} else {
-					// Does not contain an expression, add directly
-					nodeValues[key] = rawValues[key];
+			const toDisplay: boolean = (() => {
+				if (parameter.type === 'hidden') {
+					return false;
 				}
-				// TODO: Think about how to calculate this best
-				if (i++ > 50) {
-					// Make sure we do not get caught
-					break;
-				}
-			} while (resolveKeys.length !== 0);
 
-			if (parameterGotResolved === true) {
+				if (
+					this.isCustomApiCallSelected(this.nodeValues) &&
+					this.mustHideDuringCustomApiCall(parameter, this.nodeValues)
+				) {
+					return false;
+				}
+
+				// Hide authentication related fields since it will now be part of credentials modal
+				if (
+					!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
+					this.mainNodeAuthField &&
+					(parameter.name === this.mainNodeAuthField?.name ||
+						this.shouldHideAuthRelatedParameter(parameter))
+				) {
+					return false;
+				}
+
+				if (parameter.displayOptions === undefined) {
+					// If it is not defined no need to do a proper check
+					return true;
+				}
+
+				if (parameter.noDataExpression === true || parameter.type === 'notice') {
+					return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
+				}
+
+				const nodeValues: INodeParameters = {};
+				let rawValues = this.nodeValues;
 				if (this.path) {
-					rawValues = deepCopy(this.nodeValues);
-					set(rawValues, this.path, nodeValues);
-					return this.displayParameter(rawValues, parameter, this.path, this.node);
-				} else {
-					return this.displayParameter(nodeValues, parameter, '', this.node);
+					rawValues = get(this.nodeValues, this.path);
 				}
-			}
 
-			return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
+				// Resolve expressions
+				const resolveKeys = Object.keys(rawValues);
+				let i = 0;
+				let parameterGotResolved = false;
+				do {
+					const key = resolveKeys.shift();
+					const value = rawValues[key];
+					if (typeof value === 'string' && value.startsWith('={{')) {
+						// Contains an expression that
+						if (
+							value.includes('$parameter') &&
+							resolveKeys.some((parameterName) => value.includes(parameterName))
+						) {
+							// Contains probably an expression of a missing parameter so skip
+							resolveKeys.push(key);
+							continue;
+						} else {
+							// Contains probably no expression with a missing parameter so resolve
+							try {
+								nodeValues[key] = this.resolveExpression(value, nodeValues) as NodeParameterValue;
+							} catch (e) {
+								// If expression is invalid ignore
+								nodeValues[key] = '';
+							}
+							parameterGotResolved = true;
+						}
+					} else {
+						// Does not contain an expression, add directly
+						nodeValues[key] = value;
+					}
+					// TODO: Think about how to calculate this best
+					if (i++ > 50) {
+						// Make sure we do not get caught
+						break;
+					}
+				} while (resolveKeys.length !== 0);
+
+				if (parameterGotResolved) {
+					if (this.path) {
+						rawValues = deepCopy(this.nodeValues);
+						set(rawValues, this.path, nodeValues);
+						return this.displayParameter(rawValues, parameter, this.path, this.node);
+					} else {
+						return this.displayParameter(nodeValues, parameter, '', this.node);
+					}
+				}
+
+				return this.displayParameter(this.nodeValues, parameter, this.path, this.node);
+			})();
+
+			this.displayMap.set(parameter, toDisplay);
+			return toDisplay;
 		},
 		valueChanged(parameterData: IUpdateInformation): void {
 			this.$emit('valueChanged', parameterData);

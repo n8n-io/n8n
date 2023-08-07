@@ -4,9 +4,10 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { EditorView, keymap } from '@codemirror/view';
+import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { history, redo } from '@codemirror/commands';
+import { debounce } from 'lodash-es';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
@@ -40,6 +41,31 @@ export default defineComponent({
 		};
 	},
 	mounted() {
+		const onViewUpdate = debounce(
+			(viewUpdate: ViewUpdate) => {
+				if (!this.editor || !viewUpdate.docChanged) return;
+
+				this.editorState = this.editor.state;
+
+				highlighter.removeColor(this.editor, this.plaintextSegments);
+				highlighter.addColor(this.editor, this.resolvableSegments);
+
+				setTimeout(() => {
+					this.editor?.focus(); // prevent blur on paste
+					try {
+						this.trackCompletion(viewUpdate, this.path);
+					} catch {}
+				});
+
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
+			},
+			100,
+			{ trailing: true },
+		);
+
 		const extensions = [
 			inputTheme(),
 			autocompletion(),
@@ -66,26 +92,7 @@ export default defineComponent({
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({ scroll: forceParse }),
-			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor || !viewUpdate.docChanged) return;
-
-				this.editorState = this.editor.state;
-
-				highlighter.removeColor(this.editor, this.plaintextSegments);
-				highlighter.addColor(this.editor, this.resolvableSegments);
-
-				setTimeout(() => {
-					this.editor?.focus(); // prevent blur on paste
-					try {
-						this.trackCompletion(viewUpdate, this.path);
-					} catch {}
-				});
-
-				this.$emit('change', {
-					value: this.unresolvedExpression,
-					segments: this.displayableSegments,
-				});
-			}),
+			EditorView.updateListener.of(onViewUpdate),
 		];
 
 		this.editor = new EditorView({
