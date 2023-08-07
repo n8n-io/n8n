@@ -25,7 +25,8 @@ export type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
-	| 'tags';
+	| 'tags'
+	| 'metrics';
 
 export interface SetupProps {
 	applyAuth?: boolean;

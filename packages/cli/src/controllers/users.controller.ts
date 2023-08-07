@@ -39,7 +39,6 @@ import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import type {
-	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -50,6 +49,7 @@ import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { JwtService } from '@/services/jwt.service';
+import type { RoleService } from '@/services/role.service';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -64,8 +64,6 @@ export class UsersController {
 
 	private userRepository: UserRepository;
 
-	private roleRepository: RoleRepository;
-
 	private sharedCredentialsRepository: SharedCredentialsRepository;
 
 	private sharedWorkflowRepository: SharedWorkflowRepository;
@@ -78,6 +76,8 @@ export class UsersController {
 
 	private postHog?: PostHogClient;
 
+	private roleService: RoleService;
+
 	constructor({
 		config,
 		logger,
@@ -88,32 +88,31 @@ export class UsersController {
 		mailer,
 		jwtService,
 		postHog,
+		roleService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<
-			IDatabaseCollections,
-			'User' | 'Role' | 'SharedCredentials' | 'SharedWorkflow'
-		>;
+		repositories: Pick<IDatabaseCollections, 'User' | 'SharedCredentials' | 'SharedWorkflow'>;
 		activeWorkflowRunner: ActiveWorkflowRunner;
 		mailer: UserManagementMailer;
 		jwtService: JwtService;
 		postHog?: PostHogClient;
+		roleService: RoleService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
-		this.roleRepository = repositories.Role;
 		this.sharedCredentialsRepository = repositories.SharedCredentials;
 		this.sharedWorkflowRepository = repositories.SharedWorkflow;
 		this.activeWorkflowRunner = activeWorkflowRunner;
 		this.mailer = mailer;
 		this.jwtService = jwtService;
 		this.postHog = postHog;
+		this.roleService = roleService;
 	}
 
 	/**
@@ -176,7 +175,7 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findGlobalMemberRole();
+		const role = await this.roleService.findGlobalMemberRole();
 
 		if (!role) {
 			this.logger.error(
@@ -469,8 +468,8 @@ export class UsersController {
 		}
 
 		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findWorkflowOwnerRole(),
-			this.roleRepository.findCredentialOwnerRole(),
+			this.roleService.findWorkflowOwnerRole(),
+			this.roleService.findCredentialOwnerRole(),
 		]);
 
 		if (transferId) {

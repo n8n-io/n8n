@@ -178,7 +178,7 @@ export default defineComponent({
 						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
 						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
 
-						this.$emit('update:modelValue', this.doc);
+						this.$emit('update:modelValue', this.editor?.state.doc.toString());
 					}),
 				);
 			}
