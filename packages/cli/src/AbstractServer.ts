@@ -26,6 +26,7 @@ import {
 	WORKER_RESPONSE_REDIS_CHANNEL,
 } from './services/redis/RedisServiceHelper';
 import { generateHostInstanceId } from './databases/utils/generators';
+import { getLogger } from './Logger';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -76,6 +77,7 @@ export abstract class AbstractServer {
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
 		this.serverId = generateHostInstanceId(instanceType);
+		LoggerProxy.init(getLogger());
 		LoggerProxy.debug(`Server ID: ${this.serverId}`);
 	}
 
