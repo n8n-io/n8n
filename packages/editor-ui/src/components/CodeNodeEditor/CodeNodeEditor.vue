@@ -5,12 +5,7 @@
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
 	>
-		<el-tabs
-			type="card"
-			ref="tabs"
-			v-model="activeTab"
-			v-if="aiEnabled && language === 'javaScript'"
-		>
+		<el-tabs type="card" ref="tabs" v-model="activeTab" v-if="aiEnabled">
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.code')" name="code">
 				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
 			</el-tab-pane>
@@ -89,7 +84,7 @@ export default defineComponent({
 			isEditorFocused: false,
 			tabs: ['code', 'ask-ai'],
 			activeTab: 'code',
-			initialValue: this.value,
+			hasChanges: false,
 		};
 	},
 	watch: {
@@ -110,12 +105,19 @@ export default defineComponent({
 				effects: this.languageCompartment.reconfigure(languageSupport),
 			});
 		},
+		aiEnabled: {
+			immediate: true,
+			async handler(isEnabled) {
+				if (isEnabled && !this.modelValue) {
+					this.$emit('update:modelValue', this.placeholder);
+				}
+				await this.$nextTick();
+				this.hasChanges = this.modelValue !== this.placeholder;
+			},
+		},
 	},
 	computed: {
 		...mapStores(useRootStore, usePostHog),
-		hasChanges(): boolean {
-			return this.modelValue !== this.content;
-		},
 		content(): string {
 			if (!this.editor) return '';
 
@@ -126,7 +128,11 @@ export default defineComponent({
 				ASK_AI_EXPERIMENT.name,
 				ASK_AI_EXPERIMENT.control,
 			);
-			return !isAiExperimentDisabled && this.settingsStore.settings.ai.enabled === true;
+			return (
+				!isAiExperimentDisabled &&
+				this.settingsStore.settings.ai.enabled === true &&
+				this.language === 'javaScript'
+			);
 		},
 		placeholder(): string {
 			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
@@ -145,17 +151,17 @@ export default defineComponent({
 	},
 	methods: {
 		async onReplaceCode(code: string) {
-			console.log('🚀 ~ file: CodeNodeEditor.vue:148 ~ onReplaceCode ~ code:', code);
-			this.editor?.dispatch({
-				changes: { from: 0, to: (this.modelValue ?? this.content).length, insert: code },
-			});
-
-			this.initialValue = this.content;
-			this.activeTab = 'code';
-			prettier.format(this.content, {
+			prettier.format(code, {
 				parser: 'babel',
 				plugins: [jsParser],
 			});
+
+			this.editor?.dispatch({
+				changes: { from: 0, to: (this.modelValue || '').length, insert: code },
+			});
+
+			this.activeTab = 'code';
+			this.hasChanges = false;
 		},
 		onMouseOver(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
@@ -256,11 +262,6 @@ export default defineComponent({
 	mounted() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
-		// empty on first load, default param value
-		if (!this.modelValue) {
-			this.$emit('update:modelValue', this.placeholder);
-		}
-
 		const { isReadOnly, language } = this;
 		const extensions: Extension[] = [
 			...readOnlyEditorExtensions,
@@ -285,12 +286,14 @@ export default defineComponent({
 						this.isEditorFocused = false;
 					},
 				}),
+
 				EditorView.updateListener.of((viewUpdate) => {
 					if (!viewUpdate.docChanged) return;
 
 					this.trackCompletion(viewUpdate);
 
 					this.$emit('update:modelValue', this.editor?.state.doc.toString());
+					this.hasChanges = true;
 				}),
 			);
 		}
@@ -307,6 +310,11 @@ export default defineComponent({
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,
 			state,
 		});
+
+		// empty on first load, default param value
+		if (!this.modelValue) {
+			this.$emit('update:modelValue', this.placeholder);
+		}
 	},
 });
 </script>
