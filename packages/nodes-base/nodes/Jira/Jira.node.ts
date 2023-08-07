@@ -1,20 +1,22 @@
-import { mergeWith } from 'lodash';
+import type { Readable } from 'stream';
+import mergeWith from 'lodash/mergeWith';
 
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryData,
+import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import {
+	filterSortSearchListItems,
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
 	simplifyIssueOutput,
@@ -27,7 +29,7 @@ import { issueCommentFields, issueCommentOperations } from './IssueCommentDescri
 
 import { issueFields, issueOperations } from './IssueDescription';
 
-import {
+import type {
 	IFields,
 	IIssue,
 	INotificationRecipients,
@@ -47,7 +49,7 @@ export class Jira implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Jira Software API',
 		defaults: {
-			name: 'Jira',
+			name: 'Jira Software',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -130,11 +132,14 @@ export class Jira implements INodeType {
 	};
 
 	methods = {
-		loadOptions: {
-			// Get all the projects to display them to user so that he can
+		listSearch: {
+			// Get all the projects to display them to user so that they can
 			// select them easily
-			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
+			async getProjects(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
 				let endpoint = '';
 				let projects;
@@ -164,24 +169,14 @@ export class Jira implements INodeType {
 					});
 				}
 
-				returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
+				return { results: filterSortSearchListItems(returnData, filter) };
 			},
 
-			// Get all the issue types to display them to user so that he can
+			// Get all the issue types to display them to user so that they can
 			// select them easily
-			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const projectId = this.getCurrentNodeParameter('project');
-				const returnData: INodePropertyOptions[] = [];
+			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const projectId = this.getCurrentNodeParameter('project', { extractValue: true });
+				const returnData: INodeListSearchItems[] = [];
 				const { issueTypes } = await jiraSoftwareCloudApiRequest.call(
 					this,
 					`/api/2/project/${projectId}`,
@@ -205,10 +200,147 @@ export class Jira implements INodeType {
 					}
 					return 0;
 				});
-				return returnData;
+				return { results: returnData };
 			},
 
-			// Get all the labels to display them to user so that he can
+			// Get all the users to display them to user so that they can
+			// select them easily
+			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				const query: IDataObject = {};
+				let endpoint = '/api/2/users/search';
+
+				if (jiraVersion === 'server') {
+					endpoint = '/api/2/user/search';
+					query.username = "'";
+				}
+
+				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
+				const returnData: INodeListSearchItems[] = users.reduce(
+					(activeUsers: INodeListSearchItems[], user: IDataObject) => {
+						if (user.active) {
+							activeUsers.push({
+								name: user.displayName as string,
+								value: (user.accountId ?? user.name) as string,
+							});
+						}
+						return activeUsers;
+					},
+					[],
+				);
+
+				return { results: filterSortSearchListItems(returnData, filter) };
+			},
+
+			// Get all the priorities to display them to user so that they can
+			// select them easily
+			async getPriorities(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+
+				const priorities = await jiraSoftwareCloudApiRequest.call(this, '/api/2/priority', 'GET');
+
+				for (const priority of priorities) {
+					const priorityName = priority.name;
+					const priorityId = priority.id;
+
+					returnData.push({
+						name: priorityName,
+						value: priorityId,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+
+				return { results: returnData };
+			},
+
+			// Get all the transitions (status) to display them to user so that they can
+			// select them easily
+			async getTransitions(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+
+				const issueKey = this.getCurrentNodeParameter('issueKey');
+				const transitions = await jiraSoftwareCloudApiRequest.call(
+					this,
+					`/api/2/issue/${issueKey}/transitions`,
+					'GET',
+				);
+
+				for (const transition of transitions.transitions) {
+					returnData.push({
+						name: transition.name,
+						value: transition.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+
+				return { results: returnData };
+			},
+
+			// Get all the custom fields to display them to user so that they can
+			// select them easily
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
+				let projectId: string;
+				let issueTypeId: string;
+				if (operation === 'create') {
+					projectId = this.getCurrentNodeParameter('project', { extractValue: true }) as string;
+					issueTypeId = this.getCurrentNodeParameter('issueType', { extractValue: true }) as string;
+				} else {
+					const issueKey = this.getCurrentNodeParameter('issueKey') as string;
+					const res = await jiraSoftwareCloudApiRequest.call(
+						this,
+						`/api/2/issue/${issueKey}`,
+						'GET',
+						{},
+						{},
+					);
+					projectId = res.fields.project.id;
+					issueTypeId = res.fields.issuetype.id;
+				}
+
+				const res = await jiraSoftwareCloudApiRequest.call(
+					this,
+					`/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`,
+					'GET',
+				);
+
+				const fields = res.projects
+					.find((o: any) => o.id === projectId)
+					.issuetypes.find((o: any) => o.id === issueTypeId).fields;
+
+				for (const key of Object.keys(fields as IDataObject)) {
+					const field = fields[key];
+					if (field.schema && Object.keys(field.schema as IDataObject).includes('customId')) {
+						returnData.push({
+							name: field.name,
+							value: field.key || field.fieldId,
+						});
+					}
+				}
+				return { results: returnData };
+			},
+		},
+		loadOptions: {
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -238,37 +370,7 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the priorities to display them to user so that he can
-			// select them easily
-			async getPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-
-				const priorities = await jiraSoftwareCloudApiRequest.call(this, '/api/2/priority', 'GET');
-
-				for (const priority of priorities) {
-					const priorityName = priority.name;
-					const priorityId = priority.id;
-
-					returnData.push({
-						name: priorityName,
-						value: priorityId,
-					});
-				}
-
-				returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
-			},
-
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
@@ -297,7 +399,7 @@ export class Jira implements INodeType {
 					});
 			},
 
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -327,90 +429,12 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the groups to display them to user so that he can
-			// select them easily
-			async getTransitions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-
-				const issueKey = this.getCurrentNodeParameter('issueKey');
-				const transitions = await jiraSoftwareCloudApiRequest.call(
-					this,
-					`/api/2/issue/${issueKey}/transitions`,
-					'GET',
-				);
-
-				for (const transition of transitions.transitions) {
-					returnData.push({
-						name: transition.name,
-						value: transition.id,
-					});
-				}
-
-				returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
-			},
-
-			// Get all the custom fields to display them to user so that he can
-			// select them easily
-			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
-				let projectId: string;
-				let issueTypeId: string;
-				if (operation === 'create') {
-					projectId = this.getCurrentNodeParameter('project') as string;
-					issueTypeId = this.getCurrentNodeParameter('issueType') as string;
-				} else {
-					const issueKey = this.getCurrentNodeParameter('issueKey') as string;
-					const res = await jiraSoftwareCloudApiRequest.call(
-						this,
-						`/api/2/issue/${issueKey}`,
-						'GET',
-						{},
-						{},
-					);
-					projectId = res.fields.project.id;
-					issueTypeId = res.fields.issuetype.id;
-				}
-
-				const res = await jiraSoftwareCloudApiRequest.call(
-					this,
-					`/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`,
-					'GET',
-				);
-
-				const fields = res.projects
-					// tslint:disable-next-line:no-any
-					.find((o: any) => o.id === projectId)
-					// tslint:disable-next-line:no-any
-					.issuetypes.find((o: any) => o.id === issueTypeId).fields;
-				for (const key of Object.keys(fields)) {
-					const field = fields[key];
-					if (field.schema && Object.keys(field.schema).includes('customId')) {
-						returnData.push({
-							name: field.name,
-							value: field.key || field.fieldId,
-						});
-					}
-				}
-				return returnData;
-			},
-
-			// Get all the components to display them to user so that he can
+			// Get all the components to display them to user so that they can
 			// select them easily
 			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const project = this.getCurrentNodeParameter('project');
+				const project = this.getCurrentNodeParameter('project', { extractValue: true });
 				const { values: components } = await jiraSoftwareCloudApiRequest.call(
 					this,
 					`/api/2/project/${project}/component`,
@@ -446,8 +470,8 @@ export class Jira implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 		if (resource === 'issue') {
@@ -455,9 +479,29 @@ export class Jira implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const summary = this.getNodeParameter('summary', i) as string;
-					const projectId = this.getNodeParameter('project', i) as string;
-					const issueTypeId = this.getNodeParameter('issueType', i) as string;
+					const projectId = this.getNodeParameter('project', i, '', {
+						extractValue: true,
+					}) as string;
+					const issueTypeId = this.getNodeParameter('issueType', i, '', {
+						extractValue: true,
+					}) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
+
+					const assignee = this.getNodeParameter('additionalFields.assignee', i, '', {
+						extractValue: true,
+					});
+					if (assignee) additionalFields.assignee = assignee;
+
+					const reporter = this.getNodeParameter('additionalFields.reporter', i, '', {
+						extractValue: true,
+					});
+					if (reporter) additionalFields.reporter = reporter;
+
+					const priority = this.getNodeParameter('additionalFields.priority', i, '', {
+						extractValue: true,
+					});
+					if (priority) additionalFields.priority = priority;
+
 					const body: IIssue = {};
 					const fields: IFields = {
 						summary,
@@ -514,6 +558,12 @@ export class Jira implements INodeType {
 						const customFields = (additionalFields.customFieldsUi as IDataObject)
 							.customFieldsValues as IDataObject[];
 						if (customFields) {
+							// resolve resource locator fieldId value
+							customFields.forEach((cf) => {
+								if (typeof cf.fieldId !== 'string') {
+									cf.fieldId = ((cf.fieldId as IDataObject).value as string).trim();
+								}
+							});
 							const data = customFields.reduce(
 								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
 								{},
@@ -549,7 +599,7 @@ export class Jira implements INodeType {
 					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issue', 'POST', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -561,6 +611,27 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i);
+
+					const assignee = this.getNodeParameter('updateFields.assignee', i, '', {
+						extractValue: true,
+					});
+					if (assignee) updateFields.assignee = assignee;
+
+					const reporter = this.getNodeParameter('updateFields.reporter', i, '', {
+						extractValue: true,
+					});
+					if (reporter) updateFields.reporter = reporter;
+
+					const priority = this.getNodeParameter('updateFields.priority', i, '', {
+						extractValue: true,
+					});
+					if (priority) updateFields.priority = priority;
+
+					const statusId = this.getNodeParameter('updateFields.statusId', i, '', {
+						extractValue: true,
+					});
+					if (statusId) updateFields.statusId = statusId;
+
 					const body: IIssue = {};
 					const fields: IFields = {};
 					if (updateFields.summary) {
@@ -611,6 +682,12 @@ export class Jira implements INodeType {
 						const customFields = (updateFields.customFieldsUi as IDataObject)
 							.customFieldsValues as IDataObject[];
 						if (customFields) {
+							// resolve resource locator fieldId value
+							customFields.forEach((cf) => {
+								if (typeof cf.fieldId !== 'string') {
+									cf.fieldId = ((cf.fieldId as IDataObject).value as string).trim();
+								}
+							});
 							const data = customFields.reduce(
 								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
 								{},
@@ -707,7 +784,7 @@ export class Jira implements INodeType {
 						if (
 							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
 							responseData.renderedFields &&
-							Object.keys(responseData.renderedFields).length
+							Object.keys(responseData.renderedFields as IDataObject[]).length
 						) {
 							responseData.fields = mergeWith(
 								responseData.fields,
@@ -723,7 +800,7 @@ export class Jira implements INodeType {
 						returnData.push(...executionData);
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -738,7 +815,7 @@ export class Jira implements INodeType {
 					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
 					if (options.fields) {
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					}
 					if (options.jql) {
 						body.jql = options.jql as string;
@@ -754,7 +831,7 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
 							'issues',
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);
@@ -763,7 +840,7 @@ export class Jira implements INodeType {
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);
@@ -771,7 +848,7 @@ export class Jira implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -803,7 +880,7 @@ export class Jira implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -815,7 +892,7 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
-					const jsonActive = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', 0);
 					const body: INotify = {};
 					if (additionalFields.textBody) {
 						body.textBody = additionalFields.textBody as string;
@@ -826,42 +903,39 @@ export class Jira implements INodeType {
 					if (!jsonActive) {
 						const notificationRecipientsValues = (
 							this.getNodeParameter('notificationRecipientsUi', i) as IDataObject
-						).notificationRecipientsValues as IDataObject[];
+						).notificationRecipientsValues as IDataObject;
 						const notificationRecipients: INotificationRecipients = {};
 						if (notificationRecipientsValues) {
-							// @ts-ignore
 							if (notificationRecipientsValues.reporter) {
-								// @ts-ignore
 								notificationRecipients.reporter = notificationRecipientsValues.reporter as boolean;
 							}
-							// @ts-ignore
+
 							if (notificationRecipientsValues.assignee) {
-								// @ts-ignore
 								notificationRecipients.assignee = notificationRecipientsValues.assignee as boolean;
 							}
-							// @ts-ignore
+
 							if (notificationRecipientsValues.assignee) {
-								// @ts-ignore
 								notificationRecipients.watchers = notificationRecipientsValues.watchers as boolean;
 							}
-							// @ts-ignore
+
 							if (notificationRecipientsValues.voters) {
-								// @ts-ignore
 								notificationRecipients.watchers = notificationRecipientsValues.voters as boolean;
 							}
-							// @ts-ignore
-							if (notificationRecipientsValues.users.length > 0) {
-								// @ts-ignore
-								notificationRecipients.users = notificationRecipientsValues.users.map((user) => {
+
+							if (((notificationRecipientsValues.users as IDataObject[]) || []).length > 0) {
+								notificationRecipients.users = (
+									notificationRecipientsValues.users as IDataObject[]
+								).map((user) => {
 									return {
 										accountId: user,
 									};
 								});
 							}
-							// @ts-ignore
-							if (notificationRecipientsValues.groups.length > 0) {
-								// @ts-ignore
-								notificationRecipients.groups = notificationRecipientsValues.groups.map((group) => {
+
+							if (((notificationRecipientsValues.groups as IDataObject[]) || []).length > 0) {
+								notificationRecipients.groups = (
+									notificationRecipientsValues.groups as IDataObject[]
+								).map((group) => {
 									return {
 										name: group,
 									};
@@ -871,18 +945,20 @@ export class Jira implements INodeType {
 						body.to = notificationRecipients;
 						const notificationRecipientsRestrictionsValues = (
 							this.getNodeParameter('notificationRecipientsRestrictionsUi', i) as IDataObject
-						).notificationRecipientsRestrictionsValues as IDataObject[];
+						).notificationRecipientsRestrictionsValues as IDataObject;
 						const notificationRecipientsRestrictions: NotificationRecipientsRestrictions = {};
 						if (notificationRecipientsRestrictionsValues) {
-							// @ts-ignore
-							if (notificationRecipientsRestrictionsValues.groups.length > 0) {
-								notificationRecipientsRestrictions.groups =
-									// @ts-ignore
-									notificationRecipientsRestrictionsValues.groups.map((group) => {
-										return {
-											name: group,
-										};
-									});
+							if (
+								((notificationRecipientsRestrictionsValues.groups as IDataObject[]) || []).length >
+								0
+							) {
+								notificationRecipientsRestrictions.groups = (
+									notificationRecipientsRestrictionsValues.groups as IDataObject[]
+								).map((group) => {
+									return {
+										name: group,
+									};
+								});
 							}
 						}
 						body.restrict = notificationRecipientsRestrictions;
@@ -909,7 +985,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -940,7 +1016,7 @@ export class Jira implements INodeType {
 					responseData = responseData.transitions;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -976,26 +1052,15 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-							itemIndex: i,
-						});
-					}
-
-					const item = items[i].binary as IBinaryKeyData;
-
-					const binaryData = item[binaryPropertyName] as IBinaryData;
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
-					if (binaryData === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`No binary data property "${binaryPropertyName}" does not exists on item!`,
-							{ itemIndex: i },
-						);
+					let uploadData: Buffer | Readable;
+					if (binaryData.id) {
+						uploadData = this.helpers.getBinaryStream(binaryData.id);
+					} else {
+						uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 					}
 
 					responseData = await jiraSoftwareCloudApiRequest.call(
@@ -1008,7 +1073,7 @@ export class Jira implements INodeType {
 						{
 							formData: {
 								file: {
-									value: binaryDataBuffer,
+									value: uploadData,
 									options: {
 										filename: binaryData.fileName,
 									},
@@ -1018,7 +1083,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1059,16 +1124,16 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
 				}
 				if (download) {
-					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
-						returnData[index]['binary'] = {};
+						returnData[index].binary = {};
 
 						const buffer = await jiraSoftwareCloudApiRequest.call(
 							this,
@@ -1076,18 +1141,16 @@ export class Jira implements INodeType {
 							'GET',
 							{},
 							{},
-							// @ts-ignore
-							attachment?.json!.content,
-							{ json: false, encoding: null },
+							attachment?.json.content as string,
+							{ json: false, encoding: null, useStream: true },
 						);
-						//@ts-ignore
-						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer,
-							// @ts-ignore
-							attachment.json.filename,
-							// @ts-ignore
-							attachment.json.mimeType,
-						);
+
+						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
+							await this.helpers.prepareBinaryData(
+								buffer as Buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
 					}
 				}
 			}
@@ -1106,42 +1169,38 @@ export class Jira implements INodeType {
 						qs,
 					);
 					responseData = attachment;
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.slice(0, limit);
 					}
 					responseData = responseData.map((data: IDataObject) => ({ json: data }));
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
 				}
 				if (download) {
-					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
-						returnData[index]['binary'] = {};
-						//@ts-ignore
+						returnData[index].binary = {};
 						const buffer = await jiraSoftwareCloudApiRequest.call(
 							this,
 							'',
 							'GET',
 							{},
 							{},
-							// @ts-ignore
-							attachment.json.content,
-							{ json: false, encoding: null },
+							attachment.json.content as string,
+							{ json: false, encoding: null, useStream: true },
 						);
-						//@ts-ignore
-						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer,
-							// @ts-ignore
-							attachment.json.filename,
-							// @ts-ignore
-							attachment.json.mimeType,
-						);
+						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
+							await this.helpers.prepareBinaryData(
+								buffer as Buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
 					}
 				}
 			}
@@ -1153,7 +1212,7 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
@@ -1163,7 +1222,7 @@ export class Jira implements INodeType {
 					}
 
 					Object.assign(body, options);
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
 						if (jiraVersion === 'server') {
 							Object.assign(body, { body: comment });
@@ -1207,7 +1266,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1230,7 +1289,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1268,7 +1327,7 @@ export class Jira implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1302,14 +1361,14 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
 					const options = this.getNodeParameter('options', i);
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const body: IDataObject = {};
 					if (options.expand) {
 						qs.expand = options.expand as string;
 						delete options.expand;
 					}
 					Object.assign(qs, options);
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
 						if (jiraVersion === 'server') {
 							Object.assign(body, { body: comment });
@@ -1352,7 +1411,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1386,7 +1445,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -1431,7 +1490,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 

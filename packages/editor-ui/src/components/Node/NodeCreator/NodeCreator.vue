@@ -1,124 +1,161 @@
 <template>
 	<div>
-		<aside :class="{'node-creator-scrim': true, expanded: !uiStore.sidebarMenuCollapsed, active: showScrim}" />
-
+		<aside :class="{ [$style.nodeCreatorScrim]: true, [$style.active]: showScrim }" />
 		<slide-transition>
 			<div
 				v-if="active"
-				class="node-creator"
+				:class="$style.nodeCreator"
+				:style="nodeCreatorInlineStyle"
 				ref="nodeCreator"
-			 	v-click-outside="onClickOutside"
-			 	@dragover="onDragOver"
-			 	@drop="onDrop"
+				@dragover="onDragOver"
+				@drop="onDrop"
+				@mousedown="onMouseDown"
+				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<main-panel
-					@nodeTypeSelected="nodeTypeSelected"
-					:searchItems="searchItems"
-				/>
+				<NodesListPanel @nodeTypeSelected="onNodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
-import Vue from 'vue';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
-import { INodeCreateElement } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
-import SlideTransition from '../../transitions/SlideTransition.vue';
+import { useViewStacks } from './composables/useViewStacks';
+import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
+import { useActionsGenerator } from './composables/useActionsGeneration';
+import NodesListPanel from './Panel/NodesListPanel.vue';
+import { useUIStore } from '@/stores';
 
-import MainPanel from './MainPanel.vue';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+export interface Props {
+	active?: boolean;
+	onNodeTypeSelected?: (nodeType: string) => void;
+}
 
-export default Vue.extend({
-	name: 'NodeCreator',
-	components: {
-		MainPanel,
-		SlideTransition,
+const props = defineProps<Props>();
+const { resetViewStacks } = useViewStacks();
+const { registerKeyHook } = useKeyboardNavigation();
+const emit = defineEmits<{
+	(event: 'closeNodeCreator'): void;
+	(event: 'nodeTypeSelected', value: string[]): void;
+}>();
+const uiStore = useUIStore();
+
+const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { generateMergedNodesAndActions } = useActionsGenerator();
+
+const state = reactive({
+	nodeCreator: null as HTMLElement | null,
+	mousedownInsideEvent: null as MouseEvent | null,
+});
+
+const showScrim = computed(() => useNodeCreatorStore().showScrim);
+
+const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
+
+const nodeCreatorInlineStyle = computed(() => {
+	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px` };
+});
+function onMouseUpOutside() {
+	if (state.mousedownInsideEvent) {
+		const clickEvent = new MouseEvent('click', {
+			bubbles: true,
+			cancelable: true,
+		});
+		state.mousedownInsideEvent.target?.dispatchEvent(clickEvent);
+		state.mousedownInsideEvent = null;
+		unBindOnMouseUpOutside();
+	}
+}
+function unBindOnMouseUpOutside() {
+	document.removeEventListener('mouseup', onMouseUpOutside);
+	document.removeEventListener('touchstart', onMouseUpOutside);
+}
+function onMouseUp() {
+	state.mousedownInsideEvent = null;
+	unBindOnMouseUpOutside();
+}
+function onMouseDown(event: MouseEvent) {
+	state.mousedownInsideEvent = event;
+	document.addEventListener('mouseup', onMouseUpOutside);
+	document.addEventListener('touchstart', onMouseUpOutside);
+}
+function onDragOver(event: DragEvent) {
+	event.preventDefault();
+}
+function onDrop(event: DragEvent) {
+	if (!event.dataTransfer) {
+		return;
+	}
+
+	const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+	const nodeCreatorBoundingRect = (state.nodeCreator as Element).getBoundingClientRect();
+
+	// Abort drag end event propagation if dropped inside nodes panel
+	if (
+		nodeTypeName &&
+		event.pageX >= nodeCreatorBoundingRect.x &&
+		event.pageY >= nodeCreatorBoundingRect.y
+	) {
+		event.stopPropagation();
+	}
+}
+
+watch(
+	() => props.active,
+	(isActive) => {
+		if (isActive === false) {
+			setShowScrim(false);
+			resetViewStacks();
+		}
 	},
-	props: {
-		active: {
-			type: Boolean,
-		},
-	},
-	computed: {
-		...mapStores(
-			useNodeCreatorStore,
-			useNodeTypesStore,
-			useUIStore,
-		),
-		showScrim(): boolean {
-			return this.nodeCreatorStore.showScrim;
-		},
-		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.nodeTypesStore.visibleNodeTypes;
-		},
-		searchItems(): INodeCreateElement[] {
-			const sorted = [...this.visibleNodeTypes];
-			sorted.sort((a, b) => {
-				const textA = a.displayName.toLowerCase();
-				const textB = b.displayName.toLowerCase();
-				return textA < textB ? -1 : textA > textB ? 1 : 0;
-			});
+);
 
-			return sorted.map((nodeType) => ({
-				type: 'node',
-				category: '',
-				key: `${nodeType.name}`,
-				properties: {
-					nodeType,
-					subcategory: '',
-				},
-				includedByTrigger: nodeType.group.includes('trigger'),
-				includedByRegular: !nodeType.group.includes('trigger'),
-			}));
-		},
-	},
-	methods: {
-		onClickOutside (e: Event) {
-			if (e.type === 'click') {
-				this.$emit('closeNodeCreator');
-			}
-		},
-		nodeTypeSelected (nodeTypeName: string) {
-			this.$emit('nodeTypeSelected', nodeTypeName);
-		},
-		onDragOver(event: DragEvent) {
-			event.preventDefault();
-		},
-		onDrop(event: DragEvent) {
-			if (!event.dataTransfer) {
-				return;
-			}
+// Close node creator when the last view stacks is closed
+watch(viewStacksLength, (viewStacksLength) => {
+	if (viewStacksLength === 0) {
+		emit('closeNodeCreator');
+		setShowScrim(false);
+	}
+});
 
-			const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
-			const nodeCreatorBoundingRect = (this.$refs.nodeCreator as Element).getBoundingClientRect();
+registerKeyHook('NodeCreatorCloseEscape', {
+	keyboardKeys: ['Escape'],
+	handler: () => emit('closeNodeCreator'),
+});
+registerKeyHook('NodeCreatorCloseTab', {
+	keyboardKeys: ['Tab'],
+	handler: () => emit('closeNodeCreator'),
+});
 
-			// Abort drag end event propagation if dropped inside nodes panel
-			if (nodeTypeName && event.pageX >= nodeCreatorBoundingRect.x && event.pageY >= nodeCreatorBoundingRect.y) {
-				event.stopPropagation();
-			}
-		},
+watch(
+	() => useNodeTypesStore().visibleNodeTypes,
+	(nodeTypes) => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
+
+		setActions(actions);
+		setMergeNodes(mergedNodes);
 	},
-	watch: {
-		active(isActive) {
-			if(isActive === false) this.nodeCreatorStore.showScrim = false;
-		},
-	},
+	{ immediate: true },
+);
+const { nodeCreator } = toRefs(state);
+
+onBeforeUnmount(() => {
+	unBindOnMouseUpOutside();
 });
 </script>
 
-<style scoped lang="scss">
-::v-deep *, *:before, *:after {
-	box-sizing: border-box;
+<style module lang="scss">
+:global(strong) {
+	font-weight: var(--font-weight-bold);
 }
-
-.node-creator {
+.nodeCreator {
+	--node-icon-color: var(--color-text-base);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
@@ -128,7 +165,7 @@ export default Vue.extend({
 	color: $node-creator-text-color;
 }
 
-.node-creator-scrim {
+.nodeCreatorScrim {
 	position: fixed;
 	top: $header-height;
 	right: 0;
@@ -139,10 +176,6 @@ export default Vue.extend({
 	background: var(--color-background-dark);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
-
-	&.expanded {
-		left: $sidebar-expanded-width
-	}
 
 	&.active {
 		opacity: 0.7;

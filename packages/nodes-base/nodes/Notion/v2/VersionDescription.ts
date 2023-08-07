@@ -9,16 +9,16 @@ import { blockFields, blockOperations } from '../BlockDescription';
 
 import { databasePageFields, databasePageOperations } from '../DatabasePageDescription';
 
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 export const versionDescription: INodeTypeDescription = {
-	displayName: 'Notion (Beta)',
+	displayName: 'Notion',
 	name: 'notion',
 	icon: 'file:notion.svg',
 	group: ['output'],
 	version: 2,
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-	description: 'Consume Notion API (Beta)',
+	description: 'Consume Notion API',
 	defaults: {
 		name: 'Notion',
 	},
@@ -67,16 +67,11 @@ export const versionDescription: INodeTypeDescription = {
 		// 	description: 'The resource to operate on.',
 		// },
 		{
-			displayName: "To access content, make sure it's shared with your integration in Notion",
+			displayName:
+				'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
 			name: 'notionNotice',
 			type: 'notice',
 			default: '',
-		},
-		{
-			displayName: 'Version',
-			name: 'version',
-			type: 'hidden',
-			default: 2,
 		},
 		{
 			displayName: 'Resource',

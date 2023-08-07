@@ -1,7 +1,20 @@
-import type { WorkflowExecuteMode } from 'n8n-workflow';
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
-import type { IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
+import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	Column,
+	Entity,
+	Generated,
+	Index,
+	ManyToOne,
+	OneToMany,
+	OneToOne,
+	PrimaryColumn,
+	Relation,
+} from 'typeorm';
+import { datetimeColumnType } from './AbstractEntity';
+import { idStringifier } from '../utils/transformers';
+import type { ExecutionData } from './ExecutionData';
+import type { ExecutionMetadata } from './ExecutionMetadata';
+import { WorkflowEntity } from './WorkflowEntity';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -9,12 +22,10 @@ import type { IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
 @Index(['finished', 'id'])
 @Index(['workflowId', 'finished', 'id'])
 @Index(['workflowId', 'waitTill', 'id'])
-export class ExecutionEntity implements IExecutionFlattedDb {
-	@PrimaryGeneratedColumn()
-	id: number;
-
-	@Column('text')
-	data: string;
+export class ExecutionEntity {
+	@Generated()
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	@Column()
 	finished: boolean;
@@ -28,6 +39,9 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column({ nullable: true })
 	retrySuccessId: string;
 
+	@Column('varchar', { nullable: true })
+	status: ExecutionStatus;
+
 	@Column(datetimeColumnType)
 	startedAt: Date;
 
@@ -35,12 +49,18 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column({ type: datetimeColumnType, nullable: true })
 	stoppedAt: Date;
 
-	@Column(jsonColumnType)
-	workflowData: IWorkflowDb;
-
 	@Column({ nullable: true })
 	workflowId: string;
 
 	@Column({ type: datetimeColumnType, nullable: true })
-	waitTill: Date;
+	waitTill: Date | null;
+
+	@OneToMany('ExecutionMetadata', 'execution')
+	metadata: ExecutionMetadata[];
+
+	@OneToOne('ExecutionData', 'execution')
+	executionData: Relation<ExecutionData>;
+
+	@ManyToOne('WorkflowEntity')
+	workflow: WorkflowEntity;
 }

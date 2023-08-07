@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Amqp implements ICredentialType {
 	name = 'amqp';
+
 	displayName = 'AMQP';
+
 	documentationUrl = 'amqp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Hostname',

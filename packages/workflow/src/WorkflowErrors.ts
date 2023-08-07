@@ -10,6 +10,8 @@ export class WorkflowOperationError extends Error {
 
 	lineNumber: number | undefined;
 
+	description: string | undefined;
+
 	constructor(message: string, node?: INode) {
 		super(message);
 		this.name = this.constructor.name;

@@ -11,21 +11,22 @@ import {
 	BeforeInsert,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
-import type { IUser } from 'n8n-workflow';
+import type { IUser, IUserSettings } from 'n8n-workflow';
 import { Role } from './Role';
-import { SharedWorkflow } from './SharedWorkflow';
-import { SharedCredentials } from './SharedCredentials';
+import type { SharedWorkflow } from './SharedWorkflow';
+import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
+import { WithTimestamps, jsonColumnType } from './AbstractEntity';
+import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
+import type { AuthIdentity } from './AuthIdentity';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
 export const MAX_PASSWORD_LENGTH = 64;
 
 @Entity()
-export class User extends AbstractEntity implements IUser {
+export class User extends WithTimestamps implements IUser {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -54,13 +55,6 @@ export class User extends AbstractEntity implements IUser {
 	@IsString({ message: 'Password must be of type string.' })
 	password: string;
 
-	@Column({ type: String, nullable: true })
-	resetPasswordToken?: string | null;
-
-	// Expiration timestamp saved in seconds
-	@Column({ type: Number, nullable: true })
-	resetPasswordTokenExpiration?: number | null;
-
 	@Column({
 		type: jsonColumnType,
 		nullable: true,
@@ -74,17 +68,23 @@ export class User extends AbstractEntity implements IUser {
 	})
 	settings: IUserSettings | null;
 
-	@ManyToOne(() => Role, (role) => role.globalForUsers, {
-		cascade: true,
-		nullable: false,
-	})
+	@ManyToOne('Role', 'globalForUsers', { nullable: false })
 	globalRole: Role;
 
-	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.user)
+	@Column()
+	globalRoleId: string;
+
+	@OneToMany('AuthIdentity', 'user')
+	authIdentities: AuthIdentity[];
+
+	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];
 
-	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.user)
+	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
+
+	@Column({ type: Boolean, default: false })
+	disabled: boolean;
 
 	@BeforeInsert()
 	@BeforeUpdate()
@@ -105,5 +105,15 @@ export class User extends AbstractEntity implements IUser {
 	@AfterUpdate()
 	computeIsPending(): void {
 		this.isPending = this.password === null;
+	}
+
+	/**
+	 * Whether the user is instance owner
+	 */
+	isOwner: boolean;
+
+	@AfterLoad()
+	computeIsOwner(): void {
+		this.isOwner = this.globalRole?.name === 'owner';
 	}
 }

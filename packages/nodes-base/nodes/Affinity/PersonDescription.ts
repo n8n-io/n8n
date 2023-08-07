@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const personOperations: INodeProperties[] = [
 	{
@@ -52,7 +52,7 @@ export const personFields: INodeProperties[] = [
 	/*                                person:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Fist Name',
+		displayName: 'First Name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -154,7 +154,7 @@ export const personFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Fist Name',
+				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',

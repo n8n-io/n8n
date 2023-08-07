@@ -1,7 +1,7 @@
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Callout',
@@ -10,8 +10,8 @@ export default {
 		theme: {
 			control: {
 				type: 'select',
-				options: ['info', 'secondary', 'success', 'warning', 'danger', 'custom'],
 			},
+			options: ['info', 'secondary', 'success', 'warning', 'danger', 'custom'],
 		},
 		message: {
 			control: {
@@ -41,6 +41,7 @@ interface Args {
 }
 
 const template: StoryFn<Args> = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nLink,
@@ -48,12 +49,12 @@ const template: StoryFn<Args> = (args, { argTypes }) => ({
 		N8nCallout,
 	},
 	template: `
-		<n8n-callout v-bind="$props">
+		<n8n-callout v-bind="args">
 			${args.default}
-			<template #actions v-if="actions">
+			<template #actions v-if="args.actions">
 				${args.actions}
 			</template>
-			<template #trailingContent v-if="trailingContent">
+			<template #trailingContent v-if="args.trailingContent">
 				${args.trailingContent}
 			</template>
 		</n8n-callout>
@@ -64,9 +65,7 @@ export const defaultCallout = template.bind({});
 defaultCallout.args = {
 	theme: 'success',
 	default: `
-		<n8n-text size="small" >
-			This is a default callout.
-		</n8n-text>
+		This is a default callout.
 	`,
 };
 
@@ -75,9 +74,7 @@ customCallout.args = {
 	theme: 'custom',
 	icon: 'code-branch',
 	default: `
-		<n8n-text size="small" >
-			This is a custom callout.
-		</n8n-text>
+		This is a custom callout.
 	`,
 	actions: `
 		<n8n-link size="small">
@@ -91,9 +88,7 @@ secondaryCallout.args = {
 	theme: 'secondary',
 	icon: 'thumbtack',
 	default: `
-		<n8n-text size="small">
-			This data is pinned.
-		</n8n-text>
+		This data is pinned.
 	`,
 	actions: `
 		<n8n-link theme="secondary" size="small" :bold="true" :underline="true">

@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { disqusApiRequest, disqusApiRequestAllItems } from './GenericFunctions';
 
@@ -557,7 +557,7 @@ export class Disqus implements INodeType {
 					},
 					{
 						displayName: 'Thread',
-						name: 'threadId',
+						name: 'thread',
 						type: 'string',
 						default: '',
 						description:
@@ -572,17 +572,15 @@ export class Disqus implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
-		let _body: IDataObject | Buffer;
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				_body = {};
 				qs = {};
 
 				if (resource === 'forum') {
@@ -605,7 +603,7 @@ export class Disqus implements INodeType {
 						try {
 							const responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData.response),
+								this.helpers.returnJsonArray(responseData.response as IDataObject[]),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);

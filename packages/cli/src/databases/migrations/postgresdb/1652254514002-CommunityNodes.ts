@@ -1,19 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CommunityNodes1652254514002 implements MigrationInterface {
-	name = 'CommunityNodes1652254514002';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
+export class CommunityNodes1652254514002 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}installed_packages (` +
 				'"packageName" VARCHAR(214) NOT NULL,' +
@@ -36,11 +24,9 @@ export class CommunityNodes1652254514002 implements MigrationInterface {
 				`CONSTRAINT "FK_${tablePrefix}73f857fc5dce682cef8a99c11dbddbc969618951" FOREIGN KEY ("package") REFERENCES ${tablePrefix}installed_packages ("packageName") ON DELETE CASCADE ON UPDATE CASCADE ` +
 				');',
 		);
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE "${tablePrefix}installed_nodes"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}installed_packages"`);
 	}

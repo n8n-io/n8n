@@ -1,15 +1,16 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { ICustomProperties } from './GenericFunctions';
 import {
-	ICustomProperties,
 	pipedriveApiRequest,
 	pipedriveApiRequestAllItems,
 	pipedriveEncodeCustomProperties,
@@ -675,7 +676,6 @@ export class Pipedrive implements INodeType {
 						name: 'note',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -848,7 +848,6 @@ export class Pipedrive implements INodeType {
 						name: 'note',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -3732,7 +3731,7 @@ export class Pipedrive implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all Organizations to display them to user so that he can
+			// Get all Organizations to display them to user so that they can
 			// select them easily
 			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3746,7 +3745,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Filters to display them to user so that he can
+			// Get all Filters to display them to user so that they can
 			// select them easily
 			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3763,7 +3762,7 @@ export class Pipedrive implements INodeType {
 					'GET',
 					'/filters',
 					{},
-					{ type: type[resource] as string },
+					{ type: type[resource] },
 				);
 				for (const filter of data) {
 					returnData.push({
@@ -3774,7 +3773,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Organizations to display them to user so that he can
+			// Get all Organizations to display them to user so that they can
 			// select them easily
 			async getOrganizationIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3788,7 +3787,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Users to display them to user so that he can
+			// Get all Users to display them to user so that they can
 			// select them easily
 			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3812,7 +3811,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Deals to display them to user so that he can
+			// Get all Deals to display them to user so that they can
 			// select them easily
 			async getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/deals', {})) as {
@@ -3820,7 +3819,7 @@ export class Pipedrive implements INodeType {
 				};
 				return sortOptionParameters(data.map(({ id, title }) => ({ value: id, name: title })));
 			},
-			// Get all Products to display them to user so that he can
+			// Get all Products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/products', {})) as {
@@ -3828,7 +3827,7 @@ export class Pipedrive implements INodeType {
 				};
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
-			// Get all Products related to a deal and display them to user so that he can
+			// Get all Products related to a deal and display them to user so that they can
 			// select them easily
 			async getProductsDeal(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const dealId = this.getCurrentNodeParameter('dealId');
@@ -3842,7 +3841,7 @@ export class Pipedrive implements INodeType {
 				};
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
-			// Get all Stages to display them to user so that he can
+			// Get all Stages to display them to user so that they can
 			// select them easily
 			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3856,7 +3855,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Organization Custom Fields to display them to user so that he can
+			// Get all the Organization Custom Fields to display them to user so that they can
 			// select them easily
 			async getOrganizationCustomFields(
 				this: ILoadOptionsFunctions,
@@ -3874,7 +3873,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Deal Custom Fields to display them to user so that he can
+			// Get all the Deal Custom Fields to display them to user so that they can
 			// select them easily
 			async getDealCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3890,7 +3889,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Person Custom Fields to display them to user so that he can
+			// Get all the Person Custom Fields to display them to user so that they can
 			// select them easily
 			async getPersonCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3906,7 +3905,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the person labels to display them to user so that he can
+			// Get all the person labels to display them to user so that they can
 			// select them easily
 			async getPersonLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3935,7 +3934,7 @@ export class Pipedrive implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getOrganizationLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -3965,7 +3964,7 @@ export class Pipedrive implements INodeType {
 				return returnData;
 			},
 
-			// Get all the persons to display them to user so that he can
+			// Get all the persons to display them to user so that they can
 			// select them easily
 			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/persons', {})) as {
@@ -3975,7 +3974,7 @@ export class Pipedrive implements INodeType {
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
-			// Get all the lead labels to display them to user so that he can
+			// Get all the lead labels to display them to user so that they can
 			// select them easily
 			async getLeadLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/leadLabels', {})) as {
@@ -3985,7 +3984,7 @@ export class Pipedrive implements INodeType {
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4034,8 +4033,8 @@ export class Pipedrive implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let customProperties: ICustomProperties | undefined;
 		if (
@@ -4052,7 +4051,7 @@ export class Pipedrive implements INodeType {
 				getCustomProperties = this.getNodeParameter('resolveProperties', 0, false) as boolean;
 			}
 
-			if (getCustomProperties === true) {
+			if (getCustomProperties) {
 				customProperties = await pipedriveGetCustomProperties.call(this, resource);
 			}
 		}
@@ -4106,7 +4105,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4122,7 +4121,7 @@ export class Pipedrive implements INodeType {
 							qs.type = (qs.type as string[]).join(',');
 						}
 
-						endpoint = `/activities`;
+						endpoint = '/activities';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         activity:update
@@ -4194,13 +4193,13 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 						const filters = this.getNodeParameter('filters', i);
 						addAdditionalFields(qs, filters);
 
-						endpoint = `/deals`;
+						endpoint = '/deals';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         deal:update
@@ -4227,7 +4226,7 @@ export class Pipedrive implements INodeType {
 						qs.term = this.getNodeParameter('term', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i);
 						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4252,7 +4251,7 @@ export class Pipedrive implements INodeType {
 							qs.status = additionalFields.status as string;
 						}
 
-						endpoint = `/deals/search`;
+						endpoint = '/deals/search';
 					}
 				} else if (resource === 'dealActivity') {
 					if (operation === 'getAll') {
@@ -4265,7 +4264,7 @@ export class Pipedrive implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4275,7 +4274,7 @@ export class Pipedrive implements INodeType {
 							qs.exclude = additionalFields.exclude as string;
 						}
 
-						if (additionalFields && additionalFields.done !== undefined) {
+						if (additionalFields?.done !== undefined) {
 							qs.done = additionalFields.done === true ? 1 : 0;
 						}
 
@@ -4339,31 +4338,15 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/files';
 
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (item.binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						formData.file = {
 							value: fileBufferData,
 							options: {
-								contentType: item.binary[binaryPropertyName].mimeType,
-								filename: item.binary[binaryPropertyName].fileName,
+								contentType: binaryData.mimeType,
+								filename: binaryData.fileName,
 							},
 						};
 
@@ -4434,10 +4417,10 @@ export class Pipedrive implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = `/notes`;
+						endpoint = '/notes';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -4536,7 +4519,7 @@ export class Pipedrive implements INodeType {
 						// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4627,7 +4610,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4642,7 +4625,7 @@ export class Pipedrive implements INodeType {
 							qs.first_char = qs.first_char.substring(0, 1);
 						}
 
-						endpoint = `/organizations`;
+						endpoint = '/organizations';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         organization:update
@@ -4668,7 +4651,7 @@ export class Pipedrive implements INodeType {
 
 						qs.term = this.getNodeParameter('term', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4684,7 +4667,7 @@ export class Pipedrive implements INodeType {
 							qs.exact_match = additionalFields.exactMatch as boolean;
 						}
 
-						endpoint = `/organizations/search`;
+						endpoint = '/organizations/search';
 					}
 				} else if (resource === 'person') {
 					if (operation === 'create') {
@@ -4724,7 +4707,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4738,7 +4721,7 @@ export class Pipedrive implements INodeType {
 							qs.first_char = additionalFields.firstChar as string;
 						}
 
-						endpoint = `/persons`;
+						endpoint = '/persons';
 					} else if (operation === 'search') {
 						// ----------------------------------
 						//         persons:search
@@ -4748,7 +4731,7 @@ export class Pipedrive implements INodeType {
 
 						qs.term = this.getNodeParameter('term', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4770,7 +4753,7 @@ export class Pipedrive implements INodeType {
 							qs.include_fields = additionalFields.includeFields as string;
 						}
 
-						endpoint = `/persons/search`;
+						endpoint = '/persons/search';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         person:update
@@ -4797,11 +4780,11 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						endpoint = `/products`;
+						endpoint = '/products';
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
@@ -4810,7 +4793,7 @@ export class Pipedrive implements INodeType {
 				}
 
 				let responseData;
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await pipedriveApiRequestAllItems.call(
 						this,
 						requestMethod,
@@ -4820,7 +4803,7 @@ export class Pipedrive implements INodeType {
 					);
 				} else {
 					if (customProperties !== undefined) {
-						pipedriveEncodeCustomProperties(customProperties!, body);
+						pipedriveEncodeCustomProperties(customProperties, body);
 					}
 
 					responseData = await pipedriveApiRequest.call(
@@ -4849,10 +4832,10 @@ export class Pipedrive implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-						responseData.data,
+						responseData.data as Buffer,
 					);
 				} else {
 					if (responseData.data === null) {
@@ -4880,7 +4863,7 @@ export class Pipedrive implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -4900,7 +4883,7 @@ export class Pipedrive implements INodeType {
 
 		if (customProperties !== undefined) {
 			for (const item of returnData) {
-				await pipedriveResolveCustomProperties(customProperties, item);
+				pipedriveResolveCustomProperties(customProperties, item);
 			}
 		}
 

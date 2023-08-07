@@ -1,22 +1,27 @@
-import Vue from 'vue';
-import { Diagnostic, linter as createLinter } from '@codemirror/lint';
-import * as esprima from 'esprima-next';
-
-import {
-	DEFAULT_LINTER_DELAY_IN_MS,
-	DEFAULT_LINTER_SEVERITY,
-	OFFSET_FOR_SCRIPT_WRAPPER,
-} from './constants';
-import { walk } from './utils';
-
+import { defineComponent } from 'vue';
+import type { Diagnostic } from '@codemirror/lint';
+import { linter as createLinter } from '@codemirror/lint';
+import { jsonParseLinter } from '@codemirror/lang-json';
 import type { EditorView } from '@codemirror/view';
+import * as esprima from 'esprima-next';
 import type { Node } from 'estree';
-import type { CodeNodeEditorMixin, RangeNode } from './types';
+import type { CodeNodeEditorLanguage } from 'n8n-workflow';
 
-export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
+import { DEFAULT_LINTER_DELAY_IN_MS, DEFAULT_LINTER_SEVERITY } from './constants';
+import { OFFSET_FOR_SCRIPT_WRAPPER } from './constants';
+import { walk } from './utils';
+import type { RangeNode } from './types';
+
+export const linterExtension = defineComponent({
 	methods: {
-		linterExtension() {
-			return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
+		createLinter(language: CodeNodeEditorLanguage) {
+			switch (language) {
+				case 'javaScript':
+					return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
+				case 'json':
+					return createLinter(jsonParseLinter());
+			}
+			return undefined;
 		},
 
 		lintSource(editorView: EditorView): Diagnostic[] {
@@ -35,7 +40,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					// optional chaining operators currently unsupported by esprima-next
 					if (['?.', ']?'].some((operator) => lineAtError.includes(operator))) return [];
-				} catch (_) {
+				} catch {
 					return [];
 				}
 
@@ -50,7 +55,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							message: this.$locale.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
 						},
 					];
-				} catch (_) {
+				} catch {
 					/**
 					 * For invalid (e.g. half-written) n8n syntax, esprima errors with an off-by-one line number for the final line. In future, we should add full linting for n8n syntax before parsing JS.
 					 */
@@ -133,7 +138,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `.item` unavailable in `runOnceForAllItems` mode
+			 * Lint for `.item` unavailable in `$input` in `runOnceForAllItems` mode
 			 *
 			 * $input.item -> <removed>
 			 */
@@ -141,13 +146,15 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (this.mode === 'runOnceForAllItems') {
 				type TargetNode = RangeNode & { property: RangeNode };
 
-				const isUnavailableItemAccess = (node: Node) =>
+				const isUnavailableInputItemAccess = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
+					node.object.type === 'Identifier' &&
+					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
 					node.property.name === 'item';
 
-				walk<TargetNode>(ast, isUnavailableItemAccess).forEach((node) => {
+				walk<TargetNode>(ast, isUnavailableInputItemAccess).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
 					lintings.push({

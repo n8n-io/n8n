@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -10,8 +10,8 @@ import {
 import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
 import { userFields, userOperations } from './UserDescription';
-import { IPost } from './PostInterface';
-import { IUser } from './UserInterface';
+import type { IPost } from './PostInterface';
+import type { IUser } from './UserInterface';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,7 +60,7 @@ export class Wordpress implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available categories to display them to user so that he can
+			// Get all the available categories to display them to user so that they can
 			// select them easily
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -76,7 +76,7 @@ export class Wordpress implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -92,7 +92,7 @@ export class Wordpress implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available authors to display them to user so that he can
+			// Get all the available authors to display them to user so that they can
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -123,8 +123,8 @@ export class Wordpress implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -282,7 +282,7 @@ export class Wordpress implements INodeType {
 						if (options.status) {
 							qs.status = options.status as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
@@ -404,7 +404,7 @@ export class Wordpress implements INodeType {
 						if (options.who) {
 							qs.who = options.who as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
@@ -416,14 +416,14 @@ export class Wordpress implements INodeType {
 						const reassign = this.getNodeParameter('reassign', i) as string;
 						qs.reassign = reassign;
 						qs.force = true;
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
+						responseData = await wordpressApiRequest.call(this, 'DELETE', '/users/me', {}, qs);
 					}
 				}
-				const exectutionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
-				returnData.push(...exectutionData);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });

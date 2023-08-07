@@ -1,13 +1,14 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import get from 'lodash/get';
 
 /**
  * Make an API request to Asana
@@ -20,7 +21,6 @@ export async function asanaApiRequest(
 	body: object,
 	query?: IDataObject,
 	uri?: string | undefined,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
@@ -41,10 +41,9 @@ export async function asanaApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -53,10 +52,17 @@ export async function asanaApiRequestAllItems(
 	query.limit = 100;
 
 	do {
-		responseData = await asanaApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await asanaApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body as IDataObject,
+			query,
+			uri,
+		);
 		uri = get(responseData, 'next_page.uri');
-		returnData.push.apply(returnData, responseData['data']);
-	} while (responseData['next_page'] !== null);
+		returnData.push.apply(returnData, responseData.data as IDataObject[]);
+	} while (responseData.next_page !== null);
 
 	return returnData;
 }

@@ -1,7 +1,7 @@
-import * as path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import * as path from 'path';
+import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
-import { jsonParse, KnownNodesAndCredentials, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, getVersionedNodeTypeAll, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -13,6 +13,7 @@ import type {
 	INodeTypeData,
 	INodeTypeNameVersion,
 	IVersionedNodeType,
+	KnownNodesAndCredentials,
 } from 'n8n-workflow';
 import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';
@@ -31,35 +32,48 @@ export type Types = {
 };
 
 export abstract class DirectoryLoader {
-	readonly loadedNodes: INodeTypeNameVersion[] = [];
+	isLazyLoaded = false;
 
-	readonly nodeTypes: INodeTypeData = {};
+	loadedNodes: INodeTypeNameVersion[] = [];
 
-	readonly credentialTypes: ICredentialTypeData = {};
+	nodeTypes: INodeTypeData = {};
 
-	readonly known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+	credentialTypes: ICredentialTypeData = {};
 
-	readonly types: Types = { nodes: [], credentials: [] };
+	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+
+	types: Types = { nodes: [], credentials: [] };
 
 	constructor(
-		protected readonly directory: string,
-		private readonly excludeNodes?: string,
-		private readonly includeNodes?: string,
+		readonly directory: string,
+		protected readonly excludeNodes: string[] = [],
+		protected readonly includeNodes: string[] = [],
 	) {}
 
+	abstract packageName: string;
+
 	abstract loadAll(): Promise<void>;
+
+	reset() {
+		this.loadedNodes = [];
+		this.nodeTypes = {};
+		this.credentialTypes = {};
+		this.known = { nodes: {}, credentials: {} };
+		this.types = { nodes: [], credentials: [] };
+	}
 
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
 	}
 
-	protected loadNodeFromFile(packageName: string, nodeName: string, filePath: string) {
+	protected loadNodeFromFile(nodeName: string, filePath: string) {
 		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
+		const isCustom = this.packageName === 'CUSTOM';
 
 		try {
 			tempNode = loadClassInIsolation(filePath, nodeName);
-			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.addCodex({ node: tempNode, filePath, isCustom });
 		} catch (error) {
 			Logger.error(
 				`Error loading node "${nodeName}" from: "${filePath}" - ${(error as Error).message}`,
@@ -67,13 +81,13 @@ export abstract class DirectoryLoader {
 			throw error;
 		}
 
-		const fullNodeName = `${packageName}.${tempNode.description.name}`;
+		const fullNodeName = `${this.packageName}.${tempNode.description.name}`;
 
-		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+		if (this.includeNodes.length && !this.includeNodes.includes(fullNodeName)) {
 			return;
 		}
 
-		if (this.excludeNodes?.includes(fullNodeName)) {
+		if (this.excludeNodes.includes(fullNodeName)) {
 			return;
 		}
 
@@ -86,23 +100,32 @@ export abstract class DirectoryLoader {
 				this.fixIconPath(versionNode.description, filePath);
 			}
 
+			for (const version of Object.values(tempNode.nodeVersions)) {
+				this.addLoadOptionsMethods(version);
+			}
+
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
-			this.addCodex({ node: currentVersionNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.addCodex({ node: currentVersionNode, filePath, isCustom });
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				Logger.warn(
-					`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
-					{ filePath },
+				throw new Error(
+					`"executeSingle" has been removed. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
 				);
 			}
 		} else {
+			this.addLoadOptionsMethods(tempNode);
 			// Short renaming to avoid type issues
-			const tmpNode = tempNode;
-			nodeVersion = Array.isArray(tmpNode.description.version)
-				? tmpNode.description.version.slice(-1)[0]
-				: tmpNode.description.version;
+
+			nodeVersion = Array.isArray(tempNode.description.version)
+				? tempNode.description.version.slice(-1)[0]
+				: tempNode.description.version;
 		}
+
+		this.known.nodes[fullNodeName] = {
+			className: nodeName,
+			sourcePath: filePath,
+		};
 
 		this.nodeTypes[fullNodeName] = {
 			type: tempNode,
@@ -114,7 +137,9 @@ export abstract class DirectoryLoader {
 			version: nodeVersion,
 		});
 
-		this.types.nodes.push(tempNode.description);
+		getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
+			this.types.nodes.push(description);
+		});
 	}
 
 	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
@@ -138,6 +163,12 @@ export abstract class DirectoryLoader {
 				throw e;
 			}
 		}
+
+		this.known.credentials[tempCredential.name] = {
+			className: credentialName,
+			sourcePath: filePath,
+			extends: tempCredential.extends,
+		};
 
 		this.credentialTypes[tempCredential.name] = {
 			type: tempCredential,
@@ -207,7 +238,7 @@ export abstract class DirectoryLoader {
 			}
 
 			node.description.codex = codex;
-		} catch (_) {
+		} catch {
 			Logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {
@@ -218,6 +249,12 @@ export abstract class DirectoryLoader {
 		}
 	}
 
+	private addLoadOptionsMethods(node: INodeType) {
+		if (node?.methods?.loadOptions) {
+			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
+		}
+	}
+
 	private fixIconPath(
 		obj: INodeTypeDescription | INodeTypeBaseDescription | ICredentialType,
 		filePath: string,
@@ -225,7 +262,8 @@ export abstract class DirectoryLoader {
 		if (obj.icon?.startsWith('file:')) {
 			const iconPath = path.join(path.dirname(filePath), obj.icon.substring(5));
 			const relativePath = path.relative(this.directory, iconPath);
-			obj.icon = `file:${relativePath}`;
+			obj.iconUrl = `icons/${this.packageName}/${relativePath}`;
+			delete obj.icon;
 		}
 	}
 }
@@ -235,6 +273,8 @@ export abstract class DirectoryLoader {
  * e.g. `~/.n8n/custom`
  */
 export class CustomDirectoryLoader extends DirectoryLoader {
+	packageName = 'CUSTOM';
+
 	override async loadAll() {
 		const filePaths = await glob('**/*.@(node|credentials).js', {
 			cwd: this.directory,
@@ -245,7 +285,7 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 			const [fileName, type] = path.parse(filePath).name.split('.');
 
 			if (type === 'node') {
-				this.loadNodeFromFile('CUSTOM', fileName, filePath);
+				this.loadNodeFromFile(fileName, filePath);
 			} else if (type === 'credentials') {
 				this.loadCredentialFromFile(fileName, filePath);
 			}
@@ -289,7 +329,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
 
-				this.loadNodeFromFile(this.packageName, nodeName, filePath);
+				this.loadNodeFromFile(nodeName, filePath);
 			}
 		}
 
@@ -319,16 +359,43 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 		await this.readPackageJson();
 
 		try {
-			this.known.nodes = await this.readJSON('dist/known/nodes.json');
+			const knownNodes: typeof this.known.nodes = await this.readJSON('dist/known/nodes.json');
+			for (const nodeName in knownNodes) {
+				this.known.nodes[`${this.packageName}.${nodeName}`] = knownNodes[nodeName];
+			}
 			this.known.credentials = await this.readJSON('dist/known/credentials.json');
 
 			this.types.nodes = await this.readJSON('dist/types/nodes.json');
 			this.types.credentials = await this.readJSON('dist/types/credentials.json');
 
+			if (this.includeNodes.length) {
+				const allowedNodes: typeof this.known.nodes = {};
+				for (const nodeName of this.includeNodes) {
+					allowedNodes[nodeName] = this.known.nodes[nodeName];
+				}
+				this.known.nodes = allowedNodes;
+
+				this.types.nodes = this.types.nodes.filter((nodeType) =>
+					this.includeNodes.includes(nodeType.name),
+				);
+			}
+
+			if (this.excludeNodes.length) {
+				for (const nodeName of this.excludeNodes) {
+					delete this.known.nodes[nodeName];
+				}
+
+				this.types.nodes = this.types.nodes.filter(
+					(nodeType) => !this.excludeNodes.includes(nodeType.name),
+				);
+			}
+
 			Logger.debug(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
 				credentials: this.types.credentials?.length ?? 0,
 				nodes: this.types.nodes?.length ?? 0,
 			});
+
+			this.isLazyLoaded = true;
 
 			return; // We can load nodes and credentials lazily now
 		} catch {

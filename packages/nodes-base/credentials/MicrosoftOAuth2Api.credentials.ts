@@ -1,11 +1,16 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftOAuth2Api implements ICredentialType {
 	name = 'microsoftOAuth2Api';
+
 	extends = ['oAuth2Api'];
-	icon = 'file:Microsoft.svg';
+
+	icon = 'file:icons/Microsoft.svg';
+
 	displayName = 'Microsoft OAuth2 API';
+
 	documentationUrl = 'microsoft';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

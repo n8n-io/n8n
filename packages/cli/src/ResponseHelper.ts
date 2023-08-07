@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Request, Response } from 'express';
+
+import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
 import { ErrorReporterProxy as ErrorReporter, NodeApiError } from 'n8n-workflow';
@@ -14,9 +13,8 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IWorkflowDb,
-} from './Interfaces';
-
-const inDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+} from '@/Interfaces';
+import { inDevelopment } from '@/constants';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -41,8 +39,8 @@ abstract class ResponseError extends Error {
 }
 
 export class BadRequestError extends ResponseError {
-	constructor(message: string) {
-		super(message, 400);
+	constructor(message: string, errorCode?: number) {
+		super(message, 400, errorCode);
 	}
 }
 
@@ -70,6 +68,12 @@ export class ConflictError extends ResponseError {
 	}
 }
 
+export class UnprocessableRequestError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 422, 422, hint);
+	}
+}
+
 export class InternalServerError extends ResponseError {
 	constructor(message: string, errorCode = 500) {
 		super(message, 500, errorCode);
@@ -80,17 +84,6 @@ export class ServiceUnavailableError extends ResponseError {
 	constructor(message: string, errorCode = 503) {
 		super(message, 503, errorCode);
 	}
-}
-
-export function basicAuthAuthorizationError(resp: Response, realm: string, message?: string) {
-	resp.statusCode = 401;
-	resp.setHeader('WWW-Authenticate', `Basic realm="${realm}"`);
-	resp.json({ code: resp.statusCode, message });
-}
-
-export function jwtAuthAuthorizationError(resp: Response, message?: string) {
-	resp.statusCode = 403;
-	resp.json({ code: resp.statusCode, message });
 }
 
 export function sendSuccessResponse(
@@ -133,7 +126,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 
 	const response: ErrorResponse = {
 		code: 0,
-		message: 'Unknown error',
+		message: error.message ?? 'Unknown error',
 	};
 
 	if (error instanceof ResponseError) {
@@ -141,7 +134,6 @@ export function sendErrorResponse(res: Response, error: Error) {
 			console.error(picocolors.red(error.httpStatusCode), error.message);
 		}
 
-		response.message = error.message;
 		httpStatusCode = error.httpStatusCode;
 
 		if (error.errorCode) {
@@ -167,7 +159,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 	res.status(httpStatusCode).json(response);
 }
 
-const isUniqueConstraintError = (error: Error) =>
+export const isUniqueConstraintError = (error: Error) =>
 	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
 
 /**
@@ -186,7 +178,7 @@ export function send<T, R extends Request, S extends Response>(
 		try {
 			const data = await processFunction(req, res);
 
-			sendSuccessResponse(res, data, raw);
+			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error) {
 				if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
@@ -211,6 +203,7 @@ export function send<T, R extends Request, S extends Response>(
  *
  * @param {IExecutionDb} fullExecutionData The data to flatten
  */
+// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
 export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutionFlatted {
 	// Flatten the data
 	const returnData: IExecutionFlatted = {
@@ -222,12 +215,13 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 		workflowId: fullExecutionData.workflowId,
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 		workflowData: fullExecutionData.workflowData!,
+		status: fullExecutionData.status,
 	};
 
 	if (fullExecutionData.id !== undefined) {
-		returnData.id = fullExecutionData.id.toString();
+		returnData.id = fullExecutionData.id;
 	}
 
 	if (fullExecutionData.retryOf !== undefined) {
@@ -246,9 +240,10 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
  *
  * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
  */
+// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
-		id: fullExecutionData.id.toString(),
+		id: fullExecutionData.id,
 		workflowData: fullExecutionData.workflowData as IWorkflowDb,
 		data: parse(fullExecutionData.data),
 		mode: fullExecutionData.mode,
@@ -257,6 +252,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 		workflowId: fullExecutionData.workflowId,
+		status: fullExecutionData.status,
 	};
 
 	return returnData;

@@ -1,31 +1,26 @@
-/* eslint-disable prefer-template */
-/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import {
-	createDeferredPromise,
+
+import { Container, Service } from 'typedi';
+import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
+	ExecutionStatus,
 } from 'n8n-workflow';
+import { createDeferredPromise, LoggerProxy } from 'n8n-workflow';
 
-import { ChildProcess } from 'child_process';
-import { stringify } from 'flatted';
-import PCancelable from 'p-cancelable';
-import * as Db from '@/Db';
-import {
+import type { ChildProcess } from 'child_process';
+import type PCancelable from 'p-cancelable';
+import type {
 	IExecutingWorkflowData,
 	IExecutionDb,
-	IExecutionFlattedDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { isWorkflowIdValid } from '@/utils';
+import { ExecutionRepository } from '@db/repositories';
 
+@Service()
 export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
@@ -33,13 +28,13 @@ export class ActiveExecutions {
 
 	/**
 	 * Add a new active execution
-	 *
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
 		process?: ChildProcess,
 		executionId?: string,
 	): Promise<string> {
+		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
@@ -49,48 +44,47 @@ export class ActiveExecutions {
 				finished: false,
 				startedAt: new Date(),
 				workflowData: executionData.workflowData,
+				status: executionStatus,
 			};
 
 			if (executionData.retryOf !== undefined) {
 				fullExecutionData.retryOf = executionData.retryOf.toString();
 			}
 
-			if (
-				executionData.workflowData.id !== undefined &&
-				WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString())
-			) {
-				fullExecutionData.workflowId = executionData.workflowData.id.toString();
+			const workflowId = executionData.workflowData.id;
+			if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
+				fullExecutionData.workflowId = workflowId;
 			}
 
-			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-			const executionResult = await Db.collections.Execution.save(execution as IExecutionFlattedDb);
-			executionId =
-				typeof executionResult.id === 'object'
-					? // @ts-ignore
-					  executionResult.id!.toString()
-					: executionResult.id + '';
+			const executionResult = await Container.get(ExecutionRepository).createNewExecution(
+				fullExecutionData,
+			);
+			executionId = executionResult.id;
+			if (executionId === undefined) {
+				throw new Error('There was an issue assigning an execution id to the execution');
+			}
+			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
-			const execution = {
+			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
-				data: stringify(executionData.executionData!),
+				data: executionData.executionData!,
 				waitTill: null,
+				status: executionStatus,
 			};
 
-			await Db.collections.Execution.update(executionId, execution);
+			await Container.get(ExecutionRepository).updateExistingExecution(executionId, execution);
 		}
 
-		// @ts-ignore
 		this.activeExecutions[executionId] = {
 			executionData,
 			process,
 			startedAt: new Date(),
 			postExecutePromises: [],
+			status: executionStatus,
 		};
 
-		// @ts-ignore
 		return executionId;
 	}
 
@@ -98,7 +92,7 @@ export class ActiveExecutions {
 	 * Attaches an execution
 	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
 		if (this.activeExecutions[executionId] === undefined) {
 			throw new Error(
@@ -127,7 +121,6 @@ export class ActiveExecutions {
 			return;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.activeExecutions[executionId].responsePromise?.resolve(response);
 	}
 
@@ -141,7 +134,7 @@ export class ActiveExecutions {
 		}
 
 		// Resolve all the waiting promises
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const promise of this.activeExecutions[executionId].postExecutePromises) {
 			promise.resolve(fullRunData);
 		}
@@ -180,7 +173,6 @@ export class ActiveExecutions {
 			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
 
-		// eslint-disable-next-line consistent-return
 		return this.getPostExecutePromise(executionId);
 	}
 
@@ -200,7 +192,6 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
 		return waitPromise.promise();
 	}
 
@@ -212,7 +203,7 @@ export class ActiveExecutions {
 		const returnData: IExecutionsCurrentSummary[] = [];
 
 		let data;
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const id of Object.keys(this.activeExecutions)) {
 			data = this.activeExecutions[id];
 			returnData.push({
@@ -221,19 +212,29 @@ export class ActiveExecutions {
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
 				workflowId: data.executionData.workflowData.id! as string,
+				status: data.status,
 			});
 		}
 
 		return returnData;
 	}
-}
 
-let activeExecutionsInstance: ActiveExecutions | undefined;
+	async setStatus(executionId: string, status: ExecutionStatus): Promise<void> {
+		if (this.activeExecutions[executionId] === undefined) {
+			LoggerProxy.debug(
+				`There is no active execution with id "${executionId}", can't update status to ${status}.`,
+			);
+			return;
+		}
 
-export function getInstance(): ActiveExecutions {
-	if (activeExecutionsInstance === undefined) {
-		activeExecutionsInstance = new ActiveExecutions();
+		this.activeExecutions[executionId].status = status;
 	}
 
-	return activeExecutionsInstance;
+	getStatus(executionId: string): ExecutionStatus {
+		if (this.activeExecutions[executionId] === undefined) {
+			return 'unknown';
+		}
+
+		return this.activeExecutions[executionId].status;
+	}
 }

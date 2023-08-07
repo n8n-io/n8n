@@ -1,20 +1,19 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
-	IDataObject,
 	INodeProperties,
-	NodeApiError,
+	IPairedItemData,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function supabaseApiRequest(
 	this:
@@ -25,13 +24,11 @@ export async function supabaseApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = (await this.getCredentials('supabaseApi')) as {
 		host: string;
 		serviceRole: string;
@@ -56,7 +53,7 @@ export async function supabaseApiRequest(
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -74,7 +71,7 @@ export function getFilters(
 		includeNoneOption = true,
 		filterTypeDisplayName = 'Filter',
 		filterFixedCollectionDisplayName = 'Filters',
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 		filterStringDisplayName = 'Filters (String)',
 		mustMatchOptions = [
 			{
@@ -248,7 +245,7 @@ export function getFilters(
 					],
 				},
 			],
-			description: `Filter to decide which rows get ${mapOperations[operations[0] as string]}`,
+			description: `Filter to decide which rows get ${mapOperations[operations[0]]}`,
 		},
 		{
 			displayName:
@@ -268,9 +265,6 @@ export function getFilters(
 			displayName: 'Filters (String)',
 			name: 'filterString',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: resources,
@@ -307,7 +301,6 @@ export const buildGetQuery = (obj: IDataObject, value: IDataObject) => {
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
@@ -325,5 +318,13 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
+}
+
+export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {
+	return Array.from(iterable, (_, i) => i).map((index) => {
+		return {
+			item: index,
+		};
+	});
 }

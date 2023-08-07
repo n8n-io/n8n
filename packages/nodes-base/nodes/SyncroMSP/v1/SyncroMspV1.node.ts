@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -52,6 +51,6 @@ export class SyncroMspV1 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		return await router.call(this);
+		return router.call(this);
 	}
 }

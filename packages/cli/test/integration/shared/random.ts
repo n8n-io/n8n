@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { CredentialPayload } from './types';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Create a random alphanumeric string of random length between two limits, both inclusive.
@@ -15,7 +16,9 @@ export function randomApiKey() {
 	return `n8n_api_${randomBytes(20).toString('hex')}`;
 }
 
-const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
+export const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
+
+export const randomInteger = (max = 1000) => Math.floor(Math.random() * max);
 
 export const randomDigit = () => Math.floor(Math.random() * 10);
 
@@ -59,3 +62,5 @@ export const randomCredentialPayload = (): CredentialPayload => ({
 	nodesAccess: [{ nodeType: randomName() }],
 	data: { accessToken: randomString(6, 16) },
 });
+
+export const uniqueId = () => uuid();

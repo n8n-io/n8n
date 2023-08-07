@@ -11,15 +11,16 @@ Great that you are here and you want to contribute to n8n
   - [Development setup](#development-setup)
     - [Requirements](#requirements)
       - [Node.js](#nodejs)
+      - [pnpm](#pnpm)
+        - [pnpm workspaces](#pnpm-workspaces)
+      - [corepack](#corepack)
       - [Build tools](#build-tools)
-      - [pnpm workspaces](#pnpm-workspaces)
     - [Actual n8n setup](#actual-n8n-setup)
     - [Start](#start)
   - [Development cycle](#development-cycle)
     - [Test suite](#test-suite)
+  - [Releasing](#releasing)
   - [Create custom nodes](#create-custom-nodes)
-  - [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
-  - [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
   - [Extend documentation](#extend-documentation)
   - [Contributor License Agreement](#contributor-license-agreement)
 
@@ -53,16 +54,30 @@ The most important directories:
 
 ## Development setup
 
-If you want to change or extend n8n you have to make sure that all needed
-dependencies are installed and the packages get linked correctly. Here a short guide on how that can be done:
+If you want to change or extend n8n you have to make sure that all the needed
+dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
 
 ### Requirements
 
 #### Node.js
 
-We suggest using [Node.js](https://nodejs.org/en/) version 16.9 or newer for development purposes.
+[Node.js](https://nodejs.org/en/) version 16.9 or newer is required for development purposes.
 
-After that we recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`, and [pnpm](https://pnpm.io/) with `corepack prepare pnpm --activate`.
+#### pnpm
+
+[pnpm](https://pnpm.io/) version 7.18 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+
+##### pnpm workspaces
+
+n8n is split up into different modules which are all in a single mono repository.
+To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
+This automatically sets up file-links between modules which depend on each other.
+
+#### corepack
+
+We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`.
+
+With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 7.18 of pnpm via: `corepack prepare pnpm@7.18.0 --activate`.
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
@@ -90,34 +105,32 @@ Windows:
 npm add -g windows-build-tools
 ```
 
-#### pnpm workspaces
+MacOS:
 
-n8n is split up in different modules which are all in a single mono repository.
-To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
-This automatically sets up file-links between modules which depend on each other.
+No additional packages required.
 
 ### Actual n8n setup
 
 > **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
 
-Now that everything n8n requires to run is installed the actual n8n code can be
+Now that everything n8n requires to run is installed, the actual n8n code can be
 checked out and set up:
 
-1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository
+1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository.
 
-2. Clone your forked repository
+2. Clone your forked repository:
 
    ```
    git clone https://github.com/<your_github_username>/n8n.git
    ```
 
-3. Go into repository folder
+3. Go into repository folder:
 
    ```
    cd n8n
    ```
 
-4. Add the original n8n repository as `upstream` to your forked repository
+4. Add the original n8n repository as `upstream` to your forked repository:
 
    ```
    git remote add upstream https://github.com/n8n-io/n8n.git
@@ -159,13 +172,13 @@ automatically build your code, restart the backend and refresh the frontend
    pnpm dev
    ```
 1. Hack, hack, hack
-1. Check if everything still runs in production mode
+1. Check if everything still runs in production mode:
    ```
    pnpm build
    pnpm start
    ```
 1. Create tests
-1. Run all [tests](#test-suite)
+1. Run all [tests](#test-suite):
    ```
    pnpm test
    ```
@@ -183,21 +196,25 @@ If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
 
+## Releasing
+
+To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then:
+
+1. Bump versions of packages that have changed or have dependencies that have changed
+2. Update the Changelog
+3. Create a new branch called `release/${VERSION}`, and
+4. Create a new pull-request to track any further changes that need to be included in this release
+
+Once ready to release, simply merge the pull-request.
+This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will:
+
+1. Build and publish the packages that have a new version in this release
+2. Create a new tag, and GitHub release from squashed release commit
+3. Merge the squashed release commit back into `master`
+
 ## Create custom nodes
 
-> **IMPORTANT**: Avoid use of external libraries to ensure your custom nodes can be reviewed and merged quickly.
-
-Learn about [using the node dev CLI](https://docs.n8n.io/integrations/creating-nodes/archive/node-developer-cli/) to create custom nodes for n8n.
-
-More information can be found in the documentation of [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev), a small CLI which helps with n8n-node-development.
-
-## Create a new node to contribute to n8n
-
-Follow this tutorial on [creating your first node](https://docs.n8n.io/integrations/creating-nodes/build/) for n8n.
-
-## Checklist before submitting a new node
-
-There are several things to keep in mind when creating a node. To help you, we prepared a [checklist](https://docs.n8n.io/integrations/creating-nodes/build/reference/) that covers the requirements for creating nodes, from preparation to submission. This will help us be quicker to review and merge your PR.
+Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/) to create custom nodes for n8n. You can create community nodes and make them available using [npm](https://www.npmjs.com/).
 
 ## Extend documentation
 
@@ -209,4 +226,4 @@ That we do not have any potential problems later it is sadly necessary to sign a
 
 We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally only a few lines long.
 
-A bot will automatically comment on the pull request once it got opened asking for the agreement to be signed. Before it did not get signed it is sadly not possible to merge it in.
+Once a pull request is opened, an automated bot will promptly leave a comment requesting the agreement to be signed. The pull request can only be merged once the signature is obtained.

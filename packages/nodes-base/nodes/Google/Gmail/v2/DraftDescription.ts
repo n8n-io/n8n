@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const draftOperations: INodeProperties[] = [
 	{
@@ -142,6 +142,14 @@ export const draftFields: INodeProperties[] = [
 					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
 				default: '',
+			},
+			{
+				displayName: 'Send Replies To',
+				name: 'replyTo',
+				type: 'string',
+				placeholder: 'reply@example.com',
+				default: '',
+				description: 'The email address that the reply message is sent to',
 			},
 			{
 				displayName: 'Attachments',

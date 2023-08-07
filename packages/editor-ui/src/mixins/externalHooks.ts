@@ -1,34 +1,10 @@
-import { IExternalHooks, IRootState } from '@/Interface';
-import { store } from '@/store';
-import { useWebhooksStore } from '@/stores/webhooks';
-import { IDataObject } from 'n8n-workflow';
-import { Store } from 'pinia';
-import Vue from 'vue';
+import type { IExternalHooks } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
+import { useWebhooksStore } from '@/stores/webhooks.store';
+import { defineComponent } from 'vue';
+import { runExternalHook } from '@/utils';
 
-export async function runExternalHook(
-	eventName: string,
-	store: Store,
-	metadata?: IDataObject,
-) {
-	// @ts-ignore
-	if (!window.n8nExternalHooks) {
-		return;
-	}
-
-	const [resource, operator] = eventName.split('.');
-
-	// @ts-ignore
-	if (window.n8nExternalHooks[resource] && window.n8nExternalHooks[resource][operator]) {
-		// @ts-ignore
-		const hookMethods = window.n8nExternalHooks[resource][operator];
-
-		for (const hookmethod of hookMethods) {
-			await hookmethod(store, metadata);
-		}
-	}
-}
-
-export const externalHooks = Vue.extend({
+export const externalHooks = defineComponent({
 	methods: {
 		$externalHooks(): IExternalHooks {
 			return {

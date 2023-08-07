@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const webinarOperations: INodeProperties[] = [
 	{
@@ -115,9 +115,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Experience Type',
@@ -148,6 +145,7 @@ export const webinarFields: INodeProperties[] = [
 			{
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
+				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
 				type: 'boolean',
 				default: false,
 			},
@@ -378,9 +376,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Experience Type',
@@ -412,6 +407,7 @@ export const webinarFields: INodeProperties[] = [
 			{
 				displayName: 'Is Password Protected',
 				name: 'isPasswordProtected',
+				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
 				type: 'boolean',
 				default: false,
 				description: 'Whether the webinar requires a password for attendees to join',
@@ -453,9 +449,6 @@ export const webinarFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Name or topic of the webinar',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Timezone Name or ID',

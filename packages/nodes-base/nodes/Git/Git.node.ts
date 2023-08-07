@@ -1,5 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	addConfigFields,
@@ -11,7 +15,8 @@ import {
 	tagFields,
 } from './descriptions';
 
-import simpleGit, { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
+import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
+import simpleGit from 'simple-git';
 
 import { access, mkdir } from 'fs/promises';
 
@@ -211,15 +216,12 @@ export class Git implements INodeType {
 			return repositoryPath;
 		};
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		let _item: INodeExecutionData;
+		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				_item = items[itemIndex];
-
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {});
 
 				if (operation === 'clone') {
 					// Create repository folder if it does not exist
@@ -340,8 +342,8 @@ export class Git implements INodeType {
 
 					const logOptions: LogOptions = {};
 
-					const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
-					if (returnAll === false) {
+					const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
+					if (!returnAll) {
 						logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100);
 					}
 					if (options.file) {

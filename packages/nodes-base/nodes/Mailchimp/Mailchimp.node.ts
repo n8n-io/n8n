@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -18,7 +17,7 @@ import {
 
 import moment from 'moment';
 
-enum Status {
+const enum Status {
 	subscribe = 'subscribe',
 	unsubscribed = 'unsubscribe',
 	cleaned = 'cleaned',
@@ -1580,7 +1579,7 @@ export class Mailchimp implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1596,7 +1595,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available merge fields to display them to user so that he can
+			// Get all the available merge fields to display them to user so that they can
 			// select them easily
 			async getMergeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1617,7 +1616,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the interest fields to display them to user so that he can
+			// Get all the interest fields to display them to user so that they can
 			// select them easily
 			async getGroupCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1678,8 +1677,8 @@ export class Mailchimp implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -1690,7 +1689,7 @@ export class Mailchimp implements INodeType {
 						const categoryId = this.getNodeParameter('groupCategory', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/lists/${listId}/interest-categories/${categoryId}/interests`,
@@ -1744,12 +1743,12 @@ export class Mailchimp implements INodeType {
 						if (options.timestampOpt) {
 							body.timestamp_opt = moment(options.timestampOpt as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (options.timestampSignup) {
 							body.timestamp_signup = moment(options.timestampSignup as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (options.tags) {
 							// @ts-ignore
@@ -1762,9 +1761,9 @@ export class Mailchimp implements INodeType {
 								const location: ILocation = {};
 								for (const key of Object.keys(locationValues)) {
 									if (key === 'latitude') {
-										location.latitude = parseFloat(locationValues[key] as string) as number;
+										location.latitude = parseFloat(locationValues[key] as string);
 									} else if (key === 'longitude') {
-										location.longitude = parseFloat(locationValues[key] as string) as number;
+										location.longitude = parseFloat(locationValues[key] as string);
 									}
 								}
 								body.location = location;
@@ -1773,9 +1772,9 @@ export class Mailchimp implements INodeType {
 								.mergeFieldsValues as IDataObject[];
 							if (mergeFieldsValues) {
 								const mergeFields = {};
-								for (let i = 0; i < mergeFieldsValues.length; i++) {
+								for (let index = 0; index < mergeFieldsValues.length; index++) {
 									// @ts-ignore
-									mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
+									mergeFields[mergeFieldsValues[index].name] = mergeFieldsValues[index].value;
 								}
 								body.merge_fields = mergeFields;
 							}
@@ -1784,9 +1783,9 @@ export class Mailchimp implements INodeType {
 								.groupsValues as IDataObject[];
 							if (groupsValues) {
 								const groups = {};
-								for (let i = 0; i < groupsValues.length; i++) {
+								for (let index = 0; index < groupsValues.length; index++) {
 									// @ts-ignore
-									groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+									groups[groupsValues[index].categoryFieldId] = groupsValues[index].value;
 								}
 								body.interests = groups;
 							}
@@ -1878,7 +1877,7 @@ export class Mailchimp implements INodeType {
 						if (options.sinceLastChanged) {
 							qs.since_last_changed = options.sinceLastChanged as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/lists/${listId}/members`,
@@ -1933,12 +1932,12 @@ export class Mailchimp implements INodeType {
 						if (updateFields.timestampOpt) {
 							body.timestamp_opt = moment(updateFields.timestampOpt as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (updateFields.timestampSignup) {
 							body.timestamp_signup = moment(updateFields.timestampSignup as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (!jsonActive) {
 							if (updateFields.locationFieldsUi) {
@@ -1948,9 +1947,9 @@ export class Mailchimp implements INodeType {
 									const location: ILocation = {};
 									for (const key of Object.keys(locationValues)) {
 										if (key === 'latitude') {
-											location.latitude = parseFloat(locationValues[key] as string) as number;
+											location.latitude = parseFloat(locationValues[key] as string);
 										} else if (key === 'longitude') {
-											location.longitude = parseFloat(locationValues[key] as string) as number;
+											location.longitude = parseFloat(locationValues[key] as string);
 										}
 									}
 									body.location = location;
@@ -1961,9 +1960,9 @@ export class Mailchimp implements INodeType {
 									.mergeFieldsValues as IDataObject[];
 								if (mergeFieldsValues) {
 									const mergeFields = {};
-									for (let i = 0; i < mergeFieldsValues.length; i++) {
+									for (let index = 0; index < mergeFieldsValues.length; index++) {
 										// @ts-ignore
-										mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
+										mergeFields[mergeFieldsValues[index].name] = mergeFieldsValues[index].value;
 									}
 									body.merge_fields = mergeFields;
 								}
@@ -1973,9 +1972,9 @@ export class Mailchimp implements INodeType {
 									.groupsValues as IDataObject[];
 								if (groupsValues) {
 									const groups = {};
-									for (let i = 0; i < groupsValues.length; i++) {
+									for (let index = 0; index < groupsValues.length; index++) {
 										// @ts-ignore
-										groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+										groups[groupsValues[index].categoryFieldId] = groupsValues[index].value;
 									}
 									body.interests = groups;
 								}
@@ -2116,10 +2115,10 @@ export class Mailchimp implements INodeType {
 						if (options.sortField) {
 							qs.sort_field = options.sortField as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
-								`/campaigns`,
+								'/campaigns',
 								'GET',
 								'campaigns',
 								{},
@@ -2127,7 +2126,7 @@ export class Mailchimp implements INodeType {
 							);
 						} else {
 							qs.count = this.getNodeParameter('limit', i);
-							responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
+							responseData = await mailchimpApiRequest.call(this, '/campaigns', 'GET', {}, qs);
 							responseData = responseData.campaigns;
 						}
 					}
@@ -2186,7 +2185,7 @@ export class Mailchimp implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

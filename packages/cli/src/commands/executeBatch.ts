@@ -1,42 +1,33 @@
-/* eslint-disable @typescript-eslint/prefer-optional-chain */
-/* eslint-disable array-callback-return */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-async-promise-executor */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-loop-func */
 import fs from 'fs';
-import { Command, flags } from '@oclif/command';
-
-import { BinaryDataManager, UserSettings } from 'n8n-core';
-
-import { ITaskData, LoggerProxy, sleep } from 'n8n-workflow';
-
+import os from 'os';
+import { flags } from '@oclif/command';
+import type { IRun, ITaskData } from 'n8n-workflow';
+import { jsonParse, sleep } from 'n8n-workflow';
 import { sep } from 'path';
-
 import { diff } from 'json-diff';
+import pick from 'lodash/pick';
 
-import pick from 'lodash.pick';
-import { getLogger } from '@/Logger';
-
-import * as ActiveExecutions from '@/ActiveExecutions';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { CredentialTypes } from '@/CredentialTypes';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';
-import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
-import config from '@/config';
-import { User } from '@db/entities/User';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
+import { BaseCommand } from './BaseCommand';
+import { Container } from 'typedi';
+import type {
+	IExecutionResult,
+	INodeSpecialCase,
+	INodeSpecialCases,
+	IResult,
+	IWorkflowExecutionProgress,
+} from '../types/commands.types';
 
-export class ExecuteBatch extends Command {
+const re = /\d+/;
+
+export class ExecuteBatch extends BaseCommand {
 	static description = '\nExecutes multiple workflows once';
 
 	static cancelled = false;
@@ -51,6 +42,8 @@ export class ExecuteBatch extends Command {
 
 	static concurrency = 1;
 
+	static githubWorkflow = false;
+
 	static debug = false;
 
 	static executionTimeout = 3 * 60 * 1000;
@@ -58,12 +51,12 @@ export class ExecuteBatch extends Command {
 	static instanceOwner: User;
 
 	static examples = [
-		`$ n8n executeBatch`,
-		`$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt`,
-		`$ n8n executeBatch --debug --output=/data/output.json`,
-		`$ n8n executeBatch --ids=10,13,15 --shortOutput`,
-		`$ n8n executeBatch --snapshot=/data/snapshots --shallow`,
-		`$ n8n executeBatch --compare=/data/previousExecutionData --retries=2`,
+		'$ n8n executeBatch',
+		'$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt',
+		'$ n8n executeBatch --debug --output=/data/output.json',
+		'$ n8n executeBatch --ids=10,13,15 --shortOutput',
+		'$ n8n executeBatch --snapshot=/data/snapshots --shallow',
+		'$ n8n executeBatch --compare=/data/previousExecutionData --retries=2',
 	];
 
 	static flags = {
@@ -96,6 +89,12 @@ export class ExecuteBatch extends Command {
 			description:
 				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
 		}),
+
+		githubWorkflow: flags.boolean({
+			description:
+				'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
+		}),
+
 		skipList: flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
 		}),
@@ -112,24 +111,20 @@ export class ExecuteBatch extends Command {
 	 * Gracefully handles exit.
 	 * @param {boolean} skipExit Whether to skip exit or number according to received signal
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	static async stopProcess(skipExit: boolean | number = false) {
+	async stopProcess(skipExit: boolean | number = false) {
 		if (ExecuteBatch.cancelled) {
 			process.exit(0);
 		}
 
 		ExecuteBatch.cancelled = true;
-		const activeExecutionsInstance = ActiveExecutions.getInstance();
-		const stopPromises = activeExecutionsInstance.getActiveExecutions().map(async (execution) => {
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			activeExecutionsInstance.stopExecution(execution.id);
-		});
+		const activeExecutionsInstance = Container.get(ActiveExecutions);
+		const stopPromises = activeExecutionsInstance
+			.getActiveExecutions()
+			.map(async (execution) => activeExecutionsInstance.stopExecution(execution.id));
 
 		await Promise.allSettled(stopPromises);
 
-		setTimeout(() => {
-			process.exit(0);
-		}, 30000);
+		setTimeout(() => process.exit(0), 30000);
 
 		let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 
@@ -141,7 +136,6 @@ export class ExecuteBatch extends Command {
 					console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
 				});
 			}
-			// eslint-disable-next-line no-await-in-loop
 			await sleep(500);
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
@@ -152,13 +146,11 @@ export class ExecuteBatch extends Command {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	formatJsonOutput(data: object) {
+	private formatJsonOutput(data: object) {
 		return JSON.stringify(data, null, 2);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	shouldBeConsideredAsWarning(errorMessage: string) {
+	private shouldBeConsideredAsWarning(errorMessage: string) {
 		const warningStrings = [
 			'refresh token is invalid',
 			'unable to connect to',
@@ -167,13 +159,16 @@ export class ExecuteBatch extends Command {
 			'econnrefused',
 			'missing a required parameter',
 			'insufficient credit balance',
+			'internal server error',
+			'503',
+			'502',
+			'504',
+			'insufficient balance',
 			'request timed out',
 			'status code 401',
 		];
 
-		// eslint-disable-next-line no-param-reassign
 		errorMessage = errorMessage.toLowerCase();
-
 		for (let i = 0; i < warningStrings.length; i++) {
 			if (errorMessage.includes(warningStrings[i])) {
 				return true;
@@ -183,33 +178,29 @@ export class ExecuteBatch extends Command {
 		return false;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+	async init() {
+		await super.init();
+		await this.initBinaryManager();
+		await this.initExternalHooks();
+	}
+
 	async run() {
-		process.once('SIGTERM', ExecuteBatch.stopProcess);
-		process.once('SIGINT', ExecuteBatch.stopProcess);
-
-		const logger = getLogger();
-		LoggerProxy.init(logger);
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await BinaryDataManager.init(binaryDataConfig, true);
-
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
-
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
 
-		const ids: number[] = [];
-		const skipIds: number[] = [];
+		const ids: string[] = [];
+		const skipIds: string[] = [];
 
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
 				if (!fs.lstatSync(flags.snapshot).isDirectory()) {
-					console.log(`The parameter --snapshot must be an existing directory`);
+					console.log('The parameter --snapshot must be an existing directory');
 					return;
 				}
 			} else {
-				console.log(`The parameter --snapshot must be an existing directory`);
+				console.log('The parameter --snapshot must be an existing directory');
 				return;
 			}
 
@@ -218,11 +209,11 @@ export class ExecuteBatch extends Command {
 		if (flags.compare !== undefined) {
 			if (fs.existsSync(flags.compare)) {
 				if (!fs.lstatSync(flags.compare).isDirectory()) {
-					console.log(`The parameter --compare must be an existing directory`);
+					console.log('The parameter --compare must be an existing directory');
 					return;
 				}
 			} else {
-				console.log(`The parameter --compare must be an existing directory`);
+				console.log('The parameter --compare must be an existing directory');
 				return;
 			}
 
@@ -232,7 +223,7 @@ export class ExecuteBatch extends Command {
 		if (flags.output !== undefined) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					console.log(`The parameter --output must be a writable file`);
+					console.log('The parameter --output must be a writable file');
 					return;
 				}
 			}
@@ -241,17 +232,19 @@ export class ExecuteBatch extends Command {
 		if (flags.ids !== undefined) {
 			if (fs.existsSync(flags.ids)) {
 				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
-				ids.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
+				ids.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				const paramIds = flags.ids.split(',');
-				const re = /\d+/;
-				const matchedIds = paramIds
-					.filter((id) => re.exec(id))
-					.map((id) => parseInt(id.trim(), 10));
+				const matchedIds = paramIds.filter((id) => re.exec(id));
 
 				if (matchedIds.length === 0) {
 					console.log(
-						`The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.`,
+						'The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.',
 					);
 					return;
 				}
@@ -263,7 +256,12 @@ export class ExecuteBatch extends Command {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
+				skipIds.push(
+					...contents
+						.trimEnd()
+						.split(',')
+						.filter((id) => re.exec(id)),
+				);
 			} else {
 				console.log('Skip list file not found. Exiting.');
 				return;
@@ -274,60 +272,27 @@ export class ExecuteBatch extends Command {
 			ExecuteBatch.shallow = true;
 		}
 
-		// Start directly with the init of the database to improve startup time
-		const startDbInitPromise = Db.init();
-
-		// Load all node and credential types
-		const loadNodesAndCredentials = LoadNodesAndCredentials();
-		const loadNodesAndCredentialsPromise = loadNodesAndCredentials.init();
-
-		// Make sure the settings exist
-		await UserSettings.prepareUserSettings();
-
-		// Wait till the database is ready
-		await startDbInitPromise;
+		if (flags.githubWorkflow) {
+			ExecuteBatch.githubWorkflow = true;
+		}
 
 		ExecuteBatch.instanceOwner = await getInstanceOwner();
-
-		let allWorkflows;
 
 		const query = Db.collections.Workflow.createQueryBuilder('workflows');
 
 		if (ids.length > 0) {
-			query.andWhere(`workflows.id in (:...ids)`, { ids });
+			query.andWhere('workflows.id in (:...ids)', { ids });
 		}
 
 		if (skipIds.length > 0) {
-			query.andWhere(`workflows.id not in (:...skipIds)`, { skipIds });
+			query.andWhere('workflows.id not in (:...skipIds)', { skipIds });
 		}
 
-		// eslint-disable-next-line prefer-const
-		allWorkflows = (await query.getMany()) as IWorkflowDb[];
+		const allWorkflows = (await query.getMany()) as IWorkflowDb[];
 
 		if (ExecuteBatch.debug) {
 			process.stdout.write(`Found ${allWorkflows.length} workflows to execute.\n`);
 		}
-
-		// Wait till the n8n-packages have been read
-		await loadNodesAndCredentialsPromise;
-
-		NodeTypes(loadNodesAndCredentials);
-		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
-
-		// Load the credentials overwrites if any exist
-		await CredentialsOverwrites(credentialTypes).init();
-
-		// Load all external hooks
-		const externalHooks = ExternalHooks();
-		await externalHooks.init();
-
-		// Add the found types to an instance other parts of the application can use
-		const nodeTypes = NodeTypes(loadNodesAndCredentials);
-		CredentialTypes(loadNodesAndCredentials);
-
-		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		// Send a shallow copy of allWorkflows so we still have all workflow data.
 		const results = await this.runTests([...allWorkflows]);
@@ -346,7 +311,6 @@ export class ExecuteBatch extends Command {
 				failedWorkflowIds.includes(workflow.id),
 			);
 
-			// eslint-disable-next-line no-await-in-loop
 			const retryResults = await this.runTests(newWorkflowList);
 
 			this.mergeResults(results, retryResults);
@@ -379,7 +343,7 @@ export class ExecuteBatch extends Command {
 			console.log(this.formatJsonOutput(results));
 		}
 
-		await ExecuteBatch.stopProcess(true);
+		await this.stopProcess(true);
 
 		if (results.summary.failedExecutions > 0) {
 			this.exit(1);
@@ -387,7 +351,6 @@ export class ExecuteBatch extends Command {
 		this.exit(0);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	mergeResults(results: IResult, retryResults: IResult) {
 		if (retryResults.summary.successfulExecutions === 0) {
 			// Nothing to replace.
@@ -428,9 +391,10 @@ export class ExecuteBatch extends Command {
 		});
 	}
 
-	async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
+	private async runTests(allWorkflows: IWorkflowDb[]): Promise<IResult> {
 		const result: IResult = {
 			totalWorkflows: allWorkflows.length,
+			slackMessage: '',
 			summary: {
 				failedExecutions: 0,
 				warningExecutions: 0,
@@ -473,7 +437,6 @@ export class ExecuteBatch extends Command {
 							this.updateStatus();
 						}
 
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						await this.startThread(workflow).then((executionResult) => {
 							if (ExecuteBatch.debug) {
 								ExecuteBatch.workflowExecutionsProgress[i].pop();
@@ -535,12 +498,30 @@ export class ExecuteBatch extends Command {
 			}
 
 			await Promise.allSettled(promisesArray);
-
+			if (ExecuteBatch.githubWorkflow) {
+				if (result.summary.errors.length < 6) {
+					const errorMessage = result.summary.errors.map((error) => {
+						return `*${error.workflowId}*: ${error.error}`;
+					});
+					result.slackMessage = `*${
+						result.summary.errors.length
+					} Executions errors*. Workflows failing: ${errorMessage.join(' ')} `;
+				} else {
+					result.slackMessage = `*${result.summary.errors.length} Executions errors*`;
+				}
+				this.setOutput('slackMessage', JSON.stringify(result.slackMessage));
+			}
 			res(result);
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+	setOutput(key: string, value: any) {
+		// Temporary hack until we move to the new action.
+		const output = process.env.GITHUB_OUTPUT;
+
+		fs.appendFileSync(output as unknown as fs.PathOrFileDescriptor, `${key}=${value}${os.EOL}`);
+	}
+
 	updateStatus() {
 		if (ExecuteBatch.cancelled) {
 			return;
@@ -582,7 +563,6 @@ export class ExecuteBatch extends Command {
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	initializeLogs() {
 		process.stdout.write('**********************************************\n');
 		process.stdout.write('              n8n test workflows\n');
@@ -667,7 +647,7 @@ export class ExecuteBatch extends Command {
 				const workflowRunner = new WorkflowRunner();
 				const executionId = await workflowRunner.run(runData);
 
-				const activeExecutions = ActiveExecutions.getInstance();
+				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);
 				if (gotCancel || ExecuteBatch.cancelled) {
 					clearTimeout(timeoutTimer);
@@ -685,12 +665,12 @@ export class ExecuteBatch extends Command {
 						1000;
 					executionResult.finished = data?.finished !== undefined;
 
-					if (data.data.resultData.error) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-prototype-builtins
-						executionResult.error = data.data.resultData.error.hasOwnProperty('description')
-							? // @ts-ignore
-							  data.data.resultData.error.description
-							: data.data.resultData.error.message;
+					const resultError = data.data.resultData.error;
+					if (resultError) {
+						executionResult.error =
+							resultError.hasOwnProperty('description') && resultError.description !== null
+								? resultError.description
+								: resultError.message;
 						if (data.data.resultData.lastNodeExecuted !== undefined) {
 							executionResult.error += ` on node ${data.data.resultData.lastNodeExecuted}`;
 						}
@@ -721,33 +701,29 @@ export class ExecuteBatch extends Command {
 												return;
 											}
 
-											if (
-												nodeEdgeCases[nodeName] !== undefined &&
-												nodeEdgeCases[nodeName].capResults !== undefined
-											) {
-												executionDataArray.splice(nodeEdgeCases[nodeName].capResults!);
+											const { capResults, ignoredProperties, keepOnlyProperties } =
+												nodeEdgeCases[nodeName] || {};
+
+											if (capResults !== undefined) {
+												executionDataArray.splice(capResults);
 											}
 
 											executionDataArray.map((executionData) => {
 												if (executionData.json === undefined) {
 													return;
 												}
-												if (
-													nodeEdgeCases[nodeName] !== undefined &&
-													nodeEdgeCases[nodeName].ignoredProperties !== undefined
-												) {
-													nodeEdgeCases[nodeName].ignoredProperties!.forEach(
+
+												if (ignoredProperties !== undefined) {
+													ignoredProperties.forEach(
 														(ignoredProperty) => delete executionData.json[ignoredProperty],
 													);
 												}
 
 												let keepOnlyFields = [] as string[];
-												if (
-													nodeEdgeCases[nodeName] !== undefined &&
-													nodeEdgeCases[nodeName].keepOnlyProperties !== undefined
-												) {
-													keepOnlyFields = nodeEdgeCases[nodeName].keepOnlyProperties!;
+												if (keepOnlyProperties !== undefined) {
+													keepOnlyFields = keepOnlyProperties;
 												}
+
 												executionData.json =
 													keepOnlyFields.length > 0
 														? pick(executionData.json, keepOnlyFields)
@@ -814,8 +790,9 @@ export class ExecuteBatch extends Command {
 							}${workflowData.id}-snapshot.json`;
 							if (fs.existsSync(fileName)) {
 								const contents = fs.readFileSync(fileName, { encoding: 'utf-8' });
-
-								const changes = diff(JSON.parse(contents), data, { keysOnly: true });
+								const expected = jsonParse<IRun>(contents);
+								const received = jsonParse<IRun>(serializedData);
+								const changes = diff(expected, received, { keysOnly: true }) as object;
 
 								if (changes !== undefined) {
 									// If we had only additions with no removals
@@ -824,8 +801,13 @@ export class ExecuteBatch extends Command {
 									// and search for the `__deleted` string
 									const changesJson = JSON.stringify(changes);
 									if (changesJson.includes('__deleted')) {
-										// we have structural changes. Report them.
-										executionResult.error = 'Workflow may contain breaking changes';
+										if (ExecuteBatch.githubWorkflow) {
+											const deletedChanges = changesJson.match(/__deleted/g) ?? [];
+											// we have structural changes. Report them.
+											executionResult.error = `Workflow contains ${deletedChanges.length} deleted data.`;
+										} else {
+											executionResult.error = 'Workflow may contain breaking changes';
+										}
 										executionResult.changes = changes;
 										executionResult.executionStatus = 'error';
 									} else {
@@ -855,8 +837,7 @@ export class ExecuteBatch extends Command {
 					}
 				}
 			} catch (e) {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				executionResult.error = `Workflow failed to execute: ${e.message}`;
+				executionResult.error = `Workflow failed to execute: ${(e as Error).message}`;
 				executionResult.executionStatus = 'error';
 			}
 			clearTimeout(timeoutTimer);

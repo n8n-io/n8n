@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MonicaCrmApi implements ICredentialType {
 	name = 'monicaCrmApi';
+
 	displayName = 'Monica CRM API';
+
 	documentationUrl = 'monicaCrm';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',
@@ -37,6 +40,7 @@ export class MonicaCrmApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

@@ -1,9 +1,20 @@
 <template>
 	<div>
 		<n8n-input-label :label="label">
-			<div :class="{[$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse}" @click="copy">
+			<div
+				:class="{
+					[$style.copyText]: true,
+					[$style[size]]: true,
+					[$style.collapsed]: collapse,
+					'ph-no-capture': redactValue,
+				}"
+				@click="copy"
+				data-test-id="copy-input"
+			>
 				<span ref="copyInputValue">{{ value }}</span>
-				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
+				<div :class="$style.copyButton">
+					<span>{{ copyButtonText }}</span>
+				</div>
 			</div>
 		</n8n-input-label>
 		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
@@ -11,11 +22,13 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
+import { i18n } from '@/plugins/i18n';
 
-export default mixins(copyPaste, showMessage).extend({
+export default defineComponent({
+	mixins: [copyPaste],
 	props: {
 		label: {
 			type: String,
@@ -29,13 +42,13 @@ export default mixins(copyPaste, showMessage).extend({
 		copyButtonText: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copy');
+				return i18n.baseText('generic.copy');
 			},
 		},
 		toastTitle: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copiedToClipboard');
+				return i18n.baseText('generic.copiedToClipboard');
 			},
 		},
 		toastMessage: {
@@ -49,13 +62,22 @@ export default mixins(copyPaste, showMessage).extend({
 			type: String,
 			default: 'large',
 		},
+		redactValue: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	methods: {
 		copy(): void {
 			this.$emit('copy');
 			this.copyToClipboard(this.value);
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.toastTitle,
 				message: this.toastMessage,
 				type: 'success',
@@ -96,14 +118,14 @@ export default mixins(copyPaste, showMessage).extend({
 
 .medium {
 	span {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size-xs);
 		line-height: 1;
 	}
 }
 
 .collapsed {
 	white-space: nowrap;
-  overflow: hidden;
+	overflow: hidden;
 }
 
 .copyButton {
@@ -129,5 +151,4 @@ export default mixins(copyPaste, showMessage).extend({
 	font-weight: var(--font-weight-regular);
 	word-break: normal;
 }
-
 </style>

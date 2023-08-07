@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ElasticSecurityApi implements ICredentialType {
 	name = 'elasticSecurityApi';
+
 	displayName = 'Elastic Security API';
+
 	documentationUrl = 'elasticSecurity';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',

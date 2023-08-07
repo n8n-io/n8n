@@ -19,7 +19,8 @@
 					</n8n-text>
 					<n8n-text size="small" color="text-light">
 						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-							{{ node.name }}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
+							{{ node.name
+							}}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
 						</span>
 					</n8n-text>
 				</div>
@@ -42,7 +43,7 @@
 							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
-					<n8n-button type="outline" label="Update" @click="onUpdateClick"/>
+					<n8n-button type="outline" label="Update" @click="onUpdateClick" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
 					<template #content>
@@ -61,19 +62,13 @@
 </template>
 
 <script lang="ts">
-import { useUIStore } from '@/stores/ui';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
-import {
-	NPM_PACKAGE_DOCS_BASE_URL,
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-} from '../constants';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'CommunityPackageCard',
 	props: {
 		communityPackage: {
@@ -135,7 +130,8 @@ export default mixins(
 	background-color: var(--color-background-xlight);
 }
 
-.packageCard, .cardSkeleton {
+.packageCard,
+.cardSkeleton {
 	display: flex;
 	flex-basis: 100%;
 	justify-content: space-between;

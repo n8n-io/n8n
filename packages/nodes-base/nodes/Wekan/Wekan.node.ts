@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
 
@@ -119,7 +118,7 @@ export class Wekan implements INodeType {
 			},
 			async getBoards(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const user = await apiRequest.call(this, 'GET', `user`, {}, {});
+				const user = await apiRequest.call(this, 'GET', 'user', {}, {});
 				const boards = await apiRequest.call(this, 'GET', `users/${user._id}/boards`, {}, {});
 				for (const board of boards) {
 					returnData.push({
@@ -239,8 +238,8 @@ export class Wekan implements INodeType {
 		let returnAll;
 		let limit;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// For Post
 		let body: IDataObject;
@@ -655,7 +654,7 @@ export class Wekan implements INodeType {
 				}
 				let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				if (returnAll === false) {
+				if (returnAll === false && Array.isArray(responseData)) {
 					limit = this.getNodeParameter('limit', i);
 					responseData = responseData.splice(0, limit);
 				}

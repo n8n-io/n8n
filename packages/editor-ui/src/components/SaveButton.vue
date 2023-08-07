@@ -8,16 +8,15 @@
 			:disabled="disabled"
 			:class="$style.button"
 			:type="type"
-			@click="$emit('click')"
 		/>
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: "SaveButton",
+export default defineComponent({
+	name: 'SaveButton',
 	props: {
 		saved: {
 			type: Boolean,

@@ -1,8 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import { Operation, Resource } from '../types';
+import type { Operation, Resource, LanguageOptions } from '../types';
 
-export const languageOptions: INodeProperties['options'] = [
+export const languageOptions: LanguageOptions = [
 	{
 		name: 'Danish',
 		value: 'da',

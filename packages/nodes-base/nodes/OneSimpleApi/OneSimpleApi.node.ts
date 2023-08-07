@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { oneSimpleApiRequest } from './GenericFunctions';
 
@@ -657,8 +661,8 @@ export class OneSimpleApi implements INodeType {
 		let download;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 
 				if (resource === 'website') {
 					if (operation === 'pdf') {
@@ -687,7 +691,7 @@ export class OneSimpleApi implements INodeType {
 								'',
 								{},
 								{},
-								response.url,
+								response.url as string,
 								{ json: false, encoding: null },
 							)) as Buffer;
 							responseData = {
@@ -734,7 +738,7 @@ export class OneSimpleApi implements INodeType {
 								'',
 								{},
 								{},
-								response.url,
+								response.url as string,
 								{ json: false, encoding: null },
 							)) as Buffer;
 							responseData = {
@@ -839,7 +843,7 @@ export class OneSimpleApi implements INodeType {
 								'',
 								{},
 								{},
-								response.url,
+								response.url as string,
 								{ json: false, encoding: null },
 							)) as Buffer;
 							responseData = {

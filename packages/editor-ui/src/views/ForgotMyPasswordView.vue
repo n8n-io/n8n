@@ -1,27 +1,26 @@
 <template>
-	<AuthView
-		:form="formConfig"
-		:formLoading="loading"
-		@submit="onSubmit"
-	/>
+	<AuthView :form="formConfig" :formLoading="loading" @submit="onSubmit" />
 </template>
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { IFormBoxConfig } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'ForgotMyPasswordView',
 	components: {
 		AuthView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -29,10 +28,7 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useUsersStore,
-		),
+		...mapStores(useSettingsStore, useUsersStore),
 		formConfig(): IFormBoxConfig {
 			const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
 				{
@@ -41,7 +37,7 @@ export default mixins(
 						label: this.$locale.baseText('auth.email'),
 						type: 'email',
 						required: true,
-						validationRules: [{name: 'VALID_EMAIL'}],
+						validationRules: [{ name: 'VALID_EMAIL' }],
 						autocomplete: 'email',
 						capitalize: true,
 					},
@@ -83,19 +79,22 @@ export default mixins(
 				this.loading = true;
 				await this.usersStore.sendForgotPasswordEmail(values);
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('forgotPassword.recoveryEmailSent'),
-					message: this.$locale.baseText(
-						'forgotPassword.emailSentIfExists',
-						{ interpolate: { email: values.email }},
-					),
+					message: this.$locale.baseText('forgotPassword.emailSentIfExists', {
+						interpolate: { email: values.email },
+					}),
 				});
 			} catch (error) {
-				this.$showMessage({
+				let message = this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator');
+				if (error.httpStatusCode === 422) {
+					message = this.$locale.baseText(error.message);
+				}
+				this.showMessage({
 					type: 'error',
 					title: this.$locale.baseText('forgotPassword.sendingEmailError'),
-					message: this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator'),
+					message,
 				});
 			}
 			this.loading = false;

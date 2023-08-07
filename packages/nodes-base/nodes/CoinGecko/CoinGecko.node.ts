@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -143,8 +142,8 @@ export class CoinGecko implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'coin') {
@@ -197,7 +196,7 @@ export class CoinGecko implements INodeType {
 
 						responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/list', {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -222,7 +221,7 @@ export class CoinGecko implements INodeType {
 								this,
 								'',
 								'GET',
-								`/coins/markets`,
+								'/coins/markets',
 								{},
 								qs,
 							);
@@ -231,7 +230,7 @@ export class CoinGecko implements INodeType {
 
 							qs.per_page = limit;
 
-							responseData = await coinGeckoApiRequest.call(this, 'GET', `/coins/markets`, {}, qs);
+							responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/markets', {}, qs);
 						}
 					}
 
@@ -369,7 +368,7 @@ export class CoinGecko implements INodeType {
 							const marketCaps = respData.market_caps[idx][1];
 							const totalVolume = respData.total_volumes[idx][1];
 							responseData.push({
-								time: moment(time).toISOString(),
+								time: moment(time as string).toISOString(),
 								price,
 								marketCaps,
 								totalVolume,
@@ -397,7 +396,7 @@ export class CoinGecko implements INodeType {
 						for (let idx = 0; idx < responseData.length; idx++) {
 							const [time, open, high, low, close] = responseData[idx];
 							responseData[idx] = {
-								time: moment(time).toISOString(),
+								time: moment(time as string).toISOString(),
 								open,
 								high,
 								low,
@@ -442,7 +441,8 @@ export class CoinGecko implements INodeType {
 						const currencies = this.getNodeParameter('currencies', i) as string[];
 						const options = this.getNodeParameter('options', i);
 
-						(qs.ids = ids), (qs.vs_currencies = currencies.join(','));
+						qs.ids = ids;
+						qs.vs_currencies = currencies.join(',');
 
 						Object.assign(qs, options);
 
@@ -472,7 +472,7 @@ export class CoinGecko implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

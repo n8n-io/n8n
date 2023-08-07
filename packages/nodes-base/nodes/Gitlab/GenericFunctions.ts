@@ -1,7 +1,6 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+import type { IExecuteFunctions, IHookFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Gitlab
@@ -14,7 +13,6 @@ export async function gitlabApiRequest(
 	body: object,
 	query?: object,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -44,10 +42,10 @@ export async function gitlabApiRequest(
 
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
 
-			return await this.helpers.requestOAuth2!.call(this, 'gitlabOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'gitlabOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -55,10 +53,9 @@ export async function gitlabApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -68,11 +65,11 @@ export async function gitlabApiRequestAllItems(
 	query.page = 1;
 
 	do {
-		responseData = await gitlabApiRequest.call(this, method, endpoint, body, query, {
+		responseData = await gitlabApiRequest.call(this, method, endpoint, body as IDataObject, query, {
 			resolveWithFullResponse: true,
 		});
 		query.page++;
-		returnData.push.apply(returnData, responseData.body);
-	} while (responseData.headers.link && responseData.headers.link.includes('next'));
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }

@@ -1,15 +1,16 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 import {
 	getFields,
 	getPortals,
@@ -596,7 +597,7 @@ export class FileMaker implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available topics to display them to user so that he can
+			// Get all the available topics to display them to user so that they can
 			// select them easily
 			async getLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				let returnData: INodePropertyOptions[];
@@ -604,7 +605,7 @@ export class FileMaker implements INodeType {
 				try {
 					returnData = await layoutsApiRequest.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 
 				return returnData;
@@ -620,7 +621,7 @@ export class FileMaker implements INodeType {
 				try {
 					layouts = await layoutsApiRequest.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 				for (const layout of layouts) {
 					returnData.push({
@@ -638,7 +639,7 @@ export class FileMaker implements INodeType {
 				try {
 					fields = await getFields.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 				for (const field of fields) {
 					returnData.push({
@@ -656,7 +657,7 @@ export class FileMaker implements INodeType {
 				try {
 					scripts = await getScripts.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
 				for (const script of scripts) {
 					if (!script.isFolder) {
@@ -676,9 +677,9 @@ export class FileMaker implements INodeType {
 				try {
 					portals = await getPortals.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error as Error);
 				}
-				Object.keys(portals).forEach((portal) => {
+				Object.keys(portals as IDataObject).forEach((portal) => {
 					returnData.push({
 						name: portal,
 						value: portal,
@@ -697,10 +698,11 @@ export class FileMaker implements INodeType {
 		const credentials = await this.getCredentials('fileMaker');
 
 		let token;
+
 		try {
 			token = await getToken.call(this);
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), `Login fail: ${error}`);
+			throw new NodeOperationError(this.getNode(), error as string);
 		}
 
 		let requestOptions: OptionsWithUri;
@@ -817,21 +819,19 @@ export class FileMaker implements INodeType {
 				try {
 					response = await this.helpers.request(requestOptions);
 				} catch (error) {
-					response = error.response.body;
+					response = error.error;
 				}
 
 				if (typeof response === 'string') {
 					throw new NodeOperationError(
 						this.getNode(),
-						'Response body is not valid JSON. Change "Response Format" to "String"',
+						'DataAPI response body is not valid JSON. Is the DataAPI enabled?',
 						{ itemIndex: i },
 					);
 				}
 				returnData.push({ json: response });
 			}
 		} catch (error) {
-			await logout.call(this, token);
-
 			if (error.node) {
 				throw error;
 			}
@@ -842,6 +842,7 @@ export class FileMaker implements INodeType {
 			);
 		}
 
+		await logout.call(this, token as string);
 		return this.prepareOutputData(returnData);
 	}
 }

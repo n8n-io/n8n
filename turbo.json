@@ -5,9 +5,7 @@
 			"cache": false
 		},
 		"build": {
-			"dependsOn": [
-				"^build"
-			]
+			"dependsOn": ["^build"]
 		},
 		"typecheck": {},
 		"format": {},

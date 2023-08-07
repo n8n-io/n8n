@@ -1,5 +1,6 @@
 <template>
 	<el-table
+		class="tags-table"
 		stripe
 		max-height="450"
 		ref="table"
@@ -15,9 +16,9 @@
 					<transition name="fade" mode="out-in">
 						<n8n-input
 							v-if="scope.row.create || scope.row.update"
-							:value="newName"
+							:modelValue="newName"
 							:maxlength="maxLength"
-							@input="onNewNameChange"
+							@update:modelValue="onNewNameChange"
 							ref="nameInput"
 						></n8n-input>
 						<span v-else-if="scope.row.delete">
@@ -34,30 +35,71 @@
 		<el-table-column :label="$locale.baseText('tagsTable.usage')" width="150">
 			<template #default="scope">
 				<transition name="fade" mode="out-in">
-						<div v-if="!scope.row.create && !scope.row.delete" :class="{ disabled: scope.row.disable }">
-							{{ scope.row.usage }}
-						</div>
-					</transition>
-				</template>
+					<div
+						v-if="!scope.row.create && !scope.row.delete"
+						:class="{ disabled: scope.row.disable }"
+					>
+						{{ scope.row.usage }}
+					</div>
+				</transition>
+			</template>
 		</el-table-column>
 		<el-table-column>
 			<template #default="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
-						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="secondary" :disabled="isSaving" />
-						<n8n-button :label="$locale.baseText('tagsTable.createTag')" @click.stop="apply" :loading="isSaving" />
+						<n8n-button
+							:label="$locale.baseText('tagsTable.cancel')"
+							@click.stop="cancel"
+							type="secondary"
+							:disabled="isSaving"
+						/>
+						<n8n-button
+							:label="$locale.baseText('tagsTable.createTag')"
+							@click.stop="apply"
+							:loading="isSaving"
+						/>
 					</div>
 					<div class="ops" v-else-if="scope.row.update">
-						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="secondary" :disabled="isSaving" />
-						<n8n-button :label="$locale.baseText('tagsTable.saveChanges')" @click.stop="apply" :loading="isSaving" />
+						<n8n-button
+							:label="$locale.baseText('tagsTable.cancel')"
+							@click.stop="cancel"
+							type="secondary"
+							:disabled="isSaving"
+						/>
+						<n8n-button
+							:label="$locale.baseText('tagsTable.saveChanges')"
+							@click.stop="apply"
+							:loading="isSaving"
+						/>
 					</div>
 					<div class="ops" v-else-if="scope.row.delete">
-						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="secondary" :disabled="isSaving" />
-						<n8n-button :label="$locale.baseText('tagsTable.deleteTag')" @click.stop="apply" :loading="isSaving" />
+						<n8n-button
+							:label="$locale.baseText('tagsTable.cancel')"
+							@click.stop="cancel"
+							type="secondary"
+							:disabled="isSaving"
+						/>
+						<n8n-button
+							:label="$locale.baseText('tagsTable.deleteTag')"
+							@click.stop="apply"
+							:loading="isSaving"
+						/>
 					</div>
 					<div class="ops main" v-else-if="!scope.row.disable">
-						<n8n-icon-button :title="$locale.baseText('tagsTable.editTag')" @click.stop="enableUpdate(scope.row)" icon="pen" />
-						<n8n-icon-button v-if="scope.row.canDelete" :title="$locale.baseText('tagsTable.deleteTag')" @click.stop="enableDelete(scope.row)" icon="trash" />
+						<n8n-icon-button
+							:title="$locale.baseText('tagsTable.editTag')"
+							@click.stop="enableUpdate(scope.row)"
+							icon="pen"
+							data-test-id="edit-tag-button"
+						/>
+						<n8n-icon-button
+							v-if="scope.row.canDelete"
+							:title="$locale.baseText('tagsTable.deleteTag')"
+							@click.stop="enableDelete(scope.row)"
+							icon="trash"
+							data-test-id="delete-tag-button"
+						/>
 					</div>
 				</transition>
 			</template>
@@ -66,32 +108,37 @@
 </template>
 
 <script lang="ts">
-import { MAX_TAG_NAME_LENGTH } from "@/constants";
-import { ITagRow } from "@/Interface";
-import Vue from "vue";
+import type { ElTable } from 'element-plus';
+import { MAX_TAG_NAME_LENGTH } from '@/constants';
+import type { ITagRow } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { N8nInput } from 'n8n-design-system';
+
+type TableRef = InstanceType<typeof ElTable>;
+type N8nInputRef = InstanceType<typeof N8nInput>;
 
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
-export default Vue.extend({
-	name: "TagsTable",
-	props: ["rows", "isLoading", "newName", "isSaving"],
+export default defineComponent({
+	name: 'TagsTable',
+	props: ['rows', 'isLoading', 'newName', 'isSaving'],
 	data() {
 		return {
 			maxLength: MAX_TAG_NAME_LENGTH,
 		};
 	},
 	mounted() {
-		if (this.$props.rows.length === 1 && this.$props.rows[0].create) {
+		if (this.rows.length === 1 && this.rows[0].create) {
 			this.focusOnInput();
 		}
 	},
 	methods: {
 		getRowClasses: ({ row }: { row: ITagRow }): string => {
-			return row.disable ? "disabled" : "";
+			return row.disable ? 'disabled' : '';
 		},
 
-		getSpan({ row, columnIndex }: { row: ITagRow, columnIndex: number }): number | number[] {
+		getSpan({ row, columnIndex }: { row: ITagRow; columnIndex: number }): number | number[] {
 			// expand text column with delete message
 			if (columnIndex === 0 && row.tag && row.delete) {
 				return [1, 2];
@@ -132,24 +179,28 @@ export default Vue.extend({
 
 		focusOnInput(): void {
 			setTimeout(() => {
-				const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
-				if (input && input.focus) {
-					input.focus();
+				const inputRef = this.$refs.nameInput as N8nInputRef | undefined;
+				if (inputRef && inputRef.focus) {
+					inputRef.focus();
 				}
 			}, INPUT_TRANSITION_TIMEOUT);
 		},
 
 		focusOnDelete(): void {
 			setTimeout(() => {
-				const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
-				if (input && input.focus) {
-					input.focus();
+				const inputRef = this.$refs.deleteHiddenInput as N8nInputRef | undefined;
+				if (inputRef && inputRef.focus) {
+					inputRef.focus();
 				}
 			}, DELETE_TRANSITION_TIMEOUT);
 		},
 
 		focusOnCreate(): void {
-			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
+			const bodyWrapperRef = (this.$refs.table as TableRef).$refs.bodyWrapper as HTMLElement;
+			if (bodyWrapperRef) {
+				bodyWrapperRef.scrollTop = 0;
+			}
+
 			this.focusOnInput();
 		},
 	},
@@ -164,6 +215,12 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" scoped>
+.tags-table {
+	:deep(tr.disabled) {
+		pointer-events: none;
+	}
+}
+
 .name {
 	min-height: 45px;
 	display: flex;
@@ -196,10 +253,6 @@ export default Vue.extend({
 .ops.main {
 	display: none;
 	margin-left: 2px;
-}
-
-::v-deep tr.disabled {
-	pointer-events: none;
 }
 
 tr:hover .ops:not(.disabled) {

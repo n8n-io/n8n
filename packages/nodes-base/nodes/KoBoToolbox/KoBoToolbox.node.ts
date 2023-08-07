@@ -1,11 +1,17 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IBinaryKeyData,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	downloadAttachments,
 	formatSubmission,
 	koBoToolboxApiRequest,
+	koBoToolboxRawRequest,
 	loadForms,
 	parseStringList,
 } from './GenericFunctions';
@@ -15,6 +21,8 @@ import { formFields, formOperations } from './FormDescription';
 import { submissionFields, submissionOperations } from './SubmissionDescription';
 
 import { hookFields, hookOperations } from './HookDescription';
+
+import { fileFields, fileOperations } from './FileDescription';
 
 export class KoBoToolbox implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,6 +52,10 @@ export class KoBoToolbox implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'File',
+						value: 'file',
+					},
+					{
 						name: 'Form',
 						value: 'form',
 					},
@@ -65,6 +77,8 @@ export class KoBoToolbox implements INodeType {
 			...hookFields,
 			...submissionOperations,
 			...submissionFields,
+			...fileOperations,
+			...fileFields,
 		],
 	};
 
@@ -75,14 +89,13 @@ export class KoBoToolbox implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// tslint:disable-next-line:no-any
 		let responseData: any;
-		// tslint:disable-next-line:no-any
+
 		let returnData: any[] = [];
 		const binaryItems: INodeExecutionData[] = [];
 		const items = this.getInputData();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'form') {
@@ -127,10 +140,24 @@ export class KoBoToolbox implements INodeType {
 									formQueryOptions?.sort?.value?.ordering,
 							}),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 				}
+
+				if (operation === 'redeploy') {
+					// ----------------------------------
+					//          Form: redeploy
+					// ----------------------------------
+					const formId = this.getNodeParameter('formId', i) as string;
+					responseData = [
+						await koBoToolboxApiRequest.call(this, {
+							method: 'PATCH',
+							url: `/api/v2/assets/${formId}/deployment/`,
+						}),
+					];
+				}
 			}
+
 			if (resource === 'submission') {
 				// *********************************************************************
 				//                             Submissions
@@ -155,7 +182,7 @@ export class KoBoToolbox implements INodeType {
 								fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string)),
 							}),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 
 					if (submissionQueryOptions.reformat) {
@@ -172,7 +199,11 @@ export class KoBoToolbox implements INodeType {
 						// Download related attachments
 						for (const submission of responseData) {
 							binaryItems.push(
-								await downloadAttachments.call(this, submission, submissionQueryOptions),
+								await downloadAttachments.call(
+									this,
+									submission as IDataObject,
+									submissionQueryOptions,
+								),
 							);
 						}
 					}
@@ -209,7 +240,9 @@ export class KoBoToolbox implements INodeType {
 					if (options.download) {
 						// Download related attachments
 						for (const submission of responseData) {
-							binaryItems.push(await downloadAttachments.call(this, submission, options));
+							binaryItems.push(
+								await downloadAttachments.call(this, submission as IDataObject, options),
+							);
 						}
 					}
 				}
@@ -279,7 +312,7 @@ export class KoBoToolbox implements INodeType {
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 				}
 
@@ -338,6 +371,102 @@ export class KoBoToolbox implements INodeType {
 						await koBoToolboxApiRequest.call(this, {
 							method: 'PATCH',
 							url: `/api/v2/assets/${formId}/hooks/${hookId}/logs/${logId}/retry/`,
+						}),
+					];
+				}
+			}
+
+			if (resource === 'file') {
+				// *********************************************************************
+				//                             File
+				// *********************************************************************
+				const formId = this.getNodeParameter('formId', i) as string;
+
+				if (operation === 'getAll') {
+					responseData = [
+						await koBoToolboxApiRequest.call(this, {
+							url: `/api/v2/assets/${formId}/files`,
+							qs: {
+								file_type: 'form_media',
+							},
+							scroll: true,
+						}),
+					];
+				}
+
+				if (operation === 'get') {
+					const fileId = this.getNodeParameter('fileId', i) as string;
+					const download = this.getNodeParameter('download', i);
+
+					responseData = [
+						await koBoToolboxApiRequest.call(this, {
+							url: `/api/v2/assets/${formId}/files/${fileId}`,
+						}),
+					];
+
+					if (responseData?.[0] && download) {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+
+						const binaryItem: INodeExecutionData = {
+							json: responseData[0],
+							binary: {},
+						};
+
+						const response = await koBoToolboxRawRequest.call(this, {
+							url: `/api/v2/assets/${formId}/files/${fileId}/content`,
+							encoding: 'arraybuffer',
+						});
+
+						console.dir(response);
+
+						binaryItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+							response as Buffer,
+							responseData[0].metadata.filename as string,
+						);
+
+						binaryItems.push(binaryItem);
+					}
+				}
+
+				if (operation === 'delete') {
+					const fileId = this.getNodeParameter('fileId', i) as string;
+					responseData = [
+						await koBoToolboxApiRequest.call(this, {
+							method: 'DELETE',
+							url: `/api/v2/assets/${formId}/files/${fileId}`,
+						}),
+					];
+				}
+
+				if (operation === 'create') {
+					const fileMode = this.getNodeParameter('fileMode', i) as string;
+					const body: IDataObject = {
+						description: 'Uploaded file',
+						file_type: 'form_media',
+					};
+
+					if ('binary' === fileMode) {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const item = items[i].binary as IBinaryKeyData;
+						const binaryData = item[binaryPropertyName];
+
+						body.base64Encoded = 'data:' + binaryData.mimeType + ';base64,' + binaryData.data;
+						body.metadata = {
+							filename: binaryData.fileName,
+						};
+					} else {
+						const fileUrl = this.getNodeParameter('fileUrl', i) as string;
+
+						body.metadata = {
+							redirect_url: fileUrl,
+						};
+					}
+
+					responseData = [
+						await koBoToolboxApiRequest.call(this, {
+							method: 'POST',
+							url: `/api/v2/assets/${formId}/files/`,
+							body,
 						}),
 					];
 				}

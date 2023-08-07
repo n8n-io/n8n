@@ -1,12 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { hackerNewsApiRequest, hackerNewsApiRequestAllItems } from './GenericFunctions';
 
@@ -265,8 +264,8 @@ export class HackerNews implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let returnAll = false;
 
 		for (let i = 0; i < items.length; i++) {
@@ -329,7 +328,7 @@ export class HackerNews implements INodeType {
 				}
 
 				let responseData;
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await hackerNewsApiRequestAllItems.call(this, 'GET', endpoint, qs);
 				} else {
 					responseData = await hackerNewsApiRequest.call(this, 'GET', endpoint, qs);
@@ -343,7 +342,7 @@ export class HackerNews implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

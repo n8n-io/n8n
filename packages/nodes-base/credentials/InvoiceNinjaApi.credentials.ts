@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class InvoiceNinjaApi implements ICredentialType {
 	name = 'invoiceNinjaApi';
+
 	displayName = 'Invoice Ninja API';
+
 	documentationUrl = 'invoiceNinja';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -22,16 +25,19 @@ export class InvoiceNinjaApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
 			displayName: 'Secret',
 			name: 'secret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			hint: 'This is optional, enter only if you did set a secret in your app and only if you are using v5',
 		},
 	];
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}',
@@ -39,6 +45,7 @@ export class InvoiceNinjaApi implements ICredentialType {
 			method: 'GET',
 		},
 	};
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,

@@ -1,6 +1,10 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 
 import { beeminderApiRequest, beeminderApiRequestAllItems } from './GenericFunctions';
 
@@ -12,7 +16,7 @@ export async function createDatapoint(
 
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
 
-	return await beeminderApiRequest.call(this, 'POST', endpoint, data);
+	return beeminderApiRequest.call(this, 'POST', endpoint, data);
 }
 
 export async function getAllDatapoints(
@@ -27,7 +31,7 @@ export async function getAllDatapoints(
 		return beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
 	}
 
-	return await beeminderApiRequestAllItems.call(this, 'GET', endpoint, {}, data);
+	return beeminderApiRequestAllItems.call(this, 'GET', endpoint, {}, data);
 }
 
 export async function updateDatapoint(
@@ -38,7 +42,7 @@ export async function updateDatapoint(
 
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
-	return await beeminderApiRequest.call(this, 'PUT', endpoint, data);
+	return beeminderApiRequest.call(this, 'PUT', endpoint, data);
 }
 
 export async function deleteDatapoint(
@@ -49,5 +53,5 @@ export async function deleteDatapoint(
 
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
-	return await beeminderApiRequest.call(this, 'DELETE', endpoint);
+	return beeminderApiRequest.call(this, 'DELETE', endpoint);
 }

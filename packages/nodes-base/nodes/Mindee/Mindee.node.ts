@@ -1,14 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryData,
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { cleanData, cleanDataPreviousApiVersions, mindeeApiRequest } from './GenericFunctions';
 
@@ -18,7 +15,7 @@ export class Mindee implements INodeType {
 		name: 'mindee',
 		icon: 'file:mindee.svg',
 		group: ['input'],
-		version: [1, 2],
+		version: [1, 2, 3],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Mindee API',
 		defaults: {
@@ -66,9 +63,13 @@ export class Mindee implements INodeType {
 						name: '3',
 						value: 3,
 					},
+					{
+						name: '4',
+						value: 4,
+					},
 				],
 				default: 1,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'Which Mindee API Version to use',
 			},
 			{
 				displayName: 'API Version',
@@ -89,9 +90,40 @@ export class Mindee implements INodeType {
 						name: '3',
 						value: 3,
 					},
+					{
+						name: '4',
+						value: 4,
+					},
 				],
 				default: 3,
-				description: 'Whether to return all results or only up to a given limit',
+				description: 'Which Mindee API Version to use',
+			},
+			{
+				displayName: 'API Version',
+				name: 'apiVersion',
+				type: 'options',
+				isNodeSetting: true,
+				displayOptions: {
+					show: {
+						'@version': [3],
+					},
+				},
+				options: [
+					{
+						name: '1',
+						value: 1,
+					},
+					{
+						name: '3',
+						value: 3,
+					},
+					{
+						name: '4',
+						value: 4,
+					},
+				],
+				default: 4,
+				description: 'Which Mindee API Version to use',
 			},
 			{
 				displayName: 'Resource',
@@ -154,39 +186,24 @@ export class Mindee implements INodeType {
 		const length = items.length;
 		let responseData;
 		const version = this.getNodeParameter('apiVersion', 0) as number;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let endpoint;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'receipt') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
 						const rawData = this.getNodeParameter('rawData', i);
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-						if (binaryData === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-							);
-						}
 						if (version === 1) {
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
-								`/expense_receipts/v2/predict`,
+								'/expense_receipts/v2/predict',
 								{},
 								{},
 								{
@@ -219,12 +236,33 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
+						} else if (version === 4) {
+							endpoint = '/expense_receipts/v4/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
-								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							} else if (version === 3) {
-								responseData = cleanData(responseData.document);
+								responseData = cleanDataPreviousApiVersions(
+									responseData.predictions as IDataObject[],
+								);
+							} else if (version === 3 || version === 4) {
+								responseData = cleanData(responseData.document as IDataObject);
 							}
 						}
 					}
@@ -232,27 +270,12 @@ export class Mindee implements INodeType {
 
 				if (resource === 'invoice') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
 						const rawData = this.getNodeParameter('rawData', i);
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-						if (binaryData === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-							);
-						}
 						if (version === 1) {
 							endpoint = '/invoices/v1/predict';
 							responseData = await mindeeApiRequest.call(
@@ -291,14 +314,35 @@ export class Mindee implements INodeType {
 									},
 								},
 							);
+						} else if (version === 4) {
+							endpoint = '/invoices/v4/predict';
+							responseData = await mindeeApiRequest.call(
+								this,
+								'POST',
+								endpoint,
+								{},
+								{},
+								{
+									formData: {
+										document: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
+										},
+									},
+								},
+							);
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
-								responseData = cleanDataPreviousApiVersions(responseData.predictions);
-							} else if (version === 3) {
-								responseData = cleanData(responseData.document);
+								responseData = cleanDataPreviousApiVersions(
+									responseData.predictions as IDataObject[],
+								);
+							} else if (version === 3 || version === 4) {
+								responseData = cleanData(responseData.document as IDataObject);
 							}
 						}
 					}

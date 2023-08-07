@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const certificateOperations: INodeProperties[] = [
 	{
@@ -348,9 +348,6 @@ export const certificateFields: INodeProperties[] = [
 		displayName: 'Certificate Signing Request',
 		name: 'certificateSigningRequest',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				operation: ['renew'],

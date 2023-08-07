@@ -1,0 +1,105 @@
+{
+	"name": "http request test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "12433cfb-74d9-4bf1-9afd-0ab9afc9ef19",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://dummyjson.com/todos/add",
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "todo",
+							"value": "Use DummyJSON in the project"
+						},
+						{
+							"name": "completed",
+							"value": "={{ false }}"
+						},
+						{
+							"name": "userId",
+							"value": "5"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "07670093-862f-403f-96a5-ddf7fdb0d225",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 3,
+			"position": [1140, 200]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://dummyjson.com/todos/add2",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "{\"todo\":\"Use DummyJSON in the project\",\"completed\":false,\"userId\":15}",
+				"options": {}
+			},
+			"id": "db088210-2204-422c-823a-101afa464384",
+			"name": "HTTP Request1",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 3,
+			"position": [1140, 440]
+		}
+	],
+	"pinData": {
+		"HTTP Request": [
+			{
+				"json": {
+					"id": 151,
+					"todo": "Use DummyJSON in the project",
+					"completed": false,
+					"userId": "5"
+				}
+			}
+		],
+		"HTTP Request1": [
+			{
+				"json": {
+					"id": 151,
+					"todo": "Use DummyJSON in the project",
+					"completed": false,
+					"userId": 15
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c5d9075a-6d1e-49d8-b16b-7df985ebda69",
+	"id": "108",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

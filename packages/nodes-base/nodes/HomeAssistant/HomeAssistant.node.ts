@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -159,18 +158,18 @@ export class HomeAssistant implements INodeType {
 
 		loadOptions: {
 			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this);
+				return getHomeAssistantEntities.call(this);
 			},
 			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this, 'camera');
+				return getHomeAssistantEntities.call(this, 'camera');
 			},
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantServices.call(this);
+				return getHomeAssistantServices.call(this);
 			},
 			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const currentDomain = this.getCurrentNodeParameter('domain') as string;
 				if (currentDomain) {
-					return await getHomeAssistantServices.call(this, currentDomain);
+					return getHomeAssistantServices.call(this, currentDomain);
 				} else {
 					return [];
 				}
@@ -180,10 +179,10 @@ export class HomeAssistant implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
@@ -392,10 +391,7 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'cameraProxy') {
 					if (operation === 'getScreenshot') {
 						const cameraEntityId = this.getNodeParameter('cameraEntityId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						const endpoint = `/camera_proxy/${cameraEntityId}`;
 
 						let mimeType: string | undefined;
@@ -445,22 +441,27 @@ export class HomeAssistant implements INodeType {
 					if (resource === 'cameraProxy' && operation === 'get') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 					continue;
 				}
 				throw error;
 			}
-
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
 		if (resource === 'cameraProxy' && operation === 'getScreenshot') {
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

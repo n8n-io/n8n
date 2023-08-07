@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -9,13 +9,17 @@ import {
 
 export class MetabaseApi implements ICredentialType {
 	name = 'metabaseApi';
+
 	displayName = 'Metabase API';
+
 	documentationUrl = 'metabase';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',
 			name: 'sessionToken',
 			type: 'hidden',
+			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
 			typeOptions: {
 				expirable: true,
 			},
@@ -59,6 +63,7 @@ export class MetabaseApi implements ICredentialType {
 		})) as { id: string };
 		return { sessionToken: id };
 	}
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -67,6 +72,7 @@ export class MetabaseApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}',

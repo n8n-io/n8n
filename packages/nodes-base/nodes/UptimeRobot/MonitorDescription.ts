@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const monitorOperations: INodeProperties[] = [
 	{
@@ -234,7 +234,7 @@ export const monitorFields: INodeProperties[] = [
 				name: 'statuses',
 				type: 'multiOptions',
 				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
+
 				options: [
 					{
 						name: 'Paused',
@@ -385,6 +385,7 @@ export const monitorFields: INodeProperties[] = [
 				displayName: 'HTTP Password',
 				name: 'http_password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'The password used for password-protected web pages',
 			},

@@ -1,14 +1,22 @@
-import vue from '@vitejs/plugin-vue2';
-import { createHtmlPlugin } from 'vite-plugin-html';
-import legacy from '@vitejs/plugin-legacy';
-import monacoEditorPlugin from "vite-plugin-monaco-editor";
-import path, { resolve } from 'path';
-import {defineConfig, mergeConfig, PluginOption} from "vite";
+import vue from '@vitejs/plugin-vue';
+import { resolve } from 'path';
+import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
+
 import packageJSON from './package.json';
 
+const { coverageReporters } = require('../../jest.config.js');
+
 const vendorChunks = ['vue', 'vue-router'];
-const ignoreChunks = ['vue2-boring-avatars', 'vue-template-compiler', 'jquery', '@fontsource/open-sans'];
+const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
+const ignoreChunks = [
+	'@fontsource/open-sans',
+	'normalize-wheel',
+	'@vueuse/components',
+	// TODO: remove this. It's currently required by xml2js in NodeErrors
+	'stream-browserify',
+];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
 
@@ -17,7 +25,7 @@ function renderChunks() {
 	const chunks: Record<string, string[]> = {};
 
 	Object.keys(dependencies).forEach((key) => {
-		if ([...vendorChunks, ...ignoreChunks].includes(key)) {
+		if ([...vendorChunks, ...n8nChunks, ...ignoreChunks].includes(key)) {
 			return;
 		}
 
@@ -31,53 +39,58 @@ function renderChunks() {
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
-const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name => ({
-	find: new RegExp(`^lodash.${name}$`, 'i'),
-	replacement: require.resolve(`lodash-es/${name}`),
-}))
+const { NODE_ENV } = process.env;
+
+const alias = [
+	{ find: '@', replacement: resolve(__dirname, 'src') },
+	{ find: 'stream', replacement: 'stream-browserify' },
+	{
+		find: /^n8n-design-system$/,
+		replacement: resolve(__dirname, '..', 'design-system', 'src', 'main.ts'),
+	},
+	{
+		find: /^n8n-design-system\//,
+		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
+	},
+	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
+		find: new RegExp(`^lodash.${name}$`, 'i'),
+		replacement: require.resolve(`lodash-es/${name}`),
+	})),
+	{
+		find: /^lodash\.(.+)$/,
+		replacement: 'lodash-es/$1',
+	},
+];
+
+const plugins = [vue()];
+
+const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
+if (release && authToken) {
+	plugins.push(
+		sentryVitePlugin({
+			org: 'n8nio',
+			project: 'instance-frontend',
+			// Specify the directory containing build artifacts
+			include: './dist',
+			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
+			// and needs the `project:releases` and `org:read` scopes
+			authToken,
+			telemetry: false,
+			release,
+		}),
+	);
+}
 
 export default mergeConfig(
 	defineConfig({
-		plugins: [
-			legacy({
-				targets: ['defaults', 'not IE 11'],
-			}),
-			vue(),
-			...createHtmlPlugin({
-				inject: {
-					data: {
-						BASE_PATH: publicPath,
-					},
-				},
-			}) as PluginOption[],
-			monacoEditorPlugin({
-				publicPath: 'assets/monaco-editor',
-				customDistPath: (root: string, buildOutDir: string, base: string) => `${root}/${buildOutDir}/assets/monaco-editor`,
-			}) as PluginOption,
-		],
-		resolve: {
-			alias: [
-				{ find: '@', replacement: resolve(__dirname, 'src') },
-				{ find: 'stream', replacement: '' },
-				{
-					find: /^n8n-design-system\//,
-					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
-				},
-				...lodashAliases,
-				{
-					find: /^lodash.(.+)$/,
-					replacement: 'lodash-es/$1',
-				},
-				{
-					find: 'vue2-boring-avatars',
-					replacement: require.resolve('vue2-boring-avatars'),
-				},
-				{
-					find: /element-ui\/(packages|lib)\/button$/,
-					replacement: path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.ts'),
-				},
-			],
+		define: {
+			// This causes test to fail but is required for actually running it
+			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
+			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
+			BASE_PATH: `'${publicPath}'`,
 		},
+		plugins,
+		resolve: { alias },
 		base: publicPath,
 		envPrefix: 'VUE_APP',
 		css: {
@@ -89,11 +102,14 @@ export default mergeConfig(
 		},
 		build: {
 			assetsInlineLimit: 0,
-			sourcemap: false,
+			minify: !!release,
+			sourcemap: !!release,
 			rollupOptions: {
+				treeshake: !!release,
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,
+						n8n: n8nChunks,
 						...renderChunks(),
 					},
 				},
@@ -105,6 +121,16 @@ export default mergeConfig(
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			coverage: {
+				provider: 'v8',
+				reporter: coverageReporters,
+				all: true,
+			},
+			css: {
+				modules: {
+					classNameStrategy: 'non-scoped',
+				},
+			},
 		},
 	}),
 );

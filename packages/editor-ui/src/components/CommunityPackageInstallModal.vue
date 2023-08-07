@@ -13,11 +13,10 @@
 				<div>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
-					</n8n-text> <n8n-link
-						:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
-						@click="onMoreInfoTopClick"
-					>
-							{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
+					</n8n-text>
+					{{ ' ' }}
+					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
+						{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
 					</n8n-link>
 				</div>
 				<n8n-button
@@ -31,16 +30,20 @@
 				<n8n-input-label
 					:class="$style.labelTooltip"
 					:label="$locale.baseText('settings.communityNodes.installModal.packageName.label')"
-					:tooltipText="$locale.baseText('settings.communityNodes.installModal.packageName.tooltip',
-						{ interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL } }
-					)"
+					:tooltipText="
+						$locale.baseText('settings.communityNodes.installModal.packageName.tooltip', {
+							interpolate: { npmURL: NPM_KEYWORD_SEARCH_URL },
+						})
+					"
 				>
 					<n8n-input
 						name="packageNameInput"
 						v-model="packageName"
 						type="text"
 						:maxlength="214"
-						:placeholder="$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')"
+						:placeholder="
+							$locale.baseText('settings.communityNodes.installModal.packageName.placeholder')
+						"
 						:required="true"
 						:disabled="loading"
 						@blur="onInputBlur"
@@ -57,12 +60,14 @@
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
-					@change="onCheckboxChecked"
+					@update:modelValue="onCheckboxChecked"
 				>
 					<n8n-text>
-						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }}
-					</n8n-text><br />
-					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{ $locale.baseText('_reusableDynamicText.moreInfo') }}</n8n-link>
+						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
+					><br />
+					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
+						$locale.baseText('_reusableDynamicText.moreInfo')
+					}}</n8n-link>
 				</el-checkbox>
 			</div>
 		</template>
@@ -70,9 +75,11 @@
 			<n8n-button
 				:loading="loading"
 				:disabled="packageName === '' || loading"
-				:label="loading ?
-					$locale.baseText('settings.communityNodes.installModal.installButton.label.loading') :
-					$locale.baseText('settings.communityNodes.installModal.installButton.label')"
+				:label="
+					loading
+						? $locale.baseText('settings.communityNodes.installModal.installButton.label.loading')
+						: $locale.baseText('settings.communityNodes.installModal.installButton.label')
+				"
 				size="large"
 				float="right"
 				@click="onInstallClick"
@@ -82,32 +89,35 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import Modal from './Modal.vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system/utils';
+import Modal from '@/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	NPM_KEYWORD_SEARCH_URL,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
-} from '../constants';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { mapStores } from 'pinia';
-import { useCommunityNodesStore } from '@/stores/communityNodes';
+} from '@/constants';
+import { useToast } from '@/composables';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'CommunityPackageInstallModal',
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
 			loading: false,
 			packageName: '',
 			userAgreed: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			checkboxWarning: false,
 			infoTextErrorMessage: '',
 			COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -129,23 +139,26 @@ export default mixins(
 				this.checkboxWarning = true;
 			} else {
 				try {
-					this.$telemetry.track('user started cnr package install', { input_string: this.packageName, source: 'cnr settings page' });
+					this.$telemetry.track('user started cnr package install', {
+						input_string: this.packageName,
+						source: 'cnr settings page',
+					});
 					this.infoTextErrorMessage = '';
 					this.loading = true;
 					await this.communityNodesStore.installPackage(this.packageName);
 					// TODO: We need to fetch a fresh list of installed packages until proper response is implemented on the back-end
 					await this.communityNodesStore.fetchInstalledPackages();
 					this.loading = false;
-					this.modalBus.$emit('close');
-					this.$showMessage({
+					this.modalBus.emit('close');
+					this.showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
 						type: 'success',
 					});
-				} catch(error) {
-					if(error.httpStatusCode && error.httpStatusCode === 400) {
+				} catch (error) {
+					if (error.httpStatusCode && error.httpStatusCode === 400) {
 						this.infoTextErrorMessage = error.message;
 					} else {
-						this.$showError(
+						this.showError(
 							error,
 							this.$locale.baseText('settings.communityNodes.messages.install.error'),
 						);
@@ -168,7 +181,9 @@ export default mixins(
 			this.$telemetry.track('user clicked cnr docs link', { source: 'install package modal top' });
 		},
 		onLearnMoreLinkClick() {
-			this.$telemetry.track('user clicked cnr docs link', { source: 'install package modal bottom' });
+			this.$telemetry.track('user clicked cnr docs link', {
+				source: 'install package modal bottom',
+			});
 		},
 	},
 });
@@ -192,7 +207,6 @@ export default mixins(
 		}
 	}
 }
-
 
 .formContainer {
 	font-size: var(--font-size-2xs);

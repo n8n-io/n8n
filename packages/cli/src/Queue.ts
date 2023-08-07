@@ -1,9 +1,18 @@
-import Bull from 'bull';
-import { IExecuteResponsePromiseData } from 'n8n-workflow';
-import config from '@/config';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import type Bull from 'bull';
+import { Service } from 'typedi';
+import { type IExecuteResponsePromiseData } from 'n8n-workflow';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import {
+	getRedisClusterClient,
+	getRedisClusterNodes,
+	getRedisPrefix,
+	getRedisStandardClient,
+} from './services/redis/RedisServiceHelper';
+import type { RedisClientType } from './services/redis/RedisServiceBaseClasses';
+import config from '@/config';
 
+export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
 export type JobQueue = Bull.Queue<JobData>;
 
@@ -21,27 +30,36 @@ export interface WebhookResponse {
 	response: IExecuteResponsePromiseData;
 }
 
+@Service()
 export class Queue {
-	private activeExecutions: ActiveExecutions.ActiveExecutions;
-
 	private jobQueue: JobQueue;
 
-	constructor() {
-		this.activeExecutions = ActiveExecutions.getInstance();
+	constructor(private activeExecutions: ActiveExecutions) {}
 
-		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions = config.getEnv('queue.bull.redis');
+	async init() {
+		const bullPrefix = config.getEnv('queue.bull.prefix');
+		const prefix = getRedisPrefix(bullPrefix);
+		const clusterNodes = getRedisClusterNodes();
+		const usesRedisCluster = clusterNodes.length > 0;
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Bull } = await import('bull');
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Redis } = await import('ioredis');
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize
 		// redis is back up and resume working.
 		// More here: https://github.com/OptimalBits/bull/issues/890
-		// @ts-ignore
-		this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+		this.jobQueue = new Bull('jobs', {
+			prefix,
+			createClient: (type, clientConfig) =>
+				usesRedisCluster
+					? getRedisClusterClient(Redis, clientConfig, (type + '(bull)') as RedisClientType)
+					: getRedisStandardClient(Redis, clientConfig, (type + '(bull)') as RedisClientType),
+		});
 
 		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
 				WebhookHelpers.decodeWebhookResponse(progress.response),
 			);
@@ -52,7 +70,7 @@ export class Queue {
 		return this.jobQueue.add(jobData, jobOptions);
 	}
 
-	async getJob(jobId: Bull.JobId): Promise<Job | null> {
+	async getJob(jobId: JobId): Promise<Job | null> {
 		return this.jobQueue.getJob(jobId);
 	}
 
@@ -85,14 +103,4 @@ export class Queue {
 
 		return false;
 	}
-}
-
-let activeQueueInstance: Queue | undefined;
-
-export function getInstance(): Queue {
-	if (activeQueueInstance === undefined) {
-		activeQueueInstance = new Queue();
-	}
-
-	return activeQueueInstance;
 }

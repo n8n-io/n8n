@@ -1,42 +1,47 @@
+import { Container } from 'typedi';
 import { Not } from 'typeorm';
 import * as Db from '@/Db';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { User } from '@db/entities/User';
 import { BaseCommand } from '../BaseCommand';
+import { RoleService } from '@/services/role.service';
+
+const defaultUserProps = {
+	firstName: null,
+	lastName: null,
+	email: null,
+	password: null,
+};
 
 export class Reset extends BaseCommand {
-	static description = '\nResets the database to the default user state';
+	static description = 'Resets the database to the default user state';
+
+	static examples = ['$ n8n user-management:reset'];
 
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Db.collections.Role.findOneOrFail({
-			name: 'owner',
-			scope: 'workflow',
-		});
-
-		const ownerCredentialRole = await Db.collections.Role.findOneOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
+		const ownerWorkflowRole = await Container.get(RoleService).findWorkflowOwnerRole();
+		const ownerCredentialRole = await Container.get(RoleService).findCredentialOwnerRole();
 
 		await Db.collections.SharedWorkflow.update(
-			{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
+			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
 			{ user: owner },
 		);
 
 		await Db.collections.SharedCredentials.update(
-			{ user: { id: Not(owner.id) }, role: ownerCredentialRole },
+			{ userId: Not(owner.id), roleId: ownerCredentialRole.id },
 			{ user: owner },
 		);
 
 		await Db.collections.User.delete({ id: Not(owner.id) });
-		await Db.collections.User.save(Object.assign(owner, this.defaultUserProps));
+		await Db.collections.User.save(Object.assign(owner, defaultUserProps));
 
 		const danglingCredentials: CredentialsEntity[] =
-			(await Db.collections.Credentials.createQueryBuilder('credentials')
+			await Db.collections.Credentials.createQueryBuilder('credentials')
 				.leftJoinAndSelect('credentials.shared', 'shared')
 				.where('shared.credentialsId is null')
-				.getMany()) as CredentialsEntity[];
+				.getMany();
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Db.collections.SharedCredentials.create({
 				credentials,
@@ -50,12 +55,24 @@ export class Reset extends BaseCommand {
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: 'false' },
 		);
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: 'false' },
-		);
 
 		this.logger.info('Successfully reset the database to default user state.');
+	}
+
+	async getInstanceOwner(): Promise<User> {
+		const globalRole = await Container.get(RoleService).findGlobalOwnerRole();
+
+		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
+
+		if (owner) return owner;
+
+		const user = new User();
+
+		Object.assign(user, { ...defaultUserProps, globalRole });
+
+		await Db.collections.User.save(user);
+
+		return Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 	}
 
 	async catch(error: Error): Promise<void> {

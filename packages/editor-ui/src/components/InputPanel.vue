@@ -11,7 +11,6 @@
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
 		:mappingEnabled="!readOnly"
-		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="input"
@@ -20,17 +19,39 @@
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
-		>
+		data-test-id="ndv-input-panel"
+	>
 		<template #header>
 			<div :class="$style.titleSection">
-				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>
+				<n8n-select
+					v-if="parentNodes.length"
+					teleported
+					size="small"
+					:modelValue="currentNodeName"
+					@update:modelValue="onSelect"
+					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
+					:placeholder="$locale.baseText('ndv.input.parentNodes')"
+					filterable
+					data-test-id="ndv-input-select"
+				>
 					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`">
-						{{ truncate(node.name) }}&nbsp;
-						<span v-if="getMultipleNodesText(node.name)">{{ getMultipleNodesText(node.name) }}</span>
-						<span v-else>{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
+					<n8n-option
+						v-for="node of parentNodes"
+						:value="node.name"
+						:key="node.name"
+						class="node-option"
+						:label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`"
+						data-test-id="ndv-input-option"
+					>
+						<span>{{ truncate(node.name) }}&nbsp;</span>
+						<span v-if="getMultipleNodesText(node.name)">{{
+							getMultipleNodesText(node.name)
+						}}</span>
+						<span v-else>{{
+							$locale.baseText('ndv.input.nodeDistance', { adjustToNumber: node.depth })
+						}}</span>
 					</n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
@@ -39,12 +60,28 @@
 
 		<template #node-not-run>
 			<div :class="$style.noOutputData" v-if="parentNodes.length">
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
-				<n8n-tooltip v-if="!readOnly" :manual="true" :value="showDraggableHint && showDraggableHintWithDelay">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('ndv.input.noOutputData.title')
+				}}</n8n-text>
+				<n8n-tooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
-						<div v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
+						<div
+							v-html="
+								$locale.baseText('dataMapping.dragFromPreviousHint', {
+									interpolate: { name: focusedMappableInput },
+								})
+							"
+						></div>
 					</template>
-					<NodeExecuteButton type="secondary" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
+					<NodeExecuteButton
+						type="secondary"
+						:transparent="true"
+						:nodeName="currentNodeName"
+						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
+						@execute="onNodeExecute"
+						telemetrySource="inputs"
+						data-test-id="execute-previous-node"
+					/>
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
@@ -54,40 +91,63 @@
 				<div>
 					<WireMeUp />
 				</div>
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.notConnected.title') }}</n8n-text>
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('ndv.input.notConnected.title')
+				}}</n8n-text>
 				<n8n-text tag="div">
 					{{ $locale.baseText('ndv.input.notConnected.message') }}
-					<a href="https://docs.n8n.io/workflows/connections/" target="_blank" @click="onConnectionHelpClick">
-						{{$locale.baseText('ndv.input.notConnected.learnMore')}}
+					<a
+						href="https://docs.n8n.io/workflows/connections/"
+						target="_blank"
+						@click="onConnectionHelpClick"
+					>
+						{{ $locale.baseText('ndv.input.notConnected.learnMore') }}
 					</a>
 				</n8n-text>
 			</div>
 		</template>
 
 		<template #no-output-data>
-			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData') }}</n8n-text>
+			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+				$locale.baseText('ndv.input.noOutputData')
+			}}</n8n-text>
+		</template>
+
+		<template #recovered-artificial-output-data>
+			<div :class="$style.recoveredOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
 		</template>
 	</RunData>
 </template>
 
 <script lang="ts">
-import { INodeUi } from '@/Interface';
-import { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { INodeUi } from '@/Interface';
+import type { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	START_NODE_TYPE,
+} from '@/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(
-	workflowHelpers,
-).extend({
+export default defineComponent({
 	name: 'InputPanel',
+	mixins: [workflowHelpers],
 	components: { RunData, NodeExecuteButton, WireMeUp },
 	props: {
 		currentNodeName: {
@@ -99,8 +159,7 @@ export default mixins(
 		linkedRuns: {
 			type: Boolean,
 		},
-		workflow: {
-		},
+		workflow: {},
 		canLinkRuns: {
 			type: Boolean,
 		},
@@ -122,19 +181,20 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
 		focusedMappableInput(): string {
 			return this.ndvStore.focusedMappableInput;
 		},
 		isUserOnboarded(): boolean {
-			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
+			return this.ndvStore.isMappingOnboarded;
 		},
 		showDraggableHint(): boolean {
-			const toIgnore = [START_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
+			const toIgnore = [
+				START_NODE_TYPE,
+				MANUAL_TRIGGER_NODE_TYPE,
+				CRON_NODE_TYPE,
+				INTERVAL_NODE_TYPE,
+			];
 			if (!this.currentNode || toIgnore.includes(this.currentNode.type)) {
 				return false;
 			}
@@ -147,69 +207,86 @@ export default mixins(
 			}
 			const triggeredNode = this.workflowsStore.executedNode;
 			const executingNode = this.workflowsStore.executingNode;
-			if (this.activeNode && triggeredNode === this.activeNode.name && this.activeNode.name !== executingNode) {
+			if (
+				this.activeNode &&
+				triggeredNode === this.activeNode.name &&
+				this.activeNode.name !== executingNode
+			) {
 				return true;
 			}
 
 			if (executingNode || triggeredNode) {
-				return !!this.parentNodes.find((node) => node.name === executingNode || node.name === triggeredNode);
+				return !!this.parentNodes.find(
+					(node) => node.name === executingNode || node.name === triggeredNode,
+				);
 			}
 			return false;
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		currentWorkflow(): Workflow {
 			return this.workflow as Workflow;
 		},
-		activeNode (): INodeUi | null {
+		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
-		currentNode (): INodeUi | null {
+		currentNode(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
-			const search = this.parentNodes.find(({name}) => name === this.currentNodeName);
+			const search = this.parentNodes.find(({ name }) => name === this.currentNodeName);
 			if (search) {
 				return search.indicies;
 			}
 			return undefined;
 		},
-		parentNodes (): IConnectedNode[] {
+		parentNodes(): IConnectedNode[] {
 			if (!this.activeNode) {
 				return [];
 			}
-			const nodes: IConnectedNode[] = (this.workflow as Workflow).getParentNodesByDepth(this.activeNode.name);
+			const nodes: IConnectedNode[] = (this.workflow as Workflow).getParentNodesByDepth(
+				this.activeNode.name,
+			);
 
-			return nodes.filter(({name}, i) => (this.activeNode && (name !== this.activeNode.name)) && nodes.findIndex((node) => node.name === name) === i);
+			return nodes.filter(
+				({ name }, i) =>
+					this.activeNode &&
+					name !== this.activeNode.name &&
+					nodes.findIndex((node) => node.name === name) === i,
+			);
 		},
-		currentNodeDepth (): number {
-			const node = this.parentNodes.find((node) => this.currentNode && node.name === this.currentNode.name);
-			return node ? node.depth: -1;
+		currentNodeDepth(): number {
+			const node = this.parentNodes.find(
+				(node) => this.currentNode && node.name === this.currentNode.name,
+			);
+			return node ? node.depth : -1;
 		},
-		activeNodeType () : INodeTypeDescription | null {
+		activeNodeType(): INodeTypeDescription | null {
 			if (!this.activeNode) return null;
 
 			return this.nodeTypesStore.getNodeType(this.activeNode.type, this.activeNode.typeVersion);
 		},
-		isMultiInputNode (): boolean {
+		isMultiInputNode(): boolean {
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
 	},
 	methods: {
-		getMultipleNodesText(nodeName?: string):string {
-			if(
+		getMultipleNodesText(nodeName?: string): string {
+			if (
 				!nodeName ||
 				!this.isMultiInputNode ||
 				!this.activeNode ||
 				this.activeNodeType === null ||
 				this.activeNodeType.inputNames === undefined
-			) return '';
+			)
+				return '';
 
-			const activeNodeConnections = this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
+			const activeNodeConnections =
+				this.currentWorkflow.connectionsByDestinationNode[this.activeNode.name].main || [];
 			// Collect indexes of connected nodes
 			const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
-				if(node[0] && node[0].node === nodeName) return [...acc, index];
+				if (node[0] && node[0].node === nodeName) return [...acc, index];
 				return acc;
 			}, []);
 
@@ -221,7 +298,7 @@ export default mixins(
 					this.activeNodeType.inputNames[inputIndex],
 			);
 
-			if(connectedInputs.length === 0) return '';
+			if (connectedInputs.length === 0) return '';
 
 			return `(${connectedInputs.join(' & ')})`;
 		},
@@ -280,11 +357,12 @@ export default mixins(
 					if (this.showDraggableHintWithDelay) {
 						this.draggableHintShown = true;
 
-						this.$telemetry.track('User viewed data mapping tooltip', { type: 'unexecuted input pane' });
+						this.$telemetry.track('User viewed data mapping tooltip', {
+							type: 'unexecuted input pane',
+						});
 					}
 				}, 1000);
-			}
-			else if (!curr) {
+			} else if (!curr) {
 				this.showDraggableHintWithDelay = false;
 			}
 		},
@@ -311,6 +389,16 @@ export default mixins(
 
 	> * {
 		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.recoveredOutputData {
+	margin: auto;
+	max-width: 250px;
+	text-align: center;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
 	}
 }
 

@@ -1,9 +1,14 @@
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IPollFunctions,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { apiRequest } from '../transport';
 import { utils as xlsxUtils } from 'xlsx';
-import { get } from 'lodash';
-import {
+import get from 'lodash/get';
+import type {
 	ILookupValues,
 	ISheetUpdateData,
 	SheetCellDecoded,
@@ -16,9 +21,13 @@ import { removeEmptyColumns } from './GoogleSheets.utils';
 
 export class GoogleSheet {
 	id: string;
-	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
-	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions) {
+	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
+
+	constructor(
+		spreadsheetId: string,
+		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
 	}
@@ -123,7 +132,7 @@ export class GoogleSheet {
 		const foundItem = response.sheets.find(
 			(item: { properties: { sheetId: number } }) => item.properties.sheetId === +sheetId,
 		);
-		if (!foundItem || !foundItem.properties || !foundItem.properties.title) {
+		if (!foundItem?.properties?.title) {
 			throw new Error(`Sheet with id ${sheetId} not found`);
 		}
 		return foundItem.properties.title;
@@ -182,6 +191,43 @@ export class GoogleSheet {
 			'POST',
 			`/v4/spreadsheets/${this.id}/values:batchUpdate`,
 			body,
+		);
+
+		return response;
+	}
+
+	async appendEmptyRowsOrColumns(sheetId: string, rowsToAdd = 1, columnsToAdd = 1) {
+		const requests: IDataObject[] = [];
+
+		if (rowsToAdd > 0) {
+			requests.push({
+				appendDimension: {
+					sheetId,
+					dimension: 'ROWS',
+					length: rowsToAdd,
+				},
+			});
+		}
+
+		if (columnsToAdd > 0) {
+			requests.push({
+				appendDimension: {
+					sheetId,
+					dimension: 'COLUMNS',
+					length: columnsToAdd,
+				},
+			});
+		}
+
+		if (requests.length === 0) {
+			throw new Error('Must specify at least one column or row to add');
+		}
+
+		const response = await apiRequest.call(
+			this.executeFunctions,
+			'POST',
+			`/v4/spreadsheets/${this.id}:batchUpdate`,
+			{ requests },
 		);
 
 		return response;
@@ -427,15 +473,27 @@ export class GoogleSheet {
 			);
 		}
 
-		const columnValues =
+		const columnValues: Array<string | number> =
 			columnValuesList ||
 			(await this.getColumnValues(range, keyIndex, dataStartRowIndex, valueRenderMode));
 
 		const updateData: ISheetUpdateData[] = [];
 		const appendData: IDataObject[] = [];
 
+		const getKeyIndex = (key: string | number, data: Array<string | number>) => {
+			let index = -1;
+			for (let i = 0; i < data.length; i++) {
+				if (data[i]?.toString() === key.toString()) {
+					index = i;
+					break;
+				}
+			}
+			return index;
+		};
+
 		for (const item of inputData) {
 			const inputIndexKey = item[indexKey] as string;
+
 			if (inputIndexKey === undefined || inputIndexKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
@@ -445,7 +503,8 @@ export class GoogleSheet {
 			}
 
 			// Item does have the key so check if it exists in Sheet
-			const indexOfIndexKeyInSheet = columnValues.indexOf(inputIndexKey);
+			const indexOfIndexKeyInSheet = getKeyIndex(inputIndexKey, columnValues);
+
 			if (indexOfIndexKeyInSheet === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
@@ -477,9 +536,15 @@ export class GoogleSheet {
 					columnNames.indexOf(name),
 				);
 
+				let updateValue = item[name] as string;
+				if (typeof updateValue === 'object') {
+					try {
+						updateValue = JSON.stringify(updateValue);
+					} catch (error) {}
+				}
 				updateData.push({
 					range: `${decodedRange.name}!${columnToUpdate}${updateRowIndex}`,
-					values: [[item[name] as string]],
+					values: [[updateValue]],
 				});
 			}
 		}
@@ -509,7 +574,7 @@ export class GoogleSheet {
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
 			// The key row does not exist so it is not possible to look up the data
-			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'The key row does not exist');
 		}
 
 		// Create the keys array
@@ -531,6 +596,7 @@ export class GoogleSheet {
 				}
 			}
 		}
+
 		// Loop over all the lookup values and try to find a row to return
 		let rowIndex: number;
 		let returnColumnIndex: number;
@@ -566,7 +632,13 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.convertSheetDataArrayToObjectArray(removeEmptyColumns(returnData), 1, keys, true);
+		const dataWithoutEmptyColumns = removeEmptyColumns(returnData);
+		return this.convertSheetDataArrayToObjectArray(
+			dataWithoutEmptyColumns,
+			1,
+			dataWithoutEmptyColumns[0] as string[],
+			true,
+		);
 	}
 
 	private async convertObjectArrayToSheetDataArray(

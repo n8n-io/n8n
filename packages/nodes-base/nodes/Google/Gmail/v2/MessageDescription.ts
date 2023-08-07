@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -224,6 +224,19 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'e.g. Nathan',
 				default: '',
 				description: "The name that will be shown in recipients' inboxes",
+			},
+			{
+				displayName: 'Send Replies To',
+				name: 'replyTo',
+				type: 'string',
+				placeholder: 'reply@example.com',
+				default: '',
+				description: 'The email address that the reply message is sent to',
+				displayOptions: {
+					hide: {
+						'/operation': ['reply'],
+					},
+				},
 			},
 			{
 				displayName: 'Reply to Sender Only',

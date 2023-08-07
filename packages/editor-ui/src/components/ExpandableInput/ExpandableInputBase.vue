@@ -1,25 +1,25 @@
 <template>
 	<!-- mock el-input element to apply styles -->
-	<div :class="{'el-input': true, 'static-size': staticSize}" :data-value="hiddenValue">
+	<div :class="{ 'el-input': true, 'static-size': staticSize }" :data-value="hiddenValue">
 		<slot></slot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: "ExpandableInputBase",
-	props: ['value', 'placeholder', 'staticSize'],
+export default defineComponent({
+	name: 'ExpandableInputBase',
+	props: ['modelValue', 'placeholder', 'staticSize'],
 	computed: {
 		hiddenValue() {
-			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
+			let value = (this.modelValue as string).replace(/\s/g, '.'); // force input to expand on space chars
 			if (!value) {
 				// @ts-ignore
-				value = this.$props.placeholder;
+				value = this.placeholder;
 			}
 
-			return `${value}`;  // adjust for padding
+			return `${value}`; // adjust for padding
 		},
 	},
 });
@@ -28,24 +28,22 @@ export default Vue.extend({
 <style lang="scss" scoped>
 $--horiz-padding: 15px;
 
-input {
-	border: 1px solid transparent;
-	padding: 0 $--horiz-padding - 2px; // -2px for borders
-}
-
-div.el-input {
+.el-input {
 	display: inline-grid;
 	font: inherit;
 	padding: 10px 0;
 
-	&::after,
-	input {
+	:deep(input) {
+		border: 1px solid transparent;
+		padding: 0 $--horiz-padding - 2px; // -2px for borders
+		width: 100%;
 		grid-area: 1 / 2;
 		font: inherit;
 	}
 
-
 	&::after {
+		grid-area: 1 / 2;
+		font: inherit;
 		content: attr(data-value) ' ';
 		visibility: hidden;
 		white-space: nowrap;
@@ -57,9 +55,13 @@ div.el-input {
 	}
 
 	&:hover {
-		input:not(:focus) {
+		:deep(input):not(:focus) {
 			border: 1px solid var(--color-text-lighter);
 		}
+	}
+
+	:deep(input):focus {
+		border: 1px solid var(--color-secondary);
 	}
 }
 </style>

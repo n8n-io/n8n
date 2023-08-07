@@ -1,14 +1,14 @@
 import { loadClassInIsolation } from 'n8n-core';
-import type {
-	ICredentialType,
-	ICredentialTypes,
-	INodesAndCredentials,
-	LoadedClass,
-} from 'n8n-workflow';
+import type { ICredentialType, ICredentialTypes, LoadedClass } from 'n8n-workflow';
+import { Service } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
 
-class CredentialTypesClass implements ICredentialTypes {
-	constructor(private nodesAndCredentials: INodesAndCredentials) {}
+@Service()
+export class CredentialTypes implements ICredentialTypes {
+	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {
+		nodesAndCredentials.credentialTypes = this;
+	}
 
 	recognizes(type: string) {
 		return type in this.knownCredentials || type in this.loadedCredentials;
@@ -16,6 +16,23 @@ class CredentialTypesClass implements ICredentialTypes {
 
 	getByName(credentialType: string): ICredentialType {
 		return this.getCredential(credentialType).type;
+	}
+
+	getNodeTypesToTestWith(type: string): string[] {
+		return this.knownCredentials[type]?.nodesToTestWith ?? [];
+	}
+
+	/**
+	 * Returns all parent types of the given credential type
+	 */
+	getParentTypes(typeName: string): string[] {
+		const extendsArr = this.knownCredentials[typeName]?.extends ?? [];
+		if (extendsArr.length) {
+			extendsArr.forEach((type) => {
+				extendsArr.push(...this.getParentTypes(type));
+			});
+		}
+		return extendsArr;
 	}
 
 	private getCredential(type: string): LoadedClass<ICredentialType> {
@@ -41,19 +58,4 @@ class CredentialTypesClass implements ICredentialTypes {
 	private get knownCredentials() {
 		return this.nodesAndCredentials.known.credentials;
 	}
-}
-
-let credentialTypesInstance: CredentialTypesClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function CredentialTypes(nodesAndCredentials?: INodesAndCredentials): CredentialTypesClass {
-	if (!credentialTypesInstance) {
-		if (nodesAndCredentials) {
-			credentialTypesInstance = new CredentialTypesClass(nodesAndCredentials);
-		} else {
-			throw new Error('CredentialTypes not initialized yet');
-		}
-	}
-
-	return credentialTypesInstance;
 }

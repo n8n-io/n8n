@@ -1,18 +1,15 @@
-import Vue from 'vue';
-import { isAllowedInDotNotation, escape, toVariableOption } from '../utils';
+import { defineComponent } from 'vue';
+import { escape, toVariableOption } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
-import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
 
-export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const jsonFieldCompletions = defineComponent({
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 	},
 	methods: {
 		/**
@@ -222,7 +219,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					return input.main[0][0].node;
 				}
-			} catch (_) {
+			} catch {
 				return null;
 			}
 		},
@@ -236,7 +233,10 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 			jsonOutput: IDataObject,
 			matcher: string, // e.g. `$input.first().json` or `x` (user-defined variable)
 		) {
-			if (preCursor.text.endsWith('.json[') || preCursor.text.endsWith(`${matcher}[`)) {
+			if (
+				/\.json\[/.test(preCursor.text) ||
+				new RegExp(`(${escape(matcher)})\\[`).test(preCursor.text)
+			) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.map((field) => `${matcher}['${field}']`)
 					.map((label) => ({
@@ -250,7 +250,10 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				};
 			}
 
-			if (preCursor.text.endsWith('.json.') || preCursor.text.endsWith(`${matcher}.`)) {
+			if (
+				/\.json\./.test(preCursor.text) ||
+				new RegExp(`(${escape(matcher)})\.`).test(preCursor.text)
+			) {
 				const options: Completion[] = Object.keys(jsonOutput)
 					.filter(isAllowedInDotNotation)
 					.map((field) => `${matcher}.${field}`)
@@ -287,7 +290,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 					}
 
 					return nodePinData[itemIndex].json;
-				} catch (_) {}
+				} catch {}
 			}
 
 			const runData: IRunData | null = this.workflowsStore.getWorkflowRunData;
@@ -305,7 +308,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				return nodeRunData[0].data!.main[0]![itemIndex].json;
-			} catch (_) {
+			} catch {
 				return null;
 			}
 		},

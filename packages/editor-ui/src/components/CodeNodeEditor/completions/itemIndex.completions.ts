@@ -1,9 +1,8 @@
-import Vue from 'vue';
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
+import { defineComponent } from 'vue';
 
-export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const itemIndexCompletions = defineComponent({
 	methods: {
 		/**
 		 * - Complete `$input.` to `.first() .last() .all() .itemMatching()` in all-items mode.
@@ -65,7 +64,7 @@ export const itemIndexCompletions = (Vue as CodeNodeEditorMixin).extend({
 		selectorCompletions(context: CompletionContext, matcher: string | null = null) {
 			const pattern =
 				matcher === null
-					? /\$\((?<quotedNodeName>['"][\w\s]+['"])\)\..*/ // $('nodeName').
+					? /\$\((?<quotedNodeName>['"][\S\s]+['"])\)\..*/ // $('nodeName').
 					: new RegExp(`${matcher}\..*`);
 
 			const preCursor = context.matchBefore(pattern);

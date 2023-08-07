@@ -10,8 +10,8 @@ import {
 	UpdateHandler,
 } from './OperationHandler';
 
-import { Context } from '../GenericFunctions';
-import { IDataObject } from 'n8n-workflow';
+import type { Context } from '../GenericFunctions';
+import type { IDataObject } from 'n8n-workflow';
 
 export class TodoistService implements Service {
 	async execute(
@@ -35,17 +35,16 @@ export class TodoistService implements Service {
 	};
 }
 
-export enum OperationType {
-	create = 'create',
-	close = 'close',
-	delete = 'delete',
-	get = 'get',
-	getAll = 'getAll',
-	reopen = 'reopen',
-	update = 'update',
-	move = 'move',
-	sync = 'sync',
-}
+export type OperationType =
+	| 'create'
+	| 'close'
+	| 'delete'
+	| 'get'
+	| 'getAll'
+	| 'reopen'
+	| 'update'
+	| 'move'
+	| 'sync';
 
 export interface Section {
 	name: string;

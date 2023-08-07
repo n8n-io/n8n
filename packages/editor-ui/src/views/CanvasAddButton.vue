@@ -1,6 +1,17 @@
 <template>
-	<div :class="$style.container" :style="containerCssVars" ref="container" data-test-id="canvas-add-button">
-		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
+	<div
+		:class="$style.canvasAddButton"
+		:style="containerCssVars"
+		ref="container"
+		data-test-id="canvas-add-button"
+	>
+		<n8n-tooltip
+			placement="top"
+			:visible="showTooltip"
+			:disabled="nodeCreatorStore.showScrim"
+			:popper-class="$style.tooltip"
+			:show-after="700"
+		>
 			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
@@ -12,42 +23,27 @@
 	</div>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
-import { XYPosition } from '@/Interface';
-import { mapStores } from 'pinia';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+<script setup lang="ts">
+import { computed } from 'vue';
+import type { XYPosition } from '@/Interface';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-export default Vue.extend({
-	name: 'CanvasAddButton',
-	props: {
-		showTooltip: {
-			type: Boolean,
-		},
-		position: {
-			type: Array,
-		},
-	},
-	computed: {
-		...mapStores(
-			useNodeCreatorStore,
-		),
-		containerCssVars(): Record<string, string> {
-			const position = this.position as XYPosition;
-			return {
-				'--trigger-placeholder-left-position': `${position[0]}px`,
-				'--trigger-placeholder-top-position': `${position[1]}px`,
-			};
-		},
-		isScrimActive(): boolean {
-			return this.nodeCreatorStore.showScrim;
-		},
-	},
-});
+export interface Props {
+	showTooltip: boolean;
+	position: XYPosition;
+}
+
+const props = defineProps<Props>();
+
+const nodeCreatorStore = useNodeCreatorStore();
+const containerCssVars = computed(() => ({
+	'--trigger-placeholder-left-position': `${props.position[0]}px`,
+	'--trigger-placeholder-top-position': `${props.position[1]}px`,
+}));
 </script>
 
 <style lang="scss" module>
-.container {
+.canvasAddButton {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -62,7 +58,7 @@ export default Vue.extend({
 	z-index: 101;
 
 	&:hover .button svg path {
-		fill: var(--color-primary)
+		fill: var(--color-primary);
 	}
 }
 
@@ -80,12 +76,12 @@ export default Vue.extend({
 		width: 26px !important;
 		height: 40px;
 		path {
-			fill: var(--color-foreground-xdark)
+			fill: var(--color-foreground-xdark);
 		}
 	}
 }
 
-.tooltip {
+:root .tooltip {
 	max-width: 180px;
 }
 
@@ -93,7 +89,7 @@ export default Vue.extend({
 	width: max-content;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose	);
+	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-dark);
 	margin-top: var(--spacing-2xs);
 }

@@ -6,10 +6,10 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { VIEWS } from '@/constants';
-import Vue from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'GoBackButton',
 	data() {
 		return {
@@ -19,11 +19,11 @@ export default Vue.extend({
 	methods: {
 		navigateTo() {
 			if (this.routeHasHistory) this.$router.go(-1);
-			else this.$router.push({ name: VIEWS.TEMPLATES });
+			else void this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 	},
 	mounted() {
-		window.history.state ? this.routeHasHistory = true : this.routeHasHistory = false;
+		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
 	},
 });
 </script>

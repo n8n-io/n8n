@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import {
 	salesmateApiRequest,
 	salesmateApiRequestAllItems,
@@ -16,9 +16,9 @@ import {
 } from './GenericFunctions';
 import { companyFields, companyOperations } from './CompanyDescription';
 import { activityFields, activityOperations } from './ActivityDescription';
-import { ICompany } from './CompanyInterface';
-import { IActivity } from './ActivityInterface';
-import { IDeal } from './DealInterface';
+import type { ICompany } from './CompanyInterface';
+import type { IActivity } from './ActivityInterface';
+import type { IDeal } from './DealInterface';
 import { dealFields, dealOperations } from './DealDescription';
 
 export class Salesmate implements INodeType {
@@ -75,7 +75,7 @@ export class Salesmate implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available users to display them to user so that he can
+			// Get all the available users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -90,7 +90,7 @@ export class Salesmate implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available contacs to display them to user so that he can
+			// Get all the available contacs to display them to user so that they can
 			// select them easily
 			async getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -109,7 +109,7 @@ export class Salesmate implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available companies to display them to user so that he can
+			// Get all the available companies to display them to user so that they can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -137,8 +137,8 @@ export class Salesmate implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'company') {
 				if (operation === 'create') {
@@ -281,7 +281,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -305,7 +305,7 @@ export class Salesmate implements INodeType {
 								itemIndex: i,
 							});
 						}
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					} else {
 						body.fields = [
 							'name',
@@ -325,9 +325,8 @@ export class Salesmate implements INodeType {
 					}
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
-						const filtersUi = (this.getNodeParameter('filters', i) as IDataObject)
-							.filtersUi as IDataObject;
-						if (filtersUi && filtersUi.conditions) {
+						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
+						if (filtersUi?.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
 								for (const condition of conditions.conditionsUi as IDataObject[]) {
@@ -342,7 +341,7 @@ export class Salesmate implements INodeType {
 								}
 							}
 						}
-						if (filtersUi && filtersUi.operator) {
+						if (filtersUi?.operator) {
 							//@ts-ignore
 							body.query.group = {
 								operator: filtersUi.operator,
@@ -474,7 +473,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -498,7 +497,7 @@ export class Salesmate implements INodeType {
 								itemIndex: i,
 							});
 						}
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					} else {
 						body.fields = [
 							'title',
@@ -519,9 +518,8 @@ export class Salesmate implements INodeType {
 					}
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
-						const filtersUi = (this.getNodeParameter('filters', i) as IDataObject)
-							.filtersUi as IDataObject;
-						if (filtersUi && filtersUi.conditions) {
+						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
+						if (filtersUi?.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
 								for (const condition of conditions.conditionsUi as IDataObject[]) {
@@ -536,7 +534,7 @@ export class Salesmate implements INodeType {
 								}
 							}
 						}
-						if (filtersUi && filtersUi.operator) {
+						if (filtersUi?.operator) {
 							//@ts-ignore
 							body.query.group = {
 								operator: filtersUi.operator,
@@ -685,7 +683,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -709,7 +707,7 @@ export class Salesmate implements INodeType {
 								itemIndex: i,
 							});
 						}
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					} else {
 						body.fields = [
 							'title',
@@ -728,9 +726,8 @@ export class Salesmate implements INodeType {
 					}
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
-						const filtersUi = (this.getNodeParameter('filters', i) as IDataObject)
-							.filtersUi as IDataObject;
-						if (filtersUi && filtersUi.conditions) {
+						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
+						if (filtersUi?.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
 								for (const condition of conditions.conditionsUi as IDataObject[]) {
@@ -745,7 +742,7 @@ export class Salesmate implements INodeType {
 								}
 							}
 						}
-						if (filtersUi && filtersUi.operator) {
+						if (filtersUi?.operator) {
 							//@ts-ignore
 							body.query.group = {
 								operator: filtersUi.operator,
@@ -785,7 +782,7 @@ export class Salesmate implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

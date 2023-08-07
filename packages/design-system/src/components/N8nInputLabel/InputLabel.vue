@@ -1,9 +1,10 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
 			:class="{
+				'n8n-input-label': true,
 				[$style.inputLabel]: true,
 				[$style.heading]: !!label,
 				[$style.underline]: underline,
@@ -12,7 +13,7 @@
 			}"
 		>
 			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
+				<n8n-text :bold="bold" :size="size" :compact="compact" :color="color">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
@@ -32,7 +33,11 @@
 				v-if="$slots.options && label"
 				:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
 			/>
-			<div v-if="$slots.options" :class="{ [$style.options]: true, [$style.visible]: showOptions }">
+			<div
+				v-if="$slots.options"
+				:class="{ [$style.options]: true, [$style.visible]: showOptions }"
+				data-test-id="parameter-input-options-container"
+			>
 				<slot name="options" />
 			</div>
 		</label>
@@ -47,9 +52,9 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-input-label',
 	components: {
 		N8nText,
@@ -57,6 +62,10 @@ export default Vue.extend({
 		N8nTooltip,
 	},
 	props: {
+		compact: {
+			type: Boolean,
+			default: false,
+		},
 		color: {
 			type: String,
 		},
@@ -202,7 +211,7 @@ export default Vue.extend({
 	border-bottom: var(--border-base);
 }
 
-.tooltipPopper {
+:root .tooltipPopper {
 	max-width: 400px;
 
 	li {

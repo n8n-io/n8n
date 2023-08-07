@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MediumOAuth2Api implements ICredentialType {
 	name = 'mediumOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Medium OAuth2 API';
+
 	documentationUrl = 'medium';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
@@ -43,6 +47,7 @@ export class MediumOAuth2Api implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},

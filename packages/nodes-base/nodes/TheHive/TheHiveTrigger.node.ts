@@ -1,6 +1,5 @@
-import { IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IWebhookFunctions,
 	IDataObject,
 	IHookFunctions,
 	INodeType,
@@ -26,13 +25,13 @@ export class TheHiveTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
 		properties: [...eventsDescription],
 	};
-	// @ts-ignore (because of request)
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

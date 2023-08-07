@@ -1,31 +1,26 @@
-import { LicenseManager, TLicenseContainerStr } from '@n8n_io/license-sdk';
-import { ILogger } from 'n8n-workflow';
+import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
+import { LicenseManager } from '@n8n_io/license-sdk';
+import type { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';
-import { LICENSE_FEATURES, SETTINGS_LICENSE_CERT_KEY } from './constants';
+import {
+	LICENSE_FEATURES,
+	LICENSE_QUOTAS,
+	N8N_VERSION,
+	SETTINGS_LICENSE_CERT_KEY,
+	UNLIMITED_LICENSE_QUOTA,
+} from './constants';
+import { Service } from 'typedi';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from './Interfaces';
 
-async function loadCertStr(): Promise<TLicenseContainerStr> {
-	const databaseSettings = await Db.collections.Settings.findOne({
-		where: {
-			key: SETTINGS_LICENSE_CERT_KEY,
-		},
-	});
+type FeatureReturnType = Partial<
+	{
+		planName: string;
+	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
+>;
 
-	return databaseSettings?.value ?? '';
-}
-
-async function saveCertStr(value: TLicenseContainerStr): Promise<void> {
-	await Db.collections.Settings.upsert(
-		{
-			key: SETTINGS_LICENSE_CERT_KEY,
-			value,
-			loadOnStartup: false,
-		},
-		['key'],
-	);
-}
-
+@Service()
 export class License {
 	private logger: ILogger;
 
@@ -35,7 +30,7 @@ export class License {
 		this.logger = getLogger();
 	}
 
-	async init(instanceId: string, version: string) {
+	async init(instanceId: string) {
 		if (this.manager) {
 			return;
 		}
@@ -48,12 +43,12 @@ export class License {
 			this.manager = new LicenseManager({
 				server,
 				tenantId: config.getEnv('license.tenantId'),
-				productIdentifier: `n8n-${version}`,
+				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled,
 				autoRenewOffset,
 				logger: this.logger,
-				loadCertStr,
-				saveCertStr,
+				loadCertStr: async () => this.loadCertStr(),
+				saveCertStr: async (value: TLicenseBlock) => this.saveCertStr(value),
 				deviceFingerprint: () => instanceId,
 			});
 
@@ -65,22 +60,40 @@ export class License {
 		}
 	}
 
+	async loadCertStr(): Promise<TLicenseBlock> {
+		// if we have an ephemeral license, we don't want to load it from the database
+		const ephemeralLicense = config.get('license.cert');
+		if (ephemeralLicense) {
+			return ephemeralLicense;
+		}
+		const databaseSettings = await Db.collections.Settings.findOne({
+			where: {
+				key: SETTINGS_LICENSE_CERT_KEY,
+			},
+		});
+
+		return databaseSettings?.value ?? '';
+	}
+
+	async saveCertStr(value: TLicenseBlock): Promise<void> {
+		// if we have an ephemeral license, we don't want to save it to the database
+		if (config.get('license.cert')) return;
+		await Db.collections.Settings.upsert(
+			{
+				key: SETTINGS_LICENSE_CERT_KEY,
+				value,
+				loadOnStartup: false,
+			},
+			['key'],
+		);
+	}
+
 	async activate(activationKey: string): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
 
-		if (this.manager.isValid()) {
-			return;
-		}
-
-		try {
-			await this.manager.activate(activationKey);
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not activate license', e);
-			}
-		}
+		await this.manager.activate(activationKey);
 	}
 
 	async renew() {
@@ -88,34 +101,108 @@ export class License {
 			return;
 		}
 
-		try {
-			await this.manager.renew();
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not renew license', e);
-			}
-		}
+		await this.manager.renew();
 	}
 
-	isFeatureEnabled(feature: string): boolean {
-		if (!this.manager) {
-			return false;
-		}
-
-		return this.manager.hasFeatureEnabled(feature);
+	isFeatureEnabled(feature: BooleanLicenseFeature) {
+		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
 	isSharingEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
 	}
-}
 
-let licenseInstance: License | undefined;
-
-export function getLicense(): License {
-	if (licenseInstance === undefined) {
-		licenseInstance = new License();
+	isLogStreamingEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
 	}
 
-	return licenseInstance;
+	isLdapEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+	}
+
+	isSamlEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+	}
+
+	isAdvancedExecutionFiltersEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+	}
+
+	isVariablesEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+	}
+
+	isSourceControlLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
+	}
+
+	isWorkflowHistoryLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
+	}
+
+	isAPIDisabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
+	}
+
+	getCurrentEntitlements() {
+		return this.manager?.getCurrentEntitlements() ?? [];
+	}
+
+	getFeatureValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
+		return this.manager?.getFeatureValue(feature) as FeatureReturnType[T];
+	}
+
+	getManagementJwt(): string {
+		if (!this.manager) {
+			return '';
+		}
+		return this.manager.getManagementJwt();
+	}
+
+	/**
+	 * Helper function to get the main plan for a license
+	 */
+	getMainPlan(): TEntitlement | undefined {
+		if (!this.manager) {
+			return undefined;
+		}
+
+		const entitlements = this.getCurrentEntitlements();
+		if (!entitlements.length) {
+			return undefined;
+		}
+
+		return entitlements.find(
+			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
+		);
+	}
+
+	// Helper functions for computed data
+	getUsersLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getTriggerLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getVariablesLimit() {
+		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getPlanName(): string {
+		return this.getFeatureValue('planName') ?? 'Community';
+	}
+
+	getInfo(): string {
+		if (!this.manager) {
+			return 'n/a';
+		}
+
+		return this.manager.toString();
+	}
+
+	isWithinUsersLimit() {
+		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
+	}
 }

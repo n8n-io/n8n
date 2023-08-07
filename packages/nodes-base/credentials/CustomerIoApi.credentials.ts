@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
@@ -7,13 +7,17 @@ import {
 
 export class CustomerIoApi implements ICredentialType {
 	name = 'customerIoApi';
+
 	displayName = 'Customer.io API';
+
 	documentationUrl = 'customerIo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Tracking API Key',
 			name: 'trackingApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'Required for tracking API',
 			required: true,
@@ -48,10 +52,12 @@ export class CustomerIoApi implements ICredentialType {
 			displayName: 'App API Key',
 			name: 'appApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'Required for App API',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,

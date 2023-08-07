@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const issueOperations: INodeProperties[] = [
 	{
@@ -96,8 +96,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -304,7 +303,7 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigned_to',
 				description:
 					'ID of the user to assign the issue to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
@@ -495,7 +494,7 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {

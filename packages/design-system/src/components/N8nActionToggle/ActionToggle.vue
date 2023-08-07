@@ -1,15 +1,17 @@
 <template>
-	<span :class="$style.container">
+	<span @click.stop.prevent :class="$style.container" data-test-id="action-toggle">
 		<el-dropdown
 			:placement="placement"
 			:size="size"
 			trigger="click"
-			@click.native.stop
 			@command="onCommand"
 			@visible-change="onVisibleChange"
 		>
 			<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
-				<component :is="$options.components.N8nIcon" icon="ellipsis-v" :size="iconSize" />
+				<n8n-icon
+					:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
+					:size="iconSize"
+				/>
 			</span>
 
 			<template #dropdown>
@@ -22,9 +24,8 @@
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
-							<component
+							<n8n-icon
 								v-if="action.type === 'external-link'"
-								:is="$options.components.N8nIcon"
 								icon="external-link-alt"
 								size="xsmall"
 								color="text-base"
@@ -38,22 +39,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import {
-	Dropdown as ElDropdown,
-	DropdownMenu as ElDropdownMenu,
-	DropdownItem as ElDropdownItem,
-} from 'element-ui';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import N8nIcon from '../N8nIcon';
+import type { UserAction } from '@/types';
 
-interface Action {
-	label: string;
-	value: string;
-	disabled: boolean;
-	type?: 'external-link';
-}
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-toggle',
 	components: {
 		ElDropdown,
@@ -63,7 +55,7 @@ export default Vue.extend({
 	},
 	props: {
 		actions: {
-			type: Array<Action>,
+			type: Array as PropType<UserAction[]>,
 			default: () => [],
 		},
 		placement: {
@@ -84,6 +76,11 @@ export default Vue.extend({
 			type: String,
 			default: 'default',
 			validator: (value: string): boolean => ['default', 'dark'].includes(value),
+		},
+		iconOrientation: {
+			type: String,
+			default: 'vertical',
+			validator: (value: string): boolean => ['horizontal', 'vertical'].includes(value),
 		},
 	},
 	methods: {

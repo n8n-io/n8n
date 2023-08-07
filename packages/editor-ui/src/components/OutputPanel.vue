@@ -9,7 +9,6 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
-		:isReadOnly="isReadOnly"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="output"
@@ -37,27 +36,29 @@
 					tooltipPlacement="right"
 					v-if="hasNodeRun && staleData"
 				>
-					<template>
-						<span v-html="$locale.baseText(
-							hasPinData ? 'ndv.output.staleDataWarning.pinData' : 'ndv.output.staleDataWarning.regular'
-						)"></span>
-					</template>
+					<span
+						v-html="
+							$locale.baseText(
+								hasPinData
+									? 'ndv.output.staleDataWarning.pinData'
+									: 'ndv.output.staleDataWarning.regular',
+							)
+						"
+					></span>
 				</n8n-info-tip>
 			</div>
 		</template>
 
 		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning">
+			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
+				$locale.baseText('ndv.output.waitingToRun')
+			}}</n8n-text>
+			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
 				<span @click="insertTestData" v-if="canPinData">
-					<br>
+					<br />
 					{{ $locale.baseText('generic.or') }}
-					<n8n-text
-						tag="a"
-						size="medium"
-						color="primary"
-					>
+					<n8n-text tag="a" size="medium" color="primary">
 						{{ $locale.baseText('ndv.output.insertTestData') }}
 					</n8n-text>
 				</span>
@@ -65,12 +66,27 @@
 		</template>
 
 		<template #no-output-data>
-			<n8n-text :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
+			<n8n-text :bold="true" color="text-dark" size="large">{{
+				$locale.baseText('ndv.output.noOutputData.title')
+			}}</n8n-text>
 			<n8n-text>
 				{{ $locale.baseText('ndv.output.noOutputData.message') }}
-				<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
+				<a @click="openSettings">{{
+					$locale.baseText('ndv.output.noOutputData.message.settings')
+				}}</a>
 				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
 			</n8n-text>
+		</template>
+
+		<template #recovered-artificial-output-data>
+			<div :class="$style.recoveredOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
 		</template>
 
 		<template #run-info v-if="!hasPinData && runsCount > 1">
@@ -80,25 +96,23 @@
 </template>
 
 <script lang="ts">
-import { IExecutionResponse, INodeUi } from '@/Interface';
-import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
-import Vue from 'vue';
-import RunData, { EnterEditModeArgs } from './RunData.vue';
+import { defineComponent } from 'vue';
+import type { IExecutionResponse, INodeUi } from '@/Interface';
+import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from "@/mixins/pinData";
-import mixins from 'vue-typed-mixins';
+import { pinData } from '@/mixins/pinData';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+type RunDataRef = InstanceType<typeof RunData>;
 
-export default mixins(
-	pinData,
-).extend({
+export default defineComponent({
 	name: 'OutputPanel',
+	mixins: [pinData],
 	components: { RunData, RunInfo },
 	props: {
 		runIndex: {
@@ -126,35 +140,30 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
-		nodeType (): INodeTypeDescription | null {
+		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
 				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
-		isTriggerNode (): boolean {
+		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
-		isPollingTypeNode (): boolean {
+		isPollingTypeNode(): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
 		},
-		isScheduleTrigger (): boolean {
+		isScheduleTrigger(): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
 		isNodeRunning(): boolean {
 			const executingNode = this.workflowsStore.executingNode;
 			return this.node && executingNode === this.node.name;
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -222,7 +231,7 @@ export default mixins(
 			const runAt = this.runTaskData.startTime;
 			return updatedAt > runAt;
 		},
-		outputPanelEditMode(): { enabled: boolean; value: string; } {
+		outputPanelEditMode(): { enabled: boolean; value: string } {
 			return this.ndvStore.outputPanelEditMode;
 		},
 		canPinData(): boolean {
@@ -231,8 +240,9 @@ export default mixins(
 	},
 	methods: {
 		insertTestData() {
-			if (this.$refs.runData) {
-				(this.$refs.runData as RunDataRef).enterEditMode({
+			const runDataRef = this.$refs.runData as RunDataRef | undefined;
+			if (runDataRef) {
+				runDataRef.enterEditMode({
 					origin: 'insertTestDataLink',
 				});
 
@@ -285,4 +295,25 @@ export default mixins(
 	font-size: var(--font-size-s);
 }
 
+.noOutputData {
+	max-width: 180px;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
+
+	> * {
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.recoveredOutputData {
+	margin: auto;
+	max-width: 250px;
+	text-align: center;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
+}
 </style>

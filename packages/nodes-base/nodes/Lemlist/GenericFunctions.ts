@@ -1,8 +1,11 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { capitalCase } from 'change-case';
 
@@ -48,18 +51,18 @@ export async function lemlistApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	endpoint: string,
+	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	const qs: IDataObject = {};
 
 	qs.limit = 100;
 	qs.offset = 0;
 
 	do {
 		responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-		returnData.push(...responseData);
+		returnData.push(...(responseData as IDataObject[]));
 		qs.offset += qs.limit;
 	} while (responseData.length !== 0);
 	return returnData;

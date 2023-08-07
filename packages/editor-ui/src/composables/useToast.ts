@@ -1,0 +1,168 @@
+import { ElNotification as Notification } from 'element-plus';
+import type { NotificationInstance, NotificationOptions, MessageBoxState } from 'element-plus';
+import { sanitizeHtml } from '@/utils';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useI18n } from './useI18n';
+import { useExternalHooks } from './useExternalHooks';
+
+const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
+	dangerouslyUseHTMLString: true,
+	position: 'bottom-right',
+};
+
+const stickyNotificationQueue: NotificationInstance[] = [];
+
+export function useToast() {
+	const telemetry = useTelemetry();
+	const workflowsStore = useWorkflowsStore();
+	const externalHooks = useExternalHooks();
+	const i18n = useI18n();
+
+	function showMessage(
+		messageData: Omit<NotificationOptions, 'message'> & { message?: string },
+		track = true,
+	) {
+		messageData = { ...messageDefaults, ...messageData };
+		messageData.message = messageData.message
+			? sanitizeHtml(messageData.message)
+			: messageData.message;
+
+		// @TODO Check if still working
+		const notification = Notification(messageData as NotificationOptions);
+
+		if (messageData.duration === 0) {
+			stickyNotificationQueue.push(notification);
+		}
+
+		if (messageData.type === 'error' && track) {
+			telemetry.track('Instance FE emitted error', {
+				error_title: messageData.title,
+				error_message: messageData.message,
+				caused_by_credential: causedByCredential(messageData.message),
+				workflow_id: workflowsStore.workflowId,
+			});
+		}
+
+		return notification;
+	}
+
+	function showToast(config: {
+		title: string;
+		message: string;
+		onClick?: () => void;
+		onClose?: () => void;
+		duration?: number;
+		customClass?: string;
+		closeOnClick?: boolean;
+		type?: MessageBoxState['type'];
+		dangerouslyUseHTMLString?: boolean;
+	}) {
+		// eslint-disable-next-line prefer-const
+		let notification: NotificationInstance;
+		if (config.closeOnClick) {
+			const cb = config.onClick;
+			config.onClick = () => {
+				if (notification) {
+					notification.close();
+				}
+
+				if (cb) {
+					cb();
+				}
+			};
+		}
+
+		notification = showMessage({
+			title: config.title,
+			message: config.message,
+			onClick: config.onClick,
+			onClose: config.onClose,
+			duration: config.duration,
+			customClass: config.customClass,
+			type: config.type,
+			dangerouslyUseHTMLString: config.dangerouslyUseHTMLString ?? true,
+		});
+
+		return notification;
+	}
+
+	function collapsableDetails({ description, node }: Error) {
+		if (!description) return '';
+
+		const errorDescription =
+			description.length > 500 ? `${description.slice(0, 500)}...` : description;
+
+		return `
+				<br>
+				<br>
+				<details>
+					<summary
+						style="color: #ff6d5a; font-weight: bold; cursor: pointer;"
+					>
+						${i18n.baseText('showMessage.showDetails')}
+					</summary>
+					<p>${node.name}: ${errorDescription}</p>
+				</details>
+			`;
+	}
+
+	function showError(e: Error | unknown, title: string, message?: string) {
+		const error = e as Error;
+		const messageLine = message ? `${message}<br/>` : '';
+		showMessage(
+			{
+				title,
+				message: `
+					${messageLine}
+					<i>${error.message}</i>
+					${collapsableDetails(error)}`,
+				type: 'error',
+				duration: 0,
+			},
+			false,
+		);
+
+		void externalHooks.run('showMessage.showError', {
+			title,
+			message,
+			errorMessage: error.message,
+		});
+
+		telemetry.track('Instance FE emitted error', {
+			error_title: title,
+			error_description: message,
+			error_message: error.message,
+			caused_by_credential: causedByCredential(error.message),
+			workflow_id: workflowsStore.workflowId,
+		});
+	}
+
+	function showAlert(config: NotificationOptions): NotificationInstance {
+		return Notification(config);
+	}
+
+	function causedByCredential(message: string | undefined) {
+		if (!message) return false;
+
+		return message.includes('Credentials for') && message.includes('are not set');
+	}
+
+	function clearAllStickyNotifications() {
+		stickyNotificationQueue.forEach((notification) => {
+			if (notification) {
+				notification.close();
+			}
+		});
+
+		stickyNotificationQueue.length = 0;
+	}
+
+	return {
+		showMessage,
+		showToast,
+		showError,
+		showAlert,
+		clearAllStickyNotifications,
+	};
+}

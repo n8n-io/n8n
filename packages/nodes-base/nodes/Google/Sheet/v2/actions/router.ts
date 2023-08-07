@@ -1,10 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
-import { GoogleSheets, ResourceLocator } from '../helpers/GoogleSheets.types';
+import type { GoogleSheets, ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const operationResult: INodeExecutionData[] = [];
@@ -24,15 +23,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 			const googleSheet = new GoogleSheet(spreadsheetId, this);
 
-			let sheetWithinDocument = '';
+			let sheetId = '';
 			if (operation !== 'create') {
-				sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
+				sheetId = this.getNodeParameter('sheetName', 0, undefined, {
 					extractValue: true,
 				}) as string;
 			}
 
-			if (sheetWithinDocument === 'gid=0') {
-				sheetWithinDocument = '0';
+			if (sheetId === 'gid=0') {
+				sheetId = '0';
 			}
 
 			let sheetName = '';
@@ -41,17 +40,22 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					sheetName = spreadsheetId;
 					break;
 				case 'delete':
-					sheetName = sheetWithinDocument;
+					sheetName = sheetId;
 					break;
 				case 'remove':
-					sheetName = `${spreadsheetId}||${sheetWithinDocument}`;
+					sheetName = `${spreadsheetId}||${sheetId}`;
 					break;
 				default:
-					sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+					sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 			}
 
 			operationResult.push(
-				...(await sheet[googleSheets.operation].execute.call(this, googleSheet, sheetName)),
+				...(await sheet[googleSheets.operation].execute.call(
+					this,
+					googleSheet,
+					sheetName,
+					sheetId,
+				)),
 			);
 		} else if (googleSheets.resource === 'spreadsheet') {
 			operationResult.push(...(await spreadsheet[googleSheets.operation].execute.call(this)));
@@ -60,6 +64,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (this.continueOnFail()) {
 			operationResult.push({ json: this.getInputData(0)[0].json, error: err });
 		} else {
+			if (
+				err.message &&
+				(err.message.toLowerCase().includes('bad request') ||
+					err.message.toLowerCase().includes('uknown error')) &&
+				err.description
+			) {
+				err.message = err.description;
+				err.description = undefined;
+			}
 			throw err;
 		}
 	}

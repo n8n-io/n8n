@@ -1,12 +1,11 @@
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
-
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 
 import { utils as xlsxUtils } from 'xlsx';
 
-import { get } from 'lodash';
+import get from 'lodash/get';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -45,6 +44,7 @@ export type ValueRenderOption = 'FORMATTED_VALUE' | 'FORMULA' | 'UNFORMATTED_VAL
 
 export class GoogleSheet {
 	id: string;
+
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
 	constructor(
@@ -138,8 +138,6 @@ export class GoogleSheet {
 	 * Sets values in one or more ranges of a spreadsheet.
 	 */
 	async spreadsheetBatchUpdate(requests: IDataObject[]) {
-		// tslint:disable-line:no-any
-
 		const body = {
 			requests,
 		};
@@ -312,14 +310,14 @@ export class GoogleSheet {
 		upsert = false,
 	): Promise<string[][]> {
 		// Get current data in Google Sheet
-		let rangeStart: string, rangeEnd: string, rangeFull: string;
+		let rangeFull: string;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
 			[sheet, rangeFull] = range.split('!');
 		} else {
 			rangeFull = range;
 		}
-		[rangeStart, rangeEnd] = rangeFull.split(':');
+		const [rangeStart, rangeEnd] = rangeFull.split(':');
 
 		const rangeStartSplit = rangeStart.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
 		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
@@ -401,7 +399,7 @@ export class GoogleSheet {
 			if (itemKey === undefined || itemKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
-					const _data = await this.appendSheetData(
+					await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,
@@ -413,11 +411,11 @@ export class GoogleSheet {
 			}
 
 			// Item does have the key so check if it exists in Sheet
-			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey as string);
+			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey);
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
-					const _data = await this.appendSheetData(
+					await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,
@@ -482,7 +480,7 @@ export class GoogleSheet {
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
 			// The key row does not exist so it is not possible to look up the data
-			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'The key row does not exist!');
 		}
 
 		// Create the keys array
@@ -549,12 +547,11 @@ export class GoogleSheet {
 		keyRowIndex: number,
 		usePathForKeyRow: boolean,
 	): Promise<string[][]> {
-		let startColumn, endColumn;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
 			[sheet, range] = range.split('!');
 		}
-		[startColumn, endColumn] = range.split(':');
+		const [startColumn, endColumn] = range.split(':');
 
 		let getRange = `${startColumn}${keyRowIndex + 1}:${endColumn}${keyRowIndex + 1}`;
 
@@ -582,7 +579,7 @@ export class GoogleSheet {
 				const value = get(item, key) as string;
 				if (usePathForKeyRow && value !== undefined && value !== null) {
 					//match by key path
-					rowData.push(value!.toString());
+					rowData.push(value.toString());
 				} else if (
 					!usePathForKeyRow &&
 					item.hasOwnProperty(key) &&

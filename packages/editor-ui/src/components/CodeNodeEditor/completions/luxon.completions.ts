@@ -1,9 +1,8 @@
-import Vue from 'vue';
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
+import { defineComponent } from 'vue';
 
-export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const luxonCompletions = defineComponent({
 	methods: {
 		/**
 		 * Complete `$today.` with luxon `DateTime` instance methods.
@@ -23,13 +22,15 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 				};
 			});
 
-			options.push(...this.luxonInstanceMethods().map(([method, description]) => {
-				return {
-					label: `${matcher}.${method}()`,
-					type: 'function',
-					info: description,
-				};
-			}));
+			options.push(
+				...this.luxonInstanceMethods().map(([method, description]) => {
+					return {
+						label: `${matcher}.${method}()`,
+						type: 'function',
+						info: description,
+					};
+				}),
+			);
 
 			return {
 				from: preCursor.from,
@@ -55,13 +56,15 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 				};
 			});
 
-			options.push(...this.luxonInstanceMethods().map(([method, description]) => {
-				return {
-					label: `${matcher}.${method}()`,
-					type: 'function',
-					info: description,
-				};
-			}));
+			options.push(
+				...this.luxonInstanceMethods().map(([method, description]) => {
+					return {
+						label: `${matcher}.${method}()`,
+						type: 'function',
+						info: description,
+					};
+				}),
+			);
 
 			return {
 				from: preCursor.from,
@@ -72,7 +75,7 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * Complete `DateTime` with luxon `DateTime` static methods.
 		 */
-		dateTimeCompltions(context: CompletionContext, matcher = 'DateTime'): CompletionResult | null {
+		dateTimeCompletions(context: CompletionContext, matcher = 'DateTime'): CompletionResult | null {
 			const pattern = new RegExp(`${escape(matcher)}\..*`);
 
 			const preCursor = context.matchBefore(pattern);

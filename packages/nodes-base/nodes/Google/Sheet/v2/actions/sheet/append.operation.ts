@@ -1,7 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData } from './commonDescription';
 
@@ -31,6 +30,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -49,6 +49,7 @@ export const description: SheetProperties = [
 			show: {
 				operation: ['append'],
 				dataMode: ['autoMapInputData'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -69,6 +70,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['append'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -101,6 +103,40 @@ export const description: SheetProperties = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['append'],
+				'@version': [4],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -154,17 +190,22 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const dataMode = this.getNodeParameter('dataMode', 0) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const dataMode =
+		nodeVersion < 4
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
 
 	if (!items.length || dataMode === 'nothing') return [];
 
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const options = this.getNodeParameter('options', 0, {});
+	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 	let headerRow = 1;
-	if (locationDefine && locationDefine.headerRow) {
+	if (locationDefine?.headerRow) {
 		headerRow = locationDefine.headerRow as number;
 	}
 
@@ -176,6 +217,12 @@ export async function execute(
 		setData = mapFields.call(this, items.length);
 	}
 
+	if (setData.length === 0) {
+		return [];
+	} else {
+		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
+	}
+
 	await sheet.appendSheetData(
 		setData,
 		sheetName,
@@ -184,5 +231,9 @@ export async function execute(
 		false,
 	);
 
-	return items;
+	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
+		return items;
+	} else {
+		return this.helpers.returnJsonArray(setData);
+	}
 }

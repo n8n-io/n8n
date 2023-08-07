@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -37,6 +36,7 @@ import {
 export class HaloPSA implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HaloPSA',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'haloPSA',
 		icon: 'file:halopsa.svg',
 		group: ['input'],
@@ -143,7 +143,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					`/TicketType`,
+					'/TicketType',
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -178,7 +178,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					`/agent`,
+					'/agent',
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -222,8 +222,8 @@ export class HaloPSA implements INodeType {
 
 		const tokens = await getAccessTokens.call(this);
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		//====================================================================
 		//                        Main Loop
@@ -270,15 +270,14 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const clientId = this.getNodeParameter('clientId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/client/${clientId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -295,7 +294,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'clients',
 								'GET',
-								`/client`,
+								'/client',
 								tokens.access_token,
 								{},
 								qs,
@@ -306,7 +305,7 @@ export class HaloPSA implements INodeType {
 							const { clients } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/client`,
+								'/client',
 								tokens.access_token,
 								{},
 								qs,
@@ -314,7 +313,7 @@ export class HaloPSA implements INodeType {
 							response = clients;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -378,15 +377,14 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const siteId = this.getNodeParameter('siteId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/site/${siteId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -403,7 +401,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'sites',
 								'GET',
-								`/site`,
+								'/site',
 								tokens.access_token,
 								{},
 								qs,
@@ -414,7 +412,7 @@ export class HaloPSA implements INodeType {
 							const { sites } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/site`,
+								'/site',
 								tokens.access_token,
 								{},
 								qs,
@@ -422,7 +420,7 @@ export class HaloPSA implements INodeType {
 							response = sites;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -488,15 +486,14 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const ticketId = this.getNodeParameter('ticketId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/tickets/${ticketId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -513,7 +510,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'tickets',
 								'GET',
-								`/tickets`,
+								'/tickets',
 								tokens.access_token,
 								{},
 								qs,
@@ -524,7 +521,7 @@ export class HaloPSA implements INodeType {
 							const { tickets } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/tickets`,
+								'/tickets',
 								tokens.access_token,
 								{},
 								qs,
@@ -532,7 +529,7 @@ export class HaloPSA implements INodeType {
 							response = tickets;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -597,15 +594,14 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/users/${userId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
-							? simplifyHaloPSAGetOutput([response], simplifiedOutput)
+							? simplifyHaloPSAGetOutput([response] as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -622,7 +618,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'users',
 								'GET',
-								`/users`,
+								'/users',
 								tokens.access_token,
 								{},
 								qs,
@@ -633,7 +629,7 @@ export class HaloPSA implements INodeType {
 							const { users } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/users`,
+								'/users',
 								tokens.access_token,
 								{},
 								qs,
@@ -641,7 +637,7 @@ export class HaloPSA implements INodeType {
 							response = users;
 						}
 						responseData = simplify
-							? simplifyHaloPSAGetOutput(response, simplifiedOutput)
+							? simplifyHaloPSAGetOutput(response as IDataObject[], simplifiedOutput)
 							: response;
 					}
 
@@ -664,7 +660,7 @@ export class HaloPSA implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

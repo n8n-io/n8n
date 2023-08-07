@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,24 +8,27 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { nodeDescription } from './MongoDbDescription';
 
-import { buildParameterizedConnString, prepareFields, prepareItems } from './GenericFunctions';
-
 import {
+	buildParameterizedConnString,
+	prepareFields,
+	prepareItems,
+	validateAndResolveMongoCredentials,
+} from './GenericFunctions';
+
+import type {
 	FindOneAndReplaceOptions,
 	FindOneAndUpdateOptions,
-	MongoClient,
-	ObjectId,
 	UpdateOptions,
+	Sort,
 } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
-import { validateAndResolveMongoCredentials } from './GenericFunctions';
-
-import { IMongoParametricCredentials } from './mongoDb.types';
+import type { IMongoParametricCredentials } from './mongoDb.types';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
@@ -59,7 +61,7 @@ export class MongoDb implements INodeType {
 						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 						throw new Error(`Database "${database}" does not exist`);
 					}
-					client.close();
+					await client.close();
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -82,13 +84,13 @@ export class MongoDb implements INodeType {
 
 		const client: MongoClient = await MongoClient.connect(connectionString);
 
-		const mdb = client.db(database as string);
+		const mdb = client.db(database);
 
 		const returnItems: INodeExecutionData[] = [];
 		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'aggregate') {
 			// ----------------------------------
@@ -99,12 +101,12 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id as string);
 				}
 
 				const query = mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.aggregate(queryParameter);
+					.aggregate(queryParameter as Document[]);
 
 				responseData = await query.toArray();
 			} catch (error) {
@@ -122,7 +124,7 @@ export class MongoDb implements INodeType {
 			try {
 				const { deletedCount } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
+					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string) as Document);
 
 				responseData = [{ deletedCount }];
 			} catch (error) {
@@ -141,17 +143,17 @@ export class MongoDb implements INodeType {
 				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id);
+					queryParameter._id = new ObjectId(queryParameter._id as string);
 				}
 
 				let query = mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.find(queryParameter);
+					.find(queryParameter as Document);
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 				const limit = options.limit as number;
 				const skip = options.skip as number;
-				const sort = options.sort && JSON.parse(options.sort as string);
+				const sort: Sort = options.sort && JSON.parse(options.sort as string);
 				if (skip > 0) {
 					query = query.skip(skip);
 				}
@@ -195,7 +197,7 @@ export class MongoDb implements INodeType {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectId(item[updateKey] as string);
-						delete item['_id'];
+						delete item._id;
 					}
 
 					await mdb
@@ -235,7 +237,7 @@ export class MongoDb implements INodeType {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectId(item[updateKey] as string);
-						delete item['_id'];
+						delete item._id;
 					}
 
 					await mdb
@@ -307,7 +309,7 @@ export class MongoDb implements INodeType {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectId(item[updateKey] as string);
-						delete item['_id'];
+						delete item._id;
 					}
 
 					await mdb
@@ -335,7 +337,7 @@ export class MongoDb implements INodeType {
 			}
 		}
 
-		client.close();
+		await client.close();
 
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),

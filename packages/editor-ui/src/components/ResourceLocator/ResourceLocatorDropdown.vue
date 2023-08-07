@@ -1,16 +1,24 @@
 <template>
 	<n8n-popover
 		placement="bottom"
+		:teleported="false"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
+		:visible="show"
 		trigger="manual"
+		data-test-id="resource-locator-dropdown"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
-			<n8n-input size="medium" :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search" :placeholder="$locale.baseText('resourceLocator.search.placeholder')">
+			<n8n-input
+				:modelValue="filter"
+				:clearable="true"
+				@update:modelValue="onFilterInput"
+				ref="search"
+				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
 				</template>
@@ -19,14 +27,26 @@
 		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
 			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
-		<div :class="$style.messageContainer" v-else-if="!errorView && sortedResources.length === 0 && !loading">
+		<div
+			:class="$style.messageContainer"
+			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+		>
 			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
-		<div v-else-if="!errorView" ref="resultsContainer" :class="{[$style.container]: true, [$style.pushDownResults]: filterable}" @scroll="onResultsEnd">
+		<div
+			v-else-if="!errorView"
+			ref="resultsContainer"
+			:class="$style.container"
+			@scroll="onResultsEnd"
+		>
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"
-				:class="{ [$style.resourceItem]: true, [$style.selected]: result.value === value, [$style.hovering]: hoverIndex === i }"
+				:class="{
+					[$style.resourceItem]: true,
+					[$style.selected]: result.value === modelValue,
+					[$style.hovering]: hoverIndex === i,
+				}"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -45,28 +65,31 @@
 				</div>
 			</div>
 			<div v-if="loading && !errorView">
-				<div v-for="(_, i) in 3" :key="i" :class="$style.loadingItem">
+				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
 					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				</div>
 			</div>
 		</div>
 		<template #reference>
-    		<slot />
+			<slot />
 		</template>
 	</n8n-popover>
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
-		value: {
+		modelValue: {
 			type: [String, Number],
 		},
 		show: {
@@ -97,6 +120,10 @@ export default Vue.extend({
 		width: {
 			type: Number,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	data() {
 		return {
@@ -105,87 +132,90 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		this.$on('keyDown', this.onKeyDown);
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeUnmount() {
+		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
 			const seen = new Set();
-			const { selected, notSelected } = this.resources.reduce((acc, item: IResourceLocatorResultExpanded) => {
-				if (seen.has(item.value)) {
+			const { selected, notSelected } = this.resources.reduce(
+				(acc, item: IResourceLocatorResultExpanded) => {
+					if (seen.has(item.value)) {
+						return acc;
+					}
+					seen.add(item.value);
+
+					if (this.modelValue && item.value === this.modelValue) {
+						acc.selected = item;
+					} else {
+						acc.notSelected.push(item);
+					}
+
 					return acc;
-				}
-				seen.add(item.value);
-
-				if (this.value && item.value === this.value) {
-					acc.selected = item;
-				} else {
-					acc.notSelected.push(item);
-				}
-
-				return acc;
-			}, { selected: null as IResourceLocatorResultExpanded | null, notSelected: [] as IResourceLocatorResultExpanded[] });
+				},
+				{
+					selected: null as IResourceLocatorResultExpanded | null,
+					notSelected: [] as IResourceLocatorResultExpanded[],
+				},
+			);
 
 			if (selected) {
-				return [
-					selected,
-					...notSelected,
-				];
+				return [selected, ...notSelected];
 			}
 
 			return notSelected;
 		},
 	},
 	methods: {
-		openUrl(event: MouseEvent ,url: string) {
+		openUrl(event: MouseEvent, url: string) {
 			event.preventDefault();
 			event.stopPropagation();
 
 			window.open(url, '_blank');
 		},
 		onKeyDown(e: KeyboardEvent) {
-			const container = this.$refs.resultsContainer as HTMLElement;
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
 
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
 					this.hoverIndex++;
 
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if ((item.offsetTop + item.clientHeight) > (container.scrollTop + container.offsetHeight)) {
-							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
-							container.scrollTo({ top });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (
+							item.offsetTop + item.clientHeight >
+							containerRef.scrollTop + containerRef.offsetHeight
+						) {
+							const top = item.offsetTop - containerRef.offsetHeight + item.clientHeight;
+							containerRef.scrollTo({ top });
 						}
 					}
 				}
-			}
-			else if (e.key === 'ArrowUp') {
+			} else if (e.key === 'ArrowUp') {
 				if (this.hoverIndex > 0) {
 					this.hoverIndex--;
 
 					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop <= container.scrollTop + searchOffset) {
-							container.scrollTo({ top: item.offsetTop - searchOffset });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (item.offsetTop <= containerRef.scrollTop + searchOffset) {
+							containerRef.scrollTo({ top: item.offsetTop - searchOffset });
 						}
 					}
 				}
+			} else if (e.key === 'Enter') {
+				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
 			}
-			else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
-			}
-
 		},
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onSearchBlur() {
-			this.$emit('hide');
-		},
 		onItemClick(selected: string) {
-			this.$emit('input', selected);
+			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
@@ -204,48 +234,63 @@ export default Vue.extend({
 				return;
 			}
 
-			const container = this.$refs.resultsContainer as HTMLElement;
-			if (container) {
-				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
-				if (diff > -(SCROLL_MARGIN_PX)  && diff < SCROLL_MARGIN_PX) {
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
+			if (containerRef) {
+				const diff =
+					containerRef.offsetHeight - (containerRef.scrollHeight - containerRef.scrollTop);
+				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
 					this.$emit('loadMore');
 				}
 			}
 		},
 	},
 	watch: {
-		show(toShow) {
-			if (toShow) {
+		show(value) {
+			if (value) {
 				this.hoverIndex = 0;
 				this.showHoverUrl = false;
+
+				setTimeout(() => {
+					if (value && this.filterable && this.$refs.search) {
+						(this.$refs.search as HTMLElement).focus();
+					}
+				}, 0);
 			}
-			setTimeout(() => {
-				if (toShow && this.filterable && this.$refs.search) {
-					(this.$refs.search as HTMLElement).focus();
-				}
-			}, 0);
 		},
 		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-.popover {
-	padding: 0;
+:root .popover {
+	--content-height: 236px;
+	padding: 0 !important;
 	border: var(--border-base);
-}
+	display: flex;
+	max-height: calc(var(--content-height) + var(--spacing-xl));
+	flex-direction: column;
 
-.pushDownResults {
-	padding-top: 36px;
+	& ::-webkit-scrollbar {
+		width: 12px;
+	}
+
+	& ::-webkit-scrollbar-thumb {
+		border-radius: 12px;
+		background: var(--color-foreground-dark);
+		border: 3px solid white;
+	}
+
+	& ::-webkit-scrollbar-thumb:hover {
+		background: var(--color-foreground-xdark);
+	}
 }
 
 .container {
 	position: relative;
-	max-height: 236px;
-	overflow: scroll;
+	overflow: auto;
 }
 
 .messageContainer {
@@ -259,8 +304,6 @@ export default Vue.extend({
 	border-bottom: var(--border-base);
 	--input-border-color: none;
 	--input-font-size: var(--font-size-2xs);
-	position: absolute;
-	top: 0;
 	width: 100%;
 	z-index: 1;
 }

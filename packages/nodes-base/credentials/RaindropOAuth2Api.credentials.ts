@@ -1,12 +1,16 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 // https://developer.raindrop.io/v1/authentication
 
 export class RaindropOAuth2Api implements ICredentialType {
 	name = 'raindropOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Raindrop OAuth2 API';
+
 	documentationUrl = 'raindrop';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -14,7 +13,8 @@ import {
 
 import { todoistApiRequest } from '../GenericFunctions';
 
-import { OperationType, TodoistService } from './Service';
+import type { OperationType } from './Service';
+import { TodoistService } from './Service';
 
 // interface IBodyCreateTask {
 // 	content?: string;
@@ -587,7 +587,7 @@ export class TodoistV2 implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the available projects to display them to user so that he can
+			// Get all the available projects to display them to user so that they can
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -606,7 +606,7 @@ export class TodoistV2 implements INodeType {
 			},
 
 			// Get all the available sections in the selected project, to display them
-			// to user so that he can select one easily
+			// to user so that they can select one easily
 			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
@@ -676,7 +676,7 @@ export class TodoistV2 implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available labels to display them to user so that he can
+			// Get all the available labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -697,38 +697,51 @@ export class TodoistV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const service = new TodoistService();
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0) as OperationType;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
-					responseData = await service.execute(
-						this,
-						OperationType[operation as keyof typeof OperationType],
-						i,
-					);
+					responseData = await service.execute(this, operation, i);
 				}
-				if (Array.isArray(responseData?.data)) {
-					returnData.push.apply(returnData, responseData?.data as IDataObject[]);
+
+				if (responseData !== undefined && Array.isArray(responseData?.data)) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				} else {
 					if (responseData?.hasOwnProperty('success')) {
-						returnData.push({ success: responseData.success });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: responseData.success }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else {
-						returnData.push(responseData?.data as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData?.data as IDataObject),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,20 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	generateReturning,
 	getItemCopy,
 	getItemsCopy,
 	pgInsert,
-	pgQuery,
+	pgQueryV2,
 	pgUpdate,
-} from '../Postgres/Postgres.node.functions';
+} from '../Postgres/v1/genericFunctions';
 
 import pgPromise from 'pg-promise';
 
@@ -74,8 +73,10 @@ export class CrateDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					editor: 'sqlEditor',
+					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {
 					show: {
@@ -276,20 +277,16 @@ export class CrateDb implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -355,6 +352,7 @@ export class CrateDb implements INodeType {
 				const where =
 					' WHERE ' +
 					updateKeys
+						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 						.map((updateKey) => pgp.as.name(updateKey) + ' = ${' + updateKey + '}')
 						.join(' AND ');
 				// updateKeyValue = item.json[updateKey] as string | number;
@@ -370,14 +368,16 @@ export class CrateDb implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columns);
 					queries.push(
-						pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+						(pgp.helpers.update(itemCopy, cs) as string) +
+							pgp.as.format(where, itemCopy) +
+							returning,
 					);
 				}
-				const _updateItems = await db.multi(pgp.helpers.concat(queries));
-				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns) as IDataObject[]);
+				await db.multi(pgp.helpers.concat(queries));
+				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns));
 			}
 		} else {
-			await pgp.end();
+			pgp.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
@@ -385,7 +385,7 @@ export class CrateDb implements INodeType {
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

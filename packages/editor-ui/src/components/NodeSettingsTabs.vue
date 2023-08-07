@@ -1,42 +1,47 @@
 <template>
-	<n8n-tabs :options="options" :value="value" @input="onTabSelect" @tooltipClick="onTooltipClick" />
+	<n8n-tabs
+		:options="options"
+		:modelValue="modelValue"
+		@update:modelValue="onTabSelect"
+		@tooltipClick="onTooltipClick"
+	/>
 </template>
 
 <script lang="ts">
-import { externalHooks } from '@/mixins/externalHooks';
-import { BUILTIN_NODES_DOCS_URL, COMMUNITY_NODES_INSTALLATION_DOCS_URL, NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
-import { INodeUi, ITab } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { externalHooks } from '@/mixins/externalHooks';
+import {
+	BUILTIN_NODES_DOCS_URL,
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	NPM_PACKAGE_DOCS_BASE_URL,
+} from '@/constants';
+import type { INodeUi, ITab } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
 import { isCommunityPackageName } from '@/utils';
 
-export default mixins(
-	externalHooks,
-).extend({
+export default defineComponent({
 	name: 'NodeSettingsTabs',
+	mixins: [externalHooks],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
+			default: '',
 		},
-		nodeType: {
-		},
+		nodeType: {},
 		sessionId: {
 			type: String,
 		},
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
-		documentationUrl (): string {
+		documentationUrl(): string {
 			const nodeType = this.nodeType as INodeTypeDescription | null;
 
 			if (!nodeType) {
@@ -47,8 +52,10 @@ export default mixins(
 				return nodeType.documentationUrl;
 			}
 
-			const utmTags = '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link' +
-				'&utm_campaign=' + nodeType.name;
+			const utmTags =
+				'?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link' +
+				'&utm_campaign=' +
+				nodeType.name;
 
 			// Built-in node documentation available via its codex entry
 			const primaryDocUrl = nodeType.codex?.resources?.primaryDocumentation?.[0]?.url;
@@ -74,7 +81,7 @@ export default mixins(
 			const nodeType = this.nodeType as INodeTypeDescription;
 			return nodeType.name.split('.')[0];
 		},
-		options (): ITab[] {
+		options(): ITab[] {
 			const options: ITab[] = [
 				{
 					label: this.$locale.baseText('nodeSettings.parameters'),
@@ -103,13 +110,11 @@ export default mixins(
 			}
 			// If both tabs have align right, both will have excessive left margin
 			const pushCogRight = this.isCommunityNode ? false : true;
-			options.push(
-				{
-					icon: 'cog',
-					value: 'settings',
-					align: pushCogRight ? 'right': undefined,
-				},
-			);
+			options.push({
+				icon: 'cog',
+				value: 'settings',
+				align: pushCogRight ? 'right' : undefined,
+			});
 
 			return options;
 		},
@@ -117,7 +122,10 @@ export default mixins(
 	methods: {
 		onTabSelect(tab: string) {
 			if (tab === 'docs' && this.nodeType) {
-				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType as INodeTypeDescription, documentationUrl: this.documentationUrl });
+				void this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', {
+					nodeType: this.nodeType as INodeTypeDescription,
+					documentationUrl: this.documentationUrl,
+				});
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
@@ -127,12 +135,15 @@ export default mixins(
 				});
 			}
 
-			if(tab === 'settings' && this.nodeType) {
-				this.$telemetry.track('User viewed node settings', { node_type: (this.nodeType as INodeTypeDescription).name, workflow_id: this.workflowsStore.workflowId });
+			if (tab === 'settings' && this.nodeType) {
+				this.$telemetry.track('User viewed node settings', {
+					node_type: (this.nodeType as INodeTypeDescription).name,
+					workflow_id: this.workflowsStore.workflowId,
+				});
 			}
 
 			if (tab === 'settings' || tab === 'params') {
-				this.$emit('input', tab);
+				this.$emit('update:modelValue', tab);
 			}
 		},
 		onTooltipClick(tab: string, event: MouseEvent) {
@@ -145,7 +156,6 @@ export default mixins(
 </script>
 
 <style lang="scss">
-
 #communityNode > div {
 	cursor: auto;
 
@@ -153,5 +163,4 @@ export default mixins(
 		color: unset;
 	}
 }
-
 </style>

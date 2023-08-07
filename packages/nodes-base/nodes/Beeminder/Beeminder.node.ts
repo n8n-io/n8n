@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -270,7 +269,7 @@ export class Beeminder implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('beeminderApi');
@@ -296,8 +295,8 @@ export class Beeminder implements INodeType {
 		const length = items.length;
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let results;
 
 		for (let i = 0; i < length; i++) {
@@ -318,7 +317,7 @@ export class Beeminder implements INodeType {
 						}
 						results = await createDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -330,13 +329,13 @@ export class Beeminder implements INodeType {
 						};
 						Object.assign(data, options);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							data.count = this.getNodeParameter('limit', 0);
 						}
 
 						results = await getAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -353,7 +352,7 @@ export class Beeminder implements INodeType {
 						}
 						results = await updateDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -365,7 +364,7 @@ export class Beeminder implements INodeType {
 						};
 						results = await deleteDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

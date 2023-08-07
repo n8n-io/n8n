@@ -1,9 +1,16 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class CiscoWebexOAuth2Api implements ICredentialType {
 	name = 'ciscoWebexOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Cisco Webex OAuth2 API';
+
+	documentationUrl = 'ciscowebex';
+
+	icon = 'file:icons/Cisco.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

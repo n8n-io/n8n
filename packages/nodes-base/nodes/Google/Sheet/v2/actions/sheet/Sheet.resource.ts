@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import * as append from './append.operation';
 import * as appendOrUpdate from './appendOrUpdate.operation';
 import * as clear from './clear.operation';
@@ -7,6 +7,7 @@ import * as del from './delete.operation';
 import * as read from './read.operation';
 import * as remove from './remove.operation';
 import * as update from './update.operation';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 
 export { append, appendOrUpdate, clear, create, del as delete, read, remove, update };
 
@@ -29,7 +30,6 @@ export const descriptions: INodeProperties[] = [
 				action: 'Append data to a sheet',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
 				name: 'Append or Update',
 				value: 'appendOrUpdate',
 				description: 'Append a new row or update the current one if it already exists (upsert)',
@@ -96,15 +96,13 @@ export const descriptions: INodeProperties[] = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex:
-						'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 				},
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 							errorMessage: 'Not a valid Google Drive File URL',
 						},
 					},
@@ -139,6 +137,9 @@ export const descriptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		// default: '', //empty string set to progresivly reveal fields
 		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['documentId.value'],
+		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -155,13 +156,15 @@ export const descriptions: INodeProperties[] = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+					regex:
+						'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 				},
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+							regex:
+								'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 							errorMessage: 'Not a valid Sheet URL',
 						},
 					},
@@ -175,7 +178,7 @@ export const descriptions: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '[0-9]{2,}',
+							regex: '((gid=)?[0-9]{1,})',
 							errorMessage: 'Not a valid Sheet ID',
 						},
 					},

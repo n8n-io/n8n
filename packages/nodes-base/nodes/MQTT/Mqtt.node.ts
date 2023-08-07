@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -10,9 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
-
-import { IClientOptions } from 'mqtt';
+import * as mqtt from 'mqtt';
 
 export class Mqtt implements INodeType {
 	description: INodeTypeDescription = {
@@ -128,8 +125,8 @@ export class Mqtt implements INodeType {
 
 					let client: mqtt.MqttClient;
 
-					if (ssl === false) {
-						const clientOptions: IClientOptions = {
+					if (!ssl) {
+						const clientOptions: mqtt.IClientOptions = {
 							port,
 							clean,
 							clientId,
@@ -141,7 +138,7 @@ export class Mqtt implements INodeType {
 						}
 						client = mqtt.connect(brokerUrl, clientOptions);
 					} else {
-						const clientOptions: IClientOptions = {
+						const clientOptions: mqtt.IClientOptions = {
 							port,
 							clean,
 							clientId,
@@ -157,8 +154,8 @@ export class Mqtt implements INodeType {
 
 						client = mqtt.connect(brokerUrl, clientOptions);
 					}
-					// tslint:disable-next-line: no-any
-					await new Promise((resolve, reject): any => {
+
+					await new Promise((resolve, reject) => {
 						client.on('connect', (test) => {
 							resolve(test);
 							client.end();
@@ -171,7 +168,7 @@ export class Mqtt implements INodeType {
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -202,8 +199,8 @@ export class Mqtt implements INodeType {
 
 		let client: mqtt.MqttClient;
 
-		if (ssl === false) {
-			const clientOptions: IClientOptions = {
+		if (!ssl) {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -216,7 +213,7 @@ export class Mqtt implements INodeType {
 
 			client = mqtt.connect(brokerUrl, clientOptions);
 		} else {
-			const clientOptions: IClientOptions = {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -235,8 +232,7 @@ export class Mqtt implements INodeType {
 
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
-		// tslint:disable-next-line: no-any
-		const data = await new Promise((resolve, reject): any => {
+		const data = await new Promise((resolve, reject) => {
 			client.on('connect', () => {
 				for (let i = 0; i < length; i++) {
 					let message;
@@ -244,7 +240,7 @@ export class Mqtt implements INodeType {
 					const options = this.getNodeParameter('options', i);
 
 					try {
-						if (sendInputData === true) {
+						if (sendInputData) {
 							message = JSON.stringify(items[i].json);
 						} else {
 							message = this.getNodeParameter('message', i) as string;
@@ -260,7 +256,7 @@ export class Mqtt implements INodeType {
 					resolve([items]);
 				});
 
-				client.on('error', (e: string | undefined) => {
+				client.on('error', (e) => {
 					reject(e);
 				});
 			});

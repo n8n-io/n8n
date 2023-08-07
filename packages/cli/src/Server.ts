@@ -1,57 +1,41 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable @typescript-eslint/await-thenable */
-/* eslint-disable new-cap */
 /* eslint-disable prefer-const */
-/* eslint-disable @typescript-eslint/no-invalid-void-type */
-/* eslint-disable no-return-assign */
-/* eslint-disable no-param-reassign */
-/* eslint-disable consistent-return */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable id-denylist */
-/* eslint-disable no-console */
-/* eslint-disable global-require */
-/* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-continue */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable import/no-dynamic-require */
-/* eslint-disable no-await-in-loop */
-
+import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
-import { readFileSync } from 'fs';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve } from 'path';
+import { join as pathJoin, resolve as pathResolve, relative as pathRelative } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { FindManyOptions, getConnectionManager, In } from 'typeorm';
-import axios, { AxiosRequestConfig } from 'axios';
-import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-// IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
-// tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
-import { compare } from 'bcryptjs';
+import { engine as expressHandlebars } from 'express-handlebars';
+import type { ServeStaticOptions } from 'serve-static';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { Not, In } from 'typeorm';
+import type { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
+import type { RequestOptions } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 
 import {
 	BinaryDataManager,
 	Credentials,
+	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
+	FileNotFoundError,
 } from 'n8n-core';
 
-import {
+import type {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeListSearchResult,
@@ -59,83 +43,77 @@ import {
 	INodePropertyOptions,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
-	LoggerProxy,
-	jsonParse,
-	WebhookHttpMethod,
 	WorkflowExecuteMode,
-	ErrorReporterProxy as ErrorReporter,
-	INodeTypes,
 	ICredentialTypes,
+	ExecutionStatus,
+	IExecutionsSummary,
+	ResourceMapperFields,
+	IN8nUISettings,
 } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
-import basicAuth from 'basic-auth';
-import compression from 'compression';
-import jwt from 'jsonwebtoken';
-import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
-import parseUrl from 'parseurl';
-import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
-import bodyParser from 'body-parser';
 
 import config from '@/config';
-import * as Queue from '@/Queue';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { getCredentialTranslationPath } from '@/TranslationHelpers';
-import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
-	AUTH_COOKIE_NAME,
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
-	NODES_BASE_DIR,
+	inDevelopment,
+	inE2ETests,
+	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
+	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
+	ResourceMapperRequest,
 	WorkflowRequest,
 } from '@/requests';
-import { userManagementRouter } from '@/UserManagement';
-import { resolveJwt } from '@/UserManagement/auth/jwt';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	LdapController,
+	MeController,
+	NodesController,
+	NodeTypesController,
+	OwnerController,
+	PasswordResetController,
+	TagsController,
+	TranslationController,
+	UsersController,
+	WorkflowStatisticsController,
+} from '@/controllers';
 
-import { executionsController } from '@/api/executions.api';
-import { nodeTypesController } from '@/api/nodeTypes.api';
-import { tagsController } from '@/api/tags.api';
-import { loadPublicApiVersions } from '@/PublicApi';
+import { executionsController } from '@/executions/executions.controller';
+import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
 	isSharingEnabled,
-	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
+import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
-import {
-	DatabaseType,
+import type {
 	ICredentialsDb,
 	ICredentialsOverwrite,
-	ICustomRequest,
 	IDiagnosticInfo,
-	IExecutionFlattedDb,
 	IExecutionsStopData,
-	IExecutionsSummary,
-	IExternalHooksClass,
-	IN8nUISettings,
-	IPackageVersions,
 } from '@/Interfaces';
-import * as ActiveExecutions from '@/ActiveExecutions';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
@@ -143,135 +121,85 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
-import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
-import { NodeTypes } from '@/NodeTypes';
-import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as TestWebhooks from '@/TestWebhooks';
-import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
+import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import * as WebhookServer from '@/WebhookServer';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { setupErrorMiddleware } from '@/ErrorReporting';
-import { getLicense } from '@/License';
-
-require('body-parser-xml')(bodyParser);
+import { EventBusController } from '@/eventbus/eventBus.controller';
+import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
+import { licenseController } from './license/license.controller';
+import { Push, setupPushServer, setupPushHandler } from '@/push';
+import { setupAuthMiddlewares } from './middlewares';
+import {
+	getLdapLoginLabel,
+	handleLdapInit,
+	isLdapEnabled,
+	isLdapLoginEnabled,
+} from './Ldap/helpers';
+import { AbstractServer } from './AbstractServer';
+import { PostHogClient } from './posthog';
+import { eventBus } from './eventbus';
+import { Container } from 'typedi';
+import { InternalHooks } from './InternalHooks';
+import { License } from './License';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executions/executionHelpers';
+import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
+import { SamlController } from './sso/saml/routes/saml.controller.ee';
+import { SamlService } from './sso/saml/saml.service.ee';
+import { variablesController } from './environments/variables/variables.controller';
+import { LdapManager } from './Ldap/LdapManager.ee';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from './sso/ssoHelpers';
+import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
+import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
+import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { ExecutionRepository } from '@db/repositories';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { JwtService } from './services/jwt.service';
+import { RoleService } from './services/role.service';
 
 const exec = promisify(callbackExec);
 
-export const externalHooks: IExternalHooksClass = ExternalHooks();
-
-class App {
-	app: express.Application;
-
-	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
-
-	testWebhooks: TestWebhooks.TestWebhooks;
-
-	endpointWebhook: string;
-
-	endpointWebhookWaiting: string;
-
-	endpointWebhookTest: string;
-
+export class Server extends AbstractServer {
 	endpointPresetCredentials: string;
 
-	externalHooks: IExternalHooksClass;
+	waitTracker: WaitTracker;
 
-	waitTracker: WaitTrackerClass;
-
-	defaultWorkflowName: string;
-
-	defaultCredentialsName: string;
-
-	saveDataErrorExecution: 'all' | 'none';
-
-	saveDataSuccessExecution: 'all' | 'none';
-
-	saveManualExecutions: boolean;
-
-	executionTimeout: number;
-
-	maxExecutionTimeout: number;
-
-	timezone: string;
-
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
-
-	push: Push.Push;
-
-	versions: IPackageVersions | undefined;
-
-	restEndpoint: string;
-
-	publicApiEndpoint: string;
+	activeExecutionsInstance: ActiveExecutions;
 
 	frontendSettings: IN8nUISettings;
 
-	protocol: string;
-
-	sslKey: string;
-
-	sslCert: string;
-
-	payloadSizeMax: number;
-
 	presetCredentialsLoaded: boolean;
 
-	webhookMethods: WebhookHttpMethod[];
+	loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	nodeTypes: INodeTypes;
+	nodeTypes: NodeTypes;
 
 	credentialTypes: ICredentialTypes;
 
+	postHog: PostHogClient;
+
+	push: Push;
+
 	constructor() {
-		this.app = express();
-		this.app.disable('x-powered-by');
+		super('main');
 
-		this.endpointWebhook = config.getEnv('endpoints.webhook');
-		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
-		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
+		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.set('view engine', 'handlebars');
+		this.app.set('views', TEMPLATES_DIR);
 
-		this.defaultWorkflowName = config.getEnv('workflows.defaultName');
-		this.defaultCredentialsName = config.getEnv('credentials.defaultName');
-
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError');
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess');
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
-		this.executionTimeout = config.get('executions.timeout');
-		this.maxExecutionTimeout = config.get('executions.maxTimeout');
-		this.payloadSizeMax = config.get('endpoints.payloadSizeMax');
-		this.timezone = config.get('generic.timezone');
-		this.restEndpoint = config.get('endpoints.rest');
-		this.publicApiEndpoint = config.get('publicApi.path');
-
-		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-		this.testWebhooks = TestWebhooks.getInstance();
-		this.push = Push.getInstance();
-
-		this.nodeTypes = NodeTypes();
-		this.credentialTypes = CredentialTypes();
-
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
-		this.waitTracker = WaitTracker();
-
-		this.protocol = config.getEnv('protocol');
-		this.sslKey = config.getEnv('ssl_key');
-		this.sslCert = config.getEnv('ssl_cert');
-
-		this.externalHooks = externalHooks;
-
-		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
-
-		setupErrorMiddleware(this.app);
-
-		if (process.env.E2E_TESTS === 'true') {
-			this.app.use('/e2e', require('./api/e2e.api').e2eController);
-		}
+		this.testWebhooksEnabled = true;
+		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -296,11 +224,11 @@ class App {
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
-			saveDataErrorExecution: this.saveDataErrorExecution,
-			saveDataSuccessExecution: this.saveDataSuccessExecution,
-			saveManualExecutions: this.saveManualExecutions,
-			executionTimeout: this.executionTimeout,
-			maxExecutionTimeout: this.maxExecutionTimeout,
+			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
+			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
+			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
+			executionTimeout: config.getEnv('executions.timeout'),
+			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: this.timezone,
 			urlBaseWebhook,
@@ -317,21 +245,42 @@ class App {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
+			posthog: {
+				enabled: config.getEnv('diagnostics.enabled'),
+				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				autocapture: false,
+				disableSessionRecording: config.getEnv(
+					'diagnostics.config.posthog.disableSessionRecording',
+				),
+				debug: config.getEnv('logs.level') === 'debug',
+			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				enabled: isUserManagementEnabled(),
-				showSetupOnFirstLoad:
-					config.getEnv('userManagement.disabled') === false &&
-					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				quota: Container.get(License).getUsersLimit(),
+				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
 				smtpSetup: isEmailSetUp(),
+				authenticationMethod: getCurrentAuthenticationMethod(),
+			},
+			sso: {
+				saml: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
+				ldap: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
 			},
 			publicApi: {
-				enabled: config.getEnv('publicApi.disabled') === false,
+				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
+				swaggerUi: {
+					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
+				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
@@ -342,28 +291,111 @@ class App {
 			},
 			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
+			pushBackend: config.getEnv('push.backend'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
 			allowedModules: {
-				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
 			},
 			enterprise: {
 				sharing: false,
-				workflowSharing: false,
+				ldap: false,
+				saml: false,
+				logStreaming: false,
+				advancedExecutionFilters: false,
+				variables: false,
+				sourceControl: false,
+				auditLogs: false,
+			},
+			hideUsagePage: config.getEnv('hideUsagePage'),
+			license: {
+				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
+			variables: {
+				limit: 0,
+			},
+			banners: {
+				dismissed: [],
 			},
 		};
 	}
 
-	/**
-	 * Returns the current epoch time
-	 *
-	 */
-	getCurrentDate(): Date {
-		return new Date();
+	async start() {
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		this.credentialTypes = Container.get(CredentialTypes);
+		this.nodeTypes = Container.get(NodeTypes);
+
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
+		this.waitTracker = Container.get(WaitTracker);
+		this.postHog = Container.get(PostHogClient);
+
+		this.presetCredentialsLoaded = false;
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		this.push = Container.get(Push);
+
+		await super.start();
+		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
+
+		const cpus = os.cpus();
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+		const diagnosticInfo: IDiagnosticInfo = {
+			databaseType: config.getEnv('database.type'),
+			disableProductionWebhooksOnMainProcess: config.getEnv(
+				'endpoints.disableProductionWebhooksOnMainProcess',
+			),
+			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
+			versionCli: N8N_VERSION,
+			systemInfo: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			executionVariables: {
+				executions_process: config.getEnv('executions.process'),
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
+			},
+			deploymentType: config.getEnv('deployment.type'),
+			binaryDataMode: binaryDataConfig.mode,
+			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+			ldap_allowed: isLdapCurrentAuthenticationMethod(),
+			saml_enabled: isSamlCurrentAuthenticationMethod(),
+		};
+
+		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
+			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
+		}
+
+		void Db.collections.Workflow.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		}).then(async (workflow) =>
+			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+		);
 	}
 
 	/**
@@ -372,326 +404,176 @@ class App {
 	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
-			enabled: isUserManagementEnabled(),
+			quota: Container.get(License).getUsersLimit(),
+			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
-				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
+
+		let dismissedBanners: string[] = [];
+
+		try {
+			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
+		} catch {
+			// not yet in DB
+		}
+
+		this.frontendSettings.banners.dismissed = dismissedBanners;
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
-			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
+			logStreaming: isLogStreamingEnabled(),
+			ldap: isLdapEnabled(),
+			saml: isSamlLicensed(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
+			sourceControl: isSourceControlLicensed(),
 		});
+
+		if (isLdapEnabled()) {
+			Object.assign(this.frontendSettings.sso.ldap, {
+				loginLabel: getLdapLoginLabel(),
+				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
+
+		if (isSamlLicensed()) {
+			Object.assign(this.frontendSettings.sso.saml, {
+				loginLabel: getSamlLoginLabel(),
+				loginEnabled: isSamlLoginEnabled(),
+			});
+		}
+
+		if (isVariablesEnabled()) {
+			this.frontendSettings.variables.limit = getVariablesLimit();
+		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
 		}
-
 		return this.frontendSettings;
 	}
 
-	async initLicense(): Promise<void> {
-		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
+		const repositories = Db.collections;
+		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			await license.activate(activationKey);
+		const logger = LoggerProxy;
+		const internalHooks = Container.get(InternalHooks);
+		const mailer = Container.get(UserManagementMailer);
+		const postHog = this.postHog;
+		const jwtService = Container.get(JwtService);
+
+		const controllers: object[] = [
+			new EventBusController(),
+			new AuthController({ config, internalHooks, repositories, logger, postHog }),
+			new OwnerController({ config, internalHooks, repositories, logger }),
+			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new NodeTypesController({ config, nodeTypes }),
+			new PasswordResetController({
+				config,
+				externalHooks,
+				internalHooks,
+				mailer,
+				repositories,
+				logger,
+				jwtService,
+			}),
+			new TagsController({ config, repositories, externalHooks }),
+			new TranslationController(config, this.credentialTypes),
+			new UsersController({
+				config,
+				mailer,
+				externalHooks,
+				internalHooks,
+				repositories,
+				activeWorkflowRunner,
+				logger,
+				postHog,
+				jwtService,
+				roleService: Container.get(RoleService),
+			}),
+			Container.get(SamlController),
+			Container.get(SourceControlController),
+			Container.get(WorkflowStatisticsController),
+		];
+
+		if (isLdapEnabled()) {
+			const { service, sync } = LdapManager.getInstance();
+			controllers.push(new LdapController(service, sync, internalHooks));
 		}
+
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			controllers.push(
+				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			);
+		}
+
+		if (inE2ETests) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { E2EController } = await import('./controllers/e2e.controller');
+			controllers.push(Container.get(E2EController));
+		}
+
+		controllers.forEach((controller) => registerController(app, config, controller));
 	}
 
-	async config(): Promise<void> {
-		const enableMetrics = config.getEnv('endpoints.metrics.enable');
-		let register: Registry;
-
-		if (enableMetrics) {
-			const prefix = config.getEnv('endpoints.metrics.prefix');
-			register = new promClient.Registry();
-			register.setDefaultLabels({ prefix });
-			promClient.collectDefaultMetrics({ register });
+	async configure(): Promise<void> {
+		if (config.getEnv('endpoints.metrics.enable')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { MetricsService } = await import('@/services/metrics.service');
+			await Container.get(MetricsService).configureMetrics(this.app);
 		}
+
+		this.instanceId = await UserSettings.getInstanceId();
 
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
 			.catch(() => false);
 
-		this.versions = await GenericHelpers.getVersions();
-		this.frontendSettings.versionCli = this.versions.cli;
+		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+		this.frontendSettings.instanceId = this.instanceId;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		await this.initLicense();
+		await this.postHog.init(this.frontendSettings.instanceId);
 
+		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
-		const ignoredEndpoints = [
+		const ignoredEndpoints: Readonly<string[]> = [
 			'assets',
 			'healthz',
 			'metrics',
-			'icons',
-			'types',
 			'e2e',
-			this.endpointWebhook,
-			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-			config.getEnv('publicApi.disabled') ? this.publicApiEndpoint : '',
+			isApiEnabled() ? '' : publicApiEndpoint,
 			...excludeEndpoints.split(':'),
 		].filter((u) => !!u);
 
-		// eslint-disable-next-line no-useless-escape
-		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
-
-		// Check for basic auth credentials if activated
-		const basicAuthActive = config.getEnv('security.basicAuth.active');
-		if (basicAuthActive) {
-			const basicAuthUser = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.user',
-			)) as string;
-			if (basicAuthUser === '') {
-				throw new Error('Basic auth is activated but no user got defined. Please set one!');
-			}
-
-			const basicAuthPassword = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.password',
-			)) as string;
-			if (basicAuthPassword === '') {
-				throw new Error('Basic auth is activated but no password got defined. Please set one!');
-			}
-
-			const basicAuthHashEnabled = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.hash',
-			)) as boolean;
-
-			let validPassword: null | string = null;
-
-			this.app.use(
-				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-					// Skip basic auth for a few listed endpoints or when instance owner has been setup
-					if (
-						authIgnoreRegex.exec(req.url) ||
-						config.getEnv('userManagement.isInstanceOwnerSetUp')
-					) {
-						return next();
-					}
-					const realm = 'n8n - Editor UI';
-					const basicAuthData = basicAuth(req);
-
-					if (basicAuthData === undefined) {
-						// Authorization data is missing
-						return ResponseHelper.basicAuthAuthorizationError(
-							res,
-							realm,
-							'Authorization is required!',
-						);
-					}
-
-					if (basicAuthData.name === basicAuthUser) {
-						if (basicAuthHashEnabled) {
-							if (
-								validPassword === null &&
-								(await compare(basicAuthData.pass, basicAuthPassword))
-							) {
-								// Password is valid so save for future requests
-								validPassword = basicAuthData.pass;
-							}
-
-							if (validPassword === basicAuthData.pass && validPassword !== null) {
-								// Provided hash is correct
-								return next();
-							}
-						} else if (basicAuthData.pass === basicAuthPassword) {
-							// Provided password is correct
-							return next();
-						}
-					}
-
-					// Provided authentication data is wrong
-					return ResponseHelper.basicAuthAuthorizationError(
-						res,
-						realm,
-						'Authorization data is wrong!',
-					);
-				},
-			);
-		}
-
-		// Check for and validate JWT if configured
-		const jwtAuthActive = config.getEnv('security.jwtAuth.active');
-		if (jwtAuthActive) {
-			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtHeader',
-			)) as string;
-			if (jwtAuthHeader === '') {
-				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
-			}
-			const jwksUri = (await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri')) as string;
-			if (jwksUri === '') {
-				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
-			}
-			const jwtHeaderValuePrefix = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtHeaderValuePrefix',
-			)) as string;
-			const jwtIssuer = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtIssuer',
-			)) as string;
-			const jwtNamespace = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtNamespace',
-			)) as string;
-			const jwtAllowedTenantKey = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtAllowedTenantKey',
-			)) as string;
-			const jwtAllowedTenant = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtAllowedTenant',
-			)) as string;
-
-			// eslint-disable-next-line no-inner-declarations
-			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
-					return true;
-				}
-
-				for (const [k, v] of Object.entries(decodedToken)) {
-					if (k === jwtNamespace) {
-						for (const [kn, kv] of Object.entries(v)) {
-							if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
-								return true;
-							}
-						}
-					}
-				}
-
-				return false;
-			}
-
-			// eslint-disable-next-line consistent-return
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (authIgnoreRegex.exec(req.url)) {
-					return next();
-				}
-
-				let token = req.header(jwtAuthHeader) as string;
-				if (token === undefined || token === '') {
-					return ResponseHelper.jwtAuthAuthorizationError(res, 'Missing token');
-				}
-				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
-					token = token.replace(`${jwtHeaderValuePrefix} `, '').trimLeft();
-				}
-
-				const jwkClient = jwks({ cache: true, jwksUri });
-				// eslint-disable-next-line @typescript-eslint/ban-types
-				function getKey(header: any, callback: Function) {
-					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
-						// eslint-disable-next-line @typescript-eslint/no-throw-literal
-						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
-
-						const signingKey = key.publicKey || key.rsaPublicKey;
-						callback(null, signingKey);
-					});
-				}
-
-				const jwtVerifyOptions: jwt.VerifyOptions = {
-					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false,
-				};
-
-				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
-					} else if (!isTenantAllowed(decoded)) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
-					} else {
-						next();
-					}
-				});
-			});
-		}
+		assert(
+			!ignoredEndpoints.includes(this.restEndpoint),
+			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
+		);
 
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
 
-		if (!config.getEnv('publicApi.disabled')) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(this.publicApiEndpoint);
+		if (isApiEnabled()) {
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
-		// Get push connections
-		this.app.use(
-			async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
-					if (req.query.sessionId === undefined) {
-						next(new Error('The query parameter "sessionId" is missing!'));
-						return;
-					}
-
-					if (isUserManagementEnabled()) {
-						try {
-							const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-							await resolveJwt(authCookie);
-						} catch (error) {
-							res.status(401).send('Unauthorized');
-							return;
-						}
-					}
-
-					this.push.add(req.query.sessionId as string, req, res);
-					return;
-				}
-				next();
-			},
-		);
-
-		// Compress the response data
-		this.app.use(compression());
-
-		// Make sure that each request has the "parsedUrl" parameter
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			req.rawBody = Buffer.from('', 'base64');
-			next();
-		});
-
-		// Support application/json type post data
-		this.app.use(
-			bodyParser.json({
-				limit: `${this.payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		// Support application/xml type post data
-		this.app.use(
-			// @ts-ignore
-			bodyParser.xml({
-				limit: `${this.payloadSizeMax}mb`,
-				xmlParseOptions: {
-					normalize: true, // Trim whitespace inside text nodes
-					normalizeTags: true, // Transform tags to lowercase
-					explicitArray: false, // Only put properties in array if length > 1
-				},
-				verify: (req: express.Request, res: any, buf: any) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		this.app.use(
-			bodyParser.text({
-				limit: `${this.payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
+		const { restEndpoint, app } = this;
+		setupPushHandler(restEndpoint, app);
 
 		// Make sure that Vue history mode works properly
 		this.app.use(
@@ -707,99 +589,15 @@ class App {
 			}),
 		);
 
-		// support application/x-www-form-urlencoded post data
-		this.app.use(
-			bodyParser.urlencoded({
-				limit: `${this.payloadSizeMax}mb`,
-				extended: false,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		if (process.env.NODE_ENV !== 'production') {
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				// Allow access also from frontend when developing
-				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
-				res.header('Access-Control-Allow-Credentials', 'true');
-				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-				res.header(
-					'Access-Control-Allow-Headers',
-					'Origin, X-Requested-With, Content-Type, Accept, sessionid',
-				);
-				next();
-			});
+		if (config.getEnv('executions.mode') === 'queue') {
+			await Container.get(Queue).init();
 		}
 
-		// eslint-disable-next-line consistent-return
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (!Db.isInitialized) {
-				const error = new ResponseHelper.ServiceUnavailableError('Database is not ready!');
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
+		await handleLdapInit();
 
-			next();
-		});
-
-		// ----------------------------------------
-		// User Management
-		// ----------------------------------------
-		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
+		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
-		// ----------------------------------------
-		// Packages and nodes management
-		// ----------------------------------------
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
-
-		// ----------------------------------------
-		// Healthcheck
-		// ----------------------------------------
-
-		// Does very basic health check
-		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
-			LoggerProxy.debug('Health check started!');
-
-			const connection = getConnectionManager().get();
-
-			try {
-				if (!connection.isConnected) {
-					// Connection is not active
-					throw new Error('No active database connection!');
-				}
-				// DB ping
-				await connection.query('SELECT 1');
-			} catch (err) {
-				ErrorReporter.error(err);
-				LoggerProxy.error('No Database connection!', err);
-				const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-
-			// Everything fine
-			const responseData = {
-				status: 'ok',
-			};
-
-			LoggerProxy.debug('Health check completed successfully!');
-
-			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
-		});
-
-		// ----------------------------------------
-		// Metrics
-		// ----------------------------------------
-		if (enableMetrics) {
-			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
-				const response = await register.metrics();
-				res.setHeader('Content-Type', register.contentType);
-				ResponseHelper.sendSuccessResponse(res, response, true, 200);
-			});
-		}
 
 		// ----------------------------------------
 		// Workflow
@@ -807,9 +605,38 @@ class App {
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
-		// Tags
+		// License
 		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
+		this.app.use(`/${this.restEndpoint}/license`, licenseController);
+
+		// ----------------------------------------
+		// SAML
+		// ----------------------------------------
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		try {
+			await Container.get(SamlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
+		}
+
+		// ----------------------------------------
+		// Variables
+		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
+
+		// ----------------------------------------
+		// Source Control
+		// ----------------------------------------
+		try {
+			await Container.get(SourceControlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`Source Control initialization failed: ${error.message}`);
+		}
+
+		// ----------------------------------------
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -922,52 +749,56 @@ class App {
 		);
 
 		this.app.get(
-			`/${this.restEndpoint}/credential-translation`,
+			`/${this.restEndpoint}/get-mapping-fields`,
 			ResponseHelper.send(
 				async (
-					req: express.Request & { query: { credentialType: string } },
+					req: ResourceMapperRequest,
 					res: express.Response,
-				): Promise<object | null> => {
-					const translationPath = getCredentialTranslationPath({
-						locale: this.frontendSettings.defaultLocale,
-						credentialType: req.query.credentialType,
-					});
+				): Promise<ResourceMapperFields | undefined> => {
+					const nodeTypeAndVersion = jsonParse(
+						req.query.nodeTypeAndVersion,
+					) as INodeTypeNameVersion;
 
-					try {
-						return require(translationPath);
-					} catch (error) {
-						return null;
+					const { path, methodName } = req.query;
+
+					if (!req.query.currentNodeParameters) {
+						throw new ResponseHelper.BadRequestError(
+							'Parameter currentNodeParameters is required.',
+						);
 					}
+
+					const currentNodeParameters = jsonParse(
+						req.query.currentNodeParameters,
+					) as INodeParameters;
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = jsonParse(req.query.credentials);
+					}
+
+					const loadMappingOptionsInstance = new LoadMappingOptions(
+						nodeTypeAndVersion,
+						this.nodeTypes,
+						path,
+						currentNodeParameters,
+						credentials,
+					);
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user.id,
+						currentNodeParameters,
+					);
+
+					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
+						methodName,
+						additionalData,
+					);
+
+					return fields;
 				},
 			),
 		);
-
-		// Returns node information based on node names and versions
-		const headersPath = pathJoin(NODES_BASE_DIR, 'dist', 'nodes', 'headers');
-		this.app.get(
-			`/${this.restEndpoint}/node-translation-headers`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<object | void> => {
-					try {
-						await fsAccess(`${headersPath}.js`);
-					} catch (_) {
-						return; // no headers available
-					}
-
-					try {
-						return require(headersPath);
-					} catch (error) {
-						res.status(500).send('Failed to load headers file');
-					}
-				},
-			),
-		);
-
-		// ----------------------------------------
-		// Node-Types
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
 		// ----------------------------------------
 		// Active Workflows
@@ -977,9 +808,7 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-
-				return activeWorkflows.map(({ id }) => id.toString());
+				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
 			}),
 		);
 
@@ -999,7 +828,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.info('User attempted to access workflow errors without permissions', {
+					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -1029,7 +858,7 @@ class App {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError(`Invalid cURL command`);
+						throw new ResponseHelper.BadRequestError('Invalid cURL command');
 					}
 				},
 			),
@@ -1095,7 +924,19 @@ class App {
 					signature_method: signatureMethod,
 					// eslint-disable-next-line @typescript-eslint/naming-convention
 					hash_function(base, key) {
-						const algorithm = signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
+						let algorithm: string;
+						switch (signatureMethod) {
+							case 'HMAC-SHA256':
+								algorithm = 'sha256';
+								break;
+							case 'HMAC-SHA512':
+								algorithm = 'sha512';
+								break;
+							default:
+								algorithm = 'sha1';
+								break;
+						}
+
 						return createHmac(algorithm, key).update(base).digest('base64');
 					},
 				};
@@ -1108,7 +949,6 @@ class App {
 
 				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
 
-				// eslint-disable-next-line new-cap
 				const oauth = new clientOAuth1(oAuthOptions);
 
 				const options: RequestOptions = {
@@ -1122,15 +962,17 @@ class App {
 				// @ts-ignore
 				options.headers = data;
 
-				const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
+				const response = await axios.request(options as Partial<AxiosRequestConfig>);
 
 				// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-				const paramsParser = new URLSearchParams(response);
+				const paramsParser = new URLSearchParams(response.data);
 
 				const responseJson = Object.fromEntries(paramsParser.entries());
 
-				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
+				const returnUri = `${oauthCredentials.authUrl as string}?oauth_token=${
+					responseJson.oauth_token
+				}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(
@@ -1143,7 +985,7 @@ class App {
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 				// Add special database related data
-				newCredentialsData.updatedAt = this.getCurrentDate();
+				newCredentialsData.updatedAt = new Date();
 
 				// Update the credentials in DB
 				await Db.collections.Credentials.update(credentialId, newCredentialsData);
@@ -1255,7 +1097,7 @@ class App {
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
-					newCredentialsData.updatedAt = this.getCurrentDate();
+					newCredentialsData.updatedAt = new Date();
 					// Save the credentials in DB
 					await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
@@ -1297,7 +1139,8 @@ class App {
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.getEnv('executions.mode') === 'queue') {
-						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+						const queue = Container.get(Queue);
+						const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
 
@@ -1312,11 +1155,14 @@ class App {
 
 						if (!currentlyRunningExecutionIds.length) return [];
 
-						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
-							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt'],
+						const findOptions: FindManyOptions<ExecutionEntity> & {
+							where: FindOptionsWhere<ExecutionEntity>;
+						} = {
+							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
 							order: { id: 'DESC' },
 							where: {
 								id: In(currentlyRunningExecutionIds),
+								status: Not(In(['finished', 'stopped', 'failed', 'crashed'] as ExecutionStatus[])),
 							},
 						};
 
@@ -1325,25 +1171,40 @@ class App {
 						if (!sharedWorkflowIds.length) return [];
 
 						if (req.query.filter) {
-							const { workflowId } = jsonParse<any>(req.query.filter);
+							const { workflowId, status, finished } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where!, { workflowId });
+								Object.assign(findOptions.where, { workflowId });
+							} else {
+								Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
+							}
+							if (status) {
+								Object.assign(findOptions.where, { status: In(status) });
+							}
+							if (finished) {
+								Object.assign(findOptions.where, { finished });
 							}
 						} else {
-							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const executions = await Db.collections.Execution.find(findOptions);
+						const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+							findOptions,
+						);
 
 						if (!executions.length) return [];
 
 						return executions.map((execution) => {
+							if (!execution.status) {
+								execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+							}
 							return {
 								id: execution.id,
 								workflowId: execution.workflowId,
 								mode: execution.mode,
 								retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
 								startedAt: new Date(execution.startedAt),
+								status: execution.status ?? null,
+								stoppedAt: execution.stoppedAt ?? null,
 							} as IExecutionsSummary;
 						});
 					}
@@ -1354,29 +1215,27 @@ class App {
 
 					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
-						ids.map((id) => id.toString()),
-					);
+					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							(data.workflowId !== undefined &&
-								!sharedWorkflowIds.includes(data.workflowId.toString()))
+							(data.workflowId !== undefined && !sharedWorkflowIds.includes(data.workflowId))
 						) {
 							continue;
 						}
 
 						returnData.push({
-							id: data.id.toString(),
-							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							id: data.id,
+							workflowId: data.workflowId === undefined ? '' : data.workflowId,
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
+							status: data.status,
 						});
 					}
 
-					returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
+					returnData.sort((a, b) => Number(b.id) - Number(a.id));
 
 					return returnData;
 				},
@@ -1395,14 +1254,16 @@ class App {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
-				const execution = await Db.collections.Execution.findOne({
-					where: {
-						id: executionId,
-						workflowId: In(sharedWorkflowIds),
+				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+					executionId,
+					{
+						where: {
+							workflowId: In(sharedWorkflowIds),
+						},
 					},
-				});
+				);
 
-				if (!execution) {
+				if (!fullExecutionData) {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
@@ -1425,23 +1286,20 @@ class App {
 							startedAt: new Date(result.startedAt),
 							stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 							finished: result.finished,
+							status: result.status,
 						} as IExecutionsStopData;
 					}
 
-					const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+					const queue = Container.get(Queue);
+					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
-					const job = currentJobs.find((job) => job.data.executionId.toString() === req.params.id);
+					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
 						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
 					} else {
-						await Queue.getInstance().stopJob(job);
+						await queue.stopJob(job);
 					}
-
-					const executionDb = (await Db.collections.Execution.findOne(
-						req.params.id,
-					)) as IExecutionFlattedDb;
-					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 					const returnData: IExecutionsStopData = {
 						mode: fullExecutionData.mode,
@@ -1450,6 +1308,7 @@ class App {
 							? new Date(fullExecutionData.stoppedAt)
 							: undefined,
 						finished: fullExecutionData.finished,
+						status: fullExecutionData.status,
 					};
 
 					return returnData;
@@ -1468,20 +1327,11 @@ class App {
 						startedAt: new Date(result.startedAt),
 						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
+						status: result.status,
 					};
 				}
 
 				return returnData;
-			}),
-		);
-
-		// Removes a test webhook
-		this.app.delete(
-			`/${this.restEndpoint}/test-webhook/:id`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				// TODO UM: check if this needs validation with user management.
-				const workflowId = req.params.id;
-				return this.testWebhooks.cancelTestWebhook(workflowId);
 			}),
 		);
 
@@ -1504,18 +1354,30 @@ class App {
 		// Download binary
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
-			async (req: express.Request, res: express.Response): Promise<void> => {
+			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				const binaryDataManager = BinaryDataManager.getInstance();
-				const binaryPath = binaryDataManager.getBinaryPath(identifier);
-				const { mimeType, fileName, fileSize } = await binaryDataManager.getBinaryMetadata(
-					identifier,
-				);
-				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (fileName) res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-				res.setHeader('Content-Length', fileSize);
-				res.sendFile(binaryPath);
+				try {
+					const binaryPath = binaryDataManager.getBinaryPath(identifier);
+					let { mode, fileName, mimeType } = req.query;
+					if (!fileName || !mimeType) {
+						try {
+							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+							fileName = metadata.fileName;
+							mimeType = metadata.mimeType;
+							res.setHeader('Content-Length', metadata.fileSize);
+						} catch {}
+					}
+					if (mimeType) res.setHeader('Content-Type', mimeType);
+					if (mode === 'download') {
+						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+					}
+					res.sendFile(binaryPath);
+				} catch (error) {
+					if (error instanceof FileNotFoundError) res.writeHead(404).end();
+					else throw error;
+				}
 			},
 		);
 
@@ -1528,9 +1390,7 @@ class App {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
-						req.headers.sessionid as string,
-					);
+					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
 
 					return this.getSettingsForFrontend();
 				},
@@ -1538,73 +1398,12 @@ class App {
 		);
 
 		// ----------------------------------------
-		// Webhooks
+		// EventBus Setup
 		// ----------------------------------------
 
-		if (!config.getEnv('endpoints.disableProductionWebhooksOnMainProcess')) {
-			WebhookServer.registerProductionWebhooks.apply(this);
+		if (!eventBus.isInitialized) {
+			await eventBus.initialize();
 		}
-
-		// Register all webhook requests (test for UI)
-		this.app.all(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registered part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				const method = req.method.toUpperCase() as WebhookHttpMethod;
-
-				if (method === 'OPTIONS') {
-					let allowedMethods: string[];
-					try {
-						allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
-						allowedMethods.push('OPTIONS');
-
-						// Add custom "Allow" header to satisfy OPTIONS response.
-						res.append('Allow', allowedMethods);
-					} catch (error) {
-						ResponseHelper.sendErrorResponse(res, error);
-						return;
-					}
-
-					res.header('Access-Control-Allow-Origin', '*');
-
-					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-					return;
-				}
-
-				if (!WEBHOOK_METHODS.includes(method)) {
-					ResponseHelper.sendErrorResponse(
-						res,
-						new Error(`The method ${method} is not supported.`),
-					);
-					return;
-				}
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook(method, requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
@@ -1614,7 +1413,7 @@ class App {
 					if (!this.presetCredentialsLoaded) {
 						const body = req.body as ICredentialsOverwrite;
 
-						if (req.headers['content-type'] !== 'application/json') {
+						if (req.contentType !== 'application/json') {
 							ResponseHelper.sendErrorResponse(
 								res,
 								new Error(
@@ -1626,7 +1425,7 @@ class App {
 
 						CredentialsOverwrites().setData(body);
 
-						await LoadNodesAndCredentials().generateTypesForFrontend();
+						await this.loadNodesAndCredentials.generateTypesForFrontend();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1639,7 +1438,47 @@ class App {
 		}
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(EDITOR_UI_DIST_DIR));
+			const staticOptions: ServeStaticOptions = {
+				cacheControl: false,
+				setHeaders: (res: express.Response, path: string) => {
+					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const cacheControl = isIndex
+						? 'no-cache, no-store, must-revalidate'
+						: 'max-age=86400, immutable';
+					res.header('Cache-Control', cacheControl);
+				},
+			};
+
+			const serveIcons: express.RequestHandler = async (req, res) => {
+				let { scope, packageName } = req.params;
+				if (scope) packageName = `@${scope}/${packageName}`;
+				const loader = this.loadNodesAndCredentials.loaders[packageName];
+				if (loader) {
+					const pathPrefix = `/icons/${packageName}/`;
+					const filePath = pathResolve(
+						loader.directory,
+						req.originalUrl.substring(pathPrefix.length),
+					);
+					if (pathRelative(loader.directory, filePath).includes('..')) {
+						return res.status(404).end();
+					}
+					try {
+						await fsAccess(filePath);
+						return res.sendFile(filePath);
+					} catch {}
+				}
+
+				res.sendStatus(404);
+			};
+
+			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
+			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
+
+			this.app.use(
+				'/',
+				express.static(GENERATED_STATIC_DIR),
+				express.static(EDITOR_UI_DIST_DIR, staticOptions),
+			);
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
@@ -1650,100 +1489,9 @@ class App {
 			this.app.use('/', express.static(GENERATED_STATIC_DIR));
 		}
 	}
-}
 
-export async function start(): Promise<void> {
-	const PORT = config.getEnv('port');
-	const ADDRESS = config.getEnv('listen_address');
-
-	const app = new App();
-
-	await app.config();
-
-	let server;
-
-	if (app.protocol === 'https' && app.sslKey && app.sslCert) {
-		const https = require('https');
-		const privateKey = readFileSync(app.sslKey, 'utf8');
-		const cert = readFileSync(app.sslCert, 'utf8');
-		const credentials = { key: privateKey, cert };
-		server = https.createServer(credentials, app.app);
-	} else {
-		const http = require('http');
-		server = http.createServer(app.app);
+	protected setupPushServer(): void {
+		const { restEndpoint, server, app } = this;
+		setupPushServer(restEndpoint, server, app);
 	}
-
-	server.listen(PORT, ADDRESS, async () => {
-		const versions = await GenericHelpers.getVersions();
-		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
-		console.log(`Version: ${versions.cli}`);
-
-		const defaultLocale = config.getEnv('defaultLocale');
-
-		if (defaultLocale !== 'en') {
-			console.log(`Locale: ${defaultLocale}`);
-		}
-
-		await app.externalHooks.run('n8n.ready', [app, config]);
-		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-		const diagnosticInfo: IDiagnosticInfo = {
-			basicAuthActive: config.getEnv('security.basicAuth.active'),
-			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
-			disableProductionWebhooksOnMainProcess: config.getEnv(
-				'endpoints.disableProductionWebhooksOnMainProcess',
-			),
-			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
-			versionCli: versions.cli,
-			systemInfo: {
-				os: {
-					type: os.type(),
-					version: os.version(),
-				},
-				memory: os.totalmem() / 1024,
-				cpus: {
-					count: cpus.length,
-					model: cpus[0].model,
-					speed: cpus[0].speed,
-				},
-			},
-			executionVariables: {
-				executions_process: config.getEnv('executions.process'),
-				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
-				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.getEnv(
-					'executions.saveDataManualExecutions',
-				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
-			},
-			deploymentType: config.getEnv('deployment.type'),
-			binaryDataMode: binaryDataConfig.mode,
-			n8n_multi_user_allowed: isUserManagementEnabled(),
-			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
-		};
-
-		void Db.collections
-			.Workflow!.findOne({
-				select: ['createdAt'],
-				order: { createdAt: 'ASC' },
-			})
-			.then(async (workflow) =>
-				InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
-			);
-	});
-
-	server.on('error', (error: Error & { code: string }) => {
-		if (error.code === 'EADDRINUSE') {
-			console.log(
-				`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
-			);
-			process.exit(1);
-		}
-	});
 }

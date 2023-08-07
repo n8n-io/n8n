@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userStoryOperations: INodeProperties[] = [
 	{
@@ -96,7 +96,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
@@ -310,7 +310,7 @@ export const userStoryFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigned_to',
 				description:
 					'ID of the user whom the user story is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
@@ -446,7 +446,7 @@ export const userStoryFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Asignee Name or ID',
+				displayName: 'Assignee Name or ID',
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {

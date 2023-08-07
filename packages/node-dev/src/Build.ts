@@ -8,26 +8,26 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { jsonParse } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
-import { IBuildOptions } from '.';
+import type { IBuildOptions } from './Interfaces';
 
 /**
  * Create a custom tsconfig file as tsc currently has no way to define a base
  * directory:
  * https://github.com/Microsoft/TypeScript/issues/25430
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+
 export async function createCustomTsconfig() {
 	// Get path to simple tsconfig file which should be used for build
 	const tsconfigPath = join(dirname(require.resolve('n8n-node-dev/src')), 'tsconfig-build.json');
 
 	// Read the tsconfig file
 	const tsConfigString = await readFile(tsconfigPath, { encoding: 'utf8' });
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
 	const tsConfig = jsonParse<{ include: string[] }>(tsConfigString);
 
 	// Set absolute include paths
 	const newIncludeFiles = [];
-	// eslint-disable-next-line no-restricted-syntax
+
 	for (const includeFile of tsConfig.include) {
 		newIncludeFiles.push(join(process.cwd(), includeFile));
 	}
@@ -46,7 +46,7 @@ export async function createCustomTsconfig() {
 /**
  * Builds and copies credentials and nodes
  *
- * @param {IBuildOptions} [options] Options to overwrite default behaviour
+ * @param {IBuildOptions} [options] Options to overwrite default behavior
  */
 export async function buildFiles({
 	destinationFolder = UserSettings.getUserN8nFolderCustomExtensionPath(),
@@ -101,7 +101,6 @@ export async function buildFiles({
 		let errorMessage = error.message;
 
 		if (error.stdout !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			errorMessage = `${errorMessage}\nGot following output:\n${error.stdout}`;
 		}
 

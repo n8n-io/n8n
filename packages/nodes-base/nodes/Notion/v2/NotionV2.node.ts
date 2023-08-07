@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,10 +7,10 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	jsonParse,
-	NodeApiError,
 } from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import type { SortData, FileRecord } from '../GenericFunctions';
 import {
 	downloadFiles,
 	extractDatabaseId,
@@ -55,7 +54,7 @@ export class NotionV2 implements INodeType {
 					extractValue: true,
 				}) as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				for (const key of Object.keys(properties)) {
+				for (const key of Object.keys(properties as IDataObject)) {
 					//remove parameters that cannot be set from the API.
 					if (
 						![
@@ -65,7 +64,7 @@ export class NotionV2 implements INodeType {
 							'last_edited_by',
 							'formula',
 							'rollup',
-						].includes(properties[key].type)
+						].includes(properties[key].type as string)
 					) {
 						returnData.push({
 							name: `${key}`,
@@ -90,7 +89,7 @@ export class NotionV2 implements INodeType {
 					extractValue: true,
 				}) as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				for (const key of Object.keys(properties)) {
+				for (const key of Object.keys(properties as IDataObject)) {
 					returnData.push({
 						name: `${key}`,
 						value: `${key}|${properties[key].type}`,
@@ -161,7 +160,7 @@ export class NotionV2 implements INodeType {
 					parent: { database_id: databaseId },
 				} = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-				for (const key of Object.keys(properties)) {
+				for (const key of Object.keys(properties as IDataObject)) {
 					//remove parameters that cannot be set from the API.
 					if (
 						![
@@ -171,7 +170,7 @@ export class NotionV2 implements INodeType {
 							'last_edited_by',
 							'formula',
 							'rollup',
-						].includes(properties[key].type)
+						].includes(properties[key].type as string)
 					) {
 						returnData.push({
 							name: `${key}`,
@@ -208,7 +207,7 @@ export class NotionV2 implements INodeType {
 				}));
 			},
 
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -238,8 +237,8 @@ export class NotionV2 implements INodeType {
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let download = false;
 
 		if (resource === 'block') {
@@ -261,7 +260,7 @@ export class NotionV2 implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(block),
+						this.helpers.returnJsonArray(block as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -302,7 +301,7 @@ export class NotionV2 implements INodeType {
 					}));
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -318,12 +317,12 @@ export class NotionV2 implements INodeType {
 						this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string,
 					);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download)[0];
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -342,20 +341,20 @@ export class NotionV2 implements INodeType {
 							this,
 							'results',
 							'POST',
-							`/search`,
+							'/search',
 							body,
 						);
 					} else {
-						body['page_size'] = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
+						body.page_size = this.getNodeParameter('limit', i);
+						responseData = await notionApiRequest.call(this, 'POST', '/search', body);
 						responseData = responseData.results;
 					}
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -376,11 +375,11 @@ export class NotionV2 implements INodeType {
 					};
 
 					if (text) {
-						body['query'] = text;
+						body.query = text;
 					}
 					if (options.sort) {
-						const sort = (((options.sort as IDataObject) || {}).sortValue as IDataObject) || {};
-						body['sort'] = sort;
+						const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
+						body.sort = sort;
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -402,12 +401,12 @@ export class NotionV2 implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -422,7 +421,7 @@ export class NotionV2 implements INodeType {
 				}) as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				let titleKey = '';
-				for (const key of Object.keys(properties)) {
+				for (const key of Object.keys(properties as IDataObject)) {
 					if (properties[key].type === 'title') {
 						titleKey = key;
 					}
@@ -430,7 +429,7 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const title = this.getNodeParameter('title', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
@@ -446,30 +445,40 @@ export class NotionV2 implements INodeType {
 							],
 						};
 					}
-					body.parent['database_id'] = this.getNodeParameter('databaseId', i, '', {
+					body.parent.database_id = this.getNodeParameter('databaseId', i, '', {
 						extractValue: true,
 					}) as string;
-					const properties = this.getNodeParameter(
+					const propertiesValues = this.getNodeParameter(
 						'propertiesUi.propertyValues',
 						i,
 						[],
 					) as IDataObject[];
-					if (properties.length !== 0) {
+					if (propertiesValues.length !== 0) {
 						body.properties = Object.assign(
 							body.properties,
-							mapProperties(properties, timezone, 2) as IDataObject,
+							mapProperties.call(this, propertiesValues, timezone, 2) as IDataObject,
 						);
 					}
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { external: { url: options.icon } };
+						} else {
+							body.icon = { emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -483,12 +492,12 @@ export class NotionV2 implements INodeType {
 					);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -536,8 +545,7 @@ export class NotionV2 implements INodeType {
 						delete body.filter;
 					}
 					if (sort) {
-						//@ts-expect-error
-						body['sorts'] = mapSorting(sort);
+						body.sorts = mapSorting(sort as SortData[]);
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -559,15 +567,15 @@ export class NotionV2 implements INodeType {
 						);
 						responseData = responseData.results;
 					}
-					if (download === true) {
-						responseData = await downloadFiles.call(this, responseData);
+					if (download) {
+						responseData = await downloadFiles.call(this, responseData as FileRecord[]);
 					}
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -585,20 +593,30 @@ export class NotionV2 implements INodeType {
 						i,
 						[],
 					) as IDataObject[];
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						properties: {},
 					};
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone, 2) as IDataObject;
+						body.properties = mapProperties.call(this, properties, timezone, 2) as IDataObject;
 					}
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { type: 'external', external: { url: options.icon } };
+						} else {
+							body.icon = { type: 'emoji', emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -613,7 +631,7 @@ export class NotionV2 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'GET', `/users/${userId}`);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -631,7 +649,7 @@ export class NotionV2 implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -649,12 +667,12 @@ export class NotionV2 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, {
 						archived: true,
 					});
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -664,25 +682,34 @@ export class NotionV2 implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					// tslint:disable-next-line: no-any
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
 					};
-					body.parent['page_id'] = extractPageId(
+					body.parent.page_id = extractPageId(
 						this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
 					);
 					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { external: { url: options.icon } };
+						} else {
+							body.icon = { emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -698,15 +725,15 @@ export class NotionV2 implements INodeType {
 					const body: IDataObject = {};
 
 					if (text) {
-						body['query'] = text;
+						body.query = text;
 					}
 					if (options.filter) {
-						const filter = (((options.filter as IDataObject) || {}).filters as IDataObject[]) || [];
-						body['filter'] = filter;
+						const filter = ((options.filter as IDataObject)?.filters as IDataObject[]) || [];
+						body.filter = filter;
 					}
 					if (options.sort) {
-						const sort = (((options.sort as IDataObject) || {}).sortValue as IDataObject) || {};
-						body['sort'] = sort;
+						const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
+						body.sort = sort;
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -728,22 +755,17 @@ export class NotionV2 implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
 				}
 			}
-		}
-
-		if (download === true) {
-			const rawData = returnData.map((data) => data.json);
-			return this.prepareOutputData(rawData as INodeExecutionData[]);
 		}
 
 		return this.prepareOutputData(returnData);

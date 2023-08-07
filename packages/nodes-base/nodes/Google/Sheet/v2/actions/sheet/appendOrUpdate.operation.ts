@@ -1,8 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { ISheetUpdateData, SheetProperties } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
-import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
+	ISheetUpdateData,
+	SheetProperties,
+	ValueInputOption,
+	ValueRenderOption,
+} from '../../helpers/GoogleSheets.types';
+import { NodeOperationError } from 'n8n-workflow';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
@@ -32,6 +36,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -57,6 +62,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -73,6 +79,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -92,6 +99,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -138,6 +146,40 @@ export const description: SheetProperties = [
 		],
 	},
 	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'upsert',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['appendOrUpdate'],
+				'@version': [4],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -160,26 +202,27 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
 	const range = `${sheetName}!A:Z`;
 
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const options = this.getNodeParameter('options', 0, {});
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const locationDefineOption = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 	let headerRow = 0;
 	let firstDataRow = 1;
 
-	if (locationDefine) {
-		if (locationDefine.headerRow) {
-			headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
+	if (locationDefineOption) {
+		if (locationDefineOption.headerRow) {
+			headerRow = parseInt(locationDefineOption.headerRow as string, 10) - 1;
 		}
-		if (locationDefine.firstDataRow) {
-			firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
+		if (locationDefineOption.firstDataRow) {
+			firstDataRow = parseInt(locationDefineOption.firstDataRow as string, 10) - 1;
 		}
 	}
 
@@ -195,10 +238,21 @@ export async function execute(
 	}
 
 	columnNames = sheetData[headerRow];
+	const nodeVersion = this.getNode().typeVersion;
 	const newColumns = new Set<string>();
 
-	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
-	const keyIndex = columnNames.indexOf(columnToMatchOn);
+	const columnsToMatchOn: string[] =
+		nodeVersion < 4
+			? [this.getNodeParameter('columnToMatchOn', 0) as string]
+			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+
+	const dataMode =
+		nodeVersion < 4
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
+
+	// TODO: Add support for multiple columns to match on in the next overhaul
+	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
 	const columnValues = await sheet.getColumnValues(
 		range,
@@ -211,25 +265,21 @@ export async function execute(
 	const updateData: ISheetUpdateData[] = [];
 	const appendData: IDataObject[] = [];
 
+	const mappedValues: IDataObject[] = [];
 	for (let i = 0; i < items.length; i++) {
-		const dataMode = this.getNodeParameter('dataMode', i) as
-			| 'defineBelow'
-			| 'autoMapInputData'
-			| 'nothing';
-
 		if (dataMode === 'nothing') continue;
 
 		const data: IDataObject[] = [];
 
 		if (dataMode === 'autoMapInputData') {
-			const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
-			if (handlingExtraData === 'ignoreIt') {
+			const handlingExtraDataOption = (options.handlingExtraData as string) || 'insertInNewColumn';
+			if (handlingExtraDataOption === 'ignoreIt') {
 				data.push(items[i].json);
 			}
-			if (handlingExtraData === 'error') {
+			if (handlingExtraDataOption === 'error') {
 				Object.keys(items[i].json).forEach((key) => {
-					if (columnNames.includes(key) === false) {
-						throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+					if (!columnNames.includes(key)) {
+						throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
 							itemIndex: i,
 							description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
 						});
@@ -237,38 +287,59 @@ export async function execute(
 				});
 				data.push(items[i].json);
 			}
-			if (handlingExtraData === 'insertInNewColumn') {
+			if (handlingExtraDataOption === 'insertInNewColumn') {
 				Object.keys(items[i].json).forEach((key) => {
-					if (columnNames.includes(key) === false) {
+					if (!columnNames.includes(key)) {
 						newColumns.add(key);
 					}
 				});
 				data.push(items[i].json);
 			}
 		} else {
-			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+			const valueToMatchOn =
+				nodeVersion < 4
+					? (this.getNodeParameter('valueToMatchOn', i) as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
 
-			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
-				(acc, entry) => {
+			if (nodeVersion < 4) {
+				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
+				if (!valuesToSend?.length) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"At least one value has to be added under 'Values to Send'",
+					);
+				}
+				const fields = valuesToSend.reduce((acc, entry) => {
 					if (entry.column === 'newColumn') {
 						const columnName = entry.columnName as string;
-
-						if (columnNames.includes(columnName) === false) {
+						if (!columnNames.includes(columnName)) {
 							newColumns.add(columnName);
 						}
-
 						acc[columnName] = entry.fieldValue as string;
 					} else {
 						acc[entry.column as string] = entry.fieldValue as string;
 					}
 					return acc;
-				},
-				{} as IDataObject,
-			);
-
-			fields[columnToMatchOn] = valueToMatchOn;
-
-			data.push(fields);
+				}, {} as IDataObject);
+				fields[columnsToMatchOn[0]] = valueToMatchOn;
+				data.push(fields);
+			} else {
+				const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
+				if (Object.keys(mappingValues).length === 0) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"At least one value has to be added under 'Values to Send'",
+					);
+				}
+				// Setting empty values to empty string so that they are not ignored by the API
+				Object.keys(mappingValues).forEach((key) => {
+					if (mappingValues[key] === undefined || mappingValues[key] === null) {
+						mappingValues[key] = '';
+					}
+				});
+				data.push(mappingValues);
+				mappedValues.push(mappingValues);
+			}
 		}
 
 		if (newColumns.size) {
@@ -282,7 +353,7 @@ export async function execute(
 
 		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
 			data,
-			columnToMatchOn,
+			columnsToMatchOn[0],
 			range,
 			headerRow,
 			firstDataRow,
@@ -300,6 +371,7 @@ export async function execute(
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	if (appendData.length) {
+		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 		const lastRow = sheetData.length + 1;
 		await sheet.appendSheetData(
 			appendData,
@@ -311,5 +383,10 @@ export async function execute(
 			lastRow,
 		);
 	}
-	return items;
+
+	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
+		return items;
+	} else {
+		return this.helpers.returnJsonArray(mappedValues);
+	}
 }

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const activityOperations: INodeProperties[] = [
 	{
@@ -130,9 +130,6 @@ export const activityFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description of the activity - max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -261,9 +258,6 @@ export const activityFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description to add more details on the activity - max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Happened At',

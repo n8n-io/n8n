@@ -1,4 +1,4 @@
-import { TicketProperties } from '../../Interfaces';
+import type { TicketProperties } from '../../Interfaces';
 
 export const ticketUpdateDescription: TicketProperties = [
 	{

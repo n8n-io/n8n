@@ -22,24 +22,48 @@ const loadClass = (sourcePath) => {
 	}
 };
 
-const generate = (kind) => {
+const nodesToTestWith = {};
+
+const generate = async (kind) => {
 	const data = glob
 		.sync(`dist/${kind}/**/*.${kind === 'nodes' ? 'node' : kind}.js`, {
 			cwd: packageDir,
 		})
-		.filter((filePath) => !/[vV]\d.node\.js$/.test(filePath))
 		.map(loadClass)
 		.filter((data) => !!data)
 		.reduce((obj, { className, sourcePath, instance }) => {
 			const name = kind === 'nodes' ? instance.description.name : instance.name;
-			if (name in obj) console.error('already loaded', kind, name, sourcePath);
-			else obj[name] = { className, sourcePath };
+			if (!/[vV]\d.node\.js$/.test(sourcePath)) {
+				if (name in obj) console.error('already loaded', kind, name, sourcePath);
+				else obj[name] = { className, sourcePath };
+			}
+
+			if (kind === 'credentials' && Array.isArray(instance.extends)) {
+				obj[name].extends = instance.extends;
+			}
+
+			if (kind === 'nodes') {
+				const { credentials } = instance.description;
+				if (credentials && credentials.length) {
+					for (const credential of credentials) {
+						nodesToTestWith[credential.name] = nodesToTestWith[credential.name] || [];
+						nodesToTestWith[credential.name].push(name);
+					}
+				}
+			} else {
+				if (name in nodesToTestWith) {
+					obj[name].nodesToTestWith = nodesToTestWith[name];
+				}
+			}
 			return obj;
 		}, {});
+
 	LoggerProxy.info(`Detected ${Object.keys(data).length} ${kind}`);
-	return writeJSON(`known/${kind}.json`, data);
+	await writeJSON(`known/${kind}.json`, data);
+	return data;
 };
 
 (async () => {
-	await Promise.all([generate('credentials'), generate('nodes')]);
+	await generate('nodes');
+	await generate('credentials');
 })();

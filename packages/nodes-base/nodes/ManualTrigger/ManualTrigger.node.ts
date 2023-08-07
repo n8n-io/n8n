@@ -1,5 +1,9 @@
-import { ITriggerFunctions } from 'n8n-core';
-import { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 
 export class ManualTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -9,12 +13,13 @@ export class ManualTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow on clicking a button in n8n',
+		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: "On clicking 'execute'",
+			name: 'When clicking "Execute Workflow"',
 			color: '#909298',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: ['main'],
 		properties: [

@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GitPassword implements ICredentialType {
 	name = 'gitPassword';
+
 	displayName = 'Git';
+
 	documentationUrl = 'git';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',

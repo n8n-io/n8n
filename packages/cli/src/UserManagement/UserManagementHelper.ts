@@ -1,29 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
 import { In } from 'typeorm';
-import express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
+import { Container } from 'typedi';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { PublicUser } from './Interfaces';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '@db/entities/User';
-import { Role } from '@db/entities/Role';
-import { AuthenticatedRequest } from '@/requests';
+import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
+import type { User } from '@db/entities/User';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import config from '@/config';
-import { getWebhookBaseUrl } from '../WebhookHelpers';
-import { getLicense } from '@/License';
-import { WhereClause } from '@/Interfaces';
-
-export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflow: { id: workflowId } },
-		relations: ['user', 'user.globalRole'],
-	});
-
-	return sharedWorkflow.user;
-}
+import { License } from '@/License';
+import { getWebhookBaseUrl } from '@/WebhookHelpers';
+import type { PostHogClient } from '@/posthog';
+import { RoleService } from '@/services/role.service';
 
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
@@ -34,55 +22,17 @@ export function isEmailSetUp(): boolean {
 	return smtp && host && user && pass;
 }
 
-export function isUserManagementEnabled(): boolean {
-	return (
-		!config.getEnv('userManagement.disabled') ||
-		config.getEnv('userManagement.isInstanceOwnerSetUp')
-	);
-}
-
 export function isSharingEnabled(): boolean {
-	const license = getLicense();
-	return (
-		isUserManagementEnabled() &&
-		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
-	);
+	return Container.get(License).isSharingEnabled();
 }
 
-export function isUserManagementDisabled(): boolean {
-	return (
-		config.getEnv('userManagement.disabled') &&
-		!config.getEnv('userManagement.isInstanceOwnerSetUp')
-	);
-}
+export async function getInstanceOwner() {
+	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
-async function getInstanceOwnerRole(): Promise<Role> {
-	const ownerRole = await Db.collections.Role.findOneOrFail({
-		where: {
-			name: 'owner',
-			scope: 'global',
-		},
-	});
-	return ownerRole;
-}
-
-export async function getInstanceOwner(): Promise<User> {
-	const ownerRole = await getInstanceOwnerRole();
-
-	const owner = await Db.collections.User.findOneOrFail({
+	return Db.collections.User.findOneOrFail({
 		relations: ['globalRole'],
 		where: {
-			globalRole: ownerRole,
-		},
-	});
-	return owner;
-}
-
-export async function getRole(scope: Role['scope'], name: Role['name']): Promise<Role> {
-	return Db.collections.Role.findOneOrFail({
-		where: {
-			name,
-			scope,
+			globalRoleId: globalOwnerRole.id,
 		},
 	});
 }
@@ -94,6 +44,10 @@ export function getInstanceBaseUrl(): string {
 	const n8nBaseUrl = config.getEnv('editorBaseUrl') || getWebhookBaseUrl();
 
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
+}
+
+export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
+	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
 }
 
 // TODO: Enforce at model level
@@ -136,52 +90,61 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const {
-		password,
-		resetPasswordToken,
-		resetPasswordTokenExpiration,
-		updatedAt,
-		apiKey,
-		...sanitizedUser
-	} = user;
+	const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 	if (withoutKeys) {
 		withoutKeys.forEach((key) => {
 			// @ts-ignore
-			delete sanitizedUser[key];
+			delete rest[key];
 		});
+	}
+	const sanitizedUser: PublicUser = {
+		...rest,
+		signInType: 'email',
+	};
+	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+	if (ldapIdentity) {
+		sanitizedUser.signInType = 'ldap';
 	}
 	return sanitizedUser;
 }
 
-export async function getUserById(userId: string): Promise<User> {
-	const user = await Db.collections.User.findOneOrFail(userId, {
-		relations: ['globalRole'],
+export async function withFeatureFlags(
+	postHog: PostHogClient | undefined,
+	user: CurrentUser,
+): Promise<CurrentUser> {
+	if (!postHog) {
+		return user;
+	}
+
+	// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
+	// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
+	const timeoutPromise = new Promise<CurrentUser>((resolve) => {
+		setTimeout(() => {
+			resolve(user);
+		}, 1500);
 	});
+
+	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
+		user.featureFlags = await postHog.getFeatureFlags(user);
+		resolve(user);
+	});
+
+	return Promise.race([fetchPromise, timeoutPromise]);
+}
+
+export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {
+	if (user.isPending) {
+		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
+	}
 	return user;
 }
 
-/**
- * Check if a URL contains an auth-excluded endpoint.
- */
-export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
-	return !!ignoredEndpoints
-		.filter(Boolean) // skip empty paths
-		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
-}
-
-/**
- * Check if the endpoint is `POST /users/:id`.
- */
-export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {
-	return (
-		req.method === 'POST' &&
-		new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
-		!req.url.includes('reinvite')
-	);
-}
-
-export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
-	return request.user !== undefined;
+export async function getUserById(userId: string): Promise<User> {
+	const user = await Db.collections.User.findOneOrFail({
+		where: { id: userId },
+		relations: ['globalRole'],
+	});
+	return user;
 }
 
 // ----------------------------------
@@ -212,7 +175,6 @@ export function rightDiff<T1, T2>(
 ): T2[] {
 	// create map { itemKey => true } for fast lookup for diff
 	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
-		// eslint-disable-next-line no-param-reassign
 		map[keyExtractor1(item)] = true;
 		return map;
 	}, {});

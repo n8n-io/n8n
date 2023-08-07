@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const issueOperations: INodeProperties[] = [
 	{
@@ -110,16 +110,12 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
-				displayName: 'Priority Name/ID',
+				displayName: 'Priority',
 				name: 'priorityId',
 				type: 'options',
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Urgent',
@@ -130,12 +126,12 @@ export const issueFields: INodeProperties[] = [
 						value: 2,
 					},
 					{
-						name: 'Medium',
+						name: 'Normal',
 						value: 3,
 					},
 					{
 						name: 'Low',
-						value: 3,
+						value: 4,
 					},
 					{
 						name: 'No Priority',
@@ -251,16 +247,13 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Priority Name/ID',
 				name: 'priorityId',
 				type: 'options',
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 				options: [
 					{
 						name: 'Urgent',

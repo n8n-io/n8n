@@ -1,6 +1,10 @@
-import { IPollFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IPollFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { notionApiRequest, simplifyObjects } from './GenericFunctions';
 
@@ -9,8 +13,7 @@ import { getDatabases } from './SearchFunctions';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
-		displayName: 'Notion Trigger (Beta)',
+		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
 		group: ['trigger'],
@@ -49,7 +52,7 @@ export class NotionTrigger implements INodeType {
 			},
 			{
 				displayName:
-					'In Notion, make sure you <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api#add-connections-to-pages" target="_blank">share your database with your integration</a> . Otherwise it won\'t be accessible, or listed here.',
+					'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
 				name: 'notionNotice',
 				type: 'notice',
 				default: '',
@@ -202,7 +205,7 @@ export class NotionTrigger implements INodeType {
 		);
 
 		if (this.getMode() === 'manual') {
-			if (simple === true) {
+			if (simple) {
 				data = simplifyObjects(data, false, 1);
 			}
 			if (Array.isArray(data) && data.length) {
@@ -211,7 +214,7 @@ export class NotionTrigger implements INodeType {
 		}
 
 		// if something changed after the last check
-		if (Array.isArray(data) && data.length && Object.keys(data[0]).length !== 0) {
+		if (Array.isArray(data) && data.length && Object.keys(data[0] as IDataObject).length !== 0) {
 			do {
 				body.page_size = 10;
 				const { results, has_more, next_cursor } = await notionApiRequest.call(
@@ -223,15 +226,15 @@ export class NotionTrigger implements INodeType {
 					'',
 					option,
 				);
-				records.push(...results);
+				records.push(...(results as IDataObject[]));
 				hasMore = has_more;
 				if (next_cursor !== null) {
-					body['start_cursor'] = next_cursor;
+					body.start_cursor = next_cursor;
 				}
 				// Only stop when we reach records strictly before last recorded time to be sure we catch records from the same minute
 			} while (
 				!moment(records[records.length - 1][sortProperty] as string).isBefore(lastTimeChecked) &&
-				hasMore === true
+				hasMore
 			);
 
 			// Filter out already processed left over records:
@@ -255,7 +258,7 @@ export class NotionTrigger implements INodeType {
 				webhookData.possibleDuplicates = undefined;
 			}
 
-			if (simple === true) {
+			if (simple) {
 				records = simplifyObjects(records, false, 1);
 			}
 

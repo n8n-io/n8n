@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from '../../../transport';
 
@@ -9,8 +7,8 @@ export async function members(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const channelId = this.getNodeParameter('channelId', index) as string;
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const resolveData = this.getNodeParameter('resolveData', index) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const resolveData = this.getNodeParameter('resolveData', index);
 	const limit = this.getNodeParameter('limit', index, 0);
 
 	const body = {} as IDataObject;
@@ -18,7 +16,7 @@ export async function members(
 	const requestMethod = 'GET';
 	const endpoint = `channels/${channelId}/members`;
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		qs.per_page = this.getNodeParameter('limit', index);
 	}
 
@@ -34,7 +32,7 @@ export async function members(
 		if (resolveData) {
 			const userIds: string[] = [];
 			for (const data of responseData) {
-				userIds.push(data.user_id);
+				userIds.push(data.user_id as string);
 			}
 			if (userIds.length > 0) {
 				responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds, qs);
@@ -42,5 +40,5 @@ export async function members(
 		}
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

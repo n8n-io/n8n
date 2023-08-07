@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const channelMessageOperations: INodeProperties[] = [
 	{
@@ -98,9 +98,6 @@ export const channelMessageFields: INodeProperties[] = [
 		name: 'message',
 		required: true,
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				operation: ['create'],

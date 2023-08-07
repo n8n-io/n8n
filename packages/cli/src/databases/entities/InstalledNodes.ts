@@ -12,10 +12,7 @@ export class InstalledNodes {
 	@Column()
 	latestVersion: string;
 
-	@ManyToOne(
-		() => InstalledPackages,
-		(installedPackages: InstalledPackages) => installedPackages.installedNodes,
-	)
+	@ManyToOne('InstalledPackages', 'installedNodes')
 	@JoinColumn({ name: 'package', referencedColumnName: 'packageName' })
 	package: InstalledPackages;
 }

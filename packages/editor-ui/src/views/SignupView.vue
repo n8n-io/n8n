@@ -8,22 +8,25 @@
 </template>
 
 <script lang="ts">
-import AuthView from './AuthView.vue';
-import { showMessage } from '@/mixins/showMessage';
+import AuthView from '@/views/AuthView.vue';
+import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'SignupView',
 	components: {
 		AuthView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -74,14 +77,20 @@ export default mixins(
 		return {
 			FORM_CONFIG,
 			loading: false,
-			inviter: null as null | {firstName: string, lastName: string},
+			inviter: null as null | { firstName: string; lastName: string },
 			inviterId: null as string | null,
 			inviteeId: null as string | null,
 		};
 	},
 	async mounted() {
-		const inviterId = (!this.$route.query.inviterId || typeof this.$route.query.inviterId !== 'string') ? null : this.$route.query.inviterId;
-		const inviteeId = (!this.$route.query.inviteeId || typeof this.$route.query.inviteeId !== 'string') ? null : this.$route.query.inviteeId;
+		const inviterId =
+			!this.$route.query.inviterId || typeof this.$route.query.inviterId !== 'string'
+				? null
+				: this.$route.query.inviterId;
+		const inviteeId =
+			!this.$route.query.inviteeId || typeof this.$route.query.inviteeId !== 'string'
+				? null
+				: this.$route.query.inviteeId;
 		try {
 			if (!inviterId || !inviteeId) {
 				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
@@ -90,48 +99,57 @@ export default mixins(
 			this.inviteeId = inviteeId;
 
 			const invite = await this.usersStore.validateSignupToken({ inviteeId, inviterId });
-			this.inviter = invite.inviter as {firstName: string, lastName: string};
+			this.inviter = invite.inviter as { firstName: string; lastName: string };
 		} catch (e) {
-			this.$showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
-			this.$router.replace({name: VIEWS.SIGNIN});
+			this.showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
+			void this.$router.replace({ name: VIEWS.SIGNIN });
 		}
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-			useUsersStore,
-		),
+		...mapStores(useUIStore, useUsersStore),
 		inviteMessage(): null | string {
 			if (!this.inviter) {
 				return null;
 			}
 
-			return this.$locale.baseText(
-				'settings.signup.signUpInviterInfo',
-				{ interpolate: { firstName: this.inviter.firstName, lastName: this.inviter.lastName }},
-			);
+			return this.$locale.baseText('settings.signup.signUpInviterInfo', {
+				interpolate: { firstName: this.inviter.firstName, lastName: this.inviter.lastName },
+			});
 		},
 	},
 	methods: {
-		async onSubmit(values: {[key: string]: string | boolean}) {
+		async onSubmit(values: { [key: string]: string | boolean }) {
 			if (!this.inviterId || !this.inviteeId) {
-				this.$showError(new Error(this.$locale.baseText('auth.changePassword.tokenValidationError')), this.$locale.baseText('auth.signup.setupYourAccountError'));
+				this.showError(
+					new Error(this.$locale.baseText('auth.changePassword.tokenValidationError')),
+					this.$locale.baseText('auth.signup.setupYourAccountError'),
+				);
 				return;
 			}
 
 			try {
 				this.loading = true;
-				await this.usersStore.signup({...values, inviterId: this.inviterId,  inviteeId: this.inviteeId} as { inviteeId: string; inviterId: string; firstName: string; lastName: string; password: string;});
+				await this.usersStore.signup({
+					...values,
+					inviterId: this.inviterId,
+					inviteeId: this.inviteeId,
+				} as {
+					inviteeId: string;
+					inviterId: string;
+					firstName: string;
+					lastName: string;
+					password: string;
+				});
 
 				if (values.agree === true) {
 					try {
 						await this.uiStore.submitContactEmail(values.email.toString(), values.agree);
-					} catch { }
+					} catch {}
 				}
 
-				await this.$router.push({ name: VIEWS.HOMEPAGE });
+				await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
+				this.showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
 			}
 			this.loading = false;
 		},
