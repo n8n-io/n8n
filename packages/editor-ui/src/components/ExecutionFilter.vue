@@ -65,7 +65,6 @@ const vModel = reactive(
 				},
 				set(value) {
 					// TODO: find out what exactly is typechecker complaining about
-					// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 					// @ts-ignore
 					filter[key] = value;
 					emit('filterChanged', filter);

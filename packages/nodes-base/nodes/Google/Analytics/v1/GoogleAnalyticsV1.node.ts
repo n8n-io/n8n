@@ -247,7 +247,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 						if (simple) {
 							responseData = simplify(responseData);
 						} else if (returnAll && responseData.length > 1) {
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							responseData = merge(responseData);
 						}
 					}

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import type { StoryFn } from '@storybook/vue3';
 import N8nRecycleScroller from './RecycleScroller.vue';
 import type { ComponentInstance } from 'vue';

@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { paramCase, snakeCase } from 'change-case';
-
 import { createHash } from 'crypto';
+import type { Readable } from 'stream';
+import { paramCase, snakeCase } from 'change-case';
 
 import { Builder } from 'xml2js';
 
@@ -22,7 +22,6 @@ import { folderFields, folderOperations } from './FolderDescription';
 import { fileFields, fileOperations } from './FileDescription';
 
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
-import type { Readable } from 'stream';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -283,7 +282,6 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						returnData.push(...executionData);
 					}
 				}

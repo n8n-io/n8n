@@ -2,12 +2,12 @@
 	<n8n-popover
 		:teleported="false"
 		placement="bottom"
+		:teleported="false"
 		:width="width"
 		:popper-class="$style.popover"
 		:visible="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
-		v-on-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
@@ -215,9 +215,6 @@ export default defineComponent({
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onClickOutside() {
-			this.$emit('hide');
-		},
 		onItemClick(selected: string) {
 			this.$emit('update:modelValue', selected);
 		},
@@ -249,16 +246,17 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		show(toShow) {
-			if (toShow) {
+		show(value) {
+			if (value) {
 				this.hoverIndex = 0;
 				this.showHoverUrl = false;
+
+				setTimeout(() => {
+					if (value && this.filterable && this.$refs.search) {
+						(this.$refs.search as HTMLElement).focus();
+					}
+				}, 0);
 			}
-			setTimeout(() => {
-				if (toShow && this.filterable && this.$refs.search) {
-					(this.$refs.search as HTMLElement).focus();
-				}
-			}, 0);
 		},
 		loading() {
 			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
@@ -270,7 +268,7 @@ export default defineComponent({
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
-	padding: 0;
+	padding: 0 !important;
 	border: var(--border-base);
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));
