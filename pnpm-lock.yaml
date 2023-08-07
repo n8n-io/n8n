@@ -367,6 +367,9 @@ importers:
       p-cancelable:
         specifier: ^2.0.0
         version: 2.1.1
+      p-lazy:
+        specifier: ^3.1.0
+        version: 3.1.0
       passport:
         specifier: ^0.6.0
         version: 0.6.0
@@ -16291,6 +16294,11 @@ packages:
   /p-finally@1.0.0:
     resolution: {integrity: sha512-LICb2p9CB7FS+0eR1oqWnHhp0FljGLZCWBE9aix0Uye9W8LTQPwMTYVGWQWIw9RdQiDg4+epXQODwIYJtSJaow==}
     engines: {node: '>=4'}
+
+  /p-lazy@3.1.0:
+    resolution: {integrity: sha512-sCJn0Cdahs6G6SX9+DUihVFUhrzDEduzE5xeViVBGtoqy5dBWko7W8T6Kk6TjR2uevRXJO7CShfWrqdH5s3w3g==}
+    engines: {node: '>=8'}
+    dev: false
 
   /p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
