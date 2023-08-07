@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
-import { computed, onMounted, Ref, ref } from 'vue';
+import { computed, nextTick, onMounted, Ref, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useExternalSecretsProvider, useI18n, useMessage, useToast } from '@/composables';
@@ -84,11 +84,13 @@ onMounted(async () => {
 			...(defaultProviderData[props.data.name] || {}),
 			...provider.data,
 		};
+
 		connectionState.value = provider.state;
 
-		if (!provider.connected && Object.keys(provider.data).length) {
+		if (provider.connected) {
+			initialConnectionState.value = provider.state;
+		} else if (Object.keys(provider.data).length) {
 			await testConnection();
-			initialConnectionState.value = connectionState.value;
 		}
 	} catch (error) {
 		toast.showError(error, 'Error');
@@ -164,6 +166,7 @@ async function onBeforeClose() {
 	>
 		<template #header>
 			<div :class="$style.header">
+				{{ initialConnectionState }}
 				<div :class="$style.providerTitle">
 					<ExternalSecretsProviderImage :provider="provider" class="mr-xs" />
 					<span>{{ provider.displayName }}</span>
