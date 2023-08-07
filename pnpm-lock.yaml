@@ -26,6 +26,9 @@ patchedDependencies:
   '@sentry/cli@2.17.0':
     hash: nchnoezkq6p37qaiku3vrpwraq
     path: patches/@sentry__cli@2.17.0.patch
+  '@types/ws@8.5.4':
+    hash: nbzuqaoyqbrfwipijj5qriqqju
+    path: patches/@types__ws@8.5.4.patch
   pkce-challenge@3.0.0:
     hash: dypouzb3lve7vncq25i5fuanki
     path: patches/pkce-challenge@3.0.0.patch
@@ -554,7 +557,7 @@ importers:
         version: 13.7.7
       '@types/ws':
         specifier: ^8.5.4
-        version: 8.5.4
+        version: 8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju)
       '@types/xml2js':
         specifier: ^0.4.11
         version: 0.4.11
@@ -6719,11 +6722,12 @@ packages:
       '@types/webidl-conversions': 7.0.0
     dev: false
 
-  /@types/ws@8.5.4:
+  /@types/ws@8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju):
     resolution: {integrity: sha512-zdQDHKUgcX/zBc4GrwsE/7dVdAD8JR4EuiAXiiUhhfyIJXXb2+PrGshFyeXWQPMmmZ2XxgaqclgpIC7eTXc1mg==}
     dependencies:
       '@types/node': 18.16.16
     dev: true
+    patched: true
 
   /@types/xml2js@0.4.11:
     resolution: {integrity: sha512-JdigeAKmCyoJUiQljjr7tQG3if9NkqGUgwEUqBvV0N7LM4HyQk7UXCnusRa1lnvXAEYJ8mw8GtZWioagNztOwA==}
