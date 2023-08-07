@@ -7,6 +7,7 @@ import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
+import { N8nInstanceType } from '@/Interfaces';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
@@ -24,6 +25,7 @@ import {
 	EVENT_BUS_REDIS_CHANNEL,
 	WORKER_RESPONSE_REDIS_CHANNEL,
 } from './services/redis/RedisServiceHelper';
+import { generateHostInstanceId } from './databases/utils/generators';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -56,7 +58,9 @@ export abstract class AbstractServer {
 
 	protected testWebhooksEnabled = false;
 
-	constructor() {
+	readonly uniqueInstanceId: string;
+
+	constructor(instanceType: N8nInstanceType = 'main') {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
@@ -70,6 +74,8 @@ export abstract class AbstractServer {
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+
+		this.uniqueInstanceId = generateHostInstanceId(instanceType);
 	}
 
 	async configure(): Promise<void> {
