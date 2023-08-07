@@ -2,14 +2,21 @@
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n, useMessage, useToast } from '@/composables';
 import { useExternalSecretsStore } from '@/stores';
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
+import { ExternalSecretsProvider } from '@/Interface';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const externalSecretsStore = useExternalSecretsStore();
 const message = useMessage();
 const toast = useToast();
+
+const sortedProviders = computed(() => {
+	return ([...externalSecretsStore.providers] as ExternalSecretsProvider[]).sort((a, b) => {
+		return b.name.localeCompare(a.name);
+	});
+});
 
 onMounted(() => {
 	void externalSecretsStore.fetchAllSecrets();
@@ -35,7 +42,7 @@ function goToUpgrade() {
 				</a>
 			</n8n-callout>
 			<ExternalSecretsProviderCard
-				v-for="provider in externalSecretsStore.providers"
+				v-for="provider in sortedProviders"
 				:key="provider.name"
 				:provider="provider"
 			/>
