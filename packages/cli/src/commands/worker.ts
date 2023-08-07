@@ -23,7 +23,7 @@ import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from '@/services/ownership.service';
-import { generateNanoId } from '@/databases/utils/generators';
+import { generateHostInstanceId } from '@/databases/utils/generators';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { IConfig } from '@oclif/config';
 
@@ -50,7 +50,7 @@ export class Worker extends BaseCommand {
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
-		this.workerId = generateNanoId();
+		this.workerId = generateHostInstanceId('worker');
 		LoggerProxy.debug(`Worker ID: ${this.workerId}`);
 	}
 

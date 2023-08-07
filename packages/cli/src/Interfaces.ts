@@ -778,3 +778,5 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
+
+export type N8nInstanceType = 'main' | 'webhook' | 'worker';
