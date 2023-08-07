@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-workflow';
 
 export async function handleExecute(fns: IExecuteFunctions) {
 	const credentials = await fns.getCredentials('foxyJwtApi');

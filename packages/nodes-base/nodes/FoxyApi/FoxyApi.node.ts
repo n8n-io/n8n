@@ -1,18 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { uiProperties } from './properties';
-
-import {
-	IDataObject,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
-	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { handleExecute } from './GenericFunctions';
-
-import { OptionsWithUri } from 'request';
+import { uiProperties } from './properties';
 
 export class FoxyApi implements INodeType {
 	description: INodeTypeDescription = {
