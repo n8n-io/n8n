@@ -27,6 +27,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import type { WorkflowForList } from './workflows.types';
+import { WorkflowRepository } from '@/databases/repositories';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -157,7 +158,7 @@ export class WorkflowsService {
 			findManyOptions.take = options.take;
 		}
 
-		return Db.collections.Workflow.findAndCount(findManyOptions);
+		return Container.get(WorkflowRepository).findAndCount(findManyOptions);
 	}
 
 	static async update(
