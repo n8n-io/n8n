@@ -776,6 +776,12 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
+			console.log(data.workflowData);
+
+			if (data.workflowData.usedCredentials) {
+				this.workflowsStore.setUsedCredentials(data.workflowData.usedCredentials);
+			}
+
 			await this.addNodes(
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
@@ -904,6 +910,7 @@ export default defineComponent({
 			this.stopLoading();
 		},
 		async openWorkflow(workflow: IWorkflowDb) {
+			console.log(workflow);
 			this.startLoading();
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;

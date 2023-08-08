@@ -14,7 +14,7 @@
 				[$style.show]: this.showPreview,
 			}"
 			ref="preview_iframe"
-			:src="`${rootStore.baseUrl}workflows/demo`"
+			:src="`http://localhost:8080/workflows/demo`"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		></iframe>
