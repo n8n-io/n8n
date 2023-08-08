@@ -8,11 +8,13 @@ import type {
 import { deepCopy, NodeOperationError, jsonParse, validateFieldType } from 'n8n-workflow';
 
 import set from 'lodash/set';
+import get from 'lodash/get';
+import unset from 'lodash/unset';
 
 import type { SetNodeOptions, SetField } from './interfaces';
 import { INCLUDE } from './interfaces';
 
-export const configureFieldSetter = (dotNotation?: boolean) => {
+const configureFieldSetter = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
 		return (item: IDataObject, key: string, value: IDataObject) => {
 			set(item, key, value);
@@ -20,6 +22,30 @@ export const configureFieldSetter = (dotNotation?: boolean) => {
 	} else {
 		return (item: IDataObject, key: string, value: IDataObject) => {
 			item[key] = value;
+		};
+	}
+};
+
+const configureFieldGetter = (dotNotation?: boolean) => {
+	if (dotNotation !== false) {
+		return (item: IDataObject, key: string) => {
+			return get(item, key);
+		};
+	} else {
+		return (item: IDataObject, key: string) => {
+			return item[key];
+		};
+	}
+};
+
+const configureFieldUnsetter = (dotNotation?: boolean) => {
+	if (dotNotation !== false) {
+		return (item: IDataObject, key: string) => {
+			unset(item, key);
+		};
+	} else {
+		return (item: IDataObject, key: string) => {
+			delete item[key];
 		};
 	}
 };
@@ -45,6 +71,8 @@ export function prepareItem(
 	}
 
 	const fieldSetter = configureFieldSetter(options.dotNotation);
+	const fieldGetter = configureFieldGetter(options.dotNotation);
+	const fieldUnsetter = configureFieldUnsetter(options.dotNotation);
 
 	switch (options.include) {
 		case INCLUDE.ALL:
@@ -56,7 +84,12 @@ export function prepareItem(
 				.map((item) => item.trim());
 
 			for (const key of includeFields) {
-				fieldSetter(newItem.json, key, inputItem.json[key] as IDataObject);
+				const fieldValue = fieldGetter(inputItem.json, key) as IDataObject;
+				let keyToSet = key;
+				if (options.dotNotation !== false && key.includes('.')) {
+					keyToSet = key.split('.').pop() as string;
+				}
+				fieldSetter(newItem.json, keyToSet, fieldValue);
 			}
 			break;
 		case INCLUDE.EXCEPT:
@@ -64,10 +97,13 @@ export function prepareItem(
 				.split(',')
 				.map((item) => item.trim());
 
-			for (const key of Object.keys(inputItem.json)) {
-				if (excludeFields.includes(key)) continue;
-				fieldSetter(newItem.json, key, inputItem.json[key] as IDataObject);
+			const inputData = deepCopy(inputItem.json);
+
+			for (const key of excludeFields) {
+				fieldUnsetter(inputData, key);
 			}
+
+			newItem.json = inputData;
 			break;
 		case INCLUDE.NONE:
 			break;

@@ -98,6 +98,7 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@update:modelValue="valueChangedDebounced"
 				/>
@@ -121,13 +122,13 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
-				<json-editor
+				<!-- <json-editor
 					v-else-if="editorType === 'jsonEditor'"
 					:modelValue="modelValue"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					@valueChanged="valueChangedDebounced"
-				/>
+				/> -->
 
 				<code-node-editor
 					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
