@@ -9,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../utils/utilities';
 
-import { parseJsonParameter, prepareEntry, prepareItem, resolveRawData } from './helpers/utils';
+import { parseJsonParameter, validateEntry, prepareItem, resolveRawData } from './helpers/utils';
 import type { SetField, SetNodeOptions } from './helpers/interfaces';
 
 const properties: INodeProperties[] = [
@@ -177,7 +177,7 @@ export async function execute(
 				);
 			}
 
-			const { name, value } = prepareEntry(entry, node, i, options.ignoreConversionErrors);
+			const { name, value } = validateEntry(entry, node, i, options.ignoreConversionErrors);
 			newData[name] = value;
 		}
 

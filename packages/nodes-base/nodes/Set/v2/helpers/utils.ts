@@ -129,7 +129,7 @@ export const parseJsonParameter = (jsonData: string | IDataObject, node: INode, 
 	return returnData;
 };
 
-export const prepareEntry = (
+export const validateEntry = (
 	entry: SetField,
 	node: INode,
 	itemIndex: number,
