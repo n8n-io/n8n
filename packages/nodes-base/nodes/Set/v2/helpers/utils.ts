@@ -144,15 +144,23 @@ export const prepareEntry = (
 	itemIndex: number,
 	ignoreErrors = false,
 ) => {
-	const entryValue = entry[entry.type];
+	let entryValue = entry[entry.type];
 	const name = entry.name;
 	const entryType = entry.type.replace('Value', '') as FieldType;
+
+	if (entryType === 'string') {
+		if (typeof entryValue === 'object') {
+			entryValue = JSON.stringify(entryValue);
+		} else {
+			entryValue = String(entryValue);
+		}
+	}
 
 	const validationResult = validateFieldType(name, entryValue, entryType);
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {
-			validationResult.newValue = entryValue;
+			validationResult.newValue = entry[entry.type];
 		} else {
 			throw new NodeOperationError(node, validationResult.errorMessage as string, {
 				itemIndex,
