@@ -84,6 +84,7 @@
 	box-shadow: var.$dropdown-menu-box-shadow;
 	position: relative;
 	list-style: none;
+	min-width: 180px;
 
 	@include mixins.e(item) {
 		list-style: none;
