@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { jsonParse } from 'n8n-workflow';
 import { handleListQueryError } from './common/handleListQueryError';
 import { WorkflowSchema } from './common/workflow.schema';
