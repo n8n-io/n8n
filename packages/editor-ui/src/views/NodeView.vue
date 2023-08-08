@@ -922,7 +922,6 @@ export default defineComponent({
 			this.stopLoading();
 		},
 		async openWorkflow(workflow: IWorkflowDb) {
-			console.log(workflow);
 			this.startLoading();
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
