@@ -2047,31 +2047,34 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the file to update',
 			},
 			{
-				displayName: 'File Name',
-				name: 'fileName',
-				type: 'string',
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: ['update'],
 						resource: ['file'],
 					},
 				},
-				default: '',
-				description: 'The updated visible name of the file',
-			},
-			{
-				displayName: 'File Description',
-				name: 'fileDescription',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['update'],
-						resource: ['file'],
+				default: {},
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The updated visible name of the file',
 					},
-				},
-				default: '',
-				description: 'The updated description of the file',
-			},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The updated description of the file',
+					},
+				]
+			}
 
 			// ----------------------------------
 			//         lead
@@ -4433,6 +4436,16 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
+						endpoint = `/files/${fileId}`;
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         file:update
+						// ----------------------------------
+						requestMethod = 'PUT';
+
+						const fileId = this.getNodeParameter('fileId', i) as number;
+						const fileName = this.getNodeParameter('fileName', i, '') as string;
+						const fileDescription = this.getNodeParameter('fileDescription', i, '') as string;
 						endpoint = `/files/${fileId}`;
 					}
 				} else if (resource === 'note') {
