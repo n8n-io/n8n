@@ -1,10 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { IncludeMods, SetNodeOptions } from './helpers/interfaces';
@@ -211,7 +212,37 @@ export class SetV2 implements INodeType {
 
 			options.include = include;
 
-			const newItem = await setNode[mode].execute.call(this, items, i, options as SetNodeOptions);
+			// const newItem = await setNode[mode].execute.call(this, items, i, options as SetNodeOptions);
+
+			let newItem;
+			switch (mode) {
+				case 'manual':
+					newItem = await setNode[mode].execute.call(this, items[i], i, options as SetNodeOptions);
+					break;
+				case 'raw':
+					const node = this.getNode();
+					let rawData: string | undefined = node.parameters.jsonOutput as string;
+
+					if (!rawData.startsWith('=')) {
+						rawData = undefined;
+					} else {
+						rawData = rawData.replace(/^=+/, '');
+					}
+
+					newItem = await setNode[mode].execute.call(
+						this,
+						items[i],
+						i,
+						options as SetNodeOptions,
+						rawData,
+					);
+					break;
+				default:
+					throw new NodeOperationError(
+						this.getNode(),
+						`The mode "${mode as string}" is not known!`,
+					);
+			}
 
 			if (duplicateItem && this.getMode() === 'manual') {
 				const duplicateCount = this.getNodeParameter('duplicateCount', 0, 0) as number;

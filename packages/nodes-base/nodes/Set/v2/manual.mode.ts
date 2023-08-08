@@ -128,7 +128,7 @@ const properties: INodeProperties[] = [
 						displayName: 'Value',
 						name: 'objectValue',
 						type: 'string',
-						default: '{}',
+						default: '={}',
 						typeOptions: {
 							editor: 'json',
 							editorLanguage: 'json',
@@ -156,7 +156,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
+	item: INodeExecutionData,
 	i: number,
 	options: SetNodeOptions,
 ) {
@@ -171,7 +171,7 @@ export async function execute(
 			newData[name] = value;
 		}
 
-		return prepareItem.call(this, i, items[i], newData, options);
+		return prepareItem.call(this, i, item, newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message } };
