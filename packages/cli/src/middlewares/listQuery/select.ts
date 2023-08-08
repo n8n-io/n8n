@@ -41,6 +41,6 @@ export const selectListQueryMiddleware: RequestHandler = (req: ListQueryRequest,
 
 		next();
 	} catch (error) {
-		handleListQueryError('filter', rawSelect, error);
+		handleListQueryError('select', rawSelect, error);
 	}
 };
