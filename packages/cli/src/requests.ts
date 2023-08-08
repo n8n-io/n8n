@@ -127,20 +127,6 @@ export type ListQueryOptions = {
 	take?: number;
 };
 
-// export type ListQueryRequest<T extends WorkflowEntity> = AuthenticatedRequest<
-// 	{},
-// 	{},
-// 	{},
-// 	{ filter?: { [K in keyof T]: unknown }; skip?: string; take?: string; select?: Array<keyof T> }
-// > & { listQueryOptions?: ListQueryOptions<T> };
-
-// export type ListQueryOptions<T> = {
-// 	filter?: { [K in keyof T]: unknown };
-// 	select?: { [K in keyof T]: true };
-// 	skip?: number;
-// 	take?: number;
-// };
-
 // ----------------------------------
 //          /credentials
 // ----------------------------------
