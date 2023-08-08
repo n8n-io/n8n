@@ -709,6 +709,7 @@ export class FileMaker implements INodeType {
 
 		const host = credentials.host as string;
 		const database = credentials.db as string;
+		const allowUnauthorizedCerts = credentials.allowUnauthorizedCerts as boolean;
 
 		const url = `https://${host}/fmi/data/v1`;
 
@@ -724,6 +725,7 @@ export class FileMaker implements INodeType {
 					},
 					method: 'GET',
 					json: true,
+					rejectUnauthorized: allowUnauthorizedCerts,
 				};
 
 				const layout = this.getNodeParameter('layout', i) as string;
