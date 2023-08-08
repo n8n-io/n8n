@@ -272,11 +272,7 @@ export const setupTestServer = ({
 						);
 						break;
 					case 'tags':
-						registerController(
-							app,
-							config,
-							new TagsController({ config, externalHooks, repositories }),
-						);
+						registerController(app, config, Container.get(TagsController));
 						break;
 				}
 			}
