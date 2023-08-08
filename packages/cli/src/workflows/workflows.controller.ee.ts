@@ -22,6 +22,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
+import { TagRepository } from '@/databases/repositories';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -136,7 +137,7 @@ EEWorkflowController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.find({
+			newWorkflow.tags = await Container.get(TagRepository).find({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),
