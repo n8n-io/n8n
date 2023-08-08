@@ -98,11 +98,11 @@ const properties: INodeProperties[] = [
 						options: [
 							{
 								name: 'True',
-								value: true,
+								value: 'true',
 							},
 							{
 								name: 'False',
-								value: false,
+								value: 'false',
 							},
 						],
 						displayOptions: {
