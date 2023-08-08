@@ -257,15 +257,15 @@ export class ImportWorkflowsCommand extends BaseCommand {
 	private transformCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
 		if (node.credentials) {
 			const allNodeCredentials = Object.entries(node.credentials);
-			for (const [type, name] of allNodeCredentials) {
-				if (typeof name === 'string') {
+			for (const [type, nodeCredential] of allNodeCredentials) {
+				if (nodeCredential && typeof credential.name === 'string') {
 					const nodeCredentials: INodeCredentialsDetails = {
 						id: null,
-						name,
+						name: nodeCredential.name,
 					};
 
 					const matchingCredentials = credentialsEntities.filter(
-						(credentials) => credentials.name === name && credentials.type === type,
+						(credentials) => credentials.name === nodeCredential.name && credentials.type === type,
 					);
 
 					if (matchingCredentials.length === 1) {
