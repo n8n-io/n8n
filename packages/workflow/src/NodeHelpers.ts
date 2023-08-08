@@ -1236,6 +1236,12 @@ export const tryToParseTime = (value: unknown): string => {
 
 export const tryToParseArray = (value: unknown): unknown[] => {
 	try {
+		if (typeof value === 'object' && Array.isArray(value)) {
+			return value;
+		}
+		if (typeof value === 'string' && !value.includes('[') && !value.includes(']')) {
+			value = `[${value}]`;
+		}
 		const parsed = JSON.parse(String(value));
 		if (!Array.isArray(parsed)) {
 			throw new Error(`The value "${String(value)}" is not a valid array.`);
