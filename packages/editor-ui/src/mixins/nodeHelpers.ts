@@ -362,12 +362,6 @@ export const nodeHelpers = defineComponent({
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
 
-						console.log(
-							'isCredentialUsedInWorkflow',
-							isCredentialUsedInWorkflow,
-							this.workflowsStore.usedCredentials,
-						);
-
 						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
