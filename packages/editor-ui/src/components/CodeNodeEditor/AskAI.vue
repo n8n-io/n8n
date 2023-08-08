@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { ref, computed } from 'vue';
-import { useDataSchema, useI18n, useMessage, useToast } from '@/composables';
+import { useDataSchema, useI18n, useMessage, useToast, useTelemetry } from '@/composables';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useNDVStore, usePostHog, useRootStore } from '@/stores';
 import CircleLoader from './CircleLoader.vue';
@@ -20,6 +20,7 @@ const props = defineProps<{
 const { getWorkflowSchema, getSchemaForExecutionData } = useDataSchema();
 const i18n = useI18n();
 const maxLength = 600;
+const minLength = 15;
 const loadingDurationMs = 10000;
 
 const loadingPhraseIndex = ref(0);
@@ -28,6 +29,7 @@ const loaderProgress = ref(0);
 const isLoading = ref(false);
 const prompt = ref('');
 
+const isSubmitEnabled = computed(() => prompt.value.length >= minLength && hasExecutionData.value);
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
@@ -36,6 +38,7 @@ const loadingString = computed(() =>
 function getErrorMessageByStatusCode(statusCode: number) {
 	const errorMessages: Record<number, string> = {
 		400: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
+		413: i18n.baseText('codeNodeEditor.askAi.generationFailedTooLarge'),
 		429: i18n.baseText('codeNodeEditor.askAi.generationFailedRate'),
 		500: i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown'),
 	};
@@ -49,6 +52,10 @@ async function onSubmit() {
 	const { showMessage, showError } = useToast();
 	const { alert } = useMessage();
 	const schema = getWorkflowSchema();
+
+	useTelemetry().trackAskAI('ask.generationClicked', {
+		prompt: prompt.value,
+	});
 
 	if (props.hasChanges) {
 		const confirmModal = await alert(i18n.baseText('codeNodeEditor.askAi.areYouSureToReplace'), {
@@ -71,7 +78,7 @@ async function onSubmit() {
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
-		const { code } = await generateCodeForPrompt(getRestApiContext, {
+		const { code, usage } = await generateCodeForPrompt(getRestApiContext, {
 			question: prompt.value,
 			context: { schema, inputSchema },
 			model,
@@ -84,11 +91,25 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
+		useTelemetry().trackAskAI('askAi.generationFinished', {
+			prompt: prompt.value,
+			code,
+			tokensCount: usage.total_tokens,
+			hasErrors: false,
+			error: '',
+		});
 	} catch (error) {
 		showMessage({
 			type: 'error',
 			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
 			message: getErrorMessageByStatusCode(error.httpStatusCode),
+		});
+		useTelemetry().trackAskAI('askAi.generationFinished', {
+			prompt: prompt.value,
+			code: '',
+			tokensCount: 0,
+			hasErrors: true,
+			error: error.httpStatusCode,
 		});
 		stopLoading();
 	}
@@ -156,7 +177,7 @@ function stopLoading() {
 					:class="$style.counter"
 					v-text="`${prompt.length} / ${maxLength}`"
 				/>
-				<a href="https://docs.n8n.io/api" target="_blank" :class="$style.help">
+				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
 					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
 						$locale.baseText('codeNodeEditor.askAi.help')
 					}}
@@ -178,14 +199,29 @@ function stopLoading() {
 				</transition>
 				<CircleLoader :radius="8" :progress="loaderProgress" :stroke-width="3" />
 			</div>
-			<n8n-tooltip :disabled="hasExecutionData" v-else>
+			<n8n-tooltip :disabled="isSubmitEnabled" v-else>
 				<div>
-					<N8nButton :disabled="!hasExecutionData || !prompt" @click="onSubmit" size="small">{{
+					<N8nButton :disabled="!isSubmitEnabled" @click="onSubmit" size="small">{{
 						$locale.baseText('codeNodeEditor.askAi.generateCode')
 					}}</N8nButton>
 				</div>
-				<template #content v-if="!hasExecutionData">
-					<span v-text="$locale.baseText('codeNodeEditor.askAi.noInputData')" />
+				<template #content>
+					<span
+						v-if="!hasExecutionData"
+						v-text="$locale.baseText('codeNodeEditor.askAi.noInputData')"
+					/>
+					<span
+						v-else-if="prompt.length === 0"
+						v-text="$locale.baseText('codeNodeEditor.askAi.noPrompt')"
+					/>
+					<span
+						v-else-if="prompt.length < minLength"
+						v-text="
+							$locale.baseText('codeNodeEditor.askAi.promptTooShort', {
+								interpolate: { minLength: minLength.toString() },
+							})
+						"
+					/>
 				</template>
 			</n8n-tooltip>
 		</div>

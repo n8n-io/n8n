@@ -1,6 +1,12 @@
-import type { IRestApiContext } from '@/Interface';
+import type { IRestApiContext, Schema } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { CodeExecutionMode, IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+
+type Usage = {
+	prompt_tokens: number;
+	completion_tokens: number;
+	total_tokens: number;
+};
 
 export async function generateCodeForPrompt(
 	ctx: IRestApiContext,
@@ -9,8 +15,13 @@ export async function generateCodeForPrompt(
 		context,
 		model,
 		n8nVersion,
-	}: { question: string; context: { schema: IDataObject }; model: string; n8nVersion: string },
-): Promise<{ code: string; mode: CodeExecutionMode }> {
+	}: {
+		question: string;
+		context: { schema: IDataObject; inputSchema: Schema };
+		model: string;
+		n8nVersion: string;
+	},
+): Promise<{ code: string; usage: Usage }> {
 	return makeRestApiRequest(ctx, 'POST', '/ask-ai', {
 		question,
 		context,

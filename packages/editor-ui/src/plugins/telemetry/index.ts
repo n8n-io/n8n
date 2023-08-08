@@ -11,6 +11,7 @@ import { SLACK_NODE_TYPE } from '@/constants';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
+
 	private previousPath: string;
 
 	private get rudderStack() {
@@ -100,17 +101,12 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: { [key: string]: string } = {};
-			if (
-				route.meta &&
-				route.meta.telemetry &&
-				typeof route.meta.telemetry.getProperties === 'function'
-			) {
+			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 
-			const category =
-				(route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.rudderStack.page(category, pageName!, properties);
+			const category = route.meta?.telemetry?.pageCategory || 'Editor';
+			this.rudderStack.page(category, pageName, properties);
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -124,6 +120,20 @@ export class Telemetry {
 		queue.forEach(({ route }) => {
 			this.page(route);
 		});
+	}
+
+	trackAskAI(event: string, properties: IDataObject = {}) {
+		if (this.rudderStack) {
+			properties.session_id = useRootStore().sessionId;
+			switch (event) {
+				case 'askAi.generationFinished':
+					this.track('Ai code generation finished', properties);
+				case 'ask.generationClicked':
+					this.track('User clicked on generate code button', properties);
+				default:
+					break;
+			}
+		}
 	}
 
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
