@@ -3,6 +3,7 @@ import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { ViteEjsPlugin } from "vite-plugin-ejs";
 
 import packageJSON from './package.json';
 
@@ -62,7 +63,7 @@ const alias = [
 	},
 ];
 
-const plugins = [vue()];
+const plugins = [vue(), ViteEjsPlugin()];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {
@@ -106,11 +107,7 @@ export default mergeConfig(
 			sourcemap: !!release,
 			rollupOptions: {
 				treeshake: !!release,
-				external: ['https://cdn-rs.n8n.io/v1/ra.min.js'],
 				output: {
-					globals: {
-						'https://cdn-rs.n8n.io/v1/ra.min.js': 'rudderanalytics'
-					},
 					manualChunks: {
 						vendor: vendorChunks,
 						n8n: n8nChunks,
