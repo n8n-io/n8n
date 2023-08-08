@@ -2048,7 +2048,7 @@ export class Pipedrive implements INodeType {
 			},
 			{
 				displayName: 'File Name',
-				name: 'name',
+				name: 'fileName',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -2061,7 +2061,7 @@ export class Pipedrive implements INodeType {
 			},
 			{
 				displayName: 'File Description',
-				name: 'description',
+				name: 'fileDescription',
 				type: 'string',
 				displayOptions: {
 					show: {
