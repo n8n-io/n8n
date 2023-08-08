@@ -8,7 +8,6 @@ import {
 import { IsDate, IsOptional } from 'class-validator';
 import config from '@/config';
 import { generateNanoId } from '../utils/generators';
-import type { Constructor } from '@/Interfaces';
 
 const dbType = config.getEnv('database.type');
 
@@ -26,6 +25,8 @@ const tsColumnOptions = {
 	precision: 3,
 	default: () => timestampSyntax,
 };
+
+type Constructor<T> = new (...args: any[]) => T;
 
 function mixinStringId<T extends Constructor<{}>>(base: T) {
 	class Derived extends base {
