@@ -101,7 +101,7 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should cap take to 50', () => {
+		test('should cap take at 50', () => {
 			mockReq.query = { take: '51' };
 			paginationListQueryMiddleware(...args);
 
