@@ -4444,9 +4444,9 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'PUT';
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
-						const fileName = this.getNodeParameter('fileName', i, '') as string;
-						const fileDescription = this.getNodeParameter('fileDescription', i, '') as string;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						endpoint = `/files/${fileId}`;
+						addAdditionalFields(body, updateFields);
 					}
 				} else if (resource === 'note') {
 					if (operation === 'create') {
