@@ -17,7 +17,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
-import type { WorkflowRequest } from '@/requests';
+import type { ListQueryOptions, WorkflowRequest } from '@/requests';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -26,11 +26,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
-import { BadRequestError } from '@/ResponseHelper';
-import * as utils from '@/utils';
 import type { WorkflowForList } from './workflows.types';
-import { WorkflowRepository } from '@/databases/repositories';
-import type { QueryFilters } from '@/databases/types';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -102,32 +98,9 @@ export class WorkflowsService {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static handleQueryParamError(
-		paramName: 'filter' | 'select',
-		paramValue: string,
-		maybeError: unknown,
-	) {
-		const error = utils.toError(maybeError);
-
-		LoggerProxy.error(`Invalid "${paramName}" query string parameter`, {
-			paramName,
-			paramValue,
-			error,
-		});
-
-		throw new BadRequestError(
-			`Invalid "${paramName}" query string parameter: ${paramValue}. Error: ${error.message}`,
-		);
-	}
-
 	static async getMany(
 		user: User,
-		options?: {
-			filter?: string;
-			skip?: string;
-			take?: string;
-			select?: string;
-		},
+		options?: ListQueryOptions,
 	): Promise<[WorkflowForList[], number]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
@@ -136,15 +109,7 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		let filter: QueryFilters.GetAllWorkflows = {};
-
-		if (options?.filter) {
-			try {
-				filter = WorkflowRepository.toQueryFilter(options.filter);
-			} catch (error) {
-				WorkflowsService.handleQueryParamError('filter', options.filter, error);
-			}
-		}
+		const filter = options?.filter ?? {};
 
 		// safeguard against querying ids not shared with the user
 		const workflowId = filter?.id?.toString();
@@ -153,21 +118,15 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		let select: FindOptionsSelect<WorkflowEntity> = {
-			id: true,
-			name: true,
-			active: true,
-			createdAt: true,
-			updatedAt: true,
-		};
-
-		if (options?.select) {
-			try {
-				select = WorkflowRepository.toQuerySelect(options.select);
-			} catch (error) {
-				WorkflowsService.handleQueryParamError('select', options.select, error);
-			}
-		}
+		const select: FindOptionsSelect<WorkflowEntity> = options?.select
+			? options.select
+			: {
+					id: true,
+					name: true,
+					active: true,
+					createdAt: true,
+					updatedAt: true,
+			  };
 
 		const relations: string[] = [];
 
@@ -196,10 +155,8 @@ export class WorkflowsService {
 		};
 
 		if (options?.take) {
-			const { skip, take } = WorkflowRepository.toPaginationOptions(options.take, options.skip);
-
-			findManyOptions.skip = skip;
-			findManyOptions.take = take;
+			findManyOptions.skip = options.skip;
+			findManyOptions.take = options.take;
 		}
 
 		return Db.collections.Workflow.findAndCount(findManyOptions);

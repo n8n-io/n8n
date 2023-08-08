@@ -6,7 +6,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import type { WorkflowRequest } from '@/requests';
+import type { ListQueryRequest, WorkflowRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -201,15 +201,16 @@ EEWorkflowController.post(
 /**
  * (EE) GET /workflows
  */
-EEWorkflowController.get('/', async (req: WorkflowRequest.GetMany, res: express.Response) => {
+EEWorkflowController.get('/', async (req: ListQueryRequest, res: express.Response) => {
 	try {
-		const [workflows, count] = await EEWorkflows.getMany(req.user, req.query);
+		const [workflows, count] = await EEWorkflows.getMany(req.user, req.listQueryOptions);
 		const role = await Container.get(RoleService).findWorkflowOwnerRole();
 		const data = workflows.map((w) => EEWorkflows.addOwnerId(w, role));
 
 		res.json({ count, data });
 	} catch (maybeError) {
 		const error = utils.toError(maybeError);
+		ResponseHelper.reportError(error);
 		ResponseHelper.sendErrorResponse(res, error);
 	}
 });

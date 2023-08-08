@@ -267,3 +267,9 @@ export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
 		else acc[pre + k] = obj[k];
 		return acc;
 	}, {});
+
+export function reportError(error: Error) {
+	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+		ErrorReporter.error(error);
+	}
+}

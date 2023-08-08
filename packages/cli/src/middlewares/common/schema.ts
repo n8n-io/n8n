@@ -1,7 +1,7 @@
 export class Schema {
 	constructor(private data: unknown = {}) {}
 
-	getFieldNames(): string[] {
+	static get fieldNames(): string[] {
 		return [];
 	}
 }

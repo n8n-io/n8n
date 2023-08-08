@@ -100,13 +100,6 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type GetMany = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		{ filter?: string; skip?: string; take?: string; select?: string }
-	>;
-
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetAllActivationErrors = Get;
@@ -115,6 +108,38 @@ export declare namespace WorkflowRequest {
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
+
+// ----------------------------------
+//            list query
+// ----------------------------------
+
+export type ListQueryRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{ filter?: string; skip?: string; take?: string; select?: string }
+> & { listQueryOptions?: ListQueryOptions };
+
+export type ListQueryOptions = {
+	filter?: Record<string, unknown>;
+	select?: Record<string, true>;
+	skip?: number;
+	take?: number;
+};
+
+// export type ListQueryRequest<T extends WorkflowEntity> = AuthenticatedRequest<
+// 	{},
+// 	{},
+// 	{},
+// 	{ filter?: { [K in keyof T]: unknown }; skip?: string; take?: string; select?: Array<keyof T> }
+// > & { listQueryOptions?: ListQueryOptions<T> };
+
+// export type ListQueryOptions<T> = {
+// 	filter?: { [K in keyof T]: unknown };
+// 	select?: { [K in keyof T]: true };
+// 	skip?: number;
+// 	take?: number;
+// };
 
 // ----------------------------------
 //          /credentials
