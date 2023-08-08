@@ -64,7 +64,3 @@ export interface Migration extends Function {
 }
 
 export type InsertResult = Array<{ insertId: number }>;
-
-export namespace QueryFilters {
-	export type GetAllWorkflows = Pick<FindOptionsWhere<WorkflowEntity>, 'id' | 'name' | 'active'>;
-}
