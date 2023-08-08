@@ -51,7 +51,7 @@ describe('Inline expression editor', () => {
 	it('should resolve array resolvables', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
-		WorkflowPage.getters.inlineExpressionEditorInput().type('[1, 2, 3]', { timeout: 20000 });
+		WorkflowPage.getters.inlineExpressionEditorInput().type('[1, 2, 3]');
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^\[Array: \[1,2,3\]\]$/);
 
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
@@ -66,7 +66,7 @@ describe('Inline expression editor', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		// Resolving $parameter is slow, especially on CI runner
-		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]', { timeout: 35000 });
+		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
 	});
 });
