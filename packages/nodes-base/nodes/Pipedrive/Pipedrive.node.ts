@@ -2073,8 +2073,8 @@ export class Pipedrive implements INodeType {
 						default: '',
 						description: 'The updated description of the file',
 					},
-				]
-			}
+				],
+			},
 
 			// ----------------------------------
 			//         lead
