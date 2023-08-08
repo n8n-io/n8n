@@ -3,8 +3,9 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { ExecutionsService } from './executions.service';
 import type { ExecutionRequest } from '@/requests';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { EEWorkflowsService as EEWorkflows } from '../workflows/workflows.services.ee';
+import { WorkflowRepository } from '@/databases/repositories';
+import Container from 'typedi';
 
 export class EEExecutionsService extends ExecutionsService {
 	/**
@@ -22,7 +23,7 @@ export class EEExecutionsService extends ExecutionsService {
 
 		if (!execution) return;
 
-		const workflow = Object.assign(new WorkflowEntity(), execution.workflowData);
+		const workflow = Container.get(WorkflowRepository).create(execution.workflowData);
 
 		EEWorkflows.addOwnerAndSharings(workflow);
 		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
