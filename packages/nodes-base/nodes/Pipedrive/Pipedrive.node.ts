@@ -2029,6 +2029,54 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the file to get',
 			},
 
+			// ----------------------------------
+			//         file:update
+			// ----------------------------------
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+						resource: ['file'],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the file to update',
+			},
+			{
+				displayName: 'File Name',
+				name: 'name',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+						resource: ['file'],
+					},
+				},
+				default: '',
+				description: 'The updated visible name of the file',
+			},
+			{
+				displayName: 'File Description',
+				name: 'description',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+						resource: ['file'],
+					},
+				},
+				default: '',
+				description: 'The updated description of the file',
+			},
+
+			// ----------------------------------
+			//         lead
+			// ----------------------------------
+
 			// ----------------------------------------
 			//               lead: create
 			// ----------------------------------------
