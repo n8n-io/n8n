@@ -123,6 +123,9 @@
 			:executionId="executionId"
 			:executionMode="executionMode"
 		/>
+		<n8n-button size="large" :class="$style.debugExecBtn" @click="openDebugMode">
+			{{ $locale.baseText('executionsList.openDebugMode') }}
+		</n8n-button>
 	</div>
 </template>
 
@@ -200,13 +203,23 @@ export default defineComponent({
 				retryDropdownRef.hide();
 			}
 		},
+		async openDebugMode() {
+			await this.$router.push({
+				name: VIEWS.EXECUTION_DEBUG,
+				params: {
+					name: this.activeExecution?.workflowId,
+					executionId: this.activeExecution?.id,
+				},
+			});
+		},
 	},
 });
 </script>
 
 <style module lang="scss">
 .previewContainer {
-	height: calc(100% - $header-height);
+  position: relative;
+	height: 100%;
 	overflow: hidden;
 }
 
@@ -262,5 +275,12 @@ export default defineComponent({
 	width: 200px;
 	margin-top: var(--spacing-l);
 	text-align: center;
+}
+
+.debugExecBtn {
+	position: absolute;
+  left: 50%;
+  bottom: 20%;
+  transform: translate(-50%, 0);
 }
 </style>

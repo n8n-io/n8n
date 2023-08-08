@@ -533,6 +533,7 @@
 	"executionsList.view": "View",
 	"executionsList.stop": "Stop",
 	"executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely": "The workflow is waiting indefinitely for an incoming webhook call.",
+	"executionsList.openDebugMode": "Debug execution",
 	"executionSidebar.executionName": "Execution {id}",
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",
