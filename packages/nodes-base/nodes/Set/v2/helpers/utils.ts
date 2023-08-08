@@ -15,38 +15,30 @@ import type { SetNodeOptions, SetField } from './interfaces';
 import { INCLUDE } from './interfaces';
 import { getResolvables } from '@utils/utilities';
 
-const configureFieldSetter = (dotNotation?: boolean) => {
+const configureFieldHelper = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
-		return (item: IDataObject, key: string, value: IDataObject) => {
-			set(item, key, value);
+		return {
+			set: (item: IDataObject, key: string, value: IDataObject) => {
+				set(item, key, value);
+			},
+			get: (item: IDataObject, key: string) => {
+				return get(item, key);
+			},
+			unset: (item: IDataObject, key: string) => {
+				unset(item, key);
+			},
 		};
 	} else {
-		return (item: IDataObject, key: string, value: IDataObject) => {
-			item[key] = value;
-		};
-	}
-};
-
-const configureFieldGetter = (dotNotation?: boolean) => {
-	if (dotNotation !== false) {
-		return (item: IDataObject, key: string) => {
-			return get(item, key);
-		};
-	} else {
-		return (item: IDataObject, key: string) => {
-			return item[key];
-		};
-	}
-};
-
-const configureFieldUnsetter = (dotNotation?: boolean) => {
-	if (dotNotation !== false) {
-		return (item: IDataObject, key: string) => {
-			unset(item, key);
-		};
-	} else {
-		return (item: IDataObject, key: string) => {
-			delete item[key];
+		return {
+			set: (item: IDataObject, key: string, value: IDataObject) => {
+				item[key] = value;
+			},
+			get: (item: IDataObject, key: string) => {
+				return item[key];
+			},
+			unset: (item: IDataObject, key: string) => {
+				delete item[key];
+			},
 		};
 	}
 };
@@ -71,9 +63,7 @@ export function prepareItem(
 		Object.assign(newItem.binary, inputItem.binary);
 	}
 
-	const fieldSetter = configureFieldSetter(options.dotNotation);
-	const fieldGetter = configureFieldGetter(options.dotNotation);
-	const fieldUnsetter = configureFieldUnsetter(options.dotNotation);
+	const fieldHelper = configureFieldHelper(options.dotNotation);
 
 	switch (options.include) {
 		case INCLUDE.ALL:
@@ -85,12 +75,12 @@ export function prepareItem(
 				.map((item) => item.trim());
 
 			for (const key of includeFields) {
-				const fieldValue = fieldGetter(inputItem.json, key) as IDataObject;
+				const fieldValue = fieldHelper.get(inputItem.json, key) as IDataObject;
 				let keyToSet = key;
 				if (options.dotNotation !== false && key.includes('.')) {
 					keyToSet = key.split('.').pop() as string;
 				}
-				fieldSetter(newItem.json, keyToSet, fieldValue);
+				fieldHelper.set(newItem.json, keyToSet, fieldValue);
 			}
 			break;
 		case INCLUDE.EXCEPT:
@@ -101,7 +91,7 @@ export function prepareItem(
 			const inputData = deepCopy(inputItem.json);
 
 			for (const key of excludeFields) {
-				fieldUnsetter(inputData, key);
+				fieldHelper.unset(inputData, key);
 			}
 
 			newItem.json = inputData;
@@ -113,7 +103,7 @@ export function prepareItem(
 	}
 
 	for (const key of Object.keys(newFields)) {
-		fieldSetter(newItem.json, key, newFields[key] as IDataObject);
+		fieldHelper.set(newItem.json, key, newFields[key] as IDataObject);
 	}
 
 	return newItem;
