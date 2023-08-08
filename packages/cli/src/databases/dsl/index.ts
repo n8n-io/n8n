@@ -11,8 +11,12 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 
 	dropTable: (tableName: string) => new DropTable(tableName, tablePrefix, queryRunner),
 
-	createIndex: (tableName: string, columnNames: string[], isUnique = false) =>
-		new CreateIndex(tablePrefix, tableName, columnNames, isUnique, queryRunner),
+	createIndex: (
+		tableName: string,
+		columnNames: string[],
+		isUnique = false,
+		customIndexName?: string,
+	) => new CreateIndex(tablePrefix, tableName, columnNames, isUnique, queryRunner, customIndexName),
 
 	dropIndex: (tableName: string, columnNames: string[]) =>
 		new DropIndex(tablePrefix, tableName, columnNames, queryRunner),

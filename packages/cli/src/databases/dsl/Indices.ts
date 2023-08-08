@@ -31,6 +31,7 @@ export class CreateIndex extends IndexOperation {
 		columnNames: string[],
 		protected isUnique: boolean,
 		queryRunner: QueryRunner,
+		protected customIndexName?: string,
 	) {
 		super(tablePrefix, tableName, columnNames, queryRunner);
 	}
@@ -39,7 +40,7 @@ export class CreateIndex extends IndexOperation {
 		const { columnNames, isUnique } = this;
 		return queryRunner.createIndex(
 			this.fullTableName,
-			new TableIndex({ name: this.fullIndexName, columnNames, isUnique }),
+			new TableIndex({ name: this.customIndexName ?? this.fullIndexName, columnNames, isUnique }),
 		);
 	}
 }
