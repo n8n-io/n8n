@@ -13,6 +13,7 @@ import unset from 'lodash/unset';
 
 import type { SetNodeOptions, SetField } from './interfaces';
 import { INCLUDE } from './interfaces';
+import { getResolvables } from '@utils/utilities';
 
 const configureFieldSetter = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
@@ -172,3 +173,21 @@ export const prepareEntry = (
 
 	return { name, value };
 };
+
+export function resolveRawData(this: IExecuteFunctions, rawData: string, i: number) {
+	const resolvables = getResolvables(rawData);
+	let returnData: string = rawData;
+
+	if (resolvables.length) {
+		for (const resolvable of resolvables) {
+			const resolvedValue = this.evaluateExpression(`${resolvable}`, i);
+
+			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
+				returnData = returnData.replace(resolvable, JSON.stringify(resolvedValue));
+			} else {
+				returnData = returnData.replace(resolvable, resolvedValue as string);
+			}
+		}
+	}
+	return returnData;
+}

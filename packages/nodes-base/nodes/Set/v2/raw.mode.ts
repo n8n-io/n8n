@@ -3,12 +3,13 @@ import type {
 	IExecuteFunctions,
 	INodeProperties,
 	IDataObject,
+	INode,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { parseJsonParameter, prepareItem } from './helpers/utils';
+import { parseJsonParameter, prepareItem, resolveRawData } from './helpers/utils';
 import type { SetNodeOptions } from './helpers/interfaces';
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -47,30 +48,20 @@ export async function execute(
 	item: INodeExecutionData,
 	i: number,
 	options: SetNodeOptions,
-	rawData?: string,
+	rawData: IDataObject,
+	node: INode,
 ) {
 	try {
 		let newData: IDataObject;
-		if (rawData === undefined) {
+		if (rawData.jsonOutput === undefined) {
 			const json = this.getNodeParameter('jsonOutput', i) as string;
-			newData = parseJsonParameter(json, this.getNode(), i);
+			newData = parseJsonParameter(json, node, i);
 		} else {
-			const resolvables = getResolvables(rawData);
-
-			if (resolvables.length) {
-				for (const resolvable of resolvables) {
-					const resolvedValue = this.evaluateExpression(`${resolvable}`, i);
-
-					if (typeof resolvedValue === 'object' && resolvedValue !== null) {
-						rawData = rawData.replace(resolvable, JSON.stringify(resolvedValue));
-					} else {
-						rawData = rawData.replace(resolvable, resolvedValue as string);
-					}
-				}
-				newData = parseJsonParameter(rawData, this.getNode(), i);
-			} else {
-				newData = parseJsonParameter(rawData, this.getNode(), i);
-			}
+			newData = parseJsonParameter(
+				resolveRawData.call(this, rawData.jsonOutput as string, i),
+				node,
+				i,
+			);
 		}
 
 		return prepareItem.call(this, i, item, newData, options);
@@ -78,6 +69,6 @@ export async function execute(
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message } };
 		}
-		throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+		throw new NodeOperationError(node, error as Error, { itemIndex: i });
 	}
 }

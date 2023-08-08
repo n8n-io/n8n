@@ -571,6 +571,7 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 
 export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
+	rawExpressions?: boolean;
 }
 
 namespace ExecuteFunctions {

@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -8,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../utils/utilities';
 
-import { prepareEntry, prepareItem } from './helpers/utils';
+import { parseJsonParameter, prepareEntry, prepareItem, resolveRawData } from './helpers/utils';
 import type { SetField, SetNodeOptions } from './helpers/interfaces';
 
 const properties: INodeProperties[] = [
@@ -159,14 +160,23 @@ export async function execute(
 	item: INodeExecutionData,
 	i: number,
 	options: SetNodeOptions,
+	rawFieldsData: IDataObject,
+	node: INode,
 ) {
 	try {
 		const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
 
 		const newData: IDataObject = {};
-		const node = this.getNode();
 
 		for (const entry of fields) {
+			if (entry.type === 'objectValue' && rawFieldsData[entry.name] !== undefined) {
+				entry.objectValue = parseJsonParameter(
+					resolveRawData.call(this, rawFieldsData[entry.name] as string, i),
+					node,
+					i,
+				);
+			}
+
 			const { name, value } = prepareEntry(entry, node, i, options.ignoreConversionErrors);
 			newData[name] = value;
 		}

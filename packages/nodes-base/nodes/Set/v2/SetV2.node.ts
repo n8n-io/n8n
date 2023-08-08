@@ -1,14 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	NodeOperationError,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeBaseDescription,
-	type INodeTypeDescription,
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { IncludeMods, SetNodeOptions } from './helpers/interfaces';
+import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
 
 import * as raw from './raw.mode';
@@ -206,43 +206,43 @@ export class SetV2 implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 
+		const rawData: IDataObject = {};
+
+		if (mode === 'raw') {
+			const jsonOutput = this.getNodeParameter('jsonOutput', 0, '', {
+				rawExpressions: true,
+			}) as string | undefined;
+
+			if (jsonOutput?.startsWith('=')) {
+				rawData.jsonOutput = jsonOutput.replace(/^=+/, '');
+			}
+		} else {
+			const workflowFieldsJson = this.getNodeParameter('fields.values', 0, [], {
+				rawExpressions: true,
+			}) as SetField[];
+
+			for (const entry of workflowFieldsJson) {
+				if (entry.type === 'objectValue' && (entry.objectValue as string).startsWith('=')) {
+					rawData[entry.name] = (entry.objectValue as string).replace(/^=+/, '');
+				}
+			}
+		}
+
 		for (let i = 0; i < items.length; i++) {
 			const include = this.getNodeParameter('include', i) as IncludeMods;
 			const options = this.getNodeParameter('options', i, {});
+			const node = this.getNode();
 
 			options.include = include;
 
-			// const newItem = await setNode[mode].execute.call(this, items, i, options as SetNodeOptions);
-
-			let newItem;
-			switch (mode) {
-				case 'manual':
-					newItem = await setNode[mode].execute.call(this, items[i], i, options as SetNodeOptions);
-					break;
-				case 'raw':
-					const node = this.getNode();
-					let rawData: string | undefined = node.parameters.jsonOutput as string;
-
-					if (!rawData.startsWith('=')) {
-						rawData = undefined;
-					} else {
-						rawData = rawData.replace(/^=+/, '');
-					}
-
-					newItem = await setNode[mode].execute.call(
-						this,
-						items[i],
-						i,
-						options as SetNodeOptions,
-						rawData,
-					);
-					break;
-				default:
-					throw new NodeOperationError(
-						this.getNode(),
-						`The mode "${mode as string}" is not known!`,
-					);
-			}
+			const newItem = await setNode[mode].execute.call(
+				this,
+				items[i],
+				i,
+				options as SetNodeOptions,
+				rawData,
+				node,
+			);
 
 			if (duplicateItem && this.getMode() === 'manual') {
 				const duplicateCount = this.getNodeParameter('duplicateCount', 0, 0) as number;

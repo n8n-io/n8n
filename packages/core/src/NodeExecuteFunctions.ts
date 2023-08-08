@@ -2032,6 +2032,10 @@ export function getNodeParameter(
 		throw new Error(`Could not get parameter "${parameterName}"!`);
 	}
 
+	if (options?.rawExpressions) {
+		return value;
+	}
+
 	let returnData;
 	try {
 		returnData = workflow.expression.getParameterValue(
