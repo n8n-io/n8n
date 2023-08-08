@@ -94,7 +94,7 @@ async function onSubmit() {
 		useTelemetry().trackAskAI('askAi.generationFinished', {
 			prompt: prompt.value,
 			code,
-			tokensCount: usage.total_tokens,
+			tokensCount: usage?.total_tokens,
 			hasErrors: false,
 			error: '',
 		});
