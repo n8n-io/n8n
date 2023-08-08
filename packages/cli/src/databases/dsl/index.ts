@@ -18,8 +18,8 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		customIndexName?: string,
 	) => new CreateIndex(tablePrefix, tableName, columnNames, isUnique, queryRunner, customIndexName),
 
-	dropIndex: (tableName: string, columnNames: string[]) =>
-		new DropIndex(tablePrefix, tableName, columnNames, queryRunner),
+	dropIndex: (tableName: string, columnNames: string[], customIndexName?: string) =>
+		new DropIndex(tablePrefix, tableName, columnNames, queryRunner, customIndexName),
 
 	/* eslint-enable */
 });

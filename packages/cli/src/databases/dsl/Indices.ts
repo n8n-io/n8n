@@ -17,6 +17,7 @@ abstract class IndexOperation extends LazyPromise<void> {
 		protected tableName: string,
 		protected columnNames: string[],
 		queryRunner: QueryRunner,
+		protected customIndexName?: string,
 	) {
 		super((resolve) => {
 			void this.execute(queryRunner).then(resolve);
@@ -31,9 +32,9 @@ export class CreateIndex extends IndexOperation {
 		columnNames: string[],
 		protected isUnique: boolean,
 		queryRunner: QueryRunner,
-		protected customIndexName?: string,
+		customIndexName?: string,
 	) {
-		super(tablePrefix, tableName, columnNames, queryRunner);
+		super(tablePrefix, tableName, columnNames, queryRunner, customIndexName);
 	}
 
 	async execute(queryRunner: QueryRunner) {
@@ -47,6 +48,6 @@ export class CreateIndex extends IndexOperation {
 
 export class DropIndex extends IndexOperation {
 	async execute(queryRunner: QueryRunner) {
-		return queryRunner.dropIndex(this.fullTableName, this.fullIndexName);
+		return queryRunner.dropIndex(this.fullTableName, this.customIndexName ?? this.fullIndexName);
 	}
 }
