@@ -113,12 +113,16 @@ export declare namespace WorkflowRequest {
 //            list query
 // ----------------------------------
 
-export type ListQueryRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{ filter?: string; skip?: string; take?: string; select?: string }
-> & { listQueryOptions?: ListQueryOptions };
+export type ListQueryRequest = AuthenticatedRequest<{}, {}, {}, ListQueryParams> & {
+	listQueryOptions?: ListQueryOptions;
+};
+
+type ListQueryParams = {
+	filter?: string;
+	skip?: string;
+	take?: string;
+	select?: string;
+};
 
 export type ListQueryOptions = {
 	filter?: Record<string, unknown>;

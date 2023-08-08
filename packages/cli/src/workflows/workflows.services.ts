@@ -118,15 +118,13 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		const select: FindOptionsSelect<WorkflowEntity> = options?.select
-			? options.select
-			: {
-					id: true,
-					name: true,
-					active: true,
-					createdAt: true,
-					updatedAt: true,
-			  };
+		const select: FindOptionsSelect<WorkflowEntity> = options?.select ?? {
+			id: true,
+			name: true,
+			active: true,
+			createdAt: true,
+			updatedAt: true,
+		};
 
 		const relations: string[] = [];
 

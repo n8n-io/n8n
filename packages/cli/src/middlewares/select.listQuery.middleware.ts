@@ -20,7 +20,7 @@ function toQuerySelect(rawSelect: string, schema: typeof Schema) {
 }
 
 export const selectListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
-	const rawSelect = req.query.select;
+	const { select: rawSelect } = req.query;
 
 	if (!rawSelect) return next();
 
