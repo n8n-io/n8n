@@ -1,35 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
-import type { Config } from '@/config';
+import config from '@/config';
 import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
-import type { IDatabaseCollections, IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
-import { TagEntity } from '@db/entities/TagEntity';
-import type { TagRepository } from '@db/repositories';
+import { type ITagWithCountDb } from '@/Interfaces';
+import type { TagEntity } from '@db/entities/TagEntity';
+import { TagRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { BadRequestError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
+import { Service } from 'typedi';
+import { ExternalHooks } from '@/ExternalHooks';
 
 @Authorized()
 @RestController('/tags')
+@Service()
 export class TagsController {
-	private config: Config;
+	private config = config;
 
-	private externalHooks: IExternalHooksClass;
-
-	private tagsRepository: TagRepository;
-
-	constructor({
-		config,
-		externalHooks,
-		repositories,
-	}: {
-		config: Config;
-		externalHooks: IExternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'Tag'>;
-	}) {
-		this.config = config;
-		this.externalHooks = externalHooks;
-		this.tagsRepository = repositories.Tag;
-	}
+	constructor(
+		private tagsRepository: TagRepository,
+		private externalHooks: ExternalHooks,
+	) {}
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
 	@Middleware()
@@ -63,8 +53,7 @@ export class TagsController {
 	// Creates a tag
 	@Post('/')
 	async createTag(req: TagsRequest.Create): Promise<TagEntity> {
-		const newTag = new TagEntity();
-		newTag.name = req.body.name.trim();
+		const newTag = this.tagsRepository.create({ name: req.body.name.trim() });
 
 		await this.externalHooks.run('tag.beforeCreate', [newTag]);
 		await validateEntity(newTag);
@@ -77,12 +66,7 @@ export class TagsController {
 	// Updates a tag
 	@Patch('/:id(\\w+)')
 	async updateTag(req: TagsRequest.Update): Promise<TagEntity> {
-		const { name } = req.body;
-		const { id } = req.params;
-
-		const newTag = new TagEntity();
-		newTag.id = id;
-		newTag.name = name.trim();
+		const newTag = this.tagsRepository.create({ id: req.params.id, name: req.body.name.trim() });
 
 		await this.externalHooks.run('tag.beforeUpdate', [newTag]);
 		await validateEntity(newTag);

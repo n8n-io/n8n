@@ -54,7 +54,6 @@ import type {
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	TagRepository,
 	UserRepository,
 	VariablesRepository,
 	WorkflowRepository,
@@ -100,7 +99,6 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
 	SharedWorkflow: SharedWorkflowRepository;
-	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
 	Workflow: WorkflowRepository;
@@ -778,3 +776,5 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
+
+export type N8nInstanceType = 'main' | 'webhook' | 'worker';

@@ -51,6 +51,7 @@ import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
+import { MetricsService } from '@/services/metrics.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -187,6 +188,9 @@ export const setupTestServer = ({
 
 			for (const group of functionEndpoints) {
 				switch (group) {
+					case 'metrics':
+						await Container.get(MetricsService).configureMetrics(app);
+						break;
 					case 'eventBus':
 						registerController(app, config, new EventBusController());
 						break;
@@ -268,11 +272,7 @@ export const setupTestServer = ({
 						);
 						break;
 					case 'tags':
-						registerController(
-							app,
-							config,
-							new TagsController({ config, externalHooks, repositories }),
-						);
+						registerController(app, config, Container.get(TagsController));
 						break;
 				}
 			}
