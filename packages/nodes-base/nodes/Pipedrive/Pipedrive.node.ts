@@ -359,6 +359,12 @@ export class Pipedrive implements INodeType {
 						description: 'Get data of a file',
 						action: 'Get a file',
 					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update file details',
+						action: 'update details of a file',
+					},
 					// {
 					// 	name: 'Get All',
 					// 	value: 'getAll',
@@ -4842,7 +4848,7 @@ export class Pipedrive implements INodeType {
 						responseData.data = [];
 					}
 
-					if (operation === 'search' && responseData.data && responseData.data.items) {
+					if (operation === 'search' && responseData.data?.items) {
 						responseData.data = responseData.data.items;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.rawData !== true) {
