@@ -7,11 +7,15 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 	column: (name: string) => new Column(name),
 	/* eslint-disable @typescript-eslint/promise-function-async */
 	// NOTE: Do not add `async` to these functions, as that messes up the lazy-evaluation of LazyPromise
-	createTable: (name: string) => new CreateTable(name, tablePrefix, queryRunner),
-	dropTable: (name: string) => new DropTable(name, tablePrefix, queryRunner),
-	createIndex: (name: string, tableName: string, columnNames: string[], isUnique = false) =>
-		new CreateIndex(name, tableName, columnNames, isUnique, tablePrefix, queryRunner),
-	dropIndex: (name: string, tableName: string) =>
-		new DropIndex(name, tableName, tablePrefix, queryRunner),
+	createTable: (tableName: string) => new CreateTable(tableName, tablePrefix, queryRunner),
+
+	dropTable: (tableName: string) => new DropTable(tableName, tablePrefix, queryRunner),
+
+	createIndex: (tableName: string, columnNames: string[], isUnique = false) =>
+		new CreateIndex(tablePrefix, tableName, columnNames, isUnique, queryRunner),
+
+	dropIndex: (tableName: string, columnNames: string[]) =>
+		new DropIndex(tablePrefix, tableName, columnNames, queryRunner),
+
 	/* eslint-enable */
 });
