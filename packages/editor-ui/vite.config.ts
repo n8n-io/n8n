@@ -108,6 +108,7 @@ export default mergeConfig(
 				treeshake: !!release,
 				output: {
 					manualChunks: {
+						rs: ['https://cdn-rs.n8n.io/v1/ra.min.js'],
 						vendor: vendorChunks,
 						n8n: n8nChunks,
 						...renderChunks(),

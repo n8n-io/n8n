@@ -162,3 +162,34 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 			}
 		});
 });
+
+Cypress.Commands.overwrite('visit', (originalFn, url, options) => {
+	// wrap the original cy.visit() and add your own logic
+	// the options object will be passed to originalFn
+
+	const newOptions = {
+		...options,  // Preserve the original options
+		onBeforeLoad: (win) => {
+			// This function will be called before the page loads
+			// You can add your own properties to the window here
+
+			Object.defineProperty(win, 'rudderanalytics', {
+				get: () => ({
+					identify: () => {},
+					reset: () => {},
+					track: () => {},
+					page: () => {},
+					push: () => {},
+					load: () => {},
+				}),
+			});
+
+			// Call the original onBeforeLoad if it exists
+			if (options && typeof options.onBeforeLoad === 'function') {
+				options.onBeforeLoad(win);
+			}
+		},
+	};
+
+	return originalFn(url, newOptions);  // Call the original visit function
+});
