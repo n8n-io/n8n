@@ -35,15 +35,6 @@ export const useSegment = defineStore('segment', () => {
 		}
 	};
 
-	const showAppCuesChecklist = () => {
-		const isInIframe = window.location !== window.parent.location;
-		if (isInIframe) {
-			return;
-		}
-
-		track(EVENTS.SHOW_CHECKLIST);
-	};
-
 	const trackAddedTrigger = (nodeTypeName: string) => {
 		if (!nodeTypesStore.isTriggerNode(nodeTypeName)) {
 			return;
