@@ -52,6 +52,7 @@ export class SourceControlService {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
+		private tagRepository: TagRepository,
 	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.sshFolder = path.join(userFolder, SOURCE_CONTROL_SSH_FOLDER);
@@ -682,7 +683,7 @@ export class SourceControlService {
 		options: SourceControlGetStatus,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
-		const lastUpdatedTag = await Container.get(TagRepository).find({
+		const lastUpdatedTag = await this.tagRepository.find({
 			order: { updatedAt: 'DESC' },
 			take: 1,
 			select: ['updatedAt'],

@@ -163,7 +163,7 @@ import {
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { ExecutionRepository, TagRepository } from '@db/repositories';
+import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
@@ -481,7 +481,7 @@ export class Server extends AbstractServer {
 				logger,
 				jwtService,
 			}),
-			new TagsController({ config, tagRepository: Container.get(TagRepository), externalHooks }),
+			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,

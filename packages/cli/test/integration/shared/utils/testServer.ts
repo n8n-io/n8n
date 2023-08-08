@@ -51,7 +51,6 @@ import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
-import { TagRepository } from '@/databases/repositories';
 import { MetricsService } from '@/services/metrics.service';
 
 /**
@@ -273,15 +272,7 @@ export const setupTestServer = ({
 						);
 						break;
 					case 'tags':
-						registerController(
-							app,
-							config,
-							new TagsController({
-								config,
-								externalHooks,
-								tagRepository: Container.get(TagRepository),
-							}),
-						);
+						registerController(app, config, Container.get(TagsController));
 						break;
 				}
 			}

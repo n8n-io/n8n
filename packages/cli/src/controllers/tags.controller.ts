@@ -1,35 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
-import type { Config } from '@/config';
+import config from '@/config';
 import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
-import type { IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
+import { type ITagWithCountDb } from '@/Interfaces';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { TagRepository } from '@db/repositories';
+import { TagRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { BadRequestError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
+import { Service } from 'typedi';
+import { ExternalHooks } from '@/ExternalHooks';
 
 @Authorized()
 @RestController('/tags')
+@Service()
 export class TagsController {
-	private config: Config;
+	private config = config;
 
-	private externalHooks: IExternalHooksClass;
-
-	private tagsRepository: TagRepository;
-
-	constructor({
-		config,
-		externalHooks,
-		tagRepository,
-	}: {
-		config: Config;
-		externalHooks: IExternalHooksClass;
-		tagRepository: TagRepository;
-	}) {
-		this.config = config;
-		this.externalHooks = externalHooks;
-		this.tagsRepository = tagRepository;
-	}
+	constructor(
+		private tagsRepository: TagRepository,
+		private externalHooks: ExternalHooks,
+	) {}
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
 	@Middleware()
