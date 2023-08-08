@@ -1,8 +1,11 @@
 import type { ListQueryRequest } from '@/requests';
+import { isIntegerString } from '@/utils';
 import type { RequestHandler } from 'express';
 
 function toPaginationOptions(rawTake: string, rawSkip: string) {
 	const MAX_ITEMS = 50;
+
+	if (!isIntegerString(rawTake)) throw new Error('Parameter take is not an integer string');
 
 	const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
 

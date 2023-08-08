@@ -108,5 +108,12 @@ describe('List query middleware', () => {
 			expect(mockReq.listQueryOptions).toEqual({ skip: 0, take: 50 });
 			expect(nextFn).toBeCalledTimes(1);
 		});
+
+		test('should throw on non-numeric-integer take', () => {
+			mockReq.query = { take: '3.2' };
+			const call = () => paginationListQueryMiddleware(...args);
+
+			expect(call).toThrowError('Parameter take is not an integer string');
+		});
 	});
 });
