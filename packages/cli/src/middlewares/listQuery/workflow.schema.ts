@@ -1,4 +1,4 @@
-import { Schema } from '@/middlewares/common/schema';
+import { Schema } from '@/middlewares/listQuery/schema';
 import {
 	validateSync,
 	IsOptional,

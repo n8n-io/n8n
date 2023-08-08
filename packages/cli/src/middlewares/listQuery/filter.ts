@@ -1,9 +1,9 @@
 import { jsonParse } from 'n8n-workflow';
-import { handleListQueryError } from './common/handleListQueryError';
-import { WorkflowSchema } from './common/workflow.schema';
+import { handleListQueryError } from './error';
+import { WorkflowSchema } from './workflow.schema';
 import type { ListQueryRequest } from '@/requests';
 import type { RequestHandler } from 'express';
-import type { Schema } from './common/schema';
+import type { Schema } from './schema';
 
 function toQueryFilter(rawFilter: string, schema: typeof Schema) {
 	const parsedFilter = new schema(

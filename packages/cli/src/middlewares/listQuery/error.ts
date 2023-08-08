@@ -9,13 +9,13 @@ export function handleListQueryError(
 ) {
 	const error = utils.toError(maybeError);
 
-	LoggerProxy.error(`Invalid "${paramName}" query string parameter`, {
+	LoggerProxy.error(`Invalid "${paramName}" query parameter`, {
 		paramName,
 		paramValue,
 		error,
 	});
 
 	throw new BadRequestError(
-		`Invalid "${paramName}" query string parameter: ${paramValue}. Error: ${error.message}`,
+		`Invalid "${paramName}" query parameter: ${paramValue}. Error: ${error.message}`,
 	);
 }

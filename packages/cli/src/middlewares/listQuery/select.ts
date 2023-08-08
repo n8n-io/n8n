@@ -1,10 +1,10 @@
-import { handleListQueryError } from './common/handleListQueryError';
+import { handleListQueryError } from './error';
 import { jsonParse } from 'n8n-workflow';
-import { WorkflowSchema } from './common/workflow.schema';
+import { WorkflowSchema } from './workflow.schema';
 import * as utils from '@/utils';
 import type { ListQueryRequest } from '@/requests';
 import type { RequestHandler } from 'express';
-import type { Schema } from '@/middlewares/common/schema';
+import type { Schema } from '@/middlewares/listQuery/schema';
 
 function toQuerySelect(rawSelect: string, schema: typeof Schema) {
 	const asArr = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });

@@ -1,10 +1,10 @@
-import { filterListQueryMiddleware } from '@/middlewares/filter.listQuery.middleware';
+import { filterListQueryMiddleware } from '@/middlewares/listQuery/filter';
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import type { Request, Response, NextFunction } from 'express';
 import type { ListQueryRequest } from '@/requests';
-import { selectListQueryMiddleware } from '@/middlewares/select.listQuery.middleware';
-import { paginationListQueryMiddleware } from '@/middlewares/pagination.listQuery.middleware';
+import { selectListQueryMiddleware } from '@/middlewares/listQuery/select';
+import { paginationListQueryMiddleware } from '@/middlewares/listQuery/pagination';
 
 describe('List query middleware', () => {
 	let mockReq: Partial<ListQueryRequest>;
