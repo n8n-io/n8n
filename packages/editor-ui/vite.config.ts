@@ -106,9 +106,12 @@ export default mergeConfig(
 			sourcemap: !!release,
 			rollupOptions: {
 				treeshake: !!release,
+				external: ['https://cdn-rs.n8n.io/v1/ra.min.js'],
 				output: {
+					globals: {
+						'https://cdn-rs.n8n.io/v1/ra.min.js': 'rudderanalytics'
+					},
 					manualChunks: {
-						rs: ['https://cdn-rs.n8n.io/v1/ra.min.js'],
 						vendor: vendorChunks,
 						n8n: n8nChunks,
 						...renderChunks(),
