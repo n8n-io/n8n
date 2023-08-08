@@ -27,6 +27,7 @@ import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
+import { deepCopy } from './utils';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -213,6 +214,8 @@ export class WorkflowDataProxy {
 			},
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
+				if (name === 'toJSON') return () => deepCopy(target);
+
 				name = name.toString();
 
 				let returnValue: NodeParameterValueType;
@@ -230,6 +233,9 @@ export class WorkflowDataProxy {
 
 					returnValue = node.parameters[name];
 				}
+
+				// Avoid recursion
+				if (returnValue === `={{ $parameter.${name} }}`) return undefined;
 
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
