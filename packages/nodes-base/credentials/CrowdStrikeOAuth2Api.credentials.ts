@@ -19,7 +19,7 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 			displayName: 'Session Token',
 			name: 'sessionToken',
 			type: 'hidden',
-			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
+
 			typeOptions: {
 				expirable: true,
 			},
