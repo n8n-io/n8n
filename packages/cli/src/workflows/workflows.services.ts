@@ -119,7 +119,7 @@ export class WorkflowsService {
 			return [[], 0];
 		}
 
-		const select: FindOptionsSelect<WorkflowEntity> = options?.select ?? {
+		const DEFAULT_SELECT: FindOptionsSelect<WorkflowEntity> = {
 			id: true,
 			name: true,
 			active: true,
@@ -127,14 +127,18 @@ export class WorkflowsService {
 			updatedAt: true,
 		};
 
+		const select: FindOptionsSelect<WorkflowEntity> = options?.select ?? DEFAULT_SELECT;
+
 		const relations: string[] = [];
 
-		if (!config.getEnv('workflowTagsDisabled')) {
+		const isDefaultSelect = options?.select === undefined;
+
+		if (isDefaultSelect && !config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
 			select.tags = { id: true, name: true };
 		}
 
-		if (isSharingEnabled()) {
+		if (isDefaultSelect && isSharingEnabled()) {
 			relations.push('shared');
 			select.shared = { userId: true, roleId: true };
 			select.versionId = true;
