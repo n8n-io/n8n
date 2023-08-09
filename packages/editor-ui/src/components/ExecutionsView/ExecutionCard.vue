@@ -238,7 +238,7 @@ export default defineComponent({
 
 .icons {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 }
 
 .icon {
