@@ -7,11 +7,11 @@ import type {
 	IPollFunctions,
 } from 'n8n-workflow';
 
-import { formatPrivateKey } from '@utils/utilities';
-
 import type { OptionsWithUri } from 'request';
 import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
+
+import { formatPrivateKey } from '@utils/utilities';
 
 const googleServiceAccountScopes = {
 	bigquery: ['https://www.googleapis.com/auth/bigquery'],
