@@ -7,6 +7,8 @@ import type {
 	IPollFunctions,
 } from 'n8n-workflow';
 
+import { formatPrivateKey } from '@utils/utilities';
+
 import type { OptionsWithUri } from 'request';
 import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
@@ -69,7 +71,7 @@ export async function getGoogleAccessToken(
 
 	const scopes = googleServiceAccountScopes[service];
 
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = formatPrivateKey(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
 
 	const now = moment().unix();
