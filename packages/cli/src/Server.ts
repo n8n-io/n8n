@@ -148,6 +148,7 @@ import { License } from './License';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
+	isDebugInEditorLicensed,
 } from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
@@ -310,6 +311,7 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
+				debugInEditor: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -430,6 +432,7 @@ export class Server extends AbstractServer {
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
 			sourceControl: isSourceControlLicensed(),
+			debugInEditor: isDebugInEditorLicensed(),
 		});
 
 		if (isLdapEnabled()) {
