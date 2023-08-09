@@ -232,6 +232,7 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
+			keepAlive: false,
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],

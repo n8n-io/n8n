@@ -79,6 +79,19 @@
 				</n8n-text>
 			</div>
 			<div>
+				<n8n-button size="large" :class="$style.debugLink">
+					<router-link
+						:to="{
+							name: VIEWS.EXECUTION_DEBUG,
+							params: {
+								workflowId: activeExecution.workflowId,
+								executionId: activeExecution.id,
+							},
+						}"
+					>
+						{{ debugButtonText }}
+					</router-link>
+				</n8n-button>
 				<el-dropdown
 					v-if="executionUIDetails?.name === 'error'"
 					trigger="click"
@@ -123,9 +136,6 @@
 			:executionId="executionId"
 			:executionMode="executionMode"
 		/>
-		<n8n-button size="large" :class="$style.debugExecBtn" @click="openDebugMode">
-			{{ $locale.baseText('executionsList.openDebugMode') }}
-		</n8n-button>
 	</div>
 </template>
 
@@ -170,6 +180,11 @@ export default defineComponent({
 		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
+		},
+		debugButtonText(): string {
+			return this.activeExecution.status === 'success'
+				? this.$locale.baseText('executionsList.debug.button.copyToEditor')
+				: this.$locale.baseText('executionsList.debug.button.debugInEditor');
 		},
 	},
 	methods: {
@@ -233,11 +248,17 @@ export default defineComponent({
 	position: absolute;
 	padding: var(--spacing-m);
 	padding-right: var(--spacing-xl);
-	width: calc(100% - 510px);
+	width: 100%;
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
+
+	> div:last-child {
+		display: flex;
+		align-items: center;
+	}
 
 	& * {
 		pointer-events: all;
@@ -283,10 +304,10 @@ export default defineComponent({
 	text-align: center;
 }
 
-.debugExecBtn {
-	position: absolute;
-	left: 50%;
-	bottom: 20%;
-	transform: translate(-50%, 0);
+.debugLink {
+	margin-right: var(--spacing-xs);
+	a {
+		color: var(--color-text-xlight);
+	}
 }
 </style>
