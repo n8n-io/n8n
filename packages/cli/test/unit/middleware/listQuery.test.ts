@@ -113,7 +113,7 @@ describe('List query middleware', () => {
 			mockReq.query = { take: '3.2' };
 			const call = () => paginationListQueryMiddleware(...args);
 
-			expect(call).toThrowError('Parameter take is not an integer string');
+			expect(call).toThrowError('Parameter take or skip is not an integer string');
 		});
 	});
 });

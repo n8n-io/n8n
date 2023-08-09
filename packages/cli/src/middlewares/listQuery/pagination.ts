@@ -5,7 +5,9 @@ import type { RequestHandler } from 'express';
 function toPaginationOptions(rawTake: string, rawSkip: string) {
 	const MAX_ITEMS = 50;
 
-	if (!isIntegerString(rawTake)) throw new Error('Parameter take is not an integer string');
+	if ([rawTake, rawSkip].some((i) => !isIntegerString(i))) {
+		throw new Error('Parameter take or skip is not an integer string');
+	}
 
 	const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
 
