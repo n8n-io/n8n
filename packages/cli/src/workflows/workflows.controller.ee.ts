@@ -209,8 +209,15 @@ EEWorkflowController.get(
 	async (req: ListQueryRequest, res: express.Response) => {
 		try {
 			const [workflows, count] = await EEWorkflows.getMany(req.user, req.listQueryOptions);
-			const role = await Container.get(RoleService).findWorkflowOwnerRole();
-			const data = workflows.map((w) => EEWorkflows.addOwnerId(w, role));
+
+			let data;
+
+			if (req.listQueryOptions?.select) {
+				data = workflows;
+			} else {
+				const role = await Container.get(RoleService).findWorkflowOwnerRole();
+				data = workflows.map((w) => EEWorkflows.addOwnerId(w, role));
+			}
 
 			res.json({ count, data });
 		} catch (maybeError) {
