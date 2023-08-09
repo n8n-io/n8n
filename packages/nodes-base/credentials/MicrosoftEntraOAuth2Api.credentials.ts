@@ -9,7 +9,7 @@ export class MicrosoftEntraOAuth2Api implements ICredentialType {
 
 	icon = 'file:icons/Azure.svg';
 
-	documentationUrl = 'microsoft';
+	documentationUrl = 'microsoftentra';
 
 	properties: INodeProperties[] = [
 		{
