@@ -61,6 +61,9 @@ import type {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	FieldType,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -1967,11 +1970,11 @@ const validateValueAgainstSchema = (
 	runIndex: number,
 	itemIndex: number,
 ) => {
+	const parameterPath = parameterName.split('.');
+
 	const propertyDescription = nodeType.description.properties.find(
 		(prop) =>
-			(parameterName === prop.name ||
-				(prop.type === 'resourceMapper' && parameterName === `${prop.name}.value`)) &&
-			NodeHelpers.displayParameter(node.parameters, prop, node),
+			parameterPath[0] === prop.name && NodeHelpers.displayParameter(node.parameters, prop, node),
 	);
 
 	if (!propertyDescription) {
@@ -1980,19 +1983,77 @@ const validateValueAgainstSchema = (
 
 	let validationResult: ExtendedValidationResult = { valid: true, newValue: parameterValue };
 
-	if (propertyDescription.validateType) {
+	if (parameterPath.length === 1 && propertyDescription.validateType) {
 		validationResult = validateFieldType(
 			parameterName,
 			parameterValue,
 			propertyDescription.validateType,
 		);
-	} else if (propertyDescription.type === 'resourceMapper' && typeof parameterValue === 'object') {
+	} else if (
+		propertyDescription.type === 'resourceMapper' &&
+		parameterPath[1] === 'value' &&
+		typeof parameterValue === 'object'
+	) {
 		validationResult = validateResourceMapperValue(
 			parameterName,
 			parameterValue as { [key: string]: unknown },
 			node,
 			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
 		);
+	} else if (propertyDescription.type === 'fixedCollection') {
+		const nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
+			(entry) => entry.name === parameterPath[1],
+		)?.values;
+
+		if (!nestedDescriptions) {
+			return parameterValue;
+		}
+
+		const validationMap: { [key: string]: { type: FieldType; options?: INodePropertyOptions[] } } =
+			{};
+
+		for (const prop of nestedDescriptions) {
+			if (!prop.validateType) continue;
+
+			validationMap[prop.name] = {
+				type: prop.validateType,
+				options:
+					prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
+			};
+		}
+
+		const multipleValues = propertyDescription.typeOptions?.multipleValues ?? false;
+
+		for (const value of multipleValues
+			? (validationResult.newValue as IDataObject[])
+			: [validationResult.newValue as IDataObject]) {
+			for (const key of Object.keys(value)) {
+				if (!validationMap[key]) continue;
+
+				const validationResult = validateFieldType(
+					key,
+					value[key],
+					validationMap[key].type,
+					validationMap[key].options,
+				);
+
+				if (!validationResult.valid) {
+					throw new ExpressionError(
+						`Invalid input for field '${key}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+						{
+							description: validationResult.errorMessage,
+							runIndex,
+							itemIndex,
+							nodeCause: node.name,
+						},
+					);
+				}
+
+				value[key] = validationResult.newValue;
+			}
+		}
+
+		return validationResult.newValue;
 	}
 
 	if (!validationResult.valid) {

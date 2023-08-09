@@ -79,7 +79,7 @@ const properties: INodeProperties[] = [
 								type: ['stringValue'],
 							},
 						},
-						validateType: 'number',
+						validateType: 'string',
 					},
 					{
 						displayName: 'Value',
@@ -190,6 +190,9 @@ export async function execute(
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message } };
 		}
-		throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+		throw new NodeOperationError(this.getNode(), error as Error, {
+			itemIndex: i,
+			description: error.description,
+		});
 	}
 }
