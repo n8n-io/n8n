@@ -165,6 +165,7 @@ import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
 import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
+import { setupReusablesAndRoutes } from './reusables';
 
 const exec = promisify(callbackExec);
 
@@ -1386,6 +1387,8 @@ class Server extends AbstractServer {
 
 export async function start(): Promise<void> {
 	const app = new Server();
+	await setupReusablesAndRoutes(app.app);
+
 	await app.start();
 
 	const cpus = os.cpus();

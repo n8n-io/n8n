@@ -33,7 +33,7 @@ const emptyBuffer = Buffer.alloc(0);
 export abstract class AbstractServer {
 	protected server: Server;
 
-	protected app: express.Application;
+	public app: express.Application;
 
 	protected externalHooks: IExternalHooksClass;
 

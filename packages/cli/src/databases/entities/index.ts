@@ -19,6 +19,8 @@ import { WorkflowTagMapping } from './WorkflowTagMapping';
 import { WorkflowStatistics } from './WorkflowStatistics';
 import { ExecutionMetadata } from './ExecutionMetadata';
 import { SaveRequestLog } from './SaveRequestLog';
+import { DataRecoveryActivity } from './DataRecoveryActivity';
+import { ServerIncident } from './ServerIncident';
 
 export const entities = {
 	AuthIdentity,
@@ -41,4 +43,6 @@ export const entities = {
 	WorkflowStatistics,
 	ExecutionMetadata,
 	SaveRequestLog,
+	DataRecoveryActivity,
+	ServerIncident,
 };
