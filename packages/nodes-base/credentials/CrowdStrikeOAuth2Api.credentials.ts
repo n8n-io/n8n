@@ -12,6 +12,8 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 
 	displayName = 'CrowdStrike OAuth2 API';
 
+	documentationUrl = 'crowdstrike';
+
 	icon = 'file:icons/CrowdStrike.svg';
 
 	properties: INodeProperties[] = [

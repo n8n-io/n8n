@@ -12,6 +12,8 @@ export class Auth0ManagementApi implements ICredentialType {
 
 	displayName = 'Auth0 Management API';
 
+	documentationUrl = 'auth0management';
+
 	icon = 'file:icons/Auth0.svg';
 
 	properties: INodeProperties[] = [
