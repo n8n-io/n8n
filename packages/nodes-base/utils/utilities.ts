@@ -236,8 +236,10 @@ export function formatPrivateKey(privateKey: string): string {
 			const passRegex = /Proc-Type|DEK-Info/;
 			if (passRegex.test(part)) {
 				part = part.replace(/:\s+/g, ':');
+				formattedPrivateKey += part.replace(/\\n/g, '\n');
 				formattedPrivateKey += part.replace(/\s+/g, '\n');
 			} else {
+				formattedPrivateKey += part.replace(/\\n/g, '\n');
 				formattedPrivateKey += part.replace(/\s+/g, '\n');
 			}
 		}
