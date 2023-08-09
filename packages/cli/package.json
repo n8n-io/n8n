@@ -120,6 +120,7 @@
     "tsconfig-paths": "^4.1.2"
   },
   "dependencies": {
+    "@deep-consulting-solutions/incident-handling": "^0.0.25",
     "@n8n_io/license-sdk": "~2.3.0",
     "@oclif/command": "^1.8.16",
     "@oclif/core": "^1.16.4",

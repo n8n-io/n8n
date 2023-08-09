@@ -3,6 +3,51 @@ import type { PostHog } from 'posthog-node';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import config from '@/config';
 import type { PublicUser } from '@/Interfaces';
+import * as Db from '@/Db';
+import { createIncidentLog } from '@/lib/incidentLogger';
+
+const logWorkflowFailureScheduleOrNocoDBAuthWebhook = async ({
+	properties,
+}: {
+	userId: string;
+	event: string;
+	properties: { [key: string]: unknown };
+}) => {
+	if (!properties.workflow_id || properties.status !== 'failed') return;
+
+	const { workflow_id } = properties as { workflow_id: string };
+	const workflow = await Db.collections.Workflow.findOne({
+		where: {
+			id: workflow_id,
+		},
+	});
+	if (!workflow) return;
+
+	const isScheduleTriggerOrNocoDBAuthWebhook = workflow.nodes.some((node) => {
+		if (node.name === 'Schedule Trigger') {
+			return true;
+		}
+		if (node.name === 'Webhook' && node.parameters.authentication === 'nocoDBWebhookAuth') {
+			return true;
+		}
+		return false;
+	});
+
+	if (isScheduleTriggerOrNocoDBAuthWebhook) {
+		await createIncidentLog(
+			{
+				errorMessage: properties.error_message as string,
+				incidentTime: new Date(),
+			},
+			{ ...properties },
+			(defaultTitle) => {
+				return isScheduleTriggerOrNocoDBAuthWebhook
+					? `System triggered - ${defaultTitle}`
+					: defaultTitle;
+			},
+		);
+	}
+};
 
 @Service()
 export class PostHogClient {
@@ -40,6 +85,9 @@ export class PostHogClient {
 			distinctId: payload.userId,
 			sendFeatureFlags: true,
 			...payload,
+		});
+		logWorkflowFailureScheduleOrNocoDBAuthWebhook(payload).catch(() => {
+			//
 		});
 	}
 

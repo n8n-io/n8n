@@ -36,6 +36,7 @@ import { CreateVariables1677501636752 } from './1677501636752-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { AddUserOTPSecret1681134145997 } from './1681134145997-AddUserOTPSecret';
 import { AddSaveRequestLog1681134145998 } from './1681134145998-AddSaveRequestLog';
+import { addIncidentHandlingTables1689942863738 } from './1689942863738-addIncidentHandlingTables';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -76,6 +77,7 @@ const sqliteMigrations = [
 	AddUserActivatedProperty1681134145996,
 	AddUserOTPSecret1681134145997,
 	AddSaveRequestLog1681134145998,
+	addIncidentHandlingTables1689942863738,
 ];
 
 export { sqliteMigrations };
