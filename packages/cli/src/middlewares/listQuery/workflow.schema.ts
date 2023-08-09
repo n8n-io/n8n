@@ -1,5 +1,12 @@
 import { Schema } from '@/middlewares/listQuery/schema';
-import { validateSync, IsOptional, IsString, IsBoolean, IsDateString } from 'class-validator';
+import {
+	validateSync,
+	IsOptional,
+	IsString,
+	IsBoolean,
+	IsDateString,
+	IsArray,
+} from 'class-validator';
 
 export class WorkflowSchema extends Schema {
 	constructor(data: unknown = {}) {
@@ -25,6 +32,17 @@ export class WorkflowSchema extends Schema {
 	@IsOptional()
 	@IsBoolean()
 	active?: boolean = undefined;
+
+	@IsOptional()
+	@IsArray()
+	tags?: string[] = undefined;
+
+	@IsOptional()
+	@IsString()
+	versionId?: string[] = undefined;
+
+	@IsOptional()
+	ownedBy?: unknown = undefined;
 
 	@IsOptional()
 	@IsDateString()

@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import type { INode, IPinData } from 'n8n-workflow';
-import { NodeApiError, LoggerProxy, Workflow } from 'n8n-workflow';
+import { NodeApiError, LoggerProxy as Logger, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
@@ -24,9 +24,8 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
-import type { WorkflowForList } from './workflows.types';
 import { WorkflowRepository } from '@/databases/repositories';
 
 export class WorkflowsService {
@@ -95,74 +94,80 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
+	// note: getSharedWorkflowIds() returns _all_ workflow ids for global owners
 	static async getWorkflowIdsForUser(user: User, roles?: RoleNames[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(
-		user: User,
-		options?: ListQueryOptions,
-	): Promise<[WorkflowForList[], number]> {
+	static async getMany(user: User, options?: ListQueryOptions) {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
+
 		if (sharedWorkflowIds.length === 0) {
-			// return early since without shared workflows there can be no hits
-			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
-			return [[], 0];
+			Logger.verbose('Owner attempted to query zero shared workflows');
+			return { workflows: [], count: 0 };
 		}
 
-		const filter = options?.filter ?? {};
+		const workflowId = options?.filter?.id;
 
-		// safeguard against querying ids not shared with the user
-		const workflowId = filter?.id?.toString();
-		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
-			LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
-			return [[], 0];
+		if (
+			workflowId !== undefined &&
+			typeof workflowId === 'string' &&
+			!sharedWorkflowIds.includes(workflowId)
+		) {
+			Logger.verbose(`Owner ${user.id} attempted to query non-shared workflow ${workflowId}`);
+			return { workflows: [], count: 0 };
 		}
 
-		const DEFAULT_SELECT: FindOptionsSelect<WorkflowEntity> = {
-			id: true,
+		const where: FindOptionsWhere<WorkflowEntity> = {
+			...options?.filter,
+			id: In(sharedWorkflowIds),
+		};
+
+		if (typeof where.name === 'string' && where.name !== '') {
+			where.name = Like(`%${where.name}%`);
+		}
+
+		const select: FindOptionsSelect<WorkflowEntity> = options?.select ?? {
 			name: true,
 			active: true,
 			createdAt: true,
 			updatedAt: true,
 		};
 
-		const select: FindOptionsSelect<WorkflowEntity> = options?.select ?? DEFAULT_SELECT;
+		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
+		const isDefaultSelect = options?.select === undefined;
+		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
 
 		const relations: string[] = [];
 
-		const isDefaultSelect = options?.select === undefined;
-
-		if (isDefaultSelect && !config.getEnv('workflowTagsDisabled')) {
+		if (areTagsEnabled && areTagsRequested) {
 			relations.push('tags');
 			select.tags = { id: true, name: true };
 		}
 
-		if (isDefaultSelect && isSharingEnabled()) {
-			relations.push('shared');
-			select.shared = { userId: true, roleId: true };
-			select.versionId = true;
-		}
-
-		filter.id = In(sharedWorkflowIds);
-
-		if (typeof filter.name === 'string' && filter.name !== '') {
-			filter.name = Like(`%${filter.name}%`);
-		}
-
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
-			select,
-			relations,
-			where: filter,
-			order: { updatedAt: 'ASC' },
+			select: { ...select, id: true },
+			where,
 		};
+
+		if (isDefaultSelect || options?.select?.updatedAt === true) {
+			findManyOptions.order = { updatedAt: 'ASC' };
+		}
+
+		if (relations.length > 0) {
+			findManyOptions.relations = relations;
+		}
 
 		if (options?.take) {
 			findManyOptions.skip = options.skip;
 			findManyOptions.take = options.take;
 		}
 
-		return Container.get(WorkflowRepository).findAndCount(findManyOptions);
+		const [workflows, count] = await Container.get(WorkflowRepository).findAndCount(
+			findManyOptions,
+		);
+
+		return { workflows, count };
 	}
 
 	static async update(
@@ -184,7 +189,7 @@ export class WorkflowsService {
 		});
 
 		if (!shared) {
-			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
+			Logger.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -214,7 +219,7 @@ export class WorkflowsService {
 		} else {
 			// Update the workflow's version
 			workflow.versionId = uuid();
-			LoggerProxy.verbose(
+			Logger.verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: shared.workflow.versionId,

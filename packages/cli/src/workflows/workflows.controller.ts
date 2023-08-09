@@ -121,7 +121,10 @@ workflowsController.get(
 	listQueryMiddleware,
 	async (req: ListQueryRequest, res: express.Response) => {
 		try {
-			const [data, count] = await WorkflowsService.getMany(req.user, req.listQueryOptions);
+			const { workflows: data, count } = await WorkflowsService.getMany(
+				req.user,
+				req.listQueryOptions,
+			);
 
 			res.json({ count, data });
 		} catch (maybeError) {
