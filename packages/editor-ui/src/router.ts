@@ -237,6 +237,11 @@ export const routes = [
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
 				},
+				deny: {
+					shouldDeny: () => false,
+					// TODO: Uncomment when feature is ready
+					//!useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+				},
 			},
 		},
 	},
@@ -489,7 +494,7 @@ export const routes = [
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
 								return (
-									settingsStore.settings.hideUsagePage === true ||
+									settingsStore.settings.hideUsagePage ||
 									settingsStore.settings.deployment?.type === 'cloud'
 								);
 							},
@@ -566,7 +571,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isPublicApiEnabled === false;
+								return !settingsStore.isPublicApiEnabled;
 							},
 						},
 					},
@@ -659,7 +664,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isCommunityNodesFeatureEnabled === false;
+								return !settingsStore.isCommunityNodesFeatureEnabled;
 							},
 						},
 					},
@@ -676,7 +681,7 @@ export const routes = [
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
-								feature: route.params['featureId'],
+								feature: route.params.featureId,
 							};
 						},
 					},
