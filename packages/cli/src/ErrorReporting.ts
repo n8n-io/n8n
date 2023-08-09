@@ -7,7 +7,8 @@ let initialized = false;
 export const initErrorHandling = async () => {
 	if (initialized) return;
 
-	if (!config.getEnv('diagnostics.enabled')) {
+	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
+	if (!config.getEnv('diagnostics.enabled') || !dsn) {
 		initialized = true;
 		return;
 	}
@@ -15,7 +16,6 @@ export const initErrorHandling = async () => {
 	// Collect longer stacktraces
 	Error.stackTraceLimit = 50;
 
-	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
 	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 
 	const { init, captureException, addGlobalEventProcessor } = await import('@sentry/node');
