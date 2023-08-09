@@ -6,15 +6,23 @@ import type { RequestHandler } from 'express';
 import type { Schema } from './schema';
 
 function toQueryFilter(rawFilter: string, schema: typeof Schema) {
-	const parsedFilter = new schema(
+	const { tags, ...rest } = new schema(
 		jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' }),
+	) as WorkflowSchema;
+
+	const parsedFilter: Record<string, unknown> = Object.fromEntries(
+		Object.entries(rest)
+			.filter(([_, value]) => value !== undefined)
+			.map(([key, _]: [keyof Schema, unknown]) => [key, rest[key]]),
 	);
 
-	return Object.fromEntries(
-		Object.entries(parsedFilter)
-			.filter(([_, value]) => value !== undefined)
-			.map(([key, _]: [keyof Schema, unknown]) => [key, parsedFilter[key]]),
-	);
+	if (tags) {
+		parsedFilter.tags = tags.map((tag: string) => ({ name: tag }));
+	}
+
+	console.log('tags', tags);
+
+	return parsedFilter;
 }
 
 export const filterListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
