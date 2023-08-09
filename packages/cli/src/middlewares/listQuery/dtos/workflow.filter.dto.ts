@@ -6,6 +6,8 @@ import {
 	validateSync as classValidatorValidate,
 } from 'class-validator';
 
+type QueryFilter = Omit<WorkflowFilterDtoValidator, 'tags'> & { tags?: Array<{ name: string }> };
+
 export class WorkflowFilterDtoValidator {
 	@IsString()
 	@IsOptional()
@@ -25,24 +27,20 @@ export class WorkflowFilterDtoValidator {
 	tags?: string[];
 
 	static get filterableFields() {
-		return ['id', 'name', 'active', 'tags'];
+		return ['name', 'active', 'tags'];
 	}
 
-	validate() {
-		const result = classValidatorValidate(this);
-
-		if (result.length > 0) throw new Error('Parsed filter does not fit the schema');
-
-		return this;
-	}
-
-	constructor(data: object) {
+	static validate(data: object): QueryFilter {
 		const { filterableFields } = WorkflowFilterDtoValidator;
 
 		const onlyKnownFields = Object.fromEntries(
 			Object.entries(data).filter(([key]) => filterableFields.includes(key)),
 		);
 
-		Object.assign(this, onlyKnownFields);
+		const result = classValidatorValidate(onlyKnownFields);
+
+		if (result.length > 0) throw new Error('Parsed filter does not fit the schema');
+
+		return onlyKnownFields;
 	}
 }
