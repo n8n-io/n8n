@@ -3,13 +3,15 @@ import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { ref, computed, onMounted } from 'vue';
 import { useDataSchema, useI18n, useMessage, useToast, useTelemetry } from '@/composables';
 import { generateCodeForPrompt } from '@/api/ai';
-import { useNDVStore, usePostHog, useRootStore } from '@/stores';
+import { useNDVStore, usePostHog, useRootStore, useWorkflowsStore } from '@/stores';
 import CircleLoader from './CircleLoader.vue';
 import { ASK_AI_EXPERIMENT } from '@/constants';
-import { executionDataToJson } from '@/utils';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
+import { executionDataToJson } from '@/utils';
+import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeUi, Schema } from '@/Interface';
 
 const emit = defineEmits<{
 	submit: (code: string) => void;
@@ -19,7 +21,7 @@ const props = defineProps<{
 	hasChanges: boolean;
 }>();
 
-const { getWorkflowSchema, getSchemaForExecutionData } = useDataSchema();
+const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
 const maxLength = 600;
 const minLength = 15;
@@ -30,6 +32,7 @@ const loaderProgress = ref(0);
 
 const isLoading = ref(false);
 const prompt = ref('');
+const parentNodes = ref<INodeUi[]>([]);
 
 const isSubmitEnabled = computed(() => prompt.value.length >= minLength && hasExecutionData.value);
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
@@ -48,12 +51,51 @@ function getErrorMessageByStatusCode(statusCode: number) {
 	return errorMessages[statusCode] || i18n.baseText('codeNodeEditor.askAi.generationFailedUnknown');
 }
 
+function getParentNodes() {
+	const activeNode = useNDVStore().activeNode;
+	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
+	const workflow = getCurrentWorkflow();
+
+	if (!activeNode || !workflow) return [];
+
+	return workflow
+		.getParentNodesByDepth(activeNode?.name)
+		.filter(({ name }, i, nodes) => {
+			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
+		})
+		.map((n) => getNodeByName(n.name))
+		.filter((n) => n !== null) as INodeUi[];
+}
+
+function getSchemas() {
+	const parentNodesNames = parentNodes.value.map((node) => node?.name);
+	const parentNodesSchemas: Array<{ nodeName: string; schema: Schema }> = parentNodes.value
+		.map((node) => {
+			const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
+
+			return {
+				nodeName: node?.name || '',
+				schema: getSchemaForExecutionData(executionDataToJson(inputData), true),
+			};
+		})
+		.filter((node) => node.schema?.value.length > 0);
+
+	const inputSchema = parentNodesSchemas.shift();
+
+	return {
+		parentNodesNames,
+		inputSchema,
+		parentNodesSchemas,
+	};
+}
+
 async function onSubmit() {
 	const { getRestApiContext } = useRootStore();
-	const { ndvInputData } = useNDVStore();
+	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
 	const { alert } = useMessage();
-	const schema = getWorkflowSchema();
+	if (!activeNode) return;
+	const schemas = getSchemas();
 
 	useTelemetry().trackAskAI('ask.generationClicked', {
 		prompt: prompt.value,
@@ -74,7 +116,6 @@ async function onSubmit() {
 
 	startLoading();
 	try {
-		const inputSchema = getSchemaForExecutionData(executionDataToJson(ndvInputData));
 		const version = useRootStore().versionCli;
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
@@ -83,7 +124,8 @@ async function onSubmit() {
 
 		const { code, usage } = await generateCodeForPrompt(getRestApiContext, {
 			question: prompt.value,
-			context: { schema, inputSchema },
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			context: { schema: schemas.parentNodesSchemas, inputSchema: schemas.inputSchema! },
 			model,
 			n8nVersion: version,
 		});
@@ -183,6 +225,7 @@ function onPromptInput(inputValue: string) {
 onMounted(() => {
 	// Restore prompt from session storage(with empty string fallback)
 	prompt.value = getSessionStoragePrompt().value;
+	parentNodes.value = getParentNodes();
 });
 </script>
 

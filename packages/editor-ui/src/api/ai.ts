@@ -17,7 +17,10 @@ export async function generateCodeForPrompt(
 		n8nVersion,
 	}: {
 		question: string;
-		context: { schema: IDataObject; inputSchema: Schema };
+		context: {
+			schema: Array<{ nodeName: string; schema: Schema }>;
+			inputSchema: { nodeName: string; schema: Schema };
+		};
 		model: string;
 		n8nVersion: string;
 	},

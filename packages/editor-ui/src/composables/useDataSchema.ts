@@ -1,9 +1,9 @@
-import type { Optional, Primitives, Schema } from '@/Interface';
-import { isObjectEmpty, type IDataObject } from 'n8n-workflow';
+import type { Optional, Primitives, Schema, INodeUi, INodeExecutionData } from '@/Interface';
+import type { ITaskDataConnections, type IDataObject } from 'n8n-workflow';
 import { merge } from 'lodash-es';
 import { generatePath } from '@/utils/mappingUtils';
 import { isObj } from '@/utils/typeGuards';
-import { useWorkflowsStore, useNDVStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores';
 
 export function useDataSchema() {
 	function getSchema(
@@ -44,7 +44,7 @@ export function useDataSchema() {
 			default:
 				schema = {
 					type: typeof input,
-					value: excludeValues ? '__REDACTED__' : String(input),
+					value: excludeValues ? '' : String(input),
 					path,
 				};
 		}
@@ -58,43 +58,73 @@ export function useDataSchema() {
 		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues);
 	}
 
-	function getWorkflowSchema() {
-		const { activeNode } = useNDVStore();
-		const { allNodes } = useWorkflowsStore();
-
-		const schemas = allNodes.reduce((acc: IDataObject, curr) => {
-			const { name } = curr;
-			const nodeRunData = useWorkflowsStore().getWorkflowResultDataByNodeName(name)?.[0];
-
-			if (name === activeNode?.name) return acc;
-
-			if (nodeRunData?.executionStatus === 'success' && nodeRunData.data !== undefined) {
-				const outputs = Object.keys(nodeRunData.data);
-
-				// Nodes might have several outputs, we need to get the schema for each input
-				const outputsSchema = outputs.reduce((outputsAcc: IDataObject, inputName) => {
-					const inputRunData = nodeRunData.data?.[inputName]?.[0]
-						?.map((item) => item?.json)
-						?.filter((item) => item !== undefined && !isObjectEmpty(item));
-					if (inputRunData === undefined || inputRunData.length === 0) return outputsAcc;
-
-					outputsAcc[inputName] = getSchemaForExecutionData(inputRunData, true);
-					return outputsAcc;
-				}, {});
-
-				if (Object.values(outputsSchema).length > 0) {
-					acc[name] = outputsSchema;
-				}
-			}
-
-			return acc;
-		}, {});
-
-		return schemas;
+	// Returns the data of the main input
+	function getMainInputData(
+		connectionsData: ITaskDataConnections,
+		outputIndex: number,
+	): INodeExecutionData[] {
+		if (
+			!connectionsData?.hasOwnProperty('main') ||
+			connectionsData.main === undefined ||
+			connectionsData.main.length < outputIndex ||
+			connectionsData.main[outputIndex] === null
+		) {
+			return [];
+		}
+		return connectionsData.main[outputIndex] as INodeExecutionData[];
 	}
+
+	function getNodeInputData(
+		node: INodeUi | null,
+		runIndex = 0,
+		outputIndex = 0,
+	): INodeExecutionData[] {
+		const { getWorkflowExecution } = useWorkflowsStore();
+		if (node === null) {
+			return [];
+		}
+
+		if (getWorkflowExecution === null) {
+			return [];
+		}
+		const executionData = getWorkflowExecution.data;
+		if (!executionData?.resultData) {
+			// unknown status
+			return [];
+		}
+		const runData = executionData.resultData.runData;
+
+		if (!runData?.[node.name]?.[runIndex].data || runData[node.name][runIndex].data === undefined) {
+			return [];
+		}
+
+		return getMainInputData(runData[node.name][runIndex].data!, outputIndex);
+	}
+
+	function getInputDataWithPinned(
+		node: INodeUi | null,
+		runIndex = 0,
+		outputIndex = 0,
+	): INodeExecutionData[] {
+		if (!node) return [];
+
+		const { pinDataByNodeName } = useWorkflowsStore();
+		const pinnedData = pinDataByNodeName(node.name);
+		let inputData = getNodeInputData(node, runIndex, outputIndex);
+
+		if (pinnedData) {
+			inputData = Array.isArray(pinnedData)
+				? pinnedData.map((json) => ({ json }))
+				: [{ json: pinnedData }];
+		}
+
+		return inputData;
+	}
+
 	return {
 		getSchema,
 		getSchemaForExecutionData,
-		getWorkflowSchema,
+		getNodeInputData,
+		getInputDataWithPinned,
 	};
 }
