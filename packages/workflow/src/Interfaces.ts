@@ -1131,7 +1131,6 @@ export interface INodeProperties {
 	modes?: INodePropertyMode[];
 	requiresDataPath?: 'single' | 'multiple';
 	doNotInherit?: boolean;
-	validate?: boolean;
 	validateType?: FieldType;
 }
 

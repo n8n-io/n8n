@@ -79,8 +79,7 @@ const properties: INodeProperties[] = [
 								type: ['stringValue'],
 							},
 						},
-						validate: true,
-						validateType: 'string',
+						validateType: 'number',
 					},
 					{
 						displayName: 'Value',
@@ -92,7 +91,6 @@ const properties: INodeProperties[] = [
 								type: ['numberValue'],
 							},
 						},
-						validate: true,
 						validateType: 'number',
 					},
 					{
@@ -115,7 +113,6 @@ const properties: INodeProperties[] = [
 								type: ['booleanValue'],
 							},
 						},
-						validate: true,
 						validateType: 'boolean',
 					},
 					{
@@ -129,7 +126,6 @@ const properties: INodeProperties[] = [
 								type: ['arrayValue'],
 							},
 						},
-						validate: true,
 						validateType: 'array',
 					},
 					{
@@ -147,7 +143,6 @@ const properties: INodeProperties[] = [
 								type: ['objectValue'],
 							},
 						},
-						validate: true,
 						validateType: 'object',
 					},
 				],

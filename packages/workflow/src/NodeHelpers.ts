@@ -1338,16 +1338,16 @@ export const validateResourceMapperParameter = (
 export const validateParameter = (
 	nodeProperties: INodeProperties,
 	value: GenericValue,
+	type: FieldType,
 ): string | undefined => {
 	const nodeName = nodeProperties.name;
-	const nodeType = nodeProperties.validateType || nodeProperties.type;
-	const options = nodeProperties.options;
+	const options = type === 'options' ? nodeProperties.options : undefined;
 
 	if (!value?.toString().startsWith('=')) {
 		const validationResult = validateFieldType(
 			nodeName,
 			value,
-			nodeType as FieldType,
+			type,
 			options as INodePropertyOptions[],
 		);
 
@@ -1483,9 +1483,9 @@ export function getParameterIssues(
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
 		}
-	} else if (nodeProperties.validate) {
+	} else if (nodeProperties.validateType) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
-		const error = validateParameter(nodeProperties, value);
+		const error = validateParameter(nodeProperties, value, nodeProperties.validateType);
 		if (error) {
 			if (foundIssues.parameters === undefined) {
 				foundIssues.parameters = {};

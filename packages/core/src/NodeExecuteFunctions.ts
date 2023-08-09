@@ -1962,33 +1962,45 @@ const validateResourceMapperValue = (
 const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
-	inputValues: string | number | boolean | object | null | undefined,
+	parameterValue: string | number | boolean | object | null | undefined,
 	parameterName: string,
 	runIndex: number,
 	itemIndex: number,
 ) => {
-	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
-	// Currently only validate resource mapper values
-	const resourceMapperField = nodeType.description.properties.find(
+	const propertyDescription = nodeType.description.properties.find(
 		(prop) =>
-			NodeHelpers.displayParameter(node.parameters, prop, node) &&
-			prop.type === 'resourceMapper' &&
-			parameterName === `${prop.name}.value`,
+			(parameterName === prop.name ||
+				(prop.type === 'resourceMapper' && parameterName === `${prop.name}.value`)) &&
+			NodeHelpers.displayParameter(node.parameters, prop, node),
 	);
 
-	if (resourceMapperField && typeof inputValues === 'object') {
+	if (!propertyDescription) {
+		return parameterValue;
+	}
+
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: parameterValue };
+
+	if (propertyDescription.validateType) {
+		validationResult = validateFieldType(
+			parameterName,
+			parameterValue,
+			propertyDescription.validateType,
+		);
+	} else if (propertyDescription.type === 'resourceMapper' && typeof parameterValue === 'object') {
 		validationResult = validateResourceMapperValue(
 			parameterName,
-			inputValues as { [key: string]: unknown },
+			parameterValue as { [key: string]: unknown },
 			node,
-			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
 		);
 	}
 
 	if (!validationResult.valid) {
 		throw new ExpressionError(
 			`Invalid input for '${
-				String(validationResult.fieldName) || parameterName
+				validationResult.fieldName
+					? String(validationResult.fieldName)
+					: propertyDescription.displayName
 			}' [item ${itemIndex}]`,
 			{
 				description: validationResult.errorMessage,
