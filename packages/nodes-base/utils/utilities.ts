@@ -218,6 +218,36 @@ export const keysToLowercase = <T>(headers: T) => {
 };
 
 /**
+ * Formats a private key by removing unnecessary whitespace and adding line breaks.
+ * @param privateKey - The private key to format.
+ * @returns The formatted private key.
+ */
+export function formatPrivateKey(privateKey: string): string {
+	if (/\n/.test(privateKey)) {
+		return privateKey;
+	}
+	let formattedPrivateKey = '';
+	const parts = privateKey.split('-----').filter((item) => item !== '');
+	parts.forEach((part) => {
+		const regex = /(PRIVATE KEY|CERTIFICATE)/;
+		if (regex.test(part)) {
+			formattedPrivateKey += `-----${part}-----`;
+		} else {
+			const passRegex = /Proc-Type|DEK-Info/;
+			if (passRegex.test(part)) {
+				part = part.replace(/:\s+/g, ':');
+				formattedPrivateKey += part.replace(/\\n/g, '\n');
+				formattedPrivateKey += part.replace(/\s+/g, '\n');
+			} else {
+				formattedPrivateKey += part.replace(/\\n/g, '\n');
+				formattedPrivateKey += part.replace(/\s+/g, '\n');
+			}
+		}
+	});
+	return formattedPrivateKey;
+}
+
+/**
  * @TECH_DEBT Explore replacing with handlebars
  */
 export function getResolvables(expression: string) {
