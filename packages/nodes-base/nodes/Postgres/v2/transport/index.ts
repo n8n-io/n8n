@@ -8,9 +8,6 @@ import type { Server } from 'net';
 import { createServer } from 'net';
 
 import pgPromise from 'pg-promise';
-
-import { rm } from 'fs/promises';
-
 import type { PgpDatabase } from '../helpers/interfaces';
 
 async function createSshConnectConfig(credentials: IDataObject) {
@@ -143,9 +140,6 @@ export async function configurePostgres(
 			});
 
 			sshClient.on('end', async () => {
-				if (tunnelConfig.privateKey) {
-					await rm(tunnelConfig.privateKey as string, { force: true });
-				}
 				if (proxy) proxy.close();
 			});
 		}).catch((err) => {
