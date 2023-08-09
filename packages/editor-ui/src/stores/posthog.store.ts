@@ -2,7 +2,6 @@ import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { useSegment } from '@/stores/segment.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags } from 'n8n-workflow';
