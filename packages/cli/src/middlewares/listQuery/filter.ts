@@ -1,45 +1,39 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import { jsonParse } from 'n8n-workflow';
 import { handleListQueryError } from './error';
-import { WorkflowSchema } from './workflow.schema';
 import type { ListQueryRequest } from '@/requests';
 import type { RequestHandler } from 'express';
-import type { Schema } from './schema';
+import { WorkflowFilterDtoValidator as Validator } from './dtos/workflow.filter.dto';
+import { isObjectLiteral } from '@/utils';
 
-function toQueryFilter(rawFilter: string, schema: typeof Schema) {
-	const { tags, ...rest } = new schema(
-		jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' }),
-	) as WorkflowSchema;
+function toQueryFilter(rawFilter: string, DtoValidator: typeof Validator) {
+	const objDto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
 
-	const parsedFilter: Record<string, unknown> = Object.fromEntries(
-		Object.entries(rest)
-			.filter(([_, value]) => value !== undefined)
-			.map(([key, _]: [keyof Schema, unknown]) => [key, rest[key]]),
-	);
+	if (!isObjectLiteral(objDto)) throw new Error('Filter must be an object literal');
 
-	if (tags) {
-		parsedFilter.tags = tags.map((tag: string) => ({ name: tag }));
-	}
+	const filter = new DtoValidator(objDto).validate();
 
-	console.log('tags', tags);
+	if (!filter.tags) return filter as Omit<Validator, 'tags'>;
 
-	return parsedFilter;
+	return { ...filter, tags: filter.tags.map((tag) => ({ name: tag })) };
 }
 
-export const filterListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
+export const filterListQueryMiddleware: RequestHandler = (req: ListQueryRequest, _, next) => {
 	const { filter: rawFilter } = req.query;
 
 	if (!rawFilter) return next();
 
-	let schema;
+	let DtoValidator;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		schema = WorkflowSchema;
+		DtoValidator = Validator;
 	} else {
 		return next();
 	}
 
 	try {
-		const filter = toQueryFilter(rawFilter, schema);
+		const filter = toQueryFilter(rawFilter, DtoValidator);
 
 		if (Object.keys(filter).length === 0) return next();
 
