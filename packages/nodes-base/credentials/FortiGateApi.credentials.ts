@@ -5,6 +5,8 @@ export class FortiGateApi implements ICredentialType {
 
 	displayName = 'Fortinet FortiGate API';
 
+	documentationUrl = 'fortigate';
+
 	icon = 'file:icons/Fortinet.svg';
 
 	properties: INodeProperties[] = [
