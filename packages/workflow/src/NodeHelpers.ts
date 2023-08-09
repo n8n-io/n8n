@@ -37,6 +37,7 @@ import type {
 	INodePropertyOptions,
 	ResourceMapperValue,
 	ValidationResult,
+	GenericValue,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
@@ -1334,6 +1335,30 @@ export const validateResourceMapperParameter = (
 	return issues;
 };
 
+export const validateParameter = (
+	nodeProperties: INodeProperties,
+	value: GenericValue,
+): string | undefined => {
+	const nodeName = nodeProperties.name;
+	const nodeType = nodeProperties.validateType || nodeProperties.type;
+	const options = nodeProperties.options;
+
+	if (!value?.toString().startsWith('=')) {
+		const validationResult = validateFieldType(
+			nodeName,
+			value,
+			nodeType as FieldType,
+			options as INodePropertyOptions[],
+		);
+
+		if (!validationResult.valid && validationResult.errorMessage) {
+			return validationResult.errorMessage;
+		}
+	}
+
+	return undefined;
+};
+
 /**
  * Adds an issue if the parameter is not defined
  *
@@ -1457,6 +1482,19 @@ export function getParameterIssues(
 				}
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
+		}
+	} else if (nodeProperties.validate) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		const error = validateParameter(nodeProperties, value);
+		if (error) {
+			if (foundIssues.parameters === undefined) {
+				foundIssues.parameters = {};
+			}
+			if (foundIssues.parameters[nodeProperties.name] === undefined) {
+				foundIssues.parameters[nodeProperties.name] = [];
+			}
+
+			foundIssues.parameters[nodeProperties.name].push(error);
 		}
 	}
 

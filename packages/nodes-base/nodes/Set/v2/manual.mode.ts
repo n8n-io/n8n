@@ -79,6 +79,8 @@ const properties: INodeProperties[] = [
 								type: ['stringValue'],
 							},
 						},
+						validate: true,
+						validateType: 'string',
 					},
 					{
 						displayName: 'Value',
@@ -90,12 +92,14 @@ const properties: INodeProperties[] = [
 								type: ['numberValue'],
 							},
 						},
+						validate: true,
+						validateType: 'number',
 					},
 					{
 						displayName: 'Value',
 						name: 'booleanValue',
 						type: 'options',
-						default: true,
+						default: 'true',
 						options: [
 							{
 								name: 'True',
@@ -111,12 +115,13 @@ const properties: INodeProperties[] = [
 								type: ['booleanValue'],
 							},
 						},
+						validate: true,
+						validateType: 'boolean',
 					},
 					{
 						displayName: 'Value',
 						name: 'arrayValue',
 						type: 'string',
-						// default: '={{[]}}',
 						default: '',
 						placeholder: 'e.g. [ arrayItem1, arrayItem2, arrayItem3 ]',
 						displayOptions: {
@@ -124,6 +129,8 @@ const properties: INodeProperties[] = [
 								type: ['arrayValue'],
 							},
 						},
+						validate: true,
+						validateType: 'array',
 					},
 					{
 						displayName: 'Value',
@@ -140,6 +147,8 @@ const properties: INodeProperties[] = [
 								type: ['objectValue'],
 							},
 						},
+						validate: true,
+						validateType: 'object',
 					},
 				],
 			},
