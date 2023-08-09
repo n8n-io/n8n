@@ -1984,7 +1984,11 @@ const validateValueAgainstSchema = (
 
 	let validationResult: ExtendedValidationResult = { valid: true, newValue: parameterValue };
 
-	if (parameterPath.length === 1 && propertyDescription.validateType) {
+	if (
+		parameterPath.length === 1 &&
+		propertyDescription.validateType &&
+		!propertyDescription.ignoreValidationDuringExecution
+	) {
 		validationResult = validateFieldType(
 			parameterName,
 			parameterValue,
@@ -2023,7 +2027,7 @@ const validateValueAgainstSchema = (
 		} = {};
 
 		for (const prop of nestedDescriptions) {
-			if (!prop.validateType) continue;
+			if (!prop.validateType || prop.ignoreValidationDuringExecution) continue;
 
 			validationMap[prop.name] = {
 				type: prop.validateType,

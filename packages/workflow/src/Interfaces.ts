@@ -1131,7 +1131,12 @@ export interface INodeProperties {
 	modes?: INodePropertyMode[];
 	requiresDataPath?: 'single' | 'multiple';
 	doNotInherit?: boolean;
+	// set expected type for the value which would be used for validation and type casting
 	validateType?: FieldType;
+	// works only if validateType is set
+	// allows to be less strict with the type validation skipping it during execution or set custom validation/casting logic inside node
+	// inline error messages would still be shown in UI
+	ignoreValidationDuringExecution?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {

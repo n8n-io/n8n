@@ -80,6 +80,7 @@ const properties: INodeProperties[] = [
 							},
 						},
 						validateType: 'string',
+						ignoreValidationDuringExecution: true,
 					},
 					{
 						displayName: 'Value',
@@ -92,6 +93,7 @@ const properties: INodeProperties[] = [
 							},
 						},
 						validateType: 'number',
+						ignoreValidationDuringExecution: true,
 					},
 					{
 						displayName: 'Value',
@@ -114,6 +116,7 @@ const properties: INodeProperties[] = [
 							},
 						},
 						validateType: 'boolean',
+						ignoreValidationDuringExecution: true,
 					},
 					{
 						displayName: 'Value',
@@ -127,6 +130,7 @@ const properties: INodeProperties[] = [
 							},
 						},
 						validateType: 'array',
+						ignoreValidationDuringExecution: true,
 					},
 					{
 						displayName: 'Value',
@@ -144,6 +148,7 @@ const properties: INodeProperties[] = [
 							},
 						},
 						validateType: 'object',
+						ignoreValidationDuringExecution: true,
 					},
 				],
 			},
