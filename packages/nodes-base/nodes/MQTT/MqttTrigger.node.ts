@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
+import * as mqtt from 'mqtt';
 import { formatPrivateKey } from '@utils/utilities';
 
 export class MqttTrigger implements INodeType {
@@ -143,9 +143,9 @@ export class MqttTrigger implements INodeType {
 		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (err, _granted) => {
-						if (err) {
-							reject(err);
+					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (error, _granted) => {
+						if (error) {
+							reject(error);
 						}
 						client.on('message', (topic: string, message: Buffer | string) => {
 							let result: IDataObject = {};
@@ -155,7 +155,7 @@ export class MqttTrigger implements INodeType {
 							if (options.jsonParseBody) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (error) {}
+								} catch (e) {}
 							}
 
 							result.message = message;

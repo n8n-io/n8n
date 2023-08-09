@@ -85,6 +85,7 @@ export class Webhook extends BaseCommand {
 	async run() {
 		await Container.get(Queue).init();
 		await this.server.start();
+		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close

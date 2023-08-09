@@ -361,6 +361,7 @@ export const nodeHelpers = defineComponent({
 						const isInstanceOwner = this.usersStore.isInstanceOwner;
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
+
 						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
@@ -522,15 +523,19 @@ export const nodeHelpers = defineComponent({
 			}
 
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
-				return workflow.expression.getSimpleParameterValue(
-					data as INode,
-					nodeType.subtitle,
-					'internal',
-					this.rootStore.timezone,
-					{},
-					undefined,
-					PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-				) as string | undefined;
+				try {
+					return workflow.expression.getSimpleParameterValue(
+						data as INode,
+						nodeType.subtitle,
+						'internal',
+						this.rootStore.timezone,
+						{},
+						undefined,
+						PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					) as string | undefined;
+				} catch (e) {
+					return undefined;
+				}
 			}
 
 			if (data.parameters.operation !== undefined) {

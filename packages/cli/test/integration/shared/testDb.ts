@@ -20,7 +20,6 @@ import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleRepository } from '@db/repositories';
 import type { ICredentialsDb } from '@/Interfaces';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
@@ -34,6 +33,10 @@ import type {
 } from './types';
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
+import { RoleService } from '@/services/role.service';
+import { VariablesService } from '@/environments/variables/variables.service';
+import { TagRepository } from '@/databases/repositories';
+import { separate } from '@/utils';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -112,7 +115,13 @@ export async function terminate() {
  * Truncate specific DB tables in a test DB.
  */
 export async function truncate(collections: CollectionName[]) {
-	for (const collection of collections) {
+	const [tag, rest] = separate(collections, (c) => c === 'Tag');
+
+	if (tag) {
+		await Container.get(TagRepository).delete({});
+	}
+
+	for (const collection of rest) {
 		await Db.collections[collection].delete({});
 	}
 }
@@ -150,7 +159,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Container.get(RoleRepository).findCredentialUserRole();
+	const role = await Container.get(RoleService).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			userId: user.id,
@@ -275,23 +284,23 @@ export async function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export async function getGlobalOwnerRole() {
-	return Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
+	return Container.get(RoleService).findGlobalOwnerRole();
 }
 
 export async function getGlobalMemberRole() {
-	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	return Container.get(RoleService).findGlobalMemberRole();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+	return Container.get(RoleService).findWorkflowOwnerRole();
 }
 
 export async function getWorkflowEditorRole() {
-	return Container.get(RoleRepository).findWorkflowEditorRoleOrFail();
+	return Container.get(RoleService).findWorkflowEditorRole();
 }
 
 export async function getCredentialOwnerRole() {
-	return Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
+	return Container.get(RoleService).findCredentialOwnerRole();
 }
 
 export async function getAllRoles() {
@@ -383,7 +392,7 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 export async function createTag(attributes: Partial<TagEntity> = {}) {
 	const { name } = attributes;
 
-	return Db.collections.Tag.save({
+	return Container.get(TagRepository).save({
 		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,
@@ -514,11 +523,13 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 // ----------------------------------
 
 export async function createVariable(key: string, value: string) {
-	return Db.collections.Variables.save({
+	const result = await Db.collections.Variables.save({
 		id: generateNanoId(),
 		key,
 		value,
 	});
+	await Container.get(VariablesService).updateCache();
+	return result;
 }
 
 export async function getVariableByKey(key: string) {

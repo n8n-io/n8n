@@ -1,9 +1,7 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
 		"lib": ["dom", "es2020", "es2022.error"],
-		"types": ["node", "jest"],
-		"noEmit": true,
 		"paths": {
 			"@test/*": ["./test/*"],
 			"@utils/*": ["./utils/*"]

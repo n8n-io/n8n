@@ -1,40 +1,36 @@
 import { Container } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
-import type { Url } from 'url';
 import express from 'express';
-import bodyParser from 'body-parser';
-import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
-import parseUrl from 'parseurl';
-import type { RedisOptions } from 'ioredis';
-
-import type { WebhookHttpMethod } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
-import { N8N_VERSION, inDevelopment } from '@/constants';
+import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
+import { N8nInstanceType } from '@/Interfaces';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
-import {
-	send,
-	sendErrorResponse,
-	sendSuccessResponse,
-	ServiceUnavailableError,
-} from '@/ResponseHelper';
-import { corsMiddleware } from '@/middlewares';
+import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { rawBody, jsonParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
-import { WEBHOOK_METHODS } from '@/WebhookHelpers';
-import { getRedisClusterNodes } from './GenericHelpers';
-
-const emptyBuffer = Buffer.alloc(0);
+import { webhookRequestHandler } from '@/WebhookHelpers';
+import { RedisService } from '@/services/redis.service';
+import { jsonParse } from 'n8n-workflow';
+import { eventBus } from './eventbus';
+import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
+import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
+import type { RedisServiceWorkerResponseObject } from './services/redis/RedisServiceCommands';
+import {
+	EVENT_BUS_REDIS_CHANNEL,
+	WORKER_RESPONSE_REDIS_CHANNEL,
+} from './services/redis/RedisServiceHelper';
+import { generateHostInstanceId } from './databases/utils/generators';
 
 export abstract class AbstractServer {
 	protected server: Server;
 
-	protected app: express.Application;
+	readonly app: express.Application;
 
 	protected externalHooks: IExternalHooksClass;
 
@@ -58,9 +54,13 @@ export abstract class AbstractServer {
 
 	protected instanceId = '';
 
-	abstract configure(): Promise<void>;
+	protected webhooksEnabled = true;
 
-	constructor() {
+	protected testWebhooksEnabled = false;
+
+	readonly uniqueInstanceId: string;
+
+	constructor(instanceType: N8nInstanceType = 'main') {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
@@ -74,6 +74,12 @@ export abstract class AbstractServer {
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+
+		this.uniqueInstanceId = generateHostInstanceId(instanceType);
+	}
+
+	async configure(): Promise<void> {
+		// Additional configuration in derived classes
 	}
 
 	private async setupErrorHandlers() {
@@ -87,66 +93,12 @@ export abstract class AbstractServer {
 		app.use(errorHandler());
 	}
 
-	private async setupCommonMiddlewares() {
-		const { app } = this;
-
+	private setupCommonMiddlewares() {
 		// Compress the response data
-		app.use(compression());
+		this.app.use(compression());
 
-		// Make sure that each request has the "parsedUrl" parameter
-		app.use((req, res, next) => {
-			req.parsedUrl = parseUrl(req)!;
-			req.rawBody = emptyBuffer;
-			next();
-		});
-
-		const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-
-		// Support application/json type post data
-		app.use(
-			bodyParser.json({
-				limit: `${payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		// Support application/xml type post data
-		bodyParserXml(bodyParser);
-		app.use(
-			bodyParser.xml({
-				limit: `${payloadSizeMax}mb`,
-				xmlParseOptions: {
-					normalize: true, // Trim whitespace inside text nodes
-					normalizeTags: true, // Transform tags to lowercase
-					explicitArray: false, // Only put properties in array if length > 1
-				},
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		app.use(
-			bodyParser.text({
-				limit: `${payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		// support application/x-www-form-urlencoded post data
-		app.use(
-			bodyParser.urlencoded({
-				limit: `${payloadSizeMax}mb`,
-				extended: false,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
+		// Read incoming data into `rawBody`
+		this.app.use(rawBody);
 	}
 
 	private setupDevMiddlewares() {
@@ -170,237 +122,76 @@ export abstract class AbstractServer {
 		});
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			await this.setupRedisChecks();
+			await this.setupRedis();
 		}
 	}
 
 	// This connection is going to be our heartbeat
 	// IORedis automatically pings redis and tries to reconnect
 	// We will be using a retryStrategy to control how and when to exit.
-	private async setupRedisChecks() {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const { default: Redis } = await import('ioredis');
+	// We are also subscribing to the event log channel to receive events from workers
+	private async setupRedis() {
+		const redisService = Container.get(RedisService);
+		const redisSubscriber = await redisService.getPubSubSubscriber();
 
-		let lastTimer = 0;
-		let cumulativeTimeout = 0;
-		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
-		const clusterNodes = getRedisClusterNodes();
-		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-		const usesRedisCluster = clusterNodes.length > 0;
-		LoggerProxy.debug(
-			usesRedisCluster
-				? `Initialising Redis cluster connection with nodes: ${clusterNodes
-						.map((e) => `${e.host}:${e.port}`)
-						.join(',')}`
-				: `Initialising Redis client connection with host: ${host ?? 'localhost'} and port: ${
-						port ?? '6379'
-				  }`,
-		);
-		const sharedRedisOptions: RedisOptions = {
-			username,
-			password,
-			db,
-			enableReadyCheck: false,
-			maxRetriesPerRequest: null,
-		};
-		const redis = usesRedisCluster
-			? new Redis.Cluster(
-					clusterNodes.map((node) => ({ host: node.host, port: node.port })),
-					{
-						redisOptions: sharedRedisOptions,
-					},
-			  )
-			: new Redis({
-					host,
-					port,
-					...sharedRedisOptions,
-					retryStrategy: (): number | null => {
-						const now = Date.now();
-						if (now - lastTimer > 30000) {
-							// Means we had no timeout at all or last timeout was temporary and we recovered
-							lastTimer = now;
-							cumulativeTimeout = 0;
-						} else {
-							cumulativeTimeout += now - lastTimer;
-							lastTimer = now;
-							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								LoggerProxy.error(
-									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-								);
-								process.exit(1);
-							}
+		// TODO: these are all proof of concept implementations for the moment
+		// until worker communication is implemented
+		// #region proof of concept
+		await redisSubscriber.subscribeToEventLog();
+		await redisSubscriber.subscribeToWorkerResponseChannel();
+		redisSubscriber.addMessageHandler(
+			'AbstractServerReceiver',
+			async (channel: string, message: string) => {
+				// TODO: this is a proof of concept implementation to forward events to the main instance's event bus
+				// Events are arriving through a pub/sub channel and are forwarded to the eventBus
+				// In the future, a stream should probably replace this implementation entirely
+				if (channel === EVENT_BUS_REDIS_CHANNEL) {
+					const eventData = jsonParse<AbstractEventMessageOptions>(message);
+					if (eventData) {
+						const eventMessage = getEventMessageObjectByType(eventData);
+						if (eventMessage) {
+							await eventBus.send(eventMessage);
 						}
-						return 500;
-					},
-			  });
-
-		redis.on('close', () => {
-			LoggerProxy.warn('Redis unavailable - trying to reconnect...');
-		});
-
-		redis.on('error', (error) => {
-			if (!String(error).includes('ECONNREFUSED')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				LoggerProxy.warn('Error with Redis: ', error);
-			}
-		});
-	}
-
-	// ----------------------------------------
-	// Regular Webhooks
-	// ----------------------------------------
-	protected setupWebhookEndpoint() {
-		const endpoint = this.endpointWebhook;
-		const activeWorkflowRunner = this.activeWorkflowRunner;
-
-		// Register all webhook requests
-		this.app.all(`/${endpoint}/*`, async (req, res) => {
-			// Cut away the "/webhook/" to get the registered part of the url
-			const requestUrl = req.parsedUrl.pathname!.slice(endpoint.length + 2);
-
-			const method = req.method.toUpperCase() as WebhookHttpMethod;
-			if (method === 'OPTIONS') {
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await activeWorkflowRunner.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					sendErrorResponse(res, error);
-					return;
+					}
+				} else if (channel === WORKER_RESPONSE_REDIS_CHANNEL) {
+					// The back channel from the workers as a pub/sub channel
+					const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(message);
+					if (workerResponse) {
+						// TODO: Handle worker response
+						console.log('Received worker response', workerResponse);
+					}
 				}
-
-				res.header('Access-Control-Allow-Origin', '*');
-
-				sendSuccessResponse(res, {}, true, 204);
-				return;
-			}
-
-			if (!WEBHOOK_METHODS.includes(method)) {
-				sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
-				return;
-			}
-
-			let response;
-			try {
-				response = await activeWorkflowRunner.executeWebhook(method, requestUrl, req, res);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
-		});
-	}
-
-	// ----------------------------------------
-	// Waiting Webhooks
-	// ----------------------------------------
-	protected setupWaitingWebhookEndpoint() {
-		const endpoint = this.endpointWebhookWaiting;
-		const waitingWebhooks = Container.get(WaitingWebhooks);
-
-		// Register all webhook-waiting requests
-		this.app.all(`/${endpoint}/*`, async (req, res) => {
-			// Cut away the "/webhook-waiting/" to get the registered part of the url
-			const requestUrl = req.parsedUrl.pathname!.slice(endpoint.length + 2);
-
-			const method = req.method.toUpperCase() as WebhookHttpMethod;
-
-			if (!WEBHOOK_METHODS.includes(method)) {
-				sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
-				return;
-			}
-
-			let response;
-			try {
-				response = await waitingWebhooks.executeWebhook(method, requestUrl, req, res);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
-		});
-	}
-
-	// ----------------------------------------
-	// Testing Webhooks
-	// ----------------------------------------
-	protected setupTestWebhookEndpoint() {
-		const endpoint = this.endpointWebhookTest;
-		const testWebhooks = Container.get(TestWebhooks);
-
-		// Register all test webhook requests (for testing via the UI)
-		this.app.all(`/${endpoint}/*`, async (req, res) => {
-			// Cut away the "/webhook-test/" to get the registered part of the url
-			const requestUrl = req.parsedUrl.pathname!.slice(endpoint.length + 2);
-
-			const method = req.method.toUpperCase() as WebhookHttpMethod;
-
-			if (method === 'OPTIONS') {
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await testWebhooks.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					sendErrorResponse(res, error);
-					return;
-				}
-
-				res.header('Access-Control-Allow-Origin', '*');
-
-				sendSuccessResponse(res, {}, true, 204);
-				return;
-			}
-
-			if (!WEBHOOK_METHODS.includes(method)) {
-				sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
-				return;
-			}
-
-			let response;
-			try {
-				response = await testWebhooks.callTestWebhook(method, requestUrl, req, res);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
-		});
-
-		// Removes a test webhook
-		// TODO UM: check if this needs validation with user management.
-		this.app.delete(
-			`/${this.restEndpoint}/test-webhook/:id`,
-			send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
+			},
 		);
+		// TODO: Leave comments for now as implementation example
+		// const redisStreamListener = await redisService.getStreamConsumer();
+		// void redisStreamListener.listenToStream('teststream');
+		// redisStreamListener.addMessageHandler(
+		// 	'MessageLogger',
+		// 	async (stream: string, id: string, message: string[]) => {
+		// 		// TODO: this is a proof of concept implementation of a stream consumer
+		// 		switch (stream) {
+		// 			case EVENT_BUS_REDIS_STREAM:
+		// 			case COMMAND_REDIS_STREAM:
+		// 			case WORKER_RESPONSE_REDIS_STREAM:
+		// 			default:
+		// 				LoggerProxy.debug(
+		// 					`Received message from stream ${stream} with id ${id} and message ${message.join(
+		// 						',',
+		// 					)}`,
+		// 				);
+		// 				break;
+		// 		}
+		// 	},
+		// );
+
+		// const redisListReceiver = await redisService.getListReceiver();
+		// await redisListReceiver.init();
+
+		// setInterval(async () => {
+		// 	await redisListReceiver.popLatestWorkerResponse();
+		// }, 1000);
+		// #endregion
 	}
 
 	async init(): Promise<void> {
@@ -443,27 +234,60 @@ export abstract class AbstractServer {
 	}
 
 	async start(): Promise<void> {
-		await this.setupErrorHandlers();
-		this.setupPushServer();
-		await this.setupCommonMiddlewares();
+		if (!inTest) {
+			await this.setupErrorHandlers();
+			this.setupPushServer();
+		}
+
+		this.setupCommonMiddlewares();
+
+		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
+		if (this.webhooksEnabled) {
+			// Register a handler for active webhooks
+			this.app.all(
+				`/${this.endpointWebhook}/:path(*)`,
+				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+			);
+
+			// Register a handler for waiting webhooks
+			this.app.all(
+				`/${this.endpointWebhookWaiting}/:path/:suffix?`,
+				webhookRequestHandler(Container.get(WaitingWebhooks)),
+			);
+		}
+
+		if (this.testWebhooksEnabled) {
+			const testWebhooks = Container.get(TestWebhooks);
+
+			// Register a handler for test webhooks
+			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
+
+			// Removes a test webhook
+			// TODO UM: check if this needs validation with user management.
+			this.app.delete(
+				`/${this.restEndpoint}/test-webhook/:id`,
+				send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
+			);
+		}
+
 		if (inDevelopment) {
 			this.setupDevMiddlewares();
 		}
 
+		// Setup JSON parsing middleware after the webhook handlers are setup
+		this.app.use(jsonParser);
+
 		await this.configure();
-		console.log(`Version: ${N8N_VERSION}`);
 
-		const defaultLocale = config.getEnv('defaultLocale');
-		if (defaultLocale !== 'en') {
-			console.log(`Locale: ${defaultLocale}`);
+		if (!inTest) {
+			console.log(`Version: ${N8N_VERSION}`);
+
+			const defaultLocale = config.getEnv('defaultLocale');
+			if (defaultLocale !== 'en') {
+				console.log(`Locale: ${defaultLocale}`);
+			}
+
+			await this.externalHooks.run('n8n.ready', [this, config]);
 		}
-
-		await this.externalHooks.run('n8n.ready', [this, config]);
-	}
-}
-
-declare module 'http' {
-	export interface IncomingMessage {
-		parsedUrl: Url;
 	}
 }

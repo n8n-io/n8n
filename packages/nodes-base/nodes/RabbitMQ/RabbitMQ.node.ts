@@ -18,7 +18,6 @@ import { formatPrivateKey } from '@utils/utilities';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
-		// eslint-disable-next-line
 		displayName: 'RabbitMQ',
 		name: 'rabbitmq',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
