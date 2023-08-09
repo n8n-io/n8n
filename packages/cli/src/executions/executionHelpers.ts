@@ -3,8 +3,6 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import { License } from '@/License';
 import type { IExecutionFlattedDb, IExecutionResponse } from '@/Interfaces';
 
-const license = Container.get(License);
-
 export function getStatusUsingPreviousExecutionStatusMethod(
 	execution: IExecutionFlattedDb | IExecutionResponse,
 ): ExecutionStatus {
@@ -22,9 +20,11 @@ export function getStatusUsingPreviousExecutionStatusMethod(
 }
 
 export function isAdvancedExecutionFiltersEnabled(): boolean {
+	const license = Container.get(License);
 	return license.isAdvancedExecutionFiltersEnabled();
 }
 
 export function isDebugInEditorLicensed(): boolean {
+	const license = Container.get(License);
 	return license.isDebugInEditorLicensed();
 }
