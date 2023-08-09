@@ -10,6 +10,8 @@ export class OktaApi implements ICredentialType {
 
 	displayName = 'Okta API';
 
+	documentationUrl = 'okta';
+
 	icon = 'file:icons/Okta.svg';
 
 	properties: INodeProperties[] = [
