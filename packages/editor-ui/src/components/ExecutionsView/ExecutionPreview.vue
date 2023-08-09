@@ -218,21 +218,6 @@ export default defineComponent({
 				retryDropdownRef.hide();
 			}
 		},
-		async openDebugMode(event: KeyboardEvent) {
-			if (event.ctrlKey || event.metaKey) {
-				const url =
-					window.location.origin + this.$router.resolve({ name: VIEWS.EXECUTION_DEBUG }).href;
-				window.open(url, '_blank');
-			} else {
-				await this.$router.push({
-					name: VIEWS.EXECUTION_DEBUG,
-					params: {
-						name: this.activeExecution?.workflowId,
-						executionId: this.activeExecution?.id,
-					},
-				});
-			}
-		},
 	},
 });
 </script>
