@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useDataSchema, useI18n, useMessage, useToast, useTelemetry } from '@/composables';
 import { generateCodeForPrompt } from '@/api/ai';
 import { useNDVStore, usePostHog, useRootStore } from '@/stores';
@@ -8,6 +8,8 @@ import CircleLoader from './CircleLoader.vue';
 import { ASK_AI_EXPERIMENT } from '@/constants';
 import { executionDataToJson } from '@/utils';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { snakeCase } from 'lodash-es';
+import { useSessionStorage } from '@vueuse/core';
 
 const emit = defineEmits<{
 	submit: (code: string) => void;
@@ -49,7 +51,7 @@ function getErrorMessageByStatusCode(statusCode: number) {
 async function onSubmit() {
 	const { getRestApiContext } = useRootStore();
 	const { ndvInputData } = useNDVStore();
-	const { showMessage, showError } = useToast();
+	const { showMessage } = useToast();
 	const { alert } = useMessage();
 	const schema = getWorkflowSchema();
 
@@ -69,6 +71,7 @@ async function onSubmit() {
 			return;
 		}
 	}
+
 	startLoading();
 	try {
 		const inputSchema = getSchemaForExecutionData(executionDataToJson(ndvInputData));
@@ -165,6 +168,22 @@ function stopLoading() {
 		isLoading.value = false;
 	}, 200);
 }
+
+function getSessionStoragePrompt() {
+	const codeNodeName = (useNDVStore().activeNode?.name as string) ?? '';
+	const hashedCode = snakeCase(codeNodeName);
+
+	return useSessionStorage(`ask_ai_prompt__${hashedCode}`, '');
+}
+
+function onPromptInput(inputValue: string) {
+	getSessionStoragePrompt().value = inputValue;
+}
+
+onMounted(() => {
+	// Restore prompt from session storage(with empty string fallback)
+	prompt.value = getSessionStoragePrompt().value;
+});
 </script>
 
 <template>
@@ -185,6 +204,7 @@ function stopLoading() {
 			</div>
 			<N8nInput
 				v-model="prompt"
+				@input="onPromptInput"
 				:class="$style.input"
 				type="textarea"
 				:rows="6"

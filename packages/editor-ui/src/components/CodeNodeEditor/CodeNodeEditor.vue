@@ -10,7 +10,8 @@
 				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
 			</el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.askAi')" name="ask-ai">
-				<AskAI @replaceCode="onReplaceCode" :has-changes="hasChanges" />
+				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
+				<AskAI @replaceCode="onReplaceCode" :has-changes="hasChanges" :key="activeTab" />
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
@@ -36,7 +37,7 @@ import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
-import { ASK_AI_EXPERIMENT, ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
+import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { useRootStore, usePostHog } from '@/stores';
 
@@ -130,7 +131,7 @@ export default defineComponent({
 			);
 			return (
 				!isAiExperimentDisabled &&
-				this.settingsStore.settings.ai.enabled === true &&
+				this.settingsStore.settings.ai.enabled &&
 				this.language === 'javaScript'
 			);
 		},
@@ -174,11 +175,6 @@ export default defineComponent({
 			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
 
 			if (!ref?.contains(fromElement)) this.isEditorHovered = false;
-		},
-		onAskAiButtonClick() {
-			this.$telemetry.track('User clicked ask ai button', { source: 'code' });
-
-			this.uiStore.openModal(ASK_AI_MODAL_KEY);
 		},
 		reloadLinter() {
 			if (!this.editor) return;
