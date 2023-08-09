@@ -79,19 +79,33 @@
 				</n8n-text>
 			</div>
 			<div>
-				<n8n-button size="large" :class="$style.debugLink">
-					<router-link
-						:to="{
-							name: VIEWS.EXECUTION_DEBUG,
-							params: {
-								workflowId: activeExecution.workflowId,
-								executionId: activeExecution.id,
-							},
-						}"
-					>
-						{{ debugButtonText }}
-					</router-link>
-				</n8n-button>
+				<n8n-tooltip>
+					<div>
+						<n8n-button :disabled="!isDebugEnabled" size="large" :class="$style.debugLink">
+							<router-link
+								v-if="isDebugEnabled"
+								:to="{
+									name: VIEWS.EXECUTION_DEBUG,
+									params: {
+										workflowId: activeExecution.workflowId,
+										executionId: activeExecution.id,
+									},
+								}"
+							>
+								{{ debugButtonText }}
+							</router-link>
+							<span v-else>{{ debugButtonText }}</span>
+						</n8n-button>
+					</div>
+					<template #content>
+						<span v-if="isDebugEnabled">
+							{{ $locale.baseText('executionsList.debug.tooltip.featureEnabled') }}
+						</span>
+						<span v-else>
+							{{ $locale.baseText('executionsList.debug.tooltip.featureDisabled') }}
+						</span>
+					</template>
+				</n8n-tooltip>
 				<el-dropdown
 					v-if="executionUIDetails?.name === 'error'"
 					trigger="click"
@@ -141,13 +155,14 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-
+import { mapStores } from 'pinia';
+import { ElDropdown } from 'element-plus';
 import { useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { ElDropdown } from 'element-plus';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { useSettingsStore } from '@/stores';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
@@ -169,6 +184,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
+		...mapStores(useSettingsStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
@@ -179,6 +195,10 @@ export default defineComponent({
 			return this.activeExecution.status === 'success'
 				? this.$locale.baseText('executionsList.debug.button.copyToEditor')
 				: this.$locale.baseText('executionsList.debug.button.debugInEditor');
+		},
+		isDebugEnabled(): boolean {
+      // TODO: Remove the "|| true" once the feature key is ready to use
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor) || true;
 		},
 	},
 	methods: {
