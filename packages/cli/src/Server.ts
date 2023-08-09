@@ -482,7 +482,7 @@ export class Server extends AbstractServer {
 				logger,
 				jwtService,
 			}),
-			new TagsController({ config, repositories, externalHooks }),
+			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,
