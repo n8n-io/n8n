@@ -34,14 +34,14 @@ export async function parseRawEmail(
 ): Promise<INodeExecutionData> {
 	const responseData = await simpleParser(messageEncoded);
 	const headers: IDataObject = {};
-	const addidtionalData: IDataObject = {};
+	const additionalData: IDataObject = {};
 
 	for (const header of responseData.headerLines) {
 		headers[header.key] = header.line;
 	}
 
-	addidtionalData.headers = headers;
-	addidtionalData.headerLines = undefined;
+	additionalData.headers = headers;
+	additionalData.headerLines = undefined;
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
@@ -54,11 +54,11 @@ export async function parseRawEmail(
 			);
 		}
 
-		addidtionalData.attachments = undefined;
+		additionalData.attachments = undefined;
 	}
 
 	return {
-		json: { ...responseData, ...addidtionalData },
+		json: { ...responseData, ...additionalData },
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
 	} as INodeExecutionData;
 }
@@ -648,7 +648,7 @@ export class EmailReadImapV2 implements INodeType {
 
 		let reconnectionInterval: NodeJS.Timeout | undefined;
 
-		const handleReconect = async () => {
+		const handleReconnect = async () => {
 			this.logger.verbose('Forcing reconnect to IMAP server');
 			try {
 				isCurrentlyReconnecting = true;
@@ -665,12 +665,12 @@ export class EmailReadImapV2 implements INodeType {
 
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(
-				handleReconect,
+				handleReconnect,
 				(options.forceReconnect as number) * 1000 * 60,
 			);
 		}
 
-		// When workflow and so node gets set to inactive close the connectoin
+		// When workflow and so node gets set to inactive close the connection
 		async function closeFunction() {
 			closeFunctionWasCalled = true;
 			if (reconnectionInterval) {
