@@ -7,46 +7,42 @@ import {
 } from 'class-validator';
 
 export class WorkflowFilterDtoValidator {
-	@IsOptional()
 	@IsString()
+	@IsOptional()
 	id?: string;
 
-	@IsOptional()
 	@IsString()
+	@IsOptional()
 	name?: string;
 
-	@IsOptional()
 	@IsBoolean()
+	@IsOptional()
 	active?: boolean;
 
-	@IsOptional()
 	@IsArray()
 	@IsString({ each: true })
+	@IsOptional()
 	tags?: string[];
 
-	static get filterFields() {
+	static get filterableFields() {
 		return ['id', 'name', 'active', 'tags'];
 	}
 
-	private static removeUnknownFields(obj: object) {
-		const { filterFields } = WorkflowFilterDtoValidator;
-
-		return Object.fromEntries(
-			Object.entries(obj).filter(([key]) => filterFields.includes(key)),
-		) as WorkflowFilterDtoValidator;
-	}
-
 	validate() {
-		const sanitized = WorkflowFilterDtoValidator.removeUnknownFields(this);
-
-		const result = classValidatorValidate(sanitized);
+		const result = classValidatorValidate(this);
 
 		if (result.length > 0) throw new Error('Parsed filter does not fit the schema');
 
-		return sanitized;
+		return this;
 	}
 
-	constructor(data: unknown) {
-		Object.assign(this, data);
+	constructor(data: object) {
+		const { filterableFields } = WorkflowFilterDtoValidator;
+
+		const onlyKnownFields = Object.fromEntries(
+			Object.entries(data).filter(([key]) => filterableFields.includes(key)),
+		);
+
+		Object.assign(this, onlyKnownFields);
 	}
 }
