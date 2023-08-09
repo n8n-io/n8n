@@ -213,7 +213,6 @@ export class CacheService extends EventEmitter {
 			([key, value]) => value !== undefined && value !== null && key && key.length > 0,
 		);
 		if (this.isRedisCache()) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			nonNullValues.forEach(([_key, value]) => {
 				if (!(this.cache as RedisCache)?.store?.isCacheable(value)) {
 					throw new Error('Value is not cacheable');
