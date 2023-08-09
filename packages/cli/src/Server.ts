@@ -402,6 +402,15 @@ export class Server extends AbstractServer {
 	 * Returns the current settings for the frontend
 	 */
 	getSettingsForFrontend(): IN8nUISettings {
+		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
+		const instanceBaseUrl = getInstanceBaseUrl();
+		this.frontendSettings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+		this.frontendSettings.urlBaseEditor = instanceBaseUrl;
+		this.frontendSettings.oauthCallbackUrls = {
+			oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
+			oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
+		};
+
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			quota: Container.get(License).getUsersLimit(),
