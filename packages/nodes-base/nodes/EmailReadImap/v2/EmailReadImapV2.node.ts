@@ -238,7 +238,7 @@ export class EmailReadImapV2 implements INodeType {
 							imap: {
 								user: credentials.user,
 								password: credentials.password,
-								host: credentials.host,
+								host: credentials.host.trim(),
 								port: credentials.port,
 								tls: credentials.secure,
 								authTimeout: 20000,
@@ -251,7 +251,7 @@ export class EmailReadImapV2 implements INodeType {
 						}
 
 						if (credentials.secure) {
-							tlsOptions.servername = credentials.host;
+							tlsOptions.servername = credentials.host.trim();
 						}
 						if (!isEmpty(tlsOptions)) {
 							config.imap.tlsOptions = tlsOptions;
@@ -554,7 +554,7 @@ export class EmailReadImapV2 implements INodeType {
 				imap: {
 					user: credentials.user,
 					password: credentials.password,
-					host: credentials.host,
+					host: credentials.host.trim(),
 					port: credentials.port,
 					tls: credentials.secure,
 					authTimeout: 20000,
@@ -609,7 +609,7 @@ export class EmailReadImapV2 implements INodeType {
 			}
 
 			if (credentials.secure) {
-				tlsOptions.servername = credentials.host;
+				tlsOptions.servername = credentials.host.trim();
 			}
 
 			if (!isEmpty(tlsOptions)) {
