@@ -27,6 +27,7 @@ import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlH
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '../variables/variables.service';
+import { TagRepository } from '@/databases/repositories';
 
 @Service()
 export class SourceControlImportService {
@@ -39,6 +40,7 @@ export class SourceControlImportService {
 	constructor(
 		private readonly variablesService: VariablesService,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly tagRepository: TagRepository,
 	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -265,7 +267,7 @@ export class SourceControlImportService {
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
-		const localTags = await Db.collections.Tag.find({
+		const localTags = await this.tagRepository.find({
 			select: ['id', 'name'],
 		});
 		const localMappings = await Db.collections.WorkflowTagMapping.find({
@@ -481,7 +483,7 @@ export class SourceControlImportService {
 
 		await Promise.all(
 			mappedTags.tags.map(async (tag) => {
-				const findByName = await Db.collections.Tag.findOne({
+				const findByName = await this.tagRepository.findOne({
 					where: { name: tag.name },
 					select: ['id'],
 				});
@@ -490,7 +492,7 @@ export class SourceControlImportService {
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
-				await Db.collections.Tag.upsert(
+				await this.tagRepository.upsert(
 					{
 						...tag,
 					},
