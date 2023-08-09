@@ -3,7 +3,6 @@ import { formatPrivateKey } from '@utils/utilities';
 
 import mysql2 from 'mysql2/promise';
 import type { Client, ConnectConfig } from 'ssh2';
-import { rm } from 'fs/promises';
 
 import type { Mysql2Pool } from '../helpers/interfaces';
 
@@ -106,12 +105,6 @@ export async function createPool(
 			dstHost: credentials.host as string,
 			dstPort: credentials.port as number,
 		};
-
-		if (sshAuthenticateWith === 'privateKey') {
-			sshClient.on('end', async () => {
-				await rm(tunnelConfig.privateKey as string);
-			});
-		}
 
 		const poolSetup = new Promise<mysql2.Pool>((resolve, reject) => {
 			sshClient
