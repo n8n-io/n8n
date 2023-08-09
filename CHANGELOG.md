@@ -1,3 +1,15 @@
+## [1.2.1](https://github.com/n8n-io/n8n/compare/n8n@1.2.0...n8n@1.2.1) (2023-08-09)
+
+
+### Bug Fixes
+
+* **core:** Don't let bull override the default redis config ([#6897](https://github.com/n8n-io/n8n/issues/6897)) ([39f23ca](https://github.com/n8n-io/n8n/commit/39f23cac1372e65143f46f45d4a0c1358e93571f))
+* **core:** Update frontend urls when using the `--tunnel` option ([#6898](https://github.com/n8n-io/n8n/issues/6898)) ([d9d2d0f](https://github.com/n8n-io/n8n/commit/d9d2d0ff632bbe97691775b5b61c65bc23d6786a))
+* **editor:** Update execution view layout ([#6882](https://github.com/n8n-io/n8n/issues/6882)) ([cdd24dc](https://github.com/n8n-io/n8n/commit/cdd24dc1a715992a13ed005d397fa253b8f79ecf))
+* Fix issue with key formatting introduced in 1.2.0 ([#6896](https://github.com/n8n-io/n8n/issues/6896)) ([f21aba7](https://github.com/n8n-io/n8n/commit/f21aba77cf14f7d7ac51e5e688f7ef10a984d6f6))
+
+
+
 # [1.2.0](https://github.com/n8n-io/n8n/compare/n8n@1.1.0...n8n@1.2.0) (2023-08-09)
 
 
