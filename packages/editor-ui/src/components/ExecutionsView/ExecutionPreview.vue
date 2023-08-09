@@ -191,7 +191,7 @@ export default defineComponent({
 			// Hide dropdown when clicking outside of current document
 			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
 			if (retryDropdownRef && event.relatedTarget === null) {
-				retryDropdownRef.hide();
+				retryDropdownRef.handleClose();
 			}
 		},
 	},
