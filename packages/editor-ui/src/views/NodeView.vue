@@ -2634,16 +2634,12 @@ export default defineComponent({
 
 					if (workflow) {
 						this.titleSet(workflow.name, 'IDLE');
+						await this.openWorkflow(workflow);
 
 						if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
 							this.titleSet(workflow.name, 'DEBUG');
-							const execution = await this.workflowsStore.getExecution(
-								this.$route.params.executionId as string,
-							);
-							workflow = await this.pinExecutionData(workflow, execution);
+							await this.applyExecutionData(this.$route.params.executionId as string);
 						}
-
-						await this.openWorkflow(workflow);
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow

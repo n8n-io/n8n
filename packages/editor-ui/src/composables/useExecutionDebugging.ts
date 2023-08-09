@@ -1,18 +1,24 @@
 import { useI18n, useMessage } from '@/composables';
-import type { IExecutionResponse, IWorkflowDb } from '@/Interface';
 import { MODAL_CONFIRM } from '@/constants';
+import { useWorkflowsStore } from '@/stores';
 
 export const useExecutionDebugging = () => {
 	const i18n = useI18n();
 	const message = useMessage();
+	const workflowsStore = useWorkflowsStore();
 
-	const pinExecutionData = async (
-		workflow: IWorkflowDb,
-		execution: IExecutionResponse | undefined,
-	): Promise<IWorkflowDb> => {
+	const applyExecutionData = async (executionId: string): Promise<void> => {
+		const { workflow } = workflowsStore;
+		const execution = await workflowsStore.getExecution(executionId);
+
+		console.log('applyExecutionData');
+		console.log(workflow);
+		console.log('exec');
+		console.log(execution);
+
 		// If no execution data is available, return the workflow as is
 		if (!execution?.data?.resultData) {
-			return workflow;
+			return;
 		}
 
 		const { runData, pinData } = execution.data.resultData;
@@ -38,12 +44,14 @@ export const useExecutionDebugging = () => {
 			);
 
 			if (overWritePinnedDataConfirm !== MODAL_CONFIRM) {
-				return workflow;
+				return;
 			}
 		}
 
+		workflowsStore.setWorkflowExecutionData(execution);
+
 		// Overwrite the workflow pinned data with the execution data
-		workflow.pinData = executionNodesData.reduce(
+		/*workflow.pinData = executionNodesData.reduce(
 			(acc, { name, data }) => {
 				// Only add data if it exists and the node is in the workflow
 				if (acc && data && workflow.nodes.some((node) => node.name === name)) {
@@ -54,10 +62,10 @@ export const useExecutionDebugging = () => {
 			{} as IWorkflowDb['pinData'],
 		);
 
-		return workflow;
+		return workflow;*/
 	};
 
 	return {
-		pinExecutionData,
+		applyExecutionData,
 	};
 };
