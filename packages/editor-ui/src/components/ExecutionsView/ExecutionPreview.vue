@@ -197,8 +197,7 @@ export default defineComponent({
 				: this.$locale.baseText('executionsList.debug.button.debugInEditor');
 		},
 		isDebugEnabled(): boolean {
-      // TODO: Remove the "|| true" once the feature key is ready to use
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor) || true;
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor);
 		},
 	},
 	methods: {

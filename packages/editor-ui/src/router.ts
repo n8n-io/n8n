@@ -39,7 +39,7 @@ import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsSourceControl from './views/SettingsSourceControl.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
-import { VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 interface IRouteConfig {
 	meta: {
@@ -238,9 +238,8 @@ export const routes = [
 					loginStatus: [LOGIN_STATUS.LoggedIn],
 				},
 				deny: {
-					shouldDeny: () => false,
-					// TODO: Uncomment when feature is ready
-					//!useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+					shouldDeny: () =>
+						!useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
 				},
 			},
 		},
