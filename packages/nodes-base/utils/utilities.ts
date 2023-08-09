@@ -242,7 +242,6 @@ export function formatPrivateKey(privateKey: string): string {
 			}
 		}
 	});
-	console.log(formattedPrivateKey);
 	return formattedPrivateKey;
 }
 
