@@ -12,7 +12,7 @@
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
-			:class="{ [$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }"
+			:class="$style.executionDetails"
 			v-if="activeExecution"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
@@ -141,14 +141,12 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 
 import { useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
 import { ElDropdown } from 'element-plus';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
@@ -171,12 +169,8 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
-		},
-		sidebarCollapsed(): boolean {
-			return this.uiStore.sidebarMenuCollapsed;
 		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
@@ -215,7 +209,7 @@ export default defineComponent({
 			// Hide dropdown when clicking outside of current document
 			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
 			if (retryDropdownRef && event.relatedTarget === null) {
-				retryDropdownRef.hide();
+				retryDropdownRef.handleClose();
 			}
 		},
 	},
@@ -247,10 +241,6 @@ export default defineComponent({
 
 	& * {
 		pointer-events: all;
-	}
-
-	&.sidebarCollapsed {
-		width: calc(100% - 375px);
 	}
 }
 

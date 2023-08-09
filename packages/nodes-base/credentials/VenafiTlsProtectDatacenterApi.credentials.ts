@@ -53,7 +53,7 @@ export class VenafiTlsProtectDatacenterApi implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'token',
 			type: 'hidden',
-			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
+
 			typeOptions: {
 				expirable: true,
 			},

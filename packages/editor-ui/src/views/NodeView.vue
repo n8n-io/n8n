@@ -778,6 +778,24 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
+			if (data.workflowData.ownedBy) {
+				this.workflowsEEStore.setWorkflowOwnedBy({
+					workflowId: data.workflowData.id,
+					ownedBy: data.workflowData.ownedBy,
+				});
+			}
+
+			if (data.workflowData.sharedWith) {
+				this.workflowsEEStore.setWorkflowSharedWith({
+					workflowId: data.workflowData.id,
+					sharedWith: data.workflowData.sharedWith,
+				});
+			}
+
+			if (data.workflowData.usedCredentials) {
+				this.workflowsStore.setUsedCredentials(data.workflowData.usedCredentials);
+			}
+
 			await this.addNodes(
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
