@@ -241,7 +241,7 @@ export class EmailReadImapV1 implements INodeType {
 						imap: {
 							user: credentials.user as string,
 							password: credentials.password as string,
-							host: credentials.host as string,
+							host: (credentials.host as string).trim(),
 							port: credentials.port as number,
 							tls: credentials.secure as boolean,
 							authTimeout: 20000,
@@ -250,7 +250,7 @@ export class EmailReadImapV1 implements INodeType {
 					const tlsOptions: IDataObject = {};
 
 					if (credentials.secure) {
-						tlsOptions.servername = credentials.host as string;
+						tlsOptions.servername = (credentials.host as string).trim();
 					}
 					if (!isEmpty(tlsOptions)) {
 						config.imap.tlsOptions = tlsOptions;
@@ -527,7 +527,7 @@ export class EmailReadImapV1 implements INodeType {
 				imap: {
 					user: credentials.user as string,
 					password: credentials.password as string,
-					host: credentials.host as string,
+					host: (credentials.host as string).trim(),
 					port: credentials.port as number,
 					tls: credentials.secure as boolean,
 					authTimeout: 20000,
@@ -579,7 +579,7 @@ export class EmailReadImapV1 implements INodeType {
 			}
 
 			if (credentials.secure) {
-				tlsOptions.servername = credentials.host as string;
+				tlsOptions.servername = (credentials.host as string).trim();
 			}
 
 			if (!isEmpty(tlsOptions)) {
@@ -619,15 +619,12 @@ export class EmailReadImapV1 implements INodeType {
 		let reconnectionInterval: NodeJS.Timeout | undefined;
 
 		if (options.forceReconnect !== undefined) {
-			reconnectionInterval = setInterval(
-				async () => {
-					this.logger.verbose('Forcing reconnection of IMAP node.');
-					connection.end();
-					connection = await establishConnection();
-					await connection.openBox(mailbox);
-				},
-				(options.forceReconnect as number) * 1000 * 60,
-			);
+			reconnectionInterval = setInterval(async () => {
+				this.logger.verbose('Forcing reconnection of IMAP node.');
+				connection.end();
+				connection = await establishConnection();
+				await connection.openBox(mailbox);
+			}, (options.forceReconnect as number) * 1000 * 60);
 		}
 
 		// When workflow and so node gets set to inactive close the connectoin
