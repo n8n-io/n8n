@@ -64,6 +64,7 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	FieldType,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -2000,31 +2001,43 @@ const validateValueAgainstSchema = (
 			node,
 			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
 		);
-	} else if (propertyDescription.type === 'fixedCollection') {
-		const nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
-			(entry) => entry.name === parameterPath[1],
-		)?.values;
+	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
+		let nestedDescriptions: INodeProperties[] | undefined;
+
+		if (propertyDescription.type === 'fixedCollection') {
+			nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
+				(entry) => entry.name === parameterPath[1],
+			)?.values;
+		}
+
+		if (propertyDescription.type === 'collection') {
+			nestedDescriptions = propertyDescription.options as INodeProperties[];
+		}
 
 		if (!nestedDescriptions) {
 			return parameterValue;
 		}
 
-		const validationMap: { [key: string]: { type: FieldType; options?: INodePropertyOptions[] } } =
-			{};
+		const validationMap: {
+			[key: string]: { type: FieldType; displayName: string; options?: INodePropertyOptions[] };
+		} = {};
 
 		for (const prop of nestedDescriptions) {
 			if (!prop.validateType) continue;
 
 			validationMap[prop.name] = {
 				type: prop.validateType,
+				displayName: prop.displayName,
 				options:
 					prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
 			};
 		}
 
-		const multipleValues = propertyDescription.typeOptions?.multipleValues ?? false;
+		if (!Object.keys(validationMap).length) {
+			return parameterValue;
+		}
 
-		for (const value of multipleValues
+		for (const value of Array.isArray(validationResult.newValue)
 			? (validationResult.newValue as IDataObject[])
 			: [validationResult.newValue as IDataObject]) {
 			for (const key of Object.keys(value)) {
@@ -2039,7 +2052,7 @@ const validateValueAgainstSchema = (
 
 				if (!validationResult.valid) {
 					throw new ExpressionError(
-						`Invalid input for field '${key}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+						`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
 						{
 							description: validationResult.errorMessage,
 							runIndex,
