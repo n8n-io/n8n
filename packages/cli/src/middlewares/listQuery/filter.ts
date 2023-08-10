@@ -2,12 +2,14 @@
 
 import { jsonParse } from 'n8n-workflow';
 import { handleListQueryError } from './error';
-import { WorkflowFilterDtoValidator as Validator } from './dtos/workflow.filter.dto';
+import { WorkflowFilterDtoValidator } from './dtos/workflow.filter.dto';
 
 import type { RequestHandler } from 'express';
 import type { ListQuery } from '@/requests';
 
-function toQueryFilter(rawFilter: string, DtoValidator: typeof Validator) {
+type FilterDtoValidator = typeof WorkflowFilterDtoValidator;
+
+function toQueryFilter(rawFilter: string, DtoValidator: FilterDtoValidator) {
 	const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
 
 	const filter = DtoValidator.validate(dto);
@@ -25,7 +27,7 @@ export const filterListQueryMiddleware: RequestHandler = (req: ListQuery.Request
 	let DtoValidator;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		DtoValidator = Validator;
+		DtoValidator = WorkflowFilterDtoValidator;
 	} else {
 		return next();
 	}

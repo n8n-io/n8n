@@ -2,12 +2,14 @@
 
 import { handleListQueryError } from './error';
 import { jsonParse } from 'n8n-workflow';
-import { WorkflowSelectDtoValidator as Validator } from './dtos/workflow.select.dto';
+import { WorkflowSelectDtoValidator } from './dtos/workflow.select.dto';
 
 import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
 
-function toQuerySelect(rawSelect: string, DtoValidator: typeof Validator) {
+type SelectDtoValidator = typeof WorkflowSelectDtoValidator;
+
+function toQuerySelect(rawSelect: string, DtoValidator: SelectDtoValidator) {
 	const dto = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
 
 	return DtoValidator.validate(dto).reduce<Record<string, true>>((acc, field) => {
@@ -23,7 +25,7 @@ export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request
 	let DtoValidator;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		DtoValidator = Validator;
+		DtoValidator = WorkflowSelectDtoValidator;
 	} else {
 		return next();
 	}
