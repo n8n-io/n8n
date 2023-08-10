@@ -1,11 +1,5 @@
-import type {
-	DeleteResult,
-	EntityManager,
-	FindManyOptions,
-	FindOptionsSelect,
-	FindOptionsWhere,
-} from 'typeorm';
-import { In, Like, Not } from 'typeorm';
+import type { DeleteResult, EntityManager } from 'typeorm';
+import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -20,14 +14,9 @@ import type {
 	WorkflowWithSharingsAndCredentials,
 } from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
-import { WorkflowRepository } from '@/databases/repositories';
-import config from '@/config';
-import { OwnershipService } from '@/services/ownership.service';
-import type { ListQuery } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
@@ -202,80 +191,5 @@ export class EEWorkflowsService extends WorkflowsService {
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 			);
 		}
-	}
-
-	static async getMany(user: User, options?: ListQuery.Options) {
-		const sharedWorkflowIds = await getSharedWorkflowIds(user); // @TODO: Only difference
-
-		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
-
-		const where: FindOptionsWhere<WorkflowEntity> = {
-			...options?.filter,
-			id: In(sharedWorkflowIds),
-		};
-
-		if (typeof where.name === 'string' && where.name !== '') {
-			where.name = Like(`%${where.name}%`);
-		}
-
-		type Select = FindOptionsSelect<WorkflowEntity> & { ownedBy?: true };
-
-		const select: Select = options?.select
-			? { ...options.select } // copy to enable field removal without affecting original
-			: {
-					name: true,
-					active: true,
-					createdAt: true,
-					updatedAt: true,
-					versionId: true,
-					shared: { userId: true, roleId: true },
-			  };
-
-		delete select?.ownedBy; // remove non-entity field, handled after query
-
-		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
-		const isDefaultSelect = options?.select === undefined;
-		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
-
-		const relations: string[] = [];
-
-		if (areTagsEnabled && areTagsRequested) {
-			relations.push('tags');
-			select.tags = { id: true, name: true };
-		}
-
-		if (isDefaultSelect || options?.select?.ownedBy === true) {
-			relations.push('shared');
-		}
-
-		const findManyOptions: FindManyOptions<WorkflowEntity> = {
-			select: { ...select, id: true },
-			where,
-		};
-
-		if (isDefaultSelect || options?.select?.updatedAt === true) {
-			findManyOptions.order = { updatedAt: 'ASC' };
-		}
-
-		if (relations.length > 0) {
-			findManyOptions.relations = relations;
-		}
-
-		if (options?.take) {
-			findManyOptions.skip = options.skip;
-			findManyOptions.take = options.take;
-		}
-
-		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
-			findManyOptions,
-		)) as [ListQuery.Workflow.WithSharing[], number];
-
-		const role = await Container.get(RoleService).findWorkflowOwnerRole();
-		const ownershipService = Container.get(OwnershipService);
-
-		return {
-			workflows: workflows.map((w) => ownershipService.addOwnedBy(w, role)),
-			count,
-		};
 	}
 }

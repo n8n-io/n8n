@@ -147,10 +147,18 @@ export namespace ListQuery {
 
 		type OwnedByField = { ownedBy: Pick<IUser, 'id'> | null };
 
+		export type Plain = BaseFields;
+
 		export type WithSharing = BaseFields & SharedField;
 
 		export type WithOwnership = BaseFields & OwnedByField;
 	}
+}
+
+export function hasSharingDetails(
+	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+): workflows is ListQuery.Workflow.WithSharing[] {
+	return workflows.some((w) => 'shared' in w);
 }
 
 // ----------------------------------

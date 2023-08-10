@@ -208,7 +208,12 @@ EEWorkflowController.get(
 	listQueryMiddleware,
 	async (req: ListQuery.Request, res: express.Response) => {
 		try {
-			const { workflows: data, count } = await EEWorkflows.getMany(req.user, req.listQueryOptions);
+			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user);
+
+			const { workflows: data, count } = await EEWorkflows.getMany(
+				sharedWorkflowIds,
+				req.listQueryOptions,
+			);
 
 			res.json({ count, data });
 		} catch (maybeError) {

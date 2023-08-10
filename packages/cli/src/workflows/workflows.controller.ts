@@ -121,8 +121,10 @@ workflowsController.get(
 	listQueryMiddleware,
 	async (req: ListQuery.Request, res: express.Response) => {
 		try {
+			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, ['owner']);
+
 			const { workflows: data, count } = await WorkflowsService.getMany(
-				req.user,
+				sharedWorkflowIds,
 				req.listQueryOptions,
 			);
 

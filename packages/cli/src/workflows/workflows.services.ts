@@ -16,13 +16,12 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
-import type { WorkflowRequest, ListQuery } from '@/requests';
+import { type WorkflowRequest, type ListQuery, hasSharingDetails } from '@/requests';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { TestWebhooks } from '@/TestWebhooks';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@/databases/repositories';
@@ -94,9 +93,7 @@ export class WorkflowsService {
 		return Db.collections.Workflow.findOne({ where: workflow, relations: options?.relations });
 	}
 
-	static async getMany(owner: User, options?: ListQuery.Options) {
-		const sharedWorkflowIds = await getSharedWorkflowIds(owner, ['owner']); // @TODO: Only difference
-
+	static async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
 		const where: FindOptionsWhere<WorkflowEntity> = {
@@ -134,9 +131,9 @@ export class WorkflowsService {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isDefaultSelect || options?.select?.ownedBy === true) {
-			relations.push('shared');
-		}
+		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;
+
+		if (isOwnedByIncluded) relations.push('shared');
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
 			select: { ...select, id: true },
@@ -158,19 +155,18 @@ export class WorkflowsService {
 
 		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
 			findManyOptions,
-		)) as [ListQuery.Workflow.WithSharing[], number];
+		)) as [ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[], number];
 
-		if (isDefaultSelect || options?.select?.ownedBy === true) {
-			const role = await Container.get(RoleService).findWorkflowOwnerRole();
-			const ownershipService = Container.get(OwnershipService);
+		if (!hasSharingDetails(workflows)) return { workflows, count };
 
-			return {
-				workflows: workflows.map((w) => ownershipService.addOwnedBy(w, role)),
-				count,
-			};
-		}
+		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 
-		return { workflows, count };
+		return {
+			workflows: workflows.map((w) =>
+				Container.get(OwnershipService).addOwnedBy(w, workflowOwnerRole),
+			),
+			count,
+		};
 	}
 
 	static async update(
