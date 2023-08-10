@@ -12,10 +12,6 @@ type QueryFilter = Omit<WorkflowFilterDtoValidator, 'tags'> & { tags?: Array<{ n
 export class WorkflowFilterDtoValidator {
 	@IsString()
 	@IsOptional()
-	id?: string;
-
-	@IsString()
-	@IsOptional()
 	name?: string;
 
 	@IsBoolean()
