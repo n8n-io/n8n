@@ -11,7 +11,6 @@ import { BadRequestError } from '@/ResponseHelper';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
-import type { UserRepository } from '@db/repositories';
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import {
@@ -20,15 +19,10 @@ import {
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IExternalHooksClass,
-	IInternalHooksClass,
-} from '@/Interfaces';
+import type { PublicUser, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import { UserService } from '@/user/user.service';
+import type { UserService } from '@/services/user.service';
 
 @Authorized()
 @RestController('/me')
@@ -39,23 +33,23 @@ export class MeController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: UserRepository;
+	private readonly userService: UserService;
 
 	constructor({
 		logger,
 		externalHooks,
 		internalHooks,
-		repositories,
+		userService,
 	}: {
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User'>;
+		userService: UserService;
 	}) {
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
+		this.userService = userService;
 	}
 
 	/**
@@ -99,11 +93,8 @@ export class MeController {
 			}
 		}
 
-		await this.userRepository.update(userId, payload);
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: { globalRole: true },
-		});
+		await this.userService.update(userId, payload);
+		const user = await this.userService.findOneOrFail({ where: { id: userId } });
 
 		this.logger.info('User updated successfully', { userId });
 
@@ -154,7 +145,7 @@ export class MeController {
 
 		req.user.password = await hashPassword(validPassword);
 
-		const user = await this.userRepository.save(req.user);
+		const user = await this.userService.save(req.user);
 		this.logger.info('Password updated successfully', { userId: user.id });
 
 		await issueCookie(res, user);
@@ -186,8 +177,9 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userRepository.save({
+		await this.userService.save({
 			id: req.user.id,
+			// @ts-ignore
 			personalizationAnswers,
 		});
 
@@ -205,9 +197,7 @@ export class MeController {
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-		await this.userRepository.update(req.user.id, {
-			apiKey,
-		});
+		await this.userService.update(req.user.id, { apiKey });
 
 		void this.internalHooks.onApiKeyCreated({
 			user: req.user,
@@ -230,9 +220,7 @@ export class MeController {
 	 */
 	@Delete('/api-key')
 	async deleteAPIKey(req: AuthenticatedRequest) {
-		await this.userRepository.update(req.user.id, {
-			apiKey: null,
-		});
+		await this.userService.update(req.user.id, { apiKey: null });
 
 		void this.internalHooks.onApiKeyDeleted({
 			user: req.user,
@@ -250,9 +238,9 @@ export class MeController {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 		const { id } = req.user;
 
-		await UserService.updateUserSettings(id, payload);
+		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.userService.findOneOrFail({
 			select: ['settings'],
 			where: { id },
 		});

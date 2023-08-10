@@ -8,7 +8,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
 import { WorkflowsService } from './workflows.services';
 import type {
 	CredentialUsedByWorkflow,
@@ -69,7 +69,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		workflow: WorkflowEntity,
 		shareWithIds: string[],
 	): Promise<SharedWorkflow[]> {
-		const users = await UserService.getByIds(transaction, shareWithIds);
+		const users = await Container.get(UserService).getByIds(transaction, shareWithIds);
 		const role = await Container.get(RoleService).findWorkflowEditorRole();
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {

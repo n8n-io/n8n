@@ -4,7 +4,7 @@ import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
 import { OwnershipService } from './ownership.service';
 
 @Service()
@@ -51,7 +51,7 @@ export class EventsService extends EventEmitter {
 				};
 
 				if (!owner.settings?.userActivated) {
-					await UserService.updateUserSettings(owner.id, {
+					await Container.get(UserService).updateSettings(owner.id, {
 						firstSuccessfulWorkflowId: workflowId,
 						userActivated: true,
 					});

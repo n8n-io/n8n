@@ -38,18 +38,14 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import type {
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	UserRepository,
-} from '@db/repositories';
-import { UserService } from '@/user/user.service';
+import { type SharedCredentialsRepository, type SharedWorkflowRepository } from '@db/repositories';
 import { plainToInstance } from 'class-transformer';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { JwtService } from '@/services/jwt.service';
 import type { RoleService } from '@/services/role.service';
+import type { UserService } from '@/services/user.service';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -61,8 +57,6 @@ export class UsersController {
 	private externalHooks: IExternalHooksClass;
 
 	private internalHooks: IInternalHooksClass;
-
-	private userRepository: UserRepository;
 
 	private sharedCredentialsRepository: SharedCredentialsRepository;
 
@@ -78,6 +72,8 @@ export class UsersController {
 
 	private roleService: RoleService;
 
+	private userService: UserService;
+
 	constructor({
 		config,
 		logger,
@@ -89,23 +85,24 @@ export class UsersController {
 		jwtService,
 		postHog,
 		roleService,
+		userService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'SharedCredentials' | 'SharedWorkflow'>;
+		repositories: Pick<IDatabaseCollections, 'SharedCredentials' | 'SharedWorkflow'>;
 		activeWorkflowRunner: ActiveWorkflowRunner;
 		mailer: UserManagementMailer;
 		jwtService: JwtService;
 		postHog?: PostHogClient;
 		roleService: RoleService;
+		userService: UserService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
 		this.sharedCredentialsRepository = repositories.SharedCredentials;
 		this.sharedWorkflowRepository = repositories.SharedWorkflow;
 		this.activeWorkflowRunner = activeWorkflowRunner;
@@ -113,6 +110,7 @@ export class UsersController {
 		this.jwtService = jwtService;
 		this.postHog = postHog;
 		this.roleService = roleService;
+		this.userService = userService;
 	}
 
 	/**
@@ -185,7 +183,7 @@ export class UsersController {
 		}
 
 		// remove/exclude existing users from creation
-		const existingUsers = await this.userRepository.find({
+		const existingUsers = await this.userService.findMany({
 			where: { email: In(Object.keys(createUsers)) },
 		});
 		existingUsers.forEach((user) => {
@@ -202,7 +200,7 @@ export class UsersController {
 		this.logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
 
 		try {
-			await this.userRepository.manager.transaction(async (transactionManager) =>
+			await this.userService.getManager().transaction(async (transactionManager) =>
 				Promise.all(
 					usersToSetUp.map(async (email) => {
 						const newUser = Object.assign(new User(), {
@@ -323,7 +321,7 @@ export class UsersController {
 
 		const validPassword = validatePassword(password);
 
-		const users = await this.userRepository.find({
+		const users = await this.userService.findMany({
 			where: { id: In([inviterId, inviteeId]) },
 			relations: ['globalRole'],
 		});
@@ -353,7 +351,7 @@ export class UsersController {
 		invitee.lastName = lastName;
 		invitee.password = await hashPassword(validPassword);
 
-		const updatedUser = await this.userRepository.save(invitee);
+		const updatedUser = await this.userService.save(invitee);
 
 		await issueCookie(res, updatedUser);
 
@@ -371,7 +369,7 @@ export class UsersController {
 	@Authorized('any')
 	@Get('/')
 	async listUsers(req: UserRequest.List) {
-		const users = await this.userRepository.find({ relations: ['globalRole', 'authIdentities'] });
+		const users = await this.userService.findMany({ relations: ['globalRole', 'authIdentities'] });
 		return users.map(
 			(user): PublicUser =>
 				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
@@ -381,7 +379,7 @@ export class UsersController {
 	@Authorized(['global', 'owner'])
 	@Get('/:id/password-reset-link')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.userService.findOneOrFail({
 			where: { id: req.params.id },
 		});
 		if (!user) {
@@ -397,7 +395,7 @@ export class UsersController {
 
 		const baseUrl = getInstanceBaseUrl();
 
-		const link = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		const link = this.userService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
 		return {
 			link,
 		};
@@ -410,9 +408,9 @@ export class UsersController {
 
 		const id = req.params.id;
 
-		await UserService.updateUserSettings(id, payload);
+		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.userService.findOneOrFail({
 			select: ['settings'],
 			where: { id },
 		});
@@ -443,7 +441,7 @@ export class UsersController {
 			);
 		}
 
-		const users = await this.userRepository.find({
+		const users = await this.userService.findMany({
 			where: { id: In([transferId, idToDelete]) },
 		});
 
@@ -475,7 +473,7 @@ export class UsersController {
 		if (transferId) {
 			const transferee = users.find((user) => user.id === transferId);
 
-			await this.userRepository.manager.transaction(async (transactionManager) => {
+			await this.userService.getManager().transaction(async (transactionManager) => {
 				// Get all workflow ids belonging to user to delete
 				const sharedWorkflowIds = await transactionManager
 					.getRepository(SharedWorkflow)
@@ -550,7 +548,7 @@ export class UsersController {
 			}),
 		]);
 
-		await this.userRepository.manager.transaction(async (transactionManager) => {
+		await this.userService.getManager().transaction(async (transactionManager) => {
 			const ownedWorkflows = await Promise.all(
 				ownedSharedWorkflows.map(async ({ workflow }) => {
 					if (workflow.active) {
@@ -597,7 +595,7 @@ export class UsersController {
 			throw new InternalServerError('Email sending must be set up in order to invite other users');
 		}
 
-		const reinvitee = await this.userRepository.findOneBy({ id: idToReinvite });
+		const reinvitee = await this.userService.findOneBy({ id: idToReinvite });
 		if (!reinvitee) {
 			this.logger.debug(
 				'Request to reinvite a user failed because the ID of the reinvitee was not found in database',

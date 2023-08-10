@@ -11,7 +11,7 @@ import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { isSharingEnabled } from './UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import Container from 'typedi';
 import { RoleService } from '@/services/role.service';
@@ -135,7 +135,7 @@ export class PermissionChecker {
 		}
 
 		if (policy === 'workflowsFromSameOwner') {
-			const user = await UserService.get({ id: userId });
+			const user = await Container.get(UserService).findOne({ where: { id: userId } });
 			if (!user) {
 				throw new WorkflowOperationError(
 					'Fatal error: user not found. Please contact the system administrator.',

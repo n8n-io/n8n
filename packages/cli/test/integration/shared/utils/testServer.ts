@@ -52,6 +52,7 @@ import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { MetricsService } from '@/services/metrics.service';
+import { UserService } from '@/services/user.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -198,7 +199,13 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new AuthController({ config, logger, internalHooks, repositories }),
+							new AuthController({
+								config,
+								logger,
+								internalHooks,
+								repositories,
+								userService: Container.get(UserService),
+							}),
 						);
 						break;
 					case 'ldap':
@@ -229,7 +236,12 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new MeController({ logger, externalHooks, internalHooks, repositories }),
+							new MeController({
+								logger,
+								externalHooks,
+								internalHooks,
+								userService: Container.get(UserService),
+							}),
 						);
 						break;
 					case 'passwordReset':
@@ -242,8 +254,8 @@ export const setupTestServer = ({
 								externalHooks,
 								internalHooks,
 								mailer,
-								repositories,
 								jwtService,
+								userService: Container.get(UserService),
 							}),
 						);
 						break;
@@ -251,7 +263,13 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new OwnerController({ config, logger, internalHooks, repositories }),
+							new OwnerController({
+								config,
+								logger,
+								internalHooks,
+								repositories,
+								userService: Container.get(UserService),
+							}),
 						);
 						break;
 					case 'users':
@@ -268,6 +286,7 @@ export const setupTestServer = ({
 								logger,
 								jwtService,
 								roleService: Container.get(RoleService),
+								userService: Container.get(UserService),
 							}),
 						);
 						break;

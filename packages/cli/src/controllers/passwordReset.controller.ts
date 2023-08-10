@@ -18,13 +18,12 @@ import type { UserManagementMailer } from '@/UserManagement/email';
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
-import type { UserRepository } from '@db/repositories';
 import { PasswordResetRequest } from '@/requests';
-import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { UserService } from '@/user/user.service';
+import type { UserService } from '@/services/user.service';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -43,9 +42,9 @@ export class PasswordResetController {
 
 	private readonly mailer: UserManagementMailer;
 
-	private readonly userRepository: UserRepository;
-
 	private readonly jwtService: JwtService;
+
+	private readonly userService: UserService;
 
 	constructor({
 		config,
@@ -53,24 +52,24 @@ export class PasswordResetController {
 		externalHooks,
 		internalHooks,
 		mailer,
-		repositories,
 		jwtService,
+		userService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
-		repositories: Pick<IDatabaseCollections, 'User'>;
 		jwtService: JwtService;
+		userService: UserService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
 		this.mailer = mailer;
-		this.userRepository = repositories.User;
 		this.jwtService = jwtService;
+		this.userService = userService;
 	}
 
 	/**
@@ -105,7 +104,7 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findOne({
+		const user = await this.userService.findOne({
 			where: {
 				email,
 				password: Not(IsNull()),
@@ -154,7 +153,7 @@ export class PasswordResetController {
 			},
 		);
 
-		const url = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		const url = this.userService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
 
 		try {
 			await this.mailer.passwordReset({
@@ -204,10 +203,8 @@ export class PasswordResetController {
 
 		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
-		const user = await this.userRepository.findOne({
-			where: {
-				id: decodedToken.sub,
-			},
+		const user = await this.userService.findOne({
+			where: { id: decodedToken.sub },
 			relations: ['globalRole'],
 		});
 
@@ -255,7 +252,7 @@ export class PasswordResetController {
 
 		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
-		const user = await this.userRepository.findOne({
+		const user = await this.userService.findOne({
 			where: { id: decodedToken.sub },
 			relations: ['authIdentities'],
 		});
@@ -272,9 +269,7 @@ export class PasswordResetController {
 
 		const passwordHash = await hashPassword(validPassword);
 
-		await this.userRepository.update(user.id, {
-			password: passwordHash,
-		});
+		await this.userService.update(user.id, { password: passwordHash });
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 

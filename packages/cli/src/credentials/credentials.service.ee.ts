@@ -4,7 +4,7 @@ import * as Db from '@/Db';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
 import { CredentialsService } from './credentials.service';
 import type { CredentialWithSharings } from './credentials.types';
 import { RoleService } from '@/services/role.service';
@@ -78,7 +78,7 @@ export class EECredentialsService extends CredentialsService {
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
-		const users = await UserService.getByIds(transaction, shareWithIds);
+		const users = await Container.get(UserService).getByIds(transaction, shareWithIds);
 		const role = await Container.get(RoleService).findCredentialUserRole();
 
 		const newSharedCredentials = users

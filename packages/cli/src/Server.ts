@@ -168,6 +168,7 @@ import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
+import { UserService } from '@/services/user.service';
 
 const exec = promisify(callbackExec);
 
@@ -481,18 +482,36 @@ export class Server extends AbstractServer {
 
 		const controllers: object[] = [
 			new EventBusController(),
-			new AuthController({ config, internalHooks, repositories, logger, postHog }),
-			new OwnerController({ config, internalHooks, repositories, logger }),
-			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new AuthController({
+				config,
+				internalHooks,
+				repositories,
+				logger,
+				postHog,
+				userService: Container.get(UserService),
+			}),
+			new OwnerController({
+				config,
+				internalHooks,
+				repositories,
+				logger,
+				userService: Container.get(UserService),
+			}),
+			new MeController({
+				externalHooks,
+				internalHooks,
+				logger,
+				userService: Container.get(UserService),
+			}),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({
 				config,
 				externalHooks,
 				internalHooks,
 				mailer,
-				repositories,
 				logger,
 				jwtService,
+				userService: Container.get(UserService),
 			}),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
@@ -507,6 +526,7 @@ export class Server extends AbstractServer {
 				postHog,
 				jwtService,
 				roleService: Container.get(RoleService),
+				userService: Container.get(UserService),
 			}),
 			Container.get(SamlController),
 			Container.get(SourceControlController),

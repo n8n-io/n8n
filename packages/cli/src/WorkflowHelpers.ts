@@ -35,7 +35,7 @@ import omit from 'lodash/omit';
 // eslint-disable-next-line import/no-cycle
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
-import { UserService } from './user/user.service';
+import { UserService } from './services/user.service';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
 import { RoleService } from './services/role.service';
@@ -439,7 +439,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 
 	// user is above threshold --> set flag in settings
 	if (!belowThreshold) {
-		void UserService.updateUserSettings(user.id, { isOnboarded: true });
+		void Container.get(UserService).updateSettings(user.id, { isOnboarded: true });
 	}
 
 	return belowThreshold;

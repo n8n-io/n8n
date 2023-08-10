@@ -4,28 +4,29 @@ import type { ILogger } from 'n8n-workflow';
 import jwt from 'jsonwebtoken';
 import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import type { SettingsRepository, UserRepository } from '@db/repositories';
+import type { SettingsRepository } from '@db/repositories';
 import type { Config } from '@/config';
 import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers';
 import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import type { UserService } from '@/services/user.service';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
 	const logger = mock<ILogger>();
 	const internalHooks = mock<IInternalHooksClass>();
-	const userRepository = mock<UserRepository>();
+	const userService = mock<UserService>();
 	const settingsRepository = mock<SettingsRepository>();
 	const controller = new OwnerController({
 		config,
 		logger,
 		internalHooks,
 		repositories: {
-			User: userRepository,
 			Settings: settingsRepository,
 		},
+		userService,
 	});
 
 	describe('setupOwner', () => {
@@ -83,12 +84,12 @@ describe('OwnerController', () => {
 			});
 			const res = mock<Response>();
 			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(false);
-			userRepository.save.calledWith(anyObject()).mockResolvedValue(user);
+			userService.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.setupOwner(req, res);
 
-			expect(userRepository.save).toHaveBeenCalledWith(user);
+			expect(userService.save).toHaveBeenCalledWith(user);
 
 			const cookieOptions = captor<CookieOptions>();
 			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);
