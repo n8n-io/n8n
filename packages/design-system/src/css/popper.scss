@@ -150,3 +150,8 @@
 		}
 	}
 }
+
+.el-popper.n8n-tooltip {
+	max-width: 180px;
+	line-height: var(--font-line-height-regular) !important;
+}

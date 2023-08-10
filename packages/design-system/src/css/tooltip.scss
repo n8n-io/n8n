@@ -2,6 +2,8 @@
 @use './common/var';
 
 @include mixins.b(tooltip) {
+	max-width: 200px;
+
 	&:focus:not(.focusing),
 	&:focus:hover {
 		outline-width: 0;
