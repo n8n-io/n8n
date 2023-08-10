@@ -101,10 +101,6 @@ export class WorkflowsService {
 			id: In(sharedWorkflowIds),
 		};
 
-		if (typeof where.name === 'string' && where.name !== '') {
-			where.name = Like(`%${where.name}%`);
-		}
-
 		type Select = FindOptionsSelect<WorkflowEntity> & { ownedBy?: true };
 
 		const select: Select = options?.select
@@ -120,20 +116,23 @@ export class WorkflowsService {
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
 
+		const relations: string[] = [];
+
 		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
 		const isDefaultSelect = options?.select === undefined;
 		const areTagsRequested = isDefaultSelect || options?.select?.tags === true;
-
-		const relations: string[] = [];
+		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;
 
 		if (areTagsEnabled && areTagsRequested) {
 			relations.push('tags');
 			select.tags = { id: true, name: true };
 		}
 
-		const isOwnedByIncluded = isDefaultSelect || options?.select?.ownedBy === true;
-
 		if (isOwnedByIncluded) relations.push('shared');
+
+		if (typeof where.name === 'string' && where.name !== '') {
+			where.name = Like(`%${where.name}%`);
+		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
 			select: { ...select, id: true },
@@ -153,9 +152,12 @@ export class WorkflowsService {
 			findManyOptions.take = options.take;
 		}
 
+		type Plain = ListQuery.Workflow.Plain;
+		type WithSharing = ListQuery.Workflow.WithSharing;
+
 		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
 			findManyOptions,
-		)) as [ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[], number];
+		)) as [Plain[] | WithSharing[], number];
 
 		if (!hasSharingDetails(workflows)) return { workflows, count };
 
