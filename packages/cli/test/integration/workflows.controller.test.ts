@@ -64,7 +64,7 @@ describe('GET /workflows', () => {
 		expect(response.body).toEqual({ count: 0, data: [] });
 	});
 
-	test('should return slim workflows if tied to owner', async () => {
+	test('should return workflows if tied to owner', async () => {
 		await testDb.createWorkflow({ name: 'First' }, owner);
 		await testDb.createWorkflow({ name: 'Second' }, owner);
 

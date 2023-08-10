@@ -404,7 +404,7 @@ export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: 
 
 		const mapping = mappingRepository.create({ tagId: tag.id, workflowId: workflow.id });
 
-		await Container.get(WorkflowTagMappingRepository).save(mapping);
+		await mappingRepository.save(mapping);
 	}
 
 	return tag;
