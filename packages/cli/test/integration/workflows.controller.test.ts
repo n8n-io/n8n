@@ -1,11 +1,16 @@
 import type { SuperAgentTest } from 'supertest';
-import type { IPinData } from 'n8n-workflow';
+import type { INode, IPinData } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils/';
 import type { User } from '@/databases/entities/User';
+import { randomCredentialPayload } from './shared/random';
+import { v4 as uuid } from 'uuid';
+import { RoleService } from '@/services/role.service';
+import Container from 'typedi';
+import type { ListQuery } from '@/requests';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -64,8 +69,32 @@ describe('GET /workflows', () => {
 		expect(response.body).toEqual({ count: 0, data: [] });
 	});
 
-	test('should return workflows if tied to owner', async () => {
-		await testDb.createWorkflow({ name: 'First' }, owner);
+	test('should return workflows', async () => {
+		const credential = await testDb.saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: await Container.get(RoleService).findCredentialOwnerRole(),
+		});
+
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: credential.id,
+						name: credential.name,
+					},
+				},
+			},
+		];
+
+		const tag = await testDb.createTag({ name: 'A' });
+
+		await testDb.createWorkflow({ name: 'First', nodes, tags: [tag] }, owner);
 		await testDb.createWorkflow({ name: 'Second' }, owner);
 
 		const response = await authOwnerAgent.get('/workflows').expect(200);
@@ -79,7 +108,7 @@ describe('GET /workflows', () => {
 					active: any(Boolean),
 					createdAt: any(String),
 					updatedAt: any(String),
-					tags: [],
+					tags: [{ id: any(String), name: 'A' }],
 					versionId: null,
 					ownedBy: { id: owner.id },
 				}),
@@ -95,6 +124,14 @@ describe('GET /workflows', () => {
 				}),
 			]),
 		});
+
+		const found = response.body.data.find(
+			(w: ListQuery.Workflow.WithOwnership) => w.name === 'First',
+		);
+
+		expect(found.nodes).toBeUndefined();
+		expect(found.sharedWith).toBeUndefined();
+		expect(found.usedCredentials).toBeUndefined();
 	});
 
 	describe('filter', () => {
