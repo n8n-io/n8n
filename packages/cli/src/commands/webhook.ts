@@ -46,7 +46,7 @@ export class Webhook extends BaseCommand {
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
@@ -85,6 +85,7 @@ export class Webhook extends BaseCommand {
 	async run() {
 		await Container.get(Queue).init();
 		await this.server.start();
+		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close

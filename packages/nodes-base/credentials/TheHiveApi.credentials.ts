@@ -17,6 +17,7 @@ export class TheHiveApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'ApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			typeOptions: {
 				password: true,

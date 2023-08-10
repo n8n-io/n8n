@@ -1,23 +1,24 @@
-import './font-awesome-icons';
+import { setup } from '@storybook/vue3';
+
 import './storybook.scss';
 
-import ElementUI from 'element-ui';
-import lang from 'element-ui/lib/locale/lang/en';
-import locale from 'element-ui/lib/locale';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { fas } from '@fortawesome/free-solid-svg-icons';
+
+import ElementPlus from 'element-plus';
+import lang from 'element-plus/lib/locale/lang/en';
 
 import { N8nPlugin } from '../src/plugin';
 
-import Vue from 'vue';
+setup((app) => {
+	library.add(fas);
 
-Vue.use(ElementUI);
-Vue.use(N8nPlugin);
+	app.use(ElementPlus, {
+		locale: lang,
+	});
 
-locale.use(lang);
-
-// https://github.com/storybookjs/storybook/issues/6153
-Vue.prototype.toJSON = function () {
-	return this;
-};
+	app.use(N8nPlugin);
+});
 
 export const parameters = {
 	actions: {

@@ -29,9 +29,12 @@ interface Props {
 	showMappingModeSelect: boolean;
 	loading: boolean;
 	refreshInProgress: boolean;
+	teleported?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
 const {
@@ -288,7 +291,7 @@ defineExpose({
 					:customActions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loadingMessage="fetchingFieldsLabel"
-					@optionSelected="onParameterActionSelected"
+					@update:modelValue="onParameterActionSelected"
 				/>
 			</template>
 		</n8n-input-label>
@@ -354,7 +357,7 @@ defineExpose({
 					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"
-					@valueChanged="onValueChanged"
+					@update="onValueChanged"
 				/>
 			</div>
 			<parameter-issues
@@ -371,8 +374,9 @@ defineExpose({
 					})
 				"
 				size="small"
+				:teleported="teleported"
 				:disabled="addFieldOptions.length == 0"
-				@change="addField"
+				@update:modelValue="addField"
 			>
 				<n8n-option
 					v-for="item in addFieldOptions"

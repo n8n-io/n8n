@@ -27,7 +27,7 @@ export class ScheduleTrigger implements INodeType {
 			name: 'Schedule Trigger',
 			color: '#31C49F',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: ['main'],
 		properties: [

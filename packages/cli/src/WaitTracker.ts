@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
@@ -21,10 +16,10 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { OwnershipService } from './services/ownership.service';
 
 @Service()
 export class WaitTracker {
@@ -37,7 +32,10 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	constructor(private executionRepository: ExecutionRepository) {
+	constructor(
+		private executionRepository: ExecutionRepository,
+		private ownershipService: OwnershipService,
+	) {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
@@ -46,7 +44,6 @@ export class WaitTracker {
 		void this.getWaitingExecutions();
 	}
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async getWaitingExecutions() {
 		Logger.debug('Wait tracker querying database for waiting executions');
 		// Find all the executions which should be triggered in the next 70 seconds
@@ -82,7 +79,7 @@ export class WaitTracker {
 		);
 
 		// Add timers for each waiting execution that they get started at the correct time
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const execution of executions) {
 			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {
@@ -186,7 +183,8 @@ export class WaitTracker {
 			if (!fullExecutionData.workflowData.id) {
 				throw new Error('Only saved workflows can be resumed.');
 			}
-			const user = await getWorkflowOwner(fullExecutionData.workflowData.id);
+			const workflowId = fullExecutionData.workflowData.id;
+			const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,

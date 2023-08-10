@@ -25,8 +25,8 @@ import { isEqual, isNull, merge } from 'lodash';
  * // => [['a', 'b', 'c'], ['d']]
  */
 
-export function chunk(array: any[], size = 1) {
-	const length = array == null ? 0 : array.length;
+export function chunk<T>(array: T[], size = 1) {
+	const length = array === null ? 0 : array.length;
 	if (!length || size < 1) {
 		return [];
 	}
@@ -37,7 +37,7 @@ export function chunk(array: any[], size = 1) {
 	while (index < length) {
 		result[resIndex++] = array.slice(index, (index += size));
 	}
-	return result;
+	return result as T[][];
 }
 
 /**
@@ -51,20 +51,22 @@ export function chunk(array: any[], size = 1) {
  *
  */
 
-export function flatten(nestedArray: any[][]) {
+export function flatten<T>(nestedArray: T[][]) {
 	const result = [];
 
-	(function loop(array: any[] | any) {
+	(function loop(array: T[] | T[][]) {
 		for (let i = 0; i < array.length; i++) {
 			if (Array.isArray(array[i])) {
-				loop(array[i]);
+				loop(array[i] as T[]);
 			} else {
 				result.push(array[i]);
 			}
 		}
 	})(nestedArray);
 
-	return result;
+	//TODO: check logic in MicrosoftSql.node.ts
+
+	return result as any;
 }
 
 export function updateDisplayOptions(
@@ -210,10 +212,38 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 export const keysToLowercase = <T>(headers: T) => {
 	if (typeof headers !== 'object' || Array.isArray(headers) || headers === null) return headers;
 	return Object.entries(headers).reduce((acc, [key, value]) => {
-		acc[key.toLowerCase()] = value;
+		acc[key.toLowerCase()] = value as IDataObject;
 		return acc;
 	}, {} as IDataObject);
 };
+
+/**
+ * Formats a private key by removing unnecessary whitespace and adding line breaks.
+ * @param privateKey - The private key to format.
+ * @returns The formatted private key.
+ */
+export function formatPrivateKey(privateKey: string): string {
+	if (/\n/.test(privateKey)) {
+		return privateKey;
+	}
+	let formattedPrivateKey = '';
+	const parts = privateKey.split('-----').filter((item) => item !== '');
+	parts.forEach((part) => {
+		const regex = /(PRIVATE KEY|CERTIFICATE)/;
+		if (regex.test(part)) {
+			formattedPrivateKey += `-----${part}-----`;
+		} else {
+			const passRegex = /Proc-Type|DEK-Info/;
+			if (passRegex.test(part)) {
+				part = part.replace(/:\s+/g, ':');
+				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
+			} else {
+				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
+			}
+		}
+	});
+	return formattedPrivateKey;
+}
 
 /**
  * @TECH_DEBT Explore replacing with handlebars

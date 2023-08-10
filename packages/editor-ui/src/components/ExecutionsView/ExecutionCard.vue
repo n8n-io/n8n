@@ -13,7 +13,7 @@
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { workflowId: currentWorkflow, executionId: execution.id },
+				params: { name: currentWorkflow, executionId: execution.id },
 			}"
 			:data-test-execution-status="executionUIDetails.name"
 		>
@@ -30,6 +30,7 @@
 					<n8n-text :class="$style.statusLabel" size="small">{{
 						executionUIDetails.label
 					}}</n8n-text>
+					{{ ' ' }}
 					<n8n-text
 						v-if="executionUIDetails.name === 'running'"
 						:color="isActive ? 'text-dark' : 'text-base'"
@@ -237,7 +238,7 @@ export default defineComponent({
 
 .icons {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 }
 
 .icon {

@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -24,8 +24,8 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint --quiet .",
-    "lintfix": "eslint . --fix",
+    "lint": "eslint . --quiet --report-unused-disable-directives",
+    "lintfix": "eslint . --fix --report-unused-disable-directives",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest"
   },

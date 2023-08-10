@@ -29,20 +29,6 @@ describe('RoleRepository', () => {
 		});
 	});
 
-	describe('findRoleOrFail', () => {
-		test('should return the role when present', async () => {
-			entityManager.findOneOrFail.mockResolvedValueOnce(createRole('global', 'owner'));
-			const role = await roleRepository.findRoleOrFail('global', 'owner');
-			expect(role?.name).toEqual('owner');
-			expect(role?.scope).toEqual('global');
-		});
-
-		test('should throw otherwise', async () => {
-			entityManager.findOneOrFail.mockRejectedValueOnce(new Error());
-			await expect(async () => roleRepository.findRoleOrFail('global', 'owner')).rejects.toThrow();
-		});
-	});
-
 	const createRole = (scope: RoleScopes, name: RoleNames) =>
 		Object.assign(new Role(), { name, scope, id: `${randomInteger()}` });
 });

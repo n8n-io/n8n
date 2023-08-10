@@ -1,17 +1,22 @@
 import { createPinia, setActivePinia } from 'pinia';
 import SettingsSso from '@/views/SettingsSso.vue';
 
-import { renderComponent, retry } from '@/__tests__/utils';
+import { retry } from '@/__tests__/utils';
 import { setupServer } from '@/__tests__/server';
 import { afterAll, beforeAll } from 'vitest';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
 import userEvent from '@testing-library/user-event';
 import { useSSOStore } from '@/stores/sso.store';
-import { i18nInstance } from '@/plugins/i18n';
+import { createComponentRenderer } from '@/__tests__/render';
+import { EnterpriseEditionFeature } from '@/constants';
+import { nextTick } from 'vue';
 
 let pinia: ReturnType<typeof createPinia>;
 let ssoStore: ReturnType<typeof useSSOStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
 let server: ReturnType<typeof setupServer>;
+
+const renderComponent = createComponentRenderer(SettingsSso);
 
 describe('SettingsSso', () => {
 	beforeAll(() => {
@@ -19,13 +24,15 @@ describe('SettingsSso', () => {
 	});
 
 	beforeEach(async () => {
+		window.open = vi.fn();
+
 		pinia = createPinia();
 		setActivePinia(pinia);
 
-		window.open = vi.fn();
-
-		await useSettingsStore().getSettings();
 		ssoStore = useSSOStore();
+		settingsStore = useSettingsStore();
+
+		await settingsStore.getSettings();
 	});
 
 	afterEach(() => {
@@ -37,9 +44,8 @@ describe('SettingsSso', () => {
 	});
 
 	it('should render paywall state when there is no license', () => {
-		const { getByTestId, queryByTestId, queryByRole } = renderComponent(SettingsSso, {
+		const { getByTestId, queryByTestId, queryByRole } = renderComponent({
 			pinia,
-			i18n: i18nInstance,
 		});
 
 		expect(queryByRole('checkbox')).not.toBeInTheDocument();
@@ -47,26 +53,30 @@ describe('SettingsSso', () => {
 		expect(getByTestId('sso-content-unlicensed')).toBeInTheDocument();
 	});
 
-	it('should render licensed content', () => {
-		vi.spyOn(ssoStore, 'isEnterpriseSamlEnabled', 'get').mockReturnValue(true);
+	it('should render licensed content', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
 
-		const { getByTestId, queryByTestId, getByRole } = renderComponent(SettingsSso, {
+		const { getByTestId, queryByTestId, getByRole } = renderComponent({
 			pinia,
-			i18n: i18nInstance,
 		});
 
-		expect(getByRole('checkbox')).toBeInTheDocument();
+		expect(getByRole('switch')).toBeInTheDocument();
 		expect(getByTestId('sso-content-licensed')).toBeInTheDocument();
 		expect(queryByTestId('sso-content-unlicensed')).not.toBeInTheDocument();
 	});
 
 	it('should enable activation checkbox and test button if data is already saved', async () => {
-		vi.spyOn(ssoStore, 'isEnterpriseSamlEnabled', 'get').mockReturnValue(true);
+		await ssoStore.getSamlConfig();
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
 
-		const { container, getByTestId, getByRole } = renderComponent(SettingsSso, {
+		const { container, getByTestId, getByRole } = renderComponent({
 			pinia,
-			i18n: i18nInstance,
 		});
+
+		const xmlRadioButton = getByTestId('radio-button-xml');
+		await userEvent.click(xmlRadioButton);
 
 		await retry(() =>
 			expect(container.querySelector('textarea[name="metadata"]')).toHaveValue(
@@ -74,23 +84,23 @@ describe('SettingsSso', () => {
 			),
 		);
 
-		expect(getByRole('checkbox')).toBeEnabled();
+		expect(getByRole('switch')).toBeEnabled();
 		expect(getByTestId('sso-test')).toBeEnabled();
 	});
 
 	it('should enable activation checkbox after data is saved', async () => {
 		await ssoStore.saveSamlConfig({ metadata: '' });
 
-		vi.spyOn(ssoStore, 'isEnterpriseSamlEnabled', 'get').mockReturnValue(true);
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Saml] = true;
+		await nextTick();
 
 		const saveSpy = vi.spyOn(ssoStore, 'saveSamlConfig');
 		const getSpy = vi.spyOn(ssoStore, 'getSamlConfig');
 
-		const { container, getByRole, getByTestId } = renderComponent(SettingsSso, {
+		const { container, getByRole, getByTestId } = renderComponent({
 			pinia,
-			i18n: i18nInstance,
 		});
-		const checkbox = getByRole('checkbox');
+		const checkbox = getByRole('switch');
 		const btnSave = getByTestId('sso-save');
 		const btnTest = getByTestId('sso-test');
 

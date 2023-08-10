@@ -47,17 +47,8 @@ describe('POST /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			password,
-			personalizationAnswers,
-			globalRole,
-			resetPasswordToken,
-			apiKey,
-		} = response.body.data;
+		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
+			response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(owner.email);
@@ -66,7 +57,6 @@ describe('POST /login', () => {
 		expect(password).toBeUndefined();
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole).toBeDefined();
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
@@ -78,10 +68,16 @@ describe('POST /login', () => {
 
 	test('should throw AuthError for non-owner if not within users limit quota', async () => {
 		jest.spyOn(Container.get(License), 'isWithinUsersLimit').mockReturnValueOnce(false);
-		const member = await testDb.createUserShell(globalMemberRole);
+		const password = 'testpassword';
+		const member = await testDb.createUser({
+			password,
+		});
 
-		const response = await testServer.authAgentFor(member).get('/login');
-		expect(response.statusCode).toBe(401);
+		const response = await testServer.authlessAgent.post('/login').send({
+			email: member.email,
+			password,
+		});
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should not throw AuthError for owner if not within users limit quota', async () => {
@@ -137,17 +133,8 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			password,
-			personalizationAnswers,
-			globalRole,
-			resetPasswordToken,
-			apiKey,
-		} = response.body.data;
+		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
+			response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBeDefined();
@@ -156,7 +143,6 @@ describe('GET /login', () => {
 		expect(password).toBeUndefined();
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole).toBeDefined();
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
@@ -173,17 +159,8 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			password,
-			personalizationAnswers,
-			globalRole,
-			resetPasswordToken,
-			apiKey,
-		} = response.body.data;
+		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
+			response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBeDefined();
@@ -192,7 +169,6 @@ describe('GET /login', () => {
 		expect(password).toBeUndefined();
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole).toBeDefined();
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');
@@ -209,17 +185,8 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			password,
-			personalizationAnswers,
-			globalRole,
-			resetPasswordToken,
-			apiKey,
-		} = response.body.data;
+		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
+			response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(owner.email);
@@ -228,7 +195,6 @@ describe('GET /login', () => {
 		expect(password).toBeUndefined();
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole).toBeDefined();
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
@@ -245,17 +211,8 @@ describe('GET /login', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const {
-			id,
-			email,
-			firstName,
-			lastName,
-			password,
-			personalizationAnswers,
-			globalRole,
-			resetPasswordToken,
-			apiKey,
-		} = response.body.data;
+		const { id, email, firstName, lastName, password, personalizationAnswers, globalRole, apiKey } =
+			response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
 		expect(email).toBe(member.email);
@@ -264,7 +221,6 @@ describe('GET /login', () => {
 		expect(password).toBeUndefined();
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole).toBeDefined();
 		expect(globalRole.name).toBe('member');
 		expect(globalRole.scope).toBe('global');

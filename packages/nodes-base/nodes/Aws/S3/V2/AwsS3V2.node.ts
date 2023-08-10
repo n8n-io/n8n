@@ -283,7 +283,7 @@ export class AwsS3V2 implements INodeType {
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 						returnData.push(...executionData);
 					}
 				}
@@ -572,7 +572,9 @@ export class AwsS3V2 implements INodeType {
 						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
 						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
 
-						const destination = `${basePath}/${destinationParts.slice(2, destinationParts.length).join('/')}`;
+						const destination = `${basePath}/${destinationParts
+							.slice(2, destinationParts.length)
+							.join('/')}`;
 
 						responseData = await awsApiRequestREST.call(this, servicePath, 'GET', basePath, '', {
 							location: '',

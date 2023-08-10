@@ -19,6 +19,7 @@ export class VonageApi implements ICredentialType {
 			displayName: 'API Secret',
 			name: 'apiSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

@@ -194,7 +194,7 @@ export default defineComponent({
 		window.addEventListener('message', this.receiveMessage);
 		document.addEventListener('scroll', this.onDocumentScroll);
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		window.removeEventListener('message', this.receiveMessage);
 		document.removeEventListener('scroll', this.onDocumentScroll);
 	},

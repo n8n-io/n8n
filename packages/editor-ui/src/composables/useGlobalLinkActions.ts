@@ -2,7 +2,7 @@
  * Creates event listeners for `data-action` attribute to allow for actions to be called from locale without using
  * unsafe onclick attribute
  */
-import { reactive, del, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { reactive, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
 import { globalLinkActionsEventBus } from '@/event-bus';
 
 const state = reactive({
@@ -14,7 +14,8 @@ export default () => {
 		state.customActions[key] = action;
 	}
 	function unregisterCustomAction(key: string) {
-		del(state.customActions, key);
+		const { [key]: _, ...rest } = state.customActions;
+		state.customActions = rest;
 	}
 	function delegateClick(e: MouseEvent) {
 		const clickedElement = e.target;

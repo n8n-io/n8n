@@ -1,6 +1,5 @@
 import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
-import bodyParser from 'body-parser';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 import type superagent from 'superagent';
@@ -31,7 +30,7 @@ import {
 	TagsController,
 	UsersController,
 } from '@/controllers';
-import { setupAuthMiddlewares } from '@/middlewares';
+import { rawBody, jsonParser, setupAuthMiddlewares } from '@/middlewares';
 
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -51,6 +50,8 @@ import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } f
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
+import { RoleService } from '@/services/role.service';
+import { MetricsService } from '@/services/metrics.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -93,10 +94,8 @@ function createAgent(app: express.Application, options?: { auth: boolean; user: 
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		try {
-			const { token } = issueJWT(options.user);
-			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
-		} catch {}
+		const { token } = issueJWT(options.user);
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
 }
@@ -119,6 +118,9 @@ export const setupTestServer = ({
 	enabledFeatures,
 }: SetupProps): TestServer => {
 	const app = express();
+	app.use(rawBody);
+	app.use(cookieParser());
+
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
@@ -137,10 +139,6 @@ export const setupTestServer = ({
 		mockInstance(InternalHooks);
 		mockInstance(PostHogClient);
 
-		app.use(bodyParser.json());
-		app.use(bodyParser.urlencoded({ extended: true }));
-		app.use(cookieParser());
-
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -154,6 +152,8 @@ export const setupTestServer = ({
 		}
 
 		if (!endpointGroups) return;
+
+		app.use(jsonParser);
 
 		const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
@@ -188,6 +188,9 @@ export const setupTestServer = ({
 
 			for (const group of functionEndpoints) {
 				switch (group) {
+					case 'metrics':
+						await Container.get(MetricsService).configureMetrics(app);
+						break;
 					case 'eventBus':
 						registerController(app, config, new EventBusController());
 						break;
@@ -264,15 +267,12 @@ export const setupTestServer = ({
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
 								jwtService,
+								roleService: Container.get(RoleService),
 							}),
 						);
 						break;
 					case 'tags':
-						registerController(
-							app,
-							config,
-							new TagsController({ config, externalHooks, repositories }),
-						);
+						registerController(app, config, Container.get(TagsController));
 						break;
 				}
 			}

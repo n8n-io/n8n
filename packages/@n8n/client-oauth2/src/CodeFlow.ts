@@ -53,13 +53,13 @@ export class CodeFlow {
 	 * the user access token.
 	 */
 	async getToken(
-		uri: string | URL,
+		urlString: string,
 		opts?: Partial<ClientOAuth2Options>,
 	): Promise<ClientOAuth2Token> {
-		const options = { ...this.client.options, ...opts };
+		const options: ClientOAuth2Options = { ...this.client.options, ...opts };
 		expects(options, 'clientId', 'accessTokenUri');
 
-		const url = uri instanceof URL ? uri : new URL(uri, DEFAULT_URL_BASE);
+		const url = new URL(urlString, DEFAULT_URL_BASE);
 		if (
 			typeof options.redirectUri === 'string' &&
 			typeof url.pathname === 'string' &&
@@ -69,8 +69,7 @@ export class CodeFlow {
 		}
 
 		if (!url.search?.substring(1)) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			throw new TypeError(`Unable to process uri: ${uri.toString()}`);
+			throw new TypeError(`Unable to process uri: ${urlString}`);
 		}
 
 		const data =

@@ -1,5 +1,5 @@
 <template>
-	<div :class="classes" v-on="$listeners">
+	<div :class="classes" v-bind="$attrs">
 		<div :class="$style.icon" v-if="$slots.prepend">
 			<slot name="prepend" />
 		</div>
@@ -14,7 +14,7 @@
 				<slot name="footer" />
 			</div>
 		</div>
-		<div :class="$style.actions" v-if="$slots.append">
+		<div v-if="$slots.append">
 			<slot name="append" />
 		</div>
 	</div>

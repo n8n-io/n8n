@@ -21,14 +21,8 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 
-// @ts-ignore
-import Teleport from 'vue2-teleport';
-
 export default defineComponent({
 	name: 'draggable',
-	components: {
-		Teleport,
-	},
 	props: {
 		disabled: {
 			type: Boolean,
