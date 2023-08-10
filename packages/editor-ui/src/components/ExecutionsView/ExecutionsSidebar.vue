@@ -204,6 +204,8 @@ export default defineComponent({
 	border-right: var(--border-base);
 	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
 	z-index: 1;
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 }
 
@@ -228,7 +230,8 @@ export default defineComponent({
 }
 
 .executionList {
-	height: calc(100% - 10.5em);
+	height: calc(100% - 6.2rem);
+	flex: 1;
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
 	background-color: var(--color-background-xlight) !important;
