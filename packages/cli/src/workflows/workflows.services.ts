@@ -16,7 +16,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
-import { type WorkflowRequest, type ListQuery, hasSharingDetails } from '@/requests';
+import { type WorkflowRequest, type ListQuery, hasSharing } from '@/requests';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -152,14 +152,11 @@ export class WorkflowsService {
 			findManyOptions.take = options.take;
 		}
 
-		type Plain = ListQuery.Workflow.Plain;
-		type WithSharing = ListQuery.Workflow.WithSharing;
-
 		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
 			findManyOptions,
-		)) as [Plain[] | WithSharing[], number];
+		)) as [ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[], number];
 
-		if (!hasSharingDetails(workflows)) return { workflows, count };
+		if (!hasSharing(workflows)) return { workflows, count };
 
 		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 

@@ -155,7 +155,7 @@ export namespace ListQuery {
 	}
 }
 
-export function hasSharingDetails(
+export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 ): workflows is ListQuery.Workflow.WithSharing[] {
 	return workflows.some((w) => 'shared' in w);
