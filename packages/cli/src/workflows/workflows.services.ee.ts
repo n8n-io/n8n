@@ -11,7 +11,6 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { ICredentialsDb } from '@/Interfaces';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { UserService } from '@/user/user.service';
@@ -19,19 +18,20 @@ import { WorkflowsService } from './workflows.services';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
-	WorkflowForList,
 } from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { NodeOperationError, LoggerProxy as Logger } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
-import type { ListQueryOptions } from '@/requests';
 import { WorkflowRepository } from '@/databases/repositories';
 import config from '@/config';
+import { OwnershipService } from '@/services/ownership.service';
+import { withSharing } from './workflows.guards';
+import type { ListQuery } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
-	static async getWorkflowIdsForUser(user: User) {
+	static async getSharedWorkflowIdsForUser(user: User) {
 		// Get all workflows regardless of role
 		return getSharedWorkflowIds(user);
 	}
@@ -95,13 +95,6 @@ export class EEWorkflowsService extends WorkflowsService {
 		}, []);
 
 		return transaction.save(newSharedWorkflows);
-	}
-
-	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role) {
-		const ownerId = workflow.shared?.find(({ roleId }) => String(roleId) === workflowOwnerRole.id)
-			?.userId;
-		workflow.ownedBy = ownerId ? { id: ownerId } : null;
-		delete workflow.shared;
 	}
 
 	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
@@ -217,24 +210,10 @@ export class EEWorkflowsService extends WorkflowsService {
 		}
 	}
 
-	static async getMany(user: User, options?: ListQueryOptions) {
-		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user);
+	static async getMany(user: User, options?: ListQuery.Options) {
+		const sharedWorkflowIds = await this.getSharedWorkflowIdsForUser(user);
 
-		if (sharedWorkflowIds.length === 0) {
-			Logger.verbose('Owner attempted to query zero shared workflows');
-			return { workflows: [], count: 0 };
-		}
-
-		const workflowId = options?.filter?.id;
-
-		if (
-			workflowId !== undefined &&
-			typeof workflowId === 'string' &&
-			!sharedWorkflowIds.includes(workflowId)
-		) {
-			Logger.verbose(`Owner ${user.id} attempted to query non-shared workflow ${workflowId}`);
-			return { workflows: [], count: 0 };
-		}
+		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
 		const where: FindOptionsWhere<WorkflowEntity> = {
 			...options?.filter,
@@ -293,15 +272,18 @@ export class EEWorkflowsService extends WorkflowsService {
 			findManyOptions.take = options.take;
 		}
 
-		const [workflows, count] = await Container.get(WorkflowRepository).findAndCount(
+		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
 			findManyOptions,
-		);
+		)) as [ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[], number];
 
-		if (isDefaultSelect || options?.select?.ownedBy === true) {
+		if (withSharing(workflows)) {
 			const role = await Container.get(RoleService).findWorkflowOwnerRole();
-			workflows.forEach((w) => this.addOwnerId(w, role));
+			const ownershipService = Container.get(OwnershipService);
 
-			return { workflows, count };
+			return {
+				workflows: workflows.map((w) => ownershipService.addOwnershipField(w, role)),
+				count,
+			};
 		}
 
 		return { workflows, count };

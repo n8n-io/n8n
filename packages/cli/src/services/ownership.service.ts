@@ -3,6 +3,8 @@ import { CacheService } from './cache.service';
 import { SharedWorkflowRepository, UserRepository } from '@/databases/repositories';
 import type { User } from '@/databases/entities/User';
 import { RoleService } from './role.service';
+import type { ListQuery } from '@/requests';
+import type { Role } from '@/databases/entities/Role';
 
 @Service()
 export class OwnershipService {
@@ -33,5 +35,18 @@ export class OwnershipService {
 		void this.cacheService.set(`cache:workflow-owner:${workflowId}`, sharedWorkflow.user);
 
 		return sharedWorkflow.user;
+	}
+
+	addOwnershipField(
+		workflow: ListQuery.Workflow.WithSharing,
+		workflowOwnerRole: Role,
+	): ListQuery.Workflow.WithOwnership {
+		const { shared, ...rest } = workflow;
+
+		const ownerId = shared?.find((s) => s.roleId.toString() === workflowOwnerRole.id)?.userId;
+
+		return Object.assign(rest, {
+			ownedBy: ownerId ? { id: ownerId } : null,
+		});
 	}
 }

@@ -6,7 +6,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import type { ListQueryRequest, WorkflowRequest } from '@/requests';
+import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -206,7 +206,7 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	listQueryMiddleware,
-	async (req: ListQueryRequest, res: express.Response) => {
+	async (req: ListQuery.Request, res: express.Response) => {
 		try {
 			const { workflows: data, count } = await EEWorkflows.getMany(req.user, req.listQueryOptions);
 

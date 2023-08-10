@@ -5,7 +5,7 @@ import { jsonParse } from 'n8n-workflow';
 import { isStringArray } from '@/utils';
 import { WorkflowSelectDtoValidator as Validator } from './dtos/workflow.select.dto';
 
-import type { ListQueryRequest } from '@/requests';
+import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
 
 function toQuerySelect(rawSelect: string, DtoValidator: typeof Validator) {
@@ -18,7 +18,7 @@ function toQuerySelect(rawSelect: string, DtoValidator: typeof Validator) {
 	}, {});
 }
 
-export const selectListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
+export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
 	const { select: rawSelect } = req.query;
 
 	if (!rawSelect) return next();

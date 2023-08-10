@@ -6,7 +6,7 @@ import { WorkflowFilterDtoValidator as Validator } from './dtos/workflow.filter.
 import { isObjectLiteral } from '@/utils';
 
 import type { RequestHandler } from 'express';
-import type { ListQueryRequest } from '@/requests';
+import type { ListQuery } from '@/requests';
 
 function toQueryFilter(rawFilter: string, DtoValidator: typeof Validator) {
 	const objDto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
@@ -20,7 +20,7 @@ function toQueryFilter(rawFilter: string, DtoValidator: typeof Validator) {
 	return { ...filter, tags: filter.tags.map((tag) => ({ name: tag })) };
 }
 
-export const filterListQueryMiddleware: RequestHandler = (req: ListQueryRequest, _, next) => {
+export const filterListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
 	const { filter: rawFilter } = req.query;
 
 	if (!rawFilter) return next();

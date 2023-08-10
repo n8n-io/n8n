@@ -11,13 +11,12 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { RoleNames } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
-import type { ListQueryOptions, WorkflowRequest } from '@/requests';
+import type { WorkflowRequest, ListQuery } from '@/requests';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -93,30 +92,14 @@ export class WorkflowsService {
 		return Db.collections.Workflow.findOne({ where: workflow, relations: options?.relations });
 	}
 
-	// Warning: this function is overridden by EE to disregard role list.
-	// note: getSharedWorkflowIds() returns _all_ workflow ids for global owners
-	static async getWorkflowIdsForUser(user: User, roles?: RoleNames[]): Promise<string[]> {
-		return getSharedWorkflowIds(user, roles);
+	static async getSharedWorkflowIdsForOwner(user: User) {
+		return getSharedWorkflowIds(user, ['owner']);
 	}
 
-	static async getMany(user: User, options?: ListQueryOptions) {
-		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
+	static async getMany(owner: User, options?: ListQuery.Options) {
+		const sharedWorkflowIds = await this.getSharedWorkflowIdsForOwner(owner);
 
-		if (sharedWorkflowIds.length === 0) {
-			Logger.verbose('Owner attempted to query zero shared workflows');
-			return { workflows: [], count: 0 };
-		}
-
-		const workflowId = options?.filter?.id;
-
-		if (
-			workflowId !== undefined &&
-			typeof workflowId === 'string' &&
-			!sharedWorkflowIds.includes(workflowId)
-		) {
-			Logger.verbose(`Owner ${user.id} attempted to query non-shared workflow ${workflowId}`);
-			return { workflows: [], count: 0 };
-		}
+		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
 		const where: FindOptionsWhere<WorkflowEntity> = {
 			...options?.filter,
@@ -163,9 +146,9 @@ export class WorkflowsService {
 			findManyOptions.take = options.take;
 		}
 
-		const [workflows, count] = await Container.get(WorkflowRepository).findAndCount(
+		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
 			findManyOptions,
-		);
+		)) as [ListQuery.Workflow.Plain[], number];
 
 		return { workflows, count };
 	}
