@@ -205,7 +205,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	}
 
 	static async getMany(user: User, options?: ListQuery.Options) {
-		const sharedWorkflowIds = await getSharedWorkflowIds(user);
+		const sharedWorkflowIds = await getSharedWorkflowIds(user); // @TODO: Only difference
 
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 

@@ -95,7 +95,7 @@ export class WorkflowsService {
 	}
 
 	static async getMany(owner: User, options?: ListQuery.Options) {
-		const sharedWorkflowIds = await getSharedWorkflowIds(owner, ['owner']);
+		const sharedWorkflowIds = await getSharedWorkflowIds(owner, ['owner']); // @TODO: Only difference
 
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
