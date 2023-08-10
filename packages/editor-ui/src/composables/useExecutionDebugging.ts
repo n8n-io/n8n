@@ -1,28 +1,30 @@
-import type { INode } from 'n8n-workflow';
-import { useI18n, useMessage } from '@/composables';
+import { useI18n, useMessage, useToast } from '@/composables';
 import { MODAL_CONFIRM } from '@/constants';
 import { useWorkflowsStore } from '@/stores';
+import type { INodeUi } from '@/Interface';
 
 export const useExecutionDebugging = () => {
 	const i18n = useI18n();
 	const message = useMessage();
+	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
-		const workflow = workflowsStore.getCurrentWorkflow();
 		const execution = await workflowsStore.getExecution(executionId);
+		const workflow = workflowsStore.getCurrentWorkflow();
+		const workflowNodes = workflowsStore.getNodes();
 
 		if (!execution?.data?.resultData) {
 			return;
 		}
 
-		workflowsStore.setWorkflowExecutionData(execution);
-
 		const { runData } = execution.data.resultData;
 
 		const executionNodeNames = Object.keys(runData);
+		const missingNodeNames = executionNodeNames.filter(
+			(name) => !workflowNodes.some((node) => node.name === name),
+		);
 		const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
-
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
@@ -54,19 +56,37 @@ export const useExecutionDebugging = () => {
 			}
 		}
 
-		const rootNodes = workflowsStore
-			.getNodes()
-			.filter((node: INode) => !workflow.getParentNodes(node.name).length);
+		// Set execution data
+		workflowsStore.setWorkflowExecutionData(execution);
 
-		rootNodes.forEach((node: INode) => {
-			const nodeData = runData[node.name]?.[0].data?.main[0];
-			if (nodeData) {
-				workflowsStore.pinData({
-					node,
-					data: nodeData,
-				});
-			}
+		// Pin data of all nodes which do not have a parent node
+		workflowNodes
+			.filter((node: INodeUi) => !workflow.getParentNodes(node.name).length)
+			.forEach((node: INodeUi) => {
+				const nodeData = runData[node.name]?.[0].data?.main[0];
+				if (nodeData) {
+					workflowsStore.pinData({
+						node,
+						data: nodeData,
+					});
+				}
+			});
+
+		toast.showToast({
+			title: i18n.baseText('nodeView.showMessage.debug.title'),
+			message: i18n.baseText('nodeView.showMessage.debug.content'),
+			type: 'info',
 		});
+
+		if (missingNodeNames.length) {
+			toast.showToast({
+				title: i18n.baseText('nodeView.showMessage.debug.missingNodes.title'),
+				message: i18n.baseText('nodeView.showMessage.debug.missingNodes.content', {
+					interpolate: { nodeNames: missingNodeNames.join(', ') },
+				}),
+				type: 'warning',
+			});
+		}
 	};
 
 	return {
