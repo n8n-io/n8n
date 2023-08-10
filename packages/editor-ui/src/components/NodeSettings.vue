@@ -91,6 +91,7 @@
 				<node-webhooks :node="node" :nodeType="nodeType" />
 
 				<parameter-input-list
+					v-if="nodeValuesInitialized"
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
@@ -366,6 +367,7 @@ export default defineComponent({
 				notes: '',
 				parameters: {},
 			} as INodeParameters,
+			nodeValuesInitialized: false, // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 
 			nodeSettings: [
 				{
@@ -824,8 +826,9 @@ export default defineComponent({
 		 * Sets the values of the active node in the internal settings variables
 		 */
 		setNodeValues() {
+			// No node selected
 			if (!this.node) {
-				// No node selected
+				this.nodeValuesInitialized = true;
 				return;
 			}
 
@@ -923,6 +926,8 @@ export default defineComponent({
 			} else {
 				this.nodeValid = false;
 			}
+
+			this.nodeValuesInitialized = true;
 		},
 		onMissingNodeTextClick(event: MouseEvent) {
 			if ((event.target as Element).localName === 'a') {
