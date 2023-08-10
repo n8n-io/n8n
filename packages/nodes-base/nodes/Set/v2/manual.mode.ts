@@ -183,6 +183,7 @@ export async function execute(
 					resolveRawData.call(this, rawFieldsData[entry.name] as string, i),
 					node,
 					i,
+					entry.name,
 				);
 			}
 

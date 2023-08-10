@@ -1033,13 +1033,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorType =
-	| 'code'
-	| 'codeNodeEditor'
-	| 'htmlEditor'
-	| 'sqlEditor'
-	| 'json'
-	| 'jsonEditor';
+export type EditorType = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'sqlEditor' | 'json';
 export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
 export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect =
@@ -1134,7 +1128,7 @@ export interface INodeProperties {
 	// set expected type for the value which would be used for validation and type casting
 	validateType?: FieldType;
 	// works only if validateType is set
-	// allows to be less strict with the type validation skipping it during execution or set custom validation/casting logic inside node
+	// allows to skip validation during execution or set custom validation/casting logic inside node
 	// inline error messages would still be shown in UI
 	ignoreValidationDuringExecution?: boolean;
 }

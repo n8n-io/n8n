@@ -109,21 +109,32 @@ export function prepareItem(
 	return newItem;
 }
 
-export const parseJsonParameter = (jsonData: string | IDataObject, node: INode, i: number) => {
+export const parseJsonParameter = (
+	jsonData: string | IDataObject,
+	node: INode,
+	i: number,
+	entryName?: string,
+) => {
 	let returnData: IDataObject;
+	const location = entryName ? `entry "${entryName}" inside 'Fields to Set'` : "'JSON Output'";
 
 	if (typeof jsonData === 'string') {
 		try {
 			returnData = jsonParse<IDataObject>(jsonData);
 		} catch (error) {
-			throw new NodeOperationError(node, `The item ${i + 1} contains invalid JSON`);
+			throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
+				description: jsonData,
+			});
 		}
 	} else {
 		returnData = jsonData;
 	}
 
 	if (returnData === undefined || typeof returnData !== 'object' || Array.isArray(returnData)) {
-		throw new NodeOperationError(node, `'JSON Output' in item ${i + 1} is not a valid JSON object`);
+		throw new NodeOperationError(
+			node,
+			`The ${location} in item ${i} does not contain a valid JSON object`,
+		);
 	}
 
 	return returnData;

@@ -22,17 +22,9 @@ const properties: INodeProperties[] = [
 			rows: 5,
 		},
 		default: '={\n  "key": "value"\n}',
+		validateType: 'object',
+		ignoreValidationDuringExecution: true,
 	},
-	// {
-	// 	displayName: 'JSON Output',
-	// 	name: 'jsonRaw',
-	// 	type: 'string',
-	// 	typeOptions: {
-	// 		editor: 'jsonEditor',
-	// 		rows: 5,
-	// 	},
-	// 	default: '{\n  "key": "value"\n}',
-	// },
 ];
 
 const displayOptions = {
@@ -69,6 +61,9 @@ export async function execute(
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message } };
 		}
-		throw new NodeOperationError(node, error as Error, { itemIndex: i });
+		throw new NodeOperationError(node, error as Error, {
+			itemIndex: i,
+			description: error.description,
+		});
 	}
 }
