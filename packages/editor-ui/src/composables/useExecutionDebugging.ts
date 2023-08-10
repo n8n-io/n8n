@@ -16,24 +16,29 @@ export const useExecutionDebugging = () => {
 		console.log('exec');
 		console.log(execution);
 
-		// If no execution data is available, return the workflow as is
 		if (!execution?.data?.resultData) {
 			return;
 		}
 
-		const { runData, pinData } = execution.data.resultData;
+		workflowsStore.setWorkflowExecutionData(execution);
 
-		// Get nodes from execution data and apply their pinned data or the first execution data
-		const executionNodesData = Object.entries(runData).map(([name, data]) => ({
-			name,
-			data: pinData?.[name] ?? data?.[0].data?.main[0],
-		}));
+		const { runData } = execution.data.resultData;
+
+		const executionNodeNames = Object.keys(runData);
 		const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
 
-		// Check if any of the workflow nodes have pinned data already and ask for confirmation
-		if (executionNodesData.some((eNode) => workflowPinnedNodeNames.includes(eNode.name))) {
+		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
+			workflowPinnedNodeNames.includes(name),
+		);
+		const matchingPinnedNodeNamesToHtmlList = `<ul class="ml-l">${matchingPinnedNodeNames
+			.map((name) => `<li>${name}</li>`)
+			.join('')}</ul>`;
+
+		if (matchingPinnedNodeNames.length > 0) {
 			const overWritePinnedDataConfirm = await message.confirm(
-				i18n.baseText('nodeView.confirmMessage.debug.message'),
+				i18n.baseText('nodeView.confirmMessage.debug.message', {
+					interpolate: { nodeNames: matchingPinnedNodeNamesToHtmlList },
+				}),
 				i18n.baseText('nodeView.confirmMessage.debug.headline'),
 				{
 					type: 'warning',
@@ -43,26 +48,15 @@ export const useExecutionDebugging = () => {
 				},
 			);
 
-			if (overWritePinnedDataConfirm !== MODAL_CONFIRM) {
-				return;
+			if (overWritePinnedDataConfirm === MODAL_CONFIRM) {
+				matchingPinnedNodeNames.forEach((name) => {
+					const node = workflowsStore.getNodeByName(name);
+					if (node) {
+						workflowsStore.unpinData({ node });
+					}
+				});
 			}
 		}
-
-		workflowsStore.setWorkflowExecutionData(execution);
-
-		// Overwrite the workflow pinned data with the execution data
-		/*workflow.pinData = executionNodesData.reduce(
-			(acc, { name, data }) => {
-				// Only add data if it exists and the node is in the workflow
-				if (acc && data && workflow.nodes.some((node) => node.name === name)) {
-					acc[name] = data;
-				}
-				return acc;
-			},
-			{} as IWorkflowDb['pinData'],
-		);
-
-		return workflow;*/
 	};
 
 	return {
