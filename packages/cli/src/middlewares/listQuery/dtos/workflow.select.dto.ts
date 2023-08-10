@@ -1,25 +1,18 @@
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
-
 export class WorkflowSelectDtoValidator {
 	static get selectableFields() {
-		return [
+		return new Set([
 			'id', // always included downstream
 			'name',
 			'active',
 			'tags',
 			'createdAt',
 			'updatedAt',
-		];
+			'versionId',
+			'ownedBy', // non-entity field
+		]);
 	}
 
 	static validate(dto: string[]) {
-		const { selectableFields } = WorkflowSelectDtoValidator;
-
-		if (isSharingEnabled()) {
-			selectableFields.push('versionId');
-			selectableFields.push('ownedBy'); // non-entity field
-		}
-
-		return dto.filter((key) => selectableFields.includes(key));
+		return dto.filter((key) => this.selectableFields.has(key));
 	}
 }

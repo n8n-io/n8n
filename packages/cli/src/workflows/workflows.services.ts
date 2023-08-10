@@ -26,6 +26,8 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@/databases/repositories';
+import { RoleService } from '@/services/role.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -106,12 +108,20 @@ export class WorkflowsService {
 			where.name = Like(`%${where.name}%`);
 		}
 
-		const select: FindOptionsSelect<WorkflowEntity> = options?.select ?? {
-			name: true,
-			active: true,
-			createdAt: true,
-			updatedAt: true,
-		};
+		type Select = FindOptionsSelect<WorkflowEntity> & { ownedBy?: true };
+
+		const select: Select = options?.select
+			? { ...options.select } // copy to enable field removal without affecting original
+			: {
+					name: true,
+					active: true,
+					createdAt: true,
+					updatedAt: true,
+					versionId: true,
+					shared: { userId: true, roleId: true },
+			  };
+
+		delete select?.ownedBy; // remove non-entity field, handled after query
 
 		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
 		const isDefaultSelect = options?.select === undefined;
@@ -122,6 +132,10 @@ export class WorkflowsService {
 		if (areTagsEnabled && areTagsRequested) {
 			relations.push('tags');
 			select.tags = { id: true, name: true };
+		}
+
+		if (isDefaultSelect || options?.select?.ownedBy === true) {
+			relations.push('shared');
 		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
@@ -144,9 +158,15 @@ export class WorkflowsService {
 
 		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
 			findManyOptions,
-		)) as [ListQuery.Workflow.Plain[], number];
+		)) as [ListQuery.Workflow.WithSharing[], number];
 
-		return { workflows, count };
+		const role = await Container.get(RoleService).findWorkflowOwnerRole();
+		const ownershipService = Container.get(OwnershipService);
+
+		return {
+			workflows: workflows.map((w) => ownershipService.addOwnedBy(w, role)),
+			count,
+		};
 	}
 
 	static async update(

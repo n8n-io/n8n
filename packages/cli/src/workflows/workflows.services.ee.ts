@@ -27,7 +27,6 @@ import Container from 'typedi';
 import { WorkflowRepository } from '@/databases/repositories';
 import config from '@/config';
 import { OwnershipService } from '@/services/ownership.service';
-import { withSharing } from './workflows.guards';
 import type { ListQuery } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
@@ -269,9 +268,7 @@ export class EEWorkflowsService extends WorkflowsService {
 
 		const [workflows, count] = (await Container.get(WorkflowRepository).findAndCount(
 			findManyOptions,
-		)) as [ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[], number];
-
-		if (!withSharing(workflows)) return { workflows, count }; // custom select excluded ownedBy
+		)) as [ListQuery.Workflow.WithSharing[], number];
 
 		const role = await Container.get(RoleService).findWorkflowOwnerRole();
 		const ownershipService = Container.get(OwnershipService);

@@ -27,14 +27,12 @@ export class WorkflowFilterDtoValidator {
 	tags?: string[];
 
 	static get filterableFields() {
-		return ['name', 'active', 'tags'];
+		return new Set(['name', 'active', 'tags']);
 	}
 
 	static validate(data: object): QueryFilter {
-		const { filterableFields } = WorkflowFilterDtoValidator;
-
 		const onlyKnownFields = Object.fromEntries(
-			Object.entries(data).filter(([key]) => filterableFields.includes(key)),
+			Object.entries(data).filter(([key]) => this.filterableFields.has(key)),
 		);
 
 		const result = classValidatorValidate(onlyKnownFields);

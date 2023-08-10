@@ -147,8 +147,6 @@ export namespace ListQuery {
 
 		type OwnedByField = { ownedBy: Pick<IUser, 'id'> | null };
 
-		export type Plain = BaseFields;
-
 		export type WithSharing = BaseFields & SharedField;
 
 		export type WithOwnership = BaseFields & OwnedByField;
