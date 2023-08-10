@@ -31,11 +31,6 @@ import { withSharing } from './workflows.guards';
 import type { ListQuery } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
-	static async getSharedWorkflowIdsForUser(user: User) {
-		// Get all workflows regardless of role
-		return getSharedWorkflowIds(user);
-	}
-
 	static async isOwned(
 		user: User,
 		workflowId: string,
@@ -211,7 +206,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	}
 
 	static async getMany(user: User, options?: ListQuery.Options) {
-		const sharedWorkflowIds = await this.getSharedWorkflowIdsForUser(user);
+		const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
@@ -227,15 +222,17 @@ export class EEWorkflowsService extends WorkflowsService {
 		type Select = FindOptionsSelect<WorkflowEntity> & { ownedBy?: true };
 
 		const select: Select = options?.select
-			? { ...options.select }
+			? { ...options.select } // copy to enable field removal without affecting original
 			: {
 					name: true,
 					active: true,
 					createdAt: true,
 					updatedAt: true,
+					versionId: true,
+					shared: { userId: true, roleId: true },
 			  };
 
-		delete select?.ownedBy; // field not on entity, checked after query
+		delete select?.ownedBy; // remove non-entity field, handled after query
 
 		const areTagsEnabled = !config.getEnv('workflowTagsDisabled');
 		const isDefaultSelect = options?.select === undefined;
@@ -250,8 +247,6 @@ export class EEWorkflowsService extends WorkflowsService {
 
 		if (isDefaultSelect || options?.select?.ownedBy === true) {
 			relations.push('shared');
-			select.shared = { userId: true, roleId: true };
-			select.versionId = true;
 		}
 
 		const findManyOptions: FindManyOptions<WorkflowEntity> = {
@@ -277,11 +272,11 @@ export class EEWorkflowsService extends WorkflowsService {
 		)) as [ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[], number];
 
 		if (withSharing(workflows)) {
-			const role = await Container.get(RoleService).findWorkflowOwnerRole();
+			const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 			const ownershipService = Container.get(OwnershipService);
 
 			return {
-				workflows: workflows.map((w) => ownershipService.addOwnershipField(w, role)),
+				workflows: workflows.map((w) => ownershipService.addOwnedBy(w, workflowOwnerRole)),
 				count,
 			};
 		}

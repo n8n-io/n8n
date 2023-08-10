@@ -3,11 +3,10 @@ import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 export class WorkflowSelectDtoValidator {
 	static get selectableFields() {
 		return [
-			'id', // inclusion by caller is allowed but has no effect, always included downstream
+			'id', // always included downstream
 			'name',
 			'active',
 			'tags',
-			'versionId',
 			'createdAt',
 			'updatedAt',
 		];
@@ -17,7 +16,8 @@ export class WorkflowSelectDtoValidator {
 		const { selectableFields } = WorkflowSelectDtoValidator;
 
 		if (isSharingEnabled()) {
-			selectableFields.push('ownedBy'); // non-entity field, only supported on EE
+			selectableFields.push('versionId');
+			selectableFields.push('ownedBy'); // non-entity field
 		}
 
 		return dto.filter((key) => selectableFields.includes(key));

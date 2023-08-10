@@ -37,7 +37,7 @@ export class OwnershipService {
 		return sharedWorkflow.user;
 	}
 
-	addOwnershipField(
+	addOwnedBy(
 		workflow: ListQuery.Workflow.WithSharing,
 		workflowOwnerRole: Role,
 	): ListQuery.Workflow.WithOwnership {

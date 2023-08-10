@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import type { INode, IPinData } from 'n8n-workflow';
-import { NodeApiError, LoggerProxy as Logger, Workflow } from 'n8n-workflow';
+import { NodeApiError, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
@@ -92,12 +92,8 @@ export class WorkflowsService {
 		return Db.collections.Workflow.findOne({ where: workflow, relations: options?.relations });
 	}
 
-	static async getSharedWorkflowIdsForOwner(user: User) {
-		return getSharedWorkflowIds(user, ['owner']);
-	}
-
 	static async getMany(owner: User, options?: ListQuery.Options) {
-		const sharedWorkflowIds = await this.getSharedWorkflowIdsForOwner(owner);
+		const sharedWorkflowIds = await getSharedWorkflowIds(owner, ['owner']);
 
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
@@ -172,7 +168,7 @@ export class WorkflowsService {
 		});
 
 		if (!shared) {
-			Logger.verbose('User attempted to update a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -202,7 +198,7 @@ export class WorkflowsService {
 		} else {
 			// Update the workflow's version
 			workflow.versionId = uuid();
-			Logger.verbose(
+			LoggerProxy.verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: shared.workflow.versionId,
