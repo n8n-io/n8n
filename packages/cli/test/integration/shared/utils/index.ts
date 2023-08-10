@@ -459,7 +459,7 @@ export * from './communityNodes';
 // ----------------------------------
 
 export function makeWorkflow(options?: {
-	withPinData?: boolean;
+	withPinData: boolean;
 	withCredential?: { id: string; name: string };
 }) {
 	const workflow = new WorkflowEntity();
