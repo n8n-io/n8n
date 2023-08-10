@@ -382,7 +382,7 @@ export const secretOptions = (base: string) => {
 					name: secret,
 					returnType: typeof value,
 					description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
-					docURL: 'https://docs.n8n.io/',
+					docURL: 'https://docs.n8n.io/external-secrets/',
 				},
 			}),
 		);
@@ -400,7 +400,7 @@ export const secretProvidersOptions = () => {
 				name: provider,
 				returnType: 'object',
 				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
-				docURL: 'https://docs.n8n.io/',
+				docURL: 'https://docs.n8n.io/external-secrets/',
 			},
 		}),
 	);

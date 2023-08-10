@@ -230,7 +230,7 @@ async function onBeforeClose() {
 									<code>{{ `\{\{ \$secrets\.${provider.name}\.secret_name \}\}` }}</code>
 								</template>
 							</i18n-t>
-							<n8n-link :href="i18n.baseText('settings.externalSecrets.docs')" size="small">
+							<n8n-link :href="i18n.baseText('settings.externalSecrets.docs.use')" size="small">
 								{{
 									i18n.baseText(
 										'settings.externalSecrets.provider.testConnection.success.connected.docs',

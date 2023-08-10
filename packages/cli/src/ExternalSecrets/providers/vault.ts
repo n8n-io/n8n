@@ -86,7 +86,7 @@ export class VaultProvider extends SecretsProvider {
 	properties: INodeProperties[] = [
 		{
 			displayName:
-				'Need help filling out these fields? <a href="https://developer.hashicorp.com/vault/tutorials/tokens/token-management" target="_blank">Open docs</a>',
+				'Need help filling out these fields? <a href="https://docs.n8n.io/external-secrets/#connect-n8n-to-your-secrets-store" target="_blank">Open docs</a>',
 			name: 'notice',
 			type: 'notice',
 			default: '',
