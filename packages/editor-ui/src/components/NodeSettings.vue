@@ -367,7 +367,7 @@ export default defineComponent({
 				notes: '',
 				parameters: {},
 			} as INodeParameters,
-			nodeValuesInitialized: false,
+			nodeValuesInitialized: false, // Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 
 			nodeSettings: [
 				{
