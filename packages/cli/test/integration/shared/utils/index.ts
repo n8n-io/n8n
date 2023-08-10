@@ -459,8 +459,9 @@ export * from './communityNodes';
 // ----------------------------------
 
 export function makeWorkflow(options?: {
-	withPinData: boolean;
+	withPinData?: boolean;
 	withCredential?: { id: string; name: string };
+	name?: string;
 }) {
 	const workflow = new WorkflowEntity();
 
@@ -479,7 +480,7 @@ export function makeWorkflow(options?: {
 		};
 	}
 
-	workflow.name = 'My Workflow';
+	workflow.name = options?.name ?? 'My Workflow';
 	workflow.active = false;
 	workflow.connections = {};
 	workflow.nodes = [node];

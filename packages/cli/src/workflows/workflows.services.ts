@@ -160,13 +160,17 @@ export class WorkflowsService {
 			findManyOptions,
 		)) as [ListQuery.Workflow.WithSharing[], number];
 
-		const role = await Container.get(RoleService).findWorkflowOwnerRole();
-		const ownershipService = Container.get(OwnershipService);
+		if (isDefaultSelect || options?.select?.ownedBy === true) {
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
+			const ownershipService = Container.get(OwnershipService);
 
-		return {
-			workflows: workflows.map((w) => ownershipService.addOwnedBy(w, role)),
-			count,
-		};
+			return {
+				workflows: workflows.map((w) => ownershipService.addOwnedBy(w, role)),
+				count,
+			};
+		}
+
+		return { workflows, count };
 	}
 
 	static async update(

@@ -35,7 +35,7 @@ import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
 import { separate } from '@/utils';
 
 export type TestDBType = 'postgres' | 'mysql';
@@ -119,6 +119,7 @@ export async function truncate(collections: CollectionName[]) {
 
 	if (tag) {
 		await Container.get(TagRepository).delete({});
+		await Container.get(WorkflowTagMappingRepository).delete({});
 	}
 
 	for (const collection of rest) {
@@ -389,14 +390,24 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 //          Tags
 // ----------------------------------
 
-export async function createTag(attributes: Partial<TagEntity> = {}) {
+export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: WorkflowEntity) {
 	const { name } = attributes;
 
-	return Container.get(TagRepository).save({
+	const tag = await Container.get(TagRepository).save({
 		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,
 	});
+
+	if (workflow) {
+		const mappingRepository = Container.get(WorkflowTagMappingRepository);
+
+		const mapping = mappingRepository.create({ tagId: tag.id, workflowId: workflow.id });
+
+		await Container.get(WorkflowTagMappingRepository).save(mapping);
+	}
+
+	return tag;
 }
 
 // ----------------------------------
