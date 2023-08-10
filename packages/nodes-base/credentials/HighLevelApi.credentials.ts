@@ -2,7 +2,7 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class HighLevelApi implements ICredentialType {
@@ -12,11 +12,12 @@ export class HighLevelApi implements ICredentialType {
 
 	documentationUrl = 'highLevel';
 
-	properties = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
