@@ -563,7 +563,7 @@ export default defineComponent({
 		workflowClasses() {
 			const returnClasses = [];
 			if (this.ctrlKeyPressed || this.moveCanvasKeyPressed) {
-				if (this.uiStore.nodeViewMoveInProgress === true) {
+				if (this.uiStore.nodeViewMoveInProgress) {
 					returnClasses.push('move-in-process');
 				} else {
 					returnClasses.push('move-active');
@@ -1086,7 +1086,7 @@ export default defineComponent({
 						lastSelectedNode.name,
 					);
 				}
-			} else if (e.key === 'a' && this.isCtrlKeyPressed(e) === true) {
+			} else if (e.key === 'a' && this.isCtrlKeyPressed(e)) {
 				// Select all nodes
 				e.stopPropagation();
 				e.preventDefault();
@@ -1506,7 +1506,7 @@ export default defineComponent({
 			const currentTab = getNodeViewTab(this.$route);
 			if (currentTab === MAIN_HEADER_TABS.WORKFLOW) {
 				let workflowData: IWorkflowDataUpdate | undefined;
-				if (this.editAllowedCheck() === false) {
+				if (!this.editAllowedCheck()) {
 					return;
 				}
 				// Check if it is an URL which could contain workflow data
@@ -1781,11 +1781,9 @@ export default defineComponent({
 				parameters: {},
 			};
 
-			const credentialPerType =
-				nodeTypeData.credentials &&
-				nodeTypeData.credentials
-					.map((type) => this.credentialsStore.getUsableCredentialByType(type.name))
-					.flat();
+			const credentialPerType = nodeTypeData.credentials
+				?.map((type) => this.credentialsStore.getUsableCredentialByType(type.name))
+				.flat();
 
 			if (credentialPerType && credentialPerType.length === 1) {
 				const defaultCredential = credentialPerType[0];
@@ -1822,10 +1820,7 @@ export default defineComponent({
 						return newNodeData;
 					}
 
-					if (
-						Object.keys(authDisplayOptions).length === 1 &&
-						authDisplayOptions['authentication']
-					) {
+					if (Object.keys(authDisplayOptions).length === 1 && authDisplayOptions.authentication) {
 						// ignore complex case when there's multiple dependencies
 						newNodeData.credentials = credentials;
 
@@ -1959,7 +1954,7 @@ export default defineComponent({
 
 			newNodeData.name = this.uniqueNodeName(localizedName);
 
-			if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
+			if (nodeTypeData.webhooks?.length) {
 				newNodeData.webhookId = uuid();
 			}
 
@@ -2009,9 +2004,8 @@ export default defineComponent({
 			targetNodeName: string,
 			targetNodeOuputIndex: number,
 		): IConnection | undefined {
-			const nodeConnections = (
-				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections
-			).main;
+			const nodeConnections =
+				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
 			if (nodeConnections) {
 				const connections: IConnection[] | null = nodeConnections[sourceNodeOutputIndex];
 
@@ -2093,7 +2087,7 @@ export default defineComponent({
 			if (lastSelectedNode) {
 				await this.$nextTick();
 
-				if (lastSelectedConnection && lastSelectedConnection.__meta) {
+				if (lastSelectedConnection?.__meta) {
 					this.__deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
@@ -2434,8 +2428,8 @@ export default defineComponent({
 						const { top, left, right, bottom } = element.getBoundingClientRect();
 						const [x, y] = NodeViewUtils.getMousePosition(e);
 						if (top <= y && bottom >= y && left - inputMargin <= x && right >= x) {
-							const nodeName = (element as HTMLElement).dataset['name'] as string;
-							const node = this.workflowsStore.getNodeByName(nodeName) as INodeUi | null;
+							const nodeName = (element as HTMLElement).dataset.name as string;
+							const node = this.workflowsStore.getNodeByName(nodeName);
 							if (node) {
 								const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 								if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
@@ -2484,7 +2478,7 @@ export default defineComponent({
 				.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
-			if (endpoint && endpoint.__meta) {
+			if (endpoint?.__meta) {
 				this.insertNodeAfterSelected({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
@@ -2638,6 +2632,7 @@ export default defineComponent({
 
 						if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
 							this.titleSet(workflow.name, 'DEBUG');
+							await this.$nextTick();
 							await this.applyExecutionData(this.$route.params.executionId as string);
 						}
 					}
@@ -2763,8 +2758,7 @@ export default defineComponent({
 				const nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 				if (
-					nodeTypeData &&
-					nodeTypeData.maxNodes !== undefined &&
+					nodeTypeData?.maxNodes !== undefined &&
 					this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes
 				) {
 					this.showMaxNodeTypeError(nodeTypeData);
@@ -2919,7 +2913,7 @@ export default defineComponent({
 		}) {
 			const pinData = this.workflowsStore.getPinData;
 
-			if (pinData && pinData[name]) return;
+			if (pinData?.[name]) return;
 
 			const sourceNodeName = name;
 			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
@@ -2964,7 +2958,7 @@ export default defineComponent({
 
 									if (output.isArtificialRecoveredEventItem) {
 										NodeViewUtils.recoveredConnection(connection);
-									} else if ((!output || !output.total) && !output.isArtificialRecoveredEventItem) {
+									} else if (!output?.total && !output.isArtificialRecoveredEventItem) {
 										NodeViewUtils.resetConnection(connection);
 									} else {
 										NodeViewUtils.addConnectionOutputSuccess(connection, output);
@@ -2976,7 +2970,7 @@ export default defineComponent({
 								sourceNodeName,
 								parseInt(sourceOutputIndex, 10),
 							);
-							if (endpoint && endpoint.endpoint) {
+							if (endpoint?.endpoint) {
 								const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
 
 								if (output && output.total > 0) {
@@ -3266,7 +3260,7 @@ export default defineComponent({
 			);
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
-			if (!nodes || !nodes.length) {
+			if (!nodes?.length) {
 				return;
 			}
 
@@ -3756,7 +3750,7 @@ export default defineComponent({
 			const mode =
 				this.nodeCreatorStore.selectedView === TRIGGER_NODE_CREATOR_VIEW ? 'trigger' : 'regular';
 
-			if (createNodeActive === true) this.nodeCreatorStore.setOpenSource(source);
+			if (createNodeActive) this.nodeCreatorStore.setOpenSource(source);
 			void this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,

@@ -1,3 +1,4 @@
+import type { INode } from 'n8n-workflow';
 import { useI18n, useMessage } from '@/composables';
 import { MODAL_CONFIRM } from '@/constants';
 import { useWorkflowsStore } from '@/stores';
@@ -8,13 +9,8 @@ export const useExecutionDebugging = () => {
 	const workflowsStore = useWorkflowsStore();
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
-		const { workflow } = workflowsStore;
+		const workflow = workflowsStore.getCurrentWorkflow();
 		const execution = await workflowsStore.getExecution(executionId);
-
-		console.log('applyExecutionData');
-		console.log(workflow);
-		console.log('exec');
-		console.log(execution);
 
 		if (!execution?.data?.resultData) {
 			return;
@@ -57,6 +53,20 @@ export const useExecutionDebugging = () => {
 				});
 			}
 		}
+
+		const rootNodes = workflowsStore
+			.getNodes()
+			.filter((node: INode) => !workflow.getParentNodes(node.name).length);
+
+		rootNodes.forEach((node: INode) => {
+			const nodeData = runData[node.name]?.[0].data?.main[0];
+			if (nodeData) {
+				workflowsStore.pinData({
+					node,
+					data: nodeData,
+				});
+			}
+		});
 	};
 
 	return {
