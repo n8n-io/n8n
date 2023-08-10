@@ -1216,10 +1216,8 @@ export interface INodePropertyValueExtractorFunction {
 	(
 		this: IExecuteSingleFunctions,
 		value: string | NodeParameterValue,
-	): // eslint-disable-next-line prettier/prettier
-	Promise<string | NodeParameterValue> | (string | NodeParameterValue);
+	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
 }
-
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 
 export interface IParameterDependencies {
