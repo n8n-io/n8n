@@ -2,18 +2,15 @@
 
 import { handleListQueryError } from './error';
 import { jsonParse } from 'n8n-workflow';
-import { isStringArray } from '@/utils';
 import { WorkflowSelectDtoValidator as Validator } from './dtos/workflow.select.dto';
 
 import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
 
 function toQuerySelect(rawSelect: string, DtoValidator: typeof Validator) {
-	const arrDto = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
+	const dto = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
 
-	if (!isStringArray(arrDto)) throw new Error('Parsed select is not a string array');
-
-	return DtoValidator.validate(arrDto).reduce<Record<string, true>>((acc, field) => {
+	return DtoValidator.validate(dto).reduce<Record<string, true>>((acc, field) => {
 		return (acc[field] = true), acc;
 	}, {});
 }

@@ -3,17 +3,14 @@
 import { jsonParse } from 'n8n-workflow';
 import { handleListQueryError } from './error';
 import { WorkflowFilterDtoValidator as Validator } from './dtos/workflow.filter.dto';
-import { isObjectLiteral } from '@/utils';
 
 import type { RequestHandler } from 'express';
 import type { ListQuery } from '@/requests';
 
 function toQueryFilter(rawFilter: string, DtoValidator: typeof Validator) {
-	const objDto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
+	const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
 
-	if (!isObjectLiteral(objDto)) throw new Error('Filter must be an object literal');
-
-	const filter = DtoValidator.validate(objDto);
+	const filter = DtoValidator.validate(dto);
 
 	if (!filter.tags) return filter;
 

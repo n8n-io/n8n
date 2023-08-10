@@ -1,3 +1,4 @@
+import { isObjectLiteral } from '@/utils';
 import {
 	IsOptional,
 	IsString,
@@ -30,7 +31,9 @@ export class WorkflowFilterDtoValidator {
 		return new Set(['name', 'active', 'tags']);
 	}
 
-	static validate(data: object): QueryFilter {
+	static validate(data: unknown): QueryFilter {
+		if (!isObjectLiteral(data)) throw new Error('Filter must be an object literal');
+
 		const onlyKnownFields = Object.fromEntries(
 			Object.entries(data).filter(([key]) => this.filterableFields.has(key)),
 		);
