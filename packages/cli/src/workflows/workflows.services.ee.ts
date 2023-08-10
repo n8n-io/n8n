@@ -271,16 +271,14 @@ export class EEWorkflowsService extends WorkflowsService {
 			findManyOptions,
 		)) as [ListQuery.Workflow.WithSharing[] | ListQuery.Workflow.Plain[], number];
 
-		if (withSharing(workflows)) {
-			const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-			const ownershipService = Container.get(OwnershipService);
+		if (!withSharing(workflows)) return { workflows, count }; // custom select excluded ownedBy
 
-			return {
-				workflows: workflows.map((w) => ownershipService.addOwnedBy(w, workflowOwnerRole)),
-				count,
-			};
-		}
+		const role = await Container.get(RoleService).findWorkflowOwnerRole();
+		const ownershipService = Container.get(OwnershipService);
 
-		return { workflows, count };
+		return {
+			workflows: workflows.map((w) => ownershipService.addOwnedBy(w, role)),
+			count,
+		};
 	}
 }

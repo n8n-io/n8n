@@ -1,7 +1,8 @@
 import type { ListQuery } from '@/requests';
 
-export function withSharing(
-	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
-): workflows is ListQuery.Workflow.WithSharing[] {
+type Plain = ListQuery.Workflow.Plain;
+type WithSharing = ListQuery.Workflow.WithSharing;
+
+export function withSharing(workflows: Plain[] | WithSharing[]): workflows is WithSharing[] {
 	return workflows.some((w) => 'shared' in w);
 }
