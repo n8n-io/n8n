@@ -37,9 +37,12 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobQueue, JobResponse } from '@/Queue';
+// eslint-disable-next-line import/no-cycle
 import { Queue } from '@/Queue';
 import * as WebhookHelpers from '@/WebhookHelpers';
+// eslint-disable-next-line import/no-cycle
 import * as WorkflowHelpers from '@/WorkflowHelpers';
+// eslint-disable-next-line import/no-cycle
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
@@ -345,13 +348,7 @@ export class WorkflowRunner {
 				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, { executionId });
 				// Execute all nodes
 
-				let startNode;
-				if (
-					data.startNodes?.length === 1 &&
-					Object.keys(data.pinData ?? {}).includes(data.startNodes[0])
-				) {
-					startNode = workflow.getNode(data.startNodes[0]) ?? undefined;
-				}
+				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
 
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
