@@ -46,10 +46,6 @@ export const parameters = {
 				value: 'var(--color-background-light)',
 			},
 			{
-				name: '--color-background-lighter',
-				value: 'var(--color-background-lighter)',
-			},
-			{
 				name: '--color-background-xlight',
 				value: 'var(--color-background-xlight)',
 			},

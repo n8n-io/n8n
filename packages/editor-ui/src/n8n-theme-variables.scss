@@ -11,7 +11,7 @@ $custom-font-light: var(--color-text-light);
 $custom-font-very-light: var(--color-text-light);
 
 $custom-expression-text: var(--color-secondary);
-$custom-expression-background: var(--color-background-lighter);
+$custom-expression-background: var(--color-background-light);
 
 // Badge
 $badge-danger-color: var(--color-danger);
@@ -93,7 +93,7 @@ $drawer-background-color: var(--color-background-xlight);
 // updates-panel
 $updates-panel-info-url-color: $color-primary;
 $updates-panel-border: var(--border-base);
-$updates-panel-dark-background-color: var(--color-background-lighter);
+$updates-panel-dark-background-color: var(--color-background-light);
 $updates-panel-description-text-color: var(--color-text-base);
 $updates-panel-text-color: var(--color-text-dark);
 

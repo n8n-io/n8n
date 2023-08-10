@@ -50,12 +50,13 @@ export default defineComponent({
 
 <style lang="scss" module>
 @import '../../utils';
+@import '../../css/common/var';
 
 .primary {
-	color: var(--color-primary);
+	color: $link-color;
 
 	&:active {
-		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
+		color: $link-color-active;
 	}
 }
 
@@ -63,11 +64,11 @@ export default defineComponent({
 	color: var(--color-text-base);
 
 	&:hover {
-		color: var(--color-primary);
+		color: $link-color;
 	}
 
 	&:active {
-		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
+		color: $link-color-active;
 	}
 }
 
@@ -75,7 +76,7 @@ export default defineComponent({
 	color: var(--color-danger);
 
 	&:active {
-		color: saturation(--color-danger-h, --color-danger-s, --color-danger-l, -(20%));
+		color: var(--color-danger-shade-1);
 	}
 }
 
@@ -83,7 +84,7 @@ export default defineComponent({
 	color: var(--color-secondary);
 
 	&:active {
-		color: saturation(--color-secondary-h, --color-secondary-s, --color-secondary-l, -(20%));
+		color: var(--color-secondary-shade-1);
 	}
 }
 
