@@ -448,8 +448,14 @@ export default defineComponent({
 					return false;
 				}
 
-				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
-					return false;
+				if (property.type === 'number') {
+					const isExpression =
+						typeof this.credentialData[property.name] === 'string' &&
+						this.credentialData[property.name].startsWith('=');
+
+					if (typeof this.credentialData[property.name] !== 'number' && !isExpression) {
+						return false;
+					}
 				}
 			}
 			return true;

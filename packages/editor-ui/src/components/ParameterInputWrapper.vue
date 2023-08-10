@@ -65,8 +65,6 @@ import { isValueExpression } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
 
-type ParamRef = InstanceType<typeof ParameterInput>;
-
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
@@ -193,6 +191,7 @@ export default defineComponent({
 						inputNodeName: this.ndvStore.ndvInputNodeName,
 						inputRunIndex: this.ndvStore.ndvInputRunIndex,
 						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						additionalKeys: this.resolvedAdditionalExpressionData,
 					};
 				}
 

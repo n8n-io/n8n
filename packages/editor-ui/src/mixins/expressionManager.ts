@@ -207,6 +207,7 @@ export const expressionManager = defineComponent({
 							inputNodeName: this.ndvStore.ndvInputNodeName,
 							inputRunIndex: this.ndvStore.ndvInputRunIndex,
 							inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+							additionalKeys: this.additionalData,
 						};
 					}
 					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
