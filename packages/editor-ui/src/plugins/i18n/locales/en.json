@@ -1339,7 +1339,7 @@
 	"settings.usageAndPlan.desktop.title": "Upgrade to n8n Cloud for the full experience",
 	"settings.usageAndPlan.desktop.description": "Cloud plans allow you to collaborate with teammates. Plus you don’t need to leave this app open all the time for your workflows to run.",
 	"settings.externalSecrets.title": "External Secrets",
-	"settings.externalSecrets.info": "Connect external secret management tools for centralized credential and variable management across environments, and to enhance system security. ",
+	"settings.externalSecrets.info": "Connect external secrets tools for centralized credentials management across environments, and to enhance system security.",
 	"settings.externalSecrets.info.link": "More info",
 	"settings.externalSecrets.actionBox.title": "Available on the Enterprise plan",
 	"settings.externalSecrets.actionBox.description": "Connect external secrets tools for centralized credentials management across instances. {link}",
