@@ -37,11 +37,7 @@ const toast = useToast();
 const saving = ref(false);
 
 const connectedTextColor = computed(() => {
-	return props.provider.connected
-		? props.provider.state === 'error'
-			? 'danger'
-			: 'success'
-		: 'text-light';
+	return props.provider.connected ? 'success' : 'text-light';
 });
 
 onMounted(() => {
@@ -74,11 +70,13 @@ async function onUpdateConnected(value: boolean) {
 </script>
 
 <template>
-	<div
-		:class="['connection-switch', provider.state]"
-		v-loading="saving"
-		element-loading-spinner="el-icon-loading"
-	>
+	<div class="connection-switch" v-loading="saving" element-loading-spinner="el-icon-loading">
+		<n8n-icon
+			v-if="provider.state === 'error'"
+			color="danger"
+			icon="exclamation-triangle"
+			class="mr-2xs"
+		/>
 		<n8n-text :color="connectedTextColor" bold class="mr-2xs">
 			{{
 				i18n.baseText(
