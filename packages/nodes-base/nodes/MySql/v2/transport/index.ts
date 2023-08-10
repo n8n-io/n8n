@@ -1,10 +1,9 @@
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
+import { formatPrivateKey } from '@utils/utilities';
 
 import mysql2 from 'mysql2/promise';
 import type { Client, ConnectConfig } from 'ssh2';
-import { rm, writeFile } from 'fs/promises';
 
-import { file } from 'tmp-promise';
 import type { Mysql2Pool } from '../helpers/interfaces';
 
 async function createSshConnectConfig(credentials: IDataObject) {
@@ -16,14 +15,11 @@ async function createSshConnectConfig(credentials: IDataObject) {
 			password: credentials.sshPassword as string,
 		} as ConnectConfig;
 	} else {
-		const { path } = await file({ prefix: 'n8n-ssh-' });
-		await writeFile(path, credentials.privateKey as string);
-
 		const options: ConnectConfig = {
-			host: credentials.host as string,
-			username: credentials.username as string,
-			port: credentials.port as number,
-			privateKey: path,
+			host: credentials.sshHost as string,
+			username: credentials.sshUser as string,
+			port: credentials.sshPort as number,
+			privateKey: formatPrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {
@@ -63,12 +59,12 @@ export async function createPool(
 		baseCredentials.ssl = {};
 
 		if (caCertificate) {
-			baseCredentials.ssl.ca = caCertificate;
+			baseCredentials.ssl.ca = formatPrivateKey(caCertificate as string);
 		}
 
 		if (clientCertificate || clientPrivateKey) {
-			baseCredentials.ssl.cert = clientCertificate;
-			baseCredentials.ssl.key = clientPrivateKey;
+			baseCredentials.ssl.cert = formatPrivateKey(clientCertificate as string);
+			baseCredentials.ssl.key = formatPrivateKey(clientPrivateKey as string);
 		}
 	}
 
@@ -109,12 +105,6 @@ export async function createPool(
 			dstHost: credentials.host as string,
 			dstPort: credentials.port as number,
 		};
-
-		if (sshAuthenticateWith === 'privateKey') {
-			sshClient.on('end', async () => {
-				await rm(tunnelConfig.privateKey as string);
-			});
-		}
 
 		const poolSetup = new Promise<mysql2.Pool>((resolve, reject) => {
 			sshClient
