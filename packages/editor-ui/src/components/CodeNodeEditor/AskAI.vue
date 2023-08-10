@@ -10,12 +10,14 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
 import { executionDataToJson } from '@/utils';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 import type { INodeUi, Schema } from '@/Interface';
 
 const emit = defineEmits<{
 	submit: (code: string) => void;
 	replaceCode: (code: string) => void;
+	startedLoading: () => void;
+	finishedLoading: () => void;
 }>();
 const props = defineProps<{
 	hasChanges: boolean;
@@ -34,11 +36,18 @@ const isLoading = ref(false);
 const prompt = ref('');
 const parentNodes = ref<INodeUi[]>([]);
 
-const isSubmitEnabled = computed(() => prompt.value.length >= minLength && hasExecutionData.value);
+const isSubmitEnabled = computed(() => {
+	return !isEachItemMode.value && prompt.value.length >= minLength && hasExecutionData.value;
+});
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
+const isEachItemMode = computed(() => {
+	const mode = useNDVStore().activeNode?.parameters.mode as CodeExecutionMode;
+
+	return mode === 'runOnceForEachItem';
+});
 
 function getErrorMessageByStatusCode(statusCode: number) {
 	const errorMessages: Record<number, string> = {
@@ -154,7 +163,7 @@ async function onSubmit() {
 			code: '',
 			tokensCount: 0,
 			hasErrors: true,
-			error: error.httpStatusCode,
+			error: getErrorMessageByStatusCode(error.httpStatusCode),
 		});
 		stopLoading();
 	}
@@ -198,6 +207,7 @@ function triggerLoaderProgressChange() {
 }
 
 function startLoading() {
+	emit('startedLoading');
 	loaderProgress.value = 0;
 	isLoading.value = true;
 	triggerLoadingPhraseChange();
@@ -206,6 +216,7 @@ function startLoading() {
 
 function stopLoading() {
 	loaderProgress.value = 100;
+	emit('finishedLoading');
 	setTimeout(() => {
 		isLoading.value = false;
 	}, 200);
@@ -276,6 +287,10 @@ onMounted(() => {
 					<span
 						v-else-if="prompt.length === 0"
 						v-text="$locale.baseText('codeNodeEditor.askAi.noPrompt')"
+					/>
+					<span
+						v-else-if="isEachItemMode"
+						v-text="$locale.baseText('codeNodeEditor.askAi.onlyAllItemsMode')"
 					/>
 					<span
 						v-else-if="prompt.length < minLength"

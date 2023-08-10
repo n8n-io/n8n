@@ -5,13 +5,25 @@
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
 	>
-		<el-tabs type="card" ref="tabs" v-model="activeTab" v-if="aiEnabled">
+		<el-tabs
+			type="card"
+			ref="tabs"
+			v-model="activeTab"
+			v-if="aiEnabled"
+			:before-leave="onBeforeTabLeave"
+		>
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.code')" name="code">
 				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
 			</el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.askAi')" name="ask-ai">
 				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
-				<AskAI @replaceCode="onReplaceCode" :has-changes="hasChanges" :key="activeTab" />
+				<AskAI
+					@replaceCode="onReplaceCode"
+					:has-changes="hasChanges"
+					:key="activeTab"
+					@started-loading="isLoading = true"
+					@finished-loading="isLoading = false"
+				/>
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
@@ -47,6 +59,7 @@ import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
 import AskAI from './AskAI.vue';
+import { useMessage } from '@/composables';
 
 export default defineComponent({
 	name: 'code-node-editor',
@@ -76,6 +89,11 @@ export default defineComponent({
 			type: String,
 		},
 	},
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
 	data() {
 		return {
 			editor: null as EditorView | null,
@@ -86,6 +104,7 @@ export default defineComponent({
 			tabs: ['code', 'ask-ai'],
 			activeTab: 'code',
 			hasChanges: false,
+			isLoading: false,
 		};
 	},
 	watch: {
@@ -151,6 +170,27 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		async onBeforeTabLeave(_activeName, oldActiveName) {
+			if (oldActiveName === 'ask-ai' && this.isLoading) {
+				const confirmModal = await this.alert(
+					this.$locale.baseText('codeNodeEditor.askAi.sureLeaveTab'),
+					{
+						title: this.$locale.baseText('codeNodeEditor.askAi.areYouSure'),
+						confirmButtonText: this.$locale.baseText('codeNodeEditor.askAi.switchTab'),
+						showClose: true,
+						showCancelButton: true,
+					},
+				);
+
+				if (confirmModal === 'confirm') {
+					return true;
+				}
+
+				return false;
+			}
+
+			return true;
+		},
 		async onReplaceCode(code: string) {
 			const formattedCode = prettier.format(code, {
 				parser: 'babel',

@@ -290,6 +290,7 @@
 	"codeNodeEditor.askAi.generateCode": "Generate Code",
 	"codeNodeEditor.askAi.noInputData": "You can generate code once this node has incoming input data (from a node earlier in your workflow)",
 	"codeNodeEditor.askAi.noPrompt": "First enter a prompt above before generating code",
+	"codeNodeEditor.askAi.onlyAllItemsMode": "Ask AI generation works only in 'Run Once for All Items' mode",
 	"codeNodeEditor.askAi.promptTooShort": "Enter a minimum of {minLength} characters before attempting to generate code",
 	"codeNodeEditor.askAi.generateCodeAndReplace": "Generate and Replace Code",
 	"codeNodeEditor.askAi.replaceCurrentCode": "Replace current code?",
