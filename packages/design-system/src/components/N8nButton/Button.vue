@@ -136,26 +136,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .tertiary {
-	font-weight: var(--font-weight-bold) !important;
-
-	--button-background-color: var(--color-background-xlight);
-	--button-color: var(--color-text-dark);
-	--button-border-color: var(--color-neutral-850);
-
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: var(--color-primary);
-
-	--button-hover-background-color: var(--color-neutral-950);
-	--button-hover-color: var(--color-text-dark);
-	--button-hover-border-color: var(--color-neutral-800);
-
-	--button-focus-outline-color: hsla(
-		var(--color-neutral-h),
-		var(--color-neutral-s),
-		var(--color-neutral-l),
-		0.2
-	);
+	@include n8n-button-secondary;
 }
 
 .success {
@@ -285,7 +266,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 /**
  * Modifiers
  */
-
 .outline {
 	--button-color: var(--color-primary);
 	--button-background-color: transparent;
@@ -384,7 +364,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 		right: -1px;
 		bottom: -1px;
 		border-radius: inherit;
-		background-color: $loading-overlay-background-color;
 	}
 }
 
@@ -395,9 +374,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	&:focus {
 		cursor: not-allowed;
 		background-image: none;
-		color: $button-disabled-font-color;
-		background-color: $button-disabled-background-color;
-		border-color: $button-disabled-border-color;
 	}
 }
 
