@@ -2632,7 +2632,6 @@ export default defineComponent({
 
 						if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
 							this.titleSet(workflow.name, 'DEBUG');
-							await this.$nextTick();
 							await this.applyExecutionData(this.$route.params.executionId as string);
 						}
 					}
