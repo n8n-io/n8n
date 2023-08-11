@@ -31,7 +31,7 @@ export class AiTest implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const data = this.getInputConnectionData(itemIndex, 0, 'test');
-			returnData.push({ json: data });
+			returnData.push({ json: { data } });
 		}
 
 		return this.prepareOutputData(returnData);
