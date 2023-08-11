@@ -13,17 +13,23 @@ export const paginationListQueryMiddleware: RequestHandler = (
 	if (!rawTake) return next();
 
 	try {
-		const MAX_ITEMS = 50;
+		if (!isIntegerString(rawTake)) {
+			throw new Error('Parameter take is not an integer string');
+		}
 
-		if ([rawTake, rawSkip].some((i) => !isIntegerString(i))) {
-			throw new Error('Parameter take or skip is not an integer string');
+		if (!isIntegerString(rawSkip)) {
+			throw new Error('Parameter skip is not an integer string');
 		}
 
 		const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
 
-		const paginationOptions = { skip, take: Math.min(take, MAX_ITEMS) };
+		const MAX_ITEMS_PER_PAGE = 50;
 
-		req.listQueryOptions = { ...req.listQueryOptions, ...paginationOptions };
+		req.listQueryOptions = {
+			...req.listQueryOptions,
+			skip,
+			take: Math.min(take, MAX_ITEMS_PER_PAGE),
+		};
 
 		next();
 	} catch (maybeError) {
