@@ -1889,6 +1889,8 @@ export interface ITelemetryTrackProperties {
 	[key: string]: GenericValue;
 }
 
+export type Integrations = Record<'PostHog', boolean> | {};
+
 export interface INodesGraph {
 	node_types: string[];
 	node_connections: IDataObject[];

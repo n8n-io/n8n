@@ -1,5 +1,10 @@
 import type { Plugin } from 'vue';
-import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type {
+	ITelemetrySettings,
+	ITelemetryTrackProperties,
+	IDataObject,
+	Integrations,
+} from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
@@ -79,7 +84,7 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track(event: string, properties?: ITelemetryTrackProperties, integrations: Integrations = {}) {
 		if (!this.rudderStack) return;
 
 		const updatedProperties = {
@@ -87,7 +92,9 @@ export class Telemetry {
 			version_cli: useRootStore().versionCli,
 		};
 
-		this.rudderStack.track(event, updatedProperties);
+		this.rudderStack.track(event, updatedProperties, {
+			integrations: { PostHog: false, ...integrations },
+		});
 	}
 
 	page(route: Route) {
@@ -187,7 +194,7 @@ export class Telemetry {
 					this.track('User viewed node category', properties);
 					break;
 				case 'nodeView.addNodeButton':
-					this.track('User added node to workflow canvas', properties);
+					this.track('User added node to workflow canvas', properties, { PostHog: true });
 					break;
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);
