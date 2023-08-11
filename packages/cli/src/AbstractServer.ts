@@ -11,7 +11,7 @@ import { N8nInstanceType } from '@/Interfaces';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
-import { rawBody, jsonParser, corsMiddleware } from '@/middlewares';
+import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
@@ -98,7 +98,7 @@ export abstract class AbstractServer {
 		this.app.use(compression());
 
 		// Read incoming data into `rawBody`
-		this.app.use(rawBody);
+		this.app.use(rawBodyReader);
 	}
 
 	private setupDevMiddlewares() {
@@ -274,8 +274,8 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
-		// Setup JSON parsing middleware after the webhook handlers are setup
-		this.app.use(jsonParser);
+		// Setup body parsing middleware after the webhook handlers are setup
+		this.app.use(bodyParser);
 
 		await this.configure();
 
