@@ -1,44 +1,39 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { handleListQueryError } from './error';
 import { jsonParse } from 'n8n-workflow';
-import { WorkflowSelectDtoValidator } from './dtos/workflow.select.dto';
+import { WorkflowSelect } from './dtos/workflow.select.dto';
+import * as ResponseHelper from '@/ResponseHelper';
+import { toError } from '@/utils';
 
-import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
+import type { ListQuery } from '@/requests';
 
-type SelectDtoValidator = typeof WorkflowSelectDtoValidator;
-
-function toQuerySelect(rawSelect: string, DtoValidator: SelectDtoValidator) {
-	const dto = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
-
-	return DtoValidator.validate(dto).reduce<Record<string, true>>((acc, field) => {
-		return (acc[field] = true), acc;
-	}, {});
-}
-
-export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
+export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request, res, next) => {
 	const { select: rawSelect } = req.query;
 
 	if (!rawSelect) return next();
 
-	let DtoValidator;
+	let SelectClass;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		DtoValidator = WorkflowSelectDtoValidator;
+		SelectClass = WorkflowSelect;
 	} else {
 		return next();
 	}
 
 	try {
-		const select = toQuerySelect(rawSelect, DtoValidator);
+		const dto = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
 
-		if (Object.keys(select).length === 0) return next();
+		const select = new SelectClass(dto);
 
-		req.listQueryOptions = { ...req.listQueryOptions, select };
+		const validSelect = select.validate();
+
+		if (Object.keys(validSelect).length === 0) return next();
+
+		req.listQueryOptions = { ...req.listQueryOptions, select: validSelect };
 
 		next();
-	} catch (error) {
-		handleListQueryError('select', rawSelect, error);
+	} catch (maybeError) {
+		ResponseHelper.sendErrorResponse(res, toError(maybeError));
 	}
 };

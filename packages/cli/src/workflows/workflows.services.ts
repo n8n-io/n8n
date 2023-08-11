@@ -27,6 +27,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { isStringArray } from '@/utils';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -100,6 +101,12 @@ export class WorkflowsService {
 			...options?.filter,
 			id: In(sharedWorkflowIds),
 		};
+
+		const reqTags = options?.filter?.tags;
+
+		if (isStringArray(reqTags)) {
+			where.tags = reqTags.map((tag) => ({ name: tag }));
+		}
 
 		type Select = FindOptionsSelect<WorkflowEntity> & { ownedBy?: true };
 

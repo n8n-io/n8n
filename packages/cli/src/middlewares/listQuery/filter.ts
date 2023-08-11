@@ -1,46 +1,43 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import { jsonParse } from 'n8n-workflow';
-import { handleListQueryError } from './error';
-import { WorkflowFilterDtoValidator } from './dtos/workflow.filter.dto';
+import * as ResponseHelper from '@/ResponseHelper';
+import { WorkflowFilter } from './dtos/workflow.filter.dto';
+import { toError } from '@/utils';
 
-import type { RequestHandler } from 'express';
+import type { NextFunction, Response } from 'express';
 import type { ListQuery } from '@/requests';
 
-type FilterDtoValidator = typeof WorkflowFilterDtoValidator;
-
-function toQueryFilter(rawFilter: string, DtoValidator: FilterDtoValidator) {
-	const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
-
-	const filter = DtoValidator.validate(dto);
-
-	if (!filter.tags) return filter;
-
-	return { ...filter, tags: filter.tags.map((tag) => ({ name: tag })) };
-}
-
-export const filterListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
+export const filterListQueryMiddleware = async (
+	req: ListQuery.Request,
+	res: Response,
+	next: NextFunction,
+) => {
 	const { filter: rawFilter } = req.query;
 
 	if (!rawFilter) return next();
 
-	let DtoValidator;
+	let FilterClass;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		DtoValidator = WorkflowFilterDtoValidator;
+		FilterClass = WorkflowFilter;
 	} else {
 		return next();
 	}
 
 	try {
-		const filter = toQueryFilter(rawFilter, DtoValidator);
+		const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
 
-		if (Object.keys(filter).length === 0) return next();
+		const filter = new FilterClass(dto);
 
-		req.listQueryOptions = { ...req.listQueryOptions, filter };
+		const validFilter = await filter.validate();
+
+		if (Object.keys(validFilter).length === 0) return next();
+
+		req.listQueryOptions = { ...req.listQueryOptions, filter: validFilter };
 
 		next();
-	} catch (error) {
-		handleListQueryError('filter', rawFilter, error);
+	} catch (maybeError) {
+		ResponseHelper.sendErrorResponse(res, toError(maybeError));
 	}
 };

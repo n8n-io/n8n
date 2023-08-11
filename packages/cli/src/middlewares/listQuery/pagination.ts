@@ -1,27 +1,32 @@
+import { isIntegerString, toError } from '@/utils';
+import * as ResponseHelper from '@/ResponseHelper';
 import type { ListQuery } from '@/requests';
-import { isIntegerString } from '@/utils';
 import type { RequestHandler } from 'express';
 
-function toPaginationOptions(rawTake: string, rawSkip: string) {
-	const MAX_ITEMS = 50;
-
-	if ([rawTake, rawSkip].some((i) => !isIntegerString(i))) {
-		throw new Error('Parameter take or skip is not an integer string');
-	}
-
-	const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
-
-	return { skip, take: Math.min(take, MAX_ITEMS) };
-}
-
-export const paginationListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
+export const paginationListQueryMiddleware: RequestHandler = (
+	req: ListQuery.Request,
+	res,
+	next,
+) => {
 	const { take: rawTake, skip: rawSkip = '0' } = req.query;
 
 	if (!rawTake) return next();
 
-	const { take, skip } = toPaginationOptions(rawTake, rawSkip);
+	try {
+		const MAX_ITEMS = 50;
 
-	req.listQueryOptions = { ...req.listQueryOptions, take, skip };
+		if ([rawTake, rawSkip].some((i) => !isIntegerString(i))) {
+			throw new Error('Parameter take or skip is not an integer string');
+		}
 
-	next();
+		const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
+
+		const paginationOptions = { skip, take: Math.min(take, MAX_ITEMS) };
+
+		req.listQueryOptions = { ...req.listQueryOptions, ...paginationOptions };
+
+		next();
+	} catch (maybeError) {
+		ResponseHelper.sendErrorResponse(res, toError(maybeError));
+	}
 };
