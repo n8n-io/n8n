@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -5,46 +6,25 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-export class AiTestConfig implements INodeType {
+export class LangChainToolWikipedia implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'AiTestConfig',
-		name: 'aiTestConfig',
-		icon: 'fa:map-signs',
+		displayName: 'LangChain - Wikipedia',
+		name: 'langChainToolWikipedia',
+		icon: 'file:wikipedia.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'AI Test node',
+		description: 'Search in Wikipedia',
 		defaults: {
-			name: 'AiTest Config',
+			name: 'LangChain - Wikipedia',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
 			color: '#400080',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['test'],
-		outputNames: ['Test'],
+		outputNames: ['Tool'],
 		properties: [
-			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'options',
-				options: [
-					{
-						name: 'Model 1',
-						value: 'model1',
-					},
-					{
-						name: 'Model 2',
-						value: 'model2',
-					},
-				],
-				default: 'model1',
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				default: '',
-			},
 			{
 				displayName: 'Enabled',
 				name: 'enabled',
@@ -55,8 +35,6 @@ export class AiTestConfig implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-
-		return this.prepareOutputData(items);
+		return [];
 	}
 }

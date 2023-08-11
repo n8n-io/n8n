@@ -62,6 +62,7 @@ import type {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
+	INodeParameters,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -2578,7 +2579,7 @@ export function getExecuteFunctions(
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
 				inputName?: ConnectionTypes,
-			): Promise<IDataObject[]> {
+			): Promise<INode[]> {
 				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 
 				if (parentNodes.length === 0) {
@@ -2586,11 +2587,11 @@ export function getExecuteFunctions(
 				}
 
 				const constParentNodes = parentNodes.map(async (nodeName) => {
-					const connectedNode = workflow.getNode(nodeName);
+					const connectedNode = workflow.getNode(nodeName) as INode;
 
 					// Resolve parameters on node within the context of the current node
 					const parameters = workflow.expression.getParameterValue(
-						connectedNode!.parameters,
+						connectedNode.parameters,
 						runExecutionData,
 						runIndex,
 						itemIndex,
@@ -2600,7 +2601,7 @@ export function getExecuteFunctions(
 						additionalData.timezone,
 						getAdditionalKeys(additionalData, mode, runExecutionData),
 						executeData,
-					) as IDataObject;
+					) as INodeParameters;
 
 					const credentials: {
 						[key: string]: ICredentialDataDecryptedObject;
@@ -2630,7 +2631,7 @@ export function getExecuteFunctions(
 						...connectedNode,
 						credentials,
 						parameters,
-					};
+					} as unknown as INode;
 				});
 
 				return Promise.all(constParentNodes);
