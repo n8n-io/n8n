@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
+import { usePostHog } from '@/stores/posthog.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -188,6 +189,7 @@ export class Telemetry {
 					break;
 				case 'nodeView.addNodeButton':
 					this.track('User added node to workflow canvas', properties);
+					usePostHog().capture('User added node to workflow canvas', properties);
 					break;
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);
