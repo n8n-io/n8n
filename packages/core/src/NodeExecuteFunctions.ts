@@ -2573,19 +2573,19 @@ export function getExecuteFunctions(
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getInputConnectionData(
+			async getInputConnectionData(
 				itemIndex: number,
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
 				inputName?: ConnectionTypes,
-			): IDataObject[] {
+			): Promise<IDataObject[]> {
 				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 
 				if (parentNodes.length === 0) {
 					throw new Error('Could not get input connection data');
 				}
 
-				return parentNodes.map((nodeName) => {
+				const constParentNodes = parentNodes.map(async (nodeName) => {
 					const connectedNode = workflow.getNode(nodeName);
 
 					// Resolve parameters on node within the context of the current node
@@ -2602,11 +2602,38 @@ export function getExecuteFunctions(
 						executeData,
 					) as IDataObject;
 
+					const credentials: {
+						[key: string]: ICredentialDataDecryptedObject;
+					} = {};
+
+					if (!connectedNode?.credentials) {
+						return {
+							...connectedNode,
+							parameters,
+						};
+					}
+					for (const key of Object.keys(connectedNode?.credentials)) {
+						credentials[key] = await getCredentials(
+							workflow,
+							connectedNode,
+							key,
+							additionalData,
+							mode,
+							runExecutionData,
+							runIndex,
+							connectionInputData,
+							itemIndex,
+						);
+					}
+
 					return {
 						...connectedNode,
+						credentials,
 						parameters,
 					};
 				});
+
+				return Promise.all(constParentNodes);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
