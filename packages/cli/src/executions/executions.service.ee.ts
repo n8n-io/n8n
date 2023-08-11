@@ -4,7 +4,7 @@ import { ExecutionsService } from './executions.service';
 import type { ExecutionRequest } from '@/requests';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
 import { EEWorkflowsService as EEWorkflows } from '../workflows/workflows.services.ee';
-import { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
+import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
 
 export class EEExecutionsService extends ExecutionsService {
 	/**
