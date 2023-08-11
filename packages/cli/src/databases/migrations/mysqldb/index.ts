@@ -92,5 +92,5 @@ export const mysqlMigrations: Migration[] = [
 	RemoveSkipOwnerSetup1681134145997,
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
-  AddMfaColumns1690000000030,
+	AddMfaColumns1690000000030,
 ];

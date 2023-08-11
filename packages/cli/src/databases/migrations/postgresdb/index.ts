@@ -88,5 +88,5 @@ export const postgresMigrations: Migration[] = [
 	RemoveResetPasswordColumns1690000000030,
 	AddMissingPrimaryKeyOnExecutionData1690787606731,
 	CreateWorkflowNameIndex1691088862123,
-  AddMfaColumns1690000000030,
+	AddMfaColumns1690000000030,
 ];

@@ -86,7 +86,7 @@ const sqliteMigrations: Migration[] = [
 	FixMissingIndicesFromStringIdMigration1690000000020,
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
-  AddMfaColumns1690000000030,
+	AddMfaColumns1690000000030,
 ];
 
 export { sqliteMigrations };
