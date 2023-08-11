@@ -104,49 +104,58 @@ export const genericFiltersCollection: INodeProperties = {
 					name: 'operator',
 					type: 'options',
 					options: [
-						{
-							name: 'Between',
-							value: '_between',
-						},
+						// {
+						// 	name: 'Between',
+						// 	value: '_between',
+						// },
 						{
 							name: 'Ends With',
 							value: '_endsWith',
+							description: 'Field ends with value',
 						},
 						{
 							name: 'Equal',
 							value: '_eq',
+							description: 'Field is equal to value',
 						},
 						{
 							name: 'Greater Than',
 							value: '_gt',
+							description: 'Field greater than value',
 						},
 						{
 							name: 'Greater Than Or Equal',
 							value: '_gte',
+							description: 'Field greater than or equal to value',
 						},
-						{
-							name: 'In',
-							value: '_in',
-						},
+						// {
+						// 	name: 'In',
+						// 	value: '_in',
+						// },
 						{
 							name: 'Less Than',
 							value: '_lt',
+							description: 'Field less than value',
 						},
 						{
 							name: 'Less Than Or Equal',
 							value: '_lte',
+							description: 'Field less than or equal to value',
 						},
 						{
-							name: 'Match Word',
-							value: '_match',
+							name: 'Like',
+							value: '_like',
+							description: 'Field contains the substring from value',
 						},
 						{
 							name: 'Not Equal',
 							value: '_ne',
+							description: 'Field is not equal to value',
 						},
 						{
 							name: 'Starts With',
 							value: '_startsWith',
+							description: 'Field starts with value',
 						},
 					],
 					default: '_eq',

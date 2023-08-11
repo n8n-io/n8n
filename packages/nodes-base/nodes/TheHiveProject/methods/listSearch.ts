@@ -19,7 +19,7 @@ async function listResource(
 	if (filter) {
 		query.push({
 			_name: 'filter',
-			_match: {
+			_like: {
 				_field: filterField,
 				_value: filter,
 			},
@@ -117,7 +117,7 @@ export async function pageSearch(
 	if (filter) {
 		query.push({
 			_name: 'filter',
-			_match: {
+			_like: {
 				_field: 'title',
 				_value: filter,
 			},
@@ -182,19 +182,19 @@ export async function observableSearch(
 			_name: 'filter',
 			_or: [
 				{
-					_match: {
+					_like: {
 						_field: 'data',
 						_value: filter,
 					},
 				},
 				{
-					_match: {
+					_like: {
 						_field: 'message',
 						_value: filter,
 					},
 				},
 				{
-					_match: {
+					_like: {
 						_field: 'attachment.name',
 						_value: filter,
 					},
