@@ -14,7 +14,7 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest } from '@/requests';
+import type { ExecutionRequest, ListQuery } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -84,7 +84,7 @@ export class ExecutionsService {
 		return getSharedWorkflowIds(user, ['owner']);
 	}
 
-	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
+	static async getExecutionsList(req: any): Promise<IExecutionsListResponse> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits

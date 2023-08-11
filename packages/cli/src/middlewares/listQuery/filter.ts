@@ -6,17 +6,14 @@ import { WorkflowFilterDtoValidator } from './dtos/workflow.filter.dto';
 
 import type { RequestHandler } from 'express';
 import type { ListQuery } from '@/requests';
+import { ExecutionFilterDtoValidator } from './dtos/execution.filter.dto';
 
-type FilterDtoValidator = typeof WorkflowFilterDtoValidator;
+type FilterDtoValidator = typeof WorkflowFilterDtoValidator | typeof ExecutionFilterDtoValidator;
 
 function toQueryFilter(rawFilter: string, DtoValidator: FilterDtoValidator) {
 	const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
 
-	const filter = DtoValidator.validate(dto);
-
-	if (!filter.tags) return filter;
-
-	return { ...filter, tags: filter.tags.map((tag) => ({ name: tag })) };
+	return DtoValidator.validate(dto);
 }
 
 export const filterListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
@@ -28,6 +25,8 @@ export const filterListQueryMiddleware: RequestHandler = (req: ListQuery.Request
 
 	if (req.baseUrl.endsWith('workflows')) {
 		DtoValidator = WorkflowFilterDtoValidator;
+	} else if (req.baseUrl.endsWith('executions')) {
+		DtoValidator = ExecutionFilterDtoValidator;
 	} else {
 		return next();
 	}

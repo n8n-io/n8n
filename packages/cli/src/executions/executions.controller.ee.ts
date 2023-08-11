@@ -4,10 +4,11 @@ import type {
 	IExecutionResponse,
 	IExecutionsListResponse,
 } from '@/Interfaces';
-import type { ExecutionRequest } from '@/requests';
+import type { ExecutionRequest, ListQuery } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 import { EEExecutionsService } from './executions.service.ee';
+import { filterListQueryMiddleware } from '@/middlewares/listQuery/filter';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEExecutionsController = express.Router();
@@ -27,7 +28,9 @@ EEExecutionsController.use((req, res, next) => {
  */
 EEExecutionsController.get(
 	'/',
-	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
+	filterListQueryMiddleware,
+	ResponseHelper.send(async (req: ListQuery.Request): Promise<IExecutionsListResponse> => {
+		console.log(req.listQueryOptions);
 		return EEExecutionsService.getExecutionsList(req);
 	}),
 );

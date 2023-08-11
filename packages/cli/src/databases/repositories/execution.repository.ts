@@ -37,6 +37,7 @@ function parseFiltersToQueryBuilder(
 	if (filters?.finished) {
 		qb.andWhere({ finished: filters.finished });
 	}
+	// TODO: Remove this from here, repo shouldn't check paid features
 	if (filters?.metadata && isAdvancedExecutionFiltersEnabled()) {
 		qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 		for (const md of filters.metadata) {

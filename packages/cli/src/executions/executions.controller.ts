@@ -10,6 +10,7 @@ import { getLogger } from '@/Logger';
 import type { ExecutionRequest } from '@/requests';
 import { EEExecutionsController } from './executions.controller.ee';
 import { ExecutionsService } from './executions.service';
+import { filterListQueryMiddleware } from '@/middlewares/listQuery/filter';
 
 export const executionsController = express.Router();
 
@@ -32,6 +33,7 @@ executionsController.use('/', EEExecutionsController);
  */
 executionsController.get(
 	'/',
+	filterListQueryMiddleware,
 	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
 		return ExecutionsService.getExecutionsList(req);
 	}),
