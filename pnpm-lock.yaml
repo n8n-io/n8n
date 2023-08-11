@@ -124,6 +124,9 @@ importers:
       vite:
         specifier: ^4.4.7
         version: 4.4.7(less@4.1.3)(sass@1.64.1)
+      vite-plugin-ejs:
+        specifier: ^1.6.4
+        version: 1.6.4
       vitest:
         specifier: ^0.33.0
         version: 0.33.0
@@ -20713,6 +20716,12 @@ packages:
       - sugarss
       - supports-color
       - terser
+    dev: true
+
+  /vite-plugin-ejs@1.6.4:
+    resolution: {integrity: sha512-23p1RS4PiA0veXY5/gHZ60pl3pPvd8NEqdBsDgxNK8nM1rjFFDcVb0paNmuipzCgNP/Y0f/Id22M7Il4kvZ2jA==}
+    dependencies:
+      ejs: 3.1.8
     dev: true
 
   /vite@4.4.7(@types/node@18.16.16):
