@@ -149,6 +149,7 @@ import { License } from './License';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
+	isDebugInEditorLicensed,
 } from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
@@ -196,7 +197,7 @@ export class Server extends AbstractServer {
 	push: Push;
 
 	constructor() {
-		super();
+		super('main');
 
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
@@ -314,6 +315,7 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
+				debugInEditor: false,
 			},
 			mfa: {
 				enabled: false,
@@ -346,6 +348,7 @@ export class Server extends AbstractServer {
 		this.push = Container.get(Push);
 
 		await super.start();
+		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
@@ -408,6 +411,15 @@ export class Server extends AbstractServer {
 	 * Returns the current settings for the frontend
 	 */
 	getSettingsForFrontend(): IN8nUISettings {
+		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
+		const instanceBaseUrl = getInstanceBaseUrl();
+		this.frontendSettings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+		this.frontendSettings.urlBaseEditor = instanceBaseUrl;
+		this.frontendSettings.oauthCallbackUrls = {
+			oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
+			oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
+		};
+
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			quota: Container.get(License).getUsersLimit(),
@@ -436,6 +448,7 @@ export class Server extends AbstractServer {
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
 			sourceControl: isSourceControlLicensed(),
+			debugInEditor: isDebugInEditorLicensed(),
 		});
 
 		if (isLdapEnabled()) {
@@ -495,7 +508,7 @@ export class Server extends AbstractServer {
 				jwtService,
 				mfaService,
 			}),
-			new TagsController({ config, repositories, externalHooks }),
+			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,

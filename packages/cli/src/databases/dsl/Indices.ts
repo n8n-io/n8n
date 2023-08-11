@@ -4,11 +4,20 @@ import LazyPromise from 'p-lazy';
 abstract class IndexOperation extends LazyPromise<void> {
 	abstract execute(queryRunner: QueryRunner): Promise<void>;
 
+	get fullTableName() {
+		return [this.tablePrefix, this.tableName].join('');
+	}
+
+	get fullIndexName() {
+		return ['IDX', `${this.tablePrefix}${this.tableName}`, ...this.columnNames].join('_');
+	}
+
 	constructor(
-		protected name: string,
+		protected tablePrefix: string,
 		protected tableName: string,
-		protected prefix: string,
+		protected columnNames: string[],
 		queryRunner: QueryRunner,
+		protected customIndexName?: string,
 	) {
 		super((resolve) => {
 			void this.execute(queryRunner).then(resolve);
@@ -18,28 +27,27 @@ abstract class IndexOperation extends LazyPromise<void> {
 
 export class CreateIndex extends IndexOperation {
 	constructor(
-		name: string,
+		tablePrefix: string,
 		tableName: string,
-		protected columnNames: string[],
+		columnNames: string[],
 		protected isUnique: boolean,
-		prefix: string,
 		queryRunner: QueryRunner,
+		customIndexName?: string,
 	) {
-		super(name, tableName, prefix, queryRunner);
+		super(tablePrefix, tableName, columnNames, queryRunner, customIndexName);
 	}
 
 	async execute(queryRunner: QueryRunner) {
-		const { tableName, name, columnNames, prefix, isUnique } = this;
+		const { columnNames, isUnique } = this;
 		return queryRunner.createIndex(
-			`${prefix}${tableName}`,
-			new TableIndex({ name: `IDX_${prefix}${name}`, columnNames, isUnique }),
+			this.fullTableName,
+			new TableIndex({ name: this.customIndexName ?? this.fullIndexName, columnNames, isUnique }),
 		);
 	}
 }
 
 export class DropIndex extends IndexOperation {
 	async execute(queryRunner: QueryRunner) {
-		const { tableName, name, prefix } = this;
-		return queryRunner.dropIndex(`${prefix}${tableName}`, `IDX_${prefix}${name}`);
+		return queryRunner.dropIndex(this.fullTableName, this.customIndexName ?? this.fullIndexName);
 	}
 }

@@ -35,6 +35,8 @@ import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
+import { TagRepository } from '@/databases/repositories';
+import { separate } from '@/utils';
 
 import { v4 as uuid } from 'uuid';
 import { randomPassword } from '@/Ldap/helpers';
@@ -117,7 +119,13 @@ export async function terminate() {
  * Truncate specific DB tables in a test DB.
  */
 export async function truncate(collections: CollectionName[]) {
-	for (const collection of collections) {
+	const [tag, rest] = separate(collections, (c) => c === 'Tag');
+
+	if (tag) {
+		await Container.get(TagRepository).delete({});
+	}
+
+	for (const collection of rest) {
 		await Db.collections[collection].delete({});
 	}
 }
@@ -419,7 +427,7 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 export async function createTag(attributes: Partial<TagEntity> = {}) {
 	const { name } = attributes;
 
-	return Db.collections.Tag.save({
+	return Container.get(TagRepository).save({
 		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,

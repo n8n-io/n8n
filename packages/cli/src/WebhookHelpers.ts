@@ -12,8 +12,6 @@ import { Container } from 'typedi';
 import get from 'lodash/get';
 import stream from 'stream';
 import { promisify } from 'util';
-import { parse as parseQueryString } from 'querystring';
-import { Parser as XmlParser } from 'xml2js';
 import formidable from 'formidable';
 
 import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
@@ -40,7 +38,6 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
-	jsonParse,
 	LoggerProxy as Logger,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -64,6 +61,7 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
+import { parseBody } from './middlewares';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -75,13 +73,6 @@ export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 	'POST',
 	'PUT',
 ];
-
-const xmlParser = new XmlParser({
-	async: true,
-	normalize: true, // Trim whitespace inside text nodes
-	normalizeTags: true, // Transform tags to lowercase
-	explicitArray: false, // Only put properties in array if length > 1
-});
 
 export const webhookRequestHandler =
 	(webhookManager: IWebhookManager) =>
@@ -316,28 +307,7 @@ export async function executeWebhook(
 					});
 				});
 			} else {
-				await req.readRawBody();
-				const { rawBody } = req;
-				if (rawBody?.length) {
-					try {
-						if (contentType === 'application/json') {
-							req.body = jsonParse(rawBody.toString(encoding));
-						} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
-							req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
-						} else if (contentType === 'application/x-www-form-urlencoded') {
-							req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
-								maxKeys: 1000,
-							});
-						} else if (contentType === 'text/plain') {
-							req.body = rawBody.toString(encoding);
-						}
-					} catch (error) {
-						throw new ResponseHelper.UnprocessableRequestError(
-							'Failed to parse request body',
-							error.message,
-						);
-					}
-				}
+				await parseBody(req);
 			}
 		}
 

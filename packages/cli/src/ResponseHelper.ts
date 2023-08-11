@@ -162,6 +162,12 @@ export function sendErrorResponse(res: Response, error: Error) {
 export const isUniqueConstraintError = (error: Error) =>
 	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
 
+export function reportError(error: Error) {
+	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+		ErrorReporter.error(error);
+	}
+}
+
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
  * all the responses have the same format
@@ -181,9 +187,7 @@ export function send<T, R extends Request, S extends Response>(
 			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error) {
-				if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
-					ErrorReporter.error(error);
-				}
+				reportError(error);
 
 				if (isUniqueConstraintError(error)) {
 					error.message = 'There is already an entry with this name';

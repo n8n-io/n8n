@@ -40,6 +40,7 @@ import { SeparateExecutionData1690000000010 } from './1690000000010-SeparateExec
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 import { FixMissingIndicesFromStringIdMigration1690000000020 } from './1690000000020-FixMissingIndicesFromStringIdMigration';
 import { RemoveResetPasswordColumns1690000000030 } from './1690000000030-RemoveResetPasswordColumns';
+import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 
 const sqliteMigrations: Migration[] = [
@@ -84,7 +85,8 @@ const sqliteMigrations: Migration[] = [
 	RemoveSkipOwnerSetup1681134145997,
 	FixMissingIndicesFromStringIdMigration1690000000020,
 	RemoveResetPasswordColumns1690000000030,
-	AddMfaColumns1690000000030,
+	CreateWorkflowNameIndex1691088862123,
+  AddMfaColumns1690000000030,
 ];
 
 export { sqliteMigrations };
