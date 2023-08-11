@@ -17,7 +17,7 @@ import { observableTypeOptions } from '../../descriptions';
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields',
-		name: 'fields',
+		name: 'alertFields',
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
@@ -105,16 +105,16 @@ export async function execute(
 	let responseData: IDataObject | IDataObject[] = [];
 	let inputData: IDataObject = {};
 
-	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const dataMode = this.getNodeParameter('alertFields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		const schema = this.getNodeParameter('alertFields.schema', i) as IDataObject[];
 		inputData = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
-		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
-		inputData = fields;
+		const alertFields = this.getNodeParameter('alertFields.value', i, []) as IDataObject;
+		inputData = alertFields;
 	}
 
 	inputData = fixFieldType(inputData);

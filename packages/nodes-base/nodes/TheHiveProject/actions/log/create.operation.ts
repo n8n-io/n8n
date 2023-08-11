@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 	taskRLC,
 	{
 		displayName: 'Fields',
-		name: 'fields',
+		name: 'logFields',
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
@@ -58,18 +58,18 @@ export async function execute(
 	let responseData: IDataObject | IDataObject[] = [];
 	let body: IDataObject = {};
 
-	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const dataMode = this.getNodeParameter('logFields.mappingMode', i) as string;
 	const taskId = this.getNodeParameter('taskId', i, '', { extractValue: true }) as string;
 	const attachments = this.getNodeParameter('attachments', i, '') as string;
 
 	if (dataMode === 'autoMapInputData') {
-		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		const schema = this.getNodeParameter('logFields.schema', i) as IDataObject[];
 		body = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
-		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
-		body = fields;
+		const logFields = this.getNodeParameter('logFields.value', i, []) as IDataObject;
+		body = logFields;
 	}
 
 	body = fixFieldType(body);

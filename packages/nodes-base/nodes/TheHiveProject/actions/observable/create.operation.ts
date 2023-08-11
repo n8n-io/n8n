@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Fields',
-		name: 'fields',
+		name: 'observableFields',
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
@@ -97,16 +97,16 @@ export async function execute(
 	const id = this.getNodeParameter('id', i, '', { extractValue: true }) as string;
 	const endpoint = `/v1/${createIn}/${id}/observable`;
 
-	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const dataMode = this.getNodeParameter('observableFields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		const schema = this.getNodeParameter('observableFields.schema', i) as IDataObject[];
 		body = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
-		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
-		body = fields;
+		const observableFields = this.getNodeParameter('observableFields.value', i, []) as IDataObject;
+		body = observableFields;
 	}
 
 	const { attachment } = body;

@@ -14,7 +14,7 @@ import set from 'lodash/set';
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields',
-		name: 'fields',
+		name: 'caseUpdateFields',
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
@@ -51,21 +51,21 @@ export async function execute(
 	let body: IDataObject = {};
 	let updated = 1;
 
-	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const dataMode = this.getNodeParameter('caseUpdateFields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		const schema = this.getNodeParameter('caseUpdateFields.schema', i) as IDataObject[];
 		body = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
-		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
-		body = fields;
+		const caseUpdateFields = this.getNodeParameter('caseUpdateFields.value', i, []) as IDataObject;
+		body = caseUpdateFields;
 	}
 
 	body = fixFieldType(body);
 
-	const fieldsToMatchOn = this.getNodeParameter('fields.matchingColumns', i) as string[];
+	const fieldsToMatchOn = this.getNodeParameter('caseUpdateFields.matchingColumns', i) as string[];
 
 	const updateBody: IDataObject = {};
 	const matchFields: IDataObject = {};

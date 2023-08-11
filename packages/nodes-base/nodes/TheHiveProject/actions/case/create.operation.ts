@@ -15,7 +15,7 @@ import { fixFieldType, prepareInputItem } from '../../helpers/utils';
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Fields',
-		name: 'fields',
+		name: 'caseFields',
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
@@ -50,16 +50,16 @@ export async function execute(
 	let responseData: IDataObject | IDataObject[] = [];
 	let inputData: IDataObject = {};
 
-	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const dataMode = this.getNodeParameter('caseFields.mappingMode', i) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		const schema = this.getNodeParameter('caseFields.schema', i) as IDataObject[];
 		inputData = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
-		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
-		inputData = fields;
+		const caseFields = this.getNodeParameter('caseFields.value', i, []) as IDataObject;
+		inputData = caseFields;
 	}
 
 	inputData = fixFieldType(inputData);
