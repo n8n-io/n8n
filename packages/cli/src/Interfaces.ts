@@ -61,6 +61,7 @@ import type {
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
 export interface IActivationError {
 	time: number;
@@ -194,7 +195,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
+	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 }
 
 // Flatted data to save memory when saving in database or transferring
