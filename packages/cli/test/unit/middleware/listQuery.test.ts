@@ -63,7 +63,7 @@ describe('List query middleware', () => {
 	});
 
 	describe('Query select', () => {
-		test('should parse valid select', async () => {
+		test('should parse valid select', () => {
 			mockReq.query = { select: '["name", "id"]' };
 
 			selectListQueryMiddleware(...args);
@@ -72,7 +72,7 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('ignore invalid select', async () => {
+		test('ignore invalid select', () => {
 			mockReq.query = { select: '["name", "foo"]' };
 
 			selectListQueryMiddleware(...args);
@@ -81,7 +81,7 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('throw on invalid JSON', async () => {
+		test('throw on invalid JSON', () => {
 			mockReq.query = { select: '["name"' };
 
 			selectListQueryMiddleware(...args);
@@ -89,7 +89,7 @@ describe('List query middleware', () => {
 			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
 		});
 
-		test('throw on non-string-array JSON for select', async () => {
+		test('throw on non-string-array JSON for select', () => {
 			mockReq.query = { select: '"name"' };
 
 			selectListQueryMiddleware(...args);
