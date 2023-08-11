@@ -104,10 +104,11 @@ export const genericFiltersCollection: INodeProperties = {
 					name: 'operator',
 					type: 'options',
 					options: [
-						// {
-						// 	name: 'Between',
-						// 	value: '_between',
-						// },
+						{
+							name: 'Between',
+							value: '_between',
+							description: "Field is between two values ('From' is inclusive, 'To' is exclusive)",
+						},
 						{
 							name: 'Ends With',
 							value: '_endsWith',
@@ -128,10 +129,11 @@ export const genericFiltersCollection: INodeProperties = {
 							value: '_gte',
 							description: 'Field greater than or equal to value',
 						},
-						// {
-						// 	name: 'In',
-						// 	value: '_in',
-						// },
+						{
+							name: 'In',
+							value: '_in',
+							description: 'Field is one of the values',
+						},
 						{
 							name: 'Less Than',
 							value: '_lt',
@@ -146,6 +148,11 @@ export const genericFiltersCollection: INodeProperties = {
 							name: 'Like',
 							value: '_like',
 							description: 'Field contains the substring from value',
+						},
+						{
+							name: 'Match',
+							value: '_match',
+							description: 'Field contains the value as a word',
 						},
 						{
 							name: 'Not Equal',
