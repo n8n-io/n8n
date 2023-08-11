@@ -2575,6 +2575,7 @@ export function getExecuteFunctions(
 			},
 			getInputConnectionData(
 				itemIndex: number,
+				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
 				inputName?: ConnectionTypes,
 			): IDataObject {
@@ -2584,36 +2585,30 @@ export function getExecuteFunctions(
 					throw new Error('Could not get input connection data');
 				}
 
-				const dataProxy = new WorkflowDataProxy(
-					workflow,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					node.name,
-					connectionInputData,
-					{},
-					mode,
-					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					executeData,
-				);
-				const proxy = dataProxy.getDataProxy();
+				return parentNodes.map((nodeName) => {
+					const connectedNode = workflow.getNode(nodeName);
 
-				const data = proxy.$node[parentNodes[0]].parameter;
+					// Resolve parameters on node within the context of the current node
+					const parameters = workflow.expression.getParameterValue(
+						connectedNode!.parameters,
+						runExecutionData,
+						runIndex,
+						itemIndex,
+						node.name,
+						connectionInputData,
+						mode,
+						additionalData.timezone,
+						getAdditionalKeys(additionalData, mode, runExecutionData),
+						executeData,
+					) as IDataObject;
 
-				// Resolve parameters on node within the context of the current node
-				return workflow.expression.getParameterValue(
-					data,
-					runExecutionData,
-					runIndex,
-					itemIndex,
-					node.name,
-					connectionInputData,
-					mode,
-					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode, runExecutionData),
-					executeData,
-				) as IDataObject;
+					return {
+						node: {
+							...node,
+							parameters,
+						},
+					};
+				});
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
