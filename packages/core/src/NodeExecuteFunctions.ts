@@ -2603,7 +2603,7 @@ export function getExecuteFunctions(
 					) as IDataObject;
 
 					return {
-						...node,
+						...connectedNode,
 						parameters,
 					};
 				});
