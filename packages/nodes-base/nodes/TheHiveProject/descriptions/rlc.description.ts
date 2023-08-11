@@ -180,7 +180,7 @@ export const pageRLC: INodeProperties = {
 };
 
 export const logRLC: INodeProperties = {
-	displayName: 'Log',
+	displayName: 'Task Log',
 	name: 'logId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
@@ -190,7 +190,7 @@ export const logRLC: INodeProperties = {
 			displayName: 'From List',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a log...',
+			placeholder: 'Select a task log...',
 			typeOptions: {
 				searchListMethod: 'logSearch',
 				searchable: true,
@@ -206,7 +206,7 @@ export const logRLC: INodeProperties = {
 					type: 'regex',
 					properties: {
 						regex: '(~[0-9]{1,})',
-						errorMessage: 'Not a valid Log ID',
+						errorMessage: 'Not a valid task Log ID',
 					},
 				},
 			],

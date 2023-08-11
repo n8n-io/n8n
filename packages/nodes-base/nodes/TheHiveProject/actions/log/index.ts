@@ -3,11 +3,12 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as addAttachment from './addAttachment.operation';
 import * as create from './create.operation';
 import * as deleteAttachment from './deleteAttachment.operation';
+import * as deleteLog from './deleteLog.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as search from './search.operation';
 
-export { addAttachment, create, deleteAttachment, executeResponder, get, search };
+export { addAttachment, create, deleteAttachment, deleteLog, executeResponder, get, search };
 
 export const description: INodeProperties[] = [
 	{
@@ -34,6 +35,11 @@ export const description: INodeProperties[] = [
 				action: 'Delete attachment from a task log',
 			},
 			{
+				name: 'Delete Task Log',
+				value: 'deleteLog',
+				action: 'Delete task log',
+			},
+			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
 				action: 'Execute responder on a task log',
@@ -58,6 +64,7 @@ export const description: INodeProperties[] = [
 	...addAttachment.description,
 	...create.description,
 	...deleteAttachment.description,
+	...deleteLog.description,
 	...executeResponder.description,
 	...get.description,
 	...search.description,

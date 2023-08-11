@@ -4,6 +4,7 @@ import * as addAttachment from './addAttachment.operation';
 
 import * as create from './create.operation';
 import * as deleteAttachment from './deleteAttachment.operation';
+import * as deleteCase from './deleteCase.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as getAttachment from './getAttachment.operation';
@@ -15,6 +16,7 @@ export {
 	addAttachment,
 	create,
 	deleteAttachment,
+	deleteCase,
 	executeResponder,
 	get,
 	search,
@@ -46,6 +48,11 @@ export const description: INodeProperties[] = [
 				name: 'Delete Attachment',
 				value: 'deleteAttachment',
 				action: 'Delete attachment from a case',
+			},
+			{
+				name: 'Delete Case',
+				value: 'deleteCase',
+				action: 'Delete an case',
 			},
 			{
 				name: 'Execute Responder',
@@ -87,6 +94,7 @@ export const description: INodeProperties[] = [
 	...addAttachment.description,
 	...create.description,
 	...deleteAttachment.description,
+	...deleteCase.description,
 	...executeResponder.description,
 	...get.description,
 	...getAttachment.description,

@@ -1,13 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
+import * as deleteObservable from './deleteObservable.operation';
 import * as executeAnalyzer from './executeAnalyzer.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as search from './search.operation';
 import * as update from './update.operation';
 
-export { create, executeAnalyzer, executeResponder, get, search, update };
+export { create, deleteObservable, executeAnalyzer, executeResponder, get, search, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -22,6 +23,11 @@ export const description: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				action: 'Create an observable',
+			},
+			{
+				name: 'Delete',
+				value: 'deleteObservable',
+				action: 'Delete an observable',
 			},
 			{
 				name: 'Execute Analyzer',
@@ -56,6 +62,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	...create.description,
+	...deleteObservable.description,
 	...executeAnalyzer.description,
 	...executeResponder.description,
 	...get.description,

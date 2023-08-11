@@ -50,10 +50,6 @@ export const description: INodeTypeDescription = {
 					value: 'comment',
 				},
 				{
-					name: 'Log',
-					value: 'log',
-				},
-				{
 					name: 'Observable',
 					value: 'observable',
 				},
@@ -68,6 +64,10 @@ export const description: INodeTypeDescription = {
 				{
 					name: 'Task',
 					value: 'task',
+				},
+				{
+					name: 'Task Log',
+					value: 'log',
 				},
 			],
 			default: 'alert',

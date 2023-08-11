@@ -1,12 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
+import * as deleteTask from './deleteTask.operation';
 import * as executeResponder from './executeResponder.operation';
 import * as get from './get.operation';
 import * as search from './search.operation';
 import * as update from './update.operation';
 
-export { create, executeResponder, get, search, update };
+export { create, deleteTask, executeResponder, get, search, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -21,6 +22,11 @@ export const description: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				action: 'Create a task',
+			},
+			{
+				name: 'Delete',
+				value: 'deleteTask',
+				action: 'Delete an task',
 			},
 			{
 				name: 'Execute Responder',
@@ -50,6 +56,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	...create.description,
+	...deleteTask.description,
 	...executeResponder.description,
 	...get.description,
 	...search.description,
