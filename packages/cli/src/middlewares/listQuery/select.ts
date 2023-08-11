@@ -1,39 +1,37 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import { handleListQueryError } from './error';
 import { jsonParse } from 'n8n-workflow';
-import { WorkflowSchema } from './workflow.schema';
-import * as utils from '@/utils';
-import type { ListQueryRequest } from '@/requests';
+import { WorkflowSelectDtoValidator } from './dtos/workflow.select.dto';
+
+import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
-import type { Schema } from '@/middlewares/listQuery/schema';
 
-function toQuerySelect(rawSelect: string, schema: typeof Schema) {
-	const asArr = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
+type SelectDtoValidator = typeof WorkflowSelectDtoValidator;
 
-	if (!utils.isStringArray(asArr)) {
-		throw new Error('Parsed select is not a string array');
-	}
+function toQuerySelect(rawSelect: string, DtoValidator: SelectDtoValidator) {
+	const dto = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
 
-	return asArr.reduce<Record<string, true>>((acc, field) => {
-		if (!schema.fieldNames.includes(field)) return acc;
+	return DtoValidator.validate(dto).reduce<Record<string, true>>((acc, field) => {
 		return (acc[field] = true), acc;
 	}, {});
 }
 
-export const selectListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
+export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
 	const { select: rawSelect } = req.query;
 
 	if (!rawSelect) return next();
 
-	let schema;
+	let DtoValidator;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		schema = WorkflowSchema;
+		DtoValidator = WorkflowSelectDtoValidator;
 	} else {
 		return next();
 	}
 
 	try {
-		const select = toQuerySelect(rawSelect, schema);
+		const select = toQuerySelect(rawSelect, DtoValidator);
 
 		if (Object.keys(select).length === 0) return next();
 

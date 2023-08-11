@@ -1,4 +1,4 @@
-import type { ListQueryRequest } from '@/requests';
+import type { ListQuery } from '@/requests';
 import { isIntegerString } from '@/utils';
 import type { RequestHandler } from 'express';
 
@@ -14,7 +14,7 @@ function toPaginationOptions(rawTake: string, rawSkip: string) {
 	return { skip, take: Math.min(take, MAX_ITEMS) };
 }
 
-export const paginationListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
+export const paginationListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
 	const { take: rawTake, skip: rawSkip = '0' } = req.query;
 
 	if (!rawTake) return next();

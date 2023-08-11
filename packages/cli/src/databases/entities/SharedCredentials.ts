@@ -10,7 +10,7 @@ export class SharedCredentials extends WithTimestamps {
 	role: Role;
 
 	@Column()
-	roleId: string;
+	roleId: string; // @TODO: This should be string but is currently number
 
 	@ManyToOne('User', 'sharedCredentials')
 	user: User;

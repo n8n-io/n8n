@@ -2,12 +2,12 @@ import { filterListQueryMiddleware } from '@/middlewares/listQuery/filter';
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import type { Request, Response, NextFunction } from 'express';
-import type { ListQueryRequest } from '@/requests';
+import type { ListQuery } from '@/requests';
 import { selectListQueryMiddleware } from '@/middlewares/listQuery/select';
 import { paginationListQueryMiddleware } from '@/middlewares/listQuery/pagination';
 
 describe('List query middleware', () => {
-	let mockReq: Partial<ListQueryRequest>;
+	let mockReq: Partial<ListQuery.Request>;
 	let mockRes: Partial<Response>;
 	let nextFn: NextFunction = jest.fn();
 	let args: [Request, Response, NextFunction];
@@ -111,6 +111,13 @@ describe('List query middleware', () => {
 
 		test('should throw on non-numeric-integer take', () => {
 			mockReq.query = { take: '3.2' };
+			const call = () => paginationListQueryMiddleware(...args);
+
+			expect(call).toThrowError('Parameter take or skip is not an integer string');
+		});
+
+		test('should throw on non-numeric-integer skip', () => {
+			mockReq.query = { take: '3', skip: '3.2' };
 			const call = () => paginationListQueryMiddleware(...args);
 
 			expect(call).toThrowError('Parameter take or skip is not an integer string');

@@ -15,7 +15,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
-import type { ListQueryRequest, WorkflowRequest } from '@/requests';
+import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
@@ -119,9 +119,14 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	listQueryMiddleware,
-	async (req: ListQueryRequest, res: express.Response) => {
+	async (req: ListQuery.Request, res: express.Response) => {
 		try {
-			const [data, count] = await WorkflowsService.getMany(req.user, req.listQueryOptions);
+			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, ['owner']);
+
+			const { workflows: data, count } = await WorkflowsService.getMany(
+				sharedWorkflowIds,
+				req.listQueryOptions,
+			);
 
 			res.json({ count, data });
 		} catch (maybeError) {

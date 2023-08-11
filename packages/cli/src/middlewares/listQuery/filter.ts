@@ -1,37 +1,39 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import { jsonParse } from 'n8n-workflow';
 import { handleListQueryError } from './error';
-import { WorkflowSchema } from './workflow.schema';
-import type { ListQueryRequest } from '@/requests';
+import { WorkflowFilterDtoValidator } from './dtos/workflow.filter.dto';
+
 import type { RequestHandler } from 'express';
-import type { Schema } from './schema';
+import type { ListQuery } from '@/requests';
 
-function toQueryFilter(rawFilter: string, schema: typeof Schema) {
-	const parsedFilter = new schema(
-		jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' }),
-	);
+type FilterDtoValidator = typeof WorkflowFilterDtoValidator;
 
-	return Object.fromEntries(
-		Object.entries(parsedFilter)
-			.filter(([_, value]) => value !== undefined)
-			.map(([key, _]: [keyof Schema, unknown]) => [key, parsedFilter[key]]),
-	);
+function toQueryFilter(rawFilter: string, DtoValidator: FilterDtoValidator) {
+	const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
+
+	const filter = DtoValidator.validate(dto);
+
+	if (!filter.tags) return filter;
+
+	return { ...filter, tags: filter.tags.map((tag) => ({ name: tag })) };
 }
 
-export const filterListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
+export const filterListQueryMiddleware: RequestHandler = (req: ListQuery.Request, _, next) => {
 	const { filter: rawFilter } = req.query;
 
 	if (!rawFilter) return next();
 
-	let schema;
+	let DtoValidator;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		schema = WorkflowSchema;
+		DtoValidator = WorkflowFilterDtoValidator;
 	} else {
 		return next();
 	}
 
 	try {
-		const filter = toQueryFilter(rawFilter, schema);
+		const filter = toQueryFilter(rawFilter, DtoValidator);
 
 		if (Object.keys(filter).length === 0) return next();
 
