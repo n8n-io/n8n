@@ -101,7 +101,7 @@ export default defineComponent({
 			};
 
 			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload, { PostHog: true });
+			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
