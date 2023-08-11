@@ -1,35 +1,28 @@
 import type { Plugin } from 'vue';
-import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type { IDataObject, ITelemetrySettings, ITelemetryTrackProperties } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
-import type { IUserNodesPanelSession } from './telemetry.types';
+import type { IUserNodesPanelSession, RudderStack } from './telemetry.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
 
 export class Telemetry {
-	private pageEventQueue: Array<{ route: RouteLocation }>;
-	private previousPath: string;
-
-	private get rudderStack() {
-		return window.rudderanalytics;
-	}
-
-	private userNodesPanelSession: IUserNodesPanelSession = {
-		sessionId: '',
-		data: {
-			nodeFilter: '',
-			resultsNodes: [],
-			filterMode: 'Regular',
+	constructor(
+		private rudderStack: RudderStack,
+		private userNodesPanelSession: IUserNodesPanelSession = {
+			sessionId: '',
+			data: {
+				nodeFilter: '',
+				resultsNodes: [],
+				filterMode: 'Regular',
+			},
 		},
-	};
-
-	constructor() {
-		this.pageEventQueue = [];
-		this.previousPath = '';
-	}
+		private pageEventQueue: Array<{ route: RouteLocation }> = [],
+		private previousPath: string = '',
+	) {}
 
 	init(
 		telemetrySettings: ITelemetrySettings,
@@ -100,17 +93,12 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: { [key: string]: string } = {};
-			if (
-				route.meta &&
-				route.meta.telemetry &&
-				typeof route.meta.telemetry.getProperties === 'function'
-			) {
+			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 
-			const category =
-				(route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.rudderStack.page(category, pageName!, properties);
+			const category = route.meta?.telemetry?.pageCategory || 'Editor';
+			this.rudderStack.page(category, pageName, properties);
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -234,8 +222,6 @@ export class Telemetry {
 	}
 
 	private initRudderStack(key: string, url: string, options: IDataObject) {
-		window.rudderanalytics = window.rudderanalytics || [];
-
 		this.rudderStack.methods = [
 			'load',
 			'page',
@@ -262,26 +248,20 @@ export class Telemetry {
 			this.rudderStack[method] = this.rudderStack.factory(method);
 		}
 
-		this.rudderStack.loadJS = () => {
-			const script = document.createElement('script');
-
-			script.type = 'text/javascript';
-			script.async = !0;
-			script.src = 'https://cdn-rs.n8n.io/v1/ra.min.js';
-
-			const element: Element = document.getElementsByTagName('script')[0];
-
-			if (element && element.parentNode) {
-				element.parentNode.insertBefore(script, element);
-			}
-		};
-
-		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
 	}
 }
 
-export const telemetry = new Telemetry();
+export const telemetry = new Telemetry(
+	window.rudderanalytics ?? {
+		identify: () => {},
+		reset: () => {},
+		track: () => {},
+		page: () => {},
+		push: () => {},
+		load: () => {},
+	},
+);
 
 export const TelemetryPlugin: Plugin<{}> = {
 	install(app) {
