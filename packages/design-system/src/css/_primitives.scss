@@ -8,22 +8,18 @@
 	--prim-gray-h: 220;
 	--prim-gray-s: 30%;
 
-	// Gray saturation at 0%: 0
-	// Gray saturation at 60%: 4
-	// Gray saturation at 100%: 50
-
 	--prim-gray-820: hsl(var(--prim-gray-h), 1%, 18%);
 	--prim-gray-740: hsl(var(--prim-gray-h), 2%, 26%);
 	--prim-gray-670: hsl(var(--prim-gray-h), 2%, 33%);
 	--prim-gray-540: hsl(var(--prim-gray-h), 4%, 46%);
 	--prim-gray-490: hsl(var(--prim-gray-h), 3%, 51%);
 	--prim-gray-420: hsl(var(--prim-gray-h), 4%, 58%);
-	--prim-gray-320: hsl(var(--prim-gray-h), 13%, 68%);
-	--prim-gray-200: hsl(var(--prim-gray-h), 27%, 80%);
-	--prim-gray-120: hsl(var(--prim-gray-h), 36%, 88%);
-	--prim-gray-70: hsl(var(--prim-gray-h), 41%, 93%);
-	--prim-gray-40: hsl(var(--prim-gray-h), 45%, 96%);
-	--prim-gray-10: hsl(var(--prim-gray-h), 49%, 99%);
+	--prim-gray-320: hsl(var(--prim-gray-h), 10%, 68%);
+	--prim-gray-200: hsl(var(--prim-gray-h), 18%, 80%);
+	--prim-gray-120: hsl(var(--prim-gray-h), 25%, 88%);
+	--prim-gray-70: hsl(var(--prim-gray-h), 32%, 93%);
+	--prim-gray-40: hsl(var(--prim-gray-h), 40%, 96%);
+	--prim-gray-10: hsl(var(--prim-gray-h), 47%, 99%);
 	--prim-gray-0: hsl(var(--prim-gray-h), 50%, 100%);
 
 	// Color Primary
@@ -211,7 +207,7 @@
 	// Color Alternate F
 	--prim-color-alt-f-h: 72;
 	--prim-color-alt-f-s: 100%;
-	--prim-color-alt-f-l: 127%;
+	--prim-color-alt-f-l: 27%;
 
 	--prim-color-alt-f: hsl(
 		var(--prim-color-alt-f-h),
@@ -222,7 +218,7 @@
 	// Color Alternate G
 	--prim-color-alt-g-h: 276;
 	--prim-color-alt-g-s: 31%;
-	--prim-color-alt-g-l: 31%;
+	--prim-color-alt-g-l: 50%;
 
 	--prim-color-alt-g: hsl(
 		var(--prim-color-alt-g-h),
