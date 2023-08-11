@@ -41,6 +41,7 @@ import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwn
 import { FixMissingIndicesFromStringIdMigration1690000000020 } from './1690000000020-FixMissingIndicesFromStringIdMigration';
 import { RemoveResetPasswordColumns1690000000030 } from './1690000000030-RemoveResetPasswordColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
+import { AddHadFirstSessionColumnToUserSettings1690000000040 } from './1690000000040-AddHadFirstSessionColumnToUserSettings';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -85,6 +86,7 @@ const sqliteMigrations: Migration[] = [
 	FixMissingIndicesFromStringIdMigration1690000000020,
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
+	AddHadFirstSessionColumnToUserSettings1690000000040,
 ];
 
 export { sqliteMigrations };

@@ -38,6 +38,10 @@ export class UserSettingsUpdatePayload {
 	@IsOptional()
 	userActivated: boolean;
 
+	@IsBoolean({ message: 'hadFirstSession should be a boolean' })
+	@IsOptional()
+	hadFirstSession?: boolean;
+
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;

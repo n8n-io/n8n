@@ -2574,6 +2574,11 @@ export default defineComponent({
 			this.historyStore.reset();
 			this.workflowsStore.activeWorkflowExecution = null;
 			this.stopLoading();
+
+			if (this.currentUser?.settings?.hadFirstSession === false) {
+				await this.usersStore.updateUserSettings({ hadFirstSession: true });
+				this.$telemetry.track('New user', { owner: this.currentUser.isOwner });
+			}
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;

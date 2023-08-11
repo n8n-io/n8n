@@ -2097,6 +2097,7 @@ export interface IUserSettings {
 	isOnboarded?: boolean;
 	firstSuccessfulWorkflowId?: string;
 	userActivated?: boolean;
+	hadFirstSession?: boolean;
 	allowSSOManualLogin?: boolean;
 }
 
