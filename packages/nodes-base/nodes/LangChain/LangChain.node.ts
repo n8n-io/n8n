@@ -28,7 +28,7 @@ export class LangChain implements INodeType {
 			color: '#404040',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'test'],
+		inputs: ['main', 'tool'],
 		inputNames: ['', 'Tools'],
 		outputs: ['main'],
 		credentials: [
@@ -48,30 +48,9 @@ export class LangChain implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// const llm = new OpenAI();
-		// const result = await llm.predict(
-		// 	'What would be a good company name for a company that makes colorful socks?',
-		// );
-		// const credentials = await this.getCredentials('openAiApi');
-		// const model = new OpenAI({
-		// 	// openAIApiKey: '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',
-		// 	openAIApiKey: credentials.apiKey as string,
-		// });
-		// const memory = new BufferMemory();
-		// const chain = new ConversationChain({ llm: model, memory });
-		// // const text = this.getNodeParameter('text', 0) as string;
-		// const asdf = await chain.call({ input: 'hello my name is Jan' });
-		// console.log('asdf', asdf);
-		// const response = await chain.call({ input: 'What did I say my name was?' });
-		// return this.prepareOutputData([
-		// 	{ json: { history: memory.chatHistory.getMessages(), response } },
-		// ]);
-		// // TODO: Add support for memory and tools in first step
-		// console.log('result', result);
-
 		const tools: StructuredTool[] = [];
 
-		const toolNodes = await this.getInputConnectionData(0, 0, 'test');
+		const toolNodes = await this.getInputConnectionData(0, 0, 'tool');
 
 		toolNodes.forEach((toolNode) => {
 			if (!toolNode.parameters.enabled) {

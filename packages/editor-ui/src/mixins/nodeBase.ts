@@ -287,7 +287,7 @@ export const nodeBase = defineComponent({
 						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-foreground-xdark'),
 					cssClass: `dot-${type}-endpoint`,
 				},
-				test: {
+				tool: {
 					paintStyle: (type === 'input'
 						? NodeViewUtils.getInputEndpointStyle
 						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-danger'),
@@ -299,7 +299,7 @@ export const nodeBase = defineComponent({
 				return {};
 			}
 
-			if (connectionType === 'test') {
+			if (connectionType === 'tool') {
 				const width = connectionTypes[connectionType].paintStyle!.width!;
 				connectionTypes[connectionType].paintStyle!.width =
 					connectionTypes[connectionType].paintStyle!.height;

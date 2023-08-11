@@ -176,7 +176,7 @@ export const ANCHOR_POSITIONS: {
 			],
 		},
 	},
-	test: {
+	tool: {
 		input: {
 			1: [[0.5, 0.01, 0, -1]],
 			2: [
