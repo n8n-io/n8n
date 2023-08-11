@@ -761,6 +761,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
 		): Promise<any>;
+		getInputConnectionData(
+			itemIndex: number,
+			inputIndex?: number,
+			inputName?: ConnectionTypes,
+		): IDataObject;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		prepareOutputData(
 			outputData: INodeExecutionData[],

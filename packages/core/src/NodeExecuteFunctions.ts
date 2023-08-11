@@ -12,6 +12,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 
 import type {
+	ConnectionTypes,
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -2571,6 +2572,48 @@ export function getExecuteFunctions(
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
+			},
+			getInputConnectionData(
+				itemIndex: number,
+				inputIndex?: number,
+				inputName?: ConnectionTypes,
+			): IDataObject {
+				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
+
+				if (parentNodes.length === 0) {
+					throw new Error('Could not get input connection data');
+				}
+
+				const dataProxy = new WorkflowDataProxy(
+					workflow,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					node.name,
+					connectionInputData,
+					{},
+					mode,
+					additionalData.timezone,
+					getAdditionalKeys(additionalData, mode, runExecutionData),
+					executeData,
+				);
+				const proxy = dataProxy.getDataProxy();
+
+				const data = proxy.$node[parentNodes[0]].parameter;
+
+				// Resolve parameters on node within the context of the current node
+				return workflow.expression.getParameterValue(
+					data,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					node.name,
+					connectionInputData,
+					mode,
+					additionalData.timezone,
+					getAdditionalKeys(additionalData, mode, runExecutionData),
+					executeData,
+				) as IDataObject;
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
