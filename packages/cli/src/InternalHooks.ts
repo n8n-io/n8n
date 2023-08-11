@@ -124,7 +124,6 @@ export class InternalHooks implements IInternalHooksClass {
 		return this.telemetry.track(
 			'User responded to personalization questions',
 			personalizationSurveyData,
-			{ withPostHog: true },
 		);
 	}
 
@@ -190,21 +189,17 @@ export class InternalHooks implements IInternalHooksClass {
 					workflowName: workflow.name,
 				},
 			}),
-			this.telemetry.track(
-				'User saved workflow',
-				{
-					user_id: user.id,
-					workflow_id: workflow.id,
-					node_graph_string: JSON.stringify(nodeGraph),
-					notes_count_overlapping: overlappingCount,
-					notes_count_non_overlapping: notesCount - overlappingCount,
-					version_cli: N8N_VERSION,
-					num_tags: workflow.tags?.length ?? 0,
-					public_api: publicApi,
-					sharing_role: userRole,
-				},
-				{ withPostHog: true },
-			),
+			this.telemetry.track('User saved workflow', {
+				user_id: user.id,
+				workflow_id: workflow.id,
+				node_graph_string: JSON.stringify(nodeGraph),
+				notes_count_overlapping: overlappingCount,
+				notes_count_non_overlapping: notesCount - overlappingCount,
+				version_cli: N8N_VERSION,
+				num_tags: workflow.tags?.length ?? 0,
+				public_api: publicApi,
+				sharing_role: userRole,
+			}),
 		]);
 	}
 
@@ -415,11 +410,7 @@ export class InternalHooks implements IInternalHooksClass {
 						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
 					};
 
-					promises.push(
-						this.telemetry.track('Manual node exec finished', telemetryPayload, {
-							withPostHog: true,
-						}),
-					);
+					promises.push(this.telemetry.track('Manual node exec finished', telemetryPayload));
 				} else {
 					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
 						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
@@ -432,9 +423,7 @@ export class InternalHooks implements IInternalHooksClass {
 					});
 
 					promises.push(
-						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties, {
-							withPostHog: true,
-						}),
+						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
 					);
 				}
 			}
@@ -484,7 +473,7 @@ export class InternalHooks implements IInternalHooksClass {
 			user_id_list: userList,
 		};
 
-		return this.telemetry.track('User updated workflow sharing', properties, { withPostHog: true });
+		return this.telemetry.track('User updated workflow sharing', properties);
 	}
 
 	async onN8nStop(): Promise<void> {
@@ -1017,7 +1006,7 @@ export class InternalHooks implements IInternalHooksClass {
 		user_id: string;
 		workflow_id: string;
 	}): Promise<void> {
-		return this.telemetry.track('Workflow first prod success', data, { withPostHog: true });
+		return this.telemetry.track('Workflow first prod success', data);
 	}
 
 	async onFirstWorkflowDataLoad(data: {
@@ -1028,7 +1017,7 @@ export class InternalHooks implements IInternalHooksClass {
 		credential_type?: string;
 		credential_id?: string;
 	}): Promise<void> {
-		return this.telemetry.track('Workflow first data fetched', data, { withPostHog: true });
+		return this.telemetry.track('Workflow first data fetched', data);
 	}
 
 	/**
