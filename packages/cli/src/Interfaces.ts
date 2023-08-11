@@ -61,7 +61,7 @@ import type {
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
-import { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
+import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
 export interface IActivationError {
 	time: number;
