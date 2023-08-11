@@ -6,11 +6,11 @@
 	--color-primary-l: 68%;
 
 	// Primary
+	--color-primary-shade-1: var(--prim-color-primary-shade-100);
 	--color-primary: var(--prim-color-primary);
 	--color-primary-tint-1: var(--prim-color-primary-tint-200);
 	--color-primary-tint-2: var(--prim-color-primary-tint-250);
 	--color-primary-tint-3: var(--prim-color-primary-tint-300);
-	--color-primary-shade-1: var(--prim-color-primary-shade-100);
 
 	// Secondary
 	--color-secondary-shade-1: var(--prim-color-secondary-shade-100);
@@ -19,25 +19,29 @@
 	--color-secondary-tint-3: var(--prim-color-secondary-tint-400);
 
 	// Success
+	--color-success-shade-1: var(--prim-color-alt-a-shade-100);
 	--color-success: var(--prim-color-alt-a);
 	--color-success-light: var(--prim-color-alt-a-tint-300);
 	--color-success-tint-1: var(--prim-color-alt-a-tint-500);
 	--color-success-tint-2: var(--prim-color-alt-a-tint-550);
 
 	// Warning
+	--color-warning-shade-1: var(--prim-color-alt-b-shade-100);
 	--color-warning: var(--prim-color-alt-b);
 	--color-warning-tint-1: var(--prim-color-alt-b-tint-250);
 	--color-warning-tint-2: var(--prim-color-alt-b-tint-400);
 
 	// Danger
-	--color-danger-shade-1: var(--prim-color-alt-c-shade-50);
+	--color-danger-shade-1: var(--prim-color-alt-c-shade-100);
 	--color-danger: var(--prim-color-alt-c);
 	--color-danger-tint-1: var(--prim-color-alt-c-tint-400);
 	--color-danger-tint-2: var(--prim-color-alt-c-tint-450);
 
 	// Text
-	--color-text-dark: var(--prim-gray-670);
-	--color-text-base: var(--prim-gray-490);
+	// --color-text-dark: var(--prim-gray-670);
+	--color-text-dark: var(--prim-gray-740);
+	// --color-text-base: var(--prim-gray-490);
+	--color-text-base: var(--prim-gray-540);
 	--color-text-light: var(--prim-gray-420);
 	--color-text-lighter: var(--prim-gray-120);
 	--color-text-xlight: var(--prim-gray-0);
@@ -90,13 +94,13 @@
 	--color-json-line: var(--prim-gray-200);
 	--color-json-highlight: var(--prim-gray-70);
 	--color-code-background: var(--prim-gray-0);
-	--color-code-background-readonly: var(); // ! MISSING COLOR
-	--color-code-foreground: var(--prim-gray-40);
+	--color-code-background-readonly: var(--prim-gray-40);
+	--color-code-foreground: var(--prim-gray-670);
 	--color-code-caret: var(--prim-gray-420);
 	--color-code-selection: var(--prim-gray-120);
 	--color-code-gutterBackground: var(--prim-gray-0);
 	--color-code-gutterForeground: var(--prim-gray-320);
-	--color-code-lineHighlight: var(--prim-gray-70);
+	--color-code-lineHighlight: var(--prim-gray-40);
 	--color-code-tags-comment: var(--prim-gray-420);
 
 	// Various
