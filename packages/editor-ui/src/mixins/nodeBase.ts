@@ -6,7 +6,7 @@ import type { INodeUi } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE } from '@/constants';
 
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ConnectionTypes, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -72,7 +72,6 @@ export const nodeBase = defineComponent({
 		},
 		__addInputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			// Add Inputs
-			let index;
 			const indexData: {
 				[key: string]: number;
 			} = {};
@@ -84,14 +83,16 @@ export const nodeBase = defineComponent({
 				} else {
 					indexData[inputName] = 0;
 				}
-				index = indexData[inputName];
+				const typeIndex = indexData[inputName];
+
+				const inputsOfSameType = nodeTypeData.inputs.filter((input) => input === inputName);
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition =
-					NodeViewUtils.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
+					NodeViewUtils.ANCHOR_POSITIONS[inputName].input[inputsOfSameType.length][typeIndex];
 
 				const newEndpointData: EndpointOptions = {
-					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, index),
+					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, i),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
@@ -102,22 +103,25 @@ export const nodeBase = defineComponent({
 					parameters: {
 						nodeId: this.nodeId,
 						type: inputName,
-						index,
+						index: i,
 					},
 					enabled: !this.isReadOnly, // enabled in default case to allow dragging
 					cssClass: 'rect-input-endpoint',
 					dragAllowedWhenFull: true,
 					hoverClass: 'dropHover',
+					...this.__getConnectionStyle('input', inputName, nodeTypeData),
 				};
 
 				const endpoint = this.instance?.addEndpoint(
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
-				this.__addEndpointTestingData(endpoint, 'input', index);
+				this.__addEndpointTestingData(endpoint, 'input', i);
 				if (nodeTypeData.inputNames) {
 					// Apply input names if they got set
-					endpoint.addOverlay(NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]));
+					endpoint.addOverlay(
+						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[i], inputName),
+					);
 				}
 				if (!Array.isArray(endpoint)) {
 					endpoint.__meta = {
@@ -144,61 +148,63 @@ export const nodeBase = defineComponent({
 			}
 		},
 		__addOutputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
-			let index;
 			const indexData: {
 				[key: string]: number;
 			} = {};
 
-			nodeTypeData.outputs.forEach((inputName: string, i: number) => {
+			// TODO: Does not save connections perfectly. If there are two types
+			//      they do not both start with index 0 in the workflow JSON
+			// TODO: There are still a lot of references of "main" in NodesView and
+			//       other locations. So assume there will be more problems
+
+			nodeTypeData.outputs.forEach((outputName: string, i: number) => {
 				// Increment the index for outputs with current name
-				if (indexData.hasOwnProperty(inputName)) {
-					indexData[inputName]++;
+				if (indexData.hasOwnProperty(outputName)) {
+					indexData[outputName]++;
 				} else {
-					indexData[inputName] = 0;
+					indexData[outputName] = 0;
 				}
-				index = indexData[inputName];
+				const typeIndex = indexData[outputName];
+
+				const outputsOfSameType = nodeTypeData.outputs.filter((output) => output === outputName);
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition =
-					NodeViewUtils.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
+					NodeViewUtils.ANCHOR_POSITIONS[outputName].output[outputsOfSameType.length][typeIndex];
 
 				const newEndpointData: EndpointOptions = {
-					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
+					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: {
 						type: 'Dot',
 						options: {
-							radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
+							radius: nodeTypeData && outputsOfSameType.length > 2 ? 7 : 9,
 						},
 					},
-					paintStyle: NodeViewUtils.getOutputEndpointStyle(
-						nodeTypeData,
-						'--color-foreground-xdark',
-					),
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 					source: true,
 					target: false,
 					enabled: !this.isReadOnly,
 					parameters: {
 						nodeId: this.nodeId,
-						type: inputName,
-						index,
+						type: outputName,
+						index: i,
 					},
 					hoverClass: 'dot-output-endpoint-hover',
 					connectionsDirected: true,
-					cssClass: 'dot-output-endpoint',
 					dragAllowedWhenFull: false,
+					...this.__getConnectionStyle('output', outputName, nodeTypeData),
 				};
 
 				const endpoint = this.instance.addEndpoint(
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
-				this.__addEndpointTestingData(endpoint, 'output', index);
+				this.__addEndpointTestingData(endpoint, 'output', i);
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
-					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]);
+					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[i]);
 					endpoint.addOverlay(overlaySpec);
 				}
 
@@ -211,9 +217,9 @@ export const nodeBase = defineComponent({
 					};
 				}
 
-				if (!this.isReadOnly) {
+				if (!this.isReadOnly && outputName === 'main') {
 					const plusEndpointData: EndpointOptions = {
-						uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
+						uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
 						anchor: anchorPosition,
 						maxConnections: -1,
 						endpoint: {
@@ -237,8 +243,8 @@ export const nodeBase = defineComponent({
 						},
 						parameters: {
 							nodeId: this.nodeId,
-							type: inputName,
-							index,
+							type: outputName,
+							index: i,
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
@@ -247,7 +253,7 @@ export const nodeBase = defineComponent({
 						this.$refs[this.data.name] as Element,
 						plusEndpointData,
 					);
-					this.__addEndpointTestingData(plusEndpoint, 'plus', index);
+					this.__addEndpointTestingData(plusEndpoint, 'plus', i);
 
 					if (!Array.isArray(plusEndpoint)) {
 						plusEndpoint.__meta = {
@@ -266,6 +272,41 @@ export const nodeBase = defineComponent({
 
 			this.__addInputEndpoints(node, nodeTypeData);
 			this.__addOutputEndpoints(node, nodeTypeData);
+		},
+		__getConnectionStyle(
+			type: 'input' | 'output',
+			connectionType: ConnectionTypes,
+			nodeTypeData: INodeTypeDescription,
+		): EndpointOptions {
+			const connectionTypes: {
+				[key: string]: EndpointOptions;
+			} = {
+				main: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-foreground-xdark'),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				test: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-danger'),
+					cssClass: `dot-${type}-endpoint`,
+				},
+			};
+
+			if (!connectionTypes.hasOwnProperty(connectionType)) {
+				return {};
+			}
+
+			if (connectionType === 'test') {
+				const width = connectionTypes[connectionType].paintStyle!.width!;
+				connectionTypes[connectionType].paintStyle!.width =
+					connectionTypes[connectionType].paintStyle!.height;
+				connectionTypes[connectionType].paintStyle!.height = width;
+			}
+
+			return connectionTypes[connectionType];
 		},
 		touchEnd(e: MouseEvent) {
 			if (this.isTouchDevice) {

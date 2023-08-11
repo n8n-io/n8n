@@ -7,6 +7,7 @@ import type { Endpoint, Connection } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
 import type {
+	ConnectionTypes,
 	IConnection,
 	INode,
 	ITaskData,
@@ -130,45 +131,88 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 ];
 
 export const ANCHOR_POSITIONS: {
-	[key: string]: {
-		[key: number]: ArrayAnchorSpec[];
+	[key: ConnectionTypes]: {
+		// type: input | output
+		[key: string]: {
+			[key: number]: ArrayAnchorSpec[];
+		};
 	};
 } = {
-	input: {
-		1: [[0.01, 0.5, -1, 0]],
-		2: [
-			[0.01, 0.3, -1, 0],
-			[0.01, 0.7, -1, 0],
-		],
-		3: [
-			[0.01, 0.25, -1, 0],
-			[0.01, 0.5, -1, 0],
-			[0.01, 0.75, -1, 0],
-		],
-		4: [
-			[0.01, 0.2, -1, 0],
-			[0.01, 0.4, -1, 0],
-			[0.01, 0.6, -1, 0],
-			[0.01, 0.8, -1, 0],
-		],
+	main: {
+		input: {
+			1: [[0.01, 0.5, -1, 0]],
+			2: [
+				[0.01, 0.3, -1, 0],
+				[0.01, 0.7, -1, 0],
+			],
+			3: [
+				[0.01, 0.25, -1, 0],
+				[0.01, 0.5, -1, 0],
+				[0.01, 0.75, -1, 0],
+			],
+			4: [
+				[0.01, 0.2, -1, 0],
+				[0.01, 0.4, -1, 0],
+				[0.01, 0.6, -1, 0],
+				[0.01, 0.8, -1, 0],
+			],
+		},
+		output: {
+			1: [[0.99, 0.5, 1, 0]],
+			2: [
+				[0.99, 0.3, 1, 0],
+				[0.99, 0.7, 1, 0],
+			],
+			3: [
+				[0.99, 0.25, 1, 0],
+				[0.99, 0.5, 1, 0],
+				[0.99, 0.75, 1, 0],
+			],
+			4: [
+				[0.99, 0.2, 1, 0],
+				[0.99, 0.4, 1, 0],
+				[0.99, 0.6, 1, 0],
+				[0.99, 0.8, 1, 0],
+			],
+		},
 	},
-	output: {
-		1: [[0.99, 0.5, 1, 0]],
-		2: [
-			[0.99, 0.3, 1, 0],
-			[0.99, 0.7, 1, 0],
-		],
-		3: [
-			[0.99, 0.25, 1, 0],
-			[0.99, 0.5, 1, 0],
-			[0.99, 0.75, 1, 0],
-		],
-		4: [
-			[0.99, 0.2, 1, 0],
-			[0.99, 0.4, 1, 0],
-			[0.99, 0.6, 1, 0],
-			[0.99, 0.8, 1, 0],
-		],
+	test: {
+		input: {
+			1: [[0.5, 0.01, 0, -1]],
+			2: [
+				[0.3, 0.01, 0, -1],
+				[0.7, 0, 0, -1],
+			],
+			3: [
+				[0.25, 0.01, 0, -1],
+				[0.5, 0.01, 0, -1],
+				[0.75, 0.01, 0, -1],
+			],
+			4: [
+				[0.2, 0.01, 0, -1],
+				[0.4, 0.01, 0, -1],
+				[0.6, 0.01, 0, -1],
+				[0.8, 0.01, 0, -1],
+			],
+		},
+		output: {
+			1: [[0.5, 0.99, 0, 1]],
+			2: [
+				[0.3, 0.99, 0, 1],
+				[0.7, 0.99, 0, 1],
+			],
+			3: [
+				[0.25, 0.99, 0, 1],
+				[0.5, 0.99, 0, 1],
+				[0.75, 0.99, 0, 1],
+			],
+			4: [
+				[0.2, 0.99, 0, 1],
+				[0.4, 0.99, 0, 1],
+				[0.6, 0.99, 0, 1],
+				[0.8, 0.99, 0, 1],
+			],
+		},
 	},
 };
 
@@ -183,7 +227,7 @@ export const getInputEndpointStyle = (
 	lineWidth: 0,
 });
 
-export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
+export const getInputNameOverlay = (labelText: string, type: ConnectionTypes): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_INPUT_NAME_LABEL,
@@ -191,7 +235,9 @@ export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
 		create: (component: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
-			label.classList.add('node-input-endpoint-label');
+			label.classList.add(
+				type === 'main' ? 'node-input-endpoint-label' : 'node-output-endpoint-label',
+			);
 			return label;
 		},
 	},

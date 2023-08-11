@@ -1204,10 +1204,9 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(
-		this: IExecuteSingleFunctions,
-		value: string | NodeParameterValue,
-	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
+	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
+		| Promise<string | NodeParameterValue>
+		| (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
@@ -1463,15 +1462,17 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
+export type ConnectionTypes = 'main' | 'test';
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: string[];
+	inputs: ConnectionTypes[];
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: string[];
+	outputs: ConnectionTypes[];
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];

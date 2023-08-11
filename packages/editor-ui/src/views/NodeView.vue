@@ -230,6 +230,7 @@ import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import { v4 as uuid } from 'uuid';
 import type {
+	ConnectionTypes,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -2006,10 +2007,11 @@ export default defineComponent({
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
 			targetNodeOuputIndex: number,
+			type: ConnectionTypes,
 		): IConnection | undefined {
 			const nodeConnections = (
 				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections
-			).main;
+			)[type];
 			if (nodeConnections) {
 				const connections: IConnection[] | null = nodeConnections[sourceNodeOutputIndex];
 
@@ -2028,6 +2030,7 @@ export default defineComponent({
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
 			targetNodeOuputIndex: number,
+			type: ConnectionTypes,
 		) {
 			this.uiStore.stateIsDirty = true;
 
@@ -2037,6 +2040,7 @@ export default defineComponent({
 					sourceNodeOutputIndex,
 					targetNodeName,
 					targetNodeOuputIndex,
+					type,
 				)
 			) {
 				return;
@@ -2045,12 +2049,12 @@ export default defineComponent({
 			const connectionData = [
 				{
 					node: sourceNodeName,
-					type: 'main',
+					type,
 					index: sourceNodeOutputIndex,
 				},
 				{
 					node: targetNodeName,
-					type: 'main',
+					type,
 					index: targetNodeOuputIndex,
 				},
 			] as [IConnection, IConnection];
@@ -2096,11 +2100,11 @@ export default defineComponent({
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 					const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex);
+					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex, 'main');
 				}
 
 				// Connect active node to the newly created one
-				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0);
+				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, 'main');
 			}
 			this.historyStore.stopRecordingUndo();
 		},
@@ -2144,7 +2148,13 @@ export default defineComponent({
 						const sourceNodeName = sourceNode.name;
 						const outputIndex = connection.parameters.index;
 
-						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+						this.connectTwoNodes(
+							sourceNodeName,
+							outputIndex,
+							this.pullConnActiveNodeName,
+							0,
+							'main',
+						);
 						this.pullConnActiveNodeName = null;
 						this.dropPrevented = true;
 					}
@@ -2165,12 +2175,22 @@ export default defineComponent({
 				const sourceInfo = info.connection.endpoints[0].parameters;
 				const targetInfo = info.dropEndpoint.parameters;
 
+				if (sourceInfo.type !== targetInfo.type) {
+					return false;
+				}
+
 				const sourceNodeName = this.workflowsStore.getNodeById(sourceInfo.nodeId)?.name || '';
 				const targetNodeName = this.workflowsStore.getNodeById(targetInfo.nodeId)?.name || '';
 
 				// check for duplicates
 				if (
-					this.getConnection(sourceNodeName, sourceInfo.index, targetNodeName, targetInfo.index)
+					this.getConnection(
+						sourceNodeName,
+						sourceInfo.index,
+						targetNodeName,
+						targetInfo.index,
+						sourceInfo.type,
+					)
 				) {
 					this.dropPrevented = true;
 					this.pullConnActiveNodeName = null;
@@ -2385,7 +2405,7 @@ export default defineComponent({
 					if (connectionInfo) {
 						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
 					}
-					this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+					this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, 'main');
 					this.pullConnActiveNodeName = null;
 					await this.$nextTick();
 					this.historyStore.stopRecordingUndo();
@@ -3058,6 +3078,7 @@ export default defineComponent({
 								sourceNodeOutputIndex,
 								targetNodeName,
 								targetNodeOuputIndex,
+								'main',
 							);
 
 							if (waitForNewConnection) {
@@ -3796,7 +3817,7 @@ export default defineComponent({
 								previouslyAddedNode.position[1],
 							];
 							await this.$nextTick();
-							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
+							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0, 'main');
 
 							actionWatcher();
 						});
