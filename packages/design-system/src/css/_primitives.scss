@@ -1,70 +1,29 @@
 // Primitive Colors
 // Primitive colors shouldn't be used directly in components an other UI elements.
-// They can be used only mapped to tokens.
+// They can be only mapped to tokens.
 // Tokens should be used instead in components an other UI elements
 
 @mixin primitives {
 	// Gray
 	--prim-gray-h: 220;
 	--prim-gray-s: 30%;
-	--prim-gray-s-min: 0%;
-	--prim-gray-s-max: 30%;
 
-	--prim-gray-820: hsl(
-		var(--prim-gray-h),
-		calc((18 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		18%
-	);
-	--prim-gray-670: hsl(
-		var(--prim-gray-h),
-		calc((33 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		33%
-	);
-	--prim-gray-490: hsl(
-		var(--prim-gray-h),
-		calc((51 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		51%
-	);
-	--prim-gray-420: hsl(
-		var(--prim-gray-h),
-		calc((58 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		58%
-	);
-	--prim-gray-320: hsl(
-		var(--prim-gray-h),
-		calc((68 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		68%
-	);
-	--prim-gray-200: hsl(
-		var(--prim-gray-h),
-		calc((80 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		80%
-	);
-	--prim-gray-120: hsl(
-		var(--prim-gray-h),
-		calc((88 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		88%
-	);
-	--prim-gray-70: hsl(
-		var(--prim-gray-h),
-		calc((93 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		93%
-	);
-	--prim-gray-40: hsl(
-		var(--prim-gray-h),
-		calc((96 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		96%
-	);
-	--prim-gray-10: hsl(
-		var(--prim-gray-h),
-		calc((99 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		99%
-	);
-	--prim-gray-0: hsl(
-		var(--prim-gray-h),
-		calc((100 * (var(--prim-gray-s-max) - var(--prim-gray-s-min)) / 100) + var(--prim-gray-s-min)),
-		100%
-	);
+	// Gray saturation at 0%: 0
+	// Gray saturation at 60%: 4
+	// Gray saturation at 100%: 50
+
+	--prim-gray-820: hsl(var(--prim-gray-h), 1%, 18%);
+	--prim-gray-670: hsl(var(--prim-gray-h), 2%, 33%);
+	--prim-gray-540: hsl(var(--prim-gray-h), 4%, 46%);
+	--prim-gray-490: hsl(var(--prim-gray-h), 3%, 51%);
+	--prim-gray-420: hsl(var(--prim-gray-h), 4%, 58%);
+	--prim-gray-320: hsl(var(--prim-gray-h), 13%, 68%);
+	--prim-gray-200: hsl(var(--prim-gray-h), 27%, 80%);
+	--prim-gray-120: hsl(var(--prim-gray-h), 36%, 88%);
+	--prim-gray-70: hsl(var(--prim-gray-h), 41%, 93%);
+	--prim-gray-40: hsl(var(--prim-gray-h), 45%, 96%);
+	--prim-gray-10: hsl(var(--prim-gray-h), 49%, 99%);
+	--prim-gray-0: hsl(var(--prim-gray-h), 50%, 100%);
 
 	// Color Primary
 	--prim-color-primary-h: 7;
@@ -193,7 +152,7 @@
 	--prim-color-alt-c: hsl(
 		var(--prim-color-alt-c-h),
 		var(--prim-color-alt-c-s),
-		--prim-color-alt-c-l
+		var(--prim-color-alt-c-l)
 	);
 	--prim-color-alt-c-tint-150: hsl(
 		var(--prim-color-alt-c-h),
