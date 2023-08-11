@@ -141,6 +141,44 @@ export const taskRLC: INodeProperties = {
 	],
 };
 
+export const pageRLC: INodeProperties = {
+	displayName: 'Page',
+	name: 'pageId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['caseId'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a page...',
+			typeOptions: {
+				searchListMethod: 'pageSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. ~123456789',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '(~[0-9]{1,})',
+						errorMessage: 'Not a valid Page ID',
+					},
+				},
+			],
+		},
+	],
+};
+
 export const logRLC: INodeProperties = {
 	displayName: 'Log',
 	name: 'logId',

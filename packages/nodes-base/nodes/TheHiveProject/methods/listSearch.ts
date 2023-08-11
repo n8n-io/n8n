@@ -81,6 +81,75 @@ export async function taskSearch(
 	return listResource.call(this, 'listTask', 'title', 'title', undefined, filter, paginationToken);
 }
 
+export async function pageSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	let caseId;
+
+	try {
+		caseId = this.getNodeParameter('caseId', '', { extractValue: true }) as string;
+	} catch (error) {
+		caseId = undefined;
+	}
+
+	let query: IDataObject[];
+
+	if (caseId) {
+		query = [
+			{
+				_name: 'getCase',
+				idOrName: caseId,
+			},
+			{
+				_name: 'pages',
+			},
+		];
+	} else {
+		query = [
+			{
+				_name: 'listOrganisationPage',
+			},
+		];
+	}
+
+	if (filter) {
+		query.push({
+			_name: 'filter',
+			_match: {
+				_field: 'title',
+				_value: filter,
+			},
+		});
+	}
+
+	const from = paginationToken !== undefined ? parseInt(paginationToken, 10) : 0;
+	const to = from + 100;
+	query.push({
+		_name: 'page',
+		from,
+		to,
+	});
+
+	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+
+	if (response.length === 0) {
+		return {
+			results: [],
+			paginationToken: undefined,
+		};
+	}
+
+	return {
+		results: response.map((entry: IDataObject) => ({
+			name: entry.title,
+			value: entry._id,
+		})),
+		paginationToken: to,
+	};
+}
+
 export async function logSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,

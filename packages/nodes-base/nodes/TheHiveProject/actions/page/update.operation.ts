@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
-import { caseRLC } from '../../descriptions';
+import { caseRLC, pageRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -34,14 +34,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Page ID',
-		name: 'pageId',
-		type: 'string',
-		default: '',
-		required: true,
-	},
-
+	pageRLC,
 	{
 		displayName: 'Content',
 		name: 'content',
@@ -96,7 +89,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let responseData: IDataObject | IDataObject[] = [];
 
 	const location = this.getNodeParameter('location', i) as string;
-	const pageId = this.getNodeParameter('pageId', i) as string;
+	const pageId = this.getNodeParameter('pageId', i, '', { extractValue: true }) as string;
 	const content = this.getNodeParameter('content', i, '') as string;
 	const options = this.getNodeParameter('options', i, {});
 
