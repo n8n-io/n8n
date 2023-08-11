@@ -264,12 +264,10 @@ export async function getTaskFields(this: ILoadOptionsFunctions): Promise<Resour
 			required: false,
 			display: true,
 			defaultMatch: false,
-			removed: true,
 		};
 
 		if (requiredFields.includes(entry.id)) {
 			field.required = true;
-			field.removed = false;
 		}
 
 		if (field.id === 'assignee') {

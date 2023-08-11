@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 	caseRLC,
 	{
 		displayName: 'Fields',
-		name: 'fields',
+		name: 'taskFields',
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
@@ -50,17 +50,17 @@ export async function execute(
 	let responseData: IDataObject | IDataObject[] = [];
 	let body: IDataObject = {};
 
-	const dataMode = this.getNodeParameter('fields.mappingMode', i) as string;
+	const dataMode = this.getNodeParameter('taskFields.mappingMode', i) as string;
 	const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
 
 	if (dataMode === 'autoMapInputData') {
-		const schema = this.getNodeParameter('fields.schema', i) as IDataObject[];
+		const schema = this.getNodeParameter('taskFields.schema', i) as IDataObject[];
 		body = prepareInputItem(item.json, schema, i);
 	}
 
 	if (dataMode === 'defineBelow') {
-		const fields = this.getNodeParameter('fields.value', i, []) as IDataObject;
-		body = fields;
+		const taskFields = this.getNodeParameter('taskFields.value', i, []) as IDataObject;
+		body = taskFields;
 	}
 
 	body = fixFieldType(body);

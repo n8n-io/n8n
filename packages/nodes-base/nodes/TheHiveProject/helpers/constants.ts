@@ -316,56 +316,67 @@ export const taskCommonFields = [
 		displayName: 'Title',
 		id: 'title',
 		type: 'string',
+		removed: false,
 	},
 	{
 		displayName: 'Description',
 		id: 'description',
 		type: 'string',
+		removed: false,
 	},
 	{
 		displayName: 'Group',
 		id: 'group',
 		type: 'string',
+		removed: false,
 	},
 	{
 		displayName: 'Status',
 		id: 'status',
 		type: 'stirng',
+		removed: true,
 	},
 	{
 		displayName: 'Flag',
 		id: 'flag',
 		type: 'boolean',
+		removed: false,
 	},
 	{
 		displayName: 'Start Date',
 		id: 'startDate',
 		type: 'dateTime',
+		removed: true,
 	},
 	{
 		displayName: 'Due Date',
 		id: 'dueDate',
 		type: 'dateTime',
+		removed: false,
 	},
 	{
 		displayName: 'End Date',
 		id: 'endDate',
 		type: 'dateTime',
+		removed: true,
 	},
 	{
 		displayName: 'Assignee',
 		id: 'assignee',
 		type: 'options',
+		removed: false,
 	},
 	{
 		displayName: 'Mandatory',
 		id: 'mandatory',
 		type: 'boolean',
+		removed: false,
 	},
 	{
 		displayName: 'Order',
 		id: 'order',
 		type: 'number',
+		removed: true,
 	},
 ];
 

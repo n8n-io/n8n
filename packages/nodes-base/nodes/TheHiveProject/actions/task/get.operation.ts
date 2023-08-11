@@ -6,17 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
+import { taskRLC } from '../../descriptions';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Task ID',
-		name: 'id',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'ID of the taks',
-	},
-];
+const properties: INodeProperties[] = [taskRLC];
 
 const displayOptions = {
 	show: {
@@ -30,7 +22,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const taskId = this.getNodeParameter('id', i) as string;
+	const taskId = this.getNodeParameter('taskId', i, '', { extractValue: true }) as string;
 
 	const qs: IDataObject = {};
 
