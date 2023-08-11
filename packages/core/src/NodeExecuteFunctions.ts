@@ -2578,7 +2578,7 @@ export function getExecuteFunctions(
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
 				inputName?: ConnectionTypes,
-			): IDataObject {
+			): IDataObject[] {
 				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 
 				if (parentNodes.length === 0) {
@@ -2603,10 +2603,8 @@ export function getExecuteFunctions(
 					) as IDataObject;
 
 					return {
-						node: {
-							...node,
-							parameters,
-						},
+						...node,
+						parameters,
 					};
 				});
 			},
