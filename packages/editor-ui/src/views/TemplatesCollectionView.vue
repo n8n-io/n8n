@@ -123,9 +123,9 @@ export default defineComponent({
 				source: 'collection',
 			};
 			void this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload);
-			this.posthogStore.capture('User inserted workflow template', telemetryPayload);
-
+			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+				withPostHog: true,
+			});
 			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {

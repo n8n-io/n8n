@@ -80,7 +80,11 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track(
+		event: string,
+		properties?: ITelemetryTrackProperties,
+		{ withPostHog } = { withPostHog: false },
+	) {
 		if (!this.rudderStack) return;
 
 		const updatedProperties = {
@@ -89,6 +93,10 @@ export class Telemetry {
 		};
 
 		this.rudderStack.track(event, updatedProperties);
+
+		if (withPostHog) {
+			usePostHog().capture(event, updatedProperties);
+		}
 	}
 
 	page(route: Route) {
@@ -188,8 +196,7 @@ export class Telemetry {
 					this.track('User viewed node category', properties);
 					break;
 				case 'nodeView.addNodeButton':
-					this.track('User added node to workflow canvas', properties);
-					usePostHog().capture('User added node to workflow canvas', properties);
+					this.track('User added node to workflow canvas', properties, { withPostHog: true });
 					break;
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);

@@ -102,9 +102,9 @@ export default defineComponent({
 			};
 
 			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload);
-			this.posthogStore.capture('User inserted workflow template', telemetryPayload);
-
+			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+				withPostHog: true,
+			});
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
 				window.open(route.href, '_blank');
