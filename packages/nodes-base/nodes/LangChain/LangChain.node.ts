@@ -10,13 +10,15 @@ import { NodeOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 
 import { ChatOpenAI } from 'langchain/chat_models/openai';
-import type { StructuredTool } from 'langchain/tools';
+import type { Tool } from 'langchain/tools';
 import { SerpAPI, WikipediaQueryRun } from 'langchain/tools';
 import { Calculator } from 'langchain/tools/calculator';
 import type { BaseChatMemory } from 'langchain/memory';
 import { MotorheadMemory } from 'langchain/memory';
-import { ConversationChain } from 'langchain/chains';
-import { BaseChatModel } from 'langchain/dist/chat_models/base';
+import type { InitializeAgentExecutorOptions } from 'langchain/agents';
+import { initializeAgentExecutorWithOptions } from 'langchain/agents';
+import { HuggingFaceInference } from 'langchain/llms/hf';
+import type { BaseLanguageModel } from 'langchain/dist/base_language';
 
 export class LangChain implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,9 +48,9 @@ export class LangChain implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const tools: StructuredTool[] = [];
+		const tools: Tool[] = [];
 		let memory: BaseChatMemory | undefined;
-		let model: BaseChatModel | undefined;
+		let model: BaseLanguageModel | undefined;
 
 		const languageModelNodes = await this.getInputConnectionData(0, 0, 'languageModel');
 		languageModelNodes.forEach((connectedNode) => {
@@ -66,6 +68,18 @@ export class LangChain implements INodeType {
 					openAIApiKey: apiKey as string,
 					modelName,
 					temperature,
+				});
+			} else if (connectedNode.type === 'n8n-nodes-base.langChainLMOpenHuggingFaceInference') {
+				const apiKey = get(connectedNode, 'credentials.huggingFaceApi.apiKey', '');
+
+				const modelName = get(connectedNode, 'parameters.model', '') as string;
+				const temperature = get(connectedNode, 'parameters.temperature', 0) as number;
+
+				model = new HuggingFaceInference({
+					model: modelName,
+					apiKey,
+					temperature,
+					maxTokens: 100,
 				});
 			}
 		});
@@ -121,13 +135,23 @@ export class LangChain implements INodeType {
 			}
 		});
 
-		const chain = new ConversationChain({ llm: model, memory });
+		const options: InitializeAgentExecutorOptions = {
+			agentType: 'chat-conversational-react-description',
+			verbose: true,
+			memory,
+		};
+
+		const executor = await initializeAgentExecutorWithOptions(tools, model, options);
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const text = this.getNodeParameter('text', itemIndex) as string;
-			const response = await chain.call({ input: text });
+
+			const response = await executor.call({
+				input: text,
+			});
+
 			returnData.push({ json: { response } });
 		}
 		return this.prepareOutputData(returnData);

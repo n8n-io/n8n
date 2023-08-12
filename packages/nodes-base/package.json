@@ -168,6 +168,7 @@
       "dist/credentials/HubspotAppToken.credentials.js",
       "dist/credentials/HubspotDeveloperApi.credentials.js",
       "dist/credentials/HubspotOAuth2Api.credentials.js",
+      "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/HumanticAiApi.credentials.js",
       "dist/credentials/HunterApi.credentials.js",
       "dist/credentials/HybridAnalysisApi.credentials.js",
@@ -572,6 +573,7 @@
       "dist/nodes/KoBoToolbox/KoBoToolboxTrigger.node.js",
       "dist/nodes/LangChain/LangChain.node.js",
       "dist/nodes/LangChain/LangChainLMOpenAi.node.js",
+      "dist/nodes/LangChain/LangChainLMOpenHuggingFaceInference.node.js",
       "dist/nodes/LangChain/LangChainMemoryMotorhead.node.js",
       "dist/nodes/LangChain/LangChainToolCalculator.node.js",
       "dist/nodes/LangChain/LangChainToolSerpApi.node.js",
@@ -818,6 +820,7 @@
     "n8n-core": "workspace:*"
   },
   "dependencies": {
+    "@huggingface/inference": "1",
     "@kafkajs/confluent-schema-registry": "1.0.6",
     "amqplib": "^0.10.3",
     "aws4": "^1.8.0",
