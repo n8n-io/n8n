@@ -571,6 +571,7 @@
       "dist/nodes/KoBoToolbox/KoBoToolbox.node.js",
       "dist/nodes/KoBoToolbox/KoBoToolboxTrigger.node.js",
       "dist/nodes/LangChain/LangChain.node.js",
+      "dist/nodes/LangChain/LangChainLMOpenAi.node.js",
       "dist/nodes/LangChain/LangChainMemoryMotorhead.node.js",
       "dist/nodes/LangChain/LangChainToolCalculator.node.js",
       "dist/nodes/LangChain/LangChainToolSerpApi.node.js",

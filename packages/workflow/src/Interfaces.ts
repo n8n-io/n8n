@@ -1467,7 +1467,7 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes = 'main' | 'memory' | 'tool';
+export type ConnectionTypes = 'languageModel' | 'main' | 'memory' | 'tool';
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];

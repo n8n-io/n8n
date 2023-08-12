@@ -293,6 +293,12 @@ export const nodeBase = defineComponent({
 			const connectionTypes: {
 				[key: string]: EndpointOptions;
 			} = {
+				languageModel: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-primary'),
+					cssClass: `dot-${type}-endpoint`,
+				},
 				main: {
 					paintStyle: (type === 'input'
 						? NodeViewUtils.getInputEndpointStyle

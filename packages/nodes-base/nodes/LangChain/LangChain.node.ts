@@ -16,6 +16,7 @@ import { Calculator } from 'langchain/tools/calculator';
 import type { BaseChatMemory } from 'langchain/memory';
 import { MotorheadMemory } from 'langchain/memory';
 import { ConversationChain } from 'langchain/chains';
+import { BaseChatModel } from 'langchain/dist/chat_models/base';
 
 export class LangChain implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,15 +31,10 @@ export class LangChain implements INodeType {
 			color: '#404040',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'tool', 'memory'],
-		inputNames: ['', 'Tools', 'Memory'],
+		inputs: ['main', 'tool', 'memory', 'languageModel'],
+		inputNames: ['', 'Tools', 'Memory', 'Language Model'],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'openAiApi',
-				required: true,
-			},
-		],
+		credentials: [],
 		properties: [
 			{
 				displayName: 'Text',
@@ -52,9 +48,38 @@ export class LangChain implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const tools: StructuredTool[] = [];
 		let memory: BaseChatMemory | undefined;
+		let model: BaseChatModel | undefined;
+
+		const languageModelNodes = await this.getInputConnectionData(0, 0, 'languageModel');
+		languageModelNodes.forEach((connectedNode) => {
+			if (!connectedNode.parameters.enabled) {
+				return;
+			}
+
+			if (connectedNode.type === 'n8n-nodes-base.langChainLMOpenAi') {
+				const apiKey = get(connectedNode, 'credentials.openAiApi.apiKey', '');
+
+				const modelName = get(connectedNode, 'parameters.model', '') as string;
+				const temperature = get(connectedNode, 'parameters.temperature', 0) as number;
+
+				model = new ChatOpenAI({
+					openAIApiKey: apiKey as string,
+					modelName,
+					temperature,
+				});
+			}
+		});
+
+		if (!model) {
+			throw new NodeOperationError(this.getNode(), 'No language model defined');
+		}
 
 		const memoryNodes = await this.getInputConnectionData(0, 0, 'memory');
 		memoryNodes.forEach((connectedNode) => {
+			if (!connectedNode.parameters.enabled) {
+				return;
+			}
+
 			if (connectedNode.type === 'n8n-nodes-base.langChainMemoryMotorhead') {
 				const url = get(connectedNode, 'credentials.motorheadApi.host', '') as string;
 				const clientId = get(connectedNode, 'credentials.motorheadApi.clientId');
@@ -82,6 +107,7 @@ export class LangChain implements INodeType {
 			if (!connectedNode.parameters.enabled) {
 				return;
 			}
+
 			if (connectedNode.type === 'n8n-nodes-base.langChainToolCalculator') {
 				tools.push(new Calculator());
 			} else if (connectedNode.type === 'n8n-nodes-base.langChainToolSerpApi') {
@@ -93,14 +119,6 @@ export class LangChain implements INodeType {
 			} else if (connectedNode.type === 'n8n-nodes-base.langChainToolWikipedia') {
 				tools.push(new WikipediaQueryRun());
 			}
-		});
-
-		const credentials = await this.getCredentials('openAiApi');
-
-		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey as string,
-			modelName: 'gpt-3.5-turbo',
-			temperature: 0,
 		});
 
 		const chain = new ConversationChain({ llm: model, memory });
