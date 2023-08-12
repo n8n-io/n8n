@@ -302,7 +302,7 @@ export const nodeBase = defineComponent({
 				memory: {
 					paintStyle: (type === 'input'
 						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-danger'),
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-secondary'),
 					cssClass: `dot-${type}-endpoint`,
 				},
 				tool: {
