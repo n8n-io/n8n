@@ -87,7 +87,9 @@ export const nodeBase = defineComponent({
 				}
 				const typeIndex = indexData[locactionIntputName];
 
-				const inputsOfSameType = nodeTypeData.inputs.filter((input) => input !== 'main');
+				const inputsOfSameType = nodeTypeData.inputs.filter((input) =>
+					inputName === 'main' ? input === 'main' : input !== 'main',
+				);
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition =
@@ -172,7 +174,9 @@ export const nodeBase = defineComponent({
 				}
 				const typeIndex = indexData[locactionOutputName];
 
-				const outputsOfSameType = nodeTypeData.outputs.filter((output) => output !== 'main');
+				const outputsOfSameType = nodeTypeData.outputs.filter((output) =>
+					outputName === 'main' ? output === 'main' : output !== 'main',
+				);
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition =
