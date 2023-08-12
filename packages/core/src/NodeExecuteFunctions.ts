@@ -2580,6 +2580,12 @@ export function getExecuteFunctions(
 				inputIndex?: number,
 				inputName?: ConnectionTypes,
 			): Promise<INode[]> {
+				if (inputName === 'main') {
+					throw new Error(
+						'It is not allowed to query data from nodes connected through the main input!',
+					);
+				}
+
 				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 
 				if (parentNodes.length === 0) {
