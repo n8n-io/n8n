@@ -18,10 +18,10 @@ export class AiTestConfig implements INodeType {
 			color: '#400080',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [],
+		inputs: ['main', 'tool', 'memory'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['tool'],
-		outputNames: ['Test'],
+		outputs: ['main', 'tool', 'memory'],
+		outputNames: ['Test', 'Tool', 'Memory'],
 		properties: [
 			{
 				displayName: 'Model',

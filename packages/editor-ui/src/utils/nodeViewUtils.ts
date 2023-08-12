@@ -131,7 +131,7 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 ];
 
 export const ANCHOR_POSITIONS: {
-	[key: ConnectionTypes]: {
+	[key: string]: {
 		// type: input | output
 		[key: string]: {
 			[key: number]: ArrayAnchorSpec[];
@@ -176,7 +176,7 @@ export const ANCHOR_POSITIONS: {
 			],
 		},
 	},
-	tool: {
+	other: {
 		input: {
 			1: [[0.5, 0.01, 0, -1]],
 			2: [

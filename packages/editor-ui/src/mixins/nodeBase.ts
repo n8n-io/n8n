@@ -76,20 +76,24 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			nodeTypeData.inputs.forEach((inputName: string, i: number) => {
-				// Increment the index for inputs with current name
-				if (indexData.hasOwnProperty(inputName)) {
-					indexData[inputName]++;
-				} else {
-					indexData[inputName] = 0;
-				}
-				const typeIndex = indexData[inputName];
+			nodeTypeData.inputs.forEach((inputName, i) => {
+				const locactionIntputName = inputName === 'main' ? 'main' : 'other';
 
-				const inputsOfSameType = nodeTypeData.inputs.filter((input) => input === inputName);
+				// Increment the index for inputs with current name
+				if (indexData.hasOwnProperty(locactionIntputName)) {
+					indexData[locactionIntputName]++;
+				} else {
+					indexData[locactionIntputName] = 0;
+				}
+				const typeIndex = indexData[locactionIntputName];
+
+				const inputsOfSameType = nodeTypeData.inputs.filter((input) => input !== 'main');
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition =
-					NodeViewUtils.ANCHOR_POSITIONS[inputName].input[inputsOfSameType.length][typeIndex];
+					NodeViewUtils.ANCHOR_POSITIONS[locactionIntputName].input[inputsOfSameType.length][
+						typeIndex
+					];
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, i),
@@ -157,20 +161,24 @@ export const nodeBase = defineComponent({
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
 
-			nodeTypeData.outputs.forEach((outputName: string, i: number) => {
-				// Increment the index for outputs with current name
-				if (indexData.hasOwnProperty(outputName)) {
-					indexData[outputName]++;
-				} else {
-					indexData[outputName] = 0;
-				}
-				const typeIndex = indexData[outputName];
+			nodeTypeData.outputs.forEach((outputName, i) => {
+				const locactionOutputName = outputName === 'main' ? 'main' : 'other';
 
-				const outputsOfSameType = nodeTypeData.outputs.filter((output) => output === outputName);
+				// Increment the index for outputs with current name
+				if (indexData.hasOwnProperty(locactionOutputName)) {
+					indexData[locactionOutputName]++;
+				} else {
+					indexData[locactionOutputName] = 0;
+				}
+				const typeIndex = indexData[locactionOutputName];
+
+				const outputsOfSameType = nodeTypeData.outputs.filter((output) => output !== 'main');
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition =
-					NodeViewUtils.ANCHOR_POSITIONS[outputName].output[outputsOfSameType.length][typeIndex];
+					NodeViewUtils.ANCHOR_POSITIONS[locactionOutputName].output[outputsOfSameType.length][
+						typeIndex
+					];
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
@@ -287,6 +295,12 @@ export const nodeBase = defineComponent({
 						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-foreground-xdark'),
 					cssClass: `dot-${type}-endpoint`,
 				},
+				memory: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-danger'),
+					cssClass: `dot-${type}-endpoint`,
+				},
 				tool: {
 					paintStyle: (type === 'input'
 						? NodeViewUtils.getInputEndpointStyle
@@ -299,7 +313,7 @@ export const nodeBase = defineComponent({
 				return {};
 			}
 
-			if (connectionType === 'tool') {
+			if (connectionType !== 'main') {
 				const width = connectionTypes[connectionType].paintStyle!.width!;
 				connectionTypes[connectionType].paintStyle!.width =
 					connectionTypes[connectionType].paintStyle!.height;
