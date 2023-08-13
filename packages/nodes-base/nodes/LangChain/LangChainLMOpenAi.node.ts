@@ -1,11 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
+import { ChatOpenAI } from 'langchain/chat_models/openai';
 export class LangChainLMOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - OpenAI',
@@ -62,16 +58,26 @@ export class LangChainLMOpenAi implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'Enabled',
-				name: 'enabled',
-				type: 'boolean',
-				default: true,
-			},
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return [];
+	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		const credentials = await this.getCredentials('openAiApi');
+
+		const itemIndex = 0;
+
+		// TODO: Should it get executed once per item or not?
+		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const temperature = this.getNodeParameter('temperature', itemIndex) as number;
+
+		const model = new ChatOpenAI({
+			openAIApiKey: credentials.apiKey as string,
+			modelName,
+			temperature,
+		});
+
+		return {
+			response: model,
+		};
 	}
 }

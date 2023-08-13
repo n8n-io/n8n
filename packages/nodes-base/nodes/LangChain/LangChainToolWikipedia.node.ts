@@ -1,10 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import { WikipediaQueryRun } from 'langchain/tools';
 
 export class LangChainToolWikipedia implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,17 +20,12 @@ export class LangChainToolWikipedia implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['tool'],
 		outputNames: ['Tool'],
-		properties: [
-			{
-				displayName: 'Enabled',
-				name: 'enabled',
-				type: 'boolean',
-				default: true,
-			},
-		],
+		properties: [],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return [];
+	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		return {
+			response: new WikipediaQueryRun(),
+		};
 	}
 }

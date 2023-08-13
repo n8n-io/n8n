@@ -1,10 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+
+import { SerpAPI } from 'langchain/tools';
 
 export class LangChainToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,17 +27,14 @@ export class LangChainToolSerpApi implements INodeType {
 				required: true,
 			},
 		],
-		properties: [
-			{
-				displayName: 'Enabled',
-				name: 'enabled',
-				type: 'boolean',
-				default: true,
-			},
-		],
+		properties: [],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return [];
+	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		const credentials = await this.getCredentials('serpApi');
+
+		return {
+			response: new SerpAPI(credentials.apiKey as string),
+		};
 	}
 }

@@ -62,7 +62,7 @@ import type {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
-	INodeParameters,
+	SupplyData,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -2579,66 +2579,76 @@ export function getExecuteFunctions(
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
 				inputName?: ConnectionTypes,
-			): Promise<INode[]> {
-				if (inputName === 'main') {
-					throw new Error(
-						'It is not allowed to query data from nodes connected through the main input!',
-					);
-				}
-
+			): Promise<SupplyData[]> {
 				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
-
 				if (parentNodes.length === 0) {
 					return [];
 				}
 
-				const constParentNodes = parentNodes.map(async (nodeName) => {
-					const connectedNode = workflow.getNode(nodeName) as INode;
-
-					// Resolve parameters on node within the context of the current node
-					const parameters = workflow.expression.getParameterValue(
-						connectedNode.parameters,
-						runExecutionData,
-						runIndex,
-						itemIndex,
-						node.name,
-						connectionInputData,
-						mode,
-						additionalData.timezone,
-						getAdditionalKeys(additionalData, mode, runExecutionData),
-						executeData,
-					) as INodeParameters;
-
-					const credentials: {
-						[key: string]: ICredentialDataDecryptedObject;
-					} = {};
-
-					if (!connectedNode?.credentials) {
-						return {
-							...connectedNode,
-							parameters,
-						};
-					}
-					for (const key of Object.keys(connectedNode?.credentials)) {
-						credentials[key] = await getCredentials(
-							workflow,
-							connectedNode,
-							key,
-							additionalData,
-							mode,
-							runExecutionData,
-							runIndex,
-							connectionInputData,
-							itemIndex,
+				console.log('new..');
+				const constParentNodes = parentNodes
+					.map((nodeName) => {
+						return workflow.getNode(nodeName) as INode;
+					})
+					.filter((connectedNode) => connectedNode.disabled !== true)
+					.map(async (connectedNode) => {
+						const nodeType = workflow.nodeTypes.getByNameAndVersion(
+							connectedNode.type,
+							connectedNode.typeVersion,
 						);
-					}
 
-					return {
-						...connectedNode,
-						credentials,
-						parameters,
-					} as unknown as INode;
-				});
+						if (!nodeType.supplyData) {
+							throw new Error(
+								`The node "${connectedNode.name}" does not have a "supplyData method defined!"`,
+							);
+						}
+
+						const context = Object.assign({}, this);
+
+						// @ts-ignore
+						context.getNodeParameter = (
+							parameterName: string,
+							itemIndex: number,
+							fallbackValue?: any,
+							options?: IGetNodeParameterOptions,
+						) => {
+							return getNodeParameter(
+								workflow,
+								runExecutionData,
+								runIndex,
+								connectionInputData,
+								connectedNode,
+								parameterName,
+								itemIndex,
+								mode,
+								additionalData.timezone,
+								getAdditionalKeys(additionalData, mode, runExecutionData),
+								executeData,
+								fallbackValue,
+								options,
+							);
+						};
+
+						// TODO: Check what else should be overwritten
+						context.getCredentials = async (key: string) => {
+							console.log('getCredentials - overwritten:', key);
+							console.log('connectedNode.name:', connectedNode.name);
+
+							return getCredentials(
+								workflow,
+								connectedNode,
+								key,
+								additionalData,
+								mode,
+								runExecutionData,
+								runIndex,
+								connectionInputData,
+								itemIndex,
+							);
+						};
+
+						return nodeType.supplyData.call(context);
+					});
 
 				return Promise.all(constParentNodes);
 			},

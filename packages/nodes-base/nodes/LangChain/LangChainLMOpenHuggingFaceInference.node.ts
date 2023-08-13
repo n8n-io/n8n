@@ -1,10 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+
+import { HuggingFaceInference } from 'langchain/llms/hf';
 
 export class LangChainLMOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,16 +55,27 @@ export class LangChainLMOpenHuggingFaceInference implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'Enabled',
-				name: 'enabled',
-				type: 'boolean',
-				default: true,
-			},
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return [];
+	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		const credentials = await this.getCredentials('huggingFaceApi');
+
+		const itemIndex = 0;
+
+		// TODO: Should it get executed once per item or not?
+		const modelName = this.getNodeParameter('model', itemIndex) as string;
+		const temperature = this.getNodeParameter('temperature', itemIndex) as number;
+
+		const model = new HuggingFaceInference({
+			model: modelName,
+			apiKey: credentials.apiKey as string,
+			temperature,
+			maxTokens: 100,
+		});
+
+		return {
+			response: model,
+		};
 	}
 }

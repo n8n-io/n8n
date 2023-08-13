@@ -765,7 +765,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			itemIndex: number,
 			inputIndex?: number,
 			inputName?: ConnectionTypes,
-		): Promise<INode[]>;
+		): Promise<SupplyData[]>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		prepareOutputData(
 			outputData: INodeExecutionData[],
@@ -1257,8 +1257,14 @@ export namespace MultiPartFormData {
 	>;
 }
 
+export interface SupplyData {
+	metadata?: IDataObject;
+	response: any;
+}
+
 export interface INodeType {
 	description: INodeTypeDescription;
+	supplyData?(this: IExecuteFunctions): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;

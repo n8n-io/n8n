@@ -7,17 +7,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import get from 'lodash/get';
-
-import { ChatOpenAI } from 'langchain/chat_models/openai';
 import type { Tool } from 'langchain/tools';
-import { SerpAPI, WikipediaQueryRun } from 'langchain/tools';
-import { Calculator } from 'langchain/tools/calculator';
 import type { BaseChatMemory } from 'langchain/memory';
-import { MotorheadMemory } from 'langchain/memory';
 import type { InitializeAgentExecutorOptions } from 'langchain/agents';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import { HuggingFaceInference } from 'langchain/llms/hf';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 
 export class LangChain implements INodeType {
@@ -48,91 +41,44 @@ export class LangChain implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const tools: Tool[] = [];
 		let memory: BaseChatMemory | undefined;
-		let model: BaseLanguageModel | undefined;
 
 		const languageModelNodes = await this.getInputConnectionData(0, 0, 'languageModel');
-		languageModelNodes.forEach((connectedNode) => {
-			if (!connectedNode.parameters.enabled) {
-				return;
-			}
+		if (languageModelNodes.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'At least one Language Model has to be connected!',
+			);
+		} else if (languageModelNodes.length > 1) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Only one Language Model is allowed to be connected!',
+			);
+		}
+		const model = languageModelNodes[0].response as BaseLanguageModel;
 
-			if (connectedNode.type === 'n8n-nodes-base.langChainLMOpenAi') {
-				const apiKey = get(connectedNode, 'credentials.openAiApi.apiKey', '');
-
-				const modelName = get(connectedNode, 'parameters.model', '') as string;
-				const temperature = get(connectedNode, 'parameters.temperature', 0) as number;
-
-				model = new ChatOpenAI({
-					openAIApiKey: apiKey as string,
-					modelName,
-					temperature,
-				});
-			} else if (connectedNode.type === 'n8n-nodes-base.langChainLMOpenHuggingFaceInference') {
-				const apiKey = get(connectedNode, 'credentials.huggingFaceApi.apiKey', '');
-
-				const modelName = get(connectedNode, 'parameters.model', '') as string;
-				const temperature = get(connectedNode, 'parameters.temperature', 0) as number;
-
-				model = new HuggingFaceInference({
-					model: modelName,
-					apiKey,
-					temperature,
-					maxTokens: 100,
-				});
-			}
-		});
-
-		if (!model) {
-			throw new NodeOperationError(this.getNode(), 'No language model defined');
+		if (languageModelNodes.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'At least one Language Model has to be connected!',
+			);
+		} else if (languageModelNodes.length > 1) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Only one Language Model is allowed to be connected!',
+			);
 		}
 
 		const memoryNodes = await this.getInputConnectionData(0, 0, 'memory');
-		memoryNodes.forEach((connectedNode) => {
-			if (!connectedNode.parameters.enabled) {
-				return;
-			}
-
-			if (connectedNode.type === 'n8n-nodes-base.langChainMemoryMotorhead') {
-				const url = get(connectedNode, 'credentials.motorheadApi.host', '') as string;
-				const clientId = get(connectedNode, 'credentials.motorheadApi.clientId');
-				const apiKey = get(connectedNode, 'credentials.motorheadApi.apiKey');
-
-				const memoryKey = get(connectedNode, 'parameters.memoryKey', '') as string;
-				const sessionId = get(connectedNode, 'parameters.sessionId', '') as string;
-
-				// TODO: Does not work yet
-				memory = new MotorheadMemory({
-					memoryKey,
-					sessionId,
-					url,
-					clientId,
-					apiKey,
-				});
-			}
-		});
+		if (memoryNodes.length === 1) {
+			memory = memoryNodes[0].response as BaseChatMemory;
+		} else if (languageModelNodes.length > 1) {
+			throw new NodeOperationError(this.getNode(), 'Only one Memory is allowed to be connected!');
+		}
 
 		const toolNodes = await this.getInputConnectionData(0, 0, 'tool');
-
-		// TODO: Should later find way to move that logic to the nodes again
-		//       but at the same time keep maxium flexibility
-		toolNodes.forEach((connectedNode) => {
-			if (!connectedNode.parameters.enabled) {
-				return;
-			}
-
-			if (connectedNode.type === 'n8n-nodes-base.langChainToolCalculator') {
-				tools.push(new Calculator());
-			} else if (connectedNode.type === 'n8n-nodes-base.langChainToolSerpApi') {
-				const apiKey = get(connectedNode, 'credentials.serpApi.apiKey');
-				if (!apiKey) {
-					throw new NodeOperationError(this.getNode(), 'SerpAPI API key missing');
-				}
-				tools.push(new SerpAPI(apiKey as string));
-			} else if (connectedNode.type === 'n8n-nodes-base.langChainToolWikipedia') {
-				tools.push(new WikipediaQueryRun());
-			}
+		const tools = toolNodes.map((connectedNode) => {
+			return connectedNode.response as Tool;
 		});
 
 		const options: InitializeAgentExecutorOptions = {
