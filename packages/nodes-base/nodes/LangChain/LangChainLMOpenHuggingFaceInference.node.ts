@@ -48,12 +48,6 @@ export class LangChainLMOpenHuggingFaceInference implements INodeType {
 				description:
 					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 				type: 'number',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'temperature',
-					},
-				},
 			},
 		],
 	};
