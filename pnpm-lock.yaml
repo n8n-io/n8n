@@ -1017,6 +1017,9 @@ importers:
       chokidar:
         specifier: 3.5.2
         version: 3.5.2
+      cohere-ai:
+        specifier: ^6.2.2
+        version: 6.2.2
       cron:
         specifier: ~1.7.2
         version: 1.7.2
@@ -1064,7 +1067,7 @@ importers:
         version: 1.16.0
       langchain:
         specifier: ^0.0.126
-        version: 0.0.126(@huggingface/inference@1.8.0)(cheerio@1.0.0-rc.6)(mongodb@4.10.0)(mysql2@2.3.3)(pg@8.8.0)(redis@3.1.2)
+        version: 0.0.126(@huggingface/inference@1.8.0)(cheerio@1.0.0-rc.6)(cohere-ai@6.2.2)(mongodb@4.10.0)(mysql2@2.3.3)(pg@8.8.0)(redis@3.1.2)
       ldapts:
         specifier: ^4.2.6
         version: 4.2.6
@@ -9200,6 +9203,10 @@ packages:
       - '@lezer/common'
     dev: false
 
+  /cohere-ai@6.2.2:
+    resolution: {integrity: sha512-+Tq+4e8N/YWKJqFpWaULsfbZR/GOvGh8WWYFKR1bpipu8bCok3VcbTPnBmIToQiIqOgFpGk3HsA4b0guVyL3vg==}
+    dev: false
+
   /collect-v8-coverage@1.0.1:
     resolution: {integrity: sha512-iBPtljfCNcTKNAto0KEtDfZ3qzjJvqE3aTGZsbhjSBlorqpXJlaWWtPO35D+ZImoC3KWejX64o+yPGxhWSTzfg==}
     dev: true
@@ -14602,7 +14609,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.126(@huggingface/inference@1.8.0)(cheerio@1.0.0-rc.6)(mongodb@4.10.0)(mysql2@2.3.3)(pg@8.8.0)(redis@3.1.2):
+  /langchain@0.0.126(@huggingface/inference@1.8.0)(cheerio@1.0.0-rc.6)(cohere-ai@6.2.2)(mongodb@4.10.0)(mysql2@2.3.3)(pg@8.8.0)(redis@3.1.2):
     resolution: {integrity: sha512-Z57WjAwLN+ZbJ9D4h2oTN7iDt1Aa67mcXhKYVCQFRu4w8PIPH5k0VBvmrzKyRj2iFIWdUaqVsHch/jz5+1mGnA==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -14803,6 +14810,7 @@ packages:
       binary-extensions: 2.2.0
       camelcase: 6.3.0
       cheerio: 1.0.0-rc.6
+      cohere-ai: 6.2.2
       decamelize: 1.2.0
       expr-eval: 2.0.2
       flat: 5.0.2
