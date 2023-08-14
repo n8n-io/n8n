@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
+import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,
@@ -94,6 +95,27 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		return Math.ceil(differenceInDays);
 	});
 
+	const startPollingInstanceUsageData = () => {
+		const interval = setInterval(async () => {
+			try {
+				await getInstanceCurrentUsage();
+				if (trialExpired.value || allExecutionsUsed.value) {
+					clearTimeout(interval);
+					return;
+				}
+			} catch {}
+		}, CLOUD_TRIAL_CHECK_INTERVAL);
+	};
+
+	const checkForCloudPlanData = async (): Promise<void> => {
+		try {
+			await getOwnerCurrentPlan();
+			if (!userIsTrialing.value) return;
+			await getInstanceCurrentUsage();
+			startPollingInstanceUsageData();
+		} catch {}
+	};
+
 	return {
 		state,
 		getOwnerCurrentPlan,
@@ -106,5 +128,6 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		trialExpired,
 		allExecutionsUsed,
 		reset,
+		checkForCloudPlanData,
 	};
 });

@@ -57,7 +57,6 @@ import {
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
-import { cloudPlanData } from '@/mixins/cloudPlanData';
 import { useRoute } from 'vue-router';
 import { useExternalHooks } from '@/composables';
 
@@ -69,7 +68,7 @@ export default defineComponent({
 		Telemetry,
 		Modals,
 	},
-	mixins: [newVersions, userHelpers, cloudPlanData],
+	mixins: [newVersions, userHelpers],
 	setup(props) {
 		return {
 			...useGlobalLinkActions(),
@@ -144,6 +143,12 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
+		async initBanners() {
+			return this.uiStore.initBanners();
+		},
+		async checkForCloudPlanData() {
+			return this.cloudPlanStore.checkForCloudPlanData();
+		}
 		async initialize(): Promise<void> {
 			await this.initSettings();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
@@ -210,16 +215,6 @@ export default defineComponent({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
-		async initBanners(): Promise<void> {
-			if (this.cloudPlanStore.userIsTrialing) {
-				await this.uiStore.dismissBanner('V1', 'temporary');
-				if (this.cloudPlanStore.trialExpired) {
-					this.uiStore.showBanner('TRIAL_OVER');
-				} else {
-					this.uiStore.showBanner('TRIAL');
-				}
-			}
-		},
 		async postAuthenticate() {
 			if (this.postAuthenticateDone) {
 				return;
@@ -244,7 +239,7 @@ export default defineComponent({
 		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
-		await this.initBanners();
+		void this.initBanners();
 		void this.postAuthenticate();
 
 		this.loading = false;
