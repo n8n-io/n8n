@@ -81,7 +81,12 @@
 			<div>
 				<n8n-tooltip>
 					<div>
-						<n8n-button :disabled="!isDebugEnabled" size="large" :class="$style.debugLink">
+						<n8n-button
+							:disabled="!isDebugEnabled"
+							size="large"
+							:type="debugButtonData.type"
+							:class="$style.debugLink"
+						>
 							<router-link
 								v-if="isDebugEnabled"
 								:to="{
@@ -92,9 +97,9 @@
 									},
 								}"
 							>
-								{{ debugButtonText }}
+								{{ debugButtonData.text }}
 							</router-link>
-							<span v-else>{{ debugButtonText }}</span>
+							<span v-else>{{ debugButtonData.text }}</span>
 						</n8n-button>
 					</div>
 					<template #content>
@@ -191,10 +196,16 @@ export default defineComponent({
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
 		},
-		debugButtonText(): string {
-			return this.activeExecution.status === 'success'
-				? this.$locale.baseText('executionsList.debug.button.copyToEditor')
-				: this.$locale.baseText('executionsList.debug.button.debugInEditor');
+		debugButtonData(): Record<string, string> {
+			return this.activeExecution?.status === 'success'
+				? {
+						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
+						type: 'secondary',
+				  }
+				: {
+						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
+						type: 'primary',
+				  };
 		},
 		isDebugEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor);
