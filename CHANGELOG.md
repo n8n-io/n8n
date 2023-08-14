@@ -1,3 +1,19 @@
+## [1.2.2](https://github.com/n8n-io/n8n/compare/n8n@1.2.1...n8n@1.2.2) (2023-08-14)
+
+
+### Bug Fixes
+
+* **core:** Fix fetching of EE executions ([#6901](https://github.com/n8n-io/n8n/issues/6901)) ([28d460a](https://github.com/n8n-io/n8n/commit/28d460a714ad5708e8fcc430befe4eefc754e0c9))
+* **editor:** Fix event emit on credential sharing ([#6922](https://github.com/n8n-io/n8n/issues/6922)) ([dab4aa3](https://github.com/n8n-io/n8n/commit/dab4aa3dafbb4b27744f52fea4aebf02995014c6))
+* **editor:** Fix multiOptions parameters resetting on initial load ([#6903](https://github.com/n8n-io/n8n/issues/6903)) ([ed3b89e](https://github.com/n8n-io/n8n/commit/ed3b89e5b343609086a7cd31dd1bc152e6b46240))
+* **Email Trigger (IMAP) Node:** Fix connection issue with unexpected spaces in host ([#6886](https://github.com/n8n-io/n8n/issues/6886)) ([f1e7c73](https://github.com/n8n-io/n8n/commit/f1e7c73a8fd61614c21ba6d1b5f5f151541e43cb))
+* Fix issue with key formatting if null or undefined ([#6924](https://github.com/n8n-io/n8n/issues/6924)) ([493a6de](https://github.com/n8n-io/n8n/commit/493a6dedfe0e0808c9f5178a651192af7ee8c5b6))
+* **HTTP Request Node:** Improve error handling for TCP socket errors when `Continue On Fail` is enabled ([#6925](https://github.com/n8n-io/n8n/issues/6925)) ([18e0b88](https://github.com/n8n-io/n8n/commit/18e0b885fd5b01505195852636979b7bc38eb934))
+* Prevent workflow breaking when credential type is unknown ([#6923](https://github.com/n8n-io/n8n/issues/6923)) ([92536b7](https://github.com/n8n-io/n8n/commit/92536b7ea930afbc8d476f733a992358ddc0fa85))
+* **Respond to Webhook Node:** Return headers in response ([#6921](https://github.com/n8n-io/n8n/issues/6921)) ([3787156](https://github.com/n8n-io/n8n/commit/378715656267f48a6f387be0b47eee7cd05114a3))
+
+
+
 ## [1.2.1](https://github.com/n8n-io/n8n/compare/n8n@1.2.0...n8n@1.2.1) (2023-08-09)
 
 
