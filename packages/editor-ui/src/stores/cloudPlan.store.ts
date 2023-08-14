@@ -28,6 +28,11 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.usage = data;
 	};
 
+	const reset = () => {
+		state.data = null;
+		state.usage = null;
+	};
+
 	const userIsTrialing = computed(() => state.data?.metadata?.group === 'trial');
 
 	const currentPlanData = computed(() => state.data);
@@ -100,5 +105,6 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		currentUsageData,
 		trialExpired,
 		allExecutionsUsed,
+		reset,
 	};
 });

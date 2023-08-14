@@ -37,6 +37,7 @@ import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
+import { useCloudPlanStore } from './cloudPlan.store';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -182,6 +183,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
+			useCloudPlanStore().reset();
 			usePostHog().reset();
 		},
 		async createOwner(params: {
