@@ -91,7 +91,7 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		credentialType(): ICredentialType {
+		credentialType(): ICredentialType | undefined {
 			return this.credentialsStore.getCredentialTypeByName(this.data.type);
 		},
 		credentialPermissions(): IPermissions | null {
