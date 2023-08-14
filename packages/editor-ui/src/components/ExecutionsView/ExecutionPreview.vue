@@ -85,7 +85,10 @@
 							:disabled="!isDebugEnabled"
 							size="large"
 							:type="debugButtonData.type"
-							:class="$style.debugLink"
+							:class="{
+								[$style.debugLink]: true,
+								[$style.secondary]: debugButtonData.type === 'secondary',
+							}"
 						>
 							<router-link
 								v-if="isDebugEnabled"
@@ -311,6 +314,13 @@ export default defineComponent({
 
 .debugLink {
 	margin-right: var(--spacing-xs);
+
+	&.secondary {
+		a {
+			color: var(--color-primary-shade-1);
+		}
+	}
+
 	a {
 		color: var(--color-text-xlight);
 	}
