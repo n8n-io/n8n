@@ -1,6 +1,10 @@
 <template>
 	<div
-		:class="{ 'node-wrapper': true, 'node-wrapper--trigger': isTriggerNode }"
+		:class="{
+			'node-wrapper': true,
+			'node-wrapper--trigger': isTriggerNode,
+			'node-wrapper--configurable': isConfigurableNode,
+		}"
 		:style="nodePosition"
 		:id="nodeId"
 		data-test-id="canvas-node"
@@ -283,6 +287,9 @@ export default defineComponent({
 		},
 		isManualTypeNode(): boolean {
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
+		},
+		isConfigurableNode(): boolean {
+			return this.nodeTypesStore.isConfigurableNode(this.data?.type || '');
 		},
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
@@ -636,6 +643,10 @@ export default defineComponent({
 	width: 100px;
 	height: 100px;
 
+	&--configurable {
+		height: 300px;
+	}
+
 	.node-description {
 		position: absolute;
 		top: 100px;
@@ -803,6 +814,7 @@ export default defineComponent({
 	&--trigger .node-default .node-box {
 		border-radius: 32px 8px 8px 32px;
 	}
+
 	.trigger-icon {
 		position: absolute;
 		right: 100%;

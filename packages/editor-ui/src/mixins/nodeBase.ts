@@ -76,6 +76,10 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
+			const hasMultipleTypes = nodeTypeData.inputs
+				? nodeTypeData.inputs.filter((input) => input !== nodeTypeData.inputs[0]).length > 0
+				: false;
+
 			nodeTypeData.inputs.forEach((inputName, i) => {
 				const locactionIntputName = inputName === 'main' ? 'main' : 'other';
 
@@ -92,10 +96,12 @@ export const nodeBase = defineComponent({
 				);
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition =
-					NodeViewUtils.ANCHOR_POSITIONS[locactionIntputName].input[inputsOfSameType.length][
-						typeIndex
-					];
+				const anchorPosition = NodeViewUtils.getAnchorPosition(
+					inputName,
+					'input',
+					inputsOfSameType.length,
+					hasMultipleTypes,
+				)[typeIndex];
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, i),
@@ -163,6 +169,10 @@ export const nodeBase = defineComponent({
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
 
+			const hasMultipleTypes = nodeTypeData.outputs
+				? nodeTypeData.outputs.filter((output) => output !== nodeTypeData.outputs[0]).length > 0
+				: false;
+
 			nodeTypeData.outputs.forEach((outputName, i) => {
 				const locactionOutputName = outputName === 'main' ? 'main' : 'other';
 
@@ -179,10 +189,12 @@ export const nodeBase = defineComponent({
 				);
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition =
-					NodeViewUtils.ANCHOR_POSITIONS[locactionOutputName].output[outputsOfSameType.length][
-						typeIndex
-					];
+				const anchorPosition = NodeViewUtils.getAnchorPosition(
+					outputName,
+					'output',
+					outputsOfSameType.length,
+					hasMultipleTypes,
+				)[typeIndex];
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
@@ -321,13 +333,6 @@ export const nodeBase = defineComponent({
 
 			if (!connectionTypes.hasOwnProperty(connectionType)) {
 				return {};
-			}
-
-			if (connectionType !== 'main') {
-				const width = connectionTypes[connectionType].paintStyle!.width!;
-				connectionTypes[connectionType].paintStyle!.width =
-					connectionTypes[connectionType].paintStyle!.height;
-				connectionTypes[connectionType].paintStyle!.height = width;
 			}
 
 			return connectionTypes[connectionType];

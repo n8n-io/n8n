@@ -130,90 +130,72 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	},
 ];
 
-export const ANCHOR_POSITIONS: {
-	[key: string]: {
-		// type: input | output
-		[key: string]: {
-			[key: number]: ArrayAnchorSpec[];
+export const getAnchorPosition = (
+	connectionType: ConnectionTypes,
+	type: 'input' | 'output',
+	amount: number,
+	hasMultipleTypes: boolean,
+): ArrayAnchorSpec[] => {
+	if (!hasMultipleTypes) {
+		const positions = {
+			input: {
+				1: [[0.01, 0.5, -1, 0]],
+				2: [
+					[0.01, 0.3, -1, 0],
+					[0.01, 0.7, -1, 0],
+				],
+				3: [
+					[0.01, 0.25, -1, 0],
+					[0.01, 0.5, -1, 0],
+					[0.01, 0.75, -1, 0],
+				],
+				4: [
+					[0.01, 0.2, -1, 0],
+					[0.01, 0.4, -1, 0],
+					[0.01, 0.6, -1, 0],
+					[0.01, 0.8, -1, 0],
+				],
+			},
+			output: {
+				1: [[0.99, 0.5, 1, 0]],
+				2: [
+					[0.99, 0.3, 1, 0],
+					[0.99, 0.7, 1, 0],
+				],
+				3: [
+					[0.99, 0.25, 1, 0],
+					[0.99, 0.5, 1, 0],
+					[0.99, 0.75, 1, 0],
+				],
+				4: [
+					[0.99, 0.2, 1, 0],
+					[0.99, 0.4, 1, 0],
+					[0.99, 0.6, 1, 0],
+					[0.99, 0.8, 1, 0],
+				],
+			},
 		};
-	};
-} = {
-	main: {
-		input: {
-			1: [[0.01, 0.5, -1, 0]],
-			2: [
-				[0.01, 0.3, -1, 0],
-				[0.01, 0.7, -1, 0],
-			],
-			3: [
-				[0.01, 0.25, -1, 0],
-				[0.01, 0.5, -1, 0],
-				[0.01, 0.75, -1, 0],
-			],
-			4: [
-				[0.01, 0.2, -1, 0],
-				[0.01, 0.4, -1, 0],
-				[0.01, 0.6, -1, 0],
-				[0.01, 0.8, -1, 0],
-			],
-		},
-		output: {
-			1: [[0.99, 0.5, 1, 0]],
-			2: [
-				[0.99, 0.3, 1, 0],
-				[0.99, 0.7, 1, 0],
-			],
-			3: [
-				[0.99, 0.25, 1, 0],
-				[0.99, 0.5, 1, 0],
-				[0.99, 0.75, 1, 0],
-			],
-			4: [
-				[0.99, 0.2, 1, 0],
-				[0.99, 0.4, 1, 0],
-				[0.99, 0.6, 1, 0],
-				[0.99, 0.8, 1, 0],
-			],
-		},
-	},
-	other: {
-		input: {
-			1: [[0.5, 0.01, 0, -1]],
-			2: [
-				[0.3, 0.01, 0, -1],
-				[0.7, 0, 0, -1],
-			],
-			3: [
-				[0.25, 0.01, 0, -1],
-				[0.5, 0.01, 0, -1],
-				[0.75, 0.01, 0, -1],
-			],
-			4: [
-				[0.2, 0.01, 0, -1],
-				[0.4, 0.01, 0, -1],
-				[0.6, 0.01, 0, -1],
-				[0.8, 0.01, 0, -1],
-			],
-		},
-		output: {
-			1: [[0.5, 0.99, 0, 1]],
-			2: [
-				[0.3, 0.99, 0, 1],
-				[0.7, 0.99, 0, 1],
-			],
-			3: [
-				[0.25, 0.99, 0, 1],
-				[0.5, 0.99, 0, 1],
-				[0.75, 0.99, 0, 1],
-			],
-			4: [
-				[0.2, 0.99, 0, 1],
-				[0.4, 0.99, 0, 1],
-				[0.6, 0.99, 0, 1],
-				[0.8, 0.99, 0, 1],
-			],
-		},
-	},
+
+		return positions[type][amount] as ArrayAnchorSpec[];
+	}
+
+	const x = type === 'input' ? 0.01 : 0.99;
+	const ox = type === 'input' ? -1 : 1;
+	const oy = 0;
+
+	const returnPositions: ArrayAnchorSpec[] = [];
+	for (let i = 0; i < amount; i++) {
+		// [ x, y, ox, oy ]
+
+		let y = (0.5 / (amount + 1)) * (i + 1);
+		if (connectionType !== 'main') {
+			y += 0.5;
+		}
+
+		returnPositions.push([x, y, ox, oy]);
+	}
+
+	return returnPositions;
 };
 
 export const getInputEndpointStyle = (
@@ -227,7 +209,7 @@ export const getInputEndpointStyle = (
 	lineWidth: 0,
 });
 
-export const getInputNameOverlay = (labelText: string, type: ConnectionTypes): OverlaySpec => ({
+export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_INPUT_NAME_LABEL,
@@ -235,9 +217,7 @@ export const getInputNameOverlay = (labelText: string, type: ConnectionTypes): O
 		create: (component: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
-			label.classList.add(
-				type === 'main' ? 'node-input-endpoint-label' : 'node-output-endpoint-label',
-			);
+			label.classList.add('node-input-endpoint-label');
 			return label;
 		},
 	},
