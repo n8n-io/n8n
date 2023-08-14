@@ -643,10 +643,6 @@ export default defineComponent({
 	width: 100px;
 	height: 100px;
 
-	&--configurable {
-		height: 300px;
-	}
-
 	.node-description {
 		position: absolute;
 		top: 100px;
@@ -677,6 +673,13 @@ export default defineComponent({
 			font-weight: 400;
 			color: $custom-font-light;
 			font-size: 0.8em;
+		}
+	}
+
+	&--configurable {
+		height: 300px;
+		.node-description {
+			top: 300px;
 		}
 	}
 
@@ -848,6 +851,9 @@ export default defineComponent({
 
 	.node-wrapper--trigger & {
 		border-radius: 36px 8px 8px 36px;
+	}
+	.node-wrapper--configurable & {
+		height: 316px;
 	}
 }
 
