@@ -98,6 +98,7 @@ export class MqttTrigger implements INodeType {
 		}
 
 		const options = this.getNodeParameter('options') as IDataObject;
+		const parallelProcessing = this.getNodeParameter('options.parallelProcessing', true) as boolean;
 
 		if (!topics) {
 			throw new NodeOperationError(this.getNode(), 'Topics are mandatory!');
@@ -176,7 +177,7 @@ export class MqttTrigger implements INodeType {
 							}
 
 							let responsePromise: IDeferredPromise<IRun> | undefined;
-							if (!options.parallelProcessing) {
+							if (!parallelProcessing) {
 								responsePromise = await this.helpers.createDeferredPromise();
 							}
 							this.emit([this.helpers.returnJsonArray([result])], undefined, responsePromise);
