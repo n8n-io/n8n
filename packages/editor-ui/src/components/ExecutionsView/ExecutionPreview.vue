@@ -92,6 +92,7 @@
 						>
 							<router-link
 								v-if="isDebugEnabled"
+								@mousedown="handleDebugButtonClick"
 								:to="{
 									name: VIEWS.EXECUTION_DEBUG,
 									params: {
@@ -165,7 +166,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { ElDropdown } from 'element-plus';
-import { useMessage } from '@/composables';
+import { useExecutionDebugging, useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
@@ -189,6 +190,7 @@ export default defineComponent({
 	setup() {
 		return {
 			...useMessage(),
+			...useExecutionDebugging(),
 		};
 	},
 	computed: {
@@ -244,6 +246,9 @@ export default defineComponent({
 			if (retryDropdownRef && event.relatedTarget === null) {
 				retryDropdownRef.handleClose();
 			}
+		},
+		handleDebugButtonClick(): void {
+			this.isDebugModeActive = false;
 		},
 	},
 });

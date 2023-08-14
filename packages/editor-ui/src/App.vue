@@ -20,10 +20,9 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive include="NodeView" :max="1" v-if="keepAlive">
+					<keep-alive include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
-					<component v-else :is="Component" />
 				</router-view>
 			</div>
 			<Modals />
@@ -44,7 +43,7 @@ import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS }
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast, useExternalHooks } from '@/composables';
+import { useGlobalLinkActions, useToast } from '@/composables';
 import {
 	useUIStore,
 	useSettingsStore,
@@ -59,6 +58,7 @@ import {
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
+import { useExternalHooks } from '@/composables';
 
 export default defineComponent({
 	name: 'App',
@@ -96,11 +96,6 @@ export default defineComponent({
 		},
 		isDemoMode(): boolean {
 			return this.$route.name === VIEWS.DEMO;
-		},
-		keepAlive(): boolean {
-			// Using this condition to avoid having to add keepAlive to all the routes meta
-			// so if it's not explicitly set to false, it will be true
-			return this.$route.meta.keepAlive !== false;
 		},
 	},
 	data() {
@@ -154,7 +149,7 @@ export default defineComponent({
 		},
 		trackPage(): void {
 			this.uiStore.currentView = this.$route.name || '';
-			if (this.$route?.meta?.templatesEnabled) {
+			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
 				this.templatesStore.setSessionId();
 			} else {
 				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages

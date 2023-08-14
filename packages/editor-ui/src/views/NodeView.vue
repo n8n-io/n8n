@@ -2630,10 +2630,7 @@ export default defineComponent({
 						this.titleSet(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 
-						if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-							this.titleSet(workflow.name, 'DEBUG');
-							await this.applyExecutionData(this.$route.params.executionId as string);
-						}
+						await this.checkAndInitDebugMode();
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow
@@ -3870,6 +3867,14 @@ export default defineComponent({
 				});
 			}
 		},
+		async checkAndInitDebugMode() {
+			if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
+				this.titleSet(this.workflowName, 'DEBUG');
+				if (!this.isDebugModeActive.value) {
+					await this.applyExecutionData(this.$route.params.executionId as string);
+				}
+			}
+		},
 	},
 	async onSourceControlPull() {
 		let workflowId = null as string | null;
@@ -3990,7 +3995,7 @@ export default defineComponent({
 
 		this.readOnlyEnvRouteCheck();
 	},
-	activated() {
+	async activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
@@ -4018,6 +4023,7 @@ export default defineComponent({
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
+		await this.checkAndInitDebugMode();
 	},
 	deactivated() {
 		this.unbindCanvasEvents();

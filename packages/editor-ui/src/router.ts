@@ -232,7 +232,6 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
-			keepAlive: false,
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -493,7 +492,7 @@ export const routes = [
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
 								return (
-									settingsStore.settings.hideUsagePage ||
+									settingsStore.settings.hideUsagePage === true ||
 									settingsStore.settings.deployment?.type === 'cloud'
 								);
 							},
@@ -570,7 +569,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return !settingsStore.isPublicApiEnabled;
+								return settingsStore.isPublicApiEnabled === false;
 							},
 						},
 					},
@@ -663,7 +662,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return !settingsStore.isCommunityNodesFeatureEnabled;
+								return settingsStore.isCommunityNodesFeatureEnabled === false;
 							},
 						},
 					},
@@ -680,7 +679,7 @@ export const routes = [
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
-								feature: route.params.featureId,
+								feature: route.params['featureId'],
 							};
 						},
 					},
