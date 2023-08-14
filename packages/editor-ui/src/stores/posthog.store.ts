@@ -2,15 +2,10 @@ import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { useSegment } from '@/stores/segment.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags } from 'n8n-workflow';
-import {
-	EXPERIMENTS_TO_TRACK,
-	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	ONBOARDING_EXPERIMENT,
-} from '@/constants';
+import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
 import { debounce } from 'lodash-es';
 
@@ -22,7 +17,6 @@ export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
-	const segmentStore = useSegment();
 	const rootStore = useRootStore();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
@@ -165,10 +159,6 @@ export const usePostHog = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
-
-		if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
-			segmentStore.showAppCuesChecklist();
-		}
 	};
 
 	return {

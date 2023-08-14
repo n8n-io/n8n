@@ -1013,8 +1013,7 @@ export const schema = {
 				dsn: {
 					doc: 'Data source name for error tracking on Sentry',
 					format: String,
-					default:
-						'https://1f954e089a054b8e943ae4f4042b2bff@o1420875.ingest.sentry.io/4504016528408576',
+					default: '',
 					env: 'N8N_SENTRY_DSN',
 				},
 			},

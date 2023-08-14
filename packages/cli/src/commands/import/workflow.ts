@@ -18,6 +18,7 @@ import { replaceInvalidCredentials } from '@/WorkflowHelpers';
 import { BaseCommand, UM_FIX_INSTRUCTION } from '../BaseCommand';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
+import { TagRepository } from '@/databases/repositories';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
@@ -92,7 +93,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
 
 		const credentials = await Db.collections.Credentials.find();
-		const tags = await Db.collections.Tag.find();
+		const tags = await Container.get(TagRepository).find();
 
 		let totalImported = 0;
 

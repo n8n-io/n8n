@@ -530,12 +530,6 @@ export const TEMPLATES_EXPERIMENT = {
 	variantIds: ['1932', '1930', '1931', '1933', '1750', '1748', '1435'],
 };
 
-export const ONBOARDING_EXPERIMENT = {
-	name: '004_checklist',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const ASK_AI_EXPERIMENT = {
 	name: '011_ask_AI',
 	control: 'control',
@@ -545,7 +539,6 @@ export const ASK_AI_EXPERIMENT = {
 
 export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATES_EXPERIMENT.name,
-	ONBOARDING_EXPERIMENT.name,
 	ASK_AI_EXPERIMENT.name,
 ];
 

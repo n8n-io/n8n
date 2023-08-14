@@ -104,7 +104,7 @@ describe('Execution', () => {
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
-		cy.wait(1000);
+		workflowPage.getters.stopExecutionButton().should('exist');
 		workflowPage.getters.stopExecutionButton().click();
 
 		// Check canvas nodes after workflow stopped

@@ -26,11 +26,13 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
+// eslint-disable-next-line import/no-cycle
 import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
 import omit from 'lodash/omit';
+// eslint-disable-next-line import/no-cycle
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
@@ -573,6 +575,18 @@ export function validateWorkflowCredentialUsage(
 	});
 
 	return newWorkflowVersion;
+}
+
+export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
+	let startNode;
+	if (
+		data.startNodes?.length === 1 &&
+		Object.keys(data.pinData ?? {}).includes(data.startNodes[0])
+	) {
+		startNode = workflow.getNode(data.startNodes[0]) ?? undefined;
+	}
+
+	return startNode;
 }
 
 export async function getVariables(): Promise<IDataObject> {

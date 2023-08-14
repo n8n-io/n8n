@@ -1,25 +1,23 @@
 <template>
-	<span>
-		<el-tooltip v-bind="{ ...$props, ...$attrs }">
-			<slot />
-			<template #content>
-				<slot name="content">
-					{{ content }}
-				</slot>
-				<div
-					v-if="buttons.length"
-					:class="$style.buttons"
-					:style="{ justifyContent: justifyButtons }"
-				>
-					<n8n-button
-						v-for="button in buttons"
-						:key="button.attrs.label"
-						v-bind="{ ...button.attrs, ...button.listeners }"
-					/>
-				</div>
-			</template>
-		</el-tooltip>
-	</span>
+	<el-tooltip v-bind="{ ...$props, ...$attrs }" popper-class="n8n-tooltip">
+		<slot />
+		<template #content>
+			<slot name="content">
+				{{ content }}
+			</slot>
+			<div
+				v-if="buttons.length"
+				:class="$style.buttons"
+				:style="{ justifyContent: justifyButtons }"
+			>
+				<n8n-button
+					v-for="button in buttons"
+					:key="button.attrs.label"
+					v-bind="{ ...button.attrs, ...button.listeners }"
+				/>
+			</div>
+		</template>
+	</el-tooltip>
 </template>
 
 <script lang="ts">
