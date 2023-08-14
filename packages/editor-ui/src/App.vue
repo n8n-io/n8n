@@ -39,7 +39,7 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
@@ -57,6 +57,7 @@ import {
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
+import { cloudPlanData } from '@/mixins/cloudPlanData';
 import { useRoute } from 'vue-router';
 import { useExternalHooks } from '@/composables';
 
@@ -68,7 +69,7 @@ export default defineComponent({
 		Telemetry,
 		Modals,
 	},
-	mixins: [newVersions, userHelpers],
+	mixins: [newVersions, userHelpers, cloudPlanData],
 	setup(props) {
 		return {
 			...useGlobalLinkActions(),
@@ -208,25 +209,6 @@ export default defineComponent({
 			if (theme) {
 				window.document.body.classList.add(`theme-${theme}`);
 			}
-		},
-		async checkForCloudPlanData(): Promise<void> {
-			try {
-				await this.cloudPlanStore.getOwnerCurrentPlan();
-				if (!this.cloudPlanStore.userIsTrialing) return;
-				await this.cloudPlanStore.getInstanceCurrentUsage();
-				this.startPollingInstanceUsageData();
-			} catch {}
-		},
-		startPollingInstanceUsageData() {
-			const interval = setInterval(async () => {
-				try {
-					await this.cloudPlanStore.getInstanceCurrentUsage();
-					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
-						clearTimeout(interval);
-						return;
-					}
-				} catch {}
-			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
 		async initBanners(): Promise<void> {
 			if (this.cloudPlanStore.userIsTrialing) {

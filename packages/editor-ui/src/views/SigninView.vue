@@ -18,12 +18,14 @@ import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { cloudPlanData } from '@/mixins/cloudPlanData';
 
 export default defineComponent({
 	name: 'SigninView',
 	components: {
 		AuthView,
 	},
+	mixins: [cloudPlanData],
 	setup() {
 		return {
 			...useToast(),
@@ -87,6 +89,7 @@ export default defineComponent({
 			try {
 				this.loading = true;
 				await this.usersStore.loginWithCreds(values as { email: string; password: string });
+				await this.checkForCloudPlanData();
 				this.clearAllStickyNotifications();
 				this.loading = false;
 
