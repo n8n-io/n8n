@@ -3872,6 +3872,7 @@ export default defineComponent({
 				this.titleSet(this.workflowName, 'DEBUG');
 				if (!this.isDebugModeActive.value) {
 					await this.applyExecutionData(this.$route.params.executionId as string);
+					this.isDebugModeActive.value = true;
 				}
 			}
 		},

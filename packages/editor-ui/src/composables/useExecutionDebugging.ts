@@ -90,8 +90,6 @@ export const useExecutionDebugging = () => {
 				type: 'warning',
 			});
 		}
-
-		isDebugModeActive.value = true;
 	};
 
 	return {
