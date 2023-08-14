@@ -2,7 +2,7 @@
 	<div class="progress-circle">
 		<svg class="progress-ring" :width="diameter" :height="diameter">
 			<circle
-				class="progress-ring-circle"
+				:class="$style.progressRingCircle"
 				:stroke-width="strokeWidth"
 				stroke="#DCDFE6"
 				fill="transparent"
@@ -10,7 +10,7 @@
 				v-bind="{ cx, cy }"
 			/>
 			<circle
-				class="progress-ring-circle"
+				:class="$style.progressRingCircle"
 				stroke="#5C4EC2"
 				:stroke-width="strokeWidth"
 				fill="transparent"
@@ -54,8 +54,8 @@ const style = computed(() => ({
 }));
 </script>
 
-<style scoped>
-.progress-ring-circle {
+<style module>
+.progressRingCircle {
 	transition: stroke-dashoffset 0.35s linear;
 	transform: rotate(-90deg);
 	transform-origin: 50% 50%;

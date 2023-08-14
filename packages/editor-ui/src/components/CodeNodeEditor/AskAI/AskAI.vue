@@ -150,6 +150,7 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
+
 		useTelemetry().trackAskAI('askAi.generationFinished', {
 			prompt: prompt.value,
 			code,
@@ -163,6 +164,7 @@ async function onSubmit() {
 			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
 			message: getErrorMessageByStatusCode(error.httpStatusCode),
 		});
+
 		useTelemetry().trackAskAI('askAi.generationFinished', {
 			prompt: prompt.value,
 			code: '',

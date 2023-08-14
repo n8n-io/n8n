@@ -58,7 +58,7 @@ import { CODE_PLACEHOLDERS } from './constants';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
-import AskAI from './AskAI.vue';
+import AskAI from './AskAI/AskAI.vue';
 import { useMessage } from '@/composables';
 
 export default defineComponent({
