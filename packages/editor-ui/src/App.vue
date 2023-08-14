@@ -148,7 +148,7 @@ export default defineComponent({
 		},
 		async checkForCloudPlanData() {
 			return this.cloudPlanStore.checkForCloudPlanData();
-		}
+		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
