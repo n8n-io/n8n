@@ -263,8 +263,6 @@ export default defineComponent({
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
 		await this.initBanners();
-
-		void this.checkForCloudPlanData();
 		void this.postAuthenticate();
 
 		this.loading = false;
