@@ -1,33 +1,39 @@
 <script setup lang="ts">
-import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { ref, computed, onMounted } from 'vue';
-import { useDataSchema, useI18n, useMessage, useToast, useTelemetry } from '@/composables';
-import { generateCodeForPrompt } from '@/api/ai';
-import { useNDVStore, usePostHog, useRootStore, useWorkflowsStore } from '@/stores';
-import CircleLoader from './CircleLoader.vue';
-import { ASK_AI_EXPERIMENT } from '@/constants';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
-import { executionDataToJson } from '@/utils';
+
+import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
+
+import type { BaseTextKey } from '@/plugins/i18n';
 import type { INodeUi, Schema } from '@/Interface';
+import { generateCodeForPrompt } from '@/api/ai';
+import { useDataSchema, useI18n, useMessage, useToast, useTelemetry } from '@/composables';
+import { useNDVStore, usePostHog, useRootStore, useWorkflowsStore } from '@/stores';
+import { executionDataToJson } from '@/utils';
+import {
+	ASK_AI_EXPERIMENT,
+	ASK_AI_MAX_PROMPT_LENGTH,
+	ASK_AI_MIN_PROMPT_LENGTH,
+	ASK_AI_LOADING_DURATION_MS
+} from '@/constants';
+import CircleLoader from './CircleLoader.vue';
+
 
 const emit = defineEmits<{
-	submit: (code: string) => void;
-	replaceCode: (code: string) => void;
-	startedLoading: () => void;
-	finishedLoading: () => void;
+	(e: 'submit', code: string): void
+	(e: 'replaceCode', code: string): void
+	(e: 'startedLoading'): void
+	(e: 'finishedLoading'): void
 }>();
+
 const props = defineProps<{
 	hasChanges: boolean;
 }>();
 
 const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
-const maxLength = 600;
-const minLength = 15;
-const loadingDurationMs = 10000;
 
 const loadingPhraseIndex = ref(0);
 const loaderProgress = ref(0);
@@ -37,7 +43,7 @@ const prompt = ref('');
 const parentNodes = ref<INodeUi[]>([]);
 
 const isSubmitEnabled = computed(() => {
-	return !isEachItemMode.value && prompt.value.length >= minLength && hasExecutionData.value;
+	return !isEachItemMode.value && prompt.value.length >= ASK_AI_MIN_PROMPT_LENGTH && hasExecutionData.value;
 });
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 const loadingString = computed(() =>
@@ -133,7 +139,6 @@ async function onSubmit() {
 
 		const { code, usage } = await generateCodeForPrompt(getRestApiContext, {
 			question: prompt.value,
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			context: { schema: schemas.parentNodesSchemas, inputSchema: schemas.inputSchema! },
 			model,
 			n8nVersion: version,
@@ -168,41 +173,30 @@ async function onSubmit() {
 		stopLoading();
 	}
 }
-
-function triggerLoadingPhraseChange() {
+function triggerLoadingChange() {
+	const loadingPhraseUpdateMs = 2000;
+	const loadingPhrasesCount = 8;
 	let start: number | null = null;
 	let lastPhraseChange = 0;
-
 	const step = (timestamp: number) => {
 		if (!start) start = timestamp;
 
-		if (!lastPhraseChange || timestamp - lastPhraseChange >= 2000) {
-			loadingPhraseIndex.value = Math.floor(Math.random() * 8);
-			lastPhraseChange = timestamp;
+		// Loading phrase change
+		if (!lastPhraseChange || timestamp - lastPhraseChange >= loadingPhraseUpdateMs) {
+				loadingPhraseIndex.value = Math.floor(Math.random() * loadingPhrasesCount);
+				lastPhraseChange = timestamp;
 		}
 
-		if (!isLoading.value) return;
-
-		window.requestAnimationFrame(step);
-	};
-	window.requestAnimationFrame(step);
-}
-
-function triggerLoaderProgressChange() {
-	let start: number | null = null;
-
-	const step = (timestamp: number) => {
-		if (!start) start = timestamp;
+		// Loader progress change
 		const elapsed = timestamp - start;
-
-		loaderProgress.value = Math.min((elapsed / loadingDurationMs) * 100, 100);
+		loaderProgress.value = Math.min((elapsed / ASK_AI_LOADING_DURATION_MS) * 100, 100);
 
 		if (!isLoading.value) return;
-
-		if (loaderProgress.value < 100) {
-			window.requestAnimationFrame(step);
+		if (loaderProgress.value < 100 || lastPhraseChange + loadingPhraseUpdateMs > timestamp) {
+				window.requestAnimationFrame(step);
 		}
 	};
+
 	window.requestAnimationFrame(step);
 }
 
@@ -210,13 +204,14 @@ function startLoading() {
 	emit('startedLoading');
 	loaderProgress.value = 0;
 	isLoading.value = true;
-	triggerLoadingPhraseChange();
-	triggerLoaderProgressChange();
+
+	triggerLoadingChange();
 }
 
 function stopLoading() {
 	loaderProgress.value = 100;
 	emit('finishedLoading');
+
 	setTimeout(() => {
 		isLoading.value = false;
 	}, 200);
@@ -242,17 +237,17 @@ onMounted(() => {
 
 <template>
 	<div>
-		<p :class="$style.intro" v-text="$locale.baseText('codeNodeEditor.askAi.intro')" />
+		<p :class="$style.intro" v-text="i18n.baseText('codeNodeEditor.askAi.intro')" />
 		<div :class="$style.inputContainer">
 			<div :class="$style.meta">
 				<span
 					v-show="prompt.length > 1"
 					:class="$style.counter"
-					v-text="`${prompt.length} / ${maxLength}`"
+					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
 				/>
 				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
 					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
-						$locale.baseText('codeNodeEditor.askAi.help')
+						i18n.baseText('codeNodeEditor.askAi.help')
 					}}
 				</a>
 			</div>
@@ -262,8 +257,8 @@ onMounted(() => {
 				:class="$style.input"
 				type="textarea"
 				:rows="6"
-				:maxlength="maxLength"
-				:placeholder="$locale.baseText('codeNodeEditor.askAi.placeholder')"
+				:maxlength="ASK_AI_MAX_PROMPT_LENGTH"
+				:placeholder="i18n.baseText('codeNodeEditor.askAi.placeholder')"
 			/>
 		</div>
 		<div :class="$style.controls">
@@ -276,27 +271,27 @@ onMounted(() => {
 			<n8n-tooltip :disabled="isSubmitEnabled" v-else>
 				<div>
 					<N8nButton :disabled="!isSubmitEnabled" @click="onSubmit" size="small">{{
-						$locale.baseText('codeNodeEditor.askAi.generateCode')
+						i18n.baseText('codeNodeEditor.askAi.generateCode')
 					}}</N8nButton>
 				</div>
 				<template #content>
 					<span
 						v-if="!hasExecutionData"
-						v-text="$locale.baseText('codeNodeEditor.askAi.noInputData')"
+						v-text="i18n.baseText('codeNodeEditor.askAi.noInputData')"
 					/>
 					<span
 						v-else-if="prompt.length === 0"
-						v-text="$locale.baseText('codeNodeEditor.askAi.noPrompt')"
+						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
 					/>
 					<span
 						v-else-if="isEachItemMode"
-						v-text="$locale.baseText('codeNodeEditor.askAi.onlyAllItemsMode')"
+						v-text="i18n.baseText('codeNodeEditor.askAi.onlyAllItemsMode')"
 					/>
 					<span
-						v-else-if="prompt.length < minLength"
+						v-else-if="prompt.length < ASK_AI_MIN_PROMPT_LENGTH"
 						v-text="
-							$locale.baseText('codeNodeEditor.askAi.promptTooShort', {
-								interpolate: { minLength: minLength.toString() },
+							i18n.baseText('codeNodeEditor.askAi.promptTooShort', {
+								interpolate: { minLength: ASK_AI_MIN_PROMPT_LENGTH.toString() },
 							})
 						"
 					/>

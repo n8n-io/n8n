@@ -144,10 +144,13 @@ export default defineComponent({
 			return this.editor.state.doc.toString();
 		},
 		aiEnabled(): boolean {
-			const isAiExperimentDisabled = this.posthogStore.isVariantEnabled(
-				ASK_AI_EXPERIMENT.name,
-				ASK_AI_EXPERIMENT.control,
-			);
+			// AI is enabled only via Posthog experiment. So if user doesn't have feature flag
+			// we fallback to control which is no-show variant
+			const isAiExperimentDisabled = (
+				this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ??
+				ASK_AI_EXPERIMENT.control
+			) === ASK_AI_EXPERIMENT.control;
+
 			return (
 				!isAiExperimentDisabled &&
 				this.settingsStore.settings.ai.enabled &&
@@ -170,7 +173,8 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onBeforeTabLeave(_activeName, oldActiveName) {
+		async onBeforeTabLeave(_activeName: string, oldActiveName: string) {
+			// Confirm dialog if leaving ask-ai tab during loading
 			if (oldActiveName === 'ask-ai' && this.isLoading) {
 				const confirmModal = await this.alert(
 					this.$locale.baseText('codeNodeEditor.askAi.sureLeaveTab'),

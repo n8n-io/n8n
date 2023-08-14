@@ -572,3 +572,8 @@ export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
 // A path that does not exist so that nothing is selected by default
 export const nonExistingJsonPath = '_!^&*';
+
+// Ask AI
+export const ASK_AI_MAX_PROMPT_LENGTH = 600;
+export const ASK_AI_MIN_PROMPT_LENGTH = 15;
+export const ASK_AI_LOADING_DURATION_MS = 12000;
