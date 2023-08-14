@@ -9,7 +9,6 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
 import config from '@/config';
-import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
@@ -26,7 +25,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
-import { TagRepository } from '@/databases/repositories';
+import { TagService } from '@/services/tag.service';
 
 export const workflowsController = express.Router();
 
@@ -65,7 +64,7 @@ workflowsController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Container.get(TagRepository).find({
+			newWorkflow.tags = await Container.get(TagService).findMany({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),
@@ -101,7 +100,7 @@ workflowsController.post(
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
-			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
+			savedWorkflow.tags = Container.get(TagService).sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
 		}

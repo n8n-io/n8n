@@ -27,7 +27,7 @@ import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlH
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '../variables/variables.service';
-import { TagRepository } from '@/databases/repositories';
+import { TagService } from '@/services/tag.service';
 
 @Service()
 export class SourceControlImportService {
@@ -40,7 +40,7 @@ export class SourceControlImportService {
 	constructor(
 		private readonly variablesService: VariablesService,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
-		private readonly tagRepository: TagRepository,
+		private readonly tagService: TagService,
 	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -267,7 +267,7 @@ export class SourceControlImportService {
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
-		const localTags = await this.tagRepository.find({
+		const localTags = await this.tagService.findMany({
 			select: ['id', 'name'],
 		});
 		const localMappings = await Db.collections.WorkflowTagMapping.find({
@@ -483,7 +483,7 @@ export class SourceControlImportService {
 
 		await Promise.all(
 			mappedTags.tags.map(async (tag) => {
-				const findByName = await this.tagRepository.findOne({
+				const findByName = await this.tagService.findOne({
 					where: { name: tag.name },
 					select: ['id'],
 				});
@@ -492,15 +492,11 @@ export class SourceControlImportService {
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
-				await this.tagRepository.upsert(
-					{
-						...tag,
-					},
-					{
-						skipUpdateIfNoValuesChanged: true,
-						conflictPaths: { id: true },
-					},
-				);
+				const tagCopy = this.tagService.toEntity(tag);
+				await this.tagService.upsert(tagCopy, {
+					skipUpdateIfNoValuesChanged: true,
+					conflictPaths: { id: true },
+				});
 			}),
 		);
 

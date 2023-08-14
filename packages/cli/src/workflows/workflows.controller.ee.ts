@@ -12,7 +12,6 @@ import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
-import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
@@ -22,7 +21,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
-import { TagRepository } from '@/databases/repositories';
+import { TagService } from '@/services/tag.service';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -137,7 +136,7 @@ EEWorkflowController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Container.get(TagRepository).find({
+			newWorkflow.tags = await Container.get(TagService).findMany({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),
@@ -188,7 +187,7 @@ EEWorkflowController.post(
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
-			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
+			savedWorkflow.tags = Container.get(TagService).sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
 		}
