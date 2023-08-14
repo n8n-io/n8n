@@ -576,5 +576,12 @@ export const useUIStore = defineStore(STORES.UI, {
 				}
 			}
 		},
+		async dismissAllBanner() {
+			return Promise.all([
+				this.dismissBanner('TRIAL', 'temporary'),
+				this.dismissBanner('TRIAL_OVER', 'temporary'),
+				this.dismissBanner('V1', 'temporary'),
+			]);
+		},
 	},
 });
