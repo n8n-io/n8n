@@ -1,19 +1,21 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
+import type { IDataObject } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import type { MailData, SendEmailResult } from './Interfaces';
 
 export class NodeMailer {
-	private transport?: Transporter;
+	private transport: Transporter;
 
-	constructor() {
-		const transportConfig: any = {
+	async init(): Promise<void> {
+		const transportConfig: IDataObject = {
 			host: config.getEnv('userManagement.emails.smtp.host'),
 			port: config.getEnv('userManagement.emails.smtp.port'),
 			secure: config.getEnv('userManagement.emails.smtp.secure'),
 		};
+
 		if (
 			config.getEnv('userManagement.emails.smtp.auth.user') &&
 			config.getEnv('userManagement.emails.smtp.auth.pass')
@@ -23,6 +25,7 @@ export class NodeMailer {
 				pass: config.getEnv('userManagement.emails.smtp.auth.pass'),
 			};
 		}
+
 		this.transport = createTransport(transportConfig);
 	}
 
