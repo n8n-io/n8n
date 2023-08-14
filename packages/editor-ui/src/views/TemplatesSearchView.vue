@@ -30,35 +30,30 @@
 					/>
 				</div>
 				<div :class="$style.search">
-					<template>
-						<n8n-input
-							:modelValue="search"
-							:placeholder="$locale.baseText('templates.searchPlaceholder')"
-							@update:modelValue="onSearchInput"
-							@blur="trackSearch"
-							clearable
-						>
-							<template #prefix>
-								<font-awesome-icon icon="search" />
-							</template>
-						</n8n-input>
-						<div
-							:class="$style.carouselContainer"
-							v-show="collections.length || loadingCollections"
-						>
-							<div :class="$style.header">
-								<n8n-heading :bold="true" size="medium" color="text-light">
-									{{ $locale.baseText('templates.collections') }}
-									<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
-								</n8n-heading>
-							</div>
-							<CollectionsCarousel
-								:collections="collections"
-								:loading="loadingCollections"
-								@openCollection="onOpenCollection"
-							/>
+					<n8n-input
+						:modelValue="search"
+						:placeholder="$locale.baseText('templates.searchPlaceholder')"
+						@update:modelValue="onSearchInput"
+						@blur="trackSearch"
+						clearable
+					>
+						<template #prefix>
+							<font-awesome-icon icon="search" />
+						</template>
+					</n8n-input>
+					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
+						<div :class="$style.header">
+							<n8n-heading :bold="true" size="medium" color="text-light">
+								{{ $locale.baseText('templates.collections') }}
+								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
+							</n8n-heading>
 						</div>
-					</template>
+						<CollectionsCarousel
+							:collections="collections"
+							:loading="loadingCollections"
+							@openCollection="onOpenCollection"
+						/>
+					</div>
 					<TemplateList
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
