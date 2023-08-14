@@ -109,6 +109,7 @@ export default defineComponent({
 			const supported = this.getSupportedSets(this.parameter.credentialTypes);
 
 			const checkedCredType = this.credentialsStore.getCredentialTypeByName(name);
+			if (!checkedCredType) return false;
 
 			for (const property of supported.has) {
 				if (checkedCredType[property as keyof ICredentialType] !== undefined) {
