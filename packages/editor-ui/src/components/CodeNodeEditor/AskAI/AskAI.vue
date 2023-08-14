@@ -16,16 +16,15 @@ import {
 	ASK_AI_EXPERIMENT,
 	ASK_AI_MAX_PROMPT_LENGTH,
 	ASK_AI_MIN_PROMPT_LENGTH,
-	ASK_AI_LOADING_DURATION_MS
+	ASK_AI_LOADING_DURATION_MS,
 } from '@/constants';
 import CircleLoader from './CircleLoader.vue';
 
-
 const emit = defineEmits<{
-	(e: 'submit', code: string): void
-	(e: 'replaceCode', code: string): void
-	(e: 'startedLoading'): void
-	(e: 'finishedLoading'): void
+	(e: 'submit', code: string): void;
+	(e: 'replaceCode', code: string): void;
+	(e: 'startedLoading'): void;
+	(e: 'finishedLoading'): void;
 }>();
 
 const props = defineProps<{
@@ -43,7 +42,11 @@ const prompt = ref('');
 const parentNodes = ref<INodeUi[]>([]);
 
 const isSubmitEnabled = computed(() => {
-	return !isEachItemMode.value && prompt.value.length >= ASK_AI_MIN_PROMPT_LENGTH && hasExecutionData.value;
+	return (
+		!isEachItemMode.value &&
+		prompt.value.length >= ASK_AI_MIN_PROMPT_LENGTH &&
+		hasExecutionData.value
+	);
 });
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 const loadingString = computed(() =>
@@ -185,8 +188,8 @@ function triggerLoadingChange() {
 
 		// Loading phrase change
 		if (!lastPhraseChange || timestamp - lastPhraseChange >= loadingPhraseUpdateMs) {
-				loadingPhraseIndex.value = Math.floor(Math.random() * loadingPhrasesCount);
-				lastPhraseChange = timestamp;
+			loadingPhraseIndex.value = Math.floor(Math.random() * loadingPhrasesCount);
+			lastPhraseChange = timestamp;
 		}
 
 		// Loader progress change
@@ -195,7 +198,7 @@ function triggerLoadingChange() {
 
 		if (!isLoading.value) return;
 		if (loaderProgress.value < 100 || lastPhraseChange + loadingPhraseUpdateMs > timestamp) {
-				window.requestAnimationFrame(step);
+			window.requestAnimationFrame(step);
 		}
 	};
 

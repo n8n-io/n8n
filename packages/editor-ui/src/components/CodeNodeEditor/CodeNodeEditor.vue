@@ -12,8 +12,8 @@
 			v-if="aiEnabled"
 			:before-leave="onBeforeTabLeave"
 		>
-			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.code')" name="code">
-				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
+			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.code')" name="code" data-test-id="code-node-tab-code">
+				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" data-test-id="code-node-tab-code" />
 			</el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.askAi')" name="ask-ai">
 				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
@@ -146,10 +146,9 @@ export default defineComponent({
 		aiEnabled(): boolean {
 			// AI is enabled only via Posthog experiment. So if user doesn't have feature flag
 			// we fallback to control which is no-show variant
-			const isAiExperimentDisabled = (
-				this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ??
-				ASK_AI_EXPERIMENT.control
-			) === ASK_AI_EXPERIMENT.control;
+			const isAiExperimentDisabled =
+				(this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ?? ASK_AI_EXPERIMENT.control) ===
+				ASK_AI_EXPERIMENT.control;
 
 			return (
 				!isAiExperimentDisabled &&
