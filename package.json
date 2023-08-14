@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -63,6 +63,7 @@
     "turbo": "1.10.12",
     "typescript": "*",
     "vite": "^4.4.7",
+    "vite-plugin-ejs": "^1.6.4",
     "vitest": "^0.33.0",
     "vue-tsc": "^1.8.8"
   },
