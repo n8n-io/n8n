@@ -304,7 +304,7 @@ export default defineComponent({
 
 			// If there is already selected type, use it
 			if (this.selectedCredential !== '') {
-				return this.credentialsStore.getCredentialTypeByName(this.selectedCredential);
+				return this.credentialsStore.getCredentialTypeByName(this.selectedCredential) ?? null;
 			} else if (this.requiredCredentials) {
 				// Otherwise, use credential type that corresponds to the first auth option in the node definition
 				const nodeAuthOptions = getNodeAuthOptions(this.activeNodeType);
