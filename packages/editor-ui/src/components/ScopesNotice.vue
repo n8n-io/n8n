@@ -35,10 +35,12 @@ export default defineComponent({
 			const oauth1Api = this.$locale.baseText('generic.oauth1Api');
 			const oauth2Api = this.$locale.baseText('generic.oauth2Api');
 
-			return this.credentialsStore
-				.getCredentialTypeByName(this.activeCredentialType)
-				.displayName.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
-				.trim();
+			return (
+				this.credentialsStore
+					.getCredentialTypeByName(this.activeCredentialType)
+					?.displayName.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
+					.trim() || ''
+			);
 		},
 	},
 });
