@@ -193,6 +193,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/nodes-langchain':
+        specifier: workspace:*
+        version: link:../nodes-langchain
       '@n8n_io/license-sdk':
         specifier: ~2.4.0
         version: 2.4.0
@@ -346,9 +349,6 @@ importers:
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../nodes-base
-      n8n-nodes-langchain:
-        specifier: workspace:*
-        version: link:../nodes-langchain
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow

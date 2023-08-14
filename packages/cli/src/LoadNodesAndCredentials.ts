@@ -77,7 +77,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
-			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-langchain');
+			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/nodes-langchain');
 		}
 
 		// Load nodes from any other `n8n-nodes-*` packages in the download directory

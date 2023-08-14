@@ -153,7 +153,7 @@
     "n8n-core": "workspace:*",
     "n8n-editor-ui": "workspace:*",
     "n8n-nodes-base": "workspace:*",
-    "n8n-nodes-langchain": "workspace:*",
+    "@n8n/nodes-langchain": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "^3.3.6",
     "nodemailer": "^6.7.1",
