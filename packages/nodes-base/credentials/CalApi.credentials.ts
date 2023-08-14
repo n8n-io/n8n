@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,13 +7,17 @@ import {
 
 export class CalApi implements ICredentialType {
 	name = 'calApi';
+
 	displayName = 'Cal API';
+
 	documentationUrl = 'cal';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

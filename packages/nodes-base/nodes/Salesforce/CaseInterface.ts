@@ -1,4 +1,3 @@
-
 export interface ICase {
 	Type?: string;
 	Origin?: string;

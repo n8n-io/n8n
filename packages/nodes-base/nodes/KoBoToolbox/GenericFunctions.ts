@@ -1,10 +1,7 @@
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	IHookFunctions,
 	IHttpRequestOptions,
 	INodeExecutionData,
@@ -12,16 +9,33 @@ import {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import _ from 'lodash';
+import set from 'lodash/set';
+import concat from 'lodash/concat';
+import split from 'lodash/split';
+import every from 'lodash/every';
+import toString from 'lodash/toString';
+import toNumber from 'lodash/toNumber';
+import isString from 'lodash/isString';
+import compact from 'lodash/compact';
+import first from 'lodash/first';
+import last from 'lodash/last';
+import clone from 'lodash/clone';
+import some from 'lodash/some';
+import isArray from 'lodash/isArray';
+import trim from 'lodash/trim';
+import escapeRegExp from 'lodash/escapeRegExp';
 
-export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function koBoToolboxApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	option: IDataObject = {},
+): Promise<any> {
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Set up pagination / scrolling
 	const returnAll = !!option.returnAll;
 	if (returnAll) {
 		// Override manual pagination options
-		_.set(option, 'qs.limit', 3000);
+		set(option, 'qs.limit', 3000);
 		// Don't pass this custom param to helpers.httpRequest
 		delete option.returnAll;
 	}
@@ -29,7 +43,7 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	const options: IHttpRequestOptions = {
 		url: '',
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 		},
 		json: true,
 	};
@@ -37,19 +51,22 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 		Object.assign(options, option);
 	}
 	if (options.url && !/^http(s)?:/.test(options.url)) {
-		options.url = credentials.URL + options.url;
+		options.url = (credentials.URL as string) + options.url;
 	}
 
 	let results = null;
 	let keepLooking = true;
 	while (keepLooking) {
-		const response = await this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', options);
+		const response = await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			'koBoToolboxApi',
+			options,
+		);
 		// Append or set results
-		results = response.results ? _.concat(results || [], response.results) : response;
+		results = response.results ? concat(results || [], response.results) : response;
 		if (returnAll && response.next) {
 			options.url = response.next;
-		}
-		else {
+		} else {
 			keepLooking = false;
 		}
 	}
@@ -57,36 +74,49 @@ export async function koBoToolboxApiRequest(this: IExecuteFunctions | IWebhookFu
 	return results;
 }
 
+export async function koBoToolboxRawRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	option: IHttpRequestOptions,
+): Promise<any> {
+	const credentials = await this.getCredentials('koBoToolboxApi');
+
+	if (option.url && !/^http(s)?:/.test(option.url)) {
+		option.url = (credentials.URL as string) + option.url;
+	}
+
+	return this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
+}
+
 function parseGeoPoint(geoPoint: string): null | number[] {
 	// Check if it looks like a "lat lon z precision" flat string e.g. "-1.931161 30.079811 0 0" (lat, lon, elevation, precision)
 	// NOTE: we are discarding the elevation and precision values since they're not (well) supported in GeoJSON
-	const coordinates = _.split(geoPoint, ' ');
-	if (coordinates.length >= 2 && _.every(coordinates, coord => coord && /^-?\d+(?:\.\d+)?$/.test(_.toString(coord)))) {
+	const coordinates = split(geoPoint, ' ');
+	if (
+		coordinates.length >= 2 &&
+		every(coordinates, (coord) => coord && /^-?\d+(?:\.\d+)?$/.test(toString(coord)))
+	) {
 		// NOTE: GeoJSON uses lon, lat, while most common systems use lat, lon order!
-		return [
-			_.toNumber(coordinates[1]),
-			_.toNumber(coordinates[0]),
-		];
+		return [toNumber(coordinates[1]), toNumber(coordinates[0])];
 	}
 	return null;
 }
 
 export function parseStringList(value: string): string[] {
-	return _.split(_.toString(value), /[\s,]+/);
+	return split(toString(value), /[\s,]+/);
 }
 
 const matchWildcard = (value: string, pattern: string): boolean => {
-	const regex = new RegExp(`^${_.escapeRegExp(pattern).replace('\\*', '.*')}$`);
+	const regex = new RegExp(`^${escapeRegExp(pattern).replace('\\*', '.*')}$`);
 	return regex.test(value);
 };
 
-const formatValue = (value: any, format: string): any => { //tslint:disable-line:no-any
-	if (_.isString(value)) {
+const formatValue = (value: any, format: string): any => {
+	if (isString(value)) {
 		// Sanitize value
-		value = _.toString(value);
+		value = toString(value);
 
 		// Parse geoPoints
-		const geoPoint = parseGeoPoint(value);
+		const geoPoint = parseGeoPoint(value as string);
 		if (geoPoint) {
 			return {
 				type: 'Point',
@@ -96,62 +126,74 @@ const formatValue = (value: any, format: string): any => { //tslint:disable-line
 
 		// Check if it's a closed polygon geo-shape: -1.954117 30.085159 0 0;-1.955005 30.084622 0 0;-1.956057 30.08506 0 0;-1.956393 30.086229 0 0;-1.955853 30.087143 0 0;-1.954609 30.08725 0 0;-1.953966 30.086735 0 0;-1.953805 30.085897 0 0;-1.954117 30.085159 0 0
 		const points = value.split(';');
-		if (points.length >= 2 && /^[-\d\.\s;]+$/.test(value)) {
+		if (points.length >= 2 && /^[-\d\.\s;]+$/.test(value as string)) {
 			// Using the GeoJSON format as per https://geojson.org/
-			const coordinates = _.compact(points.map(parseGeoPoint));
+			const coordinates = compact(points.map(parseGeoPoint) as number[]);
 			// Only return if all values are properly parsed
 			if (coordinates.length === points.length) {
 				// If the shape is closed, declare it as Polygon, otherwise as LineString
-				return _.first(points) === _.last(points)
-					? {
+
+				if (first(points) === last(points)) {
+					return {
 						type: 'Polygon',
 						coordinates: [coordinates],
-					}
-					: {
-						type: 'LineString',
-						coordinates,
 					};
+				}
+
+				return { type: 'LineString', coordinates };
 			}
 		}
 
 		// Parse numbers
 		if ('number' === format) {
-			return _.toNumber(value);
+			return toNumber(value);
 		}
 
 		// Split multi-select
 		if ('multiSelect' === format) {
-			return _.split(_.toString(value), ' ');
+			return split(toString(value), ' ');
 		}
 	}
 
 	return value;
 };
 
-export function formatSubmission(submission: IDataObject, selectMasks: string[] = [], numberMasks: string[] = []): IDataObject {
+export function formatSubmission(
+	submission: IDataObject,
+	selectMasks: string[] = [],
+	numberMasks: string[] = [],
+): IDataObject {
 	// Create a shallow copy of the submission
 	const response = {} as IDataObject;
 
 	for (const key of Object.keys(submission)) {
-		let value = _.clone(submission[key]);
+		let value = clone(submission[key]);
 		// Sanitize key names: split by group, trim _
-		const sanitizedKey = key.split('/').map(k => _.trim(k, ' _')).join('.');
+		const sanitizedKey = key
+			.split('/')
+			.map((k) => trim(k, ' _'))
+			.join('.');
 		const leafKey = sanitizedKey.split('.').pop() || '';
 		let format = 'string';
-		if (_.some(numberMasks, mask => matchWildcard(leafKey, mask))) {
+		if (some(numberMasks, (mask) => matchWildcard(leafKey, mask))) {
 			format = 'number';
 		}
-		if (_.some(selectMasks, mask => matchWildcard(leafKey, mask))) {
+		if (some(selectMasks, (mask) => matchWildcard(leafKey, mask))) {
 			format = 'multiSelect';
 		}
 
 		value = formatValue(value, format);
 
-		_.set(response, sanitizedKey, value);
+		set(response, sanitizedKey, value);
 	}
 
 	// Reformat _geolocation
-	if (_.isArray(response.geolocation) && response.geolocation.length === 2 && response.geolocation[0] && response.geolocation[1]) {
+	if (
+		isArray(response.geolocation) &&
+		response.geolocation.length === 2 &&
+		response.geolocation[0] &&
+		response.geolocation[1]
+	) {
 		response.geolocation = {
 			type: 'Point',
 			coordinates: [response.geolocation[1], response.geolocation[0]],
@@ -161,7 +203,11 @@ export function formatSubmission(submission: IDataObject, selectMasks: string[] 
 	return response;
 }
 
-export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunctions, submission: IDataObject, options: IDataObject): Promise<INodeExecutionData> {
+export async function downloadAttachments(
+	this: IExecuteFunctions | IWebhookFunctions,
+	submission: IDataObject,
+	options: IDataObject,
+): Promise<INodeExecutionData> {
 	// Initialize return object with the original submission JSON content
 	const binaryItem: INodeExecutionData = {
 		json: {
@@ -173,20 +219,21 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Look for attachment links - there can be more than one
-	const attachmentList = (submission['_attachments'] || submission['attachments']) as any[];  // tslint:disable-line:no-any
-	if (attachmentList && attachmentList.length) {
+	const attachmentList = (submission._attachments || submission.attachments) as any[];
+
+	if (attachmentList?.length) {
 		for (const [index, attachment] of attachmentList.entries()) {
 			// look for the question name linked to this attachment
 			const fileName = attachment.filename;
-			const sanitizedFileName = _.toString(fileName).replace(/_[^_]+(?=\.\w+)/,'');  // strip suffix
+			const sanitizedFileName = toString(fileName).replace(/_[^_]+(?=\.\w+)/, ''); // strip suffix
 
 			let relatedQuestion = null;
-			if('question' === options.binaryNamingScheme) {
-				for(const question of Object.keys(submission)) {
+			if ('question' === options.binaryNamingScheme) {
+				for (const question of Object.keys(submission)) {
 					// The logic to map attachments to question is sometimes ambiguous:
 					// - If the attachment is linked to a question, the question's value is the same as the attachment's filename (with spaces replaced by underscores)
 					// - BUT sometimes the attachment's filename has an extra suffix, e.g. "My_Picture_0OdlaKJ.jpg", would map to the question "picture": "My Picture.jpg"
-					const sanitizedQuestionValue = _.toString(submission[question]).replace(/\s/g, '_');  // replace spaces with underscores
+					const sanitizedQuestionValue = toString(submission[question]).replace(/\s/g, '_'); // replace spaces with underscores
 					if (sanitizedFileName === sanitizedQuestionValue) {
 						relatedQuestion = question;
 						// Just use the first match...
@@ -199,14 +246,16 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 			// NOTE: this needs to follow redirects (possibly across domains), while keeping Authorization headers
 			// The Axios client will not propagate the Authorization header on redirects (see https://github.com/axios/axios/issues/3607), so we need to follow ourselves...
 			let response = null;
-			const attachmentUrl = attachment[options.version as string] || attachment.download_url as string;
-			let final = false, redir = 0;
+			const attachmentUrl =
+				attachment[options.version as string] || (attachment.download_url as string);
+			let final = false,
+				redir = 0;
 
 			const axiosOptions: IHttpRequestOptions = {
 				url: attachmentUrl,
 				method: 'GET',
 				headers: {
-					'Authorization': `Token ${credentials.token}`,
+					Authorization: `Token ${credentials.token}`,
 				},
 				ignoreHttpStatusErrors: true,
 				returnFullResponse: true,
@@ -217,7 +266,7 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 			while (!final && redir < 5) {
 				response = await this.helpers.httpRequest(axiosOptions);
 
-				if (response && response.headers.location) {
+				if (response?.headers.location) {
 					// Follow redirect
 					axiosOptions.url = response.headers.location;
 					redir++;
@@ -226,17 +275,19 @@ export async function downloadAttachments(this: IExecuteFunctions | IWebhookFunc
 				}
 			}
 
-			if (response && response.body) {
+			if (response?.body) {
 				// Use the provided prefix if any, otherwise try to use the original question name
 				let binaryName;
-				if('question' === options.binaryNamingScheme && relatedQuestion) {
+				if ('question' === options.binaryNamingScheme && relatedQuestion) {
 					binaryName = relatedQuestion;
-				}
-				else {
+				} else {
 					binaryName = `${options.dataPropertyAttachmentsPrefixName || 'attachment_'}${index}`;
 				}
 
-				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(response.body, fileName);
+				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(
+					response.body as Buffer,
+					fileName as string,
+				);
 			}
 		}
 	} else {
@@ -257,5 +308,5 @@ export async function loadForms(this: ILoadOptionsFunctions): Promise<INodePrope
 		scroll: true,
 	});
 
-	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];  // tslint:disable-line:no-any
+	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];
 }

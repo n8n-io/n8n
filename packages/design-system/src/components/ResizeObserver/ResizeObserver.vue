@@ -5,10 +5,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 
-import Vue from 'vue';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'ResizeObserver',
 	props: {
 		enabled: {
@@ -17,25 +16,34 @@ export default Vue.extend({
 		},
 		breakpoints: {
 			type: Array,
-			validator: (bps: Array<{bp: string, width: number}>) => {
-				return Array.isArray(bps) && bps.reduce(
-					(accu, {width, bp}) => accu && typeof width === 'number' && typeof bp === 'string'
-					, true);
+			validator: (bps: Array<{ bp: string; width: number }>) => {
+				return (
+					Array.isArray(bps) &&
+					bps.reduce(
+						(accu, { width, bp }) => accu && typeof width === 'number' && typeof bp === 'string',
+						true,
+					)
+				);
 			},
 		},
 	},
-	data(): {observer: ResizeObserver | null, width: number | null} {
+	data(): { observer: ResizeObserver | null; bp: string } {
 		return {
 			observer: null,
 			bp: '',
 		};
 	},
 	mounted() {
-		if (!this.$props.enabled) {
+		if (!this.enabled) {
 			return;
 		}
 
-		const bps = [...(this.breakpoints || [])].sort((a, b) => a.width - b.width);
+		const unsortedBreakpoints = [...(this.breakpoints || [])] as Array<{
+			width: number;
+			bp: string;
+		}>;
+
+		const bps = unsortedBreakpoints.sort((a, b) => a.width - b.width);
 
 		const observer = new ResizeObserver((entries) => {
 			entries.forEach((entry) => {
@@ -50,19 +58,19 @@ export default Vue.extend({
 						}
 					}
 					this.bp = newBP;
-			 });
+				});
 			});
 		});
 
-		this.$data.observer = observer;
+		this.observer = observer;
 
 		if (this.$refs.root) {
-			observer.observe(this.$refs.root);
+			observer.observe(this.$refs.root as HTMLDivElement);
 		}
 	},
-	beforeDestroy() {
-		if (this.$props.enabled) {
-			this.$data.observer.disconnect();
+	beforeUnmount() {
+		if (this.enabled) {
+			this.observer?.disconnect();
 		}
 	},
 });

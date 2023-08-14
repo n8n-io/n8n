@@ -1,9 +1,9 @@
-import {
+import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
-	ICredentials,
 	ICredentialsEncrypted,
 } from 'n8n-workflow';
+import { ICredentials } from 'n8n-workflow';
 
 import { AES, enc } from 'crypto-js';
 
@@ -12,7 +12,6 @@ export class Credentials extends ICredentials {
 	 * Returns if the given nodeType has access to data
 	 */
 	hasNodeAccess(nodeType: string): boolean {
-		// eslint-disable-next-line no-restricted-syntax
 		for (const accessData of this.nodesAccess) {
 			if (accessData.nodeType === nodeType) {
 				return true;
@@ -78,10 +77,9 @@ export class Credentials extends ICredentials {
 		const fullData = this.getData(encryptionKey, nodeType);
 
 		if (fullData === null) {
-			throw new Error(`No data was set.`);
+			throw new Error('No data was set.');
 		}
 
-		// eslint-disable-next-line no-prototype-builtins
 		if (!fullData.hasOwnProperty(key)) {
 			throw new Error(`No data for key "${key}" exists.`);
 		}
@@ -94,7 +92,7 @@ export class Credentials extends ICredentials {
 	 */
 	getDataToSave(): ICredentialsEncrypted {
 		if (this.data === undefined) {
-			throw new Error(`No credentials were set to save.`);
+			throw new Error('No credentials were set to save.');
 		}
 
 		return {

@@ -1,21 +1,16 @@
-import {
+import type {
+	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
-import {
-	mailchimpApiRequest,
-} from './GenericFunctions';
+import { NodeApiError } from 'n8n-workflow';
+import { mailchimpApiRequest } from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,9 +31,7 @@ export class MailchimpTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiKey',
-						],
+						authentication: ['apiKey'],
 					},
 				},
 			},
@@ -47,9 +40,7 @@ export class MailchimpTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -58,13 +49,13 @@ export class MailchimpTrigger implements INodeType {
 			{
 				name: 'setup',
 				httpMethod: 'GET',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
@@ -91,7 +82,8 @@ export class MailchimpTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				description: 'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The list that is gonna fire the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},
@@ -113,17 +105,19 @@ export class MailchimpTrigger implements INodeType {
 					{
 						name: 'Cleaned',
 						value: 'cleaned',
-						description: 'Whether the webhook is triggered when a subscriber\'s email address is cleaned from the list',
+						description:
+							"Whether the webhook is triggered when a subscriber's email address is cleaned from the list",
 					},
 					{
 						name: 'Email Address Updated',
 						value: 'upemail',
-						description: 'Whether the webhook is triggered when a subscriber\'s email address is changed',
+						description:
+							"Whether the webhook is triggered when a subscriber's email address is changed",
 					},
 					{
 						name: 'Profile Updated',
 						value: 'profile',
-						description: 'Whether the webhook is triggered when a subscriber\'s profile is updated',
+						description: "Whether the webhook is triggered when a subscriber's profile is updated",
 					},
 					{
 						name: 'Subscribe',
@@ -143,7 +137,8 @@ export class MailchimpTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description: 'The possible sources of any events that can trigger the webhook and whether they are enabled',
+				description:
+					'The possible sources of any events that can trigger the webhook and whether they are enabled',
 				options: [
 					{
 						name: 'User',
@@ -153,7 +148,8 @@ export class MailchimpTrigger implements INodeType {
 					{
 						name: 'Admin',
 						value: 'admin',
-						description: 'Whether the webhook is triggered by admin-initiated actions in the web interface',
+						description:
+							'Whether the webhook is triggered by admin-initiated actions in the web interface',
 					},
 					{
 						name: 'API',
@@ -167,17 +163,12 @@ export class MailchimpTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let lists, response;
-				try {
-					response = await mailchimpApiRequest.call(this, '/lists', 'GET');
-					lists = response.lists;
-				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
-				}
+				const response = await mailchimpApiRequest.call(this, '/lists', 'GET');
+				const lists = response.lists;
 				for (const list of lists) {
 					const listName = list.name;
 					const listId = list.id;
@@ -192,7 +183,6 @@ export class MailchimpTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -206,10 +196,13 @@ export class MailchimpTrigger implements INodeType {
 				try {
 					await mailchimpApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
-					if (error.statusCode === 404) {
-						return false;
+					if (error instanceof NodeApiError && error.cause && 'isAxiosError' in error.cause) {
+						if (error.cause.statusCode === 404) {
+							return false;
+						}
+						throw error;
 					}
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 				return true;
 			},
@@ -269,7 +262,7 @@ export class MailchimpTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+		const webhookData = this.getWorkflowStaticData('node');
 		const webhookName = this.getWebhookName();
 		if (webhookName === 'setup') {
 			// Is a create webhook confirmation request
@@ -283,16 +276,17 @@ export class MailchimpTrigger implements INodeType {
 		if (req.body.id !== webhookData.id) {
 			return {};
 		}
-		// @ts-ignore
-		if (!webhookData.events.includes(req.body.type)
+
+		if (
 			// @ts-ignore
-			&& !webhookData.sources.includes(req.body.type)) {
+			!webhookData.events.includes(req.body.type) &&
+			// @ts-ignore
+			!webhookData.sources.includes(req.body.type)
+		) {
 			return {};
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

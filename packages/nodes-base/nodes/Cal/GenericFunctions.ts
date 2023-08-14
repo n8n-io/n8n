@@ -1,20 +1,25 @@
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	IHookFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 	IWebhookFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function calApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: IHttpRequestMethods, resource: string, body: any = {}, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function calApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
 
+	body: any = {},
+	query: IDataObject = {},
+	option: IDataObject = {},
+): Promise<any> {
 	const credentials = await this.getCredentials('calApi');
 
 	let options: IHttpRequestOptions = {
@@ -32,16 +37,22 @@ export async function calApiRequest(this: IExecuteFunctions | IWebhookFunctions 
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'calApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export function sortOptionParameters(optionParameters: INodePropertyOptions[]): INodePropertyOptions[] {
+export function sortOptionParameters(
+	optionParameters: INodePropertyOptions[],
+): INodePropertyOptions[] {
 	optionParameters.sort((a, b) => {
 		const aName = a.name.toLowerCase();
 		const bName = b.name.toLowerCase();
-		if (aName < bName) { return -1; }
-		if (aName > bName) { return 1; }
+		if (aName < bName) {
+			return -1;
+		}
+		if (aName > bName) {
+			return 1;
+		}
 		return 0;
 	});
 

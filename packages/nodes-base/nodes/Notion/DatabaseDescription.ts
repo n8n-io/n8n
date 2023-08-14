@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const databaseOperations: INodeProperties[] = [
 	{
@@ -10,12 +8,8 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'database',
-				],
+				'@version': [2],
+				resource: ['database'],
 			},
 		},
 		options: [
@@ -26,10 +20,10 @@ export const databaseOperations: INodeProperties[] = [
 				action: 'Get a database',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all databases',
-				action: 'Get all databases',
+				description: 'Get many databases',
+				action: 'Get many databases',
 			},
 			{
 				name: 'Search',
@@ -47,12 +41,8 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [
-					1,
-				],
-				resource: [
-					'database',
-				],
+				'@version': [1],
+				resource: ['database'],
 			},
 		},
 		options: [
@@ -63,10 +53,10 @@ export const databaseOperations: INodeProperties[] = [
 				action: 'Get a database',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all databases',
-				action: 'Get all databases',
+				description: 'Get many databases',
+				action: 'Get many databases',
 			},
 		],
 		default: 'get',
@@ -74,27 +64,79 @@ export const databaseOperations: INodeProperties[] = [
 ];
 
 export const databaseFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
 	/* -------------------------------------------------------------------------- */
+
 	{
-		displayName: 'Database Link or ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage:
+								'Not a valid Notion Database URL. Hint: use the URL of the database itself, not a page containing it.',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['database'],
+				operation: ['get'],
 			},
 		},
-		description: 'The Database URL from Notion\'s \'copy link\' functionality (or just the ID contained within the URL)',
+		description: 'The Notion Database to get',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
@@ -105,12 +147,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['database'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -122,15 +160,9 @@ export const databaseFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['database'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -146,16 +178,9 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [
-					2,
-				],
-				resource: [
-					'database',
-				],
-				operation: [
-					'getAll',
-					'get',
-				],
+				'@version': [2],
+				resource: ['database'],
+				operation: ['getAll', 'get'],
 			},
 		},
 		default: true,
@@ -171,12 +196,8 @@ export const databaseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		description: 'The text to search for',
@@ -187,12 +208,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: false,
@@ -204,15 +221,9 @@ export const databaseFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['database'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -228,12 +239,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: true,
@@ -245,12 +252,8 @@ export const databaseFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'database',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['database'],
+				operation: ['search'],
 			},
 		},
 		default: {},

@@ -1,22 +1,29 @@
-import {MigrationInterface, QueryRunner} from "typeorm";
-import * as config from '../../../../config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddWaitColumnId1626183952959 implements MigrationInterface {
-	name = 'AddWaitColumnId1626183952959';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'execution_entity` ADD `waitTill` DATETIME NULL');
-		await queryRunner.query('CREATE INDEX `IDX_' + tablePrefix + 'ca4a71b47f28ac6ea88293a8e2` ON `' + tablePrefix + 'execution_entity` (`waitTill`)');
+export class AddWaitColumnId1626183952959 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		await queryRunner.query(
+			'ALTER TABLE `' + tablePrefix + 'execution_entity` ADD `waitTill` DATETIME NULL',
+		);
+		await queryRunner.query(
+			'CREATE INDEX `IDX_' +
+				tablePrefix +
+				'ca4a71b47f28ac6ea88293a8e2` ON `' +
+				tablePrefix +
+				'execution_entity` (`waitTill`)',
+		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
-			'DROP INDEX `IDX_' + tablePrefix + 'ca4a71b47f28ac6ea88293a8e2` ON `' + tablePrefix + 'execution_entity`'
+			'DROP INDEX `IDX_' +
+				tablePrefix +
+				'ca4a71b47f28ac6ea88293a8e2` ON `' +
+				tablePrefix +
+				'execution_entity`',
 		);
-		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'execution_entity` DROP COLUMN `waitTill`');
+		await queryRunner.query(
+			'ALTER TABLE `' + tablePrefix + 'execution_entity` DROP COLUMN `waitTill`',
+		);
 	}
 }

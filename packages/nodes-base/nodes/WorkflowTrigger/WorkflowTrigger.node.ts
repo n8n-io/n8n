@@ -1,5 +1,5 @@
-import { ITriggerFunctions } from 'n8n-core';
-import {
+import type {
+	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
@@ -53,7 +53,6 @@ export class WorkflowTrigger implements INodeType {
 		],
 	};
 
-
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const events = this.getNodeParameter('events', []) as activationType[];
 
@@ -69,15 +68,22 @@ export class WorkflowTrigger implements INodeType {
 			}
 			this.emit([
 				this.helpers.returnJsonArray([
-					{ event, timestamp: (new Date()).toISOString(), workflow_id: this.getWorkflow().id },
+					{ event, timestamp: new Date().toISOString(), workflow_id: this.getWorkflow().id },
 				]),
 			]);
 		}
 
-		const self = this;
-		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{ event: 'Manual execution', timestamp: (new Date()).toISOString(), workflow_id: self.getWorkflow().id }])]);
-		}
+		const manualTriggerFunction = async () => {
+			this.emit([
+				this.helpers.returnJsonArray([
+					{
+						event: 'Manual execution',
+						timestamp: new Date().toISOString(),
+						workflow_id: this.getWorkflow().id,
+					},
+				]),
+			]);
+		};
 
 		return {
 			manualTriggerFunction,

@@ -1,13 +1,16 @@
 <template>
-	<div role="radiogroup" :class="{[$style.radioGroup]: true, [$style.disabled]: disabled}">
+	<div
+		role="radiogroup"
+		:class="{ 'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled }"
+	>
 		<RadioButton
 			v-for="option in options"
 			:key="option.value"
 			v-bind="option"
-			:active="value === option.value"
+			:active="modelValue === option.value"
 			:size="size"
-			:disabled="disabled"
-			@click="(e) => onClick(option.value, e)"
+			:disabled="disabled || option.disabled"
+			@click.prevent.stop="onClick(option)"
 		/>
 	</div>
 </template>
@@ -15,13 +18,24 @@
 <script lang="ts">
 import RadioButton from './RadioButton.vue';
 
-export default {
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+
+export interface RadioOption {
+	label: string;
+	value: string;
+	disabled?: boolean;
+}
+
+export default defineComponent({
 	name: 'n8n-radio-buttons',
 	props: {
-		value: {
+		modelValue: {
 			type: String,
 		},
 		options: {
+			type: Array as PropType<RadioOption[]>,
+			default: (): RadioOption[] => [],
 		},
 		size: {
 			type: String,
@@ -34,18 +48,17 @@ export default {
 		RadioButton,
 	},
 	methods: {
-		onClick(value) {
-			if (this.disabled) {
+		onClick(option: { label: string; value: string; disabled?: boolean }) {
+			if (this.disabled || option.disabled) {
 				return;
 			}
-			this.$emit('input', value);
+			this.$emit('update:modelValue', option.value);
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
-
 .radioGroup {
 	display: inline-flex;
 	line-height: 1;
@@ -59,6 +72,4 @@ export default {
 .disabled {
 	cursor: not-allowed;
 }
-
 </style>
-

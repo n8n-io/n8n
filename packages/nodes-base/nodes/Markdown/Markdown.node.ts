@@ -1,18 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { Converter } from 'showdown';
 
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 
-import { isEmpty, set } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
+import set from 'lodash/set';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,11 +22,11 @@ export class Markdown implements INodeType {
 		icon: 'file:markdown.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["mode"]==="markdownToHtml" ? "Markdown to HTML" : "HTML to Markdown"}}',
+		subtitle:
+			'={{$parameter["mode"]==="markdownToHtml" ? "Markdown to HTML" : "HTML to Markdown"}}',
 		description: 'Convert data between Markdown and HTML',
 		defaults: {
 			name: 'Markdown',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -66,9 +67,6 @@ export class Markdown implements INodeType {
 				displayName: 'Markdown',
 				name: 'markdown',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						mode: ['markdownToHtml'],
@@ -176,7 +174,8 @@ export class Markdown implements INodeType {
 						name: 'keepDataImages',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/"&gt;',
+						description:
+							'Whether to keep images with data: URI (Note: These can be up to 1MB each), e.g. &lt;img src="data:image/gif;base64,R0lGODlhEAAQAMQAAORHHOVSK......0o/"&gt;',
 					},
 					{
 						displayName: 'Line Start Escape Pattern',
@@ -335,7 +334,8 @@ export class Markdown implements INodeType {
 						name: 'completeHTMLDocument',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment',
+						description:
+							'Whether to output a complete html document, including &lt;html&gt;, &lt;head&gt; and &lt;body&gt; tags instead of an HTML fragment',
 					},
 					{
 						displayName: 'Customized Header ID',
@@ -365,7 +365,8 @@ export class Markdown implements INodeType {
 						name: 'excludeTrailingPunctuationFromURLs',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to exclude trailing punctuation from autolinking URLs. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
+						description:
+							'Whether to exclude trailing punctuation from autolinking URLs. Punctuation excluded: . ! ? ( ). Only applies if simplifiedAutoLink option is set to true.',
 					},
 					{
 						displayName: 'GitHub Code Blocks',
@@ -379,7 +380,8 @@ export class Markdown implements INodeType {
 						name: 'ghCompatibleHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
+						description:
+							'Whether to generate header IDs compatible with github style (spaces are replaced with dashes and a bunch of non alphanumeric chars are removed)',
 					},
 					{
 						displayName: 'GitHub Mention Link',
@@ -460,7 +462,8 @@ export class Markdown implements INodeType {
 						name: 'rawHeaderId',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to remove only spaces, \' and " from generated header IDs (including prefixes), replacing them with dashes (-)',
+						description:
+							'Whether to remove only spaces, \' and " from generated header IDs (including prefixes), replacing them with dashes (-)',
 					},
 					{
 						displayName: 'Raw Prefix Header ID',
@@ -474,7 +477,8 @@ export class Markdown implements INodeType {
 						name: 'simpleLineBreaks',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to parse line breaks as &lt;br&gt;, like GitHub does, without needing 2 spaces at the end of the line',
+						description:
+							'Whether to parse line breaks as &lt;br&gt;, like GitHub does, without needing 2 spaces at the end of the line',
 					},
 					{
 						displayName: 'Smart Indentation Fix',
@@ -534,28 +538,42 @@ export class Markdown implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (mode === 'htmlToMarkdown') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 
-					const textReplaceOption = this.getNodeParameter('options.textReplace.values', i, []) as IDataObject[];
+					const textReplaceOption = this.getNodeParameter(
+						'options.textReplace.values',
+						i,
+						[],
+					) as IDataObject[];
 					options.textReplace = !isEmpty(textReplaceOption)
 						? textReplaceOption.map((entry) => [entry.pattern, entry.replacement])
 						: undefined;
 
-					const lineStartEscapeOption = this.getNodeParameter('options.lineStartEscape.value', i, {}) as IDataObject;
+					const lineStartEscapeOption = this.getNodeParameter(
+						'options.lineStartEscape.value',
+						i,
+						{},
+					) as IDataObject;
 					options.lineStartEscape = !isEmpty(lineStartEscapeOption)
 						? [lineStartEscapeOption.pattern, lineStartEscapeOption.replacement]
 						: undefined;
 
-					const globalEscapeOption = this.getNodeParameter('options.globalEscape.value', i, {}) as IDataObject;
+					const globalEscapeOption = this.getNodeParameter(
+						'options.globalEscape.value',
+						i,
+						{},
+					) as IDataObject;
 					options.globalEscape = !isEmpty(globalEscapeOption)
 						? [globalEscapeOption.pattern, globalEscapeOption.replacement]
 						: undefined;
 
 					options.ignore = options.ignore
-						? (options.ignore as string).split(',').map(element => element.trim()) : undefined;
+						? (options.ignore as string).split(',').map((element) => element.trim())
+						: undefined;
 					options.blockElements = options.blockElements
-						? (options.blockElements as string).split(',').map(element => element.trim()) : undefined;
+						? (options.blockElements as string).split(',').map((element) => element.trim())
+						: undefined;
 
 					const markdownOptions = {} as IDataObject;
 
@@ -569,7 +587,7 @@ export class Markdown implements INodeType {
 
 					const markdownFromHTML = NodeHtmlMarkdown.translate(html, markdownOptions);
 
-					const newItem = JSON.parse(JSON.stringify(items[i].json));
+					const newItem = deepCopy(items[i].json);
 					set(newItem, destinationKey, markdownFromHTML);
 					returnData.push(newItem);
 				}
@@ -577,14 +595,14 @@ export class Markdown implements INodeType {
 				if (mode === 'markdownToHtml') {
 					const markdown = this.getNodeParameter('markdown', i) as string;
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const converter = new Converter();
 
 					Object.keys(options).forEach((key) => converter.setOption(key, options[key]));
 					const htmlFromMarkdown = converter.makeHtml(markdown);
 
-					const newItem = JSON.parse(JSON.stringify(items[i].json));
+					const newItem = deepCopy(items[i].json);
 					set(newItem, destinationKey, htmlFromMarkdown);
 
 					returnData.push(newItem);

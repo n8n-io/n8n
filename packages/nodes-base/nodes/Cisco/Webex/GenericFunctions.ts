@@ -1,30 +1,31 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
 	INodeProperties,
 	IWebhookFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	upperFirst,
-} from 'lodash';
+import upperFirst from 'lodash/upperFirst';
 
-import {
-	createHash,
-} from 'crypto';
+import { createHash } from 'crypto';
 
-export async function webexApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function webexApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
 	let options: OptionsWithUri = {
 		method,
 		body,
@@ -36,48 +37,58 @@ export async function webexApiRequest(this: IExecuteFunctions | ILoadOptionsFunc
 		if (Object.keys(option).length !== 0) {
 			options = Object.assign({}, options, option);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, { tokenType: 'Bearer' });
+		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
+			tokenType: 'Bearer',
+		});
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function webexApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, options: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function webexApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
 
+	body: any = {},
+	query: IDataObject = {},
+	options: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
 	query.max = 100;
 	do {
-		responseData = await webexApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true, ...options });
+		responseData = await webexApiRequest.call(this, method, endpoint, body, query, uri, {
+			resolveWithFullResponse: true,
+			...options,
+		});
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
+			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body[propertyName]);
-	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
-	);
+		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
+	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
 
 export function getEvents() {
 	const resourceEvents: { [key: string]: string[] } = {
-		'attachmentAction': ['created', 'deleted', 'updated', '*'],
-		'membership': ['created', 'deleted', 'updated', '*'],
-		'message': ['created', 'deleted', 'updated', '*'],
-		'room': ['created', 'deleted', 'updated', '*'],
-		'meeting': ['created', 'deleted', 'updated', 'started', 'ended', '*'],
-		'recording': ['created', 'deleted', 'updated', '*'],
-		'telephonyCall': ['created', 'deleted', 'updated'],
+		attachmentAction: ['created', 'deleted', 'updated', '*'],
+		membership: ['created', 'deleted', 'updated', '*'],
+		message: ['created', 'deleted', 'updated', '*'],
+		room: ['created', 'deleted', 'updated', '*'],
+		meeting: ['created', 'deleted', 'updated', 'started', 'ended', '*'],
+		recording: ['created', 'deleted', 'updated', '*'],
+		telephonyCall: ['created', 'deleted', 'updated'],
 		'*': ['created', 'updated', 'deleted', '*'],
 	};
 
@@ -90,12 +101,13 @@ export function getEvents() {
 			type: 'options',
 			displayOptions: {
 				show: {
-					resource: [
-						(resource === '*') ? 'all' : resource,
-					],
+					resource: [resource === '*' ? 'all' : resource],
 				},
 			},
-			options: resourceEvents[resource].map((event) => ({ value: (event === '*' ? 'all' : event), name: upperFirst(event) })),
+			options: resourceEvents[resource].map((event) => ({
+				value: event === '*' ? 'all' : event,
+				name: upperFirst(event),
+			})),
 			default: '',
 			required: true,
 		});
@@ -104,35 +116,46 @@ export function getEvents() {
 }
 
 export function mapResource(event: string) {
-	return ({
-		'attachmentAction': 'attachmentActions',
-		'membership': 'memberships',
-		'message': 'messages',
-		'room': 'rooms',
-		'meeting': 'meetings',
-		'recording': 'recordings',
-		'telephonyCall': 'telephony_calls',
-		'all': 'all',
-	} as { [key: string]: string })[event];
+	return (
+		{
+			attachmentAction: 'attachmentActions',
+			membership: 'memberships',
+			message: 'messages',
+			room: 'rooms',
+			meeting: 'meetings',
+			recording: 'recordings',
+			telephonyCall: 'telephony_calls',
+			all: 'all',
+		} as { [key: string]: string }
+	)[event];
 }
 
-export function getAttachemnts(attachements: IDataObject[]) {
+function removeEmptyProperties(rest: { [key: string]: any }) {
+	return Object.keys(rest)
+		.filter((k) => rest[k] !== '')
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
+}
+
+export function getAttachments(attachments: IDataObject[]) {
 	const _attachments: IDataObject[] = [];
-	for (const attachment of attachements) {
+	for (const attachment of attachments) {
 		const body: IDataObject[] = [];
 		const actions: IDataObject[] = [];
-		for (const element of (attachment?.elementsUi as IDataObject).elementValues as IDataObject[] || []) {
-			// tslint:disable-next-line: no-any
-			const { type, ...rest } = element as { type: string, [key: string]: any };
+		for (const element of ((attachment?.elementsUi as IDataObject)
+			.elementValues as IDataObject[]) || []) {
+			const { type, ...rest } = element as { type: string; [key: string]: any };
 			if (type.startsWith('input')) {
-				body.push({ type: `Input.${upperFirst(type.replace('input', ''))}`, ...removeEmptyProperties(rest) });
+				body.push({
+					type: `Input.${upperFirst(type.replace('input', ''))}`,
+					...removeEmptyProperties(rest),
+				});
 			} else {
 				body.push({ type: upperFirst(type), ...removeEmptyProperties(rest) });
 			}
 		}
-		for (const action of (attachment?.actionsUi as IDataObject).actionValues as IDataObject[] || []) {
-			// tslint:disable-next-line: no-any
-			const { type, ...rest } = action as { type: string, [key: string]: any };
+		for (const action of ((attachment?.actionsUi as IDataObject).actionValues as IDataObject[]) ||
+			[]) {
+			const { type, ...rest } = action as { type: string; [key: string]: any };
 			actions.push({ type: `Action.${upperFirst(type)}`, ...removeEmptyProperties(rest) });
 		}
 		_attachments.push({
@@ -164,7 +187,8 @@ export function getActionInheritedProperties(): INodeProperties[] {
 			name: 'iconUrl',
 			type: 'string',
 			default: '',
-			description: 'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+.',
+			description:
+				'Optional icon to be shown on the action in conjunction with the title. Supports data URI in version 1.2+.',
 		},
 		{
 			displayName: 'Style',
@@ -185,7 +209,8 @@ export function getActionInheritedProperties(): INodeProperties[] {
 				},
 			],
 			default: 'default',
-			description: 'Controls the style of an Action, which influences how the action is displayed, spoken, etc',
+			description:
+				'Controls the style of an Action, which influences how the action is displayed, spoken, etc',
 		},
 	];
 }
@@ -199,13 +224,12 @@ export function getTextBlockProperties(): INodeProperties[] {
 			default: '',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			required: true,
-			description: 'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures).',
+			description:
+				'Text to display. A subset of markdown is supported (https://aka.ms/ACTextFeatures).',
 		},
 		{
 			displayName: 'Color',
@@ -213,9 +237,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			options: [
@@ -257,9 +279,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			options: [
@@ -281,9 +301,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			options: [
@@ -309,9 +327,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			default: false,
@@ -323,9 +339,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'number',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			default: 1,
@@ -337,9 +351,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			options: [
@@ -373,9 +385,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			options: [
@@ -401,9 +411,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			default: true,
@@ -415,9 +423,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			options: [
@@ -440,9 +446,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			default: false,
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			description: 'Whether to draw a separating line at the top of the element',
@@ -453,9 +457,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			options: [
@@ -497,9 +499,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'string',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			default: '',
@@ -511,9 +511,7 @@ export function getTextBlockProperties(): INodeProperties[] {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					type: [
-						'textBlock',
-					],
+					type: ['textBlock'],
 				},
 			},
 			default: true,
@@ -531,13 +529,12 @@ export function getInputTextProperties(): INodeProperties[] {
 			required: true,
 			displayOptions: {
 				show: {
-					type: [
-						'inputText',
-					],
+					type: ['inputText'],
 				},
 			},
 			default: '',
-			description: 'Unique identifier for the value. Used to identify collected input when the Submit action is performed.',
+			description:
+				'Unique identifier for the value. Used to identify collected input when the Submit action is performed.',
 		},
 		{
 			displayName: 'Is Multiline',
@@ -545,9 +542,7 @@ export function getInputTextProperties(): INodeProperties[] {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					type: [
-						'inputText',
-					],
+					type: ['inputText'],
 				},
 			},
 			default: false,
@@ -559,9 +554,7 @@ export function getInputTextProperties(): INodeProperties[] {
 			type: 'number',
 			displayOptions: {
 				show: {
-					type: [
-						'inputText',
-					],
+					type: ['inputText'],
 				},
 			},
 			default: 1,
@@ -573,9 +566,7 @@ export function getInputTextProperties(): INodeProperties[] {
 			type: 'string',
 			displayOptions: {
 				show: {
-					type: [
-						'inputText',
-					],
+					type: ['inputText'],
 				},
 			},
 			default: '',
@@ -587,9 +578,7 @@ export function getInputTextProperties(): INodeProperties[] {
 			type: 'string',
 			displayOptions: {
 				show: {
-					type: [
-						'inputText',
-					],
+					type: ['inputText'],
 				},
 			},
 			default: '',
@@ -601,9 +590,7 @@ export function getInputTextProperties(): INodeProperties[] {
 			type: 'options',
 			displayOptions: {
 				show: {
-					type: [
-						'inputText',
-					],
+					type: ['inputText'],
 				},
 			},
 			options: [
@@ -633,22 +620,13 @@ export function getInputTextProperties(): INodeProperties[] {
 			type: 'string',
 			displayOptions: {
 				show: {
-					type: [
-						'inputText',
-					],
+					type: ['inputText'],
 				},
 			},
 			default: '',
 			description: 'The initial value for this field',
 		},
 	];
-}
-
-// tslint:disable-next-line: no-any
-function removeEmptyProperties(rest: { [key: string]: any }) {
-	return Object.keys(rest)
-		.filter((k) => rest[k] !== '')
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {

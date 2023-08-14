@@ -1,19 +1,16 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
-
-import {
-	IClientOptions,
-} from 'mqtt';
+import * as mqtt from 'mqtt';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class Mqtt implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,6 +29,7 @@ export class Mqtt implements INodeType {
 			{
 				name: 'mqtt',
 				required: true,
+				testedBy: 'mqttConnectionTest',
 			},
 		],
 		properties: [
@@ -57,9 +55,7 @@ export class Mqtt implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						sendInputData: [
-							false,
-						],
+						sendInputData: [false],
 					},
 				},
 				default: '',
@@ -99,11 +95,89 @@ export class Mqtt implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'Normally if a publisher publishes a message to a topic, and no one is subscribed to that topic the message is simply discarded by the broker. However the publisher can tell the broker to keep the last message on that topic by setting the retain flag to true.',
+						description:
+							'Normally if a publisher publishes a message to a topic, and no one is subscribed to that topic the message is simply discarded by the broker. However the publisher can tell the broker to keep the last message on that topic by setting the retain flag to true.',
 					},
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async mqttConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const protocol = (credentials.protocol as string) || 'mqtt';
+					const host = credentials.host as string;
+					const brokerUrl = `${protocol}://${host}`;
+					const port = (credentials.port as number) || 1883;
+					const clientId =
+						(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
+					const clean = credentials.clean as boolean;
+					const ssl = credentials.ssl as boolean;
+					const ca = formatPrivateKey(credentials.ca as string);
+					const cert = formatPrivateKey(credentials.cert as string);
+					const key = formatPrivateKey(credentials.key as string);
+					const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
+
+					let client: mqtt.MqttClient;
+
+					if (!ssl) {
+						const clientOptions: mqtt.IClientOptions = {
+							port,
+							clean,
+							clientId,
+						};
+
+						if (credentials.username && credentials.password) {
+							clientOptions.username = credentials.username as string;
+							clientOptions.password = credentials.password as string;
+						}
+						client = mqtt.connect(brokerUrl, clientOptions);
+					} else {
+						const clientOptions: mqtt.IClientOptions = {
+							port,
+							clean,
+							clientId,
+							ca,
+							cert,
+							key,
+							rejectUnauthorized,
+						};
+						if (credentials.username && credentials.password) {
+							clientOptions.username = credentials.username as string;
+							clientOptions.password = credentials.password as string;
+						}
+
+						client = mqtt.connect(brokerUrl, clientOptions);
+					}
+
+					await new Promise((resolve, reject) => {
+						client.on('connect', (test) => {
+							resolve(test);
+							client.end();
+						});
+						client.on('error', (error) => {
+							client.end();
+							reject(error);
+						});
+					});
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: (error as Error).message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -111,11 +185,12 @@ export class Mqtt implements INodeType {
 		const length = items.length;
 		const credentials = await this.getCredentials('mqtt');
 
-		const protocol = credentials.protocol as string || 'mqtt';
+		const protocol = (credentials.protocol as string) || 'mqtt';
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
-		const port = credentials.port as number || 1883;
-		const clientId = credentials.clientId as string || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
+		const port = (credentials.port as number) || 1883;
+		const clientId =
+			(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
 		const ssl = credentials.ssl as boolean;
 		const ca = credentials.ca as string;
@@ -125,22 +200,21 @@ export class Mqtt implements INodeType {
 
 		let client: mqtt.MqttClient;
 
-		if (ssl === false) {
-			const clientOptions: IClientOptions = {
+		if (!ssl) {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
 			};
 
 			if (credentials.username && credentials.password) {
-					clientOptions.username = credentials.username as string;
-					clientOptions.password = credentials.password as string;
+				clientOptions.username = credentials.username as string;
+				clientOptions.password = credentials.password as string;
 			}
 
-			 client = mqtt.connect(brokerUrl, clientOptions);
-		}
-		else {
-			const clientOptions: IClientOptions = {
+			client = mqtt.connect(brokerUrl, clientOptions);
+		} else {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -154,22 +228,20 @@ export class Mqtt implements INodeType {
 				clientOptions.password = credentials.password as string;
 			}
 
-			 client = mqtt.connect(brokerUrl, clientOptions);
+			client = mqtt.connect(brokerUrl, clientOptions);
 		}
 
 		const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
-		// tslint:disable-next-line: no-any
-		const data = await new Promise((resolve, reject): any => {
+		const data = await new Promise((resolve, reject) => {
 			client.on('connect', () => {
 				for (let i = 0; i < length; i++) {
-
 					let message;
-					const topic = (this.getNodeParameter('topic', i) as string);
-					const options = (this.getNodeParameter('options', i) as IDataObject);
+					const topic = this.getNodeParameter('topic', i) as string;
+					const options = this.getNodeParameter('options', i);
 
 					try {
-						if (sendInputData === true) {
+						if (sendInputData) {
 							message = JSON.stringify(items[i].json);
 						} else {
 							message = this.getNodeParameter('message', i) as string;
@@ -185,7 +257,7 @@ export class Mqtt implements INodeType {
 					resolve([items]);
 				});
 
-				client.on('error', (e: string | undefined) => {
+				client.on('error', (e) => {
 					reject(e);
 				});
 			});

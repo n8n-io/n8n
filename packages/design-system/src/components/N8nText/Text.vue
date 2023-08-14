@@ -1,12 +1,12 @@
-<template functional>
-	<component :is="props.tag" :class="$options.methods.getClasses(props, $style, data)" :style="$options.methods.getStyles(props)" v-on="listeners">
+<template>
+	<component :is="tag" :class="['n8n-text', ...classes]" v-bind="$attrs">
 		<slot></slot>
 	</component>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-export default Vue.extend({
+import { defineComponent } from 'vue';
+export default defineComponent({
 	name: 'n8n-text',
 	props: {
 		bold: {
@@ -16,11 +16,22 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
+			validator: (value: string): boolean =>
+				['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'].includes(value),
+			validator: (value: string): boolean =>
+				[
+					'primary',
+					'text-dark',
+					'text-base',
+					'text-light',
+					'text-xlight',
+					'danger',
+					'success',
+					'warning',
+				].includes(value),
 		},
 		align: {
 			type: String,
@@ -35,27 +46,25 @@ export default Vue.extend({
 			default: 'span',
 		},
 	},
-	methods: {
-		getClasses(props: {size: string, bold: boolean}, $style: any, data: any) {
-			const classes = {[$style[`size-${props.size}`]]: true, [$style.bold]: props.bold, [$style.regular]: !props.bold};
-			if (data.staticClass) {
-				classes[data.staticClass] = true;
+	computed: {
+		classes() {
+			const applied = [];
+			if (this.align) {
+				applied.push(`align-${this.align}`);
+			}
+			if (this.color) {
+				applied.push(this.color);
 			}
 
-			return classes;
-		},
-		getStyles(props: {color: string, align: string, compact: false}) {
-			const styles = {} as any;
-			if (props.color) {
-				styles.color = `var(--color-${props.color})`;
+			if (this.compact) {
+				applied.push('compact');
 			}
-			if (props.compact) {
-				styles['line-height'] = 1;
-			}
-			if (props.align) {
-				styles['text-align'] = props.align;
-			}
-			return styles;
+
+			applied.push(`size-${this.size}`);
+
+			applied.push(this.bold ? 'bold' : 'regular');
+
+			return applied.map((c) => this.$style[c]);
 		},
 	},
 });
@@ -95,4 +104,51 @@ export default Vue.extend({
 	line-height: var(--font-line-height-compact);
 }
 
+.compact {
+	line-height: 1;
+}
+
+.primary {
+	color: var(--color-primary);
+}
+
+.text-dark {
+	color: var(--color-text-dark);
+}
+
+.text-base {
+	color: var(--color-text-base);
+}
+
+.text-light {
+	color: var(--color-text-light);
+}
+
+.text-xlight {
+	color: var(--color-text-xlight);
+}
+
+.danger {
+	color: var(--color-danger);
+}
+
+.success {
+	color: var(--color-success);
+}
+
+.warning {
+	color: var(--color-warning);
+}
+
+.align-left {
+	text-align: left;
+}
+
+.align-right {
+	text-align: right;
+}
+
+.align-center {
+	text-align: center;
+}
 </style>

@@ -1,13 +1,7 @@
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../transport';
+import { apiRequest } from '../transport';
 
 // Get all the available channels
 export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -21,11 +15,13 @@ export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePro
 	const returnData: INodePropertyOptions[] = [];
 	let name: string;
 	for (const data of responseData) {
-		if (data.delete_at !== 0 || (!data.display_name || !data.name)) {
+		if (data.delete_at !== 0 || !data.display_name || !data.name) {
 			continue;
 		}
 
-		name = `${data.team_display_name} - ${data.display_name || data.name} (${data.type === 'O' ? 'public' : 'private'})`;
+		name = `${data.team_display_name} - ${data.display_name || data.name} (${
+			data.type === 'O' ? 'public' : 'private'
+		})`;
 
 		returnData.push({
 			name,
@@ -34,8 +30,12 @@ export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePro
 	}
 
 	returnData.sort((a, b) => {
-		if (a.name < b.name) { return -1; }
-		if (a.name > b.name) { return 1; }
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
 		return 0;
 	});
 
@@ -43,7 +43,9 @@ export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePro
 }
 
 // Get all the channels in a team
-export async function getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+export async function getChannelsInTeam(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
 	const teamId = this.getCurrentNodeParameter('teamId');
 	const endpoint = `users/me/teams/${teamId}/channels`;
 	const responseData = await apiRequest.call(this, 'GET', endpoint, {});
@@ -55,15 +57,15 @@ export async function getChannelsInTeam(this: ILoadOptionsFunctions): Promise<IN
 	const returnData: INodePropertyOptions[] = [];
 	let name: string;
 	for (const data of responseData) {
-		if (data.delete_at !== 0 || (!data.display_name || !data.name)) {
+		if (data.delete_at !== 0 || !data.display_name || !data.name) {
 			continue;
 		}
 
 		const channelTypes: IDataObject = {
-			'D': 'direct',
-			'G': 'group',
-			'O': 'public',
-			'P': 'private',
+			D: 'direct',
+			G: 'group',
+			O: 'public',
+			P: 'private',
 		};
 
 		name = `${data.display_name} (${channelTypes[data.type as string]})`;
@@ -75,8 +77,12 @@ export async function getChannelsInTeam(this: ILoadOptionsFunctions): Promise<IN
 	}
 
 	returnData.sort((a, b) => {
-		if (a.name < b.name) { return -1; }
-		if (a.name > b.name) { return 1; }
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
 		return 0;
 	});
 
@@ -94,7 +100,6 @@ export async function getTeams(this: ILoadOptionsFunctions): Promise<INodeProper
 	const returnData: INodePropertyOptions[] = [];
 	let name: string;
 	for (const data of responseData) {
-
 		if (data.delete_at !== 0) {
 			continue;
 		}
@@ -108,8 +113,12 @@ export async function getTeams(this: ILoadOptionsFunctions): Promise<INodeProper
 	}
 
 	returnData.sort((a, b) => {
-		if (a.name < b.name) { return -1; }
-		if (a.name > b.name) { return 1; }
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
 		return 0;
 	});
 
@@ -126,7 +135,6 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 
 	const returnData: INodePropertyOptions[] = [];
 	for (const data of responseData) {
-
 		if (data.delete_at !== 0) {
 			continue;
 		}
@@ -138,11 +146,14 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 	}
 
 	returnData.sort((a, b) => {
-		if (a.name < b.name) { return -1; }
-		if (a.name > b.name) { return 1; }
+		if (a.name < b.name) {
+			return -1;
+		}
+		if (a.name > b.name) {
+			return 1;
+		}
 		return 0;
 	});
 
 	return returnData;
 }
-

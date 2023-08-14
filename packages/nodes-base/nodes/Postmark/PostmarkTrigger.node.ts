@@ -1,9 +1,7 @@
-import {
+import type {
+	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -12,7 +10,7 @@ import {
 import {
 	convertTriggerObjectToStringArray,
 	eventExists,
-	postmarkApiRequest
+	postmarkApiRequest,
 } from './GenericFunctions';
 
 export class PostmarkTrigger implements INodeType {
@@ -93,9 +91,7 @@ export class PostmarkTrigger implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						events: [
-							'open',
-						],
+						events: ['open'],
 					},
 				},
 			},
@@ -107,18 +103,13 @@ export class PostmarkTrigger implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						events: [
-							'bounce',
-							'spamComplaint',
-						],
+						events: ['bounce', 'spamComplaint'],
 					},
 				},
 			},
 		],
-
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -139,7 +130,7 @@ export class PostmarkTrigger implements INodeType {
 				}
 
 				// Get all webhooks
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const responseData = await postmarkApiRequest.call(this, 'GET', endpoint, {});
 
@@ -150,7 +141,10 @@ export class PostmarkTrigger implements INodeType {
 
 				// If webhooks exist, check if any match current settings
 				for (const webhook of responseData.Webhooks) {
-					if (webhook.Url === webhookUrl && eventExists(events, convertTriggerObjectToStringArray(webhook))) {
+					if (
+						webhook.Url === webhookUrl &&
+						eventExists(events, convertTriggerObjectToStringArray(webhook))
+					) {
 						webhookData.webhookId = webhook.ID;
 						// webhook identical to current settings. re-assign webhook id to found webhook.
 						return true;
@@ -162,27 +156,26 @@ export class PostmarkTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
-				// tslint:disable-next-line: no-any
-				const body : any = {
+				const body: any = {
 					Url: webhookUrl,
 					Triggers: {
-						Open:{
+						Open: {
 							Enabled: false,
 							PostFirstOpenOnly: false,
 						},
-						Click:{
+						Click: {
 							Enabled: false,
 						},
-						Delivery:{
+						Delivery: {
 							Enabled: false,
 						},
-						Bounce:{
+						Bounce: {
 							Enabled: false,
 							IncludeContent: false,
 						},
-						SpamComplaint:{
+						SpamComplaint: {
 							Enabled: false,
 							IncludeContent: false,
 						},
@@ -210,7 +203,9 @@ export class PostmarkTrigger implements INodeType {
 				}
 				if (events.includes('spamComplaint')) {
 					body.Triggers.SpamComplaint.Enabled = true;
-					body.Triggers.SpamComplaint.IncludeContent = this.getNodeParameter('includeContent') as boolean;
+					body.Triggers.SpamComplaint.IncludeContent = this.getNodeParameter(
+						'includeContent',
+					) as boolean;
 				}
 				if (events.includes('subscriptionChange')) {
 					body.Triggers.SubscriptionChange.Enabled = true;
@@ -242,7 +237,7 @@ export class PostmarkTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 				}
@@ -255,9 +250,7 @@ export class PostmarkTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

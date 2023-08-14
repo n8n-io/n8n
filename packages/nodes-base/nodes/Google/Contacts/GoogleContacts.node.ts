@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -18,13 +15,9 @@ import {
 	googleApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
 
 import moment from 'moment';
-import { IData } from '../Analytics/Interfaces';
 
 export class GoogleContacts implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,17 +61,15 @@ export class GoogleContacts implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
-			async getGroups(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const groups = await googleApiRequestAllItems.call(
 					this,
 					'contactGroups',
 					'GET',
-					`/contactGroups`,
+					'/contactGroups',
 				);
 				for (const group of groups) {
 					const groupName = group.name;
@@ -95,12 +86,12 @@ export class GoogleContacts implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -108,7 +99,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'create') {
 						const familyName = this.getNodeParameter('familyName', i) as string;
 						const givenName = this.getNodeParameter('givenName', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							names: [
@@ -136,43 +127,52 @@ export class GoogleContacts implements INodeType {
 						}
 
 						if (additionalFields.companyUi) {
-							const companyValues = (additionalFields.companyUi as IDataObject).companyValues as IDataObject[];
+							const companyValues = (additionalFields.companyUi as IDataObject)
+								.companyValues as IDataObject[];
 							body.organizations = companyValues;
 						}
 
 						if (additionalFields.phoneUi) {
-							const phoneValues = (additionalFields.phoneUi as IDataObject).phoneValues as IDataObject[];
+							const phoneValues = (additionalFields.phoneUi as IDataObject)
+								.phoneValues as IDataObject[];
 							body.phoneNumbers = phoneValues;
 						}
 
 						if (additionalFields.addressesUi) {
-							const addressesValues = (additionalFields.addressesUi as IDataObject).addressesValues as IDataObject[];
+							const addressesValues = (additionalFields.addressesUi as IDataObject)
+								.addressesValues as IDataObject[];
 							body.addresses = addressesValues;
 						}
 
 						if (additionalFields.relationsUi) {
-							const relationsValues = (additionalFields.relationsUi as IDataObject).relationsValues as IDataObject[];
+							const relationsValues = (additionalFields.relationsUi as IDataObject)
+								.relationsValues as IDataObject[];
 							body.relations = relationsValues;
 						}
 
 						if (additionalFields.eventsUi) {
-							const eventsValues = (additionalFields.eventsUi as IDataObject).eventsValues as IDataObject[];
-							for (let i = 0; i < eventsValues.length; i++) {
-								const [month, day, year] = moment(eventsValues[i].date as string).format('MM/DD/YYYY').split('/');
-								eventsValues[i] = {
+							const eventsValues = (additionalFields.eventsUi as IDataObject)
+								.eventsValues as IDataObject[];
+							for (let index = 0; index < eventsValues.length; index++) {
+								const [month, day, year] = moment(eventsValues[index].date as string)
+									.format('MM/DD/YYYY')
+									.split('/');
+								eventsValues[index] = {
 									date: {
 										day,
 										month,
 										year,
 									},
-									type: eventsValues[i].type,
+									type: eventsValues[index].type,
 								};
 							}
 							body.events = eventsValues;
 						}
 
 						if (additionalFields.birthday) {
-							const [month, day, year] = moment(additionalFields.birthday as string).format('MM/DD/YYYY').split('/');
+							const [month, day, year] = moment(additionalFields.birthday as string)
+								.format('MM/DD/YYYY')
+								.split('/');
 
 							body.birthdays = [
 								{
@@ -186,7 +186,8 @@ export class GoogleContacts implements INodeType {
 						}
 
 						if (additionalFields.emailsUi) {
-							const emailsValues = (additionalFields.emailsUi as IDataObject).emailsValues as IDataObject[];
+							const emailsValues = (additionalFields.emailsUi as IDataObject)
+								.emailsValues as IDataObject[];
 							body.emailAddresses = emailsValues;
 						}
 
@@ -200,7 +201,8 @@ export class GoogleContacts implements INodeType {
 						}
 
 						if (additionalFields.customFieldsUi) {
-							const customFieldsValues = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+							const customFieldsValues = (additionalFields.customFieldsUi as IDataObject)
+								.customFieldsValues as IDataObject[];
 							body.userDefined = customFieldsValues;
 						}
 
@@ -219,13 +221,12 @@ export class GoogleContacts implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/people:createContact`,
+							'/people:createContact',
 							body,
 							qs,
 						);
 
 						responseData.contactId = responseData.resourceName.split('/')[1];
-
 					}
 					//https://developers.google.com/people/api/rest/v1/people/deleteContact
 					if (operation === 'delete') {
@@ -242,21 +243,15 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const fields = this.getNodeParameter('fields', i) as string[];
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/people/${contactId}`,
-							{},
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'GET', `/people/${contactId}`, {}, qs);
 
 						if (!rawData) {
 							responseData = cleanData(responseData)[0];
@@ -267,13 +262,13 @@ export class GoogleContacts implements INodeType {
 					//https://developers.google.com/people/api/rest/v1/people.connections/list
 					//https://developers.google.com/people/api/rest/v1/people/searchContacts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const options = this.getNodeParameter('options', i, {});
+						const rawData = this.getNodeParameter('rawData', i);
 						const useQuery = this.getNodeParameter('useQuery', i) as boolean;
 
-						const endpoint = (useQuery) ? ':searchContacts' : '/me/connections';
+						const endpoint = useQuery ? ':searchContacts' : '/me/connections';
 
 						if (useQuery) {
 							qs.query = this.getNodeParameter('query', i) as string;
@@ -286,7 +281,7 @@ export class GoogleContacts implements INodeType {
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						if (useQuery) {
@@ -297,7 +292,7 @@ export class GoogleContacts implements INodeType {
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
-								(useQuery) ? 'results' : 'connections',
+								useQuery ? 'results' : 'connections',
 								'GET',
 								`/people${endpoint}`,
 								{},
@@ -307,26 +302,22 @@ export class GoogleContacts implements INodeType {
 							if (useQuery) {
 								responseData = responseData.map((result: IDataObject) => result.person);
 							}
-
 						} else {
-							qs.pageSize = this.getNodeParameter('limit', i) as number;
-							responseData = await googleApiRequest.call(
-								this,
-								'GET',
-								`/people${endpoint}`,
-								{},
-								qs,
-							);
+							qs.pageSize = this.getNodeParameter('limit', i);
+							responseData = await googleApiRequest.call(this, 'GET', `/people${endpoint}`, {}, qs);
 
-							responseData = responseData.connections || responseData.results?.map((result: IDataObject) => result.person) || [];
+							responseData =
+								responseData.connections ||
+								responseData.results?.map((result: IDataObject) => result.person) ||
+								[];
 						}
 
 						if (!rawData) {
 							responseData = cleanData(responseData);
 						}
 
-						for (let i = 0; i < responseData.length; i++) {
-							responseData[i].contactId = responseData[i].resourceName.split('/')[1];
+						for (let index = 0; index < responseData.length; index++) {
+							responseData[index].contactId = responseData[index].resourceName.split('/')[1];
 						}
 					}
 					//https://developers.google.com/people/api/rest/v1/people/updateContact
@@ -337,16 +328,13 @@ export class GoogleContacts implements INodeType {
 
 						const fields = this.getNodeParameter('fields', i) as string[];
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						let etag;
 
 						if (updateFields.etag) {
-
 							etag = updateFields.etag as string;
-
 						} else {
-
 							const data = await googleApiRequest.call(
 								this,
 								'GET',
@@ -356,20 +344,17 @@ export class GoogleContacts implements INodeType {
 							);
 
 							etag = data.etag;
-
 						}
 
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						const body: IDataObject = {
 							etag,
-							names: [
-								{},
-							],
+							names: [{}],
 						};
 
 						if (updateFields.givenName) {
@@ -398,40 +383,47 @@ export class GoogleContacts implements INodeType {
 						}
 
 						if (updateFields.companyUi) {
-							const companyValues = (updateFields.companyUi as IDataObject).companyValues as IDataObject[];
+							const companyValues = (updateFields.companyUi as IDataObject)
+								.companyValues as IDataObject[];
 							body.organizations = companyValues;
 							updatePersonFields.push('organizations');
 						}
 
 						if (updateFields.phoneUi) {
-							const phoneValues = (updateFields.phoneUi as IDataObject).phoneValues as IDataObject[];
+							const phoneValues = (updateFields.phoneUi as IDataObject)
+								.phoneValues as IDataObject[];
 							body.phoneNumbers = phoneValues;
 							updatePersonFields.push('phoneNumbers');
 						}
 
 						if (updateFields.addressesUi) {
-							const addressesValues = (updateFields.addressesUi as IDataObject).addressesValues as IDataObject[];
+							const addressesValues = (updateFields.addressesUi as IDataObject)
+								.addressesValues as IDataObject[];
 							body.addresses = addressesValues;
 							updatePersonFields.push('addresses');
 						}
 
 						if (updateFields.relationsUi) {
-							const relationsValues = (updateFields.relationsUi as IDataObject).relationsValues as IDataObject[];
+							const relationsValues = (updateFields.relationsUi as IDataObject)
+								.relationsValues as IDataObject[];
 							body.relations = relationsValues;
 							updatePersonFields.push('relations');
 						}
 
 						if (updateFields.eventsUi) {
-							const eventsValues = (updateFields.eventsUi as IDataObject).eventsValues as IDataObject[];
-							for (let i = 0; i < eventsValues.length; i++) {
-								const [month, day, year] = moment(eventsValues[i].date as string).format('MM/DD/YYYY').split('/');
-								eventsValues[i] = {
+							const eventsValues = (updateFields.eventsUi as IDataObject)
+								.eventsValues as IDataObject[];
+							for (let index = 0; index < eventsValues.length; index++) {
+								const [month, day, year] = moment(eventsValues[index].date as string)
+									.format('MM/DD/YYYY')
+									.split('/');
+								eventsValues[index] = {
 									date: {
 										day,
 										month,
 										year,
 									},
-									type: eventsValues[i].type,
+									type: eventsValues[index].type,
 								};
 							}
 							body.events = eventsValues;
@@ -439,7 +431,9 @@ export class GoogleContacts implements INodeType {
 						}
 
 						if (updateFields.birthday) {
-							const [month, day, year] = moment(updateFields.birthday as string).format('MM/DD/YYYY').split('/');
+							const [month, day, year] = moment(updateFields.birthday as string)
+								.format('MM/DD/YYYY')
+								.split('/');
 
 							body.birthdays = [
 								{
@@ -455,7 +449,8 @@ export class GoogleContacts implements INodeType {
 						}
 
 						if (updateFields.emailsUi) {
-							const emailsValues = (updateFields.emailsUi as IDataObject).emailsValues as IDataObject[];
+							const emailsValues = (updateFields.emailsUi as IDataObject)
+								.emailsValues as IDataObject[];
 							body.emailAddresses = emailsValues;
 							updatePersonFields.push('emailAddresses');
 						}
@@ -471,7 +466,8 @@ export class GoogleContacts implements INodeType {
 						}
 
 						if (updateFields.customFieldsUi) {
-							const customFieldsValues = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+							const customFieldsValues = (updateFields.customFieldsUi as IDataObject)
+								.customFieldsValues as IDataObject[];
 							body.userDefined = customFieldsValues;
 							updatePersonFields.push('userDefined');
 						}
@@ -506,19 +502,25 @@ export class GoogleContacts implements INodeType {
 						responseData.contactId = responseData.resourceName.split('/')[1];
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

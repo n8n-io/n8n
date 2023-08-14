@@ -1,17 +1,12 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	awsApiRequestREST,
-} from './GenericFunctions';
+import { awsApiRequestREST } from './GenericFunctions';
 
 export class AwsComprehend implements INodeType {
 	description: INodeTypeDescription = {
@@ -132,13 +127,8 @@ export class AwsComprehend implements INodeType {
 				default: 'en',
 				displayOptions: {
 					show: {
-						resource: [
-							'text',
-						],
-						operation: [
-							'detectSentiment',
-							'detectEntities',
-						],
+						resource: ['text'],
+						operation: ['detectSentiment', 'detectEntities'],
 					},
 				},
 				description: 'The language code for text',
@@ -147,15 +137,10 @@ export class AwsComprehend implements INodeType {
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'text',
-						],
+						resource: ['text'],
 					},
 				},
 				description: 'The text to send',
@@ -166,16 +151,13 @@ export class AwsComprehend implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'text',
-						],
-						operation: [
-							'detectDominantLanguage',
-						],
+						resource: ['text'],
+						operation: ['detectDominantLanguage'],
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -184,12 +166,8 @@ export class AwsComprehend implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						resource: [
-							'text',
-						],
-						operation: [
-							'detectEntities',
-						],
+						resource: ['text'],
+						operation: ['detectEntities'],
 					},
 				},
 				default: {},
@@ -198,11 +176,9 @@ export class AwsComprehend implements INodeType {
 						displayName: 'Endpoint Arn',
 						name: 'endpointArn',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
-						description: 'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model',
+						description:
+							'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model',
 					},
 				],
 			},
@@ -213,8 +189,8 @@ export class AwsComprehend implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'text') {
@@ -227,13 +203,23 @@ export class AwsComprehend implements INodeType {
 							Text: text,
 						};
 						const action = 'Comprehend_20171127.DetectDominantLanguage';
-						responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = await awsApiRequestREST.call(
+							this,
+							'comprehend',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 
-						if (simple === true) {
-							responseData = responseData.Languages.reduce((accumulator: { [key: string]: number }, currentValue: IDataObject) => {
-								accumulator[currentValue.LanguageCode as string] = currentValue.Score as number;
-								return accumulator;
-							}, {});
+						if (simple) {
+							responseData = responseData.Languages.reduce(
+								(accumulator: { [key: string]: number }, currentValue: IDataObject) => {
+									accumulator[currentValue.LanguageCode as string] = currentValue.Score as number;
+									return accumulator;
+								},
+								{},
+							);
 						}
 					}
 
@@ -246,7 +232,14 @@ export class AwsComprehend implements INodeType {
 							Text: text,
 							LanguageCode: languageCode,
 						};
-						responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = await awsApiRequestREST.call(
+							this,
+							'comprehend',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 					}
 
 					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html
@@ -254,7 +247,7 @@ export class AwsComprehend implements INodeType {
 						const action = 'Comprehend_20171127.DetectEntities';
 						const text = this.getNodeParameter('text', i) as string;
 						const languageCode = this.getNodeParameter('languageCode', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							Text: text,
@@ -265,7 +258,14 @@ export class AwsComprehend implements INodeType {
 							body.EndpointArn = additionalFields.endpointArn;
 						}
 
-						responseData = await awsApiRequestREST.call(this, 'comprehend', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = await awsApiRequestREST.call(
+							this,
+							'comprehend',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 						responseData = responseData.Entities;
 					}
 				}

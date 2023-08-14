@@ -1,17 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IBinaryData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,7 +45,8 @@ export class FacebookGraphApi implements INodeType {
 					},
 				],
 				default: 'graph.facebook.com',
-				description: 'The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.',
+				description:
+					'The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.',
 				required: true,
 			},
 			{
@@ -81,6 +79,18 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v17.0',
+						value: 'v17.0',
+					},
+					{
+						name: 'v16.0',
+						value: 'v16.0',
+					},
+					{
+						name: 'v15.0',
+						value: 'v15.0',
 					},
 					{
 						name: 'v14.0',
@@ -152,7 +162,8 @@ export class FacebookGraphApi implements INodeType {
 				name: 'node',
 				type: 'string',
 				default: '',
-				description: 'The node on which to operate. A node is an individual object with a unique ID. For example, there are many User node objects, each with a unique ID representing a person on Facebook.',
+				description:
+					'The node on which to operate. A node is an individual object with a unique ID. For example, there are many User node objects, each with a unique ID representing a person on Facebook.',
 				placeholder: 'me',
 				required: true,
 			},
@@ -161,7 +172,8 @@ export class FacebookGraphApi implements INodeType {
 				name: 'edge',
 				type: 'string',
 				default: '',
-				description: 'Edge of the node on which to operate. Edges represent collections of objects which are attached to the node.',
+				description:
+					'Edge of the node on which to operate. Edges represent collections of objects which are attached to the node.',
 				placeholder: 'videos',
 			},
 			{
@@ -177,10 +189,7 @@ export class FacebookGraphApi implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						httpRequestMethod: [
-							'POST',
-							'PUT',
-						],
+						httpRequestMethod: ['POST', 'PUT'],
 					},
 				},
 				default: false,
@@ -195,18 +204,14 @@ export class FacebookGraphApi implements INodeType {
 				placeholder: 'file:data',
 				displayOptions: {
 					hide: {
-						sendBinaryData: [
-							false,
-						],
+						sendBinaryData: [false],
 					},
 					show: {
-						httpRequestMethod: [
-							'POST',
-							'PUT',
-						],
+						httpRequestMethod: ['POST', 'PUT'],
 					},
 				},
-				description: 'Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
+				description:
+					'Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 			},
 			{
 				displayName: 'Options',
@@ -225,9 +230,7 @@ export class FacebookGraphApi implements INodeType {
 						},
 						displayOptions: {
 							show: {
-								'/httpRequestMethod': [
-									'GET',
-								],
+								'/httpRequestMethod': ['GET'],
 							},
 						},
 						description: 'The list of fields to request in the GET request',
@@ -286,7 +289,7 @@ export class FacebookGraphApi implements INodeType {
 						name: 'queryParametersJson',
 						type: 'json',
 						default: '{}',
-						placeholder: '{\"field_name\": \"field_value\"}',
+						placeholder: '{"field_name": "field_value"}',
 						description: 'The query parameters to send, defined as a JSON object',
 					},
 				],
@@ -294,11 +297,10 @@ export class FacebookGraphApi implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		let response: any; // tslint:disable-line:no-any
+		let response: any;
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -309,7 +311,7 @@ export class FacebookGraphApi implements INodeType {
 			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
 			const node = this.getNodeParameter('node', itemIndex) as string;
 			const edge = this.getNodeParameter('edge', itemIndex) as string;
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 
 			if (graphApiVersion !== '') {
 				graphApiVersion += '/';
@@ -320,7 +322,7 @@ export class FacebookGraphApi implements INodeType {
 				uri = `${uri}/${edge}`;
 			}
 
-			const requestOptions : OptionsWithUri = {
+			const requestOptions: OptionsWithUri = {
 				headers: {
 					accept: 'application/json,text/*;q=0.99',
 				},
@@ -329,9 +331,9 @@ export class FacebookGraphApi implements INodeType {
 				json: true,
 				gzip: true,
 				qs: {
-					access_token: graphApiCredentials!.accessToken,
+					access_token: graphApiCredentials.accessToken,
 				},
-				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
+				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
 			};
 
 			if (options !== undefined) {
@@ -339,7 +341,7 @@ export class FacebookGraphApi implements INodeType {
 				if (options.fields !== undefined) {
 					const fields = options.fields as IDataObject;
 					if (fields.field !== undefined) {
-						const fieldsCsv = (fields.field as IDataObject[]).map(field => field.name).join(',');
+						const fieldsCsv = (fields.field as IDataObject[]).map((field) => field.name).join(',');
 						requestOptions.qs.fields = fieldsCsv;
 					}
 				}
@@ -358,10 +360,11 @@ export class FacebookGraphApi implements INodeType {
 				// Add the query parameters defined as a JSON object
 				if (options.queryParametersJson) {
 					let queryParametersJsonObj = {};
-					try
-					{
+					try {
 						queryParametersJsonObj = JSON.parse(options.queryParametersJson as string);
-					} catch { /* Do nothing, at least for now */}
+					} catch {
+						/* Do nothing, at least for now */
+					}
 					const qs = requestOptions.qs;
 					requestOptions.qs = {
 						...qs,
@@ -372,12 +375,7 @@ export class FacebookGraphApi implements INodeType {
 
 			const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 			if (sendBinaryData) {
-				const item = items[itemIndex];
-				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex });
-				}
-
-				const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+				const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex);
 
 				let propertyName = 'file';
 				let binaryPropertyName = binaryPropertyNameFull;
@@ -387,19 +385,17 @@ export class FacebookGraphApi implements INodeType {
 					binaryPropertyName = binaryPropertyNameParts[1];
 				}
 
-				if (item.binary[binaryPropertyName] === undefined) {
-					throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex });
-				}
-
-				const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
-
-				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+				const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+					itemIndex,
+					binaryPropertyName,
+				);
 				requestOptions.formData = {
 					[propertyName]: {
 						value: binaryDataBuffer,
 						options: {
-							filename: binaryProperty.fileName,
-							contentType: binaryProperty.mimeType,
+							filename: binaryData.fileName,
+							contentType: binaryData.mimeType,
 						},
 					},
 				};
@@ -409,8 +405,8 @@ export class FacebookGraphApi implements INodeType {
 				// Now that the options are all set make the actual http request
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
-				if (this.continueOnFail() === false) {
-					throw new NodeApiError(this.getNode(), error);
+				if (!this.continueOnFail()) {
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let errorItem;
@@ -434,15 +430,17 @@ export class FacebookGraphApi implements INodeType {
 			}
 
 			if (typeof response === 'string') {
-				if (this.continueOnFail() === false) {
-					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', { itemIndex });
+				if (!this.continueOnFail()) {
+					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', {
+						itemIndex,
+					});
 				}
 
 				returnItems.push({ json: { message: response } });
 				continue;
 			}
 
-			returnItems.push({json: response});
+			returnItems.push({ json: response });
 		}
 
 		return [returnItems];

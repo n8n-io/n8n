@@ -1,21 +1,18 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	GrafanaCredentials,
-} from './types';
+import type { GrafanaCredentials } from './types';
+
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+}
 
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -24,9 +21,7 @@ export async function grafanaApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		baseUrl: rawBaseUrl,
-	} = await this.getCredentials('grafanaApi') as GrafanaCredentials;
+	const { baseUrl: rawBaseUrl } = (await this.getCredentials('grafanaApi')) as GrafanaCredentials;
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
@@ -60,8 +55,12 @@ export async function grafanaApiRequest(
 			error.response.data.message += ' with the provided ID';
 		}
 
-		if (error?.response?.data?.message === 'A dashboard with the same name in the folder already exists') {
-			error.response.data.message = 'A dashboard with the same name already exists in the selected folder';
+		if (
+			error?.response?.data?.message ===
+			'A dashboard with the same name in the folder already exists'
+		) {
+			error.response.data.message =
+				'A dashboard with the same name already exists in the selected folder';
 		}
 
 		if (error?.response?.data?.message === 'Team name taken') {
@@ -69,10 +68,11 @@ export async function grafanaApiRequest(
 		}
 
 		if (error?.code === 'ECONNREFUSED') {
-			error.message = 'Invalid credentials or error in establishing connection with given credentials';
+			error.message =
+				'Invalid credentials or error in establishing connection with given credentials';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -87,12 +87,6 @@ export function throwOnEmptyUpdate(
 			`Please enter at least one field to update for the ${resource}.`,
 		);
 	}
-}
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/')
-		? baseUrl.substr(0, baseUrl.length - 1)
-		: baseUrl;
 }
 
 export function deriveUid(this: IExecuteFunctions, uidOrUrl: string) {

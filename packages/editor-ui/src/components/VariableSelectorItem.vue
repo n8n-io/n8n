@@ -1,56 +1,90 @@
 <template>
 	<div class="item">
 		<div v-if="item.options" class="options">
-			<div v-if="item.options.length" class="headline clickable" @click="extended=!extended">
+			<div v-if="item.options.length" class="headline clickable" @click="extended = !extended">
 				<div class="options-toggle" v-if="extendAll !== true">
 					<font-awesome-icon v-if="extended" icon="angle-down" />
 					<font-awesome-icon v-else icon="angle-right" />
 				</div>
 				<div class="option-title" :title="item.key">
-					{{item.name}}
+					{{ item.name }}
 
-					<el-dropdown trigger="click" @click.stop @command="optionSelected($event, item)" v-if="allowParentSelect === true">
+					<el-dropdown
+						trigger="click"
+						@click.stop
+						@command="optionSelected($event, item)"
+						v-if="allowParentSelect === true"
+					>
 						<span class="el-dropdown-link clickable" @click.stop>
-							<font-awesome-icon icon="dot-circle" :title="$locale.baseText('variableSelectorItem.selectItem')" />
+							<font-awesome-icon
+								icon="dot-circle"
+								:title="$locale.baseText('variableSelectorItem.selectItem')"
+							/>
 						</span>
-						<el-dropdown-menu slot="dropdown">
-							<el-dropdown-item :command="operation.command" v-for="operation in itemAddOperations" :key="operation.command">{{operation.displayName}}</el-dropdown-item>
-						</el-dropdown-menu>
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item
+									:command="operation.command"
+									v-for="operation in itemAddOperations"
+									:key="operation.command"
+									>{{ operation.displayName }}</el-dropdown-item
+								>
+							</el-dropdown-menu>
+						</template>
 					</el-dropdown>
-
 				</div>
 			</div>
 			<div v-if="item.options && (extended === true || extendAll === true)">
-				<variable-selector-item v-for="option in item.options" :item="option" :key="option.key" :extendAll="extendAll" :allowParentSelect="option.allowParentSelect" class="sub-level" @itemSelected="forwardItemSelected"></variable-selector-item>
+				<variable-selector-item
+					v-for="option in item.options"
+					:item="option"
+					:key="option.key"
+					:extendAll="extendAll"
+					:allowParentSelect="option.allowParentSelect"
+					:redactValues="redactValues"
+					class="sub-level"
+					@itemSelected="forwardItemSelected"
+				></variable-selector-item>
 			</div>
 		</div>
 		<div v-else class="value clickable" @click="selectItem(item)">
 			<div class="item-title" :title="item.key">
-				{{item.name}}:
+				{{ item.name }}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
-			<div class="item-value">{{ item.value !== undefined?item.value: $locale.baseText('variableSelectorItem.empty') }}</div>
+			<div :class="{ 'ph-no-capture': redactValues, 'item-value': true }">
+				{{ item.value !== undefined ? item.value : $locale.baseText('variableSelectorItem.empty') }}
+			</div>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import type { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
+import { externalHooks } from '@/mixins/externalHooks';
 
-import Vue from 'vue';
-import {
-	IVariableSelectorOption,
-	IVariableItemSelected,
-} from '@/Interface';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'VariableSelectorItem',
-	props: [
-		'allowParentSelect',
-		'extendAll',
-		'item',
-	],
+	mixins: [externalHooks],
+	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
+	mounted() {
+		if (this.extended) return;
+
+		const shouldAutoExtend =
+			[
+				this.$locale.baseText('variableSelectorItem.currentNode'),
+				this.$locale.baseText('variableSelectorItem.inputData'),
+				this.$locale.baseText('variableSelectorItem.binary'),
+				this.$locale.baseText('variableSelectorItem.json'),
+			].includes(this.item.name) && this.item.key === undefined;
+
+		if (shouldAutoExtend) {
+			this.extended = true;
+		}
+	},
 	computed: {
-		itemAddOperations () {
+		itemAddOperations() {
 			const returnOptions = [
 				{
 					command: 'raw',
@@ -80,13 +114,13 @@ export default Vue.extend({
 			return returnOptions;
 		},
 	},
-	data () {
+	data() {
 		return {
 			extended: false,
 		};
 	},
 	methods: {
-		optionSelected (command: string, item: IVariableSelectorOption) {
+		optionSelected(command: string, item: IVariableSelectorOption) {
 			// By default it is raw
 			let variable = item.key;
 			if (command === 'arrayValues') {
@@ -100,10 +134,10 @@ export default Vue.extend({
 			}
 			this.$emit('itemSelected', { variable });
 		},
-		selectItem (item: IVariableSelectorOption) {
+		selectItem(item: IVariableSelectorOption) {
 			this.$emit('itemSelected', { variable: item.key });
 		},
-		forwardItemSelected (eventData: IVariableItemSelected) {
+		forwardItemSelected(eventData: IVariableItemSelected) {
 			this.$emit('itemSelected', eventData);
 		},
 	},
@@ -111,7 +145,6 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
-
 .option-title {
 	position: relative;
 	display: inline-block;
@@ -130,7 +163,7 @@ export default Vue.extend({
 	position: relative;
 	margin: 2px;
 	margin-top: 10px;
-	color: $--color-primary;
+	color: $color-primary;
 }
 .options-toggle {
 	position: relative;
@@ -149,5 +182,4 @@ export default Vue.extend({
 .sub-level {
 	padding-left: 20px;
 }
-
 </style>

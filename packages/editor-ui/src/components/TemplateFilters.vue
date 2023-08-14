@@ -8,21 +8,19 @@
 			<li :class="$style.item">
 				<el-checkbox
 					:label="$locale.baseText('templates.allCategories')"
-					:value="allSelected"
-					@change="(value) => resetCategories(value)"
+					:modelValue="allSelected"
+					@update:modelValue="(value) => resetCategories(value)"
 				/>
 			</li>
 			<li
-				v-for="category in collapsed
-					? sortedCategories.slice(0, expandLimit)
-					: sortedCategories"
+				v-for="category in collapsed ? sortedCategories.slice(0, expandLimit) : sortedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
 				<el-checkbox
 					:label="category.name"
-					:value="isSelected(category.id)"
-					@change="(value) => handleCheckboxChanged(value, category)"
+					:modelValue="isSelected(category.id)"
+					@update:modelValue="(value) => handleCheckboxChanged(value, category)"
 				/>
 			</li>
 		</ul>
@@ -39,12 +37,13 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplatesCategory } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import type { ITemplatesCategory } from '@/Interface';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateFilters',
+	mixins: [genericHelpers],
 	props: {
 		sortOnPopulate: {
 			type: Boolean,

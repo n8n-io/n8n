@@ -1,35 +1,37 @@
-import { FindManyOptions, In, UpdateResult } from 'typeorm';
-import intersection from 'lodash.intersection';
-import type { INode } from 'n8n-workflow';
+import type { FindManyOptions, UpdateResult } from 'typeorm';
+import { In } from 'typeorm';
+import intersection from 'lodash/intersection';
 
-import { Db } from '../../../..';
-import { User } from '../../../../databases/entities/User';
-import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
-import { SharedWorkflow } from '../../../../databases/entities/SharedWorkflow';
-import { isInstanceOwner } from '../users/users.service';
-import { Role } from '../../../../databases/entities/Role';
-import config from '../../../../../config';
+import * as Db from '@/Db';
+import type { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { Role } from '@db/entities/Role';
+import config from '@/config';
+import { TagRepository } from '@/databases/repositories';
+import Container from 'typedi';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
-export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+export async function getSharedWorkflowIds(user: User): Promise<string[]> {
+	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where: { user },
+		where,
+		select: ['workflowId'],
 	});
-
-	return sharedWorkflows.map((workflow) => workflow.workflowId);
+	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
 export async function getSharedWorkflow(
 	user: User,
 	workflowId?: string | undefined,
-): Promise<SharedWorkflow | undefined> {
+): Promise<SharedWorkflow | null> {
 	return Db.collections.SharedWorkflow.findOne({
 		where: {
-			...(!isInstanceOwner(user) && { user }),
-			...(workflowId && { workflow: { id: workflowId } }),
+			...(!user.isOwner && { userId: user.id }),
+			...(workflowId && { workflowId }),
 		},
 		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
 	});
@@ -39,19 +41,19 @@ export async function getSharedWorkflows(
 	user: User,
 	options: {
 		relations?: string[];
-		workflowIds?: number[];
+		workflowIds?: string[];
 	},
 ): Promise<SharedWorkflow[]> {
 	return Db.collections.SharedWorkflow.find({
 		where: {
-			...(!isInstanceOwner(user) && { user }),
-			...(options.workflowIds && { workflow: { id: In(options.workflowIds) } }),
+			...(!user.isOwner && { userId: user.id }),
+			...(options.workflowIds && { workflowId: In(options.workflowIds) }),
 		},
 		...(options.relations && { relations: options.relations }),
 	});
 }
 
-export async function getWorkflowById(id: number): Promise<WorkflowEntity | undefined> {
+export async function getWorkflowById(id: string): Promise<WorkflowEntity | null> {
 	return Db.collections.Workflow.findOne({
 		where: { id },
 	});
@@ -61,8 +63,8 @@ export async function getWorkflowById(id: number): Promise<WorkflowEntity | unde
  * Returns the workflow IDs that have certain tags.
  * Intersection! e.g. workflow needs to have all provided tags.
  */
-export async function getWorkflowIdsViaTags(tags: string[]): Promise<number[]> {
-	const dbTags = await Db.collections.Tag.find({
+export async function getWorkflowIdsViaTags(tags: string[]): Promise<string[]> {
+	const dbTags = await Container.get(TagRepository).find({
 		where: { name: In(tags) },
 		relations: ['workflows'],
 	});
@@ -106,39 +108,17 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return Db.collections.Workflow.remove(workflow);
 }
 
-export async function getWorkflows(
+export async function getWorkflowsAndCount(
 	options: FindManyOptions<WorkflowEntity>,
-): Promise<WorkflowEntity[]> {
-	return Db.collections.Workflow.find(options);
-}
-
-export async function getWorkflowsCount(options: FindManyOptions<WorkflowEntity>): Promise<number> {
-	return Db.collections.Workflow.count(options);
+): Promise<[WorkflowEntity[], number]> {
+	return Db.collections.Workflow.findAndCount(options);
 }
 
 export async function updateWorkflow(
-	workflowId: number,
+	workflowId: string,
 	updateData: WorkflowEntity,
 ): Promise<UpdateResult> {
 	return Db.collections.Workflow.update(workflowId, updateData);
-}
-
-export function hasStartNode(workflow: WorkflowEntity): boolean {
-	if (!workflow.nodes.length) return false;
-
-	const found = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start');
-
-	return Boolean(found);
-}
-
-export function getStartNode(): INode {
-	return {
-		parameters: {},
-		name: 'Start',
-		type: 'n8n-nodes-base.start',
-		typeVersion: 1,
-		position: [240, 300],
-	};
 }
 
 export function parseTagNames(tags: string): string[] {

@@ -2,81 +2,78 @@ name: Run test workflows
 
 on:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: '0 2 * * *'
   workflow_dispatch:
-
 
 jobs:
   run-test-workflows:
-
     runs-on: ubuntu-latest
 
     timeout-minutes: 30
 
-    strategy:
-      matrix:
-        node-version: [16.x]
     steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           path: n8n
-      -
-        name: Checkout workflows repo
-        uses: actions/checkout@v2
+
+      - name: Checkout workflows repo
+        uses: actions/checkout@v3
         with:
           repository: n8n-io/test-workflows
           path: test-workflows
-      -
-        name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+
+      - uses: pnpm/action-setup@v2.2.4
         with:
-          node-version: ${{ matrix.node-version }}
-      -
-        name: Install dependencies
+          version: 8.6.1
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'pnpm'
+          cache-dependency-path: 'n8n/pnpm-lock.yaml'
+
+      - name: Install dependencies
         run: |
           sudo apt update -y
           echo 'tzdata tzdata/Areas select Europe' | sudo debconf-set-selections
           echo 'tzdata tzdata/Zones/Europe select Paris' | sudo debconf-set-selections
           DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y graphicsmagick
         shell: bash
-      -
-        name: npm install and build
+
+      - name: pnpm install and build
+        working-directory: n8n
         run: |
-          cd n8n
-          npm install
-          npm run bootstrap
-          npm run build --if-present
-        env:
-          CI: true
+          pnpm install
+          pnpm  --filter @n8n/client-oauth2 --filter n8n-workflow --filter n8n-core --filter n8n-nodes-base --filter n8n build
         shell: bash
-      -
-        name: Import credentials
+
+      - name: Import credentials
         run: n8n/packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      -
-        name: Import workflows
+
+      - name: Import workflows
         run: n8n/packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
         shell: bash
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
-      -
-        name: Copy static assets
+
+      - name: Copy static assets
         run: |
           cp n8n/assets/n8n-logo.png /tmp/n8n-logo.png
           cp n8n/assets/n8n-screenshot.png /tmp/n8n-screenshot.png
-          cp n8n/node_modules/pdf-parse/test/data/05-versions-space.pdf /tmp/05-versions-space.pdf
-          cp n8n/node_modules/pdf-parse/test/data/04-valid.pdf /tmp/04-valid.pdf
+          cp test-workflows/testData/pdfs/*.pdf /tmp/
         shell: bash
-      -
-        name: Run tests
-        run: n8n/packages/cli/bin/n8n executeBatch --shallow --ids=test-workflows/safeList.txt --shortOutput --concurrency=16 --compare=test-workflows/snapshots
+
+      - name: Run tests
+        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --githubWorkflow --shortOutput --concurrency=16 --compare=test-workflows/snapshots
         shell: bash
+        id: tests
         env:
           N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+          SKIP_STATISTICS_EVENTS: true
       # -
       #   name: Export credentials
       #   if: always()
@@ -93,3 +90,15 @@ jobs:
       #     git config --global user.email 'n8n-test-bot@users.noreply.github.com'
       #     git commit -am "Automated credential update"
       #     git push --force --quiet "https://janober:${{ secrets.TOKEN }}@github.com/n8n-io/test-workflows.git" main:main
+
+      - name: Notify Slack on failure
+        uses: act10ns/slack@v2.0.0
+        if: failure()
+        with:
+          status: ${{ job.status }}
+          channel: '#updates-build-alerts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: |
+            🛑 Workflow test failed 🛑:
+            ${{ steps.tests.outputs.slackMessage}}
+            Sent by *Github Action*: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test workflow>

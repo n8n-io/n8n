@@ -1,11 +1,14 @@
-import {
+import type {
+	IBinaryKeyData,
 	IConnections,
+	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRunExecutionData,
-	Workflow,
-} from '../src';
+	NodeParameterValueType,
+} from '@/Interfaces';
+import { Workflow } from '@/Workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
@@ -17,7 +20,7 @@ interface StubNode {
 }
 
 describe('Workflow', () => {
-	describe('renameNodeInExpressions', () => {
+	describe('renameNodeInParameterValue for expressions', () => {
 		const tests = [
 			{
 				description: 'do nothing if there is no expression',
@@ -64,6 +67,117 @@ describe('Workflow', () => {
 					value1: '={{$node["NewName"]["data"]["value1"] + \'Node1\'}}',
 					value2:
 						'={{$node["NewName"]["data"]["value2"] + \' - \' + $node["NewName"]["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with $("Node1")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2: '={{$("Node1")["data"]["value2"] + \' - \' + $("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2: '={{$("NewName")["data"]["value2"] + \' - \' + $("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with $items("Node1")',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$items("Node1")["data"]["value1"] + \'Node1\'}}',
+						value2:
+							'={{$items("Node1")["data"]["value2"] + \' - \' + $items("Node1")["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$items("NewName")["data"]["value1"] + \'Node1\'}}',
+					value2:
+						'={{$items("NewName")["data"]["value2"] + \' - \' + $items("NewName")["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with $items("Node1", 0, 1)',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: '={{$items("Node1", 0, 1)["data"]["value1"] + \'Node1\'}}',
+						value2:
+							'={{$items("Node1", 0, 1)["data"]["value2"] + \' - \' + $items("Node1", 0, 1)["data"]["value2"]}}',
+					},
+				},
+				output: {
+					value1: '={{$items("NewName", 0, 1)["data"]["value1"] + \'Node1\'}}',
+					value2:
+						'={{$items("NewName", 0, 1)["data"]["value2"] + \' - \' + $items("NewName", 0, 1)["data"]["value2"]}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and special character',
+				input: {
+					currentName: 'Node1',
+					newName: 'New $ Name',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["New $ Name"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["New $ Name"].data.value2 + \' - \' + $node["New $ Name"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and trailing $',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName$',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["NewName$"].data.value1 + \'Node1\'}}',
+					value2: '={{$node["NewName$"].data.value2 + \' - \' + $node["NewName$"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation that contains space and special character',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName $ $& $` $$$',
+					parameters: {
+						value1: "={{$node.Node1.data.value1 + 'Node1'}}",
+						value2: "={{$node.Node1.data.value2 + ' - ' + $node.Node1.data.value2}}",
+					},
+				},
+				output: {
+					value1: '={{$node["NewName $ $& $` $$$"].data.value1 + \'Node1\'}}',
+					value2:
+						'={{$node["NewName $ $& $` $$$"].data.value2 + \' - \' + $node["NewName $ $& $` $$$"].data.value2}}',
+				},
+			},
+			{
+				description: 'should work with dot notation without trailing dot',
+				input: {
+					currentName: 'Node1',
+					newName: 'NewName',
+					parameters: {
+						value1: "={{$node.Node1 + 'Node1'}}",
+						value2: "={{$node.Node1 + ' - ' + $node.Node1}}",
+					},
+				},
+				output: {
+					value1: "={{$node.NewName + 'Node1'}}",
+					value2: "={{$node.NewName + ' - ' + $node.NewName}}",
 				},
 			},
 			{
@@ -143,12 +257,64 @@ describe('Workflow', () => {
 
 		for (const testData of tests) {
 			test(testData.description, () => {
-				const result = workflow.renameNodeInExpressions(
+				const result = workflow.renameNodeInParameterValue(
 					testData.input.parameters,
 					testData.input.currentName,
 					testData.input.newName,
 				);
 				expect(result).toEqual(testData.output);
+			});
+		}
+	});
+
+	describe('renameNodeInParameterValue for node with renamable content', () => {
+		const tests = [
+			{
+				description: "should work with $('name')",
+				input: {
+					currentName: 'Old',
+					newName: 'New',
+					parameters: { jsCode: "$('Old').first();" },
+				},
+				output: { jsCode: "$('New').first();" },
+			},
+			{
+				description: "should work with $node['name'] and $node.name",
+				input: {
+					currentName: 'Old',
+					newName: 'New',
+					parameters: { jsCode: "$node['Old'].first(); $node.Old.first();" },
+				},
+				output: { jsCode: "$node['New'].first(); $node.New.first();" },
+			},
+			{
+				description: 'should work with $items()',
+				input: {
+					currentName: 'Old',
+					newName: 'New',
+					parameters: { jsCode: "$items('Old').first();" },
+				},
+				output: { jsCode: "$items('New').first();" },
+			},
+		];
+
+		const workflow = new Workflow({
+			nodes: [],
+			connections: {},
+			active: false,
+			nodeTypes: Helpers.NodeTypes(),
+		});
+
+		for (const t of tests) {
+			test(t.description, () => {
+				expect(
+					workflow.renameNodeInParameterValue(
+						t.input.parameters,
+						t.input.currentName,
+						t.input.newName,
+						{ hasRenamableContent: true },
+					),
+				).toEqual(t.output);
 			});
 		}
 	});
@@ -491,9 +657,9 @@ describe('Workflow', () => {
 					},
 				},
 			},
-			// This does just a basic test if "renameNodeInExpressions" gets used. More complex
+			// This does just a basic test if "renameNodeInParameterValue" gets used. More complex
 			// tests with different formats and levels are in the separate tests for the function
-			// "renameNodeInExpressions"
+			// "renameNodeInParameterValue"
 			{
 				description: 'change name also in expressions which use node-name (dot notation)',
 				input: {
@@ -548,6 +714,7 @@ describe('Workflow', () => {
 				parameters: stubData.parameters,
 				type: 'test.set',
 				typeVersion: 1,
+				id: 'uuid-1234',
 				position: [100, 100],
 			};
 		}
@@ -584,7 +751,17 @@ describe('Workflow', () => {
 	});
 
 	describe('getParameterValue', () => {
-		const tests = [
+		const tests: Array<{
+			description: string;
+			input: {
+				[nodeName: string]: {
+					parameters: Record<string, NodeParameterValueType>;
+					outputJson?: IDataObject;
+					outputBinary?: IBinaryKeyData;
+				};
+			};
+			output: Record<string, unknown>;
+		}> = [
 			{
 				description: 'read simple not expression value',
 				input: {
@@ -769,6 +946,7 @@ describe('Workflow', () => {
 							binaryKey: {
 								data: '',
 								type: '',
+								mimeType: 'test',
 								fileName: 'test-file1.jpg',
 							},
 						},
@@ -796,6 +974,7 @@ describe('Workflow', () => {
 							binaryKey: {
 								data: '',
 								type: '',
+								mimeType: 'test',
 								fileName: 'test-file1.jpg',
 							},
 						},
@@ -930,6 +1109,11 @@ describe('Workflow', () => {
 				description:
 					'return resolved value when referencing another property with expression when a node has spaces (long "$node["{NODE}"].parameter" syntax)',
 				input: {
+					'Node 4 with spaces': {
+						parameters: {
+							value1: '',
+						},
+					},
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
@@ -971,7 +1155,7 @@ describe('Workflow', () => {
 			},
 			// TODO: Make that this test does not fail!
 			// {
-			//     description: 'return resolved value when short "data" syntax got used in expression on paramter of not active node which got referenced by active one',
+			//     description: 'return resolved value when short "data" syntax got used in expression on parameter of not active node which got referenced by active one',
 			//     input: {
 			//         Node1: {
 			//             parameters: {
@@ -1008,6 +1192,7 @@ describe('Workflow', () => {
 						parameters: testData.input.Node1.parameters,
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-1',
 						position: [100, 100],
 					},
 					{
@@ -1015,28 +1200,27 @@ describe('Workflow', () => {
 						parameters: testData.input.Node2.parameters,
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-2',
 						position: [100, 200],
 					},
 					{
 						name: 'Node3',
-						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node3')
-							? // @ts-ignore
-							  testData.input.Node3.parameters
+							? testData.input.Node3?.parameters
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-3',
 						position: [100, 300],
 					},
 					{
 						name: 'Node 4 with spaces',
-						// @ts-ignore
 						parameters: testData.input.hasOwnProperty('Node4')
-							? // @ts-ignore
-							  testData.input.Node4.parameters
+							? testData.input.Node4.parameters
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
+						id: 'uuid-4',
 						position: [100, 400],
 					},
 				];
@@ -1063,6 +1247,17 @@ describe('Workflow', () => {
 							],
 						],
 					},
+					'Node 4 with spaces': {
+						main: [
+							[
+								{
+									node: 'Node2',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
 				};
 
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
@@ -1073,16 +1268,18 @@ describe('Workflow', () => {
 						runData: {
 							Node1: [
 								{
+									source: [
+										{
+											previousNode: 'test',
+										},
+									],
 									startTime: 1,
 									executionTime: 1,
-									// @ts-ignore
 									data: {
 										main: [
 											[
 												{
-													// @ts-ignore
 													json: testData.input.Node1.outputJson || testData.input.Node1.parameters,
-													// @ts-ignore
 													binary: testData.input.Node1.outputBinary,
 												},
 											],
@@ -1090,6 +1287,8 @@ describe('Workflow', () => {
 									},
 								},
 							],
+							Node2: [],
+							'Node 4 with spaces': [],
 						},
 					},
 				};
@@ -1097,7 +1296,7 @@ describe('Workflow', () => {
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] =
-					runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
+					runExecutionData.resultData.runData.Node1[0]!.data!.main[0]!;
 
 				for (const parameterName of Object.keys(testData.output)) {
 					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
@@ -1114,7 +1313,6 @@ describe('Workflow', () => {
 						timezone,
 						{},
 					);
-					// @ts-ignore
 					expect(result).toEqual(testData.output[parameterName]);
 				}
 			});
@@ -1166,7 +1364,6 @@ describe('Workflow', () => {
 		//     const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 		//     const activeNodeName = 'Node2';
 
-		//     // @ts-ignore
 		//     const parameterValue = nodes.find((node) => node.name === activeNodeName).parameters.name;
 		//     // const parameterValue = '=[data.propertyName]'; // TODO: Make this dynamic from node-data via "activeNodeName"!
 		//     const runData: RunData = {
@@ -1219,6 +1416,7 @@ describe('Workflow', () => {
 					},
 					type: 'test.setMulti',
 					typeVersion: 1,
+					id: 'uuid-1234',
 					position: [100, 100],
 				},
 			];
@@ -1253,7 +1451,7 @@ describe('Workflow', () => {
 			const itemIndex = 0;
 			const runIndex = 0;
 			const connectionInputData: INodeExecutionData[] =
-				runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
+				runExecutionData.resultData.runData.Node1[0]!.data!.main[0]!;
 			const parameterName = 'values';
 
 			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
@@ -1296,6 +1494,7 @@ describe('Workflow', () => {
 					name: 'Start',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-1',
 					position: [240, 300],
 				},
 				{
@@ -1305,6 +1504,7 @@ describe('Workflow', () => {
 					name: 'Set',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-2',
 					position: [460, 300],
 				},
 				{
@@ -1314,6 +1514,7 @@ describe('Workflow', () => {
 					name: 'Set1',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-3',
 					position: [680, 300],
 				},
 			],
@@ -1353,6 +1554,7 @@ describe('Workflow', () => {
 					name: 'Switch',
 					type: 'test.switch',
 					typeVersion: 1,
+					id: 'uuid-1',
 					position: [460, 300],
 				},
 				{
@@ -1362,6 +1564,7 @@ describe('Workflow', () => {
 					name: 'Set',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-2',
 					position: [740, 300],
 				},
 				{
@@ -1371,6 +1574,7 @@ describe('Workflow', () => {
 					name: 'Set1',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-3',
 					position: [780, 100],
 				},
 				{
@@ -1380,6 +1584,7 @@ describe('Workflow', () => {
 					name: 'Set2',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-4',
 					position: [1040, 260],
 				},
 			],
@@ -1443,6 +1648,7 @@ describe('Workflow', () => {
 					name: 'Switch',
 					type: 'test.switch',
 					typeVersion: 1,
+					id: 'uuid-1',
 					position: [920, 340],
 				},
 				{
@@ -1450,6 +1656,7 @@ describe('Workflow', () => {
 					name: 'Start',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-2',
 					position: [240, 300],
 				},
 				{
@@ -1459,6 +1666,7 @@ describe('Workflow', () => {
 					name: 'Set1',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-3',
 					position: [700, 340],
 				},
 				{
@@ -1468,6 +1676,7 @@ describe('Workflow', () => {
 					name: 'Set',
 					type: 'test.set',
 					typeVersion: 1,
+					id: 'uuid-4',
 					position: [1220, 300],
 				},
 				{
@@ -1475,6 +1684,7 @@ describe('Workflow', () => {
 					name: 'Switch',
 					type: 'test.switch',
 					typeVersion: 1,
+					id: 'uuid-5',
 					position: [920, 340],
 				},
 			],

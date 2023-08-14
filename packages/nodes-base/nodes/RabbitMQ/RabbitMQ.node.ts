@@ -1,22 +1,20 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
+import * as amqplib from 'amqplib';
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	rabbitmqConnectExchange,
-	rabbitmqConnectQueue,
-} from './GenericFunctions';
+import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +23,7 @@ export class RabbitMQ implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rabbitmq.png',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Sends messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
@@ -36,13 +34,80 @@ export class RabbitMQ implements INodeType {
 			{
 				name: 'rabbitmq',
 				required: true,
+				testedBy: 'rabbitmqConnectionTest',
 			},
 		],
 		properties: [
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'hidden',
+				noDataExpression: true,
+				default: 'sendMessage',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				// To remove when action view is fixed
+				options: [
+					{
+						name: 'Send a Message to RabbitMQ',
+						value: 'sendMessage',
+						action: 'Send a Message to RabbitMQ',
+					},
+					{
+						name: 'Delete From Queue',
+						value: 'deleteMessage',
+						action: 'Delete From Queue',
+					},
+				],
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'sendMessage',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Send a Message to RabbitMQ',
+						value: 'sendMessage',
+						action: 'Send a Message to RabbitMQ',
+					},
+					{
+						name: 'Delete From Queue',
+						value: 'deleteMessage',
+						action: 'Delete From Queue',
+					},
+				],
+			},
+			{
+				displayName:
+					'Will delete an item from the queue triggered earlier in the workflow by a RabbitMQ Trigger node',
+				name: 'deleteMessage',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['deleteMessage'],
+					},
+				},
+			},
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
+				displayOptions: {
+					hide: {
+						operation: ['deleteMessage'],
+					},
+				},
 				options: [
 					{
 						name: 'Queue',
@@ -68,9 +133,10 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'queue',
-						],
+						mode: ['queue'],
+					},
+					hide: {
+						operation: ['deleteMessage'],
 					},
 				},
 				default: '',
@@ -88,9 +154,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
@@ -103,9 +167,7 @@ export class RabbitMQ implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				options: [
@@ -139,9 +201,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'exchange',
-						],
+						mode: ['exchange'],
 					},
 				},
 				default: '',
@@ -157,6 +217,11 @@ export class RabbitMQ implements INodeType {
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['sendMessage'],
+					},
+				},
 				default: true,
 				description: 'Whether to send the the data the node receives as JSON',
 			},
@@ -166,9 +231,7 @@ export class RabbitMQ implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						sendInputData: [
-							false,
-						],
+						sendInputData: [false],
 					},
 				},
 				default: '',
@@ -179,6 +242,11 @@ export class RabbitMQ implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
+				displayOptions: {
+					show: {
+						operation: ['sendMessage'],
+					},
+				},
 				placeholder: 'Add Option',
 				options: [
 					{
@@ -187,13 +255,12 @@ export class RabbitMQ implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'exchange',
-								],
+								'/mode': ['exchange'],
 							},
 						},
 						default: '',
-						description: 'An exchange to send messages to if this exchange can’t route them to any queues',
+						description:
+							'An exchange to send messages to if this exchange can’t route them to any queues',
 					},
 					{
 						displayName: 'Arguments',
@@ -231,7 +298,8 @@ export class RabbitMQ implements INodeType {
 						name: 'autoDelete',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the queue will be deleted when the number of consumers drops to zero',
+						description:
+							'Whether the queue will be deleted when the number of consumers drops to zero',
 					},
 					{
 						displayName: 'Durable',
@@ -246,9 +314,7 @@ export class RabbitMQ implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'queue',
-								],
+								'/mode': ['queue'],
 							},
 						},
 						default: false,
@@ -290,43 +356,102 @@ export class RabbitMQ implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async rabbitmqConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				try {
+					const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'];
+
+					const credentialData: IDataObject = {};
+					credentialKeys.forEach((key) => {
+						credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
+					});
+
+					const optsData: IDataObject = {};
+					if (credentials.ssl === true) {
+						credentialData.protocol = 'amqps';
+
+						optsData.ca =
+							credentials.ca === ''
+								? undefined
+								: [Buffer.from(formatPrivateKey(credentials.ca as string))];
+						if (credentials.passwordless === true) {
+							optsData.cert =
+								credentials.cert === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.cert as string));
+							optsData.key =
+								credentials.key === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.key as string));
+							optsData.passphrase =
+								credentials.passphrase === '' ? undefined : credentials.passphrase;
+							optsData.credentials = amqplib.credentials.external();
+						}
+					}
+					const connection = await amqplib.connect(credentialData, optsData);
+					await connection.close();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let channel, options: IDataObject;
 		try {
 			const items = this.getInputData();
-			const mode = this.getNodeParameter('mode', 0) as string;
-
+			const operation = this.getNodeParameter('operation', 0);
+			if (operation === 'deleteMessage') {
+				this.sendResponse(items[0].json);
+				return await this.prepareOutputData(items);
+			}
+			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
 			const returnItems: INodeExecutionData[] = [];
-
 			if (mode === 'queue') {
 				const queue = this.getNodeParameter('queue', 0) as string;
 
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectQueue.call(this, queue, options);
 
 				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 				let message: string;
-
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
+					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
 						message = this.getNodeParameter('message', i) as string;
 					}
 
 					let headers: IDataObject = {};
-					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+					if (
+						options.headers &&
+						((options.headers as IDataObject).header! as IDataObject[]).length
+					) {
+						const itemOptions = this.getNodeParameter('options', i, {});
 						const additionalHeaders: IDataObject = {};
-						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
-							additionalHeaders[header.key as string] = header.value;
-						});
+						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach(
+							(header: IDataObject) => {
+								additionalHeaders[header.key as string] = header.value;
+							},
+						);
 						headers = additionalHeaders;
 					}
-
 					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers }));
 				}
 
@@ -335,19 +460,16 @@ export class RabbitMQ implements INodeType {
 
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
-					if (response!.status !== 'fulfilled') {
-
-						if (this.continueOnFail() !== true) {
+					if (response.status !== 'fulfilled') {
+						if (!this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
-							returnItems.push(
-								{
-									json: {
-										error: response.reason,
-									},
+							returnItems.push({
+								json: {
+									error: response.reason,
 								},
-							);
+							});
 							return;
 						}
 					}
@@ -361,13 +483,12 @@ export class RabbitMQ implements INodeType {
 
 				await channel.close();
 				await channel.connection.close();
-			}
-			else if (mode === 'exchange') {
+			} else if (mode === 'exchange') {
 				const exchange = this.getNodeParameter('exchange', 0) as string;
 				const type = this.getNodeParameter('exchangeType', 0) as string;
 				const routingKey = this.getNodeParameter('routingKey', 0) as string;
 
-				options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
 
@@ -377,23 +498,30 @@ export class RabbitMQ implements INodeType {
 
 				const exchangePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
+					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
 						message = this.getNodeParameter('message', i) as string;
 					}
 
 					let headers: IDataObject = {};
-					if (options.headers && ((options.headers as IDataObject).header! as IDataObject[]).length) {
-						const itemOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+					if (
+						options.headers &&
+						((options.headers as IDataObject).header! as IDataObject[]).length
+					) {
+						const itemOptions = this.getNodeParameter('options', i, {});
 						const additionalHeaders: IDataObject = {};
-						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach((header: IDataObject) => {
-							additionalHeaders[header.key as string] = header.value;
-						});
+						((itemOptions.headers as IDataObject).header as IDataObject[]).forEach(
+							(header: IDataObject) => {
+								additionalHeaders[header.key as string] = header.value;
+							},
+						);
 						headers = additionalHeaders;
 					}
 
-					exchangePromises.push(channel.publish(exchange, routingKey, Buffer.from(message), { headers }));
+					exchangePromises.push(
+						channel.publish(exchange, routingKey, Buffer.from(message), { headers }),
+					);
 				}
 
 				// @ts-ignore
@@ -401,19 +529,16 @@ export class RabbitMQ implements INodeType {
 
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
-					if (response!.status !== 'fulfilled') {
-
-						if (this.continueOnFail() !== true) {
+					if (response.status !== 'fulfilled') {
+						if (!this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
-							returnItems.push(
-								{
-									json: {
-										error: response.reason,
-									},
+							returnItems.push({
+								json: {
+									error: response.reason,
 								},
-							);
+							});
 							return;
 						}
 					}
@@ -431,9 +556,8 @@ export class RabbitMQ implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
-			return this.prepareOutputData(returnItems);
-		}
-		catch (error) {
+			return await this.prepareOutputData(returnItems);
+		} catch (error) {
 			if (channel) {
 				await channel.close();
 				await channel.connection.close();

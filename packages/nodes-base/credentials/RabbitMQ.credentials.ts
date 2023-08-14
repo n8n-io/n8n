@@ -1,13 +1,12 @@
-import {
-	ICredentialType,
-	IDisplayOptions,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 export class RabbitMQ implements ICredentialType {
 	name = 'rabbitmq';
+
 	displayName = 'RabbitMQ';
+
 	documentationUrl = 'rabbitmq';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Hostname',
@@ -57,13 +56,12 @@ export class RabbitMQ implements ICredentialType {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
+					ssl: [true],
 				},
 			},
 			default: true,
-			description: 'Whether to use passwordless connection with certificates (SASL mechanism EXTERNAL)',
+			description:
+				'Whether to use passwordless connection with certificates (SASL mechanism EXTERNAL)',
 		},
 		{
 			displayName: 'CA Certificates',
@@ -74,9 +72,7 @@ export class RabbitMQ implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
+					ssl: [true],
 				},
 			},
 			default: '',
@@ -91,12 +87,8 @@ export class RabbitMQ implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
-					passwordless: [
-						true,
-					],
+					ssl: [true],
+					passwordless: [true],
 				},
 			} as IDisplayOptions,
 			default: '',
@@ -111,12 +103,8 @@ export class RabbitMQ implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
-					passwordless: [
-						true,
-					],
+					ssl: [true],
+					passwordless: [true],
 				},
 			},
 			default: '',
@@ -131,12 +119,8 @@ export class RabbitMQ implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					ssl: [
-						true,
-					],
-					passwordless: [
-						true,
-					],
+					ssl: [true],
+					passwordless: [true],
 				},
 			},
 			default: '',

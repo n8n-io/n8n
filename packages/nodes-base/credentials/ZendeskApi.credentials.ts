@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class ZendeskApi implements ICredentialType {
 	name = 'zendeskApi';
+
 	displayName = 'Zendesk API';
+
 	documentationUrl = 'zendesk';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Subdomain',
@@ -31,15 +34,23 @@ export class ZendeskApi implements ICredentialType {
 			name: 'apiToken',
 			type: 'string',
 			default: '',
+			typeOptions: {
+				password: true,
+			},
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.auth = {
 			username: `${credentials.email}/token`,
 			password: credentials.apiToken as string,
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials.subdomain}}.zendesk.com/api/v2',

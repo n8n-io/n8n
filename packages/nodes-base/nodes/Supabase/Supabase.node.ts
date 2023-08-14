@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -13,21 +10,19 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
+	mapPairedItemsFrom,
 	supabaseApiRequest,
 	validateCredentials,
 } from './GenericFunctions';
 
-import {
-	rowFields,
-	rowOperations,
-} from './RowDescription';
+import { rowFields, rowOperations } from './RowDescription';
 
 export type FieldsUiValues = Array<{
 	fieldId: string;
@@ -45,7 +40,6 @@ export class Supabase implements INodeType {
 		description: 'Add, get, delete and update data in a table',
 		defaults: {
 			name: 'Supabase',
-			color: '#ea5929',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -79,8 +73,8 @@ export class Supabase implements INodeType {
 		loadOptions: {
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { paths } = await supabaseApiRequest.call(this, 'GET', '/',);
-				for (const path of Object.keys(paths)) {
+				const { paths } = await supabaseApiRequest.call(this, 'GET', '/');
+				for (const path of Object.keys(paths as IDataObject)) {
 					//omit introspection path
 					if (path === '/') continue;
 					returnData.push({
@@ -93,8 +87,8 @@ export class Supabase implements INodeType {
 			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tableName = this.getCurrentNodeParameter('tableId') as string;
-				const { definitions } = await supabaseApiRequest.call(this, 'GET', '/',);
-				for (const column of Object.keys(definitions[tableName].properties)) {
+				const { definitions } = await supabaseApiRequest.call(this, 'GET', '/');
+				for (const column of Object.keys(definitions[tableName].properties as IDataObject)) {
 					returnData.push({
 						name: `${column} - (${definitions[tableName].properties[column].type})`,
 						value: column,
@@ -104,7 +98,10 @@ export class Supabase implements INodeType {
 			},
 		},
 		credentialTest: {
-			async supabaseApiCredentialTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async supabaseApiCredentialTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
@@ -124,11 +121,11 @@ export class Supabase implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
 			if (operation === 'create') {
@@ -136,12 +133,14 @@ export class Supabase implements INodeType {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'autoMapInputData') {
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of incomingKeys) {
 							if (inputDataToIgnore.includes(key)) continue;
@@ -156,14 +155,28 @@ export class Supabase implements INodeType {
 					records.push(record);
 				}
 				const endpoint = `/${tableId}`;
-				let createdRow;
 
 				try {
-					createdRow = await supabaseApiRequest.call(this, 'POST', endpoint, records);
-					returnData.push(...createdRow);
+					const createdRows: IDataObject[] = await supabaseApiRequest.call(
+						this,
+						'POST',
+						endpoint,
+						records,
+					);
+					createdRows.forEach((row, i) => {
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(row),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					});
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.description });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.description }),
+							{ itemData: mapPairedItemsFrom(records) },
+						);
+						returnData.push(...executionData);
 					} else {
 						throw error;
 					}
@@ -175,13 +188,16 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
-
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one select condition must be defined',
+								{ itemIndex: i },
+							);
 						}
 
 						if (matchType === 'allFilters') {
@@ -205,11 +221,21 @@ export class Supabase implements INodeType {
 						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+
 							continue;
 						}
+						throw error;
 					}
-					returnData.push(...rows);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(rows as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -224,28 +250,41 @@ export class Supabase implements INodeType {
 					let rows;
 
 					if (!keys.length) {
-						throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
+						throw new NodeOperationError(
+							this.getNode(),
+							'At least one select condition must be defined',
+							{ itemIndex: i },
+						);
 					}
 
 					try {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+
 							continue;
 						}
+						throw error;
 					}
-					returnData.push(...rows);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(rows as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
 			if (operation === 'getAll') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
-
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -267,21 +306,31 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+					if (!returnAll) {
+						qs.limit = this.getNodeParameter('limit', 0);
 					}
 
 					let rows;
 
 					try {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+
 							continue;
 						}
+						throw error;
 					}
-					returnData.push(...rows);
 				}
 			}
 
@@ -290,13 +339,16 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
-
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 
 						if (!keys.length) {
-							throw new NodeOperationError(this.getNode(), 'At least one select condition must be defined', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one select condition must be defined',
+								{ itemIndex: i },
+							);
 						}
 
 						if (matchType === 'allFilters') {
@@ -315,12 +367,14 @@ export class Supabase implements INodeType {
 					}
 
 					const record: IDataObject = {};
-					const dataToSend = this.getNodeParameter('dataToSend', 0) as 'defineBelow' | 'autoMapInputData';
+					const dataToSend = this.getNodeParameter('dataToSend', 0) as
+						| 'defineBelow'
+						| 'autoMapInputData';
 
 					if (dataToSend === 'autoMapInputData') {
 						const incomingKeys = Object.keys(items[i].json);
 						const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
-						const inputDataToIgnore = rawInputsToIgnore.split(',').map(c => c.trim());
+						const inputDataToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
 
 						for (const key of incomingKeys) {
 							if (inputDataToIgnore.includes(key)) continue;
@@ -336,16 +390,25 @@ export class Supabase implements INodeType {
 
 					try {
 						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
-						returnData.push(...updatedRow);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(updatedRow as IDataObject[]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.description });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.description }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
+						throw error;
 					}
 				}
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

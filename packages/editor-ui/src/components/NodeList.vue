@@ -1,25 +1,27 @@
 <template>
 	<div :class="$style.list">
 		<div v-for="node in slicedNodes" :class="[$style.container, $style[size]]" :key="node.name">
-			<HoverableNodeIcon :nodeType="node" :size="size === 'md'? 24: 18" :title="node.name" />
+			<NodeIcon :nodeType="node" :size="size === 'md' ? 24 : 18" :showTooltip="true" />
 		</div>
-		<div :class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]" v-if="filteredCoreNodes.length > limit + 1">
+		<div
+			:class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]"
+			v-if="filteredCoreNodes.length > limit + 1"
+		>
 			+{{ hiddenNodes }}
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
+import { defineComponent } from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import type { ITemplatesNode } from '@/Interface';
+import { filterTemplateNodes } from '@/utils';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplatesNode } from '@/Interface';
-
-import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes } from './helpers';
-
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'NodeList',
+	mixins: [genericHelpers],
 	props: {
 		nodes: {
 			type: Array,
@@ -34,7 +36,7 @@ export default mixins(genericHelpers).extend({
 		},
 	},
 	components: {
-		HoverableNodeIcon,
+		NodeIcon,
 	},
 	computed: {
 		filteredCoreNodes() {
@@ -67,20 +69,16 @@ export default mixins(genericHelpers).extend({
 	justify-content: flex-end;
 	align-items: center;
 }
-
 .container {
 	position: relative;
 	display: block;
 }
-
 .sm {
 	margin-left: var(--spacing-2xs);
 }
-
 .md {
 	margin-left: var(--spacing-xs);
 }
-
 .button {
 	top: 0px;
 	position: relative;
@@ -94,14 +92,12 @@ export default mixins(genericHelpers).extend({
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-base);
 }
-
 .buttonSm {
 	margin-left: var(--spacing-2xs);
 	width: 20px;
 	min-width: 20px;
 	height: 20px;
 }
-
 .buttonMd {
 	margin-left: var(--spacing-xs);
 	width: 24px;

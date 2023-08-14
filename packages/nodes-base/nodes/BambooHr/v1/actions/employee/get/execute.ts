@@ -1,15 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
-
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
 export async function get(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
@@ -22,7 +13,12 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	let fields = this.getNodeParameter('options.fields', index, ['all']) as string[];
 
 	if (fields.includes('all')) {
-		const { fields: allFields } = await apiRequest.call(this, requestMethod, 'employees/directory', body);
+		const { fields: allFields } = await apiRequest.call(
+			this,
+			requestMethod,
+			'employees/directory',
+			body,
+		);
 		fields = allFields.map((field: IDataObject) => field.id);
 	}
 
@@ -33,5 +29,5 @@ export async function get(this: IExecuteFunctions, index: number): Promise<INode
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);
 
 	//return
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

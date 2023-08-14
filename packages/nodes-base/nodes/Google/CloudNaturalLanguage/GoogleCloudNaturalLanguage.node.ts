@@ -1,22 +1,13 @@
-
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	IData,
-} from './Interface';
+import type { IData } from './Interface';
 
-import {
-	googleApiRequest,
-} from './GenericFunctions';
+import { googleApiRequest } from './GenericFunctions';
 
 export class GoogleCloudNaturalLanguage implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,9 +51,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'document',
-						],
+						resource: ['document'],
 					},
 				},
 				options: [
@@ -92,13 +81,12 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					},
 				],
 				default: 'content',
-				description: 'The source of the document: a string containing the content or a Google Cloud Storage URI',
+				description:
+					'The source of the document: a string containing the content or a Google Cloud Storage URI',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'analyzeSentiment',
-						],
+						operation: ['analyzeSentiment'],
 					},
 				},
 			},
@@ -107,16 +95,13 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content of the input in string format. Cloud audit logging exempt since it is based on user data.',
+				description:
+					'The content of the input in string format. Cloud audit logging exempt since it is based on user data.',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'analyzeSentiment',
-						],
-						source: [
-							'content',
-						],
+						operation: ['analyzeSentiment'],
+						source: ['content'],
 					},
 				},
 			},
@@ -125,16 +110,13 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				name: 'gcsContentUri',
 				type: 'string',
 				default: '',
-				description: 'The Google Cloud Storage URI where the file content is located. This URI must be of the form: <code>gs://bucket_name/object_name</code>. For more details, see <a href="https://cloud.google.com/storage/docs/reference-uris.">reference</a>.',
+				description:
+					'The Google Cloud Storage URI where the file content is located. This URI must be of the form: <code>gs://bucket_name/object_name</code>. For more details, see <a href="https://cloud.google.com/storage/docs/reference-uris.">reference</a>.',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'analyzeSentiment',
-						],
-						source: [
-							'gcsContentUri',
-						],
+						operation: ['analyzeSentiment'],
+						source: ['gcsContentUri'],
 					},
 				},
 			},
@@ -144,9 +126,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'analyzeSentiment',
-						],
+						operation: ['analyzeSentiment'],
 					},
 				},
 				default: {},
@@ -266,7 +246,8 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 						],
 						default: 'en',
 						placeholder: '',
-						description: 'The language of the document (if not specified, the language is automatically detected). Both ISO and BCP-47 language codes are accepted.',
+						description:
+							'The language of the document (if not specified, the language is automatically detected). Both ISO and BCP-47 language codes are accepted.',
 					},
 				],
 			},
@@ -276,14 +257,14 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const responseData = [];
 		for (let i = 0; i < length; i++) {
 			if (resource === 'document') {
 				if (operation === 'analyzeSentiment') {
 					const source = this.getNodeParameter('source', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
 					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
 
@@ -306,7 +287,12 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 						body.document.language = options.language as string;
 					}
 
-					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeSentiment`, body);
+					const response = await googleApiRequest.call(
+						this,
+						'POST',
+						'/v1/documents:analyzeSentiment',
+						body,
+					);
 					responseData.push(response);
 				}
 			}

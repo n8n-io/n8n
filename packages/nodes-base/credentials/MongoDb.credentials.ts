@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MongoDb implements ICredentialType {
 	name = 'mongoDb';
+
 	displayName = 'MongoDB';
+
 	documentationUrl = 'mongoDb';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Configuration Type',
@@ -29,14 +32,14 @@ export class MongoDb implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					configurationType: [
-						'connectionString',
-					],
+					configurationType: ['connectionString'],
 				},
 			},
 			default: '',
-			placeholder: 'mongodb://<USERNAME>:<PASSWORD>@localhost:27017/?authSource=admin&readPreference=primary&appname=n8n&ssl=false',
-			description: 'If provided, the value here will be used as a MongoDB connection string, and the MongoDB credentials will be ignored',
+			placeholder:
+				'mongodb://<USERNAME>:<PASSWORD>@localhost:27017/?authSource=admin&readPreference=primary&appname=n8n&ssl=false',
+			description:
+				'If provided, the value here will be used as a MongoDB connection string, and the MongoDB credentials will be ignored',
 		},
 		{
 			displayName: 'Host',
@@ -44,9 +47,7 @@ export class MongoDb implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					configurationType: [
-						'values',
-					],
+					configurationType: ['values'],
 				},
 			},
 			default: 'localhost',
@@ -56,7 +57,8 @@ export class MongoDb implements ICredentialType {
 			name: 'database',
 			type: 'string',
 			default: '',
-			description: 'Note: the database should still be provided even if using an override connection string',
+			description:
+				'Note: the database should still be provided even if using an override connection string',
 		},
 		{
 			displayName: 'User',
@@ -64,9 +66,7 @@ export class MongoDb implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					configurationType: [
-						'values',
-					],
+					configurationType: ['values'],
 				},
 			},
 			default: '',
@@ -80,9 +80,7 @@ export class MongoDb implements ICredentialType {
 			},
 			displayOptions: {
 				show: {
-					configurationType: [
-						'values',
-					],
+					configurationType: ['values'],
 				},
 			},
 			default: '',
@@ -93,9 +91,7 @@ export class MongoDb implements ICredentialType {
 			type: 'number',
 			displayOptions: {
 				show: {
-					configurationType: [
-						'values',
-					],
+					configurationType: ['values'],
 				},
 			},
 			default: 27017,

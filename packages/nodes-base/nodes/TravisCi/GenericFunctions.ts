@@ -1,32 +1,33 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	get,
-} from 'lodash';
+import get from 'lodash/get';
 
-import querystring from 'querystring';
-
-export async function travisciApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function travisciApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject | string = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 	const credentials = await this.getCredentials('travisCiApi');
 	let options: OptionsWithUri = {
 		headers: {
 			'Travis-API-Version': '3',
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-Type': 'application.json',
-			'Authorization': `token ${credentials.apiToken}`,
+			Authorization: `token ${credentials.apiToken}`,
 		},
 		method,
 		qs,
@@ -35,13 +36,13 @@ export async function travisciApiRequest(this: IHookFunctions | IExecuteFunction
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -49,21 +50,27 @@ export async function travisciApiRequest(this: IHookFunctions | IExecuteFunction
  * Make an API request to paginated TravisCI endpoint
  * and return all results
  */
-export async function travisciApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function travisciApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
 
+	body: IDataObject = {},
+	query: IDataObject = {},
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await travisciApiRequest.call(this, method, resource, body, query);
-		const path = get(responseData, '@pagination.next.@href');
+		const path = get(responseData, '@pagination.next.@href') as string;
 		if (path !== undefined) {
-			query = querystring.parse(path);
+			const parsedPath = new URLSearchParams(path);
+			query = Object.fromEntries(parsedPath);
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['@pagination']['is_last'] !== true
-	);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData['@pagination'].is_last !== true);
 	return returnData;
 }

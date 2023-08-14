@@ -5,9 +5,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv.store';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,
@@ -19,8 +22,8 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		stickyOffset: {
-			type: Number,
-			default: 0,
+			type: Array as PropType<number[]>,
+			default: () => [0, 0],
 		},
 	},
 	data() {
@@ -32,16 +35,17 @@ export default Vue.extend({
 		window.addEventListener('mousemove', this.onMouseMove);
 		window.addEventListener('mouseup', this.onMouseUp);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('mousemove', this.onMouseMove);
 		window.removeEventListener('mouseup', this.onMouseUp);
 	},
 	computed: {
+		...mapStores(useNDVStore),
 		isDragging(): boolean {
-			return this.$store.getters['ui/isDraggableDragging'];
+			return this.ndvStore.isDraggableDragging;
 		},
 		draggableType(): string {
-			return this.$store.getters['ui/draggableType'];
+			return this.ndvStore.draggableType;
 		},
 		droppable(): boolean {
 			return !this.disabled && this.isDragging && this.draggableType === this.type;
@@ -52,28 +56,34 @@ export default Vue.extend({
 	},
 	methods: {
 		onMouseMove(e: MouseEvent) {
-			const target = this.$refs.target as HTMLElement;
+			const targetRef = this.$refs.target as HTMLElement | undefined;
 
-			if (target) {
-				const dim = target.getBoundingClientRect();
+			if (targetRef && this.isDragging) {
+				const dim = targetRef.getBoundingClientRect();
 
-				this.hovering = e.clientX >= dim.left && e.clientX <= dim.right && e.clientY >= dim.top && e.clientY <= dim.bottom;
+				this.hovering =
+					e.clientX >= dim.left &&
+					e.clientX <= dim.right &&
+					e.clientY >= dim.top &&
+					e.clientY <= dim.bottom;
 
-				if (this.sticky && this.hovering) {
-					this.$store.commit('ui/setDraggableStickyPos', [dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
+				if (!this.disabled && this.sticky && this.hovering) {
+					const [xOffset, yOffset] = this.stickyOffset;
+
+					this.ndvStore.setDraggableStickyPos([dim.left + xOffset, dim.top + yOffset]);
 				}
 			}
 		},
 		onMouseUp(e: MouseEvent) {
 			if (this.activeDrop) {
-				const data = this.$store.getters['ui/draggableData'];
+				const data = this.ndvStore.draggableData;
 				this.$emit('drop', data);
 			}
 		},
 	},
 	watch: {
 		activeDrop(active) {
-			this.$store.commit('ui/setDraggableCanDrop', active);
+			this.ndvStore.setDraggableCanDrop(active);
 		},
 	},
 });

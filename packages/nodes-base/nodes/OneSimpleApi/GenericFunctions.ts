@@ -1,18 +1,17 @@
-import {
-	OptionsWithUri
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
-
-export async function oneSimpleApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
+export async function oneSimpleApiRequest(
+	this: IExecuteFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 	const credentials = await this.getCredentials('oneSimpleApi');
 
 	const outputFormat = 'json';
@@ -20,7 +19,9 @@ export async function oneSimpleApiRequest(this: IExecuteFunctions, method: strin
 		method,
 		body,
 		qs,
-		uri: uri || `https://onesimpleapi.com/api${resource}?token=${credentials.apiToken}&output=${outputFormat}`,
+		uri:
+			uri ||
+			`https://onesimpleapi.com/api${resource}?token=${credentials.apiToken}&output=${outputFormat}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -33,6 +34,6 @@ export async function oneSimpleApiRequest(this: IExecuteFunctions, method: strin
 		const responseData = await this.helpers.request(options);
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,13 +8,17 @@ import {
 
 export class TrelloApi implements ICredentialType {
 	name = 'trelloApi';
+
 	displayName = 'Trello API';
+
 	documentationUrl = 'trello';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			required: true,
 			default: '',
 		},
@@ -22,6 +26,7 @@ export class TrelloApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			required: true,
 			default: '',
 		},
@@ -29,18 +34,23 @@ export class TrelloApi implements ICredentialType {
 			displayName: 'OAuth Secret',
 			name: 'oauthSecret',
 			type: 'hidden',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
 
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.qs = {
 			...requestOptions.qs,
-			'key': credentials.apiKey,
-			'token': credentials.apiToken,
+			key: credentials.apiKey,
+			token: credentials.apiToken,
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.trello.com',

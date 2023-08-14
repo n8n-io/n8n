@@ -1,12 +1,33 @@
 <template>
-	<div :class="{[$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
-		<n8n-tooltip :placement="tooltipPlacement" :popper-class="$style.tooltipPopper" :disabled="type !== 'tooltip'">
+	<div
+		:class="{
+			'n8n-info-tip': true,
+			[$style[theme]]: true,
+			[$style[type]]: true,
+			[$style.bold]: bold,
+		}"
+	>
+		<n8n-tooltip
+			v-if="type === 'tooltip'"
+			:placement="tooltipPlacement"
+			:popper-class="$style.tooltipPopper"
+			:disabled="type !== 'tooltip'"
+		>
 			<span :class="$style.iconText">
-				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
-				<span v-if="type === 'note'"><slot></slot></span>
+				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />
 			</span>
-			<span v-if="type === 'tooltip'" slot="content"><slot></slot></span>
+			<template #content>
+				<span>
+					<slot />
+				</span>
+			</template>
 		</n8n-tooltip>
+		<span :class="$style.iconText" v-else>
+			<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />
+			<span>
+				<slot />
+			</span>
+		</span>
 	</div>
 </template>
 
@@ -14,7 +35,9 @@
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
-export default {
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	name: 'n8n-info-tip',
 	components: {
 		N8nIcon,
@@ -30,8 +53,7 @@ export default {
 		type: {
 			type: String,
 			default: 'note',
-			validator: (value: string): boolean =>
-				['note', 'tooltip'].includes(value),
+			validator: (value: string): boolean => ['note', 'tooltip'].includes(value),
 		},
 		bold: {
 			type: Boolean,
@@ -42,7 +64,7 @@ export default {
 			default: 'top',
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -77,6 +99,7 @@ export default {
 
 .iconText {
 	display: inline-flex;
+	align-items: flex-start;
 }
 
 .info-light {

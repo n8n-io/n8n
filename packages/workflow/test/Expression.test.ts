@@ -2,42 +2,38 @@
  * @jest-environment jsdom
  */
 
-import {
-	Expression,
-	Workflow,
-} from "../src";
-import * as Helpers from "./Helpers";
-import {
-	DateTime,
-	Duration,
-	Interval
-} from "luxon";
+import { DateTime, Duration, Interval } from 'luxon';
+import { Expression } from '@/Expression';
+import { Workflow } from '@/Workflow';
+import * as Helpers from './Helpers';
+import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
+import { baseFixtures } from './ExpressionFixtures/base';
+import type { INodeExecutionData } from '@/Interfaces';
+import { extendSyntax } from '@/Extensions/ExpressionExtension';
+import { ExpressionError } from '@/ExpressionError';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
 		const nodeTypes = Helpers.NodeTypes();
-		const workflow = new Workflow({ nodes: [
-			{
-				name: 'node',
-				typeVersion: 1,
-				type: 'test.set',
-				position: [0, 0],
-				parameters: {}
-			}
-		], connections: {}, active: false, nodeTypes });
+		const workflow = new Workflow({
+			nodes: [
+				{
+					name: 'node',
+					typeVersion: 1,
+					type: 'test.set',
+					id: 'uuid-1234',
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
 		const expression = new Expression(workflow);
 
-		const evaluate = (value: string) => expression.getParameterValue(
-			value,
-			null,
-			0,
-			0,
-			'node',
-			[],
-			'manual',
-			'',
-			{},
-		);
+		const evaluate = (value: string) =>
+			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', '', {});
 
 		it('should not be able to use global built-ins from denylist', () => {
 			expect(evaluate('={{document}}')).toEqual({});
@@ -80,13 +76,17 @@ describe('Expression', () => {
 
 		it('should be able to use global built-ins from allowlist', () => {
 			expect(evaluate('={{new Date()}}')).toBeInstanceOf(Date);
-			expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(DateTime.now().toLocaleString());
-			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(Interval.after(new Date(), 100));
+			expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(
+				DateTime.now().toLocaleString(),
+			);
+			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(
+				Interval.after(new Date(), 100),
+			);
 			expect(evaluate('={{Duration.fromMillis(100)}}')).toEqual(Duration.fromMillis(100));
 
 			expect(evaluate('={{new Object()}}')).toEqual(new Object());
 
-			expect(evaluate('={{new Array()}}')).toEqual(new Array());
+			expect(evaluate('={{new Array()}}')).toEqual([]);
 			expect(evaluate('={{new Int8Array()}}')).toEqual(new Int8Array());
 			expect(evaluate('={{new Uint8Array()}}')).toEqual(new Uint8Array());
 			expect(evaluate('={{new Uint8ClampedArray()}}')).toEqual(new Uint8ClampedArray());
@@ -115,31 +115,117 @@ describe('Expression', () => {
 			expect(evaluate('={{Intl}}')).toEqual(Intl);
 
 			expect(evaluate('={{new String()}}')).toEqual(new String());
-			expect(evaluate('={{new RegExp(\'\')}}')).toEqual(new RegExp(''));
+			expect(evaluate("={{new RegExp('')}}")).toEqual(new RegExp(''));
 
 			expect(evaluate('={{Math}}')).toEqual(Math);
 			expect(evaluate('={{new Number()}}')).toEqual(new Number());
-			expect(evaluate('={{BigInt(\'1\')}}')).toEqual(BigInt('1'));
+			expect(evaluate("={{BigInt('1')}}")).toEqual(BigInt('1'));
 			expect(evaluate('={{Infinity}}')).toEqual(Infinity);
 			expect(evaluate('={{NaN}}')).toEqual(NaN);
 			expect(evaluate('={{isFinite(1)}}')).toEqual(isFinite(1));
 			expect(evaluate('={{isNaN(1)}}')).toEqual(isNaN(1));
-			expect(evaluate('={{parseFloat(\'1\')}}')).toEqual(parseFloat('1'));
-			expect(evaluate('={{parseInt(\'1\', 10)}}')).toEqual(parseInt('1', 10));
+			expect(evaluate("={{parseFloat('1')}}")).toEqual(parseFloat('1'));
+			expect(evaluate("={{parseInt('1', 10)}}")).toEqual(parseInt('1', 10));
 
 			expect(evaluate('={{JSON.stringify({})}}')).toEqual(JSON.stringify({}));
 			expect(evaluate('={{new ArrayBuffer(10)}}')).toEqual(new ArrayBuffer(10));
 			expect(evaluate('={{new SharedArrayBuffer(10)}}')).toEqual(new SharedArrayBuffer(10));
 			expect(evaluate('={{Atomics}}')).toEqual(Atomics);
-			expect(evaluate('={{new DataView(new ArrayBuffer(1))}}')).toEqual(new DataView(new ArrayBuffer(1)));
+			expect(evaluate('={{new DataView(new ArrayBuffer(1))}}')).toEqual(
+				new DataView(new ArrayBuffer(1)),
+			);
 
-			expect(evaluate('={{encodeURI(\'https://google.com\')}}')).toEqual(encodeURI('https://google.com'));
-			expect(evaluate('={{encodeURIComponent(\'https://google.com\')}}')).toEqual(encodeURIComponent('https://google.com'));
-			expect(evaluate('={{decodeURI(\'https://google.com\')}}')).toEqual(decodeURI('https://google.com'));
-			expect(evaluate('={{decodeURIComponent(\'https://google.com\')}}')).toEqual(decodeURIComponent('https://google.com'));
+			expect(evaluate("={{encodeURI('https://google.com')}}")).toEqual(
+				encodeURI('https://google.com'),
+			);
+			expect(evaluate("={{encodeURIComponent('https://google.com')}}")).toEqual(
+				encodeURIComponent('https://google.com'),
+			);
+			expect(evaluate("={{decodeURI('https://google.com')}}")).toEqual(
+				decodeURI('https://google.com'),
+			);
+			expect(evaluate("={{decodeURIComponent('https://google.com')}}")).toEqual(
+				decodeURIComponent('https://google.com'),
+			);
 
 			expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
 		});
+
+		it('should not able to do arbitrary code execution', () => {
+			const testFn = jest.fn();
+			Object.assign(global, { testFn });
+			expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
+				new ExpressionError('Arbitrary code execution detected'),
+			);
+			expect(testFn).not.toHaveBeenCalled();
+		});
 	});
-})
+
+	describe('Test all expression value fixtures', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			nodes: [
+				{
+					name: 'node',
+					typeVersion: 1,
+					type: 'test.set',
+					id: 'uuid-1234',
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		const expression = new Expression(workflow);
+
+		const evaluate = (value: string, data: INodeExecutionData[]) => {
+			const itemIndex = data.length === 0 ? -1 : 0;
+			return expression.getParameterValue(
+				value,
+				null,
+				0,
+				itemIndex,
+				'node',
+				data,
+				'manual',
+				'',
+				{},
+			);
+		};
+
+		for (const t of baseFixtures) {
+			if (!t.tests.some((test) => test.type === 'evaluation')) {
+				continue;
+			}
+			test(t.expression, () => {
+				for (const test of t.tests.filter(
+					(test) => test.type === 'evaluation',
+				) as ExpressionTestEvaluation[]) {
+					expect(evaluate(t.expression, test.input.map((d) => ({ json: d })) as any)).toStrictEqual(
+						test.output,
+					);
+				}
+			});
+		}
+	});
+
+	describe('Test all expression transform fixtures', () => {
+		for (const t of baseFixtures) {
+			if (!t.tests.some((test) => test.type === 'transform')) {
+				continue;
+			}
+			test(t.expression, () => {
+				for (const test of t.tests.filter(
+					(test) => test.type === 'transform',
+				) as ExpressionTestTransform[]) {
+					const expr = t.expression;
+					expect(extendSyntax(expr, test.forceTransform)).toEqual(test.result ?? expr);
+				}
+			});
+		}
+	});
+});

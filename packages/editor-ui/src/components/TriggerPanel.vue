@@ -10,8 +10,8 @@
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						$locale.baseText('ndv.trigger.webhookNode.listening')
 					}}</n8n-text>
-					<div :class="$style.shake">
-						<n8n-text class="mb-xs">
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text>
 							{{
 								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
 									interpolate: { type: this.webhookHttpMethod },
@@ -28,13 +28,19 @@
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						@copy="onTestLinkCopied"
 					></CopyInput>
+					<NodeExecuteButton
+						:nodeName="nodeName"
+						@execute="onNodeExecute"
+						size="medium"
+						telemetrySource="inputs"
+					/>
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						$locale.baseText('ndv.trigger.webhookBasedNode.listening')
 					}}</n8n-text>
-					<div :class="$style.shake">
-						<n8n-text class="mb-xs" tag="div">
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text tag="div">
 							{{
 								$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
 									interpolate: { service: serviceName },
@@ -42,6 +48,12 @@
 							}}
 						</n8n-text>
 					</div>
+					<NodeExecuteButton
+						:nodeName="nodeName"
+						@execute="onNodeExecute"
+						size="medium"
+						telemetrySource="inputs"
+					/>
 				</div>
 			</div>
 			<div key="default" v-else>
@@ -55,12 +67,11 @@
 							{{ header }}
 						</n8n-heading>
 						<n8n-text v-if="subheader">
-							<span v-html="subheader"></span>
+							<span v-text="subheader" />
 						</n8n-text>
 					</div>
 
 					<NodeExecuteButton
-						v-if="!isActivelyPolling"
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"
@@ -83,7 +94,8 @@
 					:class="$style.accordion"
 					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
 					:description="executionsHelp"
-					@click="onLinkClick"
+					:eventBus="executionsHelpEventBus"
+					@click:body="onLinkClick"
 				></n8n-info-accordion>
 			</div>
 		</transition>
@@ -91,25 +103,38 @@
 </template>
 
 <script lang="ts">
-import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { INodeUi } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
-import { getTriggerNodeServiceName } from './helpers';
-import NodeExecuteButton from './NodeExecuteButton.vue';
-import { workflowHelpers } from './mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
-import CopyInput from './CopyInput.vue';
-import NodeIcon from './NodeIcon.vue';
-import { copyPaste } from './mixins/copyPaste';
-import { showMessage } from '@/components/mixins/showMessage';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import type { INodeUi } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { getTriggerNodeServiceName } from '@/utils';
+import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import CopyInput from '@/components/CopyInput.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { copyPaste } from '@/mixins/copyPaste';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { N8nInfoAccordion } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(workflowHelpers, copyPaste, showMessage).extend({
+type HelpRef = InstanceType<typeof N8nInfoAccordion>;
+
+export default defineComponent({
 	name: 'TriggerPanel',
+	mixins: [workflowHelpers, copyPaste],
 	components: {
 		NodeExecuteButton,
 		CopyInput,
 		NodeIcon,
+	},
+	data: () => {
+		return {
+			executionsHelpEventBus: createEventBus(),
+		};
 	},
 	props: {
 		nodeName: {
@@ -120,21 +145,20 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 	},
 	computed: {
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
-			return this.$store.getters.getNodeByName(this.nodeName);
+			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 
 			return null;
 		},
 		hasIssues(): boolean {
 			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
+				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
 			);
 		},
 		serviceName(): string {
@@ -148,50 +172,28 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
 		},
 		webhookHttpMethod(): string | undefined {
-			if (
-				!this.node ||
-				!this.nodeType ||
-				!this.nodeType.webhooks ||
-				!this.nodeType.webhooks.length
-			) {
+			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
 			return this.getWebhookExpressionValue(this.nodeType.webhooks[0], 'httpMethod');
 		},
 		webhookTestUrl(): string | undefined {
-			if (
-				!this.node ||
-				!this.nodeType ||
-				!this.nodeType.webhooks ||
-				!this.nodeType.webhooks.length
-			) {
+			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
 			return this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
 		},
-		webhookProdUrl(): string | undefined {
-			if (
-				!this.node ||
-				!this.nodeType ||
-				!this.nodeType.webhooks ||
-				!this.nodeType.webhooks.length
-			) {
-				return undefined;
-			}
-
-			return this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'prod');
-		},
 		isWebhookBasedNode(): boolean {
-			return Boolean(this.nodeType && this.nodeType.webhooks && this.nodeType.webhooks.length);
+			return Boolean(this.nodeType?.webhooks?.length);
 		},
 		isPollingNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.polling);
 		},
 		isListeningForEvents(): boolean {
-			const waitingOnWebhook = this.$store.getters.executionWaitingForWebhook as boolean;
-			const executedNode = this.$store.getters.executedNode as string | undefined;
+			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook;
+			const executedNode = this.workflowsStore.executedNode;
 			return (
 				!!this.node &&
 				!this.node.disabled &&
@@ -201,15 +203,15 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			);
 		},
 		workflowRunning(): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isActivelyPolling(): boolean {
-			const triggeredNode = this.$store.getters.executedNode;
+			const triggeredNode = this.workflowsStore.executedNode;
 
 			return this.workflowRunning && this.isPollingNode && this.nodeName === triggeredNode;
 		},
 		isWorkflowActive(): boolean {
-			return this.$store.getters.isActive;
+			return this.workflowsStore.isWorkflowActive;
 		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
@@ -218,11 +220,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				return this.$locale.baseText('ndv.trigger.pollingNode.fetchingEvent');
 			}
 
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				typeof this.nodeType.triggerPanel.header === 'string'
-			) {
+			if (this.nodeType?.triggerPanel && typeof this.nodeType.triggerPanel.header === 'string') {
 				return this.nodeType.triggerPanel.header;
 			}
 
@@ -245,11 +243,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return '';
 		},
 		executionsHelp(): string {
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				this.nodeType.triggerPanel.executionsHelp !== undefined
-			) {
+			if (this.nodeType?.triggerPanel?.executionsHelp !== undefined) {
 				if (typeof this.nodeType.triggerPanel.executionsHelp === 'string') {
 					return this.nodeType.triggerPanel.executionsHelp;
 				}
@@ -292,11 +286,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 				return '';
 			}
 
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				this.nodeType.triggerPanel.activationHint
-			) {
+			if (this.nodeType?.triggerPanel?.activationHint) {
 				if (typeof this.nodeType.triggerPanel.activationHint === 'string') {
 					return this.nodeType.triggerPanel.activationHint;
 				}
@@ -319,8 +309,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					return this.$locale.baseText('ndv.trigger.webhookBasedNode.activationHint.active', {
 						interpolate: { service: this.serviceName },
 					});
-				}
-				else {
+				} else {
 					return this.$locale.baseText('ndv.trigger.webhookBasedNode.activationHint.inactive', {
 						interpolate: { service: this.serviceName },
 					});
@@ -332,8 +321,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					return this.$locale.baseText('ndv.trigger.pollingNode.activationHint.active', {
 						interpolate: { service: this.serviceName },
 					});
-				}
-				else {
+				} else {
 					return this.$locale.baseText('ndv.trigger.pollingNode.activationHint.inactive', {
 						interpolate: { service: this.serviceName },
 					});
@@ -346,7 +334,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	methods: {
 		expandExecutionHelp() {
 			if (this.$refs.help) {
-				(this.$refs.help as Vue).$emit('expand');
+				this.executionsHelpEventBus.emit('expand');
 			}
 		},
 		onLinkClick(e: MouseEvent) {
@@ -356,7 +344,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			const target = e.target as HTMLElement;
 			if (target.localName !== 'a') return;
 
-			if (target.dataset && target.dataset.key) {
+			if (target.dataset?.key) {
 				e.stopPropagation();
 				e.preventDefault();
 
@@ -364,15 +352,17 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					this.$emit('activate');
 				} else if (target.dataset.key === 'executions') {
 					this.$telemetry.track('User clicked ndv link', {
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						session_id: this.sessionId,
 						pane: 'input',
 						type: 'open-executions-log',
 					});
-					this.$store.commit('setActiveNode', null);
-					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+					this.ndvStore.activeNodeName = null;
+					void this.$router.push({
+						name: VIEWS.EXECUTIONS,
+					});
 				} else if (target.dataset.key === 'settings') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 				}
 			}
 		},

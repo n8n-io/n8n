@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,9 +8,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	pushcutApiRequest,
-} from './GenericFunctions';
+import { pushcutApiRequest } from './GenericFunctions';
 
 export class Pushcut implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,9 +52,7 @@ export class Pushcut implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'notification',
-						],
+						resource: ['notification'],
 					},
 				},
 				options: [
@@ -76,18 +69,15 @@ export class Pushcut implements INodeType {
 				displayName: 'Notification Name or ID',
 				name: 'notificationName',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getNotifications',
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'notification',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['notification'],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -99,12 +89,8 @@ export class Pushcut implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'notification',
-						],
+						operation: ['send'],
+						resource: ['notification'],
 					},
 				},
 				default: {},
@@ -117,7 +103,8 @@ export class Pushcut implements INodeType {
 							loadOptionsMethod: 'getDevices',
 						},
 						default: [],
-						description: 'List of devices this notification is sent to. (default is all devices). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'List of devices this notification is sent to. (default is all devices). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Input',
@@ -147,7 +134,7 @@ export class Pushcut implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available devices to display them to user so that he can
+			// Get all the available devices to display them to user so that they can
 			// select them easily
 			async getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -160,7 +147,7 @@ export class Pushcut implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available notifications to display them to user so that he can
+			// Get all the available notifications to display them to user so that they can
 			// select them easily
 			async getNotifications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -180,17 +167,15 @@ export class Pushcut implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
-
 			if (resource === 'notification') {
 				if (operation === 'send') {
 					const notificationName = this.getNodeParameter('notificationName', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {};
 
@@ -207,10 +192,8 @@ export class Pushcut implements INodeType {
 		}
 		if (Array.isArray(responseData)) {
 			returnData.push.apply(returnData, responseData as IDataObject[]);
-
 		} else if (responseData !== undefined) {
 			returnData.push(responseData as IDataObject);
-
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

@@ -1,4 +1,7 @@
-const { existsSync, promises: { writeFile } } = require('fs');
+const {
+	existsSync,
+	promises: { writeFile },
+} = require('fs');
 const path = require('path');
 const { task, src, dest } = require('gulp');
 
@@ -8,7 +11,7 @@ const PURPLE_ANSI_COLOR_CODE = 35;
 task('build:icons', copyIcons);
 
 function copyIcons() {
-	src('nodes/**/*.{png,svg}').pipe(dest('dist/nodes'))
+	src('nodes/**/*.{png,svg}').pipe(dest('dist/nodes'));
 
 	return src('credentials/**/*.{png,svg}').pipe(dest('dist/credentials'));
 }
@@ -55,7 +58,7 @@ function getNodeTranslationPaths() {
 
 		if (existsSync(nodeTranslationPath)) {
 			acc.push(nodeTranslationPath);
-		};
+		}
 
 		return acc;
 	}, []);
@@ -74,7 +77,6 @@ function getHeaders(nodeTranslationPaths) {
 	}, {});
 }
 
-
 // ----------------------------------
 //             helpers
 // ----------------------------------
@@ -89,24 +91,18 @@ function isValidHeader(header, allowedHeaderKeys) {
 
 	const headerKeys = Object.keys(header);
 
-	return headerKeys.length > 0 &&
-		headerKeys.every(key => allowedHeaderKeys.includes(key));
+	return headerKeys.length > 0 && headerKeys.every((key) => allowedHeaderKeys.includes(key));
 }
 
 function writeDistFile(data, distPath) {
-	writeFile(
-		distPath,
-		`module.exports = ${JSON.stringify(data, null, 2)}`,
-	);
+	writeFile(distPath, `module.exports = ${JSON.stringify(data, null, 2)}`);
 }
 
 const log = (string, { bulletpoint } = { bulletpoint: false }) => {
 	if (bulletpoint) {
-		process.stdout.write(
-			colorize(PURPLE_ANSI_COLOR_CODE, `- ${string}\n`),
-		);
+		process.stdout.write(colorize(PURPLE_ANSI_COLOR_CODE, `- ${string}\n`));
 		return;
-	};
+	}
 
 	process.stdout.write(`${string}\n`);
 };

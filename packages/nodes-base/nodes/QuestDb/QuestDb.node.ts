@@ -1,18 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
-import {
-	pgInsert,
-	pgQuery,
-} from '../Postgres/Postgres.node.functions';
+import { pgInsert, pgQueryV2 } from '../Postgres/v1/genericFunctions';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,20 +60,21 @@ export class QuestDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					editor: 'sqlEditor',
+					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'executeQuery',
-						],
+						operation: ['executeQuery'],
 					},
 				},
 				default: '',
 				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
+				description:
+					'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 
 			// ----------------------------------
@@ -89,9 +86,7 @@ export class QuestDb implements INodeType {
 				type: 'hidden', // Schema is used by pgInsert
 				displayOptions: {
 					show: {
-						operation: [
-							'insert',
-						],
+						operation: ['insert'],
 					},
 				},
 				default: '',
@@ -103,9 +98,7 @@ export class QuestDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'insert',
-						],
+						operation: ['insert'],
 					},
 				},
 				default: '',
@@ -123,7 +116,8 @@ export class QuestDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows',
+				description:
+					'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 			{
 				displayName: 'Return Fields',
@@ -148,9 +142,7 @@ export class QuestDb implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'executeQuery',
-						],
+						operation: ['executeQuery'],
 					},
 				},
 				options: [
@@ -171,7 +163,8 @@ export class QuestDb implements INodeType {
 							},
 						],
 						default: 'independently',
-						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.questDb/">the docs</a> for more examples.',
+						description:
+							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.questdb/">the docs</a> for more examples.',
 					},
 					{
 						displayName: 'Query Parameters',
@@ -179,14 +172,13 @@ export class QuestDb implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'executeQuery',
-								],
+								'/operation': ['executeQuery'],
 							},
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters',
+						description:
+							'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},
@@ -197,9 +189,7 @@ export class QuestDb implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'insert',
-						],
+						operation: ['insert'],
 					},
 				},
 			},
@@ -226,17 +216,20 @@ export class QuestDb implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', 0);
 			const mode = (additionalFields.mode || 'independently') as string;
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail(), mode);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				overrideMode: mode,
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -251,19 +244,26 @@ export class QuestDb implements INodeType {
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
 
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			const insertData = await db.any('SELECT ${columns:name} from ${table:name}', {
-				columns: returnFields.split(',').map(value => value.trim()).filter(value => !!value),
+				columns: returnFields
+					.split(',')
+					.map((value) => value.trim())
+					.filter((value) => !!value),
 				table,
 			});
 
 			returnItems = this.helpers.returnJsonArray(insertData);
 		} else {
-			await pgp.end();
-			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			pgp.end();
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

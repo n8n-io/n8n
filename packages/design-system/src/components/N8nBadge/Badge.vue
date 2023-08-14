@@ -1,22 +1,25 @@
-<template functional>
-	<span
-		:class="$style[props.theme]"
-	>
-		<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold" :compact="true">
+<template>
+	<span :class="['n8n-badge', $style[theme]]">
+		<n8n-text :size="size" :bold="bold" :compact="true">
 			<slot></slot>
-		</component>
+		</n8n-text>
 	</span>
 </template>
 
 <script lang="ts">
 import N8nText from '../N8nText';
 
-export default {
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	props: {
 		theme: {
 			type: String,
 			default: 'default',
-			validator: (value: string) => ['default', 'secondary'].includes(value),
+			validator: (value: string) =>
+				['default', 'success', 'warning', 'danger', 'primary', 'secondary', 'tertiary'].includes(
+					value,
+				),
 		},
 		size: {
 			type: String,
@@ -30,7 +33,7 @@ export default {
 	components: {
 		N8nText,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -49,10 +52,48 @@ export default {
 	border-color: var(--color-text-light);
 }
 
+.success {
+	composes: badge;
+	border-radius: var(--border-radius-base);
+	color: var(--color-success);
+	border-color: var(--color-success);
+}
+
+.warning {
+	composes: badge;
+	border-radius: var(--border-radius-base);
+	color: var(--color-warning);
+	border-color: var(--color-warning);
+}
+
+.danger {
+	composes: badge;
+	border-radius: var(--border-radius-base);
+	color: var(--color-danger);
+	border-color: var(--color-danger);
+}
+
+.primary {
+	composes: badge;
+	padding: var(--spacing-5xs) var(--spacing-3xs);
+	border-radius: var(--border-radius-xlarge);
+	color: var(--color-foreground-xlight);
+	background-color: var(--color-primary);
+	border-color: var(--color-primary);
+}
+
 .secondary {
 	composes: badge;
 	border-radius: var(--border-radius-xlarge);
 	color: var(--color-secondary);
 	background-color: var(--color-secondary-tint-1);
+}
+
+.tertiary {
+	composes: badge;
+	border-radius: var(--border-radius-base);
+	color: var(--color-text-light);
+	border-color: var(--color-text-light);
+	padding: 1px var(--spacing-5xs);
 }
 </style>

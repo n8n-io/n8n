@@ -1,18 +1,11 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { apiRequest } from '../../../transport';
 
-import {
-	apiRequest
-} from '../../../transport';
-
-
-export async function getTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function getTicket(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('ticketId', index) as string;
 
 	const qs = {} as IDataObject;
@@ -20,7 +13,6 @@ export async function getTicket(this: IExecuteFunctions, index: number): Promise
 	const endpoint = `tickets/${id}`;
 	const body = {} as IDataObject;
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-	return this.helpers.returnJsonArray(responseData.ticket);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	return this.helpers.returnJsonArray(responseData.ticket as IDataObject[]);
 }

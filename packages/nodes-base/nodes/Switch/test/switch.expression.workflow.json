@@ -1,0 +1,225 @@
+{
+	"name": "review node unit tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "fb04a728-d2b9-4b98-8d3b-3762b0a60c43",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				-7020,
+				1700
+			]
+		},
+		{
+			"parameters": {
+				"mode": "expression",
+				"output": "={{ $json.data }}"
+			},
+			"id": "6addcb47-5a9d-4a02-a915-b3b60b2ffad3",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 1,
+			"position": [
+				-6460,
+				1700
+			]
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "data[0]"
+						},
+						{
+							"name": "data[1]",
+							"value": 1
+						},
+						{
+							"name": "data[2]",
+							"value": 2
+						},
+						{
+							"name": "data[3]",
+							"value": 3
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "b1f9468e-4604-48ff-a851-4041b224f9a5",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [
+				-6840,
+				1700
+			]
+		},
+		{
+			"parameters": {},
+			"id": "66650986-03a4-4cd7-a7c9-3792218cb2f5",
+			"name": "Output 0",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-6180,
+				1460
+			]
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data",
+				"options": {}
+			},
+			"id": "808579aa-9da2-4c6b-bdd6-387119593d97",
+			"name": "Item Lists",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 1,
+			"position": [
+				-6660,
+				1700
+			]
+		},
+		{
+			"parameters": {},
+			"id": "dd764387-3ff7-4a6c-8451-3a0511f80415",
+			"name": "Output 1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-6180,
+				1620
+			]
+		},
+		{
+			"parameters": {},
+			"id": "02561ebf-8054-4d12-98b1-e099bcb20b34",
+			"name": "Output 2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-6180,
+				1780
+			]
+		},
+		{
+			"parameters": {},
+			"id": "bfaaacd7-956c-4e6f-bc40-f6459bc43faa",
+			"name": "Output 3",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-6180,
+				1940
+			]
+		}
+	],
+	"pinData": {
+		"Output 0": [
+			{
+				"json": {
+					"data": 0
+				}
+			}
+		],
+		"Output 1": [
+			{
+				"json": {
+					"data": 1
+				}
+			}
+		],
+		"Output 2": [
+			{
+				"json": {
+					"data": 2
+				}
+			}
+		],
+		"Output 3": [
+			{
+				"json": {
+					"data": 3
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Output 0",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Output 1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Output 2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Output 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Item Lists",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Item Lists": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "d9f4d9b1-a282-473e-a527-f1e6c3b5bb89",
+	"id": "182",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

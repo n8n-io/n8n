@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.keap",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Sales",
-		"Communication"
-	],
+	"categories": ["Sales", "Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,11 +11,9 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.keap/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.keap/"
 			}
 		]
 	},
-	"alias": [
-		"Infusionsoft"
-	]
+	"alias": ["Infusionsoft"]
 }

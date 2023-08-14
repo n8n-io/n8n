@@ -1,43 +1,50 @@
-// The Vue build version to load with the `import` command
-// (runtime-only or standalone) has been set in webpack.base.conf with an alias.
-import './public_path';
-import Vue from 'vue';
+import { createApp } from 'vue';
 
-import './plugins';
-import 'prismjs';
-import 'prismjs/themes/prism.css';
-import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
-import './n8n-theme.scss';
+import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
+import 'n8n-design-system/css/index.scss';
 
-import "@fontsource/open-sans/latin-400.css";
-import "@fontsource/open-sans/latin-600.css";
-import "@fontsource/open-sans/latin-700.css";
+import './n8n-theme.scss';
+import './styles/autocomplete-theme.scss';
+
+import '@fontsource/open-sans/latin-400.css';
+import '@fontsource/open-sans/latin-600.css';
+import '@fontsource/open-sans/latin-700.css';
 
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from './components/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
-import { I18nPlugin } from './plugins/i18n';
+import { I18nPlugin, i18nInstance } from './plugins/i18n';
+import { GlobalComponentsPlugin } from './plugins/components';
+import { GlobalDirectivesPlugin } from './plugins/directives';
+import { FontAwesomePlugin } from './plugins/icons';
 
-import { store } from './store';
+import { runExternalHook } from '@/utils';
+import { createPinia, PiniaVuePlugin } from 'pinia';
+import { useWebhooksStore } from '@/stores';
 
-Vue.config.productionTip = false;
+const pinia = createPinia();
+
+const app = createApp(App);
+
+app.use(TelemetryPlugin);
+app.use(PiniaVuePlugin);
+app.use(I18nPlugin);
+app.use(FontAwesomePlugin);
+app.use(GlobalComponentsPlugin);
+app.use(GlobalDirectivesPlugin);
+app.use(pinia);
+app.use(router);
+app.use(i18nInstance);
+
+app.mount('#app');
+
 router.afterEach((to, from) => {
-	runExternalHook('main.routeChange', store, { from, to });
+	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
 });
 
-Vue.use(TelemetryPlugin);
-Vue.use((vue) => I18nPlugin(vue, store));
-
-new Vue({
-	router,
-	store,
-	render: h => h(App),
-}).$mount('#app');
-
-if (process.env.NODE_ENV !== 'production') {
+if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
 	window.onerror = (message, source, lineno, colno, error) => {
@@ -46,8 +53,8 @@ if (process.env.NODE_ENV !== 'production') {
 			// not do anything about it anyway
 			return;
 		}
-		console.error('error caught in main.ts'); // eslint-disable-line no-console
-		console.error(message); // eslint-disable-line no-console
-		console.error(error); // eslint-disable-line no-console
+		console.error('error caught in main.ts');
+		console.error(message);
+		console.error(error);
 	};
 }

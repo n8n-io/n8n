@@ -2,13 +2,11 @@
 	"node": "n8n-nodes-base.wait",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.wait/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
 			}
 		],
 		"generic": [
@@ -23,15 +21,8 @@
 			}
 		]
 	},
-	"alias": [
-		"pause",
-		"sleep",
-		"delay",
-		"timeout"
-	],
+	"alias": ["pause", "sleep", "delay", "timeout"],
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
-		]
+		"Core Nodes": ["Flow"]
 	}
 }

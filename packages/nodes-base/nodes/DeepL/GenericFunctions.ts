@@ -1,18 +1,13 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function deepLApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -23,7 +18,6 @@ export async function deepLApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-
 	const proApiEndpoint = 'https://api.deepl.com/v2';
 	const freeApiEndpoint = 'https://api-free.deepl.com/v2';
 
@@ -50,7 +44,6 @@ export async function deepLApiRequest(
 		}
 
 		return await this.helpers.requestWithAuthentication.call(this, 'deepLApi', options);
-
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

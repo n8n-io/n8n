@@ -1,24 +1,39 @@
 <template>
-	<fragment></fragment>
+	<span v-show="false" />
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import type { ITelemetrySettings } from 'n8n-workflow';
+import { externalHooks } from '@/mixins/externalHooks';
 
-import { mapGetters } from 'vuex';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'Telemetry',
+	mixins: [externalHooks],
 	data() {
 		return {
-			initialised: false,
+			isTelemetryInitialized: false,
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['telemetry']),
-		...mapGetters('users', ['currentUserId']),
-		isTelemeteryEnabledOnRoute(): boolean {
-			return this.$route.meta && this.$route.meta.telemetry ? !this.$route.meta.telemetry.disabled: true;
+		...mapStores(useRootStore, useSettingsStore, useUsersStore),
+		currentUserId(): string {
+			return this.usersStore.currentUserId || '';
+		},
+		isTelemetryEnabledOnRoute(): boolean {
+			return this.$route.meta && this.$route.meta.telemetry
+				? !this.$route.meta.telemetry.disabled
+				: true;
+		},
+		telemetry(): ITelemetrySettings {
+			return this.settingsStore.telemetry;
+		},
+		isTelemetryEnabled(): boolean {
+			return !!this.telemetry?.enabled;
 		},
 	},
 	mounted() {
@@ -26,17 +41,20 @@ export default Vue.extend({
 	},
 	methods: {
 		init() {
-			if (this.initialised || !this.isTelemeteryEnabledOnRoute) {
+			if (
+				this.isTelemetryInitialized ||
+				!this.isTelemetryEnabledOnRoute ||
+				!this.isTelemetryEnabled
+			)
 				return;
-			}
-			const opts = this.telemetry;
-			if (opts && opts.enabled) {
-				this.initialised = true;
-				const instanceId = this.$store.getters.instanceId;
-				const userId = this.$store.getters['users/currentUserId'];
-				const logLevel = this.$store.getters['settings/logLevel'];
-				this.$telemetry.init(opts, { instanceId, logLevel, userId, store: this.$store });
-			}
+
+			this.$telemetry.init(this.telemetry, {
+				instanceId: this.rootStore.instanceId,
+				userId: this.currentUserId,
+				versionCli: this.rootStore.versionCli,
+			});
+
+			this.isTelemetryInitialized = true;
 		},
 	},
 	watch: {
@@ -44,10 +62,11 @@ export default Vue.extend({
 			this.init();
 		},
 		currentUserId(userId) {
-			const instanceId = this.$store.getters.instanceId;
-			this.$telemetry.identify(instanceId, userId);
+			if (this.isTelemetryEnabled) {
+				this.$telemetry.identify(this.rootStore.instanceId, userId);
+			}
 		},
-		isTelemeteryEnabledOnRoute(enabled) {
+		isTelemetryEnabledOnRoute(enabled) {
 			if (enabled) {
 				this.init();
 			}

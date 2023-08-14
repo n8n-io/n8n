@@ -1,12 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	dropboxApiRequest,
@@ -36,9 +35,7 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -47,9 +44,7 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -104,9 +99,7 @@ export class Dropbox implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
+						resource: ['file'],
 					},
 				},
 				options: [
@@ -151,9 +144,7 @@ export class Dropbox implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'folder',
-						],
+						resource: ['folder'],
 					},
 				},
 				options: [
@@ -198,9 +189,7 @@ export class Dropbox implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'search',
-						],
+						resource: ['search'],
 					},
 				},
 				options: [
@@ -228,13 +217,8 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'copy',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['copy'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/original.txt',
@@ -248,13 +232,8 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'copy',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['copy'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/copy.txt',
@@ -272,19 +251,13 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['delete'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
 				description: 'The path to delete. Can be a single file or a whole folder.',
 			},
-
 
 			// ----------------------------------
 			//         file/folder:move
@@ -297,13 +270,8 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'move',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['move'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/old_name.txt',
@@ -317,13 +285,8 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'move',
-						],
-						resource: [
-							'file',
-							'folder',
-						],
+						operation: ['move'],
+						resource: ['file', 'folder'],
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
@@ -341,12 +304,8 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['download'],
+						resource: ['file'],
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
@@ -360,12 +319,8 @@ export class Dropbox implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['download'],
+						resource: ['file'],
 					},
 				},
 				description: 'Name of the binary property to which to write the data of the read file',
@@ -382,16 +337,13 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['upload'],
+						resource: ['file'],
 					},
 				},
 				placeholder: '/invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
+				description:
+					'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
 				displayName: 'Binary Data',
@@ -400,12 +352,8 @@ export class Dropbox implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['upload'],
+						resource: ['file'],
 					},
 				},
 				description: 'Whether the data to upload should be taken from binary field',
@@ -417,17 +365,10 @@ export class Dropbox implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
-						binaryData: [
-							false,
-						],
+						operation: ['upload'],
+						resource: ['file'],
+						binaryData: [false],
 					},
-
 				},
 				placeholder: '',
 				description: 'The text content of the file to upload',
@@ -440,20 +381,14 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
-						binaryData: [
-							true,
-						],
+						operation: ['upload'],
+						resource: ['file'],
+						binaryData: [true],
 					},
-
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded',
+				description:
+					'Name of the binary property which contains the data for the file to be uploaded',
 			},
 
 			// ----------------------------------
@@ -467,15 +402,12 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'query',
-						],
-						resource: [
-							'search',
-						],
+						operation: ['query'],
+						resource: ['search'],
 					},
 				},
-				description: 'The string to search for. May match across multiple fields based on the request arguments.',
+				description:
+					'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
 				displayName: 'File Status',
@@ -494,15 +426,12 @@ export class Dropbox implements INodeType {
 				default: 'active',
 				displayOptions: {
 					show: {
-						operation: [
-							'query',
-						],
-						resource: [
-							'search',
-						],
+						operation: ['query'],
+						resource: ['search'],
 					},
 				},
-				description: 'The string to search for. May match across multiple fields based on the request arguments.',
+				description:
+					'The string to search for. May match across multiple fields based on the request arguments.',
 			},
 			{
 				displayName: 'Return All',
@@ -510,12 +439,8 @@ export class Dropbox implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'query',
-						],
-						resource: [
-							'search',
-						],
+						operation: ['query'],
+						resource: ['search'],
 					},
 				},
 				default: false,
@@ -530,15 +455,9 @@ export class Dropbox implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'search',
-						],
-						operation: [
-							'query',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['search'],
+						operation: ['query'],
+						returnAll: [false],
 					},
 				},
 				default: 100,
@@ -550,16 +469,13 @@ export class Dropbox implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'query',
-						],
-						resource: [
-							'search',
-						],
+						operation: ['query'],
+						resource: ['search'],
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Filters',
@@ -569,12 +485,8 @@ export class Dropbox implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'search',
-						],
-						operation: [
-							'query',
-						],
+						resource: ['search'],
+						operation: ['query'],
 					},
 				},
 				options: [
@@ -637,7 +549,8 @@ export class Dropbox implements INodeType {
 						name: 'file_extensions',
 						type: 'string',
 						default: '',
-						description: 'Multiple file extensions can be set separated by comma. Example: jpg,pdf.',
+						description:
+							'Multiple file extensions can be set separated by comma. Example: jpg,pdf.',
 					},
 					{
 						displayName: 'Folder',
@@ -664,12 +577,8 @@ export class Dropbox implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'folder',
-						],
+						operation: ['create'],
+						resource: ['folder'],
 					},
 				},
 				placeholder: '/invoices/2019',
@@ -686,12 +595,8 @@ export class Dropbox implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'folder',
-						],
+						operation: ['list'],
+						resource: ['folder'],
 					},
 				},
 				placeholder: '/invoices/2019/',
@@ -703,12 +608,8 @@ export class Dropbox implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'list',
-						],
-						resource: [
-							'folder',
-						],
+						operation: ['list'],
+						resource: ['folder'],
 					},
 				},
 				default: false,
@@ -723,15 +624,9 @@ export class Dropbox implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'folder',
-						],
-						operation: [
-							'list',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['folder'],
+						operation: ['list'],
+						returnAll: [false],
 					},
 				},
 				default: 100,
@@ -745,12 +640,8 @@ export class Dropbox implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'folder',
-						],
-						operation: [
-							'list',
-						],
+						resource: ['folder'],
+						operation: ['list'],
 					},
 				},
 				options: [
@@ -759,49 +650,52 @@ export class Dropbox implements INodeType {
 						name: 'include_deleted',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the results will include entries for files and folders that used to exist but were deleted. The default for this field is False.',
+						description:
+							'Whether the results will include entries for files and folders that used to exist but were deleted. The default for this field is False.',
 					},
 					{
 						displayName: 'Include Shared Members',
 						name: 'include_has_explicit_shared_members',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False.',
+						description:
+							'Whether the results will include a flag for each file indicating whether or not that file has any explicit members. The default for this field is False.',
 					},
 					{
 						displayName: 'Include Mounted Folders',
 						name: 'include_mounted_folders',
 						type: 'boolean',
 						default: true,
-						description: 'Whether the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True.',
+						description:
+							'Whether the results will include entries under mounted folders which includes app folder, shared folder and team folder. The default for this field is True.',
 					},
 					{
 						displayName: 'Include Non Downloadable Files',
 						name: 'include_non_downloadable_files',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to include files that are not downloadable, i.e. Google Docs. The default for this field is True.',
+						description:
+							'Whether to include files that are not downloadable, i.e. Google Docs. The default for this field is True.',
 					},
 					{
 						displayName: 'Recursive',
 						name: 'recursive',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the list folder operation will be applied recursively to all subfolders and the response will contain contents of all subfolders. The default for this field is False.',
+						description:
+							'Whether the list folder operation will be applied recursively to all subfolders and the response will contain contents of all subfolders. The default for this field is False.',
 					},
 				],
 			},
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
-
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -814,17 +708,18 @@ export class Dropbox implements INodeType {
 		let headers: IDataObject = {};
 		let simple = false;
 
-
 		const { accessType } = await getCredentials.call(this);
 
 		if (accessType === 'full') {
 			// get the root directory to set it as the default for all operations
-			const { root_info: { root_namespace_id } } = await getRootDirectory.call(this);
+			const {
+				root_info: { root_namespace_id },
+			} = await getRootDirectory.call(this);
 
 			headers = {
 				'dropbox-api-path-root': JSON.stringify({
 					'.tag': 'root',
-					'root': root_namespace_id,
+					root: root_namespace_id,
 				}),
 			};
 		}
@@ -846,7 +741,6 @@ export class Dropbox implements INodeType {
 						});
 
 						endpoint = 'https://content.dropboxapi.com/2/files/download';
-
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
@@ -864,22 +758,10 @@ export class Dropbox implements INodeType {
 
 						options = { json: false };
 
-						if (this.getNodeParameter('binaryData', i) === true) {
-
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+						if (this.getNodeParameter('binaryData', i)) {
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
@@ -897,15 +779,14 @@ export class Dropbox implements INodeType {
 						};
 
 						endpoint = 'https://api.dropboxapi.com/2/files/create_folder_v2';
-
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'entries';
 
@@ -915,15 +796,14 @@ export class Dropbox implements INodeType {
 							limit: 1000,
 						};
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
 							body.limit = limit;
 						}
 
 						Object.assign(body, filters);
 
 						endpoint = 'https://api.dropboxapi.com/2/files/list_folder';
-
 					}
 				} else if (resource === 'search') {
 					if (operation === 'query') {
@@ -931,11 +811,11 @@ export class Dropbox implements INodeType {
 						//         query
 						// ----------------------------------
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						simple = this.getNodeParameter('simple', 0) as boolean;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'matches';
 
@@ -951,11 +831,11 @@ export class Dropbox implements INodeType {
 							filters.file_extensions = (filters.file_extensions as string).split(',');
 						}
 
-						Object.assign(body.options, filters);
+						Object.assign(body.options!, filters);
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
-							Object.assign(body.options, { max_results: limit });
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
+							Object.assign(body.options!, { max_results: limit });
 						}
 
 						endpoint = 'https://api.dropboxapi.com/2/files/search_v2';
@@ -974,7 +854,6 @@ export class Dropbox implements INodeType {
 						};
 
 						endpoint = 'https://api.dropboxapi.com/2/files/copy_v2';
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -986,7 +865,6 @@ export class Dropbox implements INodeType {
 						};
 
 						endpoint = 'https://api.dropboxapi.com/2/files/delete_v2';
-
 					} else if (operation === 'move') {
 						// ----------------------------------
 						//         move
@@ -1001,7 +879,9 @@ export class Dropbox implements INodeType {
 						endpoint = 'https://api.dropboxapi.com/2/files/move_v2';
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				if (resource === 'file' && operation === 'download') {
@@ -1011,55 +891,75 @@ export class Dropbox implements INodeType {
 
 				let responseData;
 
-				if (returnAll === true) {
-					responseData = await dropboxpiRequestAllItems.call(this, property, requestMethod, endpoint, body, query, headers);
+				if (returnAll) {
+					responseData = await dropboxpiRequestAllItems.call(
+						this,
+						property,
+						requestMethod,
+						endpoint,
+						body,
+						query,
+						headers,
+					);
 				} else {
-					responseData = await dropboxApiRequest.call(this, requestMethod, endpoint, body, query, headers, options);
+					responseData = await dropboxApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						query,
+						headers,
+						options,
+					);
 				}
 
 				if (resource === 'file' && operation === 'upload') {
-					responseData = JSON.parse(responseData);
-				}
-
-				if (resource === 'file' && operation === 'download') {
-
+					const data = JSON.parse(responseData as string);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(data as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
+				} else if (resource === 'file' && operation === 'download') {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
 						binary: {},
+						pairedItem: { item: i },
 					};
 
 					if (items[i].binary !== undefined) {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const filePathDownload = this.getNodeParameter('path', i) as string;
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(Buffer.from(responseData), filePathDownload);
-
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
+						Buffer.from(responseData as string),
+						filePathDownload,
+					);
 				} else if (resource === 'folder' && operation === 'list') {
-
 					const propNames: { [key: string]: string } = {
-						'id': 'id',
-						'name': 'name',
-						'client_modified': 'lastModifiedClient',
-						'server_modified': 'lastModifiedServer',
-						'rev': 'rev',
-						'size': 'contentSize',
+						id: 'id',
+						name: 'name',
+						client_modified: 'lastModifiedClient',
+						server_modified: 'lastModifiedServer',
+						rev: 'rev',
+						size: 'contentSize',
 						'.tag': 'type',
-						'content_hash': 'contentHash',
-						'path_lower': 'pathLower',
-						'path_display': 'pathDisplay',
-						'has_explicit_shared_members': 'hasExplicitSharedMembers',
-						'is_downloadable': 'isDownloadable',
+						content_hash: 'contentHash',
+						path_lower: 'pathLower',
+						path_display: 'pathDisplay',
+						has_explicit_shared_members: 'hasExplicitSharedMembers',
+						is_downloadable: 'isDownloadable',
 					};
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						responseData = responseData.entries;
 					}
 
@@ -1073,23 +973,41 @@ export class Dropbox implements INodeType {
 							}
 						}
 
-						returnData.push(newItem as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(newItem),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				} else if (resource === 'search' && operation === 'query') {
-					if (returnAll === true) {
-						returnData.push.apply(returnData, (simple === true) ? simplify(responseData) : responseData);
+					let data = responseData;
+					if (returnAll) {
+						data = simple ? simplify(responseData as IDataObject[]) : responseData;
 					} else {
-						returnData.push.apply(returnData, (simple === true) ? simplify(responseData[property]) : responseData[property]);
+						data = simple
+							? simplify(responseData[property] as IDataObject[])
+							: responseData[property];
 					}
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(data as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else {
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					if (resource === 'file' && operation === 'download'){
+					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
-					}else{
-						returnData.push({ error: error.message });
+					} else {
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}
@@ -1102,7 +1020,7 @@ export class Dropbox implements INodeType {
 			return this.prepareOutputData(items);
 		} else {
 			// For all other ones does the output items get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

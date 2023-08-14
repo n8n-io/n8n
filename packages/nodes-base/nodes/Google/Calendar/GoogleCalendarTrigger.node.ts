@@ -1,20 +1,13 @@
-
-import {
+import type {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { getCalendars, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import moment from 'moment';
 
@@ -41,15 +34,45 @@ export class GoogleCalendarTrigger implements INodeType {
 		polling: true,
 		properties: [
 			{
-				displayName: 'Calendar Name or ID',
+				displayName: 'Calendar',
 				name: 'calendarId',
-				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getCalendars',
-				},
-				default: '',
+				description: 'Google Calendar to operate on',
+				modes: [
+					{
+						displayName: 'Calendar',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Calendar...',
+						typeOptions: {
+							searchListMethod: 'getCalendars',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									// calendar ids are emails. W3C email regex with optional trailing whitespace.
+									regex:
+										'(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*(?:[ \t]+)*$)',
+									errorMessage: 'Not a valid Google Calendar ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)',
+						},
+						placeholder: 'name@google.com',
+					},
+				],
 			},
 			{
 				displayName: 'Trigger On',
@@ -88,7 +111,8 @@ export class GoogleCalendarTrigger implements INodeType {
 						name: 'matchTerm',
 						type: 'string',
 						default: '',
-						description: 'Free text search terms to filter events that match these terms in any field, except for extended properties',
+						description:
+							'Free text search terms to filter events that match these terms in any field, except for extended properties',
 					},
 				],
 			},
@@ -96,61 +120,33 @@ export class GoogleCalendarTrigger implements INodeType {
 	};
 
 	methods = {
-		loadOptions: {
-			// Get all the calendars to display them to user so that he can
-			// select them easily
-			async getCalendars(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const calendars = await googleApiRequestAllItems.call(
-					this,
-					'items',
-					'GET',
-					'/calendar/v3/users/me/calendarList',
-				);
-				for (const calendar of calendars) {
-					returnData.push({
-						name: calendar.summary,
-						value: calendar.id,
-					});
-				}
-				return returnData;
-			},
+		listSearch: {
+			getCalendars,
 		},
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
 		const triggerOn = this.getNodeParameter('triggerOn', '') as string;
-		const calendarId = this.getNodeParameter('calendarId') as string;
+		const calendarId = this.getNodeParameter('calendarId', '', { extractValue: true }) as string;
 		const webhookData = this.getWorkflowStaticData('node');
 		const matchTerm = this.getNodeParameter('options.matchTerm', '') as string;
 
 		if (poolTimes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Please set a poll time',
-			);
+			throw new NodeOperationError(this.getNode(), 'Please set a poll time');
 		}
 
 		if (triggerOn === '') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Please select an event',
-			);
+			throw new NodeOperationError(this.getNode(), 'Please select an event');
 		}
 
 		if (calendarId === '') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Please select a calendar',
-			);
+			throw new NodeOperationError(this.getNode(), 'Please select a calendar');
 		}
 
 		const now = moment().utc().format();
 
-		const startDate = webhookData.lastTimeChecked as string || now;
+		const startDate = (webhookData.lastTimeChecked as string) || now;
 
 		const endDate = now;
 
@@ -184,18 +180,42 @@ export class GoogleCalendarTrigger implements INodeType {
 			delete qs.timeMax;
 
 			qs.maxResults = 1;
-			events = await googleApiRequest.call(this, 'GET', `/calendar/v3/calendars/${calendarId}/events`, {}, qs);
+			events = await googleApiRequest.call(
+				this,
+				'GET',
+				`/calendar/v3/calendars/${calendarId}/events`,
+				{},
+				qs,
+			);
 			events = events.items;
 		} else {
-			events = await googleApiRequestAllItems.call(this, 'items', 'GET', `/calendar/v3/calendars/${calendarId}/events`, {}, qs);
+			events = await googleApiRequestAllItems.call(
+				this,
+				'items',
+				'GET',
+				`/calendar/v3/calendars/${calendarId}/events`,
+				{},
+				qs,
+			);
 			if (triggerOn === 'eventCreated') {
-				events = events.filter((event: { created: string }) => moment(event.created).isBetween(startDate, endDate));
+				events = events.filter((event: { created: string }) =>
+					moment(event.created).isBetween(startDate, endDate),
+				);
 			} else if (triggerOn === 'eventUpdated') {
-				events = events.filter((event: { created: string, updated: string }) => !moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(moment(event.updated).format('YYYY-MM-DDTHH:mm:ss')));
+				events = events.filter(
+					(event: { created: string; updated: string }) =>
+						!moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(
+							moment(event.updated).format('YYYY-MM-DDTHH:mm:ss'),
+						),
+				);
 			} else if (triggerOn === 'eventStarted') {
-				events = events.filter((event: { start: { dateTime: string } }) => moment(event.start.dateTime).isBetween(startDate, endDate, null, '[]'));
+				events = events.filter((event: { start: { dateTime: string } }) =>
+					moment(event.start.dateTime).isBetween(startDate, endDate, null, '[]'),
+				);
 			} else if (triggerOn === 'eventEnded') {
-				events = events.filter((event: { end: { dateTime: string } }) => moment(event.end.dateTime).isBetween(startDate, endDate, null, '[]'));
+				events = events.filter((event: { end: { dateTime: string } }) =>
+					moment(event.end.dateTime).isBetween(startDate, endDate, null, '[]'),
+				);
 			}
 		}
 
@@ -206,7 +226,9 @@ export class GoogleCalendarTrigger implements INodeType {
 		}
 
 		if (this.getMode() === 'manual') {
-			throw new NodeApiError(this.getNode(), { message: 'No data with the current filter could be found' });
+			throw new NodeApiError(this.getNode(), {
+				message: 'No data with the current filter could be found',
+			});
 		}
 
 		return null;

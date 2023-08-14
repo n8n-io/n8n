@@ -2,42 +2,49 @@
 	<div>
 		<img v-if="filePath" :class="$style.credIcon" :src="filePath" />
 		<NodeIcon v-else-if="relevantNode" :nodeType="relevantNode" :size="28" />
+		<span :class="$style.fallback" v-else></span>
 	</div>
 </template>
 
 <script lang="ts">
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
-export default Vue.extend({
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import NodeIcon from '@/components/NodeIcon.vue';
+
+export default defineComponent({
+	components: {
+		NodeIcon,
+	},
 	props: {
 		credentialTypeName: {
 			type: String,
-			required: true,
 		},
 	},
 	computed: {
+		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore),
 		credentialWithIcon(): ICredentialType | null {
-			return this.getCredentialWithIcon(this.credentialTypeName);
+			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
 
 		filePath(): string | null {
-			if (!this.credentialWithIcon || !this.credentialWithIcon.icon || !this.credentialWithIcon.icon.startsWith('file:')) {
+			const iconUrl = this.credentialWithIcon?.iconUrl;
+			if (!iconUrl) {
 				return null;
 			}
-
-			const restUrl = this.$store.getters.getRestUrl;
-
-			return `${restUrl}/credential-icon/${this.credentialWithIcon.name}`;
+			return this.rootStore.getBaseUrl + iconUrl;
 		},
-		relevantNode(): INodeTypeDescription | null	 {
-			if (this.credentialWithIcon && this.credentialWithIcon.icon && this.credentialWithIcon.icon.startsWith('node:')) {
+
+		relevantNode(): INodeTypeDescription | null {
+			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
-
-				return this.$store.getters.nodeType(nodeType);
+				return this.nodeTypesStore.getNodeType(nodeType);
 			}
-
-			const nodesWithAccess = this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
+			const nodesWithAccess = this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
 
 			if (nodesWithAccess.length) {
 				return nodesWithAccess[0];
@@ -47,16 +54,28 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getCredentialWithIcon(name: string): ICredentialType | null {
-			const type = this.$store.getters['credentials/getCredentialTypeByName'](name);
-			if (type.icon) {
+		getCredentialWithIcon(name: string | null): ICredentialType | null {
+			if (!name) {
+				return null;
+			}
+
+			const type = this.credentialsStore.getCredentialTypeByName(name);
+
+			if (!type) {
+				return null;
+			}
+
+			if (type.icon || type.iconUrl) {
 				return type;
 			}
 
 			if (type.extends) {
-				return type.extends.reduce((accu: string | null, type: string) => {
-					return accu || this.getCredentialWithIcon(type);
-				}, null);
+				let parentCred = null;
+				type.extends.forEach((name) => {
+					parentCred = this.getCredentialWithIcon(name);
+					if (parentCred !== null) return;
+				});
+				return parentCred;
 			}
 
 			return null;
@@ -66,9 +85,15 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-
 .credIcon {
 	height: 26px;
 }
 
+.fallback {
+	height: 28px;
+	width: 28px;
+	display: flex;
+	border-radius: 50%;
+	background-color: var(--color-foreground-base);
+}
 </style>

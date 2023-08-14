@@ -7,21 +7,23 @@
 		:wrapperClosable="false"
 		direction="btt"
 		width="120px"
-		class="value-survey"
+		:class="$style.valueSurvey"
 	>
-		<template slot="header">
+		<template #header>
 			<div :class="$style.title">
 				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ getTitle }}</n8n-heading>
 			</div>
 		</template>
-		<template slot="content">
+		<template #content>
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
-							<n8n-square-button
+							<n8n-button
+								type="tertiary"
 								:label="(value - 1).toString()"
 								@click="selectSurveyValue((value - 1).toString())"
+								square
 							/>
 						</div>
 					</div>
@@ -35,8 +37,7 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
-							size="medium"
-							@input="onInputChange"
+							@update:modelValue="onInputChange"
 						/>
 						<div :class="$style.button">
 							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
@@ -54,35 +55,48 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
-import { IN8nPromptResponse } from '@/Interface';
+import type { IN8nPromptResponse } from '@/Interface';
 
-import ModalDrawer from './ModalDrawer.vue';
+import ModalDrawer from '@/components/ModalDrawer.vue';
 
-import mixins from 'vue-typed-mixins';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import Vue from 'vue';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useToast } from '@/composables';
 
-const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
-const GREAT_FEEDBACK_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
-const DEFAULT_FEEDBACK_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
+const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
+const GREAT_FEEDBACK_TITLE =
+	'Great to hear! Can we reach out to see how we can make n8n even better for you?';
+const DEFAULT_FEEDBACK_TITLE =
+	"Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?";
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'ValueSurvey',
+	mixins: [workflowHelpers],
 	props: ['isActive'],
 	components: {
 		ModalDrawer,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	watch: {
 		isActive(isActive) {
 			if (isActive) {
 				this.$telemetry.track('User shown value survey', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 				});
 			}
 		},
 	},
 	computed: {
+		...mapStores(useRootStore, useSettingsStore),
 		getTitle(): string {
 			if (this.form.value !== '') {
 				if (Number(this.form.value) > 7) {
@@ -106,20 +120,20 @@ export default mixins(workflowHelpers).extend({
 			},
 			showButtons: true,
 			VALUE_SURVEY_MODAL_KEY,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	methods: {
 		closeDialog(): void {
 			if (this.form.value === '') {
 				this.$telemetry.track('User responded value survey score', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					nps: '',
 				});
 			}
 			if (this.form.value !== '' && this.form.email === '') {
 				this.$telemetry.track('User responded value survey email', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					email: '',
 				});
 			}
@@ -131,36 +145,35 @@ export default mixins(workflowHelpers).extend({
 			this.form.value = value;
 			this.showButtons = false;
 
-			const response: IN8nPromptResponse = await this.$store.dispatch(
-				'settings/submitValueSurvey',
-				{ value: this.form.value },
-			);
+			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({
+				value: this.form.value,
+			});
 
-			if (response.updated) {
+			if (response && response.updated) {
 				this.$telemetry.track('User responded value survey score', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					nps: this.form.value,
 				});
 			}
 		},
 		async send() {
 			if (this.isEmailValid) {
-				const response: IN8nPromptResponse = await this.$store.dispatch(
-					'settings/submitValueSurvey',
+				const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey(
 					{
 						email: this.form.email,
 						value: this.form.value,
 					},
 				);
 
-				if (response.updated) {
+				if (response && response.updated) {
 					this.$telemetry.track('User responded value survey email', {
-						instance_id: this.$store.getters.instanceId,
+						instance_id: this.rootStore.instanceId,
 						email: this.form.email,
 					});
-					this.$showMessage({
+					this.showMessage({
 						title: 'Thanks for your feedback',
-						message: `If you’d like to help even more, answer this <a target="_blank" href="https://n8n-community.typeform.com/quicksurvey#nps=${this.form.value}&instance_id=${this.$store.getters.instanceId}">quick survey.</a>`,
+						message:
+							'If you’d like to help even more, leave us a <a target="_blank" href="https://www.g2.com/products/n8n/reviews/start">review on G2</a>.',
 						type: 'success',
 						duration: 15000,
 					});
@@ -171,7 +184,7 @@ export default mixins(workflowHelpers).extend({
 					this.form.email = '';
 					this.showButtons = true;
 				}, 1000);
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			}
 		},
 	},
@@ -183,7 +196,7 @@ export default mixins(workflowHelpers).extend({
 	height: 16px;
 	text-align: center;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin-top: 10px;
 		padding: 0 15px;
 	}
@@ -193,7 +206,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: center;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin-top: 20px;
 	}
 }
@@ -210,7 +223,7 @@ export default mixins(workflowHelpers).extend({
 .container {
 	margin: 0 8px;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		margin: 0 4px;
 	}
 
@@ -241,43 +254,35 @@ export default mixins(workflowHelpers).extend({
 .disclaimer {
 	margin-top: var(--spacing-4xs);
 }
-</style>
 
-<style lang="scss">
-.value-survey {
+.valueSurvey {
+	background: var(--color-background-dark);
 	height: 120px;
 	top: auto;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		height: 140px;
 	}
 
-	.el-drawer {
-		background: var(--color-background-dark);
+	@media (max-width: $breakpoint-xs) {
+		height: 140px !important;
+	}
 
-		@media (max-width: $--breakpoint-xs) {
-			height: 140px !important;
-		}
+	header {
+		height: 50px;
+		margin: 0;
+		padding: 18px 0 16px;
 
-		&__header {
-			height: 50px;
-			margin: 0;
-			padding: 18px 0 16px;
+		button {
+			top: 12px;
+			right: 16px;
+			position: absolute;
+			font-weight: var(--font-weight-bold);
+			color: var(--color-text-xlight);
 
-			.el-drawer__close-btn {
-				top: 12px;
-				right: 16px;
-				position: absolute;
-
-				@media (max-width: $--breakpoint-xs) {
-					top: 2px;
-					right: 2px;
-				}
-			}
-
-			.el-dialog__close {
-				font-weight: var(--font-weight-bold);
-				color: var(--color-text-xlight);
+			@media (max-width: $breakpoint-xs) {
+				top: 2px;
+				right: 2px;
 			}
 		}
 	}

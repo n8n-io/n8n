@@ -1,42 +1,35 @@
 <template>
 	<Modal
 		:name="PERSONALIZATION_MODAL_KEY"
-		:title="
-			!submitted
-				? $locale.baseText('personalizationModal.customizeN8n')
-				: $locale.baseText('personalizationModal.thanks')
-		"
-		:subtitle="!submitted ? $locale.baseText('personalizationModal.theseQuestionsHelpUs') : ''"
+		:title="$locale.baseText('personalizationModal.customizeN8n')"
+		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
 		:centerTitle="true"
 		:showClose="false"
 		:eventBus="modalBus"
 		:closeOnClickModal="false"
 		:closeOnPressEscape="false"
 		width="460px"
+		data-test-id="personalization-form"
 		@enter="onSave"
 	>
-		<template v-slot:content>
-			<div v-if="submitted" :class="$style.submittedContainer">
-				<img :class="$style.demoImage" :src="baseUrl + 'suggestednodes.png'" />
-				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
-			</div>
-			<div :class="$style.container" v-else>
-				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" @submit="onSubmit"/>
+		<template #content>
+			<div :class="$style.container">
+				<n8n-form-inputs
+					:inputs="survey"
+					:columnView="true"
+					:eventBus="formBus"
+					:teleported="teleported"
+					tagSize="small"
+					@submit="onSubmit"
+				/>
 			</div>
 		</template>
-		<template v-slot:footer>
+		<template #footer>
 			<div>
 				<n8n-button
-					v-if="submitted"
-					@click="closeDialog"
-					:label="$locale.baseText('personalizationModal.getStarted')"
-					float="right"
-				/>
-				<n8n-button
-					v-else
 					@click="onSave"
 					:loading="isSaving"
-					:label="$locale.baseText('personalizationModal.continue')"
+					:label="$locale.baseText('personalizationModal.getStarted')"
 					float="right"
 				/>
 			</div>
@@ -45,12 +38,12 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
-const SURVEY_VERSION = 'v2';
+const SURVEY_VERSION = 'v4';
 
 import {
-	CODING_SKILL_KEY,
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
 	COMPANY_SIZE_20_OR_LESS,
@@ -64,7 +57,7 @@ import {
 	OTHER_INDUSTRY_OPTION,
 	PERSONALIZATION_MODAL_KEY,
 	SECURITY_INDUSTRY,
-	EDUCATION_INDUSTRY,
+	EDUCATION_TYPE,
 	FINANCE_INSURANCE_INDUSTRY,
 	IT_INDUSTRY,
 	MARKETING_INDUSTRY,
@@ -73,105 +66,118 @@ import {
 	PHYSICAL_RETAIL_OR_SERVICES,
 	REAL_ESTATE_OR_CONSTRUCTION,
 	TELECOMS_INDUSTRY,
-	AUTOMATION_GOAL_KEY,
-	CUSTOMER_INTEGRATIONS_GOAL,
-	CUSTOMER_SUPPORT_GOAL,
-	FINANCE_ACCOUNTING_GOAL,
-	HR_GOAL,
-	OPERATIONS_GOAL,
-	PRODUCT_GOAL,
-	SALES_MARKETING_GOAL,
-	SECURITY_GOAL,
 	OTHER_AUTOMATION_GOAL,
-	NOT_SURE_YET_GOAL,
-	AUTOMATION_GOAL_OTHER_KEY,
 	COMPANY_TYPE_KEY,
-	CUSTOMER_TYPE_KEY,
-	MSP_FOCUS_KEY,
-	MSP_FOCUS_OTHER_KEY,
+	EMAIL_KEY,
 	SAAS_COMPANY_TYPE,
 	ECOMMERCE_COMPANY_TYPE,
-	MSP_COMPANY_TYPE,
+	MSP_INDUSTRY,
 	DIGITAL_AGENCY_COMPANY_TYPE,
-	AUTOMATION_AGENCY_COMPANY_TYPE,
 	SYSTEMS_INTEGRATOR_COMPANY_TYPE,
 	OTHER_COMPANY_TYPE,
 	PERSONAL_COMPANY_TYPE,
-	INDIVIDUAL_CUSTOMER_TYPE,
-	SMALL_CUSTOMER_TYPE,
-	MEDIUM_CUSTOMER_TYPE,
-	LARGE_CUSTOMER_TYPE,
-	CLOUD_INFRA_FOCUS,
-	IT_SUPPORT_FOCUS,
-	NETWORKING_COMMUNICATION_FOCUS,
-	SECURITY_FOCUS,
-	OTHER_FOCUS,
 	COMPANY_INDUSTRY_EXTENDED_KEY,
 	OTHER_COMPANY_INDUSTRY_EXTENDED_KEY,
-} from '../constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
-import Modal from './Modal.vue';
-import { IFormInput, IFormInputs, IPersonalizationSurveyAnswersV2 } from '@/Interface';
-import Vue from 'vue';
-import { mapGetters } from 'vuex';
+	ONBOARDING_PROMPT_TIMEBOX,
+	FIRST_ONBOARDING_PROMPT_TIMEOUT,
+	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+	MARKETING_AUTOMATION_GOAL_KEY,
+	MARKETING_AUTOMATION_LEAD_GENERATION_GOAL,
+	MARKETING_AUTOMATION_CUSTOMER_COMMUNICATION,
+	MARKETING_AUTOMATION_ACTIONS,
+	MARKETING_AUTOMATION_AD_CAMPAIGN,
+	MARKETING_AUTOMATION_REPORTING,
+	MARKETING_AUTOMATION_DATA_SYNCHING,
+	MARKETING_AUTOMATION_OTHER,
+	OTHER_MARKETING_AUTOMATION_GOAL_KEY,
+	ROLE_KEY,
+	ROLE_BUSINESS_OWNER,
+	ROLE_CUSTOMER_SUPPORT,
+	ROLE_ENGINEERING,
+	ROLE_DATA_SCIENCE,
+	ROLE_DEVOPS,
+	ROLE_IT,
+	ROLE_SALES_AND_MARKETING,
+	ROLE_SECURITY,
+	ROLE_OTHER,
+	ROLE_OTHER_KEY,
+	DEVOPS_AUTOMATION_GOAL_OTHER_KEY,
+	DEVOPS_AUTOMATION_GOAL_KEY,
+	DEVOPS_AUTOMATION_OTHER,
+	DEVOPS_AUTOMATION_CI_CD_GOAL,
+	DEVOPS_AUTOMATION_CLOUD_INFRASTRUCTURE_ORCHESTRATION_GOAL,
+	DEVOPS_AUTOMATION_DATA_SYNCING_GOAL,
+	DEVOPS_INCIDENT_RESPONSE_GOAL,
+	DEVOPS_MONITORING_AND_ALERTING_GOAL,
+	DEVOPS_REPORTING_GOAL,
+	DEVOPS_TICKETING_SYSTEMS_INTEGRATIONS_GOAL,
+	AUTOMATION_BENEFICIARY_KEY,
+	AUTOMATION_BENEFICIARY_SELF,
+	AUTOMATION_BENEFICIARY_MY_TEAM,
+	AUTOMATION_BENEFICIARY_OTHER_TEAMS,
+	REPORTED_SOURCE_KEY,
+	REPORTED_SOURCE_GOOGLE,
+	REPORTED_SOURCE_TWITTER,
+	REPORTED_SOURCE_LINKEDIN,
+	REPORTED_SOURCE_YOUTUBE,
+	REPORTED_SOURCE_FRIEND,
+	REPORTED_SOURCE_PODCAST,
+	REPORTED_SOURCE_EVENT,
+	REPORTED_SOURCE_OTHER,
+	REPORTED_SOURCE_OTHER_KEY,
+	VIEWS,
+} from '@/constants';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useToast } from '@/composables';
+import Modal from '@/components/Modal.vue';
+import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
+import { getAccountAge } from '@/utils';
+import type { GenericValue } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage, workflowHelpers).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'PersonalizationModal',
+	mixins: [workflowHelpers],
+	components: { Modal },
+	props: {
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
-			submitted: false,
 			isSaving: false,
 			PERSONALIZATION_MODAL_KEY,
 			otherWorkAreaFieldVisible: false,
 			otherCompanyIndustryFieldVisible: false,
 			showAllIndustryQuestions: true,
-			modalBus: new Vue(),
-			formBus: new Vue(),
+			modalBus: createEventBus(),
+			formBus: createEventBus(),
+		};
+	},
+	setup() {
+		return {
+			...useToast(),
 		};
 	},
 	computed: {
-		...mapGetters({
-			baseUrl: 'getBaseUrl',
-		}),
+		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore),
 		survey() {
 			const survey: IFormInputs = [
 				{
-					name: CODING_SKILL_KEY,
+					name: EMAIL_KEY,
 					properties: {
-						label: this.$locale.baseText('personalizationModal.howAreYourCodingSkills'),
-						type: 'select',
-						placeholder: this.$locale.baseText('personalizationModal.select'),
-						options: [
-							{
-								label: this.$locale.baseText('personalizationModal.neverCoded'),
-								value: '0',
-							},
-							{
-								label: this.$locale.baseText(
-									'personalizationModal.iGetStuckTooQuicklyToAchieveMuch',
-								),
-								value: '1',
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.iCanCodeSomeUsefulThingsBut'),
-								value: '2',
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.iKnowEnoughToBeDangerousBut'),
-								value: '3',
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.iCanFigureMostThingsOut'),
-								value: '4',
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.iCanDoAlmostAnythingIWant'),
-								value: '5',
-							},
-						],
+						label: this.$locale.baseText('personalizationModal.yourEmailAddress'),
+						type: 'text',
+						placeholder: this.$locale.baseText('personalizationModal.email'),
 					},
+					shouldDisplay: () =>
+						this.settingsStore.isDesktopDeployment && !this.usersStore.currentUser?.firstName,
 				},
 				{
 					name: COMPANY_TYPE_KEY,
@@ -188,21 +194,18 @@ export default mixins(showMessage, workflowHelpers).extend({
 								label: this.$locale.baseText('personalizationModal.eCommerce'),
 								value: ECOMMERCE_COMPANY_TYPE,
 							},
-							{
-								label: this.$locale.baseText('personalizationModal.managedServiceProvider'),
-								value: MSP_COMPANY_TYPE,
-							},
+
 							{
 								label: this.$locale.baseText('personalizationModal.digitalAgencyOrConsultant'),
 								value: DIGITAL_AGENCY_COMPANY_TYPE,
 							},
 							{
-								label: this.$locale.baseText('personalizationModal.automationAgencyOrConsultant'),
-								value: AUTOMATION_AGENCY_COMPANY_TYPE,
-							},
-							{
 								label: this.$locale.baseText('personalizationModal.systemsIntegrator'),
 								value: SYSTEMS_INTEGRATOR_COMPANY_TYPE,
+							},
+							{
+								value: EDUCATION_TYPE,
+								label: this.$locale.baseText('personalizationModal.education'),
 							},
 							{
 								label: this.$locale.baseText('personalizationModal.other'),
@@ -216,95 +219,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 					},
 				},
 				{
-					name: CUSTOMER_TYPE_KEY,
-					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
-						return (
-							!!companyType && ![ OTHER_COMPANY_TYPE, PERSONAL_COMPANY_TYPE, ECOMMERCE_COMPANY_TYPE, MSP_COMPANY_TYPE].includes(companyType)
-						);
-					},
-					properties: {
-						label: this.$locale.baseText('personalizationModal.whatKindOfCustomersDoYouServe'),
-						type: 'select',
-						placeholder: this.$locale.baseText('personalizationModal.select'),
-						options: [
-							{
-								label: this.$locale.baseText('personalizationModal.individualConsumers'),
-								value: INDIVIDUAL_CUSTOMER_TYPE,
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.smallBusinesses'),
-								value: SMALL_CUSTOMER_TYPE,
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.mediumBusinesses'),
-								value: MEDIUM_CUSTOMER_TYPE,
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.largeBusinesses'),
-								value: LARGE_CUSTOMER_TYPE,
-							},
-						],
-					},
-				},
-				{
-					name: MSP_FOCUS_KEY,
-					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
-						return companyType === MSP_COMPANY_TYPE;
-					},
-					properties: {
-						label: this.$locale.baseText('personalizationModal.whatDoesYourCompanyFocusOn'),
-						type: 'multi-select',
-						placeholder: this.$locale.baseText('personalizationModal.select'),
-						options: [
-							{
-								label: this.$locale.baseText('personalizationModal.cloudInfrastructure'),
-								value: CLOUD_INFRA_FOCUS,
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.itSupport'),
-								value: IT_SUPPORT_FOCUS,
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.networkingOrCommunication'),
-								value: NETWORKING_COMMUNICATION_FOCUS,
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.security'),
-								value: SECURITY_FOCUS,
-							},
-							{
-								label: this.$locale.baseText('personalizationModal.otherPleaseSpecify'),
-								value: OTHER_FOCUS,
-							},
-						],
-					},
-				},
-				{
-					name: MSP_FOCUS_OTHER_KEY,
-					properties: {
-						placeholder: this.$locale.baseText(
-							'personalizationModal.pleaseSpecifyYourCompanyFocus',
-						),
-					},
-					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
-						const mspFocus = (values as IPersonalizationSurveyAnswersV2)[MSP_FOCUS_KEY];
-						return companyType === MSP_COMPANY_TYPE && !!mspFocus && mspFocus.includes(OTHER_FOCUS);
-					},
-				},
-				{
 					name: COMPANY_INDUSTRY_EXTENDED_KEY,
 					properties: {
 						type: 'multi-select',
 						label: this.$locale.baseText('personalizationModal.whichIndustriesIsYourCompanyIn'),
 						placeholder: this.$locale.baseText('personalizationModal.select'),
 						options: [
-							{
-								value: EDUCATION_INDUSTRY,
-								label: this.$locale.baseText('personalizationModal.education'),
-							},
 							{
 								value: FINANCE_INSURANCE_INDUSTRY,
 								label: this.$locale.baseText('personalizationModal.financeOrInsurance'),
@@ -324,6 +244,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 							{
 								value: LEGAL_INDUSTRY,
 								label: this.$locale.baseText('personalizationModal.legal'),
+							},
+							{
+								value: MSP_INDUSTRY,
+								label: this.$locale.baseText('personalizationModal.managedServiceProvider'),
 							},
 							{
 								value: MARKETING_INDUSTRY,
@@ -360,7 +284,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						return companyType === OTHER_COMPANY_TYPE;
 					},
 				},
@@ -370,74 +294,233 @@ export default mixins(showMessage, workflowHelpers).extend({
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourCompanysIndustry'),
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
-						const companyIndustry = (values as IPersonalizationSurveyAnswersV2)[COMPANY_INDUSTRY_EXTENDED_KEY];
-						return companyType === OTHER_COMPANY_TYPE && !!companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const companyIndustry = (values as IPersonalizationLatestVersion)[
+							COMPANY_INDUSTRY_EXTENDED_KEY
+						];
+						return (
+							companyType === OTHER_COMPANY_TYPE &&
+							!!companyIndustry &&
+							companyIndustry.includes(OTHER_INDUSTRY_OPTION)
+						);
 					},
 				},
 				{
-					name: AUTOMATION_GOAL_KEY,
+					name: ROLE_KEY,
 					properties: {
 						type: 'select',
-						label: this.$locale.baseText('personalizationModal.whatAreYouLookingToAutomate'),
+						label: this.$locale.baseText('personalizationModal.whichRoleBestDescribesYou'),
 						placeholder: this.$locale.baseText('personalizationModal.select'),
 						options: [
 							{
-								value: CUSTOMER_INTEGRATIONS_GOAL,
-								label: this.$locale.baseText('personalizationModal.customerIntegrations'),
+								value: ROLE_BUSINESS_OWNER,
+								label: this.$locale.baseText('personalizationModal.businessOwner'),
 							},
 							{
-								value: CUSTOMER_SUPPORT_GOAL,
+								value: ROLE_CUSTOMER_SUPPORT,
 								label: this.$locale.baseText('personalizationModal.customerSupport'),
 							},
 							{
-								value: FINANCE_ACCOUNTING_GOAL,
-								label: this.$locale.baseText('personalizationModal.financeOrAccounting'),
+								value: ROLE_DATA_SCIENCE,
+								label: this.$locale.baseText('personalizationModal.dataScience'),
 							},
 							{
-								value: HR_GOAL,
-								label: this.$locale.baseText('personalizationModal.hr'),
+								value: ROLE_DEVOPS,
+								label: this.$locale.baseText('personalizationModal.devops'),
 							},
 							{
-								value: OPERATIONS_GOAL,
-								label: this.$locale.baseText('personalizationModal.operations'),
+								value: ROLE_IT,
+								label: this.$locale.baseText('personalizationModal.it'),
 							},
 							{
-								value: PRODUCT_GOAL,
-								label: this.$locale.baseText('personalizationModal.product'),
+								value: ROLE_ENGINEERING,
+								label: this.$locale.baseText('personalizationModal.engineering'),
 							},
 							{
-								value: SALES_MARKETING_GOAL,
+								value: ROLE_SALES_AND_MARKETING,
 								label: this.$locale.baseText('personalizationModal.salesAndMarketing'),
 							},
 							{
-								value: SECURITY_GOAL,
+								value: ROLE_SECURITY,
 								label: this.$locale.baseText('personalizationModal.security'),
 							},
 							{
-								value: OTHER_AUTOMATION_GOAL,
+								value: ROLE_OTHER,
 								label: this.$locale.baseText('personalizationModal.otherPleaseSpecify'),
-							},
-							{
-								value: NOT_SURE_YET_GOAL,
-								label: this.$locale.baseText('personalizationModal.notSureYet'),
 							},
 						],
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						return companyType !== PERSONAL_COMPANY_TYPE;
 					},
 				},
 				{
-					name: AUTOMATION_GOAL_OTHER_KEY,
+					name: ROLE_OTHER_KEY,
+					properties: {
+						placeholder: this.$locale.baseText('personalizationModal.specifyYourRole'),
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE && role === ROLE_OTHER;
+					},
+				},
+				{
+					name: DEVOPS_AUTOMATION_GOAL_KEY,
+					properties: {
+						type: 'multi-select',
+						label: this.$locale.baseText('personalizationModal.whatAreYouLookingToAutomate'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								value: DEVOPS_AUTOMATION_CI_CD_GOAL,
+								label: this.$locale.baseText('personalizationModal.cicd'),
+							},
+							{
+								value: DEVOPS_AUTOMATION_CLOUD_INFRASTRUCTURE_ORCHESTRATION_GOAL,
+								label: this.$locale.baseText(
+									'personalizationModal.cloudInfrastructureOrchestration',
+								),
+							},
+							{
+								value: DEVOPS_AUTOMATION_DATA_SYNCING_GOAL,
+								label: this.$locale.baseText('personalizationModal.dataSynching'),
+							},
+							{
+								value: DEVOPS_INCIDENT_RESPONSE_GOAL,
+								label: this.$locale.baseText('personalizationModal.incidentResponse'),
+							},
+							{
+								value: DEVOPS_MONITORING_AND_ALERTING_GOAL,
+								label: this.$locale.baseText('personalizationModal.monitoringAndAlerting'),
+							},
+							{
+								value: DEVOPS_REPORTING_GOAL,
+								label: this.$locale.baseText('personalizationModal.reporting'),
+							},
+							{
+								value: DEVOPS_TICKETING_SYSTEMS_INTEGRATIONS_GOAL,
+								label: this.$locale.baseText('personalizationModal.ticketingSystemsIntegrations'),
+							},
+							{
+								value: OTHER_AUTOMATION_GOAL,
+								label: this.$locale.baseText('personalizationModal.other'),
+							},
+						],
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY] as string;
+						return (
+							companyType !== PERSONAL_COMPANY_TYPE &&
+							[ROLE_DEVOPS, ROLE_ENGINEERING, ROLE_IT].includes(role)
+						);
+					},
+				},
+				{
+					name: DEVOPS_AUTOMATION_GOAL_OTHER_KEY,
 					properties: {
 						placeholder: this.$locale.baseText('personalizationModal.specifyYourAutomationGoal'),
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
-						const automationGoal = (values as IPersonalizationSurveyAnswersV2)[AUTOMATION_GOAL_KEY];
-						return companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL;
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const goals = (values as IPersonalizationLatestVersion)[DEVOPS_AUTOMATION_GOAL_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY] as string;
+						return (
+							companyType !== PERSONAL_COMPANY_TYPE &&
+							[ROLE_DEVOPS, ROLE_ENGINEERING, ROLE_IT].includes(role) &&
+							!!goals &&
+							goals.includes(DEVOPS_AUTOMATION_OTHER)
+						);
+					},
+				},
+				{
+					name: MARKETING_AUTOMATION_GOAL_KEY,
+					properties: {
+						type: 'multi-select',
+						label: this.$locale.baseText('personalizationModal.specifySalesMarketingGoal'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								label: this.$locale.baseText('personalizationModal.leadGeneration'),
+								value: MARKETING_AUTOMATION_LEAD_GENERATION_GOAL,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.customerCommunication'),
+								value: MARKETING_AUTOMATION_CUSTOMER_COMMUNICATION,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.customerActions'),
+								value: MARKETING_AUTOMATION_ACTIONS,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.adCampaign'),
+								value: MARKETING_AUTOMATION_AD_CAMPAIGN,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.reporting'),
+								value: MARKETING_AUTOMATION_REPORTING,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.dataSynching'),
+								value: MARKETING_AUTOMATION_DATA_SYNCHING,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.other'),
+								value: MARKETING_AUTOMATION_OTHER,
+							},
+						],
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE && role === ROLE_SALES_AND_MARKETING;
+					},
+				},
+				{
+					name: OTHER_MARKETING_AUTOMATION_GOAL_KEY,
+					properties: {
+						placeholder: this.$locale.baseText(
+							'personalizationModal.specifyOtherSalesAndMarketingGoal',
+						),
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
+						const role = (values as IPersonalizationLatestVersion)[ROLE_KEY];
+						return (
+							companyType !== PERSONAL_COMPANY_TYPE &&
+							role === ROLE_SALES_AND_MARKETING &&
+							!!goals &&
+							goals.includes(MARKETING_AUTOMATION_OTHER)
+						);
+					},
+				},
+				{
+					name: AUTOMATION_BENEFICIARY_KEY,
+					properties: {
+						type: 'select',
+						label: this.$locale.baseText('personalizationModal.specifyAutomationBeneficiary'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								label: this.$locale.baseText('personalizationModal.myself'),
+								value: AUTOMATION_BENEFICIARY_SELF,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.myTeam'),
+								value: AUTOMATION_BENEFICIARY_MY_TEAM,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.otherTeams'),
+								value: AUTOMATION_BENEFICIARY_OTHER_TEAMS,
+							},
+						],
+					},
+					shouldDisplay(values): boolean {
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
+						return companyType !== PERSONAL_COMPANY_TYPE;
 					},
 				},
 				{
@@ -474,8 +557,60 @@ export default mixins(showMessage, workflowHelpers).extend({
 						],
 					},
 					shouldDisplay(values): boolean {
-						const companyType = (values as IPersonalizationSurveyAnswersV2)[COMPANY_TYPE_KEY];
+						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						return companyType !== PERSONAL_COMPANY_TYPE;
+					},
+				},
+				{
+					name: REPORTED_SOURCE_KEY,
+					properties: {
+						type: 'select',
+						label: this.$locale.baseText('personalizationModal.howDidYouHearAboutN8n'),
+						placeholder: this.$locale.baseText('personalizationModal.select'),
+						options: [
+							{
+								label: 'Google',
+								value: REPORTED_SOURCE_GOOGLE,
+							},
+							{
+								label: 'Twitter',
+								value: REPORTED_SOURCE_TWITTER,
+							},
+							{
+								label: 'LinkedIn',
+								value: REPORTED_SOURCE_LINKEDIN,
+							},
+							{
+								label: 'YouTube',
+								value: REPORTED_SOURCE_YOUTUBE,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.friendWordOfMouth'),
+								value: REPORTED_SOURCE_FRIEND,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.podcast'),
+								value: REPORTED_SOURCE_PODCAST,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.event'),
+								value: REPORTED_SOURCE_EVENT,
+							},
+							{
+								label: this.$locale.baseText('personalizationModal.otherPleaseSpecify'),
+								value: REPORTED_SOURCE_OTHER,
+							},
+						],
+					},
+				},
+				{
+					name: REPORTED_SOURCE_OTHER_KEY,
+					properties: {
+						placeholder: this.$locale.baseText('personalizationModal.specifyReportedSource'),
+					},
+					shouldDisplay(values): boolean {
+						const reportedSource = (values as IPersonalizationLatestVersion)[REPORTED_SOURCE_KEY];
+						return reportedSource === REPORTED_SOURCE_OTHER;
 					},
 				},
 			];
@@ -485,27 +620,73 @@ export default mixins(showMessage, workflowHelpers).extend({
 	},
 	methods: {
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
+			// In case the redirect to canvas for new users didn't happen
+			// we try again after closing the modal
+			if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
+				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+			}
 		},
 		onSave() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
-		async onSubmit(values: IPersonalizationSurveyAnswersV2): Promise<void> {
-			this.$data.isSaving = true;
+		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
+			this.isSaving = true;
 
 			try {
-				await this.$store.dispatch('users/submitPersonalizationSurvey', {...values, version: SURVEY_VERSION});
+				const survey: Record<string, GenericValue> = {
+					...values,
+					version: SURVEY_VERSION,
+					personalization_survey_submitted_at: new Date().toISOString(),
+					personalization_survey_n8n_version: this.rootStore.versionCli,
+				};
+
+				await this.$externalHooks().run('personalizationModal.onSubmit', survey);
+
+				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
 				}
 
-				this.submitted = true;
+				await this.fetchOnboardingPrompt();
 			} catch (e) {
-				this.$showError(e, 'Error while submitting results');
+				this.showError(e, 'Error while submitting results');
 			}
 
-			this.$data.isSaving = false;
+			this.isSaving = false;
+			this.closeDialog();
+		},
+		async fetchOnboardingPrompt() {
+			if (
+				this.settingsStore.onboardingCallPromptEnabled &&
+				getAccountAge(this.usersStore.currentUser || ({} as IUser)) <= ONBOARDING_PROMPT_TIMEBOX
+			) {
+				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
+				const promptTimeout =
+					onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+
+				if (onboardingResponse.title && onboardingResponse.description) {
+					setTimeout(async () => {
+						this.showToast({
+							type: 'info',
+							title: onboardingResponse.title,
+							message: onboardingResponse.description,
+							duration: 0,
+							customClass: 'clickable',
+							closeOnClick: true,
+							onClick: () => {
+								this.$telemetry.track('user clicked onboarding toast', {
+									seq_num: onboardingResponse.toast_sequence_number,
+									title: onboardingResponse.title,
+									description: onboardingResponse.description,
+								});
+								this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
+							},
+						});
+					}, promptTimeout);
+				}
+			}
 		},
 	},
 });
@@ -517,18 +698,5 @@ export default mixins(showMessage, workflowHelpers).extend({
 	section > div:not(:last-child) {
 		margin-bottom: var(--spacing-m);
 	}
-}
-
-.submittedContainer {
-	* {
-		margin-bottom: var(--spacing-2xs);
-	}
-}
-
-.demoImage {
-	border-radius: var(--border-radius-large);
-	border: var(--border-base);
-	width: 100%;
-	height: 140px;
 }
 </style>

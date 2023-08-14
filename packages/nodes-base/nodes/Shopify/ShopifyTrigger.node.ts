@@ -1,22 +1,15 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	shopifyApiRequest,
-} from './GenericFunctions';
+import { shopifyApiRequest } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+import { createHmac } from 'crypto';
 
 export class ShopifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,9 +31,7 @@ export class ShopifyTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiKey',
-						],
+						authentication: ['apiKey'],
 					},
 				},
 			},
@@ -49,9 +40,7 @@ export class ShopifyTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -60,9 +49,7 @@ export class ShopifyTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -97,7 +84,7 @@ export class ShopifyTrigger implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName: 'Topic',
+				displayName: 'Trigger On',
 				name: 'topic',
 				type: 'options',
 				default: '',
@@ -339,20 +326,19 @@ export class ShopifyTrigger implements INodeType {
 						value: 'themes/update',
 					},
 				],
-				description: 'Event that triggers the webhook',
 			},
 		],
 	};
-	// @ts-ignore (because of request)
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
-				const { webhooks }  = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
+				const { webhooks } = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl) {
 						webhookData.webhookId = webhook.id;
@@ -365,7 +351,7 @@ export class ShopifyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks.json`;
+				const endpoint = '/webhooks.json';
 				const body = {
 					webhook: {
 						topic,
@@ -374,9 +360,7 @@ export class ShopifyTrigger implements INodeType {
 					},
 				};
 
-				let responseData;
-
-				responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful
@@ -407,7 +391,6 @@ export class ShopifyTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const authentication = this.getNodeParameter('authentication') as string;
 		let secret = '';
-		console.log('llego request');
 
 		if (authentication === 'apiKey') {
 			const credentials = await this.getCredentials('shopifyApi');
@@ -425,11 +408,12 @@ export class ShopifyTrigger implements INodeType {
 		}
 
 		const topic = this.getNodeParameter('topic') as string;
-		if (headerData['x-shopify-topic'] !== undefined
-			&& headerData['x-shopify-hmac-sha256'] !== undefined
-			&& headerData['x-shopify-shop-domain'] !== undefined
-			&& headerData['x-shopify-api-version'] !== undefined) {
-			// @ts-ignore
+		if (
+			headerData['x-shopify-topic'] !== undefined &&
+			headerData['x-shopify-hmac-sha256'] !== undefined &&
+			headerData['x-shopify-shop-domain'] !== undefined &&
+			headerData['x-shopify-api-version'] !== undefined
+		) {
 			const computedSignature = createHmac('sha256', secret).update(req.rawBody).digest('base64');
 
 			if (headerData['x-shopify-hmac-sha256'] !== computedSignature) {
@@ -442,9 +426,7 @@ export class ShopifyTrigger implements INodeType {
 			return {};
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

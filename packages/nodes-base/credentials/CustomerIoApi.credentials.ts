@@ -1,20 +1,23 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class CustomerIoApi implements ICredentialType {
 	name = 'customerIoApi';
+
 	displayName = 'Customer.io API';
+
 	documentationUrl = 'customerIo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Tracking API Key',
 			name: 'trackingApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'Required for tracking API',
 			required: true,
@@ -49,20 +52,29 @@ export class CustomerIoApi implements ICredentialType {
 			displayName: 'App API Key',
 			name: 'appApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'Required for App API',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		// @ts-ignore
 		const url = requestOptions.url ? requestOptions.url : requestOptions.uri;
 		if (url.includes('track') || url.includes('api.customer.io')) {
-			const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
+			const basicAuthKey = Buffer.from(
+				`${credentials.trackingSiteId}:${credentials.trackingApiKey}`,
+			).toString('base64');
 			// @ts-ignore
-			Object.assign(requestOptions.headers, { 'Authorization': `Basic ${basicAuthKey}` });
+			Object.assign(requestOptions.headers, { Authorization: `Basic ${basicAuthKey}` });
 		} else if (url.includes('beta-api.customer.io')) {
 			// @ts-ignore
-			Object.assign(requestOptions.headers, { 'Authorization': `Bearer ${credentials.appApiKey as string}` });
+			Object.assign(requestOptions.headers, {
+				Authorization: `Bearer ${credentials.appApiKey as string}`,
+			});
 		} else {
 			throw new Error('Unknown way of authenticating');
 		}

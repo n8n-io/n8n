@@ -1,108 +1,167 @@
 <template>
-	<SettingsView>
-		<div :class="$style.container">
-			<div :class="$style.header">
-				<n8n-heading size="2xlarge">
-					{{ $locale.baseText('settings.api') }}
-					<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)', }">
-						({{ $locale.baseText('beta') }})
-					</span>
-				</n8n-heading>
-			</div>
+	<div :class="$style.container">
+		<div :class="$style.header">
+			<n8n-heading size="2xlarge">
+				{{ $locale.baseText('settings.api') }}
+				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
+					({{ $locale.baseText('beta') }})
+				</span>
+			</n8n-heading>
+		</div>
 
-			<div v-if="apiKey">
-				<p class="mb-s">
-					<n8n-info-tip :bold="false">
-						<span v-html="$locale.baseText('settings.api.view.info')"></span>
-					</n8n-info-tip>
-				</p>
-				<n8n-card class="mb-4xs" :class="$style.card">
-					<span :class="$style.delete">
-						<n8n-link @click="showDeleteModal" :bold="true">
-							{{ $locale.baseText('generic.delete') }}
-						</n8n-link>
-					</span>
+		<div v-if="apiKey">
+			<p class="mb-s">
+				<n8n-info-tip :bold="false">
+					<i18n-t keypath="settings.api.view.info" tag="span">
+						<template #apiAction>
+							<a
+								href="https://docs.n8n.io/api"
+								target="_blank"
+								v-text="$locale.baseText('settings.api.view.info.api')"
+							/>
+						</template>
+						<template #webhookAction>
+							<a
+								href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
+								target="_blank"
+								v-text="$locale.baseText('settings.api.view.info.webhook')"
+							/>
+						</template>
+					</i18n-t>
+				</n8n-info-tip>
+			</p>
+			<n8n-card class="mb-4xs" :class="$style.card">
+				<span :class="$style.delete">
+					<n8n-link @click="showDeleteModal" :bold="true">
+						{{ $locale.baseText('generic.delete') }}
+					</n8n-link>
+				</span>
+				<div>
 					<CopyInput
 						:label="$locale.baseText('settings.api.view.myKey')"
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+						:redactValue="true"
 						@copy="onCopy"
 					/>
-				</n8n-card>
-				<div :class="$style.hint">
-					<n8n-text size="small">
-						{{ $locale.baseText('settings.api.view.tryapi') }}
-					</n8n-text>
-					<n8n-link :to="apiPlaygroundPath" :newWindow="true" size="small">
-						{{ $locale.baseText('settings.api.view.apiPlayground') }}
-					</n8n-link>
 				</div>
+			</n8n-card>
+			<div :class="$style.hint">
+				<n8n-text size="small">
+					{{
+						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
+					}}
+				</n8n-text>
+				{{ ' ' }}
+				<n8n-link :to="apiDocsURL" :newWindow="true" size="small">
+					{{
+						$locale.baseText(
+							`settings.api.view.${swaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
+						)
+					}}
+				</n8n-link>
 			</div>
-			<n8n-action-box
-				v-else-if="mounted"
-				:buttonText="$locale.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')"
-				:description="$locale.baseText('settings.api.create.description')"
-				@click="createApiKey"
-			/>
 		</div>
-	</SettingsView>
+		<n8n-action-box
+			v-else-if="isTrialing"
+			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
+			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
+			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
+			@click:button="onUpgrade"
+		/>
+		<n8n-action-box
+			v-else-if="mounted && !isLoadingCloudPlans"
+			:buttonText="
+				$locale.baseText(
+					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
+				)
+			"
+			:description="$locale.baseText('settings.api.create.description')"
+			@click:button="createApiKey"
+		/>
+	</div>
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/components/mixins/showMessage';
-import { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { IUser } from '@/Interface';
+import { useToast, useMessage } from '@/composables';
 
-import SettingsView from './SettingsView.vue';
-import CopyInput from '../components/CopyInput.vue';
+import CopyInput from '@/components/CopyInput.vue';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
 
-export default mixins(
-	showMessage,
-).extend({
-	name: 'SettingsPersonalView',
+export default defineComponent({
+	name: 'SettingsApiView',
 	components: {
-		SettingsView,
 		CopyInput,
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+			...useUIStore(),
+		};
 	},
 	data() {
 		return {
 			loading: false,
 			mounted: false,
 			apiKey: '',
-			apiPlaygroundPath: '',
+			swaggerUIEnabled: false,
+			apiDocsURL: '',
 		};
 	},
 	mounted() {
-		this.getApiKey();
-		const baseUrl = this.$store.getters.getBaseUrl;
-		const apiPath = this.$store.getters['settings/publicApiPath'];
-		const latestVersion = this.$store.getters['settings/publicApiLatestVersion'];
-		this.apiPlaygroundPath = `${baseUrl}${apiPath}/v${latestVersion}/docs`;
+		void this.getApiKey();
+		const baseUrl = this.rootStore.baseUrl;
+		const apiPath = this.settingsStore.publicApiPath;
+		const latestVersion = this.settingsStore.publicApiLatestVersion;
+		this.swaggerUIEnabled = this.settingsStore.isSwaggerUIEnabled;
+		this.apiDocsURL = this.swaggerUIEnabled
+			? `${baseUrl}${apiPath}/v${latestVersion}/docs`
+			: `https://${DOCS_DOMAIN}/api/api-reference/`;
 	},
 	computed: {
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
+		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore, useUIStore),
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
+		},
+		isTrialing(): boolean {
+			return this.cloudPlanStore.userIsTrialing;
+		},
+		isLoadingCloudPlans(): boolean {
+			return this.cloudPlanStore.state.loadingPlan;
 		},
 	},
 	methods: {
+		onUpgrade() {
+			this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
+		},
 		async showDeleteModal() {
-			const confirmed = await this.confirmMessage(
+			const confirmed = await this.confirm(
 				this.$locale.baseText('settings.api.delete.description'),
 				this.$locale.baseText('settings.api.delete.title'),
-				null,
-				this.$locale.baseText('settings.api.delete.button'),
-				this.$locale.baseText('generic.cancel'),
+				{
+					confirmButtonText: this.$locale.baseText('settings.api.delete.button'),
+					cancelButtonText: this.$locale.baseText('generic.cancel'),
+				},
 			);
-			if (confirmed) {
-				this.deleteApiKey();
+			if (confirmed === MODAL_CONFIRM) {
+				await this.deleteApiKey();
 			}
 		},
 		async getApiKey() {
 			try {
-				this.apiKey = await this.$store.dispatch('settings/getApiKey');
+				this.apiKey = (await this.settingsStore.getApiKey()) || '';
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
+				this.showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
 				this.mounted = true;
 			}
@@ -111,9 +170,9 @@ export default mixins(
 			this.loading = true;
 
 			try {
-				this.apiKey = await this.$store.dispatch('settings/createApiKey');
+				this.apiKey = (await this.settingsStore.createApiKey()) || '';
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
+				this.showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
 				this.loading = false;
 				this.$telemetry.track('User clicked create API key button');
@@ -121,11 +180,14 @@ export default mixins(
 		},
 		async deleteApiKey() {
 			try {
-				await this.$store.dispatch('settings/deleteApiKey');
-				this.$showMessage({ title: this.$locale.baseText("settings.api.delete.toast"), type: 'success' });
+				await this.settingsStore.deleteApiKey();
+				this.showMessage({
+					title: this.$locale.baseText('settings.api.delete.toast'),
+					type: 'success',
+				});
 				this.apiKey = '';
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.api.delete.error'));
+				this.showError(error, this.$locale.baseText('settings.api.delete.error'));
 			} finally {
 				this.$telemetry.track('User clicked delete API key button');
 			}
@@ -169,4 +231,3 @@ export default mixins(
 	color: var(--color-text-light);
 }
 </style>
-

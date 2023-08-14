@@ -1,20 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	generateReturning,
 	getItemCopy,
 	getItemsCopy,
 	pgInsert,
-	pgQuery,
+	pgQueryV2,
 	pgUpdate,
-} from '../Postgres/Postgres.node.functions';
+} from '../Postgres/v1/genericFunctions';
 
 import pgPromise from 'pg-promise';
 
@@ -74,8 +73,10 @@ export class CrateDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					editor: 'sqlEditor',
+					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {
 					show: {
@@ -85,7 +86,8 @@ export class CrateDb implements INodeType {
 				default: '',
 				placeholder: 'SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
 				required: true,
-				description: 'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
+				description:
+					'The SQL query to execute. You can use n8n expressions or $1 and $2 in conjunction with query parameters.',
 			},
 
 			// ----------------------------------
@@ -128,7 +130,8 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows',
+				description:
+					'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 
 			// ----------------------------------
@@ -172,7 +175,8 @@ export class CrateDb implements INodeType {
 				default: 'id',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
+				description:
+					'Comma-separated list of the properties which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -185,7 +189,8 @@ export class CrateDb implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update',
+				description:
+					'Comma-separated list of the properties which should used as columns for rows to update',
 			},
 
 			// ----------------------------------
@@ -230,7 +235,8 @@ export class CrateDb implements INodeType {
 							},
 						],
 						default: 'multiple',
-						description: 'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/nodes/n8n-nodes-base.crateDb/">the docs</a> for more examples.',
+						description:
+							'The way queries should be sent to database. Can be used in conjunction with <b>Continue on Fail</b>. See <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cratedb/">the docs</a> for more examples.',
 					},
 					{
 						displayName: 'Query Parameters',
@@ -238,14 +244,13 @@ export class CrateDb implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/operation': [
-									'executeQuery',
-								],
+								'/operation': ['executeQuery'],
 							},
 						},
 						default: '',
 						placeholder: 'quantity,price',
-						description: 'Comma-separated list of properties which should be used as query parameters',
+						description:
+							'Comma-separated list of properties which should be used as query parameters',
 					},
 				],
 			},
@@ -272,14 +277,16 @@ export class CrateDb implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -287,7 +294,13 @@ export class CrateDb implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const insertData = await pgInsert(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+			const insertData = await pgInsert(
+				this.getNodeParameter,
+				pgp,
+				db,
+				items,
+				this.continueOnFail(),
+			);
 
 			for (let i = 0; i < insertData.length; i++) {
 				returnItems.push({
@@ -299,25 +312,35 @@ export class CrateDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
-			const mode = additionalFields.mode ?? 'multiple' as string;
+			const additionalFields = this.getNodeParameter('additionalFields', 0);
+			const mode = additionalFields.mode ?? ('multiple' as string);
 
-			if(mode === 'independently') {
-				const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items, this.continueOnFail());
+			if (mode === 'independently') {
+				const updateItems = await pgUpdate(
+					this.getNodeParameter,
+					pgp,
+					db,
+					items,
+					this.continueOnFail(),
+				);
 
 				returnItems = this.helpers.returnJsonArray(updateItems);
-			} else if(mode === 'multiple') {
+			} else if (mode === 'multiple') {
 				// Crate db does not support multiple-update queries
 				// Therefore we cannot invoke `pgUpdate` using multiple mode
 				// so we have to call multiple updates manually here
 
 				const table = this.getNodeParameter('table', 0) as string;
 				const schema = this.getNodeParameter('schema', 0) as string;
-				const updateKeys = (this.getNodeParameter('updateKey', 0) as string).split(',').map(column => column.trim());
-				const columns = (this.getNodeParameter('columns', 0) as string).split(',').map(column => column.trim());
+				const updateKeys = (this.getNodeParameter('updateKey', 0) as string)
+					.split(',')
+					.map((column) => column.trim());
+				const columns = (this.getNodeParameter('columns', 0) as string)
+					.split(',')
+					.map((column) => column.trim());
 				const queryColumns = columns.slice();
 
-				updateKeys.forEach(updateKey => {
+				updateKeys.forEach((updateKey) => {
 					if (!queryColumns.includes(updateKey)) {
 						columns.unshift(updateKey);
 						queryColumns.unshift('?' + updateKey);
@@ -326,28 +349,43 @@ export class CrateDb implements INodeType {
 
 				const cs = new pgp.helpers.ColumnSet(queryColumns, { table: { table, schema } });
 
-				const where = ' WHERE ' + updateKeys.map(updateKey => pgp.as.name(updateKey) + ' = ${' + updateKey + '}').join(' AND ');
+				const where =
+					' WHERE ' +
+					updateKeys
+						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+						.map((updateKey) => pgp.as.name(updateKey) + ' = ${' + updateKey + '}')
+						.join(' AND ');
 				// updateKeyValue = item.json[updateKey] as string | number;
 				// if (updateKeyValue === undefined) {
 				// 	throw new NodeOperationError(this.getNode(), 'No value found for update key!');
 				// }
 
-				const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
-				const queries:string[] = [];
+				const returning = generateReturning(
+					pgp,
+					this.getNodeParameter('returnFields', 0) as string,
+				);
+				const queries: string[] = [];
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columns);
-					queries.push(pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning);
+					queries.push(
+						(pgp.helpers.update(itemCopy, cs) as string) +
+							pgp.as.format(where, itemCopy) +
+							returning,
+					);
 				}
-				const updateItems = await db.multi(pgp.helpers.concat(queries));
-				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns) as IDataObject[]);
+				await db.multi(pgp.helpers.concat(queries));
+				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns));
 			}
 		} else {
-			await pgp.end();
-			throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+			pgp.end();
+			throw new NodeOperationError(
+				this.getNode(),
+				`The operation "${operation}" is not supported!`,
+			);
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

@@ -1,22 +1,14 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	getFields,
-	getForms,
-	getSubmission,
-	IFormstackWebhookResponseBody
-} from './GenericFunctions';
+import type { IFormstackWebhookResponseBody } from './GenericFunctions';
+import { apiRequest, getForms } from './GenericFunctions';
 
 export class FormstackTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,9 +30,7 @@ export class FormstackTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -49,9 +39,7 @@ export class FormstackTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -90,14 +78,16 @@ export class FormstackTrigger implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The Formstack form to monitor for new submissions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -108,7 +98,6 @@ export class FormstackTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -164,7 +153,7 @@ export class FormstackTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -175,7 +164,7 @@ export class FormstackTrigger implements INodeType {
 
 	// @ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = (this.getBodyData() as unknown) as IFormstackWebhookResponseBody;
+		const bodyData = this.getBodyData() as unknown as IFormstackWebhookResponseBody;
 		const simple = this.getNodeParameter('simple') as string;
 
 		const response = bodyData as unknown as IDataObject;
@@ -189,9 +178,7 @@ export class FormstackTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray([response as unknown as IDataObject]),
-			],
+			workflowData: [this.helpers.returnJsonArray([response as unknown as IDataObject])],
 		};
 	}
 }

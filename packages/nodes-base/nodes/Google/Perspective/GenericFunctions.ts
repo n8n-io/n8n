@@ -1,15 +1,7 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions,
@@ -35,6 +27,6 @@ export async function googleApiRequest(
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'googlePerspectiveOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

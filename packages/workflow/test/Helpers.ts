@@ -1,13 +1,11 @@
-import get from 'lodash.get';
-import {
+import get from 'lodash/get';
+import type {
 	CredentialInformation,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IContextObject,
 	ICredentialDataDecryptedObject,
-	ICredentials,
 	ICredentialsEncrypted,
-	ICredentialsHelper,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -25,20 +23,21 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowBase,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
-	NodeHelpers,
 	NodeParameterValue,
-	Workflow,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	WorkflowHooks,
-} from '../src';
+} from '@/Interfaces';
+import { ICredentials, ICredentialsHelper } from '@/Interfaces';
+import type { Workflow } from '@/Workflow';
+import { WorkflowDataProxy } from '@/WorkflowDataProxy';
+import { WorkflowHooks } from '@/WorkflowHooks';
+import * as NodeHelpers from '@/NodeHelpers';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
@@ -77,10 +76,9 @@ export class Credentials extends ICredentials {
 		const fullData = this.getData(encryptionKey, nodeType);
 
 		if (fullData === null) {
-			throw new Error(`No data was set.`);
+			throw new Error('No data was set.');
 		}
 
-		// eslint-disable-next-line no-prototype-builtins
 		if (!fullData.hasOwnProperty(key)) {
 			throw new Error(`No data for key "${key}" exists.`);
 		}
@@ -90,7 +88,7 @@ export class Credentials extends ICredentials {
 
 	getDataToSave(): ICredentialsEncrypted {
 		if (this.data === undefined) {
-			throw new Error(`No credentials were set to save.`);
+			throw new Error('No credentials were set to save.');
 		}
 
 		return {
@@ -119,8 +117,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		node: INode,
 		credentialsExpired: boolean,
 	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
-		return { updatedCredentials: false, data: {} }
-	};
+		return { updatedCredentials: false, data: {} };
+	}
 
 	getParentTypes(name: string): string[] {
 		return [];
@@ -163,7 +161,7 @@ export function getNodeParameter(
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
+		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
@@ -217,7 +215,7 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
+				return additionalData.executeWorkflow(workflowInfo, additionalData, { inputData });
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -278,7 +276,7 @@ export function getExecuteFunctions(
 				return mode;
 			},
 			getNode: () => {
-				return JSON.parse(JSON.stringify(node));
+				return deepCopy(node);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -328,8 +326,7 @@ export function getExecuteFunctions(
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					console.error(`There was a problem sending messsage to UI: ${error.message}`);
+					console.error(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
@@ -445,7 +442,7 @@ export function getExecuteSingleFunctions(
 				return mode;
 			},
 			getNode: () => {
-				return JSON.parse(JSON.stringify(node));
+				return deepCopy(node);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -674,14 +671,8 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
-
-	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
-	}
-
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
-		return this.getByNameAndVersion(nodeType);
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.nodeTypes[nodeType].type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {

@@ -2,45 +2,75 @@
 	<n8n-checkbox
 		v-if="type === 'checkbox'"
 		v-bind="$props"
-		@input="onInput"
+		@update:modelValue="onUpdateModelValue"
 		@focus="onFocus"
-		ref="input"
-	></n8n-checkbox>
-	<n8n-input-label v-else :label="label" :tooltipText="tooltipText" :required="required && showRequiredAsterisk">
+		ref="inputRef"
+	/>
+	<n8n-input-label
+		v-else-if="type === 'toggle'"
+		:inputName="name"
+		:label="label"
+		:tooltipText="tooltipText"
+		:required="required && showRequiredAsterisk"
+	>
+		<template #content>
+			{{ tooltipText }}
+		</template>
+		<el-switch
+			:modelValue="modelValue"
+			:active-color="activeColor"
+			:inactive-color="inactiveColor"
+			@update:modelValue="onUpdateModelValue"
+		></el-switch>
+	</n8n-input-label>
+	<n8n-input-label
+		v-else
+		:inputName="name"
+		:label="label"
+		:tooltipText="tooltipText"
+		:required="required && showRequiredAsterisk"
+	>
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
-			<slot v-if="hasDefaultSlot"></slot>
+			<slot v-if="hasDefaultSlot" />
 			<n8n-select
+				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				v-else-if="type === 'select' || type === 'multi-select'"
-				:value="value"
+				:modelValue="modelValue"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
-				@change="onInput"
+				:disabled="disabled"
+				@update:modelValue="onUpdateModelValue"
 				@focus="onFocus"
 				@blur="onBlur"
-				ref="input"
+				:name="name"
+				:teleported="teleported"
+				ref="inputRef"
 			>
 				<n8n-option
-					v-for="option in (options || [])"
+					v-for="option in options || []"
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
+					size="small"
 				/>
 			</n8n-select>
 			<n8n-input
 				v-else
+				:name="name"
 				:type="type"
 				:placeholder="placeholder"
-				:value="value"
+				:modelValue="modelValue"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
-				@input="onInput"
+				:disabled="disabled"
+				@update:modelValue="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"
-				ref="input"
+				ref="inputRef"
 			/>
 		</div>
 		<div :class="$style.errors" v-if="showErrors">
-			<span>{{ validationError }}</span>
+			<span v-text="validationError" />
 			<n8n-link
 				v-if="documentationUrl && documentationText"
 				:to="documentationUrl"
@@ -52,201 +82,178 @@
 			</n8n-link>
 		</div>
 		<div :class="$style.infoText" v-else-if="infoText">
-			<span size="small">{{ infoText }}</span>
+			<span size="small" v-text="infoText" />
 		</div>
 	</n8n-input-label>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
+<script lang="ts" setup>
+import { computed, reactive, onMounted, ref, watch, useSlots } from 'vue';
+
 import N8nInput from '../N8nInput';
 import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nCheckbox from '../N8nCheckbox';
+import { ElSwitch } from 'element-plus';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { Rule, RuleGroup, IValidator } from "../../types";
+import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
 
-import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
+import { t } from '../../locale';
 
-export default mixins(Locale).extend({
-	name: 'n8n-form-input',
-	components: {
-		N8nInput,
-		N8nInputLabel,
-		N8nOption,
-		N8nSelect,
-		N8nCheckbox,
-	},
-	data() {
-		return {
-			hasBlurred: false,
-			isTyping: false,
-		};
-	},
-	props: {
-		value: {
-		},
-		label: {
-			type: String,
-		},
-		infoText: {
-			type: String,
-		},
-		required: {
-			type: Boolean,
-		},
-		showRequiredAsterisk: {
-			type: Boolean,
-			default: true,
-		},
-		type: {
-			type: String,
-			default: 'text',
-		},
-		placeholder: {
-			type: String,
-		},
-		tooltipText: {
-			type: String,
-		},
-		showValidationWarnings: {
-			type: Boolean,
-		},
-		validateOnBlur: {
-			type: Boolean,
-			default: true,
-		},
-		documentationUrl: {
-			type: String,
-		},
-		documentationText: {
-			type: String,
-			default: 'Open docs',
-		},
-		validationRules: {
-			type: Array,
-		},
-		validators: {
-			type: Object,
-		},
-		maxlength: {
-			type: Number,
-		},
-		options: {
-			type: Array,
-		},
-		autocomplete: {
-			type: String,
-		},
-		focusInitially: {
-			type: Boolean,
-		},
-		labelSize: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean =>
-				['small', 'medium'].includes(value),
-		},
-	},
-	mounted() {
-		this.$emit('validate', !this.validationError);
+export interface Props {
+	modelValue: Validatable;
+	label: string;
+	infoText?: string;
+	required?: boolean;
+	showRequiredAsterisk?: boolean;
+	type?: string;
+	placeholder?: string;
+	tooltipText?: string;
+	showValidationWarnings?: boolean;
+	validateOnBlur?: boolean;
+	documentationUrl?: string;
+	documentationText?: string;
+	validationRules?: Array<Rule | RuleGroup>;
+	validators?: { [key: string]: IValidator | RuleGroup };
+	maxlength?: number;
+	options?: Array<{ value: string | number; label: string }>;
+	autocomplete?: string;
+	name?: string;
+	focusInitially?: boolean;
+	labelSize?: 'small' | 'medium';
+	disabled?: boolean;
+	activeLabel?: string;
+	activeColor?: string;
+	inactiveLabel?: string;
+	inactiveColor?: string;
+	teleported?: boolean;
+	tagSize?: 'small' | 'medium';
+}
 
-		if (this.focusInitially && this.$refs.input) {
-			this.$refs.input.focus();
-		}
-	},
-	computed: {
-		validationError(): string | null {
-			const error = this.getValidationError();
-			if (error) {
-				return this.t(error.messageKey, error.options);
-			}
-
-			return null;
-		},
-		hasDefaultSlot(): boolean {
-			return !!this.$slots.default;
-		},
-		showErrors(): boolean {
-			return (
-				!!this.validationError &&
-				((this.validateOnBlur && this.hasBlurred && !this.isTyping) || this.showValidationWarnings)
-			);
-		},
-	},
-	methods: {
-		getValidationError(): ReturnType<IValidator['validate']>  {
-			const rules = (this.validationRules || []) as (Rule | RuleGroup)[];
-			const validators = {
-				...VALIDATORS,
-				...(this.validators || {}),
-			} as { [key: string]: IValidator | RuleGroup };
-
-			if (this.required) {
-				const error = getValidationError(this.value, validators, validators.REQUIRED as Validator);
-				if (error) {
-					return error;
-				}
-			}
-
-			for (let i = 0; i < rules.length; i++) {
-				if (rules[i].hasOwnProperty('name')) {
-					const rule = rules[i] as Rule;
-					if (validators[rule.name]) {
-						const error = getValidationError(
-							this.value,
-							validators,
-							validators[rule.name] as Validator,
-							rule.config,
-						);
-						if (error) {
-							return error;
-						}
-					}
-				}
-
-				if (rules[i].hasOwnProperty('rules')) {
-					const rule = rules[i] as RuleGroup;
-					const error = getValidationError(
-						this.value,
-						validators,
-						rule,
-					);
-					if (error) {
-						return error;
-					}
-				}
-			}
-
-			return null;
-		},
-		onBlur() {
-			this.hasBlurred = true;
-			this.isTyping = false;
-			this.$emit('blur');
-		},
-		onInput(value: any) {
-			this.isTyping = true;
-			this.$emit('input', value);
-		},
-		onFocus() {
-			this.$emit('focus');
-		},
-		onEnter(e) {
-			e.stopPropagation();
-			e.preventDefault();
-			this.$emit('enter');
-		},
-	},
-	watch: {
-		validationError(newValue: string | null, oldValue: string | null) {
-			this.$emit('validate', !newValue);
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	documentationText: 'Open docs',
+	labelSize: 'medium',
+	type: 'text',
+	showRequiredAsterisk: true,
+	validateOnBlur: true,
+	teleported: true,
+	tagSize: 'small',
 });
+
+const emit = defineEmits<{
+	(event: 'validate', shouldValidate: boolean): void;
+	(event: 'update:modelValue', value: unknown): void;
+	(event: 'focus'): void;
+	(event: 'blur'): void;
+	(event: 'enter'): void;
+}>();
+
+const state = reactive({
+	hasBlurred: false,
+	isTyping: false,
+});
+
+const slots = useSlots();
+
+const inputRef = ref<HTMLTextAreaElement | null>(null);
+
+function getInputValidationError(): ReturnType<IValidator['validate']> {
+	const rules = props.validationRules || [];
+	const validators = {
+		...VALIDATORS,
+		...(props.validators || {}),
+	} as { [key: string]: IValidator | RuleGroup };
+
+	if (props.required) {
+		const error = getValidationError(
+			props.modelValue,
+			validators,
+			validators.REQUIRED as IValidator,
+		);
+		if (error) return error;
+	}
+
+	for (let i = 0; i < rules.length; i++) {
+		if (rules[i].hasOwnProperty('name')) {
+			const rule = rules[i] as Rule;
+			if (validators[rule.name]) {
+				const error = getValidationError(
+					props.modelValue,
+					validators,
+					validators[rule.name] as IValidator,
+					rule.config,
+				);
+				if (error) return error;
+			}
+		}
+
+		if (rules[i].hasOwnProperty('rules')) {
+			const rule = rules[i] as RuleGroup;
+			const error = getValidationError(props.modelValue, validators, rule);
+			if (error) return error;
+		}
+	}
+
+	return null;
+}
+
+function onBlur() {
+	state.hasBlurred = true;
+	state.isTyping = false;
+	emit('blur');
+}
+
+function onUpdateModelValue(value: FormState) {
+	state.isTyping = true;
+	emit('update:modelValue', value);
+}
+
+function onFocus() {
+	emit('focus');
+}
+
+function onEnter(event: Event) {
+	event.stopPropagation();
+	event.preventDefault();
+	emit('enter');
+}
+
+const validationError = computed<string | null>(() => {
+	const error = getInputValidationError();
+
+	if (error) {
+		if (error.messageKey) {
+			return t(error.messageKey, error.options);
+		} else {
+			return error.message;
+		}
+	}
+
+	return null;
+});
+
+const hasDefaultSlot = computed(() => !!slots.default);
+
+const showErrors = computed(
+	() =>
+		!!validationError.value &&
+		((props.validateOnBlur && state.hasBlurred && !state.isTyping) || props.showValidationWarnings),
+);
+
+onMounted(() => {
+	emit('validate', !validationError.value);
+
+	if (props.focusInitially && inputRef.value) inputRef.value.focus();
+});
+
+watch(
+	() => validationError.value,
+	(error) => emit('validate', !error),
+);
+
+defineExpose({ inputRef });
 </script>
 
 <style lang="scss" module>
@@ -264,5 +271,13 @@ export default mixins(Locale).extend({
 
 .errorInput {
 	--input-border-color: var(--color-danger);
+}
+
+.multiSelectSmallTags {
+	:global(.el-tag) {
+		height: 24px;
+		padding: 0 8px;
+		line-height: 22px;
+	}
 }
 </style>

@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class GhostContentApi implements ICredentialType {
 	name = 'ghostContentApi';
+
 	displayName = 'Ghost Content API';
+
 	documentationUrl = 'ghost';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -22,16 +25,22 @@ export class GhostContentApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.qs = {
 			...requestOptions.qs,
-			'key': credentials.apiKey,
+			key: credentials.apiKey,
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}',

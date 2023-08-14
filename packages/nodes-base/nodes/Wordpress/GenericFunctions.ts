@@ -1,18 +1,24 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, NodeApiError, NodeOperationError,
+	IDataObject,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function wordpressApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
 	const credentials = await this.getCredentials('wordpressApi');
 
 	let options: OptionsWithUri = {
@@ -24,23 +30,29 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials!.url}/wp-json/wp/v2${resource}`,
+		uri: uri || `${credentials.url}/wp-json/wp/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
 		const credentialType = 'wordpressApi';
-		return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function wordpressApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -50,12 +62,14 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 
 	do {
 		query.page++;
-		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
-		returnData.push.apply(returnData, responseData.body);
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, {
+			resolveWithFullResponse: true,
+		});
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (
 		responseData.headers['x-wp-totalpages'] !== undefined &&
 		responseData.headers['x-wp-totalpages'] !== '0' &&
-		parseInt(responseData.headers['x-wp-totalpages'], 10) !== query.page
+		parseInt(responseData.headers['x-wp-totalpages'] as string, 10) !== query.page
 	);
 
 	return returnData;

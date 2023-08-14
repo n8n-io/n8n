@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.urlScanIo",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Utility"
-	],
+	"categories": ["Development", "Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,11 +11,9 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.urlScanIo/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.urlscanio/"
 			}
 		]
 	},
-	"alias": [
-		"Scrape"
-	]
+	"alias": ["Scrape"]
 }

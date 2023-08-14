@@ -1,50 +1,39 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
+import type {
 	AttributesValuesUi,
 	CommentAnalyzeBody,
 	Language,
 	RequestedAttributes,
 } from './types';
 
-import {
-	googleApiRequest,
-} from './GenericFunctions';
+import { googleApiRequest } from './GenericFunctions';
 
-const ISO6391 = require('iso-639-1');
+import ISO6391 from 'iso-639-1';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Perspective',
 		name: 'googlePerspective',
 		icon: 'file:perspective.svg',
-		group: [
-			'transform',
-		],
+		group: ['transform'],
 		version: 1,
 		description: 'Consume Google Perspective API',
 		subtitle: '={{$parameter["operation"]}}',
 		defaults: {
 			name: 'Google Perspective',
 		},
-		inputs: [
-			'main',
-		],
-		outputs: [
-			'main',
-		],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googlePerspectiveOAuth2Api',
@@ -73,9 +62,7 @@ export class GooglePerspective implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'analyzeComment',
-						],
+						operation: ['analyzeComment'],
 					},
 				},
 			},
@@ -91,9 +78,7 @@ export class GooglePerspective implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'analyzeComment',
-						],
+						operation: ['analyzeComment'],
 					},
 				},
 				options: [
@@ -139,7 +124,8 @@ export class GooglePerspective implements INodeType {
 										value: 'toxicity',
 									},
 								],
-								description: 'Attribute to analyze in the text. Details <a href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages">here</a>.',
+								description:
+									'Attribute to analyze in the text. Details <a href="https://developers.perspectiveapi.com/s/about-the-api-attributes-and-languages">here</a>.',
 								default: 'flirtation',
 							},
 							{
@@ -151,7 +137,8 @@ export class GooglePerspective implements INodeType {
 									minValue: 0,
 									maxValue: 1,
 								},
-								description: 'Score above which to return results. At zero, all scores are returned.',
+								description:
+									'Score above which to return results. At zero, all scores are returned.',
 								default: 0,
 							},
 						],
@@ -164,9 +151,7 @@ export class GooglePerspective implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'analyzeComment',
-						],
+						operation: ['analyzeComment'],
 					},
 				},
 				default: {},
@@ -180,7 +165,8 @@ export class GooglePerspective implements INodeType {
 							loadOptionsMethod: 'getLanguages',
 						},
 						default: '',
-						description: 'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Languages of the text input. If unspecified, the API will auto-detect the comment language. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -189,7 +175,7 @@ export class GooglePerspective implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available languages to display them to user so that he can
+			// Get all the available languages to display them to user so that they can
 			// select them easily
 			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -203,7 +189,9 @@ export class GooglePerspective implements INodeType {
 					'Russian',
 				];
 
-				const languages = ISO6391.getAllNames().filter((language: string) => supportedLanguages.includes(language));
+				const languages = ISO6391.getAllNames().filter((language: string) =>
+					supportedLanguages.includes(language),
+				);
 				for (const language of languages) {
 					const languageName = language;
 					const languageId = ISO6391.getCode(language);
@@ -222,26 +210,25 @@ export class GooglePerspective implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0);
 
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
-
 				if (operation === 'analyzeComment') {
-
 					// https://developers.perspectiveapi.com/s/about-the-api-methods
 
 					const attributes = this.getNodeParameter(
-						'requestedAttributesUi.requestedAttributesValues', i, [],
+						'requestedAttributesUi.requestedAttributesValues',
+						i,
+						[],
 					) as AttributesValuesUi[];
 
 					if (!attributes.length) {
 						throw new NodeOperationError(
 							this.getNode(),
-							'Please enter at least one attribute to analyze.', { itemIndex: i },
+							'Please enter at least one attribute to analyze.',
+							{ itemIndex: i },
 						);
 					}
 
@@ -268,24 +255,33 @@ export class GooglePerspective implements INodeType {
 						body.languages = languages;
 					}
 
-					responseData = await googleApiRequest.call(this, 'POST', '/v1alpha1/comments:analyze', body);
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						'/v1alpha1/comments:analyze',
+						body,
+					);
 				}
-
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as JsonObject),
+				{ itemData: { item: i } },
+			);
 
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(responseData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,5 +1,4 @@
-import {
-	ICredentialDataDecryptedObject,
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -7,12 +6,10 @@ import {
 	INodePropertyOptions,
 	IWebhookFunctions,
 	JsonObject,
-	NodeApiError
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
 import moment from 'moment-timezone';
 
@@ -20,10 +17,12 @@ export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	body: any = {}, // tslint:disable-line:no-any
-	qs?: any, // tslint:disable-line:no-any
-	uri?: string): Promise<any> { // tslint:disable-line:no-any
 
+	body: any = {},
+
+	qs?: any,
+	uri?: string,
+): Promise<any> {
 	const credentials = await this.getCredentials('onfleetApi');
 
 	const options: OptionsWithUri = {
@@ -42,7 +41,6 @@ export async function onfleetApiRequest(
 		json: true,
 	};
 	try {
-		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -54,30 +52,30 @@ export async function onfleetApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line: no-any
+
 	body: any = {},
 	query: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
-
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
 		responseData = await onfleetApiRequest.call(this, method, endpoint, body, query);
-		query.lastId = responseData['lastId'];
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['lastId'] !== undefined
-	);
+		query.lastId = responseData.lastId;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.lastId !== undefined);
 
 	return returnData;
 }
 export const resourceLoaders = {
 	async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const teams = await onfleetApiRequest.call(this, 'GET', 'teams') as IDataObject[];
-			return teams.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
+			const teams = (await onfleetApiRequest.call(this, 'GET', 'teams')) as IDataObject[];
+			return teams.map(({ name = '', id: value = '' }) => ({
+				name,
+				value,
+			})) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}
@@ -85,8 +83,11 @@ export const resourceLoaders = {
 
 	async getWorkers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const workers = await onfleetApiRequest.call(this, 'GET', 'workers') as IDataObject[];
-			return workers.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
+			const workers = (await onfleetApiRequest.call(this, 'GET', 'workers')) as IDataObject[];
+			return workers.map(({ name = '', id: value = '' }) => ({
+				name,
+				value,
+			})) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}
@@ -94,8 +95,11 @@ export const resourceLoaders = {
 
 	async getAdmins(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const admins = await onfleetApiRequest.call(this, 'GET', 'admins') as IDataObject[];
-			return admins.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
+			const admins = (await onfleetApiRequest.call(this, 'GET', 'admins')) as IDataObject[];
+			return admins.map(({ name = '', id: value = '' }) => ({
+				name,
+				value,
+			})) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}
@@ -103,8 +107,11 @@ export const resourceLoaders = {
 
 	async getHubs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 		try {
-			const hubs = await onfleetApiRequest.call(this, 'GET', 'hubs') as IDataObject[];
-			return hubs.map(({ name = '', id: value = '' }) => ({ name, value })) as INodePropertyOptions[];
+			const hubs = (await onfleetApiRequest.call(this, 'GET', 'hubs')) as IDataObject[];
+			return hubs.map(({ name = '', id: value = '' }) => ({
+				name,
+				value,
+			})) as INodePropertyOptions[];
 		} catch (error) {
 			return [];
 		}

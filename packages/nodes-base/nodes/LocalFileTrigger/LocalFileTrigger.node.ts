@@ -1,5 +1,5 @@
-import { ITriggerFunctions } from 'n8n-core';
-import {
+import type {
+	ITriggerFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
@@ -7,7 +7,6 @@ import {
 } from 'n8n-workflow';
 
 import { watch } from 'chokidar';
-
 
 export class LocalFileTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,6 +21,17 @@ export class LocalFileTrigger implements INodeType {
 		defaults: {
 			name: 'Local File Trigger',
 			color: '#404040',
+		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive:
+					"<b>While building your workflow</b>, click the 'listen' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				active:
+					"<b>While building your workflow</b>, click the 'listen' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+			},
+			activationHint:
+				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -49,9 +59,7 @@ export class LocalFileTrigger implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'file',
-						],
+						triggerOn: ['file'],
 					},
 				},
 				default: '',
@@ -63,9 +71,7 @@ export class LocalFileTrigger implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'folder',
-						],
+						triggerOn: ['folder'],
 					},
 				},
 				default: '',
@@ -77,9 +83,7 @@ export class LocalFileTrigger implements INodeType {
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						triggerOn: [
-							'folder',
-						],
+						triggerOn: ['folder'],
 					},
 				},
 				options: [
@@ -126,7 +130,8 @@ export class LocalFileTrigger implements INodeType {
 						name: 'followSymlinks',
 						type: 'boolean',
 						default: true,
-						description: 'Whether linked files/folders will also be watched (this includes symlinks, aliases on MacOS and shortcuts on Windows). Otherwise only the links themselves will be monitored).',
+						description:
+							'Whether linked files/folders will also be watched (this includes symlinks, aliases on MacOS and shortcuts on Windows). Otherwise only the links themselves will be monitored).',
 					},
 					{
 						displayName: 'Ignore',
@@ -134,9 +139,10 @@ export class LocalFileTrigger implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '**/*.txt',
-						description: 'Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href="https://github.com/micromatch/anymatch">Anymatch</a>- syntax.',
+						description:
+							'Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href="https://github.com/micromatch/anymatch">Anymatch</a>- syntax.',
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+
 					{
 						displayName: 'Max Folder Depth',
 						name: 'depth',
@@ -176,10 +182,8 @@ export class LocalFileTrigger implements INodeType {
 					},
 				],
 			},
-
 		],
 	};
-
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
@@ -188,34 +192,36 @@ export class LocalFileTrigger implements INodeType {
 
 		let events: string[];
 		if (triggerOn === 'file') {
-			events = [ 'change' ];
+			events = ['change'];
 		} else {
 			events = this.getNodeParameter('events', []) as string[];
 		}
 
 		const watcher = watch(path, {
-			ignored: options.ignored,
+			ignored: options.ignored === '' ? undefined : options.ignored,
 			persistent: true,
 			ignoreInitial: true,
-			followSymlinks: options.followSymlinks === undefined ? true : options.followSymlinks as boolean,
-			depth: [-1, undefined].includes(options.depth as number) ? undefined : options.depth as number,
+			followSymlinks:
+				options.followSymlinks === undefined ? true : (options.followSymlinks as boolean),
+			depth: [-1, undefined].includes(options.depth as number)
+				? undefined
+				: (options.depth as number),
 		});
 
-		const executeTrigger = (event: string, path: string) => {
-			this.emit([this.helpers.returnJsonArray([{ event,path }])]);
+		const executeTrigger = (event: string, pathString: string) => {
+			this.emit([this.helpers.returnJsonArray([{ event, path: pathString }])]);
 		};
 
 		for (const eventName of events) {
-			watcher.on(eventName, path => executeTrigger(eventName, path));
+			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString as string));
 		}
 
-		function closeFunction() {
+		async function closeFunction() {
 			return watcher.close();
 		}
 
 		return {
 			closeFunction,
 		};
-
 	}
 }

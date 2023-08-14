@@ -1,30 +1,21 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	URL,
-} from 'url';
+import { URL } from 'url';
 
-import {
-	awsApiRequestSOAP,
-} from '../GenericFunctions';
+import { awsApiRequestSOAP } from '../GenericFunctions';
 
-import {
-	pascalCase,
-} from 'change-case';
+import { pascalCase } from 'change-case';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,7 +24,7 @@ export class AwsSqs implements INodeType {
 		icon: 'file:sqs.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: `={{$parameter["operation"]}}`,
+		subtitle: '={{$parameter["operation"]}}',
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
@@ -71,15 +62,14 @@ export class AwsSqs implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'sendMessage',
-						],
+						operation: ['sendMessage'],
 					},
 				},
 				options: [],
 				default: '',
 				required: true,
-				description: 'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Queue to send a message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Queue Type',
@@ -112,18 +102,11 @@ export class AwsSqs implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'sendMessage',
-						],
-						sendInputData: [
-							false,
-						],
+						operation: ['sendMessage'],
+						sendInputData: [false],
 					},
 				},
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Message to send to the queue',
 			},
@@ -132,12 +115,11 @@ export class AwsSqs implements INodeType {
 				name: 'messageGroupId',
 				type: 'string',
 				default: '',
-				description: 'Tag that specifies that a message belongs to a specific message group. Applies only to FIFO (first-in-first-out) queues.',
+				description:
+					'Tag that specifies that a message belongs to a specific message group. Applies only to FIFO (first-in-first-out) queues.',
 				displayOptions: {
 					show: {
-						queueType: [
-							'fifo',
-						],
+						queueType: ['fifo'],
 					},
 				},
 				required: true,
@@ -148,9 +130,7 @@ export class AwsSqs implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'sendMessage',
-						],
+						operation: ['sendMessage'],
 					},
 				},
 				default: {},
@@ -162,9 +142,7 @@ export class AwsSqs implements INodeType {
 						type: 'number',
 						displayOptions: {
 							show: {
-								'/queueType': [
-									'standard',
-								],
+								'/queueType': ['standard'],
 							},
 						},
 						description: 'How long, in seconds, to delay a message for',
@@ -201,7 +179,8 @@ export class AwsSqs implements INodeType {
 										name: 'dataPropertyName',
 										type: 'string',
 										default: 'data',
-										description: 'Name of the binary property which contains the data for the message attribute',
+										description:
+											'Name of the binary property which contains the data for the message attribute',
 									},
 								],
 							},
@@ -252,12 +231,11 @@ export class AwsSqs implements INodeType {
 						name: 'messageDeduplicationId',
 						type: 'string',
 						default: '',
-						description: 'Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues.',
+						description:
+							'Token used for deduplication of sent messages. Applies only to FIFO (first-in-first-out) queues.',
 						displayOptions: {
 							show: {
-								'/queueType': [
-									'fifo',
-								],
+								'/queueType': ['fifo'],
 							},
 						},
 					},
@@ -270,17 +248,14 @@ export class AwsSqs implements INodeType {
 		loadOptions: {
 			// Get all the available queues to display them to user so that it can be selected easily
 			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const params = [
-					'Version=2012-11-05',
-					`Action=ListQueues`,
-				];
+				const params = ['Version=2012-11-05', 'Action=ListQueues'];
 
 				let data;
 				try {
 					// loads first 1000 queues from SQS
 					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
@@ -307,27 +282,25 @@ export class AwsSqs implements INodeType {
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const queueUrl = this.getNodeParameter('queue', i) as string;
 				const queuePath = new URL(queueUrl).pathname;
 
-				const params = [
-					'Version=2012-11-05',
-					`Action=${pascalCase(operation)}`,
-				];
+				const params = ['Version=2012-11-05', `Action=${pascalCase(operation)}`];
 
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const options = this.getNodeParameter('options', i, {});
 				const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
-				const message = sendInputData ? JSON.stringify(items[i].json) : this.getNodeParameter('message', i) as string;
+				const message = sendInputData
+					? JSON.stringify(items[i].json)
+					: (this.getNodeParameter('message', i) as string);
 				params.push(`MessageBody=${message}`);
 
 				if (options.delaySeconds) {
@@ -336,7 +309,11 @@ export class AwsSqs implements INodeType {
 
 				const queueType = this.getNodeParameter('queueType', i, {}) as string;
 				if (queueType === 'fifo') {
-					const messageDeduplicationId = this.getNodeParameter('options.messageDeduplicationId', i, '') as string;
+					const messageDeduplicationId = this.getNodeParameter(
+						'options.messageDeduplicationId',
+						i,
+						'',
+					) as string;
 					if (messageDeduplicationId) {
 						params.push(`MessageDeduplicationId=${messageDeduplicationId}`);
 					}
@@ -349,7 +326,9 @@ export class AwsSqs implements INodeType {
 
 				let attributeCount = 0;
 				// Add string values
-				(this.getNodeParameter('options.messageAttributes.string', i, []) as INodeParameters[]).forEach((attribute) => {
+				(
+					this.getNodeParameter('options.messageAttributes.string', i, []) as INodeParameters[]
+				).forEach((attribute) => {
 					attributeCount++;
 					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
 					params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
@@ -357,28 +336,23 @@ export class AwsSqs implements INodeType {
 				});
 
 				// Add binary values
-				(this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]).forEach((attribute) => {
+				(
+					this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]
+				).forEach((attribute) => {
 					attributeCount++;
+
 					const dataPropertyName = attribute.dataPropertyName as string;
-					const item = items[i];
-
-					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data set. So message attribute cannot be added!', { itemIndex: i });
-					}
-
-					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`, { itemIndex: i });
-					}
-
-					const binaryData = item.binary[dataPropertyName].data;
+					const binaryData = this.helpers.assertBinaryData(i, dataPropertyName);
 
 					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData.data}`);
 					params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
 				});
 
 				// Add number values
-				(this.getNodeParameter('options.messageAttributes.number', i, []) as INodeParameters[]).forEach((attribute) => {
+				(
+					this.getNodeParameter('options.messageAttributes.number', i, []) as INodeParameters[]
+				).forEach((attribute) => {
 					attributeCount++;
 					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
 					params.push(`MessageAttribute.${attributeCount}.Value.StringValue=${attribute.value}`);
@@ -387,9 +361,14 @@ export class AwsSqs implements INodeType {
 
 				let responseData;
 				try {
-					responseData = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `${queuePath}?${params.join('&')}`);
+					responseData = await awsApiRequestSOAP.call(
+						this,
+						'sqs',
+						'GET',
+						`${queuePath}?${params.join('&')}`,
+					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const result = responseData.SendMessageResponse.SendMessageResult;

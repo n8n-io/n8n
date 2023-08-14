@@ -1,9 +1,16 @@
 <template>
 	<div :class="$style.container" v-show="loading || collections.length">
-		<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4" @after-change="updateCarouselScroll">
-			<Card v-for="n in (loading ? 4: 0)" :key="`loading-${n}`" :loading="loading" />
+		<agile
+			ref="slider"
+			:dots="false"
+			:navButtons="false"
+			:infinite="false"
+			:slides-to-show="4"
+			@after-change="updateCarouselScroll"
+		>
+			<Card v-for="n in loading ? 4 : 0" :key="`loading-${n}`" :loading="loading" />
 			<CollectionCard
-				v-for="collection in (loading? []: collections)"
+				v-for="collection in loading ? [] : collections"
 				:key="collection.id"
 				:collection="collection"
 				@click="(e) => onCardClick(e, collection.id)"
@@ -19,18 +26,23 @@
 </template>
 
 <script lang="ts">
-import Card from '@/components/WorkflowCard.vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { ITemplatesCollection } from '@/Interface';
+import Card from '@/components/CollectionWorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
-import VueAgile from 'vue-agile';
+import { VueAgile } from 'vue-agile';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
-export default mixins(genericHelpers).extend({
+type SliderRef = InstanceType<typeof VueAgile>;
+
+export default defineComponent({
 	name: 'CollectionsCarousel',
+	mixins: [genericHelpers],
 	props: {
 		collections: {
-			type: Array,
+			type: Array as PropType<ITemplatesCollection[]>,
 		},
 		loading: {
 			type: Boolean,
@@ -51,7 +63,7 @@ export default mixins(genericHelpers).extend({
 	components: {
 		Card,
 		CollectionCard,
-		VueAgile,
+		agile: VueAgile,
 	},
 	data() {
 		return {
@@ -73,7 +85,7 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openCollection', {event, id});
+			this.$emit('openCollection', { event, id });
 		},
 		scrollLeft() {
 			if (this.listElement) {
@@ -86,24 +98,24 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 	},
-	mounted() {
-		this.$nextTick(() => {
-			const slider = this.$refs.slider;
-			if (!slider) {
-				return;
-			}
-			// @ts-ignore
-			this.listElement = slider.$el.querySelector('.agile__list');
-			if (this.listElement) {
-				this.listElement.addEventListener('scroll', this.updateCarouselScroll);
-			}
-		});
-	},
-	beforeDestroy() {
-		if (this.$refs.slider) {
-			// @ts-ignore
-			this.$refs.slider.destroy();
+	async mounted() {
+		await this.$nextTick();
+		const sliderRef = this.$refs.slider as SliderRef | undefined;
+		if (!sliderRef) {
+			return;
 		}
+
+		this.listElement = sliderRef.$el.querySelector('.agile__list');
+		if (this.listElement) {
+			this.listElement.addEventListener('scroll', this.updateCarouselScroll);
+		}
+	},
+	beforeUnmount() {
+		const sliderRef = this.$refs.slider as SliderRef | undefined;
+		if (sliderRef) {
+			sliderRef.destroy();
+		}
+
 		window.removeEventListener('scroll', this.updateCarouselScroll);
 	},
 });
@@ -142,7 +154,21 @@ export default mixins(genericHelpers).extend({
 
 	&:after {
 		left: 27px;
-		background: linear-gradient(270deg, rgba(255, 255, 255, 0.25) 0%, rgba(248, 249, 251, 1) 86%);
+		background: linear-gradient(
+			270deg,
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				50%
+			),
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				100%
+			)
+		);
 	}
 }
 
@@ -151,7 +177,21 @@ export default mixins(genericHelpers).extend({
 	right: -30px;
 	&:after {
 		right: 27px;
-		background: linear-gradient(270deg,rgba(248, 249, 251, 1) 25%, rgba(255, 255, 255, 0.25) 100%);
+		background: linear-gradient(
+			90deg,
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				50%
+			),
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				100%
+			)
+		);
 	}
 }
 </style>
@@ -161,17 +201,8 @@ export default mixins(genericHelpers).extend({
 	&__list {
 		width: 100%;
 		padding-bottom: var(--spacing-2xs);
-		overflow-x: scroll;
+		overflow-x: auto;
 		transition: all 1s ease-in-out;
-
-		&::-webkit-scrollbar {
-			height: 6px;
-		}
-
-		&::-webkit-scrollbar-thumb {
-			border-radius: 6px;
-			background-color: var(--color-foreground-dark);
-		}
 	}
 
 	&__track {

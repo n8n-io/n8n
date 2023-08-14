@@ -1,21 +1,16 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
-import {
-	postFields,
-	postOperations,
-} from './PostDescription';
+import { postFields, postOperations } from './PostDescription';
 
 export class LinkedIn implements INodeType {
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
 		displayName: 'LinkedIn',
 		name: 'linkedIn',
@@ -53,8 +48,6 @@ export class LinkedIn implements INodeType {
 			...postOperations,
 			...postFields,
 		],
-
-
 	};
 
 	methods = {
@@ -64,7 +57,10 @@ export class LinkedIn implements INodeType {
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const person = await linkedInApiRequest.call(this, 'GET', '/me', {});
-				returnData.push({ name: `${person.localizedFirstName} ${person.localizedLastName}`, value: person.id });
+				returnData.push({
+					name: `${person.localizedFirstName} ${person.localizedLastName}`,
+					value: person.id,
+				});
 				return returnData;
 			},
 		},
@@ -72,12 +68,12 @@ export class LinkedIn implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
-		let body:any = {};// tslint:disable-line:no-any
+		let body: any = {};
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -86,7 +82,7 @@ export class LinkedIn implements INodeType {
 						const text = this.getNodeParameter('text', i) as string;
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let authorUrn = '';
 						let visibility = 'PUBLIC';
@@ -94,7 +90,7 @@ export class LinkedIn implements INodeType {
 						if (postAs === 'person') {
 							const personUrn = this.getNodeParameter('person', i) as string;
 							// Only if posting as a person can user decide if post visible by public or connections
-							visibility = additionalFields.visibility as string || 'PUBLIC';
+							visibility = (additionalFields.visibility as string) || 'PUBLIC';
 							authorUrn = `urn:li:person:${personUrn}`;
 						} else {
 							const organizationUrn = this.getNodeParameter('organization', i) as string;
@@ -105,85 +101,52 @@ export class LinkedIn implements INodeType {
 						let title = '';
 						let originalUrl = '';
 
-						if (shareMediaCategory === 'IMAGE') {
+						body = {
+							author: authorUrn,
+							lifecycleState: 'PUBLISHED',
+							distribution: {
+								feedDistribution: 'MAIN_FEED',
+								thirdPartyDistributionChannels: [],
+							},
+							visibility,
+						};
 
-							if (additionalFields.description) {
-								description = additionalFields.description as string;
-							}
+						if (shareMediaCategory === 'IMAGE') {
 							if (additionalFields.title) {
 								title = additionalFields.title as string;
 							}
 							// Send a REQUEST to prepare a register of a media image file
 							const registerRequest = {
-								registerUploadRequest: {
-									recipes: [
-										'urn:li:digitalmediaRecipe:feedshare-image',
-									],
+								initializeUploadRequest: {
 									owner: authorUrn,
-									serviceRelationships: [
-										{
-											relationshipType: 'OWNER',
-											identifier: 'urn:li:userGeneratedContent',
-										},
-									],
 								},
 							};
 
-							const registerObject = await linkedInApiRequest.call(this, 'POST', '/assets?action=registerUpload', registerRequest);
+							const registerObject = await linkedInApiRequest.call(
+								this,
+								'POST',
+								'/images?action=initializeUpload',
+								registerRequest,
+							);
 
-							// Response provides a specific upload URL that is used to upload the binary image file
-							const uploadUrl = registerObject.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl as string;
-							const asset = registerObject.value.asset as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
 
-							// Prepare binary file upload
-							const item = items[i];
+							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							const { uploadUrl, image } = registerObject.value;
+							await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
 
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
-							}
-
-							// Buffer binary data
-							const buffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
-							// Upload image
-							await linkedInApiRequest.call(this, 'POST', uploadUrl, buffer, true);
-
-							body = {
-								author: authorUrn,
-								lifecycleState: 'PUBLISHED',
-								specificContent: {
-									'com.linkedin.ugc.ShareContent': {
-										shareCommentary: {
-											text,
-										},
-										shareMediaCategory: 'IMAGE',
-										media: [
-											{
-												status: 'READY',
-												description: {
-													text: description,
-												},
-												media: asset,
-												title: {
-													text: title,
-												},
-											},
-										],
+							const imageBody = {
+								content: {
+									media: {
+										title,
+										id: image,
 									},
 								},
-								visibility: {
-									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
-								},
+								commentary: text,
 							};
-
+							Object.assign(body, imageBody);
 						} else if (shareMediaCategory === 'ARTICLE') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
 							if (additionalFields.description) {
 								description = additionalFields.description as string;
 							}
@@ -194,79 +157,49 @@ export class LinkedIn implements INodeType {
 								originalUrl = additionalFields.originalUrl as string;
 							}
 
-							body = {
-								author: `${authorUrn}`,
-								lifecycleState: 'PUBLISHED',
-								specificContent: {
-									'com.linkedin.ugc.ShareContent': {
-										shareCommentary: {
-											text,
-										},
-										shareMediaCategory,
-										media: [
-											{
-												status: 'READY',
-												description: {
-													text: description,
-												},
-												originalUrl,
-												title: {
-													text: title,
-												},
-											},
-										],
+							const articleBody = {
+								content: {
+									article: {
+										title,
+										description,
+										source: originalUrl,
 									},
 								},
-								visibility: {
-									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
-								},
+								commentary: text,
 							};
-
+							Object.assign(body, articleBody);
 							if (description === '') {
-								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].description;
+								delete body.description;
 							}
 
 							if (title === '') {
-								delete body.specificContent['com.linkedin.ugc.ShareContent'].media[0].title;
+								delete body.title;
 							}
-
 						} else {
-							body = {
-								author: authorUrn,
-								lifecycleState: 'PUBLISHED',
-								specificContent: {
-									'com.linkedin.ugc.ShareContent': {
-										shareCommentary: {
-											text,
-										},
-										shareMediaCategory,
-									},
-								},
-								visibility: {
-									'com.linkedin.ugc.MemberNetworkVisibility': visibility,
-								},
-							};
+							Object.assign(body, { commentary: text });
 						}
-
-						const endpoint = '/ugcPosts';
+						const endpoint = '/posts';
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}
-
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

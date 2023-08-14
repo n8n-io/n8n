@@ -1,9 +1,5 @@
 import { v5 as uuidv5, v3 as uuidv3, v4 as uuidv4, v1 as uuidv1 } from 'uuid';
-import {
-	ANONYMIZATION_CHARACTER as CHAR,
-	getDomainBase,
-	getDomainPath,
-} from '../src/TelemetryHelpers';
+import { ANONYMIZATION_CHARACTER as CHAR, getDomainBase, getDomainPath } from '@/TelemetryHelpers';
 
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
@@ -181,11 +177,7 @@ function numericId(length = positiveDigit()) {
 }
 
 function alphanumericId() {
-	return chooseRandomly([
-		`john${numericId()}`,
-		`title${numericId(1)}`,
-		numericId(),
-	]);
+	return chooseRandomly([`john${numericId()}`, `title${numericId(1)}`, numericId()]);
 }
 
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];

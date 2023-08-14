@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -33,7 +30,6 @@ export class MicrosoftGraphSecurity implements INodeType {
 		description: 'Consume the Microsoft Graph Security API',
 		defaults: {
 			name: 'Microsoft Graph Security',
-			color: '#0078d4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -72,23 +68,21 @@ export class MicrosoftGraphSecurity implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as 'secureScore'| 'secureScoreControlProfile';
+		const resource = this.getNodeParameter('resource', 0) as
+			| 'secureScore'
+			| 'secureScoreControlProfile';
 		const operation = this.getNodeParameter('operation', 0) as 'get' | 'getAll' | 'update';
 
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'secureScore') {
-
 					// **********************************************************************
 					//                              secureScore
 					// **********************************************************************
 
 					if (operation === 'get') {
-
 						// ----------------------------------------
 						//             secureScore: get
 						// ----------------------------------------
@@ -97,11 +91,13 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						const secureScoreId = this.getNodeParameter('secureScoreId', i);
 
-						responseData = await msGraphSecurityApiRequest.call(this, 'GET', `/secureScores/${secureScoreId}`);
+						responseData = await msGraphSecurityApiRequest.call(
+							this,
+							'GET',
+							`/secureScores/${secureScoreId}`,
+						);
 						delete responseData['@odata.context'];
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//           secureScore: getAll
 						// ----------------------------------------
@@ -110,10 +106,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						const qs: IDataObject = {};
 
-						const {
-							filter,
-							includeControlScores,
-						} = this.getNodeParameter('filters', i) as {
+						const { filter, includeControlScores } = this.getNodeParameter('filters', i) as {
 							filter?: string;
 							includeControlScores?: boolean;
 						};
@@ -122,45 +115,42 @@ export class MicrosoftGraphSecurity implements INodeType {
 							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							qs.$count = true;
 							qs.$top = this.getNodeParameter('limit', 0);
 						}
 
-						responseData = await msGraphSecurityApiRequest
+						responseData = (await msGraphSecurityApiRequest
 							.call(this, 'GET', '/secureScores', {}, qs)
-							.then(response => response.value) as Array<{ controlScores: object[] }>;
+							.then((response) => response.value)) as Array<{ controlScores: object[] }>;
 
 						if (!includeControlScores) {
-							responseData = responseData.map(({ controlScores, ...rest }) => rest);
+							responseData = responseData.map(({ controlScores: _controlScores, ...rest }) => rest);
 						}
-
 					}
-
 				} else if (resource === 'secureScoreControlProfile') {
-
 					// **********************************************************************
 					//                       secureScoreControlProfile
 					// **********************************************************************
 
 					if (operation === 'get') {
-
 						// ----------------------------------------
 						//      secureScoreControlProfile: get
 						// ----------------------------------------
 
 						// https://docs.microsoft.com/en-us/graph/api/securescorecontrolprofile-get
 
-						const secureScoreControlProfileId = this.getNodeParameter('secureScoreControlProfileId', i);
+						const secureScoreControlProfileId = this.getNodeParameter(
+							'secureScoreControlProfileId',
+							i,
+						);
 						const endpoint = `/secureScoreControlProfiles/${secureScoreControlProfileId}`;
 
 						responseData = await msGraphSecurityApiRequest.call(this, 'GET', endpoint);
 						delete responseData['@odata.context'];
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//    secureScoreControlProfile: getAll
 						// ----------------------------------------
@@ -175,7 +165,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							qs.$count = true;
@@ -184,10 +174,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 
 						responseData = await msGraphSecurityApiRequest
 							.call(this, 'GET', '/secureScoreControlProfiles', {}, qs)
-							.then(response => response.value);
-
+							.then((response) => response.value);
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//    secureScoreControlProfile: update
 						// ----------------------------------------
@@ -201,7 +189,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							},
 						};
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this);
@@ -215,13 +203,17 @@ export class MicrosoftGraphSecurity implements INodeType {
 						const endpoint = `/secureScoreControlProfiles/${id}`;
 						const headers = { Prefer: 'return=representation' };
 
-						responseData = await msGraphSecurityApiRequest.call(this, 'PATCH', endpoint, body, {}, headers);
+						responseData = await msGraphSecurityApiRequest.call(
+							this,
+							'PATCH',
+							endpoint,
+							body,
+							{},
+							headers,
+						);
 						delete responseData['@odata.context'];
-
 					}
-
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
@@ -231,9 +223,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
-
+				? returnData.push(...(responseData as IDataObject[]))
+				: returnData.push(responseData as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

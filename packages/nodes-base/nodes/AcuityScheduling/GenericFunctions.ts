@@ -1,14 +1,29 @@
-import { OptionsWithUri } from 'request';
-import {
+import type { OptionsWithUri } from 'request';
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function acuitySchedulingApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	_option: IDataObject = {},
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
@@ -19,7 +34,7 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 		method,
 		qs,
 		body,
-		uri: uri ||`https://acuityscheduling.com/api/v1${resource}`,
+		uri: uri || `https://acuityscheduling.com/api/v1${resource}`,
 		json: true,
 	};
 
@@ -32,13 +47,18 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 				password: credentials.apiKey as string,
 			};
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			delete options.auth;
-			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'acuitySchedulingOAuth2Api', options, true);
+			return await this.helpers.requestOAuth2.call(
+				this,
+				'acuitySchedulingOAuth2Api',
+				options,
+				//@ts-ignore
+				true,
+			);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

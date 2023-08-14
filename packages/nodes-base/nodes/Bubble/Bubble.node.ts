@@ -1,25 +1,15 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	bubbleApiRequest,
-	bubbleApiRequestAllItems,
-	validateJSON,
-} from './GenericFunctions';
+import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import {
-	objectFields,
-	objectOperations,
-} from './ObjectDescription';
+import { objectFields, objectOperations } from './ObjectDescription';
 
 export class Bubble implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,17 +53,15 @@ export class Bubble implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const qs: IDataObject = {};
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-
 			if (resource === 'object') {
-
 				// *********************************************************************
 				//                             object
 				// *********************************************************************
@@ -81,7 +69,6 @@ export class Bubble implements INodeType {
 				// https://bubble.io/reference#API
 
 				if (operation === 'create') {
-
 					// ----------------------------------
 					//         object: create
 					// ----------------------------------
@@ -90,19 +77,15 @@ export class Bubble implements INodeType {
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
 					const { property } = this.getNodeParameter('properties', i) as {
-						property: [
-							{ key: string; value: string; },
-						],
+						property: [{ key: string; value: string }];
 					};
 
 					const body = {} as IDataObject;
 
-					property.forEach(data => body[data.key] = data.value);
+					property.forEach((data) => (body[data.key] = data.value));
 
 					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, body, {});
-
 				} else if (operation === 'delete') {
-
 					// ----------------------------------
 					//         object: delete
 					// ----------------------------------
@@ -114,9 +97,7 @@ export class Bubble implements INodeType {
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = { success: true };
-
 				} else if (operation === 'get') {
-
 					// ----------------------------------
 					//         object: get
 					// ----------------------------------
@@ -128,23 +109,21 @@ export class Bubble implements INodeType {
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.response;
-
 				} else if (operation === 'getAll') {
-
 					// ----------------------------------
 					//         object: getAll
 					// ----------------------------------
 
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const typeNameInput = this.getNodeParameter('typeName', i) as string;
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
 					const endpoint = `/obj/${typeName}`;
 
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
+					const options = this.getNodeParameter('options', i);
 
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						if (options.filters) {
 							const { filter } = options.filters as IDataObject;
 							qs.constraints = JSON.stringify(filter);
@@ -153,7 +132,9 @@ export class Bubble implements INodeType {
 						const filter = options.filtersJson as string;
 						const data = validateJSON(filter);
 						if (data === undefined) {
-							throw new NodeOperationError(this.getNode(), 'Filters must be a valid JSON', { itemIndex: i });
+							throw new NodeOperationError(this.getNode(), 'Filters must be a valid JSON', {
+								itemIndex: i,
+							});
 						}
 						qs.constraints = JSON.stringify(data);
 					}
@@ -163,16 +144,14 @@ export class Bubble implements INodeType {
 						Object.assign(qs, sortValue);
 					}
 
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await bubbleApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit', 0);
 						responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.response.results;
 					}
-
 				} else if (operation === 'update') {
-
 					// ----------------------------------
 					//         object: update
 					// ----------------------------------
@@ -182,25 +161,24 @@ export class Bubble implements INodeType {
 					const objectId = this.getNodeParameter('objectId', i) as string;
 					const endpoint = `/obj/${typeName}/${objectId}`;
 					const { property } = this.getNodeParameter('properties', i) as {
-						property: [
-							{ key: string; value: string; },
-						],
+						property: [{ key: string; value: string }];
 					};
 
 					const body = {} as IDataObject;
 
-					property.forEach(data => body[data.key] = data.value);
+					property.forEach((data) => (body[data.key] = data.value));
 					responseData = await bubbleApiRequest.call(this, 'PATCH', endpoint, body, {});
-					responseData = { sucess: true };
+					responseData = { success: true };
 				}
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
-
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,15 +8,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import {
-	taskFields,
-	taskOperations,
-} from './TaskDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 
 export class GoogleTasks implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,13 +51,12 @@ export class GoogleTasks implements INodeType {
 			...taskFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
-			// Get all the tasklists to display them to user so that he can select them easily
+			// Get all the tasklists to display them to user so that they can select them easily
 
-			async getTasks(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTasks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tasks = await googleApiRequestAllItems.call(
 					this,
@@ -89,12 +79,12 @@ export class GoogleTasks implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let body: IDataObject = {};
 		for (let i = 0; i < length; i++) {
 			try {
@@ -104,10 +94,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/insert
 						const taskId = this.getNodeParameter('task', i) as string;
 						body.title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.parent) {
 							qs.parent = additionalFields.parent as string;
@@ -170,12 +157,14 @@ export class GoogleTasks implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://developers.google.com/tasks/v1/reference/tasks/list
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const taskListId = this.getNodeParameter('task', i) as string;
-						const { showCompleted = true, showDeleted = false, showHidden = false, ...options } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const {
+							showCompleted = true,
+							showDeleted = false,
+							showHidden = false,
+							...options
+						} = this.getNodeParameter('additionalFields', i);
 						if (options.completedMax) {
 							qs.completedMax = options.completedMax as string;
 						}
@@ -207,7 +196,7 @@ export class GoogleTasks implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -223,10 +212,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/patch
 						const taskListId = this.getNodeParameter('task', i) as string;
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const updateFields = this.getNodeParameter(
-							'updateFields',
-							i,
-						) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.previous) {
 							qs.previous = updateFields.previous as string;
@@ -265,19 +251,26 @@ export class GoogleTasks implements INodeType {
 						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,7 +1,18 @@
 <script lang="ts">
-import N8nInputNumber from 'element-ui/lib/input-number';
+import { ElInputNumber } from 'element-plus';
+import { defineComponent } from 'vue';
 
-N8nInputNumber.name = 'n8n-input-number';
-
-export default N8nInputNumber;
+export default defineComponent({
+	name: 'N8nInputNumber',
+	props: {
+		...ElInputNumber.props,
+	},
+	components: {
+		ElInputNumber,
+	},
+});
 </script>
+
+<template>
+	<el-input-number v-bind="{ ...$props, ...$attrs }" />
+</template>

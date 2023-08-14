@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const formOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const formOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
+				resource: ['form'],
 			},
 		},
 		options: [
@@ -23,10 +19,16 @@ export const formOperations: INodeProperties[] = [
 				action: 'Get a form',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all forms',
-				action: 'Get all forms',
+				description: 'Get many forms',
+				action: 'Get many forms',
+			},
+			{
+				name: 'Redeploy',
+				value: 'redeploy',
+				description: 'Redeploy Current Form Version',
+				action: 'Redeploy Current Form Version',
 			},
 		],
 		default: 'get',
@@ -34,27 +36,26 @@ export const formOperations: INodeProperties[] = [
 ];
 
 export const formFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                form:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadForms',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['form'],
+				operation: ['get', 'redeploy'],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		description:
+			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                form:getAll                                 */
@@ -67,12 +68,8 @@ export const formFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['form'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -86,15 +83,9 @@ export const formFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['form'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 1000,
@@ -108,12 +99,8 @@ export const formFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['form'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -181,12 +168,8 @@ export const formFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['form'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -195,7 +178,8 @@ export const formFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: 'asset_type:survey',
-				description: 'A text search query based on form data - e.g. "owner__username:meg AND name__icontains:quixotic" - see <a href="https://github.com/kobotoolbox/kpi#searching" target="_blank">docs</a> for more details',
+				description:
+					'A text search query based on form data - e.g. "owner__username:meg AND name__icontains:quixotic" - see <a href="https://github.com/kobotoolbox/kpi#searching" target="_blank">docs</a> for more details',
 			},
 		],
 	},

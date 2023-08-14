@@ -1,48 +1,53 @@
-<template functional>
-	<div :class="{[$style.container]: true, [$style.withPrepend]: !!$slots.prepend}">
+<template>
+	<div
+		:class="{
+			'n8n-select': true,
+			[$style.container]: true,
+			[$style.withPrepend]: !!$slots.prepend,
+		}"
+	>
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
-		<component
-			:is="$options.components.ElSelect"
-			v-bind="props"
-			:value="props.value"
-			:size="$options.methods.getSize(props.size)"
-			:class="$style[$options.methods.getClass(props)]"
-			:popper-class="$options.methods.getPopperClass(props, $style)"
-			v-on="listeners"
-			:ref="data.ref"
+		<el-select
+			v-bind="{ ...$props, ...listeners }"
+			:modelValue="modelValue"
+			:size="computedSize"
+			:class="$style[classes]"
+			:popper-class="popperClass"
+			ref="innerSelect"
 		>
-			<template v-slot:prefix>
+			<template #prefix v-if="$slots.prefix">
 				<slot name="prefix" />
 			</template>
-			<template v-slot:suffix>
+			<template #suffix v-if="$slots.suffix">
 				<slot name="suffix" />
 			</template>
-			<template v-slot:default>
-				<slot></slot>
-			</template>
-		</component>
+			<slot></slot>
+		</el-select>
 	</div>
 </template>
 
 <script lang="ts">
-import ElSelect from 'element-ui/lib/select';
+import { ElSelect } from 'element-plus';
+import { defineComponent } from 'vue';
 
-interface IProps {
+type InnerSelectRef = InstanceType<typeof ElSelect>;
+
+export interface IProps {
 	size?: string;
 	limitPopperWidth?: string;
 	popperClass?: string;
 }
 
-export default {
+export default defineComponent({
 	name: 'n8n-select',
 	components: {
 		ElSelect,
 	},
 	props: {
-		value: {
-		},
+		...ElSelect.props,
+		modelValue: {},
 		size: {
 			type: String,
 			default: 'large',
@@ -86,31 +91,67 @@ export default {
 			type: String,
 		},
 	},
-	methods: {
-		getSize(size: string): string | undefined {
-			if (size === 'xlarge') {
+	computed: {
+		listeners() {
+			return Object.entries(this.$attrs).reduce<Record<string, () => {}>>((acc, [key, value]) => {
+				if (/^on[A-Z]/.test(key)) {
+					acc[key] = value;
+				}
+
+				return acc;
+			}, {});
+		},
+		computedSize(): string | undefined {
+			if (this.size === 'medium') {
+				return 'default';
+			}
+
+			if (this.size === 'xlarge') {
 				return undefined;
 			}
 
-			return size;
+			return this.size;
 		},
-		getClass(props: IProps): string {
-			if (props.size === 'xlarge') {
+		classes(): string {
+			if (this.size === 'xlarge') {
 				return 'xlarge';
 			}
 
 			return '';
 		},
-		getPopperClass(props: IProps, $style: any): string {
-			let classes = props.popperClass || '';
-			if (props.limitPopperWidth) {
-				classes = `${classes} ${$style.limitPopperWidth}`;
+		popperClasses(): string {
+			let classes = this.popperClass || '';
+			if (this.limitPopperWidth) {
+				classes = `${classes} ${this.$style.limitPopperWidth}`;
 			}
 
 			return classes;
 		},
 	},
-};
+	methods: {
+		focus() {
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.focus();
+			}
+		},
+		blur() {
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.blur();
+			}
+		},
+		focusOnInput() {
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				const inputRef = selectRef.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
+				}
+			}
+		},
+	},
+});
 </script>
 
 <style lang="scss" module>
@@ -139,6 +180,9 @@ export default {
 	input {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
+		@-moz-document url-prefix() {
+			padding: 0 var(--spacing-3xs);
+		}
 	}
 }
 
