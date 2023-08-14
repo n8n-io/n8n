@@ -135,7 +135,7 @@ importers:
     dependencies:
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
 
   packages/@n8n_io/eslint-config:
     devDependencies:
@@ -216,7 +216,7 @@ importers:
         version: 7.28.1
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -346,6 +346,9 @@ importers:
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../nodes-base
+      n8n-nodes-langchain:
+        specifier: workspace:*
+        version: link:../nodes-langchain
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -574,7 +577,7 @@ importers:
         version: link:../@n8n/client-oauth2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
@@ -834,7 +837,7 @@ importers:
         version: 10.2.0(vue@3.3.4)
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -993,9 +996,6 @@ importers:
 
   packages/nodes-base:
     dependencies:
-      '@huggingface/inference':
-        specifier: '1'
-        version: 1.8.0
       '@kafkajs/confluent-schema-registry':
         specifier: 1.0.6
         version: 1.0.6
@@ -1017,9 +1017,6 @@ importers:
       chokidar:
         specifier: 3.5.2
         version: 3.5.2
-      cohere-ai:
-        specifier: ^6.2.2
-        version: 6.2.2
       cron:
         specifier: ~1.7.2
         version: 1.7.2
@@ -1065,9 +1062,6 @@ importers:
       kafkajs:
         specifier: ^1.14.0
         version: 1.16.0
-      langchain:
-        specifier: ^0.0.126
-        version: 0.0.126(@huggingface/inference@1.8.0)(cheerio@1.0.0-rc.6)(cohere-ai@6.2.2)(mongodb@4.10.0)(mysql2@2.3.3)(pg@8.8.0)(redis@3.1.2)
       ldapts:
         specifier: ^4.2.6
         version: 4.2.6
@@ -1276,6 +1270,46 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../core
+
+  packages/nodes-langchain:
+    dependencies:
+      '@huggingface/inference':
+        specifier: '1'
+        version: 1.8.0
+      cohere-ai:
+        specifier: ^6.2.2
+        version: 6.2.2
+      langchain:
+        specifier: ^0.0.126
+        version: 0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)
+    devDependencies:
+      '@types/express':
+        specifier: ^4.17.6
+        version: 4.17.14
+      '@types/request-promise-native':
+        specifier: ~1.0.15
+        version: 1.0.18
+      '@typescript-eslint/parser':
+        specifier: ~5.45
+        version: 5.45.0(eslint@8.45.0)(typescript@5.1.6)
+      eslint-plugin-n8n-nodes-base:
+        specifier: ^1.11.0
+        version: 1.16.0(eslint@8.45.0)(typescript@5.1.6)
+      gulp:
+        specifier: ^4.0.2
+        version: 4.0.2
+      n8n-core:
+        specifier: '*'
+        version: link:../core
+      n8n-workflow:
+        specifier: '*'
+        version: link:../workflow
+      prettier:
+        specifier: ^2.7.1
+        version: 2.8.8
+      typescript:
+        specifier: ^5.1.6
+        version: 5.1.6
 
   packages/workflow:
     dependencies:
@@ -4484,7 +4518,7 @@ packages:
     dependencies:
       '@segment/loosely-validate-event': 2.0.0
       auto-changelog: 1.16.4
-      axios: 0.21.4(debug@4.3.2)
+      axios: 0.21.4
       axios-retry: 3.3.1
       bull: 3.29.3
       lodash.clonedeep: 4.5.0
@@ -6805,6 +6839,26 @@ packages:
       - supports-color
     dev: true
 
+  /@typescript-eslint/parser@5.45.0(eslint@8.45.0)(typescript@5.1.6):
+    resolution: {integrity: sha512-brvs/WSM4fKUmF5Ot/gEve6qYiCMjm6w4HkHPfS6ZNmxTS0m0iNN4yOChImaCkqc1hRwFGqUyanMXuGal6oyyQ==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    peerDependencies:
+      eslint: ^6.0.0 || ^7.0.0 || ^8.0.0
+      typescript: '*'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+    dependencies:
+      '@typescript-eslint/scope-manager': 5.45.0
+      '@typescript-eslint/types': 5.45.0
+      '@typescript-eslint/typescript-estree': 5.45.0(typescript@5.1.6)
+      debug: 4.3.4(supports-color@8.1.1)
+      eslint: 8.45.0
+      typescript: 5.1.6
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /@typescript-eslint/parser@5.59.5(eslint@8.45.0)(typescript@5.1.6):
     resolution: {integrity: sha512-NJXQC4MRnF9N9yWqQE2/KLRSOLvrrlZb48NGVfBa+RuPMN6B7ZcK5jZOvhuygv4D64fRKnZI4L4p8+M+rfeQuw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
@@ -6844,6 +6898,14 @@ packages:
       typescript: 5.1.6
     transitivePeerDependencies:
       - supports-color
+    dev: true
+
+  /@typescript-eslint/scope-manager@5.45.0:
+    resolution: {integrity: sha512-noDMjr87Arp/PuVrtvN3dXiJstQR1+XlQ4R1EvzG+NMgXi8CuMCXpb8JqNtFHKceVSQ985BZhfRdowJzbv4yKw==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    dependencies:
+      '@typescript-eslint/types': 5.45.0
+      '@typescript-eslint/visitor-keys': 5.45.0
     dev: true
 
   /@typescript-eslint/scope-manager@5.59.5:
@@ -6910,6 +6972,11 @@ packages:
       - supports-color
     dev: true
 
+  /@typescript-eslint/types@5.45.0:
+    resolution: {integrity: sha512-QQij+u/vgskA66azc9dCmx+rev79PzX8uDHpsqSjEFtfF2gBUTRCpvYMh2gw2ghkJabNkPlSUCimsyBEQZd1DA==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    dev: true
+
   /@typescript-eslint/types@5.59.5:
     resolution: {integrity: sha512-xkfRPHbqSH4Ggx4eHRIO/eGL8XL4Ysb4woL8c87YuAo8Md7AUjyWKa9YMwTL519SyDPrfEgKdewjkxNCVeJW7w==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
@@ -6923,6 +6990,27 @@ packages:
   /@typescript-eslint/types@6.3.0:
     resolution: {integrity: sha512-K6TZOvfVyc7MO9j60MkRNWyFSf86IbOatTKGrpTQnzarDZPYPVy0oe3myTMq7VjhfsUAbNUW8I5s+2lZvtx1gg==}
     engines: {node: ^16.0.0 || >=18.0.0}
+    dev: true
+
+  /@typescript-eslint/typescript-estree@5.45.0(typescript@5.1.6):
+    resolution: {integrity: sha512-maRhLGSzqUpFcZgXxg1qc/+H0bT36lHK4APhp0AEUVrpSwXiRAomm/JGjSG+kNUio5kAa3uekCYu/47cnGn5EQ==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    peerDependencies:
+      typescript: '*'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+    dependencies:
+      '@typescript-eslint/types': 5.45.0
+      '@typescript-eslint/visitor-keys': 5.45.0
+      debug: 4.3.4(supports-color@8.1.1)
+      globby: 11.1.0
+      is-glob: 4.0.3
+      semver: 7.5.4
+      tsutils: 3.21.0(typescript@5.1.6)
+      typescript: 5.1.6
+    transitivePeerDependencies:
+      - supports-color
     dev: true
 
   /@typescript-eslint/typescript-estree@5.59.5(typescript@5.1.6):
@@ -7044,6 +7132,14 @@ packages:
     transitivePeerDependencies:
       - supports-color
       - typescript
+    dev: true
+
+  /@typescript-eslint/visitor-keys@5.45.0:
+    resolution: {integrity: sha512-jc6Eccbn2RtQPr1s7th6jJWQHBHI6GBVQkCHoJFQ5UreaKm59Vxw+ynQUPPY2u2Amquc+7tmEoC2G52ApsGNNg==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    dependencies:
+      '@typescript-eslint/types': 5.45.0
+      eslint-visitor-keys: 3.4.1
     dev: true
 
   /@typescript-eslint/visitor-keys@5.59.5:
@@ -7853,7 +7949,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       call-bind: 1.0.2
-      define-properties: 1.1.4
+      define-properties: 1.2.0
       es-abstract: 1.21.1
       get-intrinsic: 1.1.3
       is-string: 1.0.7
@@ -7910,7 +8006,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       call-bind: 1.0.2
-      define-properties: 1.1.4
+      define-properties: 1.2.0
       es-abstract: 1.21.1
       es-shim-unscopables: 1.0.0
       get-intrinsic: 1.1.3
@@ -7921,7 +8017,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       call-bind: 1.0.2
-      define-properties: 1.1.4
+      define-properties: 1.2.0
       es-abstract: 1.21.1
       es-shim-unscopables: 1.0.0
     dev: true
@@ -7931,7 +8027,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       call-bind: 1.0.2
-      define-properties: 1.1.4
+      define-properties: 1.2.0
       es-abstract: 1.21.1
       es-shim-unscopables: 1.0.0
     dev: true
@@ -8181,6 +8277,14 @@ packages:
       is-retry-allowed: 2.2.0
     dev: false
 
+  /axios@0.21.4:
+    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
+    dependencies:
+      follow-redirects: 1.15.2(debug@4.3.4)
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
   /axios@0.21.4(debug@4.3.2):
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
@@ -8192,16 +8296,7 @@ packages:
   /axios@0.26.1:
     resolution: {integrity: sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==}
     dependencies:
-      follow-redirects: 1.15.2(debug@4.3.2)
-    transitivePeerDependencies:
-      - debug
-    dev: false
-
-  /axios@0.27.2:
-    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
-    dependencies:
-      follow-redirects: 1.15.2(debug@4.3.2)
-      form-data: 4.0.0
+      follow-redirects: 1.15.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -8222,7 +8317,6 @@ packages:
       form-data: 4.0.0
     transitivePeerDependencies:
       - debug
-    dev: true
 
   /babel-core@7.0.0-bridge.0(@babel/core@7.22.9):
     resolution: {integrity: sha512-poPX9mZH/5CSanm50Q+1toVci6pv5KSRv/5TWCwtzQS5XEwn40BcCrgIeMFWP9CKKIniKXNxoIOnOq4VVlGXhg==}
@@ -9997,14 +10091,6 @@ packages:
   /define-lazy-prop@2.0.0:
     resolution: {integrity: sha512-Ds09qNh8yw3khSjiJjiUInaGX9xlqZDY7JVryGxdxV7NPeuqQfplOpQ66yJFZut3jLa5zOwkXw1g9EI2uKh4Og==}
     engines: {node: '>=8'}
-
-  /define-properties@1.1.4:
-    resolution: {integrity: sha512-uckOqKcfaVvtBdsVkdPv3XjveQJsNQqmhXgRi8uhvWWuPYZCNlzT8qAyblUgNoXdHdjMTzAqeGjAoli8f+bzPA==}
-    engines: {node: '>= 0.4'}
-    dependencies:
-      has-property-descriptors: 1.0.0
-      object-keys: 1.1.1
-    dev: true
 
   /define-properties@1.2.0:
     resolution: {integrity: sha512-xvqAVKGfT1+UAvPwKTVw/njhdQ8ZhXK4lI0bCIuCMrp2up9nPnaDftrLtmpTazqd1o+UY4zgzU+avtMbDP+ldA==}
@@ -11832,7 +11918,6 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.4(supports-color@8.1.1)
-    dev: true
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
@@ -14609,7 +14694,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.126(@huggingface/inference@1.8.0)(cheerio@1.0.0-rc.6)(cohere-ai@6.2.2)(mongodb@4.10.0)(mysql2@2.3.3)(pg@8.8.0)(redis@3.1.2):
+  /langchain@0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2):
     resolution: {integrity: sha512-Z57WjAwLN+ZbJ9D4h2oTN7iDt1Aa67mcXhKYVCQFRu4w8PIPH5k0VBvmrzKyRj2iFIWdUaqVsHch/jz5+1mGnA==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -14809,7 +14894,6 @@ packages:
       ansi-styles: 5.2.0
       binary-extensions: 2.2.0
       camelcase: 6.3.0
-      cheerio: 1.0.0-rc.6
       cohere-ai: 6.2.2
       decamelize: 1.2.0
       expr-eval: 2.0.2
@@ -14819,15 +14903,11 @@ packages:
       jsonpointer: 5.0.1
       langsmith: 0.0.20
       ml-distance: 4.0.1
-      mongodb: 4.10.0
-      mysql2: 2.3.3
       object-hash: 3.0.0
       openai: 3.3.0
       openapi-types: 12.1.3
       p-queue: 6.6.2
       p-retry: 4.6.2
-      pg: 8.8.0
-      redis: 3.1.2
       uuid: 9.0.0
       yaml: 2.3.1
       zod: 3.21.4
@@ -16553,7 +16633,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       call-bind: 1.0.2
-      define-properties: 1.1.4
+      define-properties: 1.2.0
       es-abstract: 1.21.1
     dev: true
 
@@ -16604,7 +16684,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       call-bind: 1.0.2
-      define-properties: 1.1.4
+      define-properties: 1.2.0
       es-abstract: 1.21.1
     dev: true
 
@@ -17534,7 +17614,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2
+      axios: 0.27.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
