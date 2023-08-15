@@ -241,7 +241,7 @@ export default defineComponent({
 			if (!this.editor) return;
 
 			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.placeholder },
+				changes: { from: 0, to: this.getCurrentEditorContent().length, insert: this.placeholder },
 			});
 		},
 		line(lineNumber: number): Line | null {
@@ -256,7 +256,7 @@ export default defineComponent({
 
 			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: this.getCurrentEditorContent().length },
+					selection: { anchor: (this.modelValue ?? this.getCurrentEditorContent()).length },
 				});
 				return;
 			}
