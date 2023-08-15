@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { WikipediaQueryRun } from 'langchain/tools';
+import { logWrapper } from '../../utils/logWrapper';
 
 export class LangChainToolWikipedia implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +26,7 @@ export class LangChainToolWikipedia implements INodeType {
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		return {
-			response: new WikipediaQueryRun(),
+			response: logWrapper(new WikipediaQueryRun(), this),
 		};
 	}
 }

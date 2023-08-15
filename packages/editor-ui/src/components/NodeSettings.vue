@@ -233,6 +233,9 @@ export default defineComponent({
 			return this.readOnly || this.hasForeignCredential;
 		},
 		isExecutable(): boolean {
+			if (this.nodeType && !this.nodeType.inputs.includes('main')) {
+				return false;
+			}
 			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {

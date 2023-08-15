@@ -491,6 +491,7 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { saveAs } from 'file-saver';
 import type {
+	ConnectionTypes,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -613,6 +614,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			connectionType: 'main' as ConnectionTypes,
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
@@ -807,7 +809,13 @@ export default defineComponent({
 			let inputData: INodeExecutionData[] = [];
 
 			if (this.node) {
-				inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+				inputData = this.getNodeInputData(
+					this.node,
+					this.runIndex,
+					this.currentOutputIndex,
+					this.paneType,
+					this.connectionType,
+				);
 			}
 
 			if (inputData.length === 0 || !Array.isArray(inputData)) {
@@ -1216,7 +1224,7 @@ export default defineComponent({
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
-		getDataCount(runIndex: number, outputIndex: number) {
+		getDataCount(runIndex: number, outputIndex: number, connectionType: ConnectionTypes = 'main') {
 			if (this.pinData) {
 				return this.pinData.length;
 			}
@@ -1246,7 +1254,11 @@ export default defineComponent({
 				return 0;
 			}
 
-			const inputData = this.getMainInputData(runData[this.node.name][runIndex].data!, outputIndex);
+			const inputData = this.getInputData(
+				runData[this.node.name][runIndex].data!,
+				outputIndex,
+				connectionType,
+			);
 
 			return inputData.length;
 		},
@@ -1255,6 +1267,8 @@ export default defineComponent({
 			this.outputIndex = 0;
 			this.refreshDataSize();
 			this.closeBinaryDataDisplay();
+			this.connectionType =
+				!this.nodeType || this.nodeType.outputs.length === 0 ? 'main' : this.nodeType?.outputs[0];
 			if (this.binaryData.length > 0) {
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',
@@ -1297,7 +1311,13 @@ export default defineComponent({
 			}
 		},
 		async downloadJsonData() {
-			const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+			const inputData = this.getNodeInputData(
+				this.node,
+				this.runIndex,
+				this.currentOutputIndex,
+				this.paneType,
+				this.connectionType,
+			);
 
 			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
 			const blob = new Blob([JSON.stringify(inputData, null, 2)], { type: 'application/json' });
@@ -1332,7 +1352,13 @@ export default defineComponent({
 			this.showData = false;
 
 			// Check how much data there is to display
-			const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+			const inputData = this.getNodeInputData(
+				this.node,
+				this.runIndex,
+				this.currentOutputIndex,
+				this.paneType,
+				this.connectionType,
+			);
 
 			const offset = this.pageSize * (this.currentPage - 1);
 			const jsonItems = inputData.slice(offset, offset + this.pageSize).map((item) => item.json);

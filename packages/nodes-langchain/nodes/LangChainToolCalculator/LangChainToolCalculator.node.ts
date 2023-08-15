@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { Calculator } from 'langchain/tools/calculator';
+import { logWrapper } from '../../utils/logWrapper';
 
 export class LangChainToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +25,7 @@ export class LangChainToolCalculator implements INodeType {
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		return {
-			response: new Calculator(),
+			response: logWrapper(new Calculator(), this),
 		};
 	}
 }

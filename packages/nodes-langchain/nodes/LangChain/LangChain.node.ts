@@ -82,13 +82,14 @@ export class LangChain implements INodeType {
 
 		const options: InitializeAgentExecutorOptions = {
 			agentType: 'chat-conversational-react-description',
-			verbose: true,
+			// verbose: true,
 			memory,
 		};
 
 		const executor = await initializeAgentExecutorWithOptions(tools, model, options);
 
 		const items = this.getInputData();
+
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const text = this.getNodeParameter('text', itemIndex) as string;

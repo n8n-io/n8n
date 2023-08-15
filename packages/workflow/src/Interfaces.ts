@@ -755,6 +755,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 };
 
+// TODO: Create later own type only for Config-Nodes
 export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 	BaseExecutionFunctions & {
 		executeWorkflow(
@@ -774,6 +775,10 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
+
+		// TODO: Make this one then only available in the new config one
+		addInputData(connectionType: ConnectionTypes, data: INodeExecutionData[][]): Promise<void>;
+		addOutputData(connectionType: ConnectionTypes, data: INodeExecutionData[][]): Promise<void>;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -1681,6 +1686,7 @@ export interface ITaskData {
 	executionTime: number;
 	executionStatus?: ExecutionStatus;
 	data?: ITaskDataConnections;
+	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 }
@@ -1778,7 +1784,7 @@ export interface IWorkflowExecuteAdditionalData {
 	restApiUrl: string;
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
-	sendMessageToUI?: (source: string, message: any) => void;
+	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;

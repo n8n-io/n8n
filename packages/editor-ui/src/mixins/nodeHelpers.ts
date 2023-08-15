@@ -3,6 +3,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
 
 import type {
+	ConnectionTypes,
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
@@ -26,6 +27,7 @@ import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
+	NodePanelType,
 } from '@/Interface';
 
 import { get } from 'lodash-es';
@@ -400,14 +402,20 @@ export const nodeHelpers = defineComponent({
 			}
 		},
 
-		getNodeInputData(node: INodeUi | null, runIndex = 0, outputIndex = 0): INodeExecutionData[] {
+		getNodeInputData(
+			node: INodeUi | null,
+			runIndex = 0,
+			outputIndex = 0,
+			paneType: NodePanelType = 'output',
+			connectionType: ConnectionTypes = 'main',
+		): INodeExecutionData[] {
 			if (node === null) {
 				return [];
 			}
-
 			if (this.workflowsStore.getWorkflowExecution === null) {
 				return [];
 			}
+
 			const executionData = this.workflowsStore.getWorkflowExecution.data;
 			if (!executionData || !executionData.resultData) {
 				// unknown status
@@ -415,33 +423,39 @@ export const nodeHelpers = defineComponent({
 			}
 			const runData = executionData.resultData.runData;
 
-			if (
-				runData === null ||
-				runData[node.name] === undefined ||
-				!runData[node.name][runIndex].data ||
-				runData[node.name][runIndex].data === undefined
-			) {
+			const taskData = get(runData, `[${node.name}][${runIndex}]`);
+			if (!taskData) {
 				return [];
 			}
 
-			return this.getMainInputData(runData[node.name][runIndex].data!, outputIndex);
+			let data: ITaskDataConnections | undefined = taskData.data!;
+			if (paneType === 'input' && taskData.inputOverride) {
+				data = taskData.inputOverride!;
+			}
+
+			if (!data) {
+				return [];
+			}
+
+			return this.getInputData(data, outputIndex, connectionType);
 		},
 
 		// Returns the data of the main input
-		getMainInputData(
+		getInputData(
 			connectionsData: ITaskDataConnections,
 			outputIndex: number,
+			connectionType: ConnectionTypes = 'main',
 		): INodeExecutionData[] {
 			if (
 				!connectionsData ||
-				!connectionsData.hasOwnProperty('main') ||
-				connectionsData.main === undefined ||
-				connectionsData.main.length < outputIndex ||
-				connectionsData.main[outputIndex] === null
+				!connectionsData.hasOwnProperty(connectionType) ||
+				connectionsData[connectionType] === undefined ||
+				connectionsData[connectionType].length < outputIndex ||
+				connectionsData[connectionType][outputIndex] === null
 			) {
 				return [];
 			}
-			return connectionsData.main[outputIndex] as INodeExecutionData[];
+			return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
 		},
 
 		// Returns all the binary data of all the entries
@@ -450,6 +464,7 @@ export const nodeHelpers = defineComponent({
 			node: string | null,
 			runIndex: number,
 			outputIndex: number,
+			connectionType: ConnectionTypes = 'main',
 		): IBinaryKeyData[] {
 			if (node === null) {
 				return [];
@@ -466,7 +481,11 @@ export const nodeHelpers = defineComponent({
 				return [];
 			}
 
-			const inputData = this.getMainInputData(runData[node][runIndex].data!, outputIndex);
+			const inputData = this.getInputData(
+				runData[node][runIndex].data!,
+				outputIndex,
+				connectionType,
+			);
 
 			const returnData: IBinaryKeyData[] = [];
 			for (let i = 0; i < inputData.length; i++) {

@@ -232,6 +232,19 @@ export default defineComponent({
 			return this.ndvStore.activeNode;
 		},
 		currentNode(): INodeUi | null {
+			if (
+				!this.currentNodeName &&
+				this.activeNodeType &&
+				(this.activeNodeType.inputs.length === 0 ||
+					this.activeNodeType.inputs.find((inputName) => inputName !== 'main')) &&
+				this.activeNodeType.outputs.find((outputName) => outputName !== 'main')
+			) {
+				// For config nodes we want to return the active node to make everyhing
+				// work correctly as they normally do not have any inputs and the input
+				// data does get set manually and is only for debugging
+				return this.activeNode;
+			}
+
 			return this.workflowsStore.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {

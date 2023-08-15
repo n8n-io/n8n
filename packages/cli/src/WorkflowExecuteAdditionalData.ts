@@ -53,6 +53,7 @@ import type {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
+	IPushDataType,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
@@ -1108,8 +1109,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 		});
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sendMessageToUI(source: string, messages: any[]) {
+export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
 	const { sessionId } = this;
 	if (sessionId === undefined) {
 		return;
@@ -1118,14 +1118,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(
-			'sendConsoleMessage',
-			{
-				source: `[Node: "${source}"]`,
-				messages,
-			},
-			sessionId,
-		);
+		pushInstance.send(type as IPushDataType, data, sessionId);
 	} catch (error) {
 		Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 	}

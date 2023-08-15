@@ -185,13 +185,13 @@ class WorkflowRunnerProcess {
 			executionId: inputData.executionId,
 		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		additionalData.sendMessageToUI = async (source: string, message: any) => {
+		additionalData.sendDataToUI = async (type: string, data: IDataObject | IDataObject[]) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
 			}
 
 			try {
-				await sendToParentProcess('sendMessageToUI', { source, message });
+				await sendToParentProcess('sendDataToUI', { type, data });
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.error(

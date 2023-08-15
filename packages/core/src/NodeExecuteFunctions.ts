@@ -63,6 +63,7 @@ import type {
 	FileSystemHelperFunctions,
 	INodeType,
 	SupplyData,
+	ITaskData,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -2173,6 +2174,60 @@ export function getWebhookDescription(
 	return undefined;
 }
 
+const addExecutionDataFunctions = (
+	type: 'input' | 'output',
+	nodeName: string,
+	data: INodeExecutionData[][],
+	runExecutionData: IRunExecutionData,
+	connectionType: ConnectionTypes,
+	additionalData: IWorkflowExecuteAdditionalData,
+) => {
+	if (connectionType === 'main') {
+		throw new Error(`Setting the ${type} is not supported for the main connection!`);
+	}
+
+	if (type === 'input') {
+		const taskData = {
+			startTime: 0,
+			executionTime: 0,
+			executionStatus: 'success',
+			source: [null],
+			inputOverride: {
+				[connectionType]: data,
+			} as ITaskDataConnections,
+			// TODO: Add support for errors
+			// error?: ExecutionError;
+		} as ITaskData;
+
+		if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
+			runExecutionData.resultData.runData[nodeName] = [];
+		}
+
+		runExecutionData.resultData.runData[nodeName].push(taskData);
+	} else {
+		// Outputs
+		// At the moment we expect that there is always an input sent before the output
+		const runDataArray = get(runExecutionData, `resultData.runData[${nodeName}]`, []);
+		if (runDataArray.length === 0) {
+			return;
+		}
+
+		const taskData = runDataArray[runDataArray.length - 1];
+
+		taskData.data = {
+			[connectionType]: data,
+		} as ITaskDataConnections;
+
+		if (additionalData.sendDataToUI) {
+			additionalData.sendDataToUI('nodeExecuteAfter', {
+				executionId: additionalData.executionId,
+				nodeName,
+				data: taskData,
+			});
+		}
+	}
+};
+
 const getCommonWorkflowFunctions = (
 	workflow: Workflow,
 	node: INode,
@@ -2630,6 +2685,10 @@ export function getExecuteFunctions(
 						};
 
 						// TODO: Check what else should be overwritten
+						context.getNode = () => {
+							return deepCopy(connectedNode);
+						};
+
 						context.getCredentials = async (key: string) => {
 							console.log('getCredentials - overwritten:', key);
 							console.log('connectedNode.name:', connectedNode.name);
@@ -2728,7 +2787,7 @@ export function getExecuteFunctions(
 					return;
 				}
 				try {
-					if (additionalData.sendMessageToUI) {
+					if (additionalData.sendDataToUI) {
 						args = args.map((arg) => {
 							// prevent invalid dates from being logged as null
 							if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };
@@ -2740,7 +2799,10 @@ export function getExecuteFunctions(
 							return arg;
 						});
 
-						additionalData.sendMessageToUI(node.name, args);
+						additionalData.sendDataToUI('sendConsoleMessage', {
+							source: `[Node: "${node.name}"]`,
+							messages: args,
+						});
 					}
 				} catch (error) {
 					Logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -2748,6 +2810,33 @@ export function getExecuteFunctions(
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
+			},
+
+			async addInputData(
+				connectionType: ConnectionTypes,
+				data: INodeExecutionData[][],
+			): Promise<void> {
+				return addExecutionDataFunctions(
+					'input',
+					this.getNode().name,
+					data,
+					runExecutionData,
+					connectionType,
+					additionalData,
+				);
+			},
+			async addOutputData(
+				connectionType: ConnectionTypes,
+				data: INodeExecutionData[][],
+			): Promise<void> {
+				return addExecutionDataFunctions(
+					'output',
+					this.getNode().name,
+					data,
+					runExecutionData,
+					connectionType,
+					additionalData,
+				);
 			},
 			helpers: {
 				createDeferredPromise,
