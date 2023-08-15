@@ -83,12 +83,16 @@ export default defineComponent({
 		mode(newMode, previousMode: CodeExecutionMode) {
 			this.reloadLinter();
 
-			if (this.content.trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]) {
+			if (
+				this.getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]
+			) {
 				this.refreshPlaceholder();
 			}
 		},
 		language(newLanguage, previousLanguage: CodeNodeEditorLanguage) {
-			if (this.content.trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]) {
+			if (
+				this.getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]
+			) {
 				this.refreshPlaceholder();
 			}
 
@@ -100,11 +104,6 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useRootStore),
-		content(): string {
-			if (!this.editor) return '';
-
-			return this.editor.state.doc.toString();
-		},
 		placeholder(): string {
 			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
 		},
@@ -120,6 +119,9 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getCurrentEditorContent() {
+			return this.editor?.state.doc.toString() ?? '';
+		},
 		onMouseOver(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
 			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
@@ -151,7 +153,7 @@ export default defineComponent({
 			if (!this.editor) return;
 
 			this.editor.dispatch({
-				changes: { from: 0, to: this.content.length, insert: this.placeholder },
+				changes: { from: 0, to: this.getCurrentEditorContent().length, insert: this.placeholder },
 			});
 		},
 		line(lineNumber: number): Line | null {
@@ -166,7 +168,7 @@ export default defineComponent({
 
 			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: (this.modelValue ?? this.content).length },
+					selection: { anchor: (this.modelValue ?? this.getCurrentEditorContent()).length },
 				});
 				return;
 			}
@@ -187,7 +189,7 @@ export default defineComponent({
 			try {
 				// @ts-ignore - undocumented fields
 				const { fromA, toB } = viewUpdate?.changedRanges[0];
-				const full = this.content.slice(fromA, toB);
+				const full = this.getCurrentEditorContent().slice(fromA, toB);
 				const lastDotIndex = full.lastIndexOf('.');
 
 				let context = null;
