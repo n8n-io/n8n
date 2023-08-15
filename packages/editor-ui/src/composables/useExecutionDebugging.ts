@@ -60,6 +60,7 @@ export const useExecutionDebugging = () => {
 					name: VIEWS.EXECUTION_PREVIEW,
 					params: { name: workflow.id, executionId },
 				});
+				return;
 			}
 		}
 
