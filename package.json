@@ -33,7 +33,8 @@
     "test:e2e:all": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
-    "n8n": "workspace:*"
+    "n8n": "workspace:*",
+    "@foxy.io/sdk": "^1.9.3"
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
