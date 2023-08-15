@@ -31,7 +31,7 @@ import {
 } from '@/sso/ssoHelpers';
 import { InternalHooks } from '../InternalHooks';
 import { License } from '@/License';
-import type { UserService } from '@/services/user.service';
+import { UserService } from '@/services/user.service';
 
 @RestController()
 export class AuthController {
@@ -50,20 +50,18 @@ export class AuthController {
 		logger,
 		internalHooks,
 		postHog,
-		userService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
 		postHog?: PostHogClient;
-		userService: UserService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.postHog = postHog;
-		this.userService = userService;
+		this.userService = Container.get(UserService);
 	}
 
 	/**

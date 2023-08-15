@@ -14,7 +14,8 @@ import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
 import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import type { SettingsRepository } from '@db/repositories';
-import type { UserService } from '@/services/user.service';
+import { UserService } from '@/services/user.service';
+import Container from 'typedi';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
@@ -34,18 +35,16 @@ export class OwnerController {
 		logger,
 		internalHooks,
 		repositories,
-		userService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'Settings'>;
-		userService: UserService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
-		this.userService = userService;
+		this.userService = Container.get(UserService);
 		this.settingsRepository = repositories.Settings;
 	}
 

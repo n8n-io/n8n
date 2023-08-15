@@ -43,9 +43,9 @@ import { plainToInstance } from 'class-transformer';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { JwtService } from '@/services/jwt.service';
-import type { RoleService } from '@/services/role.service';
-import type { UserService } from '@/services/user.service';
+import { JwtService } from '@/services/jwt.service';
+import { RoleService } from '@/services/role.service';
+import { UserService } from '@/services/user.service';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -82,10 +82,7 @@ export class UsersController {
 		repositories,
 		activeWorkflowRunner,
 		mailer,
-		jwtService,
 		postHog,
-		roleService,
-		userService,
 	}: {
 		config: Config;
 		logger: ILogger;
@@ -94,10 +91,7 @@ export class UsersController {
 		repositories: Pick<IDatabaseCollections, 'SharedCredentials' | 'SharedWorkflow'>;
 		activeWorkflowRunner: ActiveWorkflowRunner;
 		mailer: UserManagementMailer;
-		jwtService: JwtService;
 		postHog?: PostHogClient;
-		roleService: RoleService;
-		userService: UserService;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -107,10 +101,10 @@ export class UsersController {
 		this.sharedWorkflowRepository = repositories.SharedWorkflow;
 		this.activeWorkflowRunner = activeWorkflowRunner;
 		this.mailer = mailer;
-		this.jwtService = jwtService;
+		this.jwtService = Container.get(JwtService);
 		this.postHog = postHog;
-		this.roleService = roleService;
-		this.userService = userService;
+		this.roleService = Container.get(RoleService);
+		this.userService = Container.get(UserService);
 	}
 
 	/**

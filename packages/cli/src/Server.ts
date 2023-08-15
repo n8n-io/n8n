@@ -166,9 +166,6 @@ import { SourceControlService } from '@/environments/sourceControl/sourceControl
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
 import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { JwtService } from './services/jwt.service';
-import { RoleService } from './services/role.service';
-import { UserService } from '@/services/user.service';
 
 const exec = promisify(callbackExec);
 
@@ -478,7 +475,6 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const jwtService = Container.get(JwtService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -488,20 +484,17 @@ export class Server extends AbstractServer {
 				repositories,
 				logger,
 				postHog,
-				userService: Container.get(UserService),
 			}),
 			new OwnerController({
 				config,
 				internalHooks,
 				repositories,
 				logger,
-				userService: Container.get(UserService),
 			}),
 			new MeController({
 				externalHooks,
 				internalHooks,
 				logger,
-				userService: Container.get(UserService),
 			}),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({
@@ -510,8 +503,6 @@ export class Server extends AbstractServer {
 				internalHooks,
 				mailer,
 				logger,
-				jwtService,
-				userService: Container.get(UserService),
 			}),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
@@ -524,9 +515,6 @@ export class Server extends AbstractServer {
 				activeWorkflowRunner,
 				logger,
 				postHog,
-				jwtService,
-				roleService: Container.get(RoleService),
-				userService: Container.get(UserService),
 			}),
 			Container.get(SamlController),
 			Container.get(SourceControlController),

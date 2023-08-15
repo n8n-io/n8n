@@ -22,7 +22,8 @@ import {
 import type { PublicUser, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import type { UserService } from '@/services/user.service';
+import { UserService } from '@/services/user.service';
+import Container from 'typedi';
 
 @Authorized()
 @RestController('/me')
@@ -39,17 +40,15 @@ export class MeController {
 		logger,
 		externalHooks,
 		internalHooks,
-		userService,
 	}: {
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
-		userService: UserService;
 	}) {
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
-		this.userService = userService;
+		this.userService = Container.get(UserService);
 	}
 
 	/**

@@ -11,13 +11,16 @@ import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers';
 import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { UserService } from '@/services/user.service';
+import { UserService } from '@/services/user.service';
+import Container from 'typedi';
+import { mockInstance } from '../../integration/shared/utils';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
 	const logger = mock<ILogger>();
 	const internalHooks = mock<IInternalHooksClass>();
-	const userService = mock<UserService>();
+	const userService = mockInstance(UserService);
+	Container.set(UserService, userService);
 	const settingsRepository = mock<SettingsRepository>();
 	const controller = new OwnerController({
 		config,
@@ -26,7 +29,6 @@ describe('OwnerController', () => {
 		repositories: {
 			Settings: settingsRepository,
 		},
-		userService,
 	});
 
 	describe('setupOwner', () => {

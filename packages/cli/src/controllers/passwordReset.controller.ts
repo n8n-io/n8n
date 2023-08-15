@@ -23,12 +23,13 @@ import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import type { UserService } from '@/services/user.service';
+import { UserService } from '@/services/user.service';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { TokenExpiredError } from 'jsonwebtoken';
-import type { JwtService, JwtPayload } from '@/services/jwt.service';
+import type { JwtPayload } from '@/services/jwt.service';
+import { JwtService } from '@/services/jwt.service';
 
 @RestController()
 export class PasswordResetController {
@@ -52,24 +53,20 @@ export class PasswordResetController {
 		externalHooks,
 		internalHooks,
 		mailer,
-		jwtService,
-		userService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
-		jwtService: JwtService;
-		userService: UserService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
 		this.mailer = mailer;
-		this.jwtService = jwtService;
-		this.userService = userService;
+		this.jwtService = Container.get(JwtService);
+		this.userService = Container.get(UserService);
 	}
 
 	/**
