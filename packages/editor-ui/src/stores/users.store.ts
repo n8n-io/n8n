@@ -197,6 +197,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
 				settingsStore.stopShowingSetupPage();
+				usePostHog().init(user.featureFlags);
 			}
 		},
 		async validateSignupToken(params: {
@@ -218,9 +219,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (user) {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
+				usePostHog().init(user.featureFlags);
 			}
-
-			usePostHog().init(user.featureFlags);
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();

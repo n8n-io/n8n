@@ -83,6 +83,7 @@ declare global {
 			people?: {
 				set?(metadata: IDataObject): void;
 			};
+			debug?(): void;
 		};
 		analytics?: {
 			track(event: string, proeprties?: ITelemetryTrackProperties): void;
