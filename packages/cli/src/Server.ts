@@ -312,8 +312,8 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
-        showNonProdBanner: false,
-        debugInEditor: false,
+				showNonProdBanner: false,
+				debugInEditor: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
