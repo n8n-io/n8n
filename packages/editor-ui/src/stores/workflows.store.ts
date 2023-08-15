@@ -128,6 +128,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		executingNode: null,
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
+		isInDebugMode: false,
 	}),
 	getters: {
 		// Workflow getters

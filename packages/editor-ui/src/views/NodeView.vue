@@ -367,7 +367,7 @@ export default defineComponent({
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
-		$route(to: Route, from: Route) {
+		async $route(to: Route, from: Route) {
 			this.readOnlyEnvRouteCheck();
 
 			const currentTab = getNodeViewTab(to);
@@ -390,14 +390,13 @@ export default defineComponent({
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
-					void this.loadCredentials();
-					void this.initView().then(() => {
-						this.stopLoading();
-						if (this.blankRedirect) {
-							this.blankRedirect = false;
-						}
-					});
+					await Promise.all([this.loadCredentials(), this.initView()]);
+					this.stopLoading();
+					if (this.blankRedirect) {
+						this.blankRedirect = false;
+					}
 				}
+				await this.checkAndInitDebugMode();
 			}
 			// Also, when landing on executions tab, check if workflow data is changed
 			if (currentTab === MAIN_HEADER_TABS.EXECUTIONS) {
@@ -2629,7 +2628,6 @@ export default defineComponent({
 					if (workflow) {
 						this.titleSet(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
-
 						await this.checkAndInitDebugMode();
 					}
 				} else if (this.$route.meta?.nodeView === true) {
@@ -3870,9 +3868,9 @@ export default defineComponent({
 		async checkAndInitDebugMode() {
 			if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
 				this.titleSet(this.workflowName, 'DEBUG');
-				if (!this.isDebugModeActive.value) {
+				if (!this.workflowsStore.isInDebugMode) {
 					await this.applyExecutionData(this.$route.params.executionId as string);
-					this.isDebugModeActive.value = true;
+					this.workflowsStore.isInDebugMode = true;
 				}
 			}
 		},
@@ -4024,7 +4022,6 @@ export default defineComponent({
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
-		await this.checkAndInitDebugMode();
 	},
 	deactivated() {
 		this.unbindCanvasEvents();

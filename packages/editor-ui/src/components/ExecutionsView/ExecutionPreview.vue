@@ -92,7 +92,7 @@
 						>
 							<router-link
 								v-if="isDebugEnabled"
-								@mousedown="handleDebugButtonClick"
+								@click.capture="handleDebugButtonClick"
 								:to="{
 									name: VIEWS.EXECUTION_DEBUG,
 									params: {
@@ -171,7 +171,7 @@ import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore, useWorkflowsStore } from '@/stores';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
@@ -194,7 +194,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore),
+		...mapStores(useSettingsStore, useWorkflowsStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
@@ -248,7 +248,7 @@ export default defineComponent({
 			}
 		},
 		handleDebugButtonClick(): void {
-			this.isDebugModeActive = false;
+			this.workflowsStore.isInDebugMode = false;
 		},
 	},
 });

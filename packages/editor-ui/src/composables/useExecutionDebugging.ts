@@ -1,4 +1,3 @@
-import { ref } from 'vue';
 import { useI18n, useMessage, useToast } from '@/composables';
 import { MODAL_CONFIRM } from '@/constants';
 import { useWorkflowsStore } from '@/stores';
@@ -9,8 +8,6 @@ export const useExecutionDebugging = () => {
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
-
-	const isDebugModeActive = ref(false);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
@@ -93,7 +90,6 @@ export const useExecutionDebugging = () => {
 	};
 
 	return {
-		isDebugModeActive,
 		applyExecutionData,
 	};
 };

@@ -888,6 +888,7 @@ export interface WorkflowsState {
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
+	isInDebugMode?: boolean;
 }
 
 export interface RootState {
