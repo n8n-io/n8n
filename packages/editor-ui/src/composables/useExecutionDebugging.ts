@@ -26,7 +26,7 @@ export const useExecutionDebugging = () => {
 		const missingNodeNames = executionNodeNames.filter(
 			(name) => !workflowNodes.some((node) => node.name === name),
 		);
-		const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
+		const workflowPinnedNodeNames = Object.keys(workflowsStore.workflow.pinData ?? {});
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
