@@ -107,6 +107,23 @@ function getSchemas() {
 	};
 }
 
+function startLoading() {
+	emit('startedLoading');
+	loaderProgress.value = 0;
+	isLoading.value = true;
+
+	triggerLoadingChange();
+}
+
+function stopLoading() {
+	loaderProgress.value = 100;
+	emit('finishedLoading');
+
+	setTimeout(() => {
+		isLoading.value = false;
+	}, 200);
+}
+
 async function onSubmit() {
 	const { getRestApiContext } = useRootStore();
 	const { activeNode } = useNDVStore();
@@ -165,7 +182,7 @@ async function onSubmit() {
 		showMessage({
 			type: 'error',
 			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
-			message: getErrorMessageByStatusCode(error.httpStatusCode),
+			message: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
 		});
 
 		useTelemetry().trackAskAI('askAi.generationFinished', {
@@ -173,7 +190,7 @@ async function onSubmit() {
 			code: '',
 			tokensCount: 0,
 			hasErrors: true,
-			error: getErrorMessageByStatusCode(error.httpStatusCode),
+			error: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
 		});
 		stopLoading();
 	}
@@ -205,23 +222,6 @@ function triggerLoadingChange() {
 	window.requestAnimationFrame(step);
 }
 
-function startLoading() {
-	emit('startedLoading');
-	loaderProgress.value = 0;
-	isLoading.value = true;
-
-	triggerLoadingChange();
-}
-
-function stopLoading() {
-	loaderProgress.value = 100;
-	emit('finishedLoading');
-
-	setTimeout(() => {
-		isLoading.value = false;
-	}, 200);
-}
-
 function getSessionStoragePrompt() {
 	const codeNodeName = (useNDVStore().activeNode?.name as string) ?? '';
 	const hashedCode = snakeCase(codeNodeName);
@@ -249,6 +249,7 @@ onMounted(() => {
 					v-show="prompt.length > 1"
 					:class="$style.counter"
 					v-text="`${prompt.length} / ${ASK_AI_MAX_PROMPT_LENGTH}`"
+					data-test-id="ask-ai-prompt-counter"
 				/>
 				<a href="https://docs.n8n.io/code-examples/ai-code" target="_blank" :class="$style.help">
 					<n8n-icon icon="question-circle" color="text-light" size="large" />{{
@@ -264,6 +265,7 @@ onMounted(() => {
 				:rows="6"
 				:maxlength="ASK_AI_MAX_PROMPT_LENGTH"
 				:placeholder="i18n.baseText('codeNodeEditor.askAi.placeholder')"
+				data-test-id="ask-ai-prompt-input"
 			/>
 		</div>
 		<div :class="$style.controls">
@@ -275,25 +277,34 @@ onMounted(() => {
 			</div>
 			<n8n-tooltip :disabled="isSubmitEnabled" v-else>
 				<div>
-					<N8nButton :disabled="!isSubmitEnabled" @click="onSubmit" size="small">{{
-						i18n.baseText('codeNodeEditor.askAi.generateCode')
-					}}</N8nButton>
+					<N8nButton
+						:disabled="!isSubmitEnabled"
+						@click="onSubmit"
+						size="small"
+						data-test-id="ask-ai-cta"
+					>
+						{{ i18n.baseText('codeNodeEditor.askAi.generateCode') }}
+					</N8nButton>
 				</div>
 				<template #content>
 					<span
 						v-if="!hasExecutionData"
 						v-text="i18n.baseText('codeNodeEditor.askAi.noInputData')"
+						data-test-id="ask-ai-cta-tooltip-no-input-data"
 					/>
 					<span
 						v-else-if="prompt.length === 0"
 						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
+						data-test-id="ask-ai-cta-tooltip-no-prompt"
 					/>
 					<span
 						v-else-if="isEachItemMode"
 						v-text="i18n.baseText('codeNodeEditor.askAi.onlyAllItemsMode')"
+						data-test-id="ask-ai-cta-tooltip-only-all-items-mode"
 					/>
 					<span
 						v-else-if="prompt.length < ASK_AI_MIN_PROMPT_LENGTH"
+						data-test-id="ask-ai-cta-tooltip-prompt-too-short"
 						v-text="
 							i18n.baseText('codeNodeEditor.askAi.promptTooShort', {
 								interpolate: { minLength: ASK_AI_MIN_PROMPT_LENGTH.toString() },

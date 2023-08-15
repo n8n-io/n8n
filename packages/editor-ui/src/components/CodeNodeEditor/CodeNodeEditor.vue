@@ -12,10 +12,18 @@
 			v-if="aiEnabled"
 			:before-leave="onBeforeTabLeave"
 		>
-			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.code')" name="code" data-test-id="code-node-tab-code">
-				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" data-test-id="code-node-tab-code" />
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				name="code"
+				data-test-id="code-node-tab-code"
+			>
+				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
 			</el-tab-pane>
-			<el-tab-pane :label="$locale.baseText('codeNodeEditor.tabs.askAi')" name="ask-ai">
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				name="ask-ai"
+				data-test-id="code-node-tab-ai"
+			>
 				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
 				<AskAI
 					@replaceCode="onReplaceCode"
