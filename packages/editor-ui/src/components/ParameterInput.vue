@@ -735,7 +735,7 @@ export default defineComponent({
 						issues.parameters[this.parameter.name] = [issue];
 					}
 				}
-			} else if (this.remoteParameterOptionsLoadingIssues !== null) {
+			} else if (this.remoteParameterOptionsLoadingIssues !== null && !this.isValueExpression) {
 				if (issues.parameters === undefined) {
 					issues.parameters = {};
 				}
