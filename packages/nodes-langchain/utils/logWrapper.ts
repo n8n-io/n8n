@@ -1,8 +1,6 @@
 import { IExecuteFunctions } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
-import { query } from 'express';
-// import { BaseLanguageModelInput } from 'langchain/dist/base_language';
 import { BaseMessage, ChatResult } from 'langchain/dist/schema';
 import { BaseChatModel } from 'langchain/dist/chat_models/base';
 import { CallbackManagerForLLMRun } from 'langchain/dist/callbacks';
