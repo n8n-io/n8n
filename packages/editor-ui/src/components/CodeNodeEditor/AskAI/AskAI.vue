@@ -273,7 +273,7 @@ onMounted(() => {
 				<transition name="text-fade-in-out" mode="out-in">
 					<div v-text="loadingString" :key="loadingPhraseIndex" />
 				</transition>
-				<n8n-circle-loader :radius="8" :progress="90" :stroke-width="3" />
+				<n8n-circle-loader :radius="8" :progress="loaderProgress" :stroke-width="3" />
 			</div>
 			<n8n-tooltip :disabled="isSubmitEnabled" v-else>
 				<div>

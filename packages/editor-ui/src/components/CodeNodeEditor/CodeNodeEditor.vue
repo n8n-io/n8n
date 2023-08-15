@@ -29,8 +29,8 @@
 					@replaceCode="onReplaceCode"
 					:has-changes="hasChanges"
 					:key="activeTab"
-					@started-loading="isLoading = true"
-					@finished-loading="isLoading = false"
+					@started-loading="isLoadingAIResponse = true"
+					@finished-loading="isLoadingAIResponse = false"
 				/>
 			</el-tab-pane>
 		</el-tabs>
@@ -112,19 +112,23 @@ export default defineComponent({
 			tabs: ['code', 'ask-ai'],
 			activeTab: 'code',
 			hasChanges: false,
-			isLoading: false,
+			isLoadingAIResponse: false,
 		};
 	},
 	watch: {
 		mode(newMode, previousMode: CodeExecutionMode) {
 			this.reloadLinter();
 
-			if (this.content.trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]) {
+			if (
+				this.getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]
+			) {
 				this.refreshPlaceholder();
 			}
 		},
 		language(newLanguage, previousLanguage: CodeNodeEditorLanguage) {
-			if (this.content.trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]) {
+			if (
+				this.getCurrentEditorContent().trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]
+			) {
 				this.refreshPlaceholder();
 			}
 
@@ -146,20 +150,13 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useRootStore, usePostHog),
-		content(): string {
-			if (!this.editor) return '';
-
-			return this.editor.state.doc.toString();
-		},
 		aiEnabled(): boolean {
-			// AI is enabled only via Posthog experiment. So if user doesn't have feature flag
-			// we fallback to control which is no-show variant
-			const isAiExperimentDisabled =
-				(this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ?? ASK_AI_EXPERIMENT.control) ===
-				ASK_AI_EXPERIMENT.control;
+			const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
+				(this.posthogStore.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
+			);
 
 			return (
-				!isAiExperimentDisabled &&
+				isAiExperimentEnabled &&
 				this.settingsStore.settings.ai.enabled &&
 				this.language === 'javaScript'
 			);
@@ -180,9 +177,12 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getCurrentEditorContent() {
+			return this.editor?.state.doc.toString() ?? '';
+		},
 		async onBeforeTabLeave(_activeName: string, oldActiveName: string) {
 			// Confirm dialog if leaving ask-ai tab during loading
-			if (oldActiveName === 'ask-ai' && this.isLoading) {
+			if (oldActiveName === 'ask-ai' && this.isLoadingAIResponse) {
 				const confirmModal = await this.alert(
 					this.$locale.baseText('codeNodeEditor.askAi.sureLeaveTab'),
 					{
@@ -209,7 +209,7 @@ export default defineComponent({
 			});
 
 			this.editor?.dispatch({
-				changes: { from: 0, to: (this.modelValue || '').length, insert: formattedCode },
+				changes: { from: 0, to: this.getCurrentEditorContent().length, insert: formattedCode },
 			});
 
 			this.activeTab = 'code';
@@ -241,7 +241,7 @@ export default defineComponent({
 			if (!this.editor) return;
 
 			this.editor.dispatch({
-				changes: { from: 0, to: this.content.length, insert: this.placeholder },
+				changes: { from: 0, to: this.editor.state.doc.length, insert: this.placeholder },
 			});
 		},
 		line(lineNumber: number): Line | null {
@@ -256,7 +256,7 @@ export default defineComponent({
 
 			if (lineNumber === 'final') {
 				this.editor.dispatch({
-					selection: { anchor: (this.modelValue ?? this.content).length },
+					selection: { anchor: this.getCurrentEditorContent().length },
 				});
 				return;
 			}
@@ -277,7 +277,7 @@ export default defineComponent({
 			try {
 				// @ts-ignore - undocumented fields
 				const { fromA, toB } = viewUpdate?.changedRanges[0];
-				const full = this.content.slice(fromA, toB);
+				const full = this.getCurrentEditorContent().slice(fromA, toB);
 				const lastDotIndex = full.lastIndexOf('.');
 
 				let context = null;
@@ -360,40 +360,22 @@ export default defineComponent({
 
 		// empty on first load, default param value
 		if (!this.modelValue) {
+			this.refreshPlaceholder();
 			this.$emit('update:modelValue', this.placeholder);
 		}
 	},
 });
 </script>
 
-<style lang="scss" module>
-:global(.el-tabs) {
-	:global(.el-tabs__content) {
-		border: 1px solid var(--color-foreground-base);
-		border-radius: 0px var(--border-radius-base) var(--border-radius-base);
-	}
-	:global(.el-tabs__header) {
-		border-bottom: 0 !important;
-	}
-	:global(.el-tabs__nav) {
-		padding: 0;
-	}
-	:global(.el-tabs__item) {
-		padding: var(--spacing-5xs) var(--spacing-2xs) !important;
-		height: auto;
-		line-height: var(--font-line-height-xloose);
-		font-weight: var(--font-weight-regular);
-		font-size: var(--font-size-2xs);
-
-		&:not([aria-selected='true']) {
-			background-color: var(--color-background-base);
-			border-bottom: 1px solid var(--color-foreground-base) !important;
-		}
-	}
-	:global(.code-editor-tabs .cm-editor) {
+<style scoped lang="scss">
+:deep(.el-tabs) {
+	.code-editor-tabs .cm-editor {
 		border: 0;
 	}
 }
+</style>
+
+<style lang="scss" module>
 .code-node-editor-container {
 	position: relative;
 

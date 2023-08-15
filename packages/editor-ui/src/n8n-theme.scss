@@ -137,6 +137,7 @@
 }
 .el-tabs__nav {
 	padding: 0;
+	overflow: hidden;
 }
 .el-tabs__item {
 	padding: var(--spacing-5xs) var(--spacing-2xs) !important;

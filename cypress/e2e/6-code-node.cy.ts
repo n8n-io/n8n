@@ -5,48 +5,43 @@ const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Code node', () => {
-	beforeEach(() => {
-		WorkflowPage.actions.visit();
-	});
+	describe('Code editor', () => {
+		beforeEach(() => {
+			WorkflowPage.actions.visit();
+			WorkflowPage.actions.addInitialNodeToCanvas('Manual');
+			WorkflowPage.actions.addNodeToCanvas('Code', true, true);
+		});
 
-	it('should execute the placeholder in all-items mode successfully', () => {
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
-		WorkflowPage.actions.addNodeToCanvas('Code');
-		WorkflowPage.actions.openNode('Code');
+		it('should show correct placeholders switching modes', () => {
+			cy.contains("// Loop over input items and add a new field").should('be.visible');
 
-		ndv.actions.execute();
+			ndv.getters.parameterInput('mode').click();
+			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
 
-		WorkflowPage.getters.successToast().contains('Node executed successfully');
-	});
+			cy.contains("// Add a new field called 'myNewField'").should('be.visible');
 
-	it('should execute the placeholder in each-item mode successfully', () => {
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
-		WorkflowPage.actions.addNodeToCanvas('Code');
-		WorkflowPage.actions.openNode('Code');
-		ndv.getters.parameterInput('mode').click();
-		ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
+			ndv.getters.parameterInput('mode').click();
+			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for All Items');
+			cy.contains("// Loop over input items and add a new field").should('be.visible');
+		})
 
-		ndv.actions.execute();
+		it('should execute the placeholder successfully in both modes', () => {
+			ndv.actions.execute();
 
-		WorkflowPage.getters.successToast().contains('Node executed successfully');
-	});
+			WorkflowPage.getters.successToast().contains('Node executed successfully');
+			ndv.getters.parameterInput('mode').click();
+			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
 
-	it('should execute the placeholder in each-item mode successfully', () => {
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
-		WorkflowPage.actions.addNodeToCanvas('Code');
-		WorkflowPage.actions.openNode('Code');
-		ndv.getters.parameterInput('mode').click();
-		ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
+			ndv.actions.execute();
 
-		ndv.actions.execute();
-
-		WorkflowPage.getters.successToast().contains('Node executed successfully');
-	});
+			WorkflowPage.getters.successToast().contains('Node executed successfully');
+		});
+	})
 
 	describe('Ask AI', () => {
-		it('tab should not exist if control or no feature flag', () => {
+		it('tab should display based on experiment', () => {
+			WorkflowPage.actions.visit();
 			cy.window().then((win) => {
-				// cy.clearAllLocalStorage();
 				win.featureFlags.override('011_ask_AI', 'control');
 				WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 				WorkflowPage.actions.addNodeToCanvas('Code');
@@ -63,15 +58,15 @@ describe('Code node', () => {
 
 		describe('Enabled', () => {
 			beforeEach(() => {
+				WorkflowPage.actions.visit();
 				cy.window().then((win) => {
 					win.featureFlags.override('011_ask_AI', 'gpt3');
 					WorkflowPage.actions.addInitialNodeToCanvas('Manual');
-					WorkflowPage.actions.addNodeToCanvas('Code');
-					WorkflowPage.actions.openNode('Code');
+					WorkflowPage.actions.addNodeToCanvas('Code', true, true);
 				})
 			})
 
-			it('tab should exist if model selected and be selectable', () => {
+			it('tab should exist if experiment selected and be selectable', () => {
 					cy.getByTestId('code-node-tab-ai').should('exist');
 					cy.get('#tab-ask-ai').click();
 					cy.contains('Hey AI, generate JavaScript').should('exist');
