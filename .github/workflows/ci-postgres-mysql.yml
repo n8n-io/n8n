@@ -3,6 +3,9 @@ name: Test Postgres and MySQL schemas
 on:
   schedule:
     - cron: '0 0 * * *'
+  pull_request:
+    branches:
+      - 'release/*'
   workflow_dispatch:
 
 jobs:
