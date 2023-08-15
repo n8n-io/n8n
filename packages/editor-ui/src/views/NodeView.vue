@@ -2162,11 +2162,13 @@ export default defineComponent({
 					return;
 				}
 
-				this.insertNodeAfterSelected({
-					sourceId: connection.parameters.nodeId,
-					index: connection.parameters.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-				});
+				if (connection.parameters.type === 'main') {
+					this.insertNodeAfterSelected({
+						sourceId: connection.parameters.nodeId,
+						index: connection.parameters.index,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+					});
+				}
 			} catch (e) {
 				console.error(e);
 			}
