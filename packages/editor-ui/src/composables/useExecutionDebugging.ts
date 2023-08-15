@@ -55,44 +55,44 @@ export const useExecutionDebugging = () => {
 						workflowsStore.unpinData({ node });
 					}
 				});
+
+				// Set execution data
+				workflowsStore.setWorkflowExecutionData(execution);
+
+				// Pin data of all nodes which do not have a parent node
+				workflowNodes
+					.filter((node: INodeUi) => !workflow.getParentNodes(node.name).length)
+					.forEach((node: INodeUi) => {
+						const nodeData = runData[node.name]?.[0].data?.main[0];
+						if (nodeData) {
+							workflowsStore.pinData({
+								node,
+								data: nodeData,
+							});
+						}
+					});
+
+				toast.showToast({
+					title: i18n.baseText('nodeView.showMessage.debug.title'),
+					message: i18n.baseText('nodeView.showMessage.debug.content'),
+					type: 'info',
+				});
+
+				if (missingNodeNames.length) {
+					toast.showToast({
+						title: i18n.baseText('nodeView.showMessage.debug.missingNodes.title'),
+						message: i18n.baseText('nodeView.showMessage.debug.missingNodes.content', {
+							interpolate: { nodeNames: missingNodeNames.join(', ') },
+						}),
+						type: 'warning',
+					});
+				}
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
 					params: { name: workflow.id, executionId },
 				});
 			}
-		}
-
-		// Set execution data
-		workflowsStore.setWorkflowExecutionData(execution);
-
-		// Pin data of all nodes which do not have a parent node
-		workflowNodes
-			.filter((node: INodeUi) => !workflow.getParentNodes(node.name).length)
-			.forEach((node: INodeUi) => {
-				const nodeData = runData[node.name]?.[0].data?.main[0];
-				if (nodeData) {
-					workflowsStore.pinData({
-						node,
-						data: nodeData,
-					});
-				}
-			});
-
-		toast.showToast({
-			title: i18n.baseText('nodeView.showMessage.debug.title'),
-			message: i18n.baseText('nodeView.showMessage.debug.content'),
-			type: 'info',
-		});
-
-		if (missingNodeNames.length) {
-			toast.showToast({
-				title: i18n.baseText('nodeView.showMessage.debug.missingNodes.title'),
-				message: i18n.baseText('nodeView.showMessage.debug.missingNodes.content', {
-					interpolate: { nodeNames: missingNodeNames.join(', ') },
-				}),
-				type: 'warning',
-			});
 		}
 	};
 
