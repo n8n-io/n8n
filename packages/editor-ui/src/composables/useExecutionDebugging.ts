@@ -1,9 +1,11 @@
+import { useRouter } from 'vue-router';
 import { useI18n, useMessage, useToast } from '@/composables';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useWorkflowsStore } from '@/stores';
 import type { INodeUi } from '@/Interface';
 
 export const useExecutionDebugging = () => {
+	const router = useRouter();
 	const i18n = useI18n();
 	const message = useMessage();
 	const toast = useToast();
@@ -52,6 +54,11 @@ export const useExecutionDebugging = () => {
 					if (node) {
 						workflowsStore.unpinData({ node });
 					}
+				});
+			} else {
+				await router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: workflow.id, executionId },
 				});
 			}
 		}
