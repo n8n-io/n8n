@@ -188,10 +188,8 @@ function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable)
 }
 
 async function deleteVariable(data: EnvironmentVariable) {
-	let confirmed: MessageBoxConfirmResult;
-
 	try {
-		confirmed = await message.confirm(
+		const confirmed = await message.confirm(
 			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
@@ -199,15 +197,11 @@ async function deleteVariable(data: EnvironmentVariable) {
 				cancelButtonText: i18n.baseText('variables.modals.deleteConfirm.cancelButton'),
 			},
 		);
-	} catch (e) {
-		return;
-	}
 
-	if (confirmed !== MODAL_CONFIRM) {
-		return;
-	}
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
 
-	try {
 		await environmentsStore.deleteVariable(data);
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} catch (error) {
