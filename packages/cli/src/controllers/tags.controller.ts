@@ -5,7 +5,6 @@ import { TagService } from '@/services/tag.service';
 import { BadRequestError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
 import { Service } from 'typedi';
-import { ExternalHooks } from '@/ExternalHooks';
 
 @Authorized()
 @RestController('/tags')
@@ -13,10 +12,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 export class TagsController {
 	private config = config;
 
-	constructor(
-		private externalHooks: ExternalHooks,
-		private tagService: TagService,
-	) {}
+	constructor(private tagService: TagService) {}
 
 	// TODO: move this into a new decorator `@IfEnabled('workflowTagsDisabled')`
 	@Middleware()
@@ -35,26 +31,14 @@ export class TagsController {
 	async createTag(req: TagsRequest.Create) {
 		const tag = this.tagService.toEntity({ name: req.body.name });
 
-		await this.externalHooks.run('tag.beforeCreate', [tag]);
-
-		const savedTag = await this.tagService.save(tag);
-
-		await this.externalHooks.run('tag.afterCreate', [tag]);
-
-		return savedTag;
+		return this.tagService.save(tag, 'create');
 	}
 
 	@Patch('/:id(\\w+)')
 	async updateTag(req: TagsRequest.Update) {
 		const newTag = this.tagService.toEntity({ id: req.params.id, name: req.body.name.trim() });
 
-		await this.externalHooks.run('tag.beforeUpdate', [newTag]);
-
-		const savedTag = await this.tagService.save(newTag);
-
-		await this.externalHooks.run('tag.afterUpdate', [newTag]);
-
-		return savedTag;
+		return this.tagService.save(newTag, 'update');
 	}
 
 	@Authorized(['global', 'owner'])
@@ -62,11 +46,7 @@ export class TagsController {
 	async deleteTag(req: TagsRequest.Delete) {
 		const { id } = req.params;
 
-		await this.externalHooks.run('tag.beforeDelete', [id]);
-
 		await this.tagService.delete(id);
-
-		await this.externalHooks.run('tag.afterDelete', [id]);
 
 		return true;
 	}

@@ -5,12 +5,16 @@ import type { ITagToImport, ITagWithCountDb, IWorkflowToImport } from '@/Interfa
 import type { TagEntity } from '@/databases/entities/TagEntity';
 import type { EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
 import type { UpsertOptions } from 'typeorm/repository/UpsertOptions';
+import { ExternalHooks } from '@/ExternalHooks';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 
 @Service()
 export class TagService {
-	constructor(private tagRepository: TagRepository) {}
+	constructor(
+		private externalHooks: ExternalHooks,
+		private tagRepository: TagRepository,
+	) {}
 
 	toEntity(attrs: { name: string; id?: string }) {
 		attrs.name = attrs.name.trim();
@@ -18,14 +22,28 @@ export class TagService {
 		return this.tagRepository.create(attrs);
 	}
 
-	async save(tag: TagEntity) {
+	async save(tag: TagEntity, actionKind: 'create' | 'update') {
 		await validateEntity(tag);
 
-		return this.tagRepository.save(tag);
+		const action = actionKind[0].toUpperCase() + actionKind.slice(1);
+
+		await this.externalHooks.run(`tag.before${action}`, [tag]);
+
+		const savedTag = this.tagRepository.save(tag);
+
+		await this.externalHooks.run(`tag.after${action}`, [tag]);
+
+		return savedTag;
 	}
 
 	async delete(id: string) {
-		return this.tagRepository.delete(id);
+		await this.externalHooks.run('tag.beforeDelete', [id]);
+
+		const deleteResult = this.tagRepository.delete(id);
+
+		await this.externalHooks.run('tag.afterDelete', [id]);
+
+		return deleteResult;
 	}
 
 	async findOne(options: FindOneOptions<TagEntity>) {
