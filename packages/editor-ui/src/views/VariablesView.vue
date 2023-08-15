@@ -7,12 +7,18 @@ import {
 	useUsersStore,
 	useSourceControlStore,
 } from '@/stores';
-import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
+import {
+	useI18n,
+	useTelemetry,
+	useToast,
+	useMessage,
+	MessageBoxConfirmResult,
+} from '@/composables';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type {
 	DatatableColumn,
 	EnvironmentVariable,
@@ -182,8 +188,10 @@ function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable)
 }
 
 async function deleteVariable(data: EnvironmentVariable) {
+	let confirmed: MessageBoxConfirmResult;
+
 	try {
-		await message.confirm(
+		confirmed = await message.confirm(
 			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
@@ -192,6 +200,10 @@ async function deleteVariable(data: EnvironmentVariable) {
 			},
 		);
 	} catch (e) {
+		return;
+	}
+
+	if (confirmed !== MODAL_CONFIRM) {
 		return;
 	}
 
