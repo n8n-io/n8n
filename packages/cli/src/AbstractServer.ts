@@ -3,21 +3,29 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
 import compression from 'compression';
-import type { RedisOptions } from 'ioredis';
-
-import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
+import { N8nInstanceType } from '@/Interfaces';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
-import { rawBody, jsonParser, corsMiddleware } from '@/middlewares';
+import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
-import { getRedisClusterNodes } from './GenericHelpers';
 import { webhookRequestHandler } from '@/WebhookHelpers';
+import { RedisService } from '@/services/redis.service';
+import { jsonParse } from 'n8n-workflow';
+import { eventBus } from './eventbus';
+import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
+import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
+import type { RedisServiceWorkerResponseObject } from './services/redis/RedisServiceCommands';
+import {
+	EVENT_BUS_REDIS_CHANNEL,
+	WORKER_RESPONSE_REDIS_CHANNEL,
+} from './services/redis/RedisServiceHelper';
+import { generateHostInstanceId } from './databases/utils/generators';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -50,7 +58,9 @@ export abstract class AbstractServer {
 
 	protected testWebhooksEnabled = false;
 
-	constructor() {
+	readonly uniqueInstanceId: string;
+
+	constructor(instanceType: N8nInstanceType = 'main') {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
@@ -64,6 +74,8 @@ export abstract class AbstractServer {
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+
+		this.uniqueInstanceId = generateHostInstanceId(instanceType);
 	}
 
 	async configure(): Promise<void> {
@@ -86,7 +98,7 @@ export abstract class AbstractServer {
 		this.app.use(compression());
 
 		// Read incoming data into `rawBody`
-		this.app.use(rawBody);
+		this.app.use(rawBodyReader);
 	}
 
 	private setupDevMiddlewares() {
@@ -110,80 +122,76 @@ export abstract class AbstractServer {
 		});
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			await this.setupRedisChecks();
+			await this.setupRedis();
 		}
 	}
 
 	// This connection is going to be our heartbeat
 	// IORedis automatically pings redis and tries to reconnect
 	// We will be using a retryStrategy to control how and when to exit.
-	private async setupRedisChecks() {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const { default: Redis } = await import('ioredis');
+	// We are also subscribing to the event log channel to receive events from workers
+	private async setupRedis() {
+		const redisService = Container.get(RedisService);
+		const redisSubscriber = await redisService.getPubSubSubscriber();
 
-		let lastTimer = 0;
-		let cumulativeTimeout = 0;
-		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
-		const clusterNodes = getRedisClusterNodes();
-		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-		const usesRedisCluster = clusterNodes.length > 0;
-		LoggerProxy.debug(
-			usesRedisCluster
-				? `Initialising Redis cluster connection with nodes: ${clusterNodes
-						.map((e) => `${e.host}:${e.port}`)
-						.join(',')}`
-				: `Initialising Redis client connection with host: ${host ?? 'localhost'} and port: ${
-						port ?? '6379'
-				  }`,
-		);
-		const sharedRedisOptions: RedisOptions = {
-			username,
-			password,
-			db,
-			enableReadyCheck: false,
-			maxRetriesPerRequest: null,
-		};
-		const redis = usesRedisCluster
-			? new Redis.Cluster(
-					clusterNodes.map((node) => ({ host: node.host, port: node.port })),
-					{
-						redisOptions: sharedRedisOptions,
-					},
-			  )
-			: new Redis({
-					host,
-					port,
-					...sharedRedisOptions,
-					retryStrategy: (): number | null => {
-						const now = Date.now();
-						if (now - lastTimer > 30000) {
-							// Means we had no timeout at all or last timeout was temporary and we recovered
-							lastTimer = now;
-							cumulativeTimeout = 0;
-						} else {
-							cumulativeTimeout += now - lastTimer;
-							lastTimer = now;
-							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								LoggerProxy.error(
-									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-								);
-								process.exit(1);
-							}
+		// TODO: these are all proof of concept implementations for the moment
+		// until worker communication is implemented
+		// #region proof of concept
+		await redisSubscriber.subscribeToEventLog();
+		await redisSubscriber.subscribeToWorkerResponseChannel();
+		redisSubscriber.addMessageHandler(
+			'AbstractServerReceiver',
+			async (channel: string, message: string) => {
+				// TODO: this is a proof of concept implementation to forward events to the main instance's event bus
+				// Events are arriving through a pub/sub channel and are forwarded to the eventBus
+				// In the future, a stream should probably replace this implementation entirely
+				if (channel === EVENT_BUS_REDIS_CHANNEL) {
+					const eventData = jsonParse<AbstractEventMessageOptions>(message);
+					if (eventData) {
+						const eventMessage = getEventMessageObjectByType(eventData);
+						if (eventMessage) {
+							await eventBus.send(eventMessage);
 						}
-						return 500;
-					},
-			  });
+					}
+				} else if (channel === WORKER_RESPONSE_REDIS_CHANNEL) {
+					// The back channel from the workers as a pub/sub channel
+					const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(message);
+					if (workerResponse) {
+						// TODO: Handle worker response
+						console.log('Received worker response', workerResponse);
+					}
+				}
+			},
+		);
+		// TODO: Leave comments for now as implementation example
+		// const redisStreamListener = await redisService.getStreamConsumer();
+		// void redisStreamListener.listenToStream('teststream');
+		// redisStreamListener.addMessageHandler(
+		// 	'MessageLogger',
+		// 	async (stream: string, id: string, message: string[]) => {
+		// 		// TODO: this is a proof of concept implementation of a stream consumer
+		// 		switch (stream) {
+		// 			case EVENT_BUS_REDIS_STREAM:
+		// 			case COMMAND_REDIS_STREAM:
+		// 			case WORKER_RESPONSE_REDIS_STREAM:
+		// 			default:
+		// 				LoggerProxy.debug(
+		// 					`Received message from stream ${stream} with id ${id} and message ${message.join(
+		// 						',',
+		// 					)}`,
+		// 				);
+		// 				break;
+		// 		}
+		// 	},
+		// );
 
-		redis.on('close', () => {
-			LoggerProxy.warn('Redis unavailable - trying to reconnect...');
-		});
+		// const redisListReceiver = await redisService.getListReceiver();
+		// await redisListReceiver.init();
 
-		redis.on('error', (error) => {
-			if (!String(error).includes('ECONNREFUSED')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				LoggerProxy.warn('Error with Redis: ', error);
-			}
-		});
+		// setInterval(async () => {
+		// 	await redisListReceiver.popLatestWorkerResponse();
+		// }, 1000);
+		// #endregion
 	}
 
 	async init(): Promise<void> {
@@ -266,8 +274,8 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
-		// Setup JSON parsing middleware after the webhook handlers are setup
-		this.app.use(jsonParser);
+		// Setup body parsing middleware after the webhook handlers are setup
+		this.app.use(bodyParser);
 
 		await this.configure();
 

@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -25,6 +25,9 @@ import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
+import { RoleService } from '@/services/role.service';
+import { VariablesService } from '../variables/variables.service';
+import { TagRepository } from '@/databases/repositories';
 
 @Service()
 export class SourceControlImportService {
@@ -34,7 +37,11 @@ export class SourceControlImportService {
 
 	private credentialExportFolder: string;
 
-	constructor() {
+	constructor(
+		private readonly variablesService: VariablesService,
+		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly tagRepository: TagRepository,
+	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -45,39 +52,33 @@ export class SourceControlImportService {
 	}
 
 	private async getOwnerGlobalRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'global' },
-		});
+		const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
-		if (!ownerCredentiallRole) {
+		if (!globalOwnerRole) {
 			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
-		return ownerCredentiallRole;
+		return globalOwnerRole;
 	}
 
-	private async getOwnerCredentialRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'credential' },
-		});
+	private async getCredentialOwnerRole() {
+		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
 
-		if (!ownerCredentiallRole) {
+		if (!credentialOwnerRole) {
 			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
 
-		return ownerCredentiallRole;
+		return credentialOwnerRole;
 	}
 
-	private async getOwnerWorkflowRole() {
-		const ownerWorkflowRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'workflow' },
-		});
+	private async getWorkflowOwnerRole() {
+		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
 
-		if (!ownerWorkflowRole) {
+		if (!workflowOwnerRole) {
 			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
 		}
 
-		return ownerWorkflowRole;
+		return workflowOwnerRole;
 	}
 
 	private async importCredentialsFromFiles(
@@ -88,7 +89,7 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 		const existingCredentials = await Db.collections.Credentials.find();
-		const ownerCredentialRole = await this.getOwnerCredentialRole();
+		const ownerCredentialRole = await this.getCredentialOwnerRole();
 		const ownerGlobalRole = await this.getOwnerGlobalRole();
 		const encryptionKey = await UserSettings.getEncryptionKey();
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
@@ -240,10 +241,7 @@ export class SourceControlImportService {
 	}
 
 	public async getLocalVariablesFromDb(): Promise<Variables[]> {
-		const localVariables = await Db.collections.Variables.find({
-			select: ['id', 'key', 'type', 'value'],
-		});
-		return localVariables;
+		return this.variablesService.getAllCached();
 	}
 
 	public async getRemoteTagsAndMappingsFromFile(): Promise<{
@@ -269,7 +267,7 @@ export class SourceControlImportService {
 		tags: TagEntity[];
 		mappings: WorkflowTagMapping[];
 	}> {
-		const localTags = await Db.collections.Tag.find({
+		const localTags = await this.tagRepository.find({
 			select: ['id', 'name'],
 		});
 		const localMappings = await Db.collections.WorkflowTagMapping.find({
@@ -279,8 +277,8 @@ export class SourceControlImportService {
 	}
 
 	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
-		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
-		const workflowRunner = Container.get(ActiveWorkflowRunner);
+		const ownerWorkflowRole = await this.getWorkflowOwnerRole();
+		const workflowRunner = this.activeWorkflowRunner;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await Db.collections.Workflow.find({
 			where: {
@@ -400,7 +398,7 @@ export class SourceControlImportService {
 			},
 			select: ['id', 'name', 'type', 'data'],
 		});
-		const ownerCredentialRole = await this.getOwnerCredentialRole();
+		const ownerCredentialRole = await this.getCredentialOwnerRole();
 		const ownerGlobalRole = await this.getOwnerGlobalRole();
 		const existingSharedCredentials = await Db.collections.SharedCredentials.find({
 			select: ['userId', 'credentialsId', 'roleId'],
@@ -485,7 +483,7 @@ export class SourceControlImportService {
 
 		await Promise.all(
 			mappedTags.tags.map(async (tag) => {
-				const findByName = await Db.collections.Tag.findOne({
+				const findByName = await this.tagRepository.findOne({
 					where: { name: tag.name },
 					select: ['id'],
 				});
@@ -494,7 +492,7 @@ export class SourceControlImportService {
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
-				await Db.collections.Tag.upsert(
+				await this.tagRepository.upsert(
 					{
 						...tag,
 					},
@@ -580,6 +578,8 @@ export class SourceControlImportService {
 				await Db.collections.Variables.save(newVariable);
 			}
 		}
+
+		await this.variablesService.updateCache();
 
 		return result;
 	}

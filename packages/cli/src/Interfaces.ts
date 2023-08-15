@@ -55,7 +55,6 @@ import type {
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	TagRepository,
 	UserRepository,
 	VariablesRepository,
 	WorkflowRepository,
@@ -63,6 +62,7 @@ import type {
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
 export interface IActivationError {
 	time: number;
@@ -101,7 +101,6 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
 	SharedWorkflow: SharedWorkflowRepository;
-	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
 	Workflow: WorkflowRepository;
@@ -197,7 +196,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
+	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 }
 
 // Flatted data to save memory when saving in database or transferring
@@ -817,3 +816,5 @@ export abstract class SecretsProvider {
 	abstract hasSecret(name: string): boolean;
 	abstract getSecretNames(): string[];
 }
+
+export type N8nInstanceType = 'main' | 'webhook' | 'worker';

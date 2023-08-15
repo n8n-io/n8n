@@ -13,6 +13,8 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 
 	displayName = 'Cisco Secure Endpoint (AMP) API';
 
+	documentationUrl = 'ciscosecureendpoint';
+
 	icon = 'file:icons/Cisco.svg';
 
 	properties: INodeProperties[] = [

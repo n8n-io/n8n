@@ -111,7 +111,8 @@ export default defineComponent({
 					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
 					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 
-					this.$emit('update:modelValue', this.doc);
+					// eslint-disable-next-line @typescript-eslint/no-base-to-string
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
 				}),
 			];
 		},

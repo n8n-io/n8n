@@ -87,7 +87,7 @@
 						:credentialId="credentialId"
 						:credentialPermissions="credentialPermissions"
 						:modalBus="modalBus"
-						@change="onChangeSharedWith"
+						@update:modelValue="onChangeSharedWith"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">

@@ -128,6 +128,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
+	isDebugInEditorLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
+	}
+
 	isVariablesEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
@@ -138,6 +142,10 @@ export class License {
 
 	isExternalSecretsEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_SECRETS);
+	}
+
+	isWorkflowHistoryLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
 	}
 
 	isAPIDisabled() {

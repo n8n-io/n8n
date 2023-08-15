@@ -26,7 +26,8 @@ export type EndpointGroup =
 	| 'license'
 	| 'variables'
 	| 'tags'
-	| 'externalSecrets';
+	| 'externalSecrets'
+	| 'metrics';
 
 export interface SetupProps {
 	applyAuth?: boolean;

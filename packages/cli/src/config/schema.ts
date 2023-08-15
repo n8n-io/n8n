@@ -351,7 +351,7 @@ export const schema = {
 		},
 		bull: {
 			prefix: {
-				doc: 'Prefix for all queue keys (wrap in {} for cluster mode)',
+				doc: 'Prefix for all bull queue keys',
 				format: String,
 				default: 'bull',
 				env: 'QUEUE_BULL_PREFIX',
@@ -577,6 +577,18 @@ export const schema = {
 				default: false,
 				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
 				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
+			},
+			includeCacheMetrics: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_CACHE_METRICS',
+				doc: 'Whether to include metrics for cache hits and misses. Default: false',
+			},
+			includeMessageEventBusMetrics: {
+				format: Boolean,
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
+				doc: 'Whether to include metrics for events. Default: false',
 			},
 		},
 		rest: {
@@ -1001,8 +1013,7 @@ export const schema = {
 				dsn: {
 					doc: 'Data source name for error tracking on Sentry',
 					format: String,
-					default:
-						'https://1f954e089a054b8e943ae4f4042b2bff@o1420875.ingest.sentry.io/4504016528408576',
+					default: '',
 					env: 'N8N_SENTRY_DSN',
 				},
 			},
@@ -1112,6 +1123,15 @@ export const schema = {
 		},
 	},
 
+	redis: {
+		prefix: {
+			doc: 'Prefix for all n8n related keys',
+			format: String,
+			default: 'n8n',
+			env: 'N8N_REDIS_KEY_PREFIX',
+		},
+	},
+
 	cache: {
 		enabled: {
 			doc: 'Whether caching is enabled',
@@ -1140,10 +1160,16 @@ export const schema = {
 			},
 		},
 		redis: {
+			prefix: {
+				doc: 'Prefix for all cache keys',
+				format: String,
+				default: 'cache',
+				env: 'N8N_CACHE_REDIS_KEY_PREFIX',
+			},
 			ttl: {
 				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
 				format: Number,
-				default: 0,
+				default: 3600 * 1000, // 1 hour
 				env: 'N8N_CACHE_REDIS_TTL',
 			},
 		},

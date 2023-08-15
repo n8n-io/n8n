@@ -1335,7 +1335,18 @@ export async function requestOAuth1(
 		},
 		signature_method: credentials.signatureMethod as string,
 		hash_function(base, key) {
-			const algorithm = credentials.signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
+			let algorithm: string;
+			switch (credentials.signatureMethod) {
+				case 'HMAC-SHA256':
+					algorithm = 'sha256';
+					break;
+				case 'HMAC-SHA512':
+					algorithm = 'sha512';
+					break;
+				default:
+					algorithm = 'sha1';
+					break;
+			}
 			return createHmac(algorithm, key).update(base).digest('base64');
 		},
 	});
