@@ -28,11 +28,9 @@
 			:icon="calloutIcon"
 			:class="$style.callout"
 		>
-			<template>
-				<n8n-text color="text-base">
-					<span size="small" v-html="calloutText"></span>
-				</n8n-text>
-			</template>
+			<n8n-text color="text-base">
+				<span size="small" v-html="calloutText"></span>
+			</n8n-text>
 		</n8n-callout>
 	</div>
 </template>
