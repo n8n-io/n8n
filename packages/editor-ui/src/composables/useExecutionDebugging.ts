@@ -26,6 +26,9 @@ export const useExecutionDebugging = () => {
 		const missingNodeNames = executionNodeNames.filter(
 			(name) => !workflowNodes.some((node) => node.name === name),
 		);
+
+		// Using the pinned data of the workflow to check if the node is pinned
+		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
 		const workflowPinnedNodeNames = Object.keys(workflowsStore.workflow.pinData ?? {});
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
