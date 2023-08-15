@@ -663,13 +663,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				isJsonKeyObject(item) ? item : { json: item },
 			);
 
-			this.workflow = {
-				...this.workflow,
-				pinData: {
-					...this.workflow.pinData,
-					[payload.node.name]: storedPinData,
-				},
-			};
+			Object.assign(this.workflow.pinData, {
+				[payload.node.name]: storedPinData,
+			});
 
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
