@@ -185,7 +185,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.currentUserId = null;
 			useCloudPlanStore().reset();
 			usePostHog().reset();
-			await useUIStore().dismissAllBanner();
+			await useUIStore().dismissAllBanners();
 		},
 		async createOwner(params: {
 			firstName: string;

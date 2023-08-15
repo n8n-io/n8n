@@ -576,7 +576,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				}
 			}
 		},
-		async dismissAllBanner() {
+		async dismissAllBanners() {
 			return Promise.all([
 				this.dismissBanner('TRIAL', 'temporary'),
 				this.dismissBanner('TRIAL_OVER', 'temporary'),
