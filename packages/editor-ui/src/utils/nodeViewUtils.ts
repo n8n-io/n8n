@@ -105,6 +105,14 @@ export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	stroke: getStyleTokenValue('--color-primary'),
 };
 
+export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
+	stroke: getStyleTokenValue('--color-foreground-dark'),
+	strokeWidth: 2,
+	outlineWidth: 12,
+	outlineStroke: 'transparent',
+	dashstyle: '2 2',
+};
+
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	{
 		type: 'Arrow',
@@ -179,6 +187,8 @@ export const getAnchorPosition = (
 		return positions[type][amount] as ArrayAnchorSpec[];
 	}
 
+	amount = connectionType === 'main' ? amount : 4;
+
 	const x = type === 'input' ? 0.01 : 0.99;
 	const ox = type === 'input' ? -1 : 1;
 	const oy = 0;
@@ -187,7 +197,13 @@ export const getAnchorPosition = (
 	for (let i = 0; i < amount; i++) {
 		// [ x, y, ox, oy ]
 
-		let y = (0.5 / (amount + 1)) * (i + 1);
+		const stepSize = 0.5 / (amount + 1);
+		let y = stepSize * (i + 1);
+
+		if (connectionType !== 'main') {
+			y += stepSize;
+		}
+
 		if (connectionType !== 'main') {
 			y += 0.5;
 		}

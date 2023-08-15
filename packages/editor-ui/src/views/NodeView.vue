@@ -317,6 +317,7 @@ import {
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
+import { CONNECTOR_PAINT_STYLE_DATA } from '@/utils/nodeViewUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2267,6 +2268,10 @@ export default defineComponent({
 								: undefined,
 						);
 					}, 0);
+
+					if (sourceInfo.type !== 'main') {
+						info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DATA);
+					}
 				}
 			} catch (e) {
 				console.error(e);
@@ -2596,7 +2601,6 @@ export default defineComponent({
 			this.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
-			const newWorkflow = this.workflowData;
 			this.canvasStore.zoomToFit();
 		},
 		async initView(): Promise<void> {

@@ -677,9 +677,9 @@ export default defineComponent({
 	}
 
 	&--configurable {
-		height: 300px;
+		height: 250px;
 		.node-description {
-			top: 300px;
+			top: 250px;
 		}
 	}
 
@@ -853,7 +853,7 @@ export default defineComponent({
 		border-radius: 36px 8px 8px 36px;
 	}
 	.node-wrapper--configurable & {
-		height: 316px;
+		height: 266px;
 	}
 }
 
