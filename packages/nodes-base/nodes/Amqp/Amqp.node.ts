@@ -125,7 +125,7 @@ export class Amqp implements INodeType {
 							resolve();
 						});
 						container.on('disconnected', function (context: EventContext) {
-							reject(context.error);
+							reject(context.error ?? new Error('unknown error'));
 						});
 						conn = container.connect(connectOptions);
 					});
