@@ -2,9 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable prefer-const */
-
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -144,7 +141,6 @@ import {
 	isLdapLoginEnabled,
 } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
-import { configureMetrics } from './metrics';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
@@ -153,6 +149,7 @@ import { License } from './License';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
+	isDebugInEditorLicensed,
 } from './executions/executionHelpers';
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
@@ -197,7 +194,7 @@ export class Server extends AbstractServer {
 	push: Push;
 
 	constructor() {
-		super();
+		super('main');
 
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
@@ -315,7 +312,8 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
-				showNonProdBanner: false,
+        showNonProdBanner: false,
+        debugInEditor: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -345,6 +343,7 @@ export class Server extends AbstractServer {
 		this.push = Container.get(Push);
 
 		await super.start();
+		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
@@ -407,6 +406,15 @@ export class Server extends AbstractServer {
 	 * Returns the current settings for the frontend
 	 */
 	getSettingsForFrontend(): IN8nUISettings {
+		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
+		const instanceBaseUrl = getInstanceBaseUrl();
+		this.frontendSettings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+		this.frontendSettings.urlBaseEditor = instanceBaseUrl;
+		this.frontendSettings.oauthCallbackUrls = {
+			oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
+			oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
+		};
+
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			quota: Container.get(License).getUsersLimit(),
@@ -438,6 +446,7 @@ export class Server extends AbstractServer {
 			showNonProdBanner: Container.get(License).isFeatureEnabled(
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
+			debugInEditor: isDebugInEditorLicensed(),
 		});
 
 		if (isLdapEnabled()) {
@@ -490,7 +499,7 @@ export class Server extends AbstractServer {
 				logger,
 				jwtService,
 			}),
-			new TagsController({ config, repositories, externalHooks }),
+			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController({
 				config,
@@ -530,7 +539,11 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
-		configureMetrics(this.app);
+		if (config.getEnv('endpoints.metrics.enable')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { MetricsService } = await import('@/services/metrics.service');
+			await Container.get(MetricsService).configureMetrics(this.app);
+		}
 
 		this.instanceId = await UserSettings.getInstanceId();
 
@@ -928,7 +941,19 @@ export class Server extends AbstractServer {
 					signature_method: signatureMethod,
 					// eslint-disable-next-line @typescript-eslint/naming-convention
 					hash_function(base, key) {
-						const algorithm = signatureMethod === 'HMAC-SHA1' ? 'sha1' : 'sha256';
+						let algorithm: string;
+						switch (signatureMethod) {
+							case 'HMAC-SHA256':
+								algorithm = 'sha256';
+								break;
+							case 'HMAC-SHA512':
+								algorithm = 'sha512';
+								break;
+							default:
+								algorithm = 'sha1';
+								break;
+						}
+
 						return createHmac(algorithm, key).update(base).digest('base64');
 					},
 				};
@@ -954,15 +979,17 @@ export class Server extends AbstractServer {
 				// @ts-ignore
 				options.headers = data;
 
-				const { data: response } = await axios.request(options as Partial<AxiosRequestConfig>);
+				const response = await axios.request(options as Partial<AxiosRequestConfig>);
 
 				// Response comes as x-www-form-urlencoded string so convert it to JSON
 
-				const paramsParser = new URLSearchParams(response);
+				const paramsParser = new URLSearchParams(response.data);
 
 				const responseJson = Object.fromEntries(paramsParser.entries());
 
-				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
+				const returnUri = `${oauthCredentials.authUrl as string}?oauth_token=${
+					responseJson.oauth_token
+				}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(

@@ -5,6 +5,8 @@ export class TrellixEpoApi implements ICredentialType {
 
 	displayName = 'Trellix (McAfee) ePolicy Orchestrator API';
 
+	documentationUrl = 'trellixepo';
+
 	icon = 'file:icons/Trellix.svg';
 
 	properties: INodeProperties[] = [

@@ -2186,6 +2186,7 @@ export interface IN8nUISettings {
 		sourceControl: boolean;
 		auditLogs: boolean;
 		showNonProdBanner: boolean;
+		debugInEditor: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

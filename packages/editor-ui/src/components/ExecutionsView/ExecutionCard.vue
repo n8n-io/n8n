@@ -13,7 +13,7 @@
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { workflowId: currentWorkflow, executionId: execution.id },
+				params: { name: currentWorkflow, executionId: execution.id },
 			}"
 			:data-test-execution-status="executionUIDetails.name"
 		>
@@ -238,7 +238,7 @@ export default defineComponent({
 
 .icons {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 }
 
 .icon {

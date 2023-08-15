@@ -578,6 +578,18 @@ export const schema = {
 				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
 				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
 			},
+			includeCacheMetrics: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_CACHE_METRICS',
+				doc: 'Whether to include metrics for cache hits and misses. Default: false',
+			},
+			includeMessageEventBusMetrics: {
+				format: Boolean,
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
+				doc: 'Whether to include metrics for events. Default: false',
+			},
 		},
 		rest: {
 			format: String,
@@ -1001,8 +1013,7 @@ export const schema = {
 				dsn: {
 					doc: 'Data source name for error tracking on Sentry',
 					format: String,
-					default:
-						'https://1f954e089a054b8e943ae4f4042b2bff@o1420875.ingest.sentry.io/4504016528408576',
+					default: '',
 					env: 'N8N_SENTRY_DSN',
 				},
 			},

@@ -246,7 +246,7 @@ const config = (module.exports = {
 				format: ['PascalCase'],
 			},
 			{
-				selector: ['method', 'function'],
+				selector: ['method', 'function', 'parameter'],
 				format: ['camelCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 			},
