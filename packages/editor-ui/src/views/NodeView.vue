@@ -3994,7 +3994,7 @@ export default defineComponent({
 
 		this.readOnlyEnvRouteCheck();
 	},
-	async activated() {
+	activated() {
 		const openSideMenu = this.uiStore.addFirstStepOnLoad;
 		if (openSideMenu) {
 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
