@@ -192,7 +192,7 @@ export class Telemetry {
 		if (this.rudderStack) {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
-					if (change.name === 'parameters.includeLinkToWorkflow') {
+					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
 						this.track('User toggled n8n reference option');
 					}
 					break;
