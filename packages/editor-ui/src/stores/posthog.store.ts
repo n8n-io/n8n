@@ -167,11 +167,23 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
+	const setMetadata = (metadata: IDataObject, target: 'user' | 'events') => {
+		if (typeof window.posthog?.people?.set !== 'function') return;
+		if (typeof window.posthog?.register !== 'function') return;
+
+		if (target === 'user') {
+			window.posthog?.people?.set(metadata);
+		} else if (target === 'events') {
+			window.posthog?.register(metadata);
+		}
+	};
+
 	return {
 		init,
 		isVariantEnabled,
 		getVariant,
 		reset,
 		capture,
+		setMetadata,
 	};
 });

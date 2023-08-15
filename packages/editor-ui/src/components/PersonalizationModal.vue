@@ -138,6 +138,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import { usePostHog } from '@/stores';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
@@ -166,7 +167,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore),
+		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore, usePostHog),
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -644,6 +645,8 @@ export default defineComponent({
 				await this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
+
+				this.posthogStore.setMetadata(survey, 'user');
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
