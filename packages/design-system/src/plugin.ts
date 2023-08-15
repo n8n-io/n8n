@@ -12,6 +12,7 @@ import {
 	N8nCallout,
 	N8nCard,
 	N8nCheckbox,
+	N8nCircleLoader,
 	N8nColorPicker,
 	N8nDatatable,
 	N8nFormBox,
@@ -66,6 +67,7 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-callout', N8nCallout);
 		app.component('n8n-card', N8nCard);
 		app.component('n8n-checkbox', N8nCheckbox);
+		app.component('n8n-circle-loader', N8nCircleLoader);
 		app.component('n8n-color-picker', N8nColorPicker);
 		app.component('n8n-datatable', N8nDatatable);
 		app.component('n8n-form-box', N8nFormBox);

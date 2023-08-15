@@ -18,7 +18,6 @@ import {
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/constants';
-import CircleLoader from './CircleLoader.vue';
 
 const emit = defineEmits<{
 	(e: 'submit', code: string): void;
@@ -150,6 +149,7 @@ async function onSubmit() {
 	}
 
 	startLoading();
+
 	try {
 		const version = useRootStore().versionCli;
 		const model =
@@ -273,7 +273,7 @@ onMounted(() => {
 				<transition name="text-fade-in-out" mode="out-in">
 					<div v-text="loadingString" :key="loadingPhraseIndex" />
 				</transition>
-				<CircleLoader :radius="8" :progress="loaderProgress" :stroke-width="3" />
+				<n8n-circle-loader :radius="8" :progress="90" :stroke-width="3" />
 			</div>
 			<n8n-tooltip :disabled="isSubmitEnabled" v-else>
 				<div>
