@@ -288,4 +288,29 @@ describe('NDV', () => {
 			ndv.getters.parameterInput('value').clear();
 		});
 	});
+
+	it('should flag issues as soon as params are set', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Webhook');
+		workflowPage.getters.canvasNodes().first().dblclick();
+
+		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+		ndv.getters.nodeExecuteButton().should('not.be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+
+		ndv.getters.parameterInput('path').clear();
+
+		ndv.getters.nodeExecuteButton().should('be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('not.exist');
+		ndv.actions.close();
+		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
+
+		workflowPage.getters.canvasNodes().first().dblclick();
+		ndv.getters.parameterInput('path').type('t')
+
+		ndv.getters.nodeExecuteButton().should('not.be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+
+		ndv.actions.close();
+		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+	});
 });

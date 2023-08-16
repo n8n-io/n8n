@@ -8,6 +8,7 @@ export class NDV extends BasePage {
 		copyInput: () => cy.getByTestId('copy-input'),
 		credentialInput: (eq = 0) => cy.getByTestId('node-credentials-select').eq(eq),
 		nodeExecuteButton: () => cy.getByTestId('node-execute-button'),
+		triggerPanelExecuteButton: () => cy.getByTestId('trigger-execute-button'),
 		inputSelect: () => cy.getByTestId('ndv-input-select'),
 		inputOption: () => cy.getByTestId('ndv-input-option'),
 		inputPanel: () => cy.getByTestId('ndv-input-panel'),
