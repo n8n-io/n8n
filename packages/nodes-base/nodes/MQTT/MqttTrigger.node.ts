@@ -4,6 +4,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	IDeferredPromise,
+	IRun,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -71,6 +73,14 @@ export class MqttTrigger implements INodeType {
 						default: false,
 						description: 'Whether to return only the message property',
 					},
+					{
+						displayName: 'Parallel Processing',
+						name: 'parallelProcessing',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to process messages in parallel or by keeping the message in order',
+					},
 				],
 			},
 		],
@@ -89,6 +99,7 @@ export class MqttTrigger implements INodeType {
 		}
 
 		const options = this.getNodeParameter('options') as IDataObject;
+		const parallelProcessing = this.getNodeParameter('options.parallelProcessing', true) as boolean;
 
 		if (!topics) {
 			throw new NodeOperationError(this.getNode(), 'Topics are mandatory!');
@@ -147,7 +158,7 @@ export class MqttTrigger implements INodeType {
 						if (error) {
 							reject(error);
 						}
-						client.on('message', (topic: string, message: Buffer | string) => {
+						client.on('message', async (topic: string, message: Buffer | string) => {
 							let result: IDataObject = {};
 
 							message = message.toString();
@@ -165,7 +176,15 @@ export class MqttTrigger implements INodeType {
 								//@ts-ignore
 								result = [message as string];
 							}
-							this.emit([this.helpers.returnJsonArray(result)]);
+
+							let responsePromise: IDeferredPromise<IRun> | undefined;
+							if (!parallelProcessing) {
+								responsePromise = await this.helpers.createDeferredPromise();
+							}
+							this.emit([this.helpers.returnJsonArray([result])], undefined, responsePromise);
+							if (responsePromise) {
+								await responsePromise.promise();
+							}
 							resolve(true);
 						});
 					});

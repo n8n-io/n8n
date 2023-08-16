@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -53,7 +53,6 @@
     "nock": "^13.3.2",
     "nodemon": "^3.0.1",
     "p-limit": "^3.1.0",
-    "prettier": "^2.8.8",
     "rimraf": "^5.0.1",
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^2.0.0",
@@ -76,6 +75,7 @@
       "@types/node": "^18.16.16",
       "chokidar": "3.5.2",
       "jsonwebtoken": "9.0.0",
+      "prettier": "^3.0.0",
       "semver": "^7.5.4",
       "tough-cookie": "^4.1.3",
       "tslib": "^2.6.1",

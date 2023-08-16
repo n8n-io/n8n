@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
@@ -15,7 +14,7 @@ import type { IContactUpdate } from './ContactInterface';
 import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: any = {},
@@ -95,7 +94,7 @@ export async function agileCrmApiRequestAllItems(
 }
 
 export async function agileCrmApiRequestUpdate(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method = 'PUT',
 	endpoint?: string,
 	body: any = {},
