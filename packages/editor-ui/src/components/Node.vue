@@ -311,11 +311,20 @@ export default defineComponent({
 			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
 		nodeClass(): object {
-			return {
+			const classes = {
 				'node-box': true,
 				disabled: this.data.disabled,
 				executing: this.isExecuting,
 			};
+
+			if (this.nodeType?.outputs.length) {
+				const otherOutputs = this.nodeType.outputs.filter((outputName) => outputName !== 'main');
+				if (otherOutputs.length) {
+					classes[`node-other`] = true;
+				}
+			}
+
+			return classes;
 		},
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
@@ -694,13 +703,19 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: var(--color-background-xlight);
+			background-color: $node-background-default;
 			&.executing {
-				background-color: var(--color-primary-tint-3) !important;
+				background-color: $node-background-executing !important;
 
 				.node-executing-info {
 					display: inline-block;
 				}
+			}
+
+			&.node-other {
+				background-color: $node-background-type-other;
+				border-radius: 50px;
+				border: 0;
 			}
 		}
 
