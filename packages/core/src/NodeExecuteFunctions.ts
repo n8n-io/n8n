@@ -2041,7 +2041,8 @@ export function getNodeParameter(
 		);
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e instanceof ExpressionError && node.continueOnFail && node.name === 'Set') {
+		if (e instanceof ExpressionError && node.continueOnFail && node.type === 'n8n-nodes-base.set') {
+			// https://linear.app/n8n/issue/PAY-684
 			returnData = [{ name: undefined, value: undefined }];
 		} else {
 			if (e.context) e.context.parameter = parameterName;
