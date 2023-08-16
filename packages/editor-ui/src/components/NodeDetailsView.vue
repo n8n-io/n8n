@@ -329,18 +329,27 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (this.inputNode === null) {
+			if (
+				this.inputNode === null &&
+				this.activeNode === null &&
+				this.activeNodeType?.outputs.includes('main')
+			) {
 				return 0;
 			}
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (runData === null || !runData.hasOwnProperty(this.inputNode.name)) {
+			let node = this.inputNode;
+			if (this.activeNodeType?.outputs.filter((output) => output !== 'main').length) {
+				node = this.activeNode;
+			}
+
+			if (!node || !runData || !runData.hasOwnProperty(node.name)) {
 				return 0;
 			}
 
-			if (runData[this.inputNode.name].length) {
-				return runData[this.inputNode.name].length - 1;
+			if (runData[node.name].length) {
+				return runData[node.name].length - 1;
 			}
 
 			return 0;

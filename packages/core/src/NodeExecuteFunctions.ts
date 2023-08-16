@@ -2633,7 +2633,6 @@ export function getExecuteFunctions(
 					return [];
 				}
 
-				console.log('new..');
 				const constParentNodes = parentNodes
 					.map((nodeName) => {
 						return workflow.getNode(nodeName) as INode;
