@@ -692,6 +692,8 @@ export async function proxyRequestToAxios(
 		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
 		if (error.isAxiosError) {
+			error.config = error.request = undefined;
+			error.options = pick(config ?? {}, ['url', 'method', 'data', 'headers']);
 			if (response) {
 				Logger.debug('Request proxied to Axios failed', { status: response.status });
 				let responseData = response.data;
@@ -715,23 +717,14 @@ export async function proxyRequestToAxios(
 					}
 				}
 
-				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+				error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 				throw Object.assign(error, {
-					message,
 					statusCode: response.status,
-					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
 					error: responseData,
-					config: undefined,
-					request: undefined,
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
-			} else {
-				if (error instanceof Error && error.message.includes('SSL routines'))
-					throw new NodeSSLError(error);
-
-				throw Object.assign(error, {
-					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
-				});
+			} else if (error instanceof Error && error.message.includes('SSL routines')) {
+				throw new NodeSSLError(error);
 			}
 		}
 

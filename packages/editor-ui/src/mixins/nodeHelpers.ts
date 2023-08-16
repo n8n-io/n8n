@@ -128,7 +128,7 @@ export const nodeHelpers = defineComponent({
 				}
 			}
 
-			if (this.hasNodeExecutionIssues(node) === true && !ignoreIssues.includes('execution')) {
+			if (this.hasNodeExecutionIssues(node) && !ignoreIssues.includes('execution')) {
 				if (nodeIssues === null) {
 					nodeIssues = {};
 				}
@@ -247,7 +247,7 @@ export const nodeHelpers = defineComponent({
 			const foundIssues: INodeIssueObjectProperty = {};
 
 			let userCredentials: ICredentialsResponse[] | null;
-			let credentialType: ICredentialType | null;
+			let credentialType: ICredentialType | undefined;
 			let credentialDisplayName: string;
 			let selectedCredentials: INodeCredentialsDetails;
 
@@ -260,7 +260,7 @@ export const nodeHelpers = defineComponent({
 				selectedCredsAreUnusable(node, genericAuthType)
 			) {
 				const credential = this.credentialsStore.getCredentialTypeByName(genericAuthType);
-				return this.reportUnsetCredential(credential);
+				return credential ? this.reportUnsetCredential(credential) : null;
 			}
 
 			if (
@@ -273,7 +273,7 @@ export const nodeHelpers = defineComponent({
 
 				if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
 					const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
-					return this.reportUnsetCredential(credential);
+					return credential ? this.reportUnsetCredential(credential) : null;
 				}
 			}
 
@@ -284,7 +284,7 @@ export const nodeHelpers = defineComponent({
 				selectedCredsAreUnusable(node, nodeCredentialType)
 			) {
 				const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
-				return this.reportUnsetCredential(credential);
+				return credential ? this.reportUnsetCredential(credential) : null;
 			}
 
 			for (const credentialTypeDescription of nodeType.credentials) {
@@ -303,7 +303,7 @@ export const nodeHelpers = defineComponent({
 					credentialDisplayName = credentialType.displayName;
 				}
 
-				if (!node.credentials || !node.credentials?.[credentialTypeDescription.name]) {
+				if (!node.credentials?.[credentialTypeDescription.name]) {
 					// Credentials are not set
 					if (credentialTypeDescription.required) {
 						foundIssues[credentialTypeDescription.name] = [
@@ -314,9 +314,7 @@ export const nodeHelpers = defineComponent({
 					}
 				} else {
 					// If they are set check if the value is valid
-					selectedCredentials = node.credentials[
-						credentialTypeDescription.name
-					] as INodeCredentialsDetails;
+					selectedCredentials = node.credentials[credentialTypeDescription.name];
 					if (typeof selectedCredentials === 'string') {
 						selectedCredentials = {
 							id: null,
@@ -417,7 +415,7 @@ export const nodeHelpers = defineComponent({
 			}
 
 			const executionData = this.workflowsStore.getWorkflowExecution.data;
-			if (!executionData || !executionData.resultData) {
+			if (!executionData?.resultData) {
 				// unknown status
 				return [];
 			}
@@ -472,12 +470,7 @@ export const nodeHelpers = defineComponent({
 
 			const runData: IRunData | null = workflowRunData;
 
-			if (
-				runData === null ||
-				!runData[node] ||
-				!runData[node][runIndex] ||
-				!runData[node][runIndex].data
-			) {
+			if (!runData?.[node]?.[runIndex]?.data) {
 				return [];
 			}
 
