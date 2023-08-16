@@ -694,6 +694,10 @@ export default defineComponent({
 		.node-description {
 			top: 250px;
 		}
+
+		.node-executing-info {
+			top: 75px !important;
+		}
 	}
 
 	.node-default {
@@ -713,6 +717,10 @@ export default defineComponent({
 
 				.node-executing-info {
 					display: inline-block;
+				}
+
+				&.node-other {
+					background-color: $node-background-executing-other !important;
 				}
 			}
 
