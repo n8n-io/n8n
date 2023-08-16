@@ -325,6 +325,9 @@ export class Server extends AbstractServer {
 			banners: {
 				dismissed: [],
 			},
+			ai: {
+				enabled: config.getEnv('ai.enabled'),
+			},
 		};
 	}
 
