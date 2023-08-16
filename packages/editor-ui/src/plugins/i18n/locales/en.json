@@ -696,7 +696,7 @@
 	"ndv.output.staleDataWarning.pinData": "Node parameter changes will not affect pinned output data.",
 	"ndv.output.tooMuchData.message": "The node contains {size} MB of data. Displaying it may cause problems. <br /> If you do decide to display it, avoid the JSON view.",
 	"ndv.output.tooMuchData.showDataAnyway": "Show data anyway",
-	"ndv.output.tooMuchData.title": "Output data is huge!",
+	"ndv.output.tooMuchData.title": "Output data is large",
 	"ndv.output.waitingToRun": "Waiting to execute...",
 	"ndv.title.cancel": "Cancel",
 	"ndv.title.rename": "Rename",
