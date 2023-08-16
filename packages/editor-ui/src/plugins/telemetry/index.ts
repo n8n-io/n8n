@@ -128,7 +128,7 @@ export class Telemetry {
 			properties.session_id = useRootStore().sessionId;
 			switch (event) {
 				case 'askAi.generationFinished':
-					this.track('Ai code generation finished', properties);
+					this.track('Ai code generation finished', properties, { withPostHog: true });
 				case 'ask.generationClicked':
 					this.track('User clicked on generate code button', properties);
 				default:
