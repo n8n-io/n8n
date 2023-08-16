@@ -686,25 +686,27 @@ export const addConnectionOutputSuccess = (
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
-	const overlay = connection.addOverlay({
-		type: 'Custom',
-		options: {
-			id: OVERLAY_RUN_ITEMS_ID,
-			create() {
-				const container = document.createElement('div');
-				const span = document.createElement('span');
+	if (connection.parameters.type === 'main') {
+		const overlay = connection.addOverlay({
+			type: 'Custom',
+			options: {
+				id: OVERLAY_RUN_ITEMS_ID,
+				create() {
+					const container = document.createElement('div');
+					const span = document.createElement('span');
 
-				container.classList.add('connection-run-items-label');
-				span.classList.add('floating');
-				span.innerHTML = getRunItemsLabel(output);
-				container.appendChild(span);
-				return container;
+					container.classList.add('connection-run-items-label');
+					span.classList.add('floating');
+					span.innerHTML = getRunItemsLabel(output);
+					container.appendChild(span);
+					return container;
+				},
+				location: 0.5,
 			},
-			location: 0.5,
-		},
-	});
+		});
+		overlay.setVisible(true);
+	}
 
-	overlay.setVisible(true);
 	showOrHideItemsLabel(connection);
 	showOrHideMidpointArrow(connection);
 
