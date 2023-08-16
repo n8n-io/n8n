@@ -322,17 +322,17 @@ describe('ResourceMapper.vue', () => {
 			// Remove all fields
 			await userEvent.click(getByTestId('columns-parameter-input-options-container'));
 			await userEvent.click(getByTestId('action-removeAllFields'));
-			// Should delete all non-mandatory fields
-			expect(
-				getByTestId('resource-mapper-container').querySelectorAll('.parameter-item').length,
-			).toBe(3);
 			const valueChangeEmits = emitted().valueChanged as [];
 			const lastEmittedEvent = valueChangeEmits[valueChangeEmits.length - 1] as Array<{
 				name: string;
 				value: ResourceMapperValue;
 				node: string;
 			}>;
-			// All non-mandatory field values should be deleted
+			// Should delete all non-mandatory fields from UI
+			expect(
+				getByTestId('resource-mapper-container').querySelectorAll('.parameter-item').length,
+			).toBe(3);
+			// And their values from parameter value
 			expect(lastEmittedEvent[0].value.value).not.toHaveProperty('Username');
 			expect(lastEmittedEvent[0].value.value).not.toHaveProperty('Address');
 		} else {
