@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
-import { computed, nextTick, onMounted, Ref, ref } from 'vue';
-import type { PropType } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import type { PropType, Ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useExternalSecretsProvider, useI18n, useMessage, useToast } from '@/composables';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';

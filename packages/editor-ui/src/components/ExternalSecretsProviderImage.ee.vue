@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue';
-import { ExternalSecretsProvider } from '@/Interface';
+import type { ExternalSecretsProvider } from '@/Interface';
 import { computed } from 'vue';
 import infisical from '../assets/images/infisical.webp';
 import doppler from '../assets/images/doppler.webp';
@@ -19,7 +19,7 @@ const image = computed(
 			doppler,
 			infisical,
 			vault,
-		}[props.provider.name]),
+		})[props.provider.name],
 );
 </script>
 

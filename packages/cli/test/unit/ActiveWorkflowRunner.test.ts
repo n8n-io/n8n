@@ -24,7 +24,6 @@ import { mockInstance } from '../integration/shared/utils/';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
-import type { WebhookRepository } from '@/databases/repositories';
 import { SecretsHelper } from '@/SecretsHelpers';
 import { WebhookService } from '@/services/webhook.service';
 import { VariablesService } from '../../src/environments/variables/variables.service';

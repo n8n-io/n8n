@@ -7,8 +7,8 @@ import Container, { Service } from 'typedi';
 import { ExternalSecretsManager } from './ExternalSecretsManager.ee';
 
 export class ProviderNotFoundError extends Error {
-	constructor(public providerName: string, options?: ErrorOptions) {
-		super(undefined, options);
+	constructor(public providerName: string) {
+		super(undefined);
 	}
 }
 
@@ -69,7 +69,6 @@ export class ExternalSecretsService {
 				prop.typeOptions?.password &&
 				(!(copiedData[dataKey] as string).startsWith('=') || prop.noDataExpression)
 			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 			}
 		}
@@ -93,7 +92,7 @@ export class ExternalSecretsService {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				replacement[key] !== null
 			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				this.unredactRestoreValues(value, replacement[key]);
 			}
 		}

@@ -44,7 +44,7 @@ import type {
 } from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy } from '@/utils/typeHelpers';
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export * from 'n8n-design-system/types';
 

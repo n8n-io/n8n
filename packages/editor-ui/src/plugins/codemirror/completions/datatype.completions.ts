@@ -1,4 +1,5 @@
-import { IDataObject, DocMetadata, NativeDoc, Expression } from 'n8n-workflow';
+import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
 import { ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
