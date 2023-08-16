@@ -569,7 +569,11 @@ export const showConnectionActions = (connection: Connection) => {
 	});
 };
 
-export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputConnections) => {
+export const getOutputSummary = (
+	data: ITaskData[],
+	nodeConnections: NodeInputConnections,
+	connectionType: ConnectionTypes,
+) => {
 	const outputMap: {
 		[sourceOutputIndex: string]: {
 			[targetNodeName: string]: {
@@ -583,11 +587,11 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 	} = {};
 
 	data.forEach((run: ITaskData) => {
-		if (!run.data || !run.data.main) {
+		if (!run.data || !run.data[connectionType]) {
 			return;
 		}
 
-		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
+		run.data[connectionType].forEach((output: INodeExecutionData[] | null, i: number) => {
 			const sourceOutputIndex = i;
 
 			// executionData that was recovered by recoverEvents in the CLI will have an isArtificialRecoveredEventItem property

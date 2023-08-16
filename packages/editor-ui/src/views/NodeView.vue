@@ -2964,9 +2964,11 @@ export default defineComponent({
 				return;
 			}
 
-			const nodeConnections =
-				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
-			const outputMap = NodeViewUtils.getOutputSummary(data, nodeConnections || []);
+			const allNodeConnections = this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName);
+
+			const connectionType = Object.keys(allNodeConnections)[0];
+			const nodeConnections = allNodeConnections[connectionType];
+			const outputMap = NodeViewUtils.getOutputSummary(data, nodeConnections || [], connectionType);
 
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
