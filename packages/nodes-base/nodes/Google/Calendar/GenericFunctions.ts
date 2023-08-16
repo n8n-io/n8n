@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
@@ -15,7 +14,7 @@ import { NodeApiError } from 'n8n-workflow';
 import moment from 'moment-timezone';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 

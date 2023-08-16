@@ -1,6 +1,5 @@
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	INodePropertyOptions,
@@ -30,9 +29,7 @@ interface ScriptObject {
 	folderScriptNames?: LayoutObject[];
 }
 
-export async function getToken(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-): Promise<any> {
+export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
 	const host = credentials.host as string;
@@ -108,7 +105,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  *
  */
 export async function layoutsApiRequest(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
@@ -246,7 +243,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 }
 
 export async function logout(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 	token: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
