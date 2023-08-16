@@ -7,13 +7,7 @@ import {
 	useUsersStore,
 	useSourceControlStore,
 } from '@/stores';
-import {
-	useI18n,
-	useTelemetry,
-	useToast,
-	useMessage,
-	MessageBoxConfirmResult,
-} from '@/composables';
+import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
