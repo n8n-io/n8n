@@ -3,7 +3,7 @@ import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { ViteEjsPlugin } from "vite-plugin-ejs";
+import { ViteEjsPlugin } from 'vite-plugin-ejs';
 
 import packageJSON from './package.json';
 

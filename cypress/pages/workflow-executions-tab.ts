@@ -1,5 +1,5 @@
-import { BasePage } from "./base";
-import { WorkflowPage } from "./workflow";
+import { BasePage } from './base';
+import { WorkflowPage } from './workflow';
 
 const workflowPage = new WorkflowPage();
 
@@ -14,10 +14,14 @@ export class WorkflowExecutionsTab extends BasePage {
 		failedExecutionListItems: () => cy.get('[data-test-execution-status="error"]'),
 		executionCard: (executionId: string) => cy.getByTestId(`execution-details-${executionId}`),
 		executionPreviewDetails: () => cy.get('[data-test-id^="execution-preview-details-"]'),
-		executionPreviewDetailsById: (executionId: string) => cy.getByTestId(`execution-preview-details-${executionId}`),
-		executionPreviewTime: () => this.getters.executionPreviewDetails().find('[data-test-id="execution-time"]'),
-		executionPreviewStatus: () => this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-label"]'),
-		executionPreviewId: () => this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-id"]'),
+		executionPreviewDetailsById: (executionId: string) =>
+			cy.getByTestId(`execution-preview-details-${executionId}`),
+		executionPreviewTime: () =>
+			this.getters.executionPreviewDetails().find('[data-test-id="execution-time"]'),
+		executionPreviewStatus: () =>
+			this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-label"]'),
+		executionPreviewId: () =>
+			this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-id"]'),
 	};
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {
@@ -25,7 +29,7 @@ export class WorkflowExecutionsTab extends BasePage {
 			cy.get('body').type('d', { force: true });
 		},
 		createManualExecutions: (count: number) => {
-			for (let i=0; i<count; i++) {
+			for (let i = 0; i < count; i++) {
 				cy.intercept('POST', '/rest/workflows/run').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
@@ -36,6 +40,6 @@ export class WorkflowExecutionsTab extends BasePage {
 		},
 		switchToEditorTab: () => {
 			workflowPage.getters.editorTabButton().click();
-		}
+		},
 	};
-};
+}
