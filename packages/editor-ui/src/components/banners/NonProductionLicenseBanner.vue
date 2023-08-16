@@ -4,7 +4,7 @@ import { i18n as locale } from '@/plugins/i18n';
 </script>
 
 <template>
-	<base-banner name="NON_PRODUCTION_LICENSE" :dismissible="false">
+	<base-banner name="NON_PRODUCTION_LICENSE" theme="warning" :dismissible="false">
 		<template #mainContent>
 			<span>{{ locale.baseText('banners.nonProductionLicense.message') }}</span>
 		</template>
