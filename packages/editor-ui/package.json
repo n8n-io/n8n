@@ -65,7 +65,7 @@
     "n8n-workflow": "workspace:*",
     "normalize-wheel": "^1.0.1",
     "pinia": "^2.1.6",
-    "prettier": "^2.8.8",
+    "prettier": "^3.0.0",
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
     "uuid": "^8.3.2",
