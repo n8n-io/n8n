@@ -2181,9 +2181,9 @@ const addExecutionDataFunctions = (
 
 	if (type === 'input') {
 		const taskData = {
-			startTime: 0,
+			startTime: new Date().getTime(),
 			executionTime: 0,
-			executionStatus: 'success',
+			executionStatus: 'running',
 			source: [null],
 			inputOverride: {
 				[connectionType]: data,
@@ -2207,6 +2207,8 @@ const addExecutionDataFunctions = (
 
 		const taskData = runDataArray[runDataArray.length - 1];
 
+		taskData.executionStatus = 'success';
+		taskData.executionTime = new Date().getTime() - taskData.startTime;
 		taskData.data = {
 			[connectionType]: data,
 		} as ITaskDataConnections;
