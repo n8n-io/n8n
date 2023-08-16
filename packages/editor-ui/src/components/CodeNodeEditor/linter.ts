@@ -63,6 +63,8 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				}
 			}
 
+			if (ast === null) return [];
+
 			const lintings: Diagnostic[] = [];
 
 			/**
