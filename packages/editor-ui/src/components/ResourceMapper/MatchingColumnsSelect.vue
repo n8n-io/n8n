@@ -150,7 +150,6 @@ function emitValueChanged() {
 function onParameterActionSelected(action: string): void {
 	switch (action) {
 		case 'refreshFieldList':
-			console.log('refreshFieldList');
 			emit('refreshFieldList');
 			break;
 		default:
