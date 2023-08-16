@@ -11,7 +11,7 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { SpyInstance } from 'vitest';
-import { ResourceMapperValue } from 'n8n-workflow';
+import type { ResourceMapperValue } from 'n8n-workflow';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 let fetchFieldsSpy: SpyInstance;
