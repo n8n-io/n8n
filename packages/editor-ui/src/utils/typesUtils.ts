@@ -1,9 +1,6 @@
 import dateformat from 'dateformat';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-import type { Schema, Optional, Primitives } from '@/Interface';
-import { isObj } from '@/utils/typeGuards';
-import { generatePath } from '@/utils/mappingUtils';
 
 /*
 	Constants and utility functions than can be used to manipulate different data types and objects
@@ -162,41 +159,3 @@ export const isValidDate = (input: string | number | Date): boolean => {
 
 export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 	Object.keys(o) as K[];
-
-export const getSchema = (input: Optional<Primitives | object>, path = ''): Schema => {
-	let schema: Schema = { type: 'undefined', value: 'undefined', path };
-	switch (typeof input) {
-		case 'object':
-			if (input === null) {
-				schema = { type: 'null', value: '[null]', path };
-			} else if (input instanceof Date) {
-				schema = { type: 'string', value: input.toISOString(), path };
-			} else if (Array.isArray(input)) {
-				schema = {
-					type: 'array',
-					value: input.map((item, index) => ({
-						key: index.toString(),
-						...getSchema(item, `${path}[${index}]`),
-					})),
-					path,
-				};
-			} else if (isObj(input)) {
-				schema = {
-					type: 'object',
-					value: Object.entries(input).map(([k, v]) => ({
-						key: k,
-						...getSchema(v, generatePath(path, [k])),
-					})),
-					path,
-				};
-			}
-			break;
-		case 'function':
-			schema = { type: 'function', value: '', path };
-			break;
-		default:
-			schema = { type: typeof input, value: String(input), path };
-	}
-
-	return schema;
-};
