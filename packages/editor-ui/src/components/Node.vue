@@ -4,6 +4,7 @@
 			'node-wrapper': true,
 			'node-wrapper--trigger': isTriggerNode,
 			'node-wrapper--configurable': isConfigurableNode,
+			'node-wrapper--config': isConfigNode,
 		}"
 		:style="nodePosition"
 		:id="nodeId"
@@ -287,6 +288,9 @@ export default defineComponent({
 		},
 		isManualTypeNode(): boolean {
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
+		},
+		isConfigNode(): boolean {
+			return this.nodeTypesStore.isConfigNode(this.data?.type || '');
 		},
 		isConfigurableNode(): boolean {
 			return this.nodeTypesStore.isConfigurableNode(this.data?.type || '');
@@ -866,6 +870,14 @@ export default defineComponent({
 
 	.node-wrapper--trigger & {
 		border-radius: 36px 8px 8px 36px;
+	}
+	.node-wrapper--config & {
+		border-radius: 60px;
+		background-color: var(--color-foreground-dark);
+		left: -4px !important;
+		top: -4px !important;
+		height: 108px;
+		width: 108px !important;
 	}
 	.node-wrapper--configurable & {
 		height: 266px;

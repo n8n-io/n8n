@@ -73,6 +73,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				return nodeType || null;
 			};
 		},
+		isConfigNode() {
+			return (nodeTypeName: string) => {
+				const nodeType = this.getNodeType(nodeTypeName);
+				return nodeType?.outputs
+					? nodeType?.outputs.filter((output) => output !== 'main').length > 0
+					: false;
+			};
+		},
 		isConfigurableNode() {
 			return (nodeTypeName: string) => {
 				const nodeType = this.getNodeType(nodeTypeName);
