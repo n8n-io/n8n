@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import NonProductionLicenseBanner from '@/components/banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from '@/components/banners/TrialOverBanner.vue';
 import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { onMounted, watch } from 'vue';
 import { getBannerRowHeight } from '@/utils';
-import type { Banners } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow';
 
 const uiStore = useUIStore();
 
-function shouldShowBanner(bannerName: Banners) {
+function shouldShowBanner(bannerName: BannerName) {
 	return uiStore.banners[bannerName].dismissed === false;
 }
 
@@ -32,5 +33,6 @@ watch(uiStore.banners, async () => {
 		<trial-over-banner v-if="shouldShowBanner('TRIAL_OVER')" />
 		<trial-banner v-if="shouldShowBanner('TRIAL')" />
 		<v1-banner v-if="shouldShowBanner('V1')" />
+		<non-production-license-banner v-if="shouldShowBanner('NON_PRODUCTION_LICENSE')" />
 	</div>
 </template>
