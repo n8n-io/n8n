@@ -18,6 +18,7 @@ if (inE2ETests) {
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
+		N8N_AI_ENABLED: 'true',
 	};
 } else if (inTest) {
 	const testsDir = join(tmpdir(), 'n8n-tests/');

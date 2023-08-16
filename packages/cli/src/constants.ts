@@ -76,6 +76,7 @@ export const LICENSE_FEATURES = {
 	SOURCE_CONTROL: 'feat:sourceControl',
 	API_DISABLED: 'feat:apiDisabled',
 	EXTERNAL_SECRETS: 'feat:externalSecrets',
+	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
 	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 } as const;
