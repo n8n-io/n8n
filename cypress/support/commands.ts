@@ -111,13 +111,13 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 		const newPosition = {
 			x: options?.abs ? xDiff : originalLocation.right + xDiff,
 			y: options?.abs ? yDiff : originalLocation.top + yDiff,
-		}
-		if(options?.realMouse) {
+		};
+		if (options?.realMouse) {
 			element.realMouseDown();
 			element.realMouseMove(newPosition.x, newPosition.y);
 			element.realMouseUp();
 		} else {
-			element.trigger('mousedown', {force: true});
+			element.trigger('mousedown', { force: true });
 			element.trigger('mousemove', {
 				which: 1,
 				pageX: newPosition.x,
@@ -129,7 +129,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				// For some reason, mouseup isn't working when moving nodes
 				cy.get('body').click(newPosition.x, newPosition.y);
 			} else {
-				element.trigger('mouseup', {force: true});
+				element.trigger('mouseup', { force: true });
 			}
 		}
 	});

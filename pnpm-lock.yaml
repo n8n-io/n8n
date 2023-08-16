@@ -1,4 +1,4 @@
-lockfileVersion: '6.1'
+lockfileVersion: '6.0'
 
 settings:
   autoInstallPeers: true
@@ -11,6 +11,7 @@ overrides:
   '@types/node': ^18.16.16
   chokidar: 3.5.2
   jsonwebtoken: 9.0.0
+  prettier: ^3.0.0
   semver: ^7.5.4
   tough-cookie: ^4.1.3
   tslib: ^2.6.1
@@ -91,9 +92,6 @@ importers:
       p-limit:
         specifier: ^3.1.0
         version: 3.1.0
-      prettier:
-        specifier: ^2.8.8
-        version: 2.8.8
       rimraf:
         specifier: ^5.0.1
         version: 5.0.1
@@ -887,8 +885,8 @@ importers:
         specifier: ^2.1.6
         version: 2.1.6(typescript@5.1.6)(vue@3.3.4)
       prettier:
-        specifier: ^2.8.8
-        version: 2.8.8
+        specifier: ^3.0.0
+        version: 3.0.0
       stream-browserify:
         specifier: ^3.0.0
         version: 3.0.0
@@ -4966,7 +4964,7 @@ packages:
       less-loader: 11.1.3(less@4.1.3)(webpack@5.75.0)
       postcss: 8.4.27
       postcss-loader: 7.3.3(postcss@8.4.27)(webpack@5.75.0)
-      prettier: 2.8.8
+      prettier: 3.0.0
       react: 17.0.2
       react-dom: 18.2.0(react@17.0.2)
       resolve-url-loader: 5.0.0
@@ -5280,7 +5278,7 @@ packages:
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       leven: 3.1.0
       ora: 5.4.1
-      prettier: 2.8.8
+      prettier: 3.0.0
       prompts: 2.4.2
       puppeteer-core: 2.1.1
       read-pkg-up: 7.0.1
@@ -5331,7 +5329,7 @@ packages:
       globby: 11.1.0
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       lodash: 4.17.21
-      prettier: 2.8.8
+      prettier: 3.0.0
       recast: 0.23.3
     transitivePeerDependencies:
       - supports-color
@@ -17147,16 +17145,10 @@ packages:
       fast-diff: 1.2.0
     dev: true
 
-  /prettier@2.8.8:
-    resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
-    engines: {node: '>=10.13.0'}
-    hasBin: true
-
   /prettier@3.0.0:
     resolution: {integrity: sha512-zBf5eHpwHOGPC47h0zrPyNn+eAEIdEzfywMoYn2XPi0P44Zp0tSq64rq0xAREh4auw2cJZHo9QUob+NqCQky4g==}
     engines: {node: '>=14'}
     hasBin: true
-    dev: true
 
   /pretty-bytes@5.6.0:
     resolution: {integrity: sha512-FFw039TmrBqFK8ma/7OL3sDz/VytdtJr044/QUJtH0wK9lb9jLq9tJyIxUwtQJHwar2BqtiA4iCWSwo9JLkzFg==}
