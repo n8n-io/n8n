@@ -27,7 +27,9 @@ export class WorkflowPage extends BasePage {
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		nodeIssuesByName: (nodeName: string) =>
-			this.getters.canvasNodes().filter(`:contains(${nodeName})`).findChildByTestId('node-issues'),
+			this.getters.canvasNodes().filter(`:contains(${nodeName})`)
+			.should('have.length.greaterThan', 0)
+			.findChildByTestId('node-issues'),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
 			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
