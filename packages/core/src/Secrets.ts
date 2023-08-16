@@ -1,6 +1,27 @@
 import type { IDataObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { ExpressionError } from 'n8n-workflow';
 
+function buildSecretsValueProxy(value: IDataObject): unknown {
+	return new Proxy(value, {
+		get(target, valueName) {
+			if (typeof valueName !== 'string') {
+				return;
+			}
+			if (!(valueName in value)) {
+				throw new ExpressionError('Could not load secrets', {
+					description:
+						'The credential in use tries to use secret from an external store that could not be found',
+				});
+			}
+			const retValue = value[valueName];
+			if (typeof retValue === 'object' && retValue !== null) {
+				return buildSecretsValueProxy(retValue as IDataObject);
+			}
+			return retValue;
+		},
+	});
+}
+
 export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData): IDataObject {
 	const secretsHelpers = additionalData.secretsHelpers;
 	return new Proxy(
@@ -24,7 +45,11 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 											'The credential in use tries to use secret from an external store that could not be found',
 									});
 								}
-								return secretsHelpers.getSecret(providerName, secretName);
+								const retValue = secretsHelpers.getSecret(providerName, secretName);
+								if (typeof retValue === 'object' && retValue !== null) {
+									return buildSecretsValueProxy(retValue) as IDataObject;
+								}
+								return retValue;
 							},
 							set() {
 								return false;
