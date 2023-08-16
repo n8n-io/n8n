@@ -388,8 +388,6 @@
       "dist/nodes/AgileCrm/AgileCrm.node.js",
       "dist/nodes/Airtable/Airtable.node.js",
       "dist/nodes/Airtable/AirtableTrigger.node.js",
-      "dist/nodes/AiTest/AiTest.node.js",
-      "dist/nodes/AiTest/AiTestConfig.node.js",
       "dist/nodes/Amqp/Amqp.node.js",
       "dist/nodes/Amqp/AmqpTrigger.node.js",
       "dist/nodes/ApiTemplateIo/ApiTemplateIo.node.js",
