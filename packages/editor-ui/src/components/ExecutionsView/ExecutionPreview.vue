@@ -150,14 +150,12 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging, useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useWorkflowsStore } from '@/stores';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
@@ -180,7 +178,6 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useWorkflowsStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
