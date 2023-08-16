@@ -136,7 +136,6 @@ describe('Type Validation', () => {
 		).toEqual(true);
 		// Invalid value:
 		expect(validateFieldType('json', ['one', 'two'], 'object').valid).toEqual(false);
-		// eslint-disable-next-line prettier/prettier
 		expect(validateFieldType('json', ['one', 'two'], 'object').valid).toEqual(false);
 		expect(validateFieldType('json', '1', 'object').valid).toEqual(false);
 		expect(validateFieldType('json', '[1]', 'object').valid).toEqual(false);
