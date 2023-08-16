@@ -276,6 +276,7 @@ defineExpose({
 			:size="labelSize"
 			:showOptions="true"
 			:showExpressionSelector="false"
+			inputName="columns"
 			color="text-dark"
 		>
 			<template #options>

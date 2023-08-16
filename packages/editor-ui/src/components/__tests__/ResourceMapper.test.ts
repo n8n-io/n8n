@@ -11,9 +11,11 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { SpyInstance } from 'vitest';
+import { ResourceMapperValue } from 'n8n-workflow';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
-let fetchFieldsSpy: SpyInstance, resolveParameterSpy: SpyInstance;
+let fetchFieldsSpy: SpyInstance;
+let resolveParameterSpy: SpyInstance;
 
 const renderComponent = createComponentRenderer(ResourceMapper, DEFAULT_SETUP);
 
@@ -288,5 +290,53 @@ describe('ResourceMapper.vue', () => {
 		});
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('should delete fields from UI and parameter value when they are deleted', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				node: {
+					parameters: {
+						columns: {
+							schema: null,
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		// Add some values so we can test if they are gone after deletion
+		const idInput = getByTestId('parameter-input-value["id"]').querySelector('input');
+		const firstNameInput = getByTestId('parameter-input-value["First name"]').querySelector(
+			'input',
+		);
+		const lastNameInput = getByTestId('parameter-input-value["Last name"]').querySelector('input');
+		const usernameInput = getByTestId('parameter-input-value["Username"]').querySelector('input');
+		const addressInput = getByTestId('parameter-input-value["Address"]').querySelector('input');
+		if (idInput && firstNameInput && lastNameInput && usernameInput && addressInput) {
+			await userEvent.type(idInput, '123');
+			await userEvent.type(firstNameInput, 'John');
+			await userEvent.type(lastNameInput, 'Doe');
+			await userEvent.type(usernameInput, 'johndoe');
+			await userEvent.type(addressInput, '123 Main St');
+			// Remove all fields
+			await userEvent.click(getByTestId('columns-parameter-input-options-container'));
+			await userEvent.click(getByTestId('action-removeAllFields'));
+			// Should delete all non-mandatory fields
+			expect(
+				getByTestId('resource-mapper-container').querySelectorAll('.parameter-item').length,
+			).toBe(3);
+			const valueChangeEmits = emitted().valueChanged as [];
+			const lastEmittedEvent = valueChangeEmits[valueChangeEmits.length - 1] as Array<{
+				name: string;
+				value: ResourceMapperValue;
+				node: string;
+			}>;
+			// All non-mandatory field values should be deleted
+			expect(lastEmittedEvent[0].value.value).not.toHaveProperty('Username');
+			expect(lastEmittedEvent[0].value.value).not.toHaveProperty('Address');
+		} else {
+			throw new Error('Could not find input fields');
+		}
 	});
 });

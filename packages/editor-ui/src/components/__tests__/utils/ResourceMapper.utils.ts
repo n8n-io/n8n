@@ -201,15 +201,5 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 			type: 'string',
 			canBeUsedToMatch: true,
 		},
-		{
-			id: 'Last Name',
-			displayName: 'Last Name',
-			match: false,
-			required: false,
-			defaultMatch: false,
-			display: true,
-			type: 'string',
-			canBeUsedToMatch: true,
-		},
 	],
 };
