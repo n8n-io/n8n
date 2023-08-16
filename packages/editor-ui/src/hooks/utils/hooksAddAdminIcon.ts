@@ -1,6 +1,6 @@
-import { useUIStore } from '@/stores/ui';
-import { IMenuItem } from 'n8n-design-system/types';
-import { useUsersStore } from '@/stores/users';
+import { useUIStore } from '@/stores/ui.store';
+import type { IMenuItem } from 'n8n-design-system/types';
+import { useUsersStore } from '@/stores/users.store';
 
 let adminIconAdded = false;
 
@@ -29,6 +29,6 @@ export const hooksAddAdminIcon = () => {
 			},
 		},
 	];
-	uiStore.sidebarMenuItems = uiStore.sidebarMenuItems.concat(menuItems);
+	uiStore.sidebarMenuItems = [...uiStore.sidebarMenuItems, ...menuItems];
 	adminIconAdded = true;
 };

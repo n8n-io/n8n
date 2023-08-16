@@ -1,13 +1,13 @@
 <template>
-	<span :class="['n8n-tag', $style.tag]" v-on="$listeners">
+	<span :class="['n8n-tag', $style.tag]" v-bind="$attrs">
 		{{ text }}
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-tag',
 	props: {
 		text: {

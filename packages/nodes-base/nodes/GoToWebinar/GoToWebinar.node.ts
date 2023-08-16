@@ -35,8 +35,8 @@ import {
 	loadWebinarSessions,
 } from './GenericFunctions';
 
-import isEmpty from 'lodash.isempty';
-import omit from 'lodash.omit';
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
 
 import moment from 'moment-timezone';
 
@@ -120,7 +120,7 @@ export class GoToWebinar implements INodeType {
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
 				return loadWebinarSessions.call(this);
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

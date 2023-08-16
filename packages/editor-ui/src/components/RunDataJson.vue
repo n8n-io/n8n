@@ -1,15 +1,17 @@
 <template>
 	<div :class="$style.jsonDisplay">
-		<run-data-json-actions
-			v-if="!editMode.enabled"
-			:node="node"
-			:sessioId="sessionId"
-			:displayMode="displayMode"
-			:distanceFromActive="distanceFromActive"
-			:selectedJsonPath="selectedJsonPath"
-			:jsonData="jsonData"
-			:paneType="paneType"
-		/>
+		<Suspense>
+			<run-data-json-actions
+				v-if="!editMode.enabled"
+				:node="node"
+				:sessioId="sessionId"
+				:displayMode="displayMode"
+				:distanceFromActive="distanceFromActive"
+				:selectedJsonPath="selectedJsonPath"
+				:jsonData="jsonData"
+				:paneType="paneType"
+			/>
+		</Suspense>
 		<draggable
 			type="mapping"
 			targetDataKey="mappable"
@@ -20,75 +22,79 @@
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
 			</template>
-			<template>
-				<vue-json-pretty
-					:data="jsonData"
-					:deep="10"
-					:showLength="true"
-					:selected-value.sync="selectedJsonPath"
-					rootPath=""
-					selectableType="single"
-					class="json-data"
-				>
-					<template #nodeKey="{ node }">
-						<span
-							data-target="mappable"
-							:data-value="getJsonParameterPath(node.path)"
-							:data-name="node.key"
-							:data-path="node.path"
-							:data-depth="node.level"
-							:class="{
-								[$style.mappable]: mappingEnabled,
-								[$style.dragged]: draggingPath === node.path,
-							}"
-							>"{{ node.key }}"</span
-						>
-					</template>
-					<template #nodeValue="{ node }">
-						<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
-						<span
-							v-else
-							data-target="mappable"
-							:data-value="getJsonParameterPath(node.path)"
-							:data-name="getListItemName(node.path)"
-							:data-path="node.path"
-							:data-depth="node.level"
-							:class="{
-								[$style.mappable]: mappingEnabled,
-								[$style.dragged]: draggingPath === node.path,
-							}"
-							>{{ getContent(node.content) }}</span
-						>
-					</template>
-				</vue-json-pretty>
-			</template>
+			<vue-json-pretty
+				:data="jsonData"
+				:deep="10"
+				:showLength="true"
+				:selectedValue="selectedJsonPath"
+				rootPath=""
+				selectableType="single"
+				class="json-data"
+				@update:selectedValue="selectedJsonPath = $event"
+			>
+				<template #renderNodeKey="{ node }">
+					<span
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="node.key"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						>"{{ node.key }}"</span
+					>
+				</template>
+				<template #renderNodeValue="{ node }">
+					<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
+					<span
+						v-else
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="getListItemName(node.path)"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						class="ph-no-capture"
+						>{{ getContent(node.content) }}</span
+					>
+				</template>
+			</vue-json-pretty>
 		</draggable>
 	</div>
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineAsyncComponent, defineComponent, ref } from 'vue';
+import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson, isString, shorten } from '@/utils';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { nonExistingJsonPath } from '@/constants';
 
-const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
+const RunDataJsonActions = defineAsyncComponent(
+	async () => import('@/components/RunDataJsonActions.vue'),
+);
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'run-data-json',
+	mixins: [externalHooks],
 	components: {
 		VueJsonPretty,
 		Draggable,
-		runDataJsonActions,
+		RunDataJsonActions,
 		MappingPill,
 	},
 	props: {
@@ -120,11 +126,15 @@ export default mixins(externalHooks).extend({
 			type: Number,
 		},
 	},
-	data() {
+	setup() {
+		const selectedJsonPath = ref(nonExistingJsonPath);
+		const draggingPath = ref<null | string>(null);
+		const displayMode = ref('json');
+
 		return {
-			selectedJsonPath: null as null | string,
-			draggingPath: null as null | string,
-			displayMode: 'json',
+			selectedJsonPath,
+			draggingPath,
+			displayMode,
 		};
 	},
 	computed: {
@@ -175,7 +185,7 @@ export default mixins(externalHooks).extend({
 					...mappingTelemetry,
 				};
 
-				this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
+				void this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

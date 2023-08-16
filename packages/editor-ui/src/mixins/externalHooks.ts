@@ -1,23 +1,24 @@
-import {
+import type {
 	IExternalHooks,
 	INodeCreateElement,
-	INodeFilterType,
+	NodeFilterType,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IPersonalizationLatestVersion,
 	IWorkflowDb,
 } from '@/Interface';
-import {
+import type {
 	IConnections,
 	IDataObject,
-	INode,
 	INodeParameters,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import Vue, { ComponentPublicInstance, VueConstructor } from 'vue';
-import { Route } from 'vue-router/types/router';
-import {
+
+import type { ComponentPublicInstance } from 'vue';
+import { defineComponent } from 'vue';
+import type { RouteLocation } from 'vue-router';
+import type {
 	AuthenticationModalEventData,
 	ExecutionFinishedEventData,
 	ExecutionStartedEventData,
@@ -29,12 +30,13 @@ import {
 	UpdatedWorkflowSettingsEventData,
 	UserSavedCredentialsEventData,
 } from '@/hooks/segment';
-import { PartialDeep } from 'type-fest';
+import type { PartialDeep } from 'type-fest';
+import type { N8nInput } from 'n8n-design-system';
 
 export interface ExternalHooks {
 	parameterInput: {
 		mount: Array<
-			(meta: { inputFieldRef?: InstanceType<typeof Vue>; parameter: { name: string } }) => void
+			(meta: { inputFieldRef?: InstanceType<typeof N8nInput>; parameter: { name: string } }) => void
 		>;
 		modeSwitch: Array<(meta: ITelemetryTrackProperties) => void>;
 		updated: Array<(meta: { remoteParameterOptions: NodeListOf<Element> }) => void>;
@@ -55,7 +57,7 @@ export interface ExternalHooks {
 		onRunWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
 	};
 	main: {
-		routeChange: Array<(meta: { to: Route; from: Route }) => void>;
+		routeChange: Array<(meta: { to: RouteLocation; from: RouteLocation }) => void>;
 	};
 	credential: {
 		saved: Array<(meta: UserSavedCredentialsEventData) => void>;
@@ -169,14 +171,14 @@ export interface ExternalHooks {
 			(meta: {
 				nodeFilter: string;
 				result: INodeCreateElement[];
-				selectedType: INodeFilterType;
+				selectedType: NodeFilterType;
 			}) => void
 		>;
 		nodeFilterChanged: Array<
 			(meta: {
 				oldValue: string;
 				newValue: string;
-				selectedType: INodeFilterType;
+				selectedType: NodeFilterType;
 				filteredNodes: INodeCreateElement[];
 			}) => void
 		>;
@@ -276,7 +278,7 @@ export async function runExternalHook(eventName: string, metadata?: IDataObject)
 	}
 }
 
-export const externalHooks = Vue.extend({
+export const externalHooks = defineComponent({
 	methods: {
 		$externalHooks(): IExternalHooks {
 			return {

@@ -1,18 +1,18 @@
-import {
-	deepCopy,
+import { deepCopy } from 'n8n-workflow';
+import type {
 	ExecutionError,
 	GenericValue,
 	INodeParameters,
 	INodeProperties,
 	ITelemetryTrackProperties,
 	NodeParameterValue,
+	INode,
 } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import type { TelemetryEventData } from '@/hooks/types';
-import { INodeUi, IStartRunData } from '@/Interface';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { INode } from 'n8n-workflow/src';
-import { useRootStore } from '@/stores/n8nRootStore';
+import type { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export interface UserSavedCredentialsEventData {
 	credential_type: string;

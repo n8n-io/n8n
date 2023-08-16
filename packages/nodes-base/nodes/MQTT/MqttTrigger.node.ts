@@ -7,7 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
+import * as mqtt from 'mqtt';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,8 +18,20 @@ export class MqttTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to MQTT events',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'MQTT Trigger',
+		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive:
+					"<b>While building your workflow</b>, click the 'listen' button, then trigger an MQTT event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				active:
+					"<b>While building your workflow</b>, click the 'listen' button, then trigger an MQTT event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+			},
+			activationHint:
+				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -89,9 +102,9 @@ export class MqttTrigger implements INodeType {
 			(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
 		const ssl = credentials.ssl as boolean;
-		const ca = credentials.ca as string;
-		const cert = credentials.cert as string;
-		const key = credentials.key as string;
+		const ca = formatPrivateKey(credentials.ca as string);
+		const cert = formatPrivateKey(credentials.cert as string);
+		const key = formatPrivateKey(credentials.key as string);
 		const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
 
 		let client: mqtt.MqttClient;
@@ -130,9 +143,9 @@ export class MqttTrigger implements INodeType {
 		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (err, _granted) => {
-						if (err) {
-							reject(err);
+					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (error, _granted) => {
+						if (error) {
+							reject(error);
 						}
 						client.on('message', (topic: string, message: Buffer | string) => {
 							let result: IDataObject = {};
@@ -142,7 +155,7 @@ export class MqttTrigger implements INodeType {
 							if (options.jsonParseBody) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (error) {}
+								} catch (e) {}
 							}
 
 							result.message = message;

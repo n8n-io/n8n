@@ -9,6 +9,9 @@
 				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
+			<div id="banners" :class="$style.banners">
+				<banner-stack v-if="!isDemoMode" />
+			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
@@ -16,9 +19,11 @@
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
-				<keep-alive include="NodeView" :max="1">
-					<router-view />
-				</keep-alive>
+				<router-view v-slot="{ Component }">
+					<keep-alive include="NodeView" :max="1">
+						<component :is="Component" />
+					</keep-alive>
+				</router-view>
 			</div>
 			<Modals />
 			<Telemetry />
@@ -27,40 +32,52 @@
 </template>
 
 <script lang="ts">
-import Modals from './components/Modals.vue';
-import LoadingView from './views/LoadingView.vue';
-import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
-
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { userHelpers } from '@/mixins/userHelpers';
-import { loadLanguage } from './plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import { restApi } from '@/mixins/restApi';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from './stores/ui';
-import { useSettingsStore } from './stores/settings';
-import { useUsersStore } from './stores/users';
-import { useRootStore } from './stores/n8nRootStore';
-import { useTemplatesStore } from './stores/templates';
-import { useNodeTypesStore } from './stores/nodeTypes';
-import { historyHelper } from '@/mixins/history';
 import { extendExternalHooks } from '@/mixins/externalHooks';
 import { newVersions } from '@/mixins/newVersions';
 
-export default mixins(newVersions, showMessage, userHelpers, restApi, historyHelper).extend({
+import BannerStack from '@/components/banners/BannerStack.vue';
+import Modals from '@/components/Modals.vue';
+import LoadingView from '@/views/LoadingView.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+
+import { userHelpers } from '@/mixins/userHelpers';
+import { loadLanguage } from '@/plugins/i18n';
+import { useGlobalLinkActions, useToast } from '@/composables';
+import {
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useRootStore,
+	useTemplatesStore,
+	useNodeTypesStore,
+	useCloudPlanStore,
+	useSourceControlStore,
+	useUsageStore,
+} from '@/stores';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { useRoute } from 'vue-router';
+import { useExternalHooks } from '@/composables';
+
+export default defineComponent({
 	name: 'App',
 	components: {
+		BannerStack,
 		LoadingView,
 		Telemetry,
 		Modals,
 	},
-	setup() {
-		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+	mixins: [newVersions, userHelpers],
+	setup(props) {
 		return {
-			registerCustomAction,
-			unregisterCustomAction,
+			...useGlobalLinkActions(),
+			...useHistoryHelper(useRoute()),
+			...useToast(),
+			externalHooks: useExternalHooks(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...newVersions.setup?.(props),
 		};
 	},
 	computed: {
@@ -71,26 +88,39 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
+			useSourceControlStore,
+			useCloudPlanStore,
+			useUsageStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
 		},
+		isDemoMode(): boolean {
+			return this.$route.name === VIEWS.DEMO;
+		},
 	},
 	data() {
 		return {
+			postAuthenticateDone: false,
+			settingsInitialized: false,
 			loading: true,
 		};
 	},
 	methods: {
 		async initSettings(): Promise<void> {
+			// The settings should only be initialized once
+			if (this.settingsInitialized) return;
+
 			try {
 				await this.settingsStore.getSettings();
+				this.settingsInitialized = true;
 			} catch (e) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('startupError'),
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 
 				throw e;
@@ -131,8 +161,8 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 			} catch (e) {}
 		},
 		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
-				console.log(HIRING_BANNER); // eslint-disable-line no-console
+			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
+				console.log(HIRING_BANNER);
 			}
 		},
 		async initialize(): Promise<void> {
@@ -150,15 +180,14 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 
 			this.$telemetry.page(this.$route);
 		},
-		authenticate() {
+		async authenticate() {
 			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
+			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
 
-				this.$router.replace({ name: VIEWS.SETUP });
-				return;
+				return this.$router.replace({ name: VIEWS.SETUP });
 			}
 
 			if (this.canUserAccessCurrentRoute()) {
@@ -171,8 +200,7 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-				return;
+				return this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 			}
 
 			// if cannot access page and is logged in, respect signin redirect
@@ -180,22 +208,23 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					this.$router.replace(redirect);
-					return;
+					return this.$router.replace(redirect);
 				}
 			}
 
 			// if cannot access page and is logged in
-			this.$router.replace({ name: VIEWS.HOMEPAGE });
+			return this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
-		redirectIfNecessary() {
+		async redirectIfNecessary() {
 			const redirect =
 				this.$route.meta &&
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
+
 			if (redirect) {
-				this.$router.replace(redirect);
+				return this.$router.replace(redirect);
 			}
+			return;
 		},
 		setTheme() {
 			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
@@ -203,33 +232,87 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
+		async checkForCloudPlanData(): Promise<void> {
+			try {
+				await this.cloudPlanStore.getOwnerCurrentPlan();
+				if (!this.cloudPlanStore.userIsTrialing) return;
+				await this.cloudPlanStore.getInstanceCurrentUsage();
+				this.startPollingInstanceUsageData();
+			} catch {}
+		},
+		startPollingInstanceUsageData() {
+			const interval = setInterval(async () => {
+				try {
+					await this.cloudPlanStore.getInstanceCurrentUsage();
+					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
+						clearTimeout(interval);
+						return;
+					}
+				} catch {}
+			}, CLOUD_TRIAL_CHECK_INTERVAL);
+		},
+		async initBanners(): Promise<void> {
+			if (this.cloudPlanStore.userIsTrialing) {
+				await this.uiStore.dismissBanner('V1', 'temporary');
+				if (this.cloudPlanStore.trialExpired) {
+					this.uiStore.showBanner('TRIAL_OVER');
+				} else {
+					this.uiStore.showBanner('TRIAL');
+				}
+			}
+		},
+		async postAuthenticate() {
+			if (this.postAuthenticateDone) {
+				return;
+			}
+
+			if (!this.usersStore.currentUser) {
+				return;
+			}
+
+			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
+				await this.sourceControlStore.getPreferences();
+			}
+
+			this.postAuthenticateDone = true;
+		},
 	},
-	async mounted() {
+	async created() {
 		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
-		this.authenticate();
-		this.redirectIfNecessary();
-		this.checkForNewVersions();
+		await this.authenticate();
+		await this.redirectIfNecessary();
+		void this.checkForNewVersions();
+		await this.checkForCloudPlanData();
+		await this.initBanners();
+
+		void this.checkForCloudPlanData();
+		void this.postAuthenticate();
 
 		this.loading = false;
 
 		this.trackPage();
-		this.$externalHooks().run('app.mount');
+		void this.externalHooks.run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
 		}
 	},
 	watch: {
-		$route(route) {
-			this.authenticate();
-			this.redirectIfNecessary();
+		'usersStore.currentUser'(currentValue, previousValue) {
+			if (currentValue && !previousValue) {
+				void this.postAuthenticate();
+			}
+		},
+		async $route(route) {
+			await this.initSettings();
+			await this.redirectIfNecessary();
 
 			this.trackPage();
 		},
 		defaultLocale(newLocale) {
-			loadLanguage(newLocale);
+			void loadLanguage(newLocale);
 		},
 	},
 });
@@ -244,29 +327,41 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 .container {
 	display: grid;
 	grid-template-areas:
+		'banners banners'
 		'sidebar header'
 		'sidebar content';
 	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-	grid-template-rows: fit-content($sidebar-width) 1fr;
+	grid-template-rows: auto fit-content($header-height) 1fr;
+	height: 100vh;
+}
+
+.banners {
+	grid-area: banners;
+	z-index: 999;
 }
 
 .content {
 	display: flex;
 	grid-area: content;
 	overflow: auto;
-	height: 100vh;
+	height: 100%;
 	width: 100%;
 	justify-content: center;
+
+	main {
+		width: 100%;
+		height: 100%;
+	}
 }
 
 .header {
 	grid-area: header;
-	z-index: 999;
+	z-index: 99;
 }
 
 .sidebar {
 	grid-area: sidebar;
-	height: 100vh;
+	height: 100%;
 	z-index: 999;
 }
 </style>

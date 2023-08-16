@@ -5,11 +5,12 @@
 </template>
 
 <script lang="ts">
-import { useNDVStore } from '@/stores/ndv';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import Vue, { PropType } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,
@@ -22,9 +23,7 @@ export default Vue.extend({
 		},
 		stickyOffset: {
 			type: Array as PropType<number[]>,
-			default() {
-				return [0, 0];
-			},
+			default: () => [0, 0],
 		},
 	},
 	data() {
@@ -36,7 +35,7 @@ export default Vue.extend({
 		window.addEventListener('mousemove', this.onMouseMove);
 		window.addEventListener('mouseup', this.onMouseUp);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('mousemove', this.onMouseMove);
 		window.removeEventListener('mouseup', this.onMouseUp);
 	},
@@ -57,10 +56,10 @@ export default Vue.extend({
 	},
 	methods: {
 		onMouseMove(e: MouseEvent) {
-			const target = this.$refs.target as HTMLElement;
+			const targetRef = this.$refs.target as HTMLElement | undefined;
 
-			if (target && this.isDragging) {
-				const dim = target.getBoundingClientRect();
+			if (targetRef && this.isDragging) {
+				const dim = targetRef.getBoundingClientRect();
 
 				this.hovering =
 					e.clientX >= dim.left &&

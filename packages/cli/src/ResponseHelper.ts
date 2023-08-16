@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
@@ -70,8 +69,8 @@ export class ConflictError extends ResponseError {
 }
 
 export class UnprocessableRequestError extends ResponseError {
-	constructor(message: string) {
-		super(message, 422);
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 422, 422, hint);
 	}
 }
 
@@ -85,17 +84,6 @@ export class ServiceUnavailableError extends ResponseError {
 	constructor(message: string, errorCode = 503) {
 		super(message, 503, errorCode);
 	}
-}
-
-export function basicAuthAuthorizationError(resp: Response, realm: string, message?: string) {
-	resp.statusCode = 401;
-	resp.setHeader('WWW-Authenticate', `Basic realm="${realm}"`);
-	resp.json({ code: resp.statusCode, message });
-}
-
-export function jwtAuthAuthorizationError(resp: Response, message?: string) {
-	resp.statusCode = 403;
-	resp.json({ code: resp.statusCode, message });
 }
 
 export function sendSuccessResponse(
@@ -171,8 +159,14 @@ export function sendErrorResponse(res: Response, error: Error) {
 	res.status(httpStatusCode).json(response);
 }
 
-const isUniqueConstraintError = (error: Error) =>
+export const isUniqueConstraintError = (error: Error) =>
 	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+
+export function reportError(error: Error) {
+	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+		ErrorReporter.error(error);
+	}
+}
 
 /**
  * A helper function which does not just allow to return Promises it also makes sure that
@@ -193,9 +187,7 @@ export function send<T, R extends Request, S extends Response>(
 			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error) {
-				if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
-					ErrorReporter.error(error);
-				}
+				reportError(error);
 
 				if (isUniqueConstraintError(error)) {
 					error.message = 'There is already an entry with this name';
@@ -215,6 +207,7 @@ export function send<T, R extends Request, S extends Response>(
  *
  * @param {IExecutionDb} fullExecutionData The data to flatten
  */
+// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
 export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutionFlatted {
 	// Flatten the data
 	const returnData: IExecutionFlatted = {
@@ -226,7 +219,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 		stoppedAt: fullExecutionData.stoppedAt,
 		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 		workflowId: fullExecutionData.workflowId,
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 		workflowData: fullExecutionData.workflowData!,
 		status: fullExecutionData.status,
 	};
@@ -251,6 +244,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
  *
  * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
  */
+// TODO: Remove this functions since it's purpose should be fulfilled by the execution repository
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
 		id: fullExecutionData.id,

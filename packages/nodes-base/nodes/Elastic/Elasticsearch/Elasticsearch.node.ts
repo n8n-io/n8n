@@ -13,7 +13,7 @@ import { documentFields, documentOperations, indexFields, indexOperations } from
 
 import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
-import omit from 'lodash.omit';
+import omit from 'lodash/omit';
 
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {

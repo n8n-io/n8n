@@ -2,11 +2,10 @@ import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
 import { Role } from './Role';
-import { AbstractEntity } from './AbstractEntity';
-import { idStringifier } from '../utils/transformers';
+import { WithTimestamps } from './AbstractEntity';
 
 @Entity()
-export class SharedCredentials extends AbstractEntity {
+export class SharedCredentials extends WithTimestamps {
 	@ManyToOne('Role', 'sharedCredentials', { nullable: false })
 	role: Role;
 
@@ -22,6 +21,6 @@ export class SharedCredentials extends AbstractEntity {
 	@ManyToOne('CredentialsEntity', 'shared')
 	credentials: CredentialsEntity;
 
-	@PrimaryColumn({ transformer: idStringifier })
+	@PrimaryColumn()
 	credentialsId: string;
 }

@@ -1,16 +1,16 @@
 <template>
-	<div ref="htmlEditor" class="ph-no-capture"></div>
+	<div ref="htmlEditor"></div>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import prettier from 'prettier/standalone';
 import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
 import jsParser from 'prettier/parser-babel';
 import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, insertNewlineAndIndent, history } from '@codemirror/commands';
+import { indentWithTab, insertNewlineAndIndent, history, redo } from '@codemirror/commands';
 import {
 	bracketMatching,
 	ensureSyntaxTree,
@@ -18,7 +18,9 @@ import {
 	indentOnInput,
 	LanguageSupport,
 } from '@codemirror/language';
-import { EditorState, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	dropCursor,
 	EditorView,
@@ -26,22 +28,22 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
 
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
+import { htmlEditorEventBus } from '@/event-bus';
 import { expressionManager } from '@/mixins/expressionManager';
 import { theme } from './theme';
 import { nonTakenRanges } from './utils';
 import type { Range, Section } from './types';
 
-export default mixins(expressionManager).extend({
+export default defineComponent({
 	name: 'HtmlEditor',
+	mixins: [expressionManager],
 	props: {
-		html: {
+		modelValue: {
 			type: String,
 			required: true,
 		},
@@ -86,7 +88,11 @@ export default mixins(expressionManager).extend({
 				this.disableExpressionCompletions ? html() : htmlWithCompletions(),
 				autoCloseTags,
 				expressionInputHandler(),
-				keymap.of([indentWithTab, { key: 'Enter', run: insertNewlineAndIndent }]),
+				keymap.of([
+					indentWithTab,
+					{ key: 'Enter', run: insertNewlineAndIndent },
+					{ key: 'Mod-Shift-z', run: redo },
+				]),
 				indentOnInput(),
 				theme,
 				lineNumbers(),
@@ -100,10 +106,13 @@ export default mixins(expressionManager).extend({
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
 
+					this.editorState = this.editor.state;
+
 					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
 					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 
-					this.$emit('valueChanged', this.doc);
+					// eslint-disable-next-line @typescript-eslint/no-base-to-string
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
 				}),
 			];
 		},
@@ -165,11 +174,12 @@ export default mixins(expressionManager).extend({
 
 	methods: {
 		root() {
-			const root = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			const rootRef = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			if (!rootRef) {
+				throw new Error('Expected div with ref "htmlEditor"');
+			}
 
-			if (!root) throw new Error('Expected div with ref "htmlEditor"');
-
-			return root;
+			return rootRef;
 		},
 
 		isMissingHtmlTags() {
@@ -252,23 +262,24 @@ export default mixins(expressionManager).extend({
 	},
 
 	mounted() {
-		htmlEditorEventBus.$on('format-html', this.format);
+		htmlEditorEventBus.on('format-html', this.format);
 
-		let doc = this.html;
+		let doc = this.modelValue;
 
-		if (this.html === '' && this.rows > 0) {
+		if (this.modelValue === '' && this.rows > 0) {
 			doc = '\n'.repeat(this.rows - 1);
 		}
 
 		const state = EditorState.create({ doc, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.root(), state });
+		this.editorState = this.editor.state;
 
 		this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
 	},
 
-	destroyed() {
-		htmlEditorEventBus.$off('format-html', this.format);
+	beforeUnmount() {
+		htmlEditorEventBus.off('format-html', this.format);
 	},
 });
 </script>

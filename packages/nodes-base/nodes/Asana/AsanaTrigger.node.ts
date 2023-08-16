@@ -99,7 +99,7 @@ export class AsanaTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available workspaces to display them to user so that he can
+			// Get all the available workspaces to display them to user so that they can
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workspaces = await getWorkspaces.call(this);
@@ -112,7 +112,6 @@ export class AsanaTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

@@ -58,7 +58,8 @@ export async function microsoftApiRequestAllItems(
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData['@odata.nextLink'] !== undefined);

@@ -1,28 +1,29 @@
-import express from 'express';
 import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
-import * as utils from './shared/utils';
+import { v4 as uuid } from 'uuid';
+import type { SuperAgentTest } from 'supertest';
+import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
-import { Role } from '@db/entities/Role';
-import { User } from '@db/entities/User';
-import {
-	defaultMessageEventBusDestinationSentryOptions,
-	defaultMessageEventBusDestinationSyslogOptions,
-	defaultMessageEventBusDestinationWebhookOptions,
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
+import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
+import {
+	defaultMessageEventBusDestinationSentryOptions,
+	defaultMessageEventBusDestinationSyslogOptions,
+	defaultMessageEventBusDestinationWebhookOptions,
+} from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
-import { SuperAgentTest } from 'supertest';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import type { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
-import { v4 as uuid } from 'uuid';
-import { EventNamesTypes } from '../../src/eventbus/EventMessageClasses';
+import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -30,10 +31,8 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
-let app: express.Application;
 let globalOwnerRole: Role;
 let owner: User;
-let unAuthOwnerAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
 
 const testSyslogDestination: MessageEventBusDestinationSyslogOptions = {
@@ -49,11 +48,12 @@ const testWebhookDestination: MessageEventBusDestinationWebhookOptions = {
 	...defaultMessageEventBusDestinationWebhookOptions,
 	id: '88be6560-bfb4-455c-8aa1-06971e9e5522',
 	url: 'http://localhost:3456',
-	method: `POST`,
+	method: 'POST',
 	label: 'Test Webhook',
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
+
 const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	...defaultMessageEventBusDestinationSentryOptions,
 	id: '450ca04b-87dd-4837-a052-ab3a347a00e9',
@@ -75,44 +75,27 @@ async function confirmIdSent(id: string) {
 	expect(sent.find((msg) => msg.id === id)).toBeTruthy();
 }
 
-beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['eventBus'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['eventBus'],
+	enabledFeatures: ['feat:logStreaming'],
+});
 
+beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	unAuthOwnerAgent = utils.createAgent(app, {
-		apiPath: 'internal',
-		auth: false,
-		user: owner,
-		version: 1,
-	});
-
-	authOwnerAgent = utils.createAgent(app, {
-		apiPath: 'internal',
-		auth: true,
-		user: owner,
-		version: 1,
-	});
+	authOwnerAgent = testServer.authAgentFor(owner);
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
-	utils.initConfigFile();
+	await utils.initEncryptionKey();
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
-	config.set('eventBus.logWriter.keepLogCount', '1');
-	config.set('enterprise.features.logStreaming', true);
+	config.set('eventBus.logWriter.keepLogCount', 1);
 
 	await eventBus.initialize();
 });
 
-beforeEach(async () => {
-	config.set('userManagement.disabled', false);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
-});
-
 afterAll(async () => {
 	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
-	await testDb.terminate();
 	await eventBus.close();
 });
 
@@ -137,50 +120,56 @@ test('should have logwriter log messages', async () => {
 	});
 });
 
-test('GET /eventbus/destination should fail due to missing authentication', async () => {
-	const response = await unAuthOwnerAgent.get('/eventbus/destination');
-	expect(response.statusCode).toBe(401);
+describe('GET /eventbus/destination', () => {
+	test('should fail due to missing authentication', async () => {
+		const response = await testServer.authlessAgent.get('/eventbus/destination');
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('all returned destinations should exist in eventbus', async () => {
+		const response = await authOwnerAgent.get('/eventbus/destination');
+		expect(response.statusCode).toBe(200);
+
+		const data = response.body.data;
+		expect(data).toBeTruthy();
+		expect(Array.isArray(data)).toBeTruthy();
+
+		for (let index = 0; index < data.length; index++) {
+			const destination = data[index];
+			const foundDestinations = await eventBus.findDestination(destination.id);
+			expect(Array.isArray(foundDestinations)).toBeTruthy();
+			expect(foundDestinations.length).toBe(1);
+			expect(foundDestinations[0].label).toBe(destination.label);
+		}
+	});
 });
 
-test('POST /eventbus/destination create syslog destination', async () => {
-	const response = await authOwnerAgent.post('/eventbus/destination').send(testSyslogDestination);
-	expect(response.statusCode).toBe(200);
-});
+describe('POST /eventbus/destination', () => {
+	test('create syslog destination', async () => {
+		const response = await authOwnerAgent.post('/eventbus/destination').send(testSyslogDestination);
+		expect(response.statusCode).toBe(200);
+	});
 
-test('POST /eventbus/destination create sentry destination', async () => {
-	const response = await authOwnerAgent.post('/eventbus/destination').send(testSentryDestination);
-	expect(response.statusCode).toBe(200);
-});
+	test('create sentry destination', async () => {
+		const response = await authOwnerAgent.post('/eventbus/destination').send(testSentryDestination);
+		expect(response.statusCode).toBe(200);
+	});
 
-test('POST /eventbus/destination create webhook destination', async () => {
-	const response = await authOwnerAgent.post('/eventbus/destination').send(testWebhookDestination);
-	expect(response.statusCode).toBe(200);
-});
-
-test('GET /eventbus/destination all returned destinations should exist in eventbus', async () => {
-	const response = await authOwnerAgent.get('/eventbus/destination');
-	expect(response.statusCode).toBe(200);
-
-	const data = response.body.data;
-	expect(data).toBeTruthy();
-	expect(Array.isArray(data)).toBeTruthy();
-
-	for (let index = 0; index < data.length; index++) {
-		const destination = data[index];
-		const foundDestinations = await eventBus.findDestination(destination.id);
-		expect(Array.isArray(foundDestinations)).toBeTruthy();
-		expect(foundDestinations.length).toBe(1);
-		expect(foundDestinations[0].label).toBe(destination.label);
-	}
+	test('create webhook destination', async () => {
+		const response = await authOwnerAgent
+			.post('/eventbus/destination')
+			.send(testWebhookDestination);
+		expect(response.statusCode).toBe(200);
+	});
 });
 
 // this test (presumably the mocking) is causing the test suite to randomly fail
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test.skip('should send message to syslog', async () => {
 	const testMessage = new EventMessageGeneric({
 		eventName: 'n8n.test.message' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -216,12 +205,12 @@ test.skip('should send message to syslog', async () => {
 	});
 });
 
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test.skip('should confirm send message if there are no subscribers', async () => {
 	const testMessageUnsubscribed = new EventMessageGeneric({
 		eventName: 'n8n.test.unsub' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -257,7 +246,6 @@ test('should anonymize audit message to syslog ', async () => {
 		},
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -319,7 +307,6 @@ test('should send message to webhook ', async () => {
 		eventName: 'n8n.test.message' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const webhookDestination = eventBus.destinations[
 		testWebhookDestination.id!
@@ -354,7 +341,6 @@ test('should send message to sentry ', async () => {
 		eventName: 'n8n.test.message' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const sentryDestination = eventBus.destinations[
 		testSentryDestination.id!
@@ -390,7 +376,7 @@ test('should send message to sentry ', async () => {
 	});
 });
 
-test('DEL /eventbus/destination delete all destinations by id', async () => {
+test('DELETE /eventbus/destination delete all destinations by id', async () => {
 	const existingDestinationIds = [...Object.keys(eventBus.destinations)];
 
 	await Promise.all(

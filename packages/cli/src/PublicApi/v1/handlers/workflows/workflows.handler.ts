@@ -1,6 +1,6 @@
 import type express from 'express';
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -11,24 +11,21 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
 	setWorkflowAsActive,
 	setWorkflowAsInactive,
 	updateWorkflow,
-	hasStartNode,
-	getStartNode,
-	getWorkflows,
 	getSharedWorkflows,
-	getWorkflowsCount,
 	createWorkflow,
 	getWorkflowIdsViaTags,
 	parseTagNames,
+	getWorkflowsAndCount,
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
 
 export = {
 	createWorkflow: [
@@ -38,15 +35,11 @@ export = {
 
 			workflow.active = false;
 
-			if (!hasStartNode(workflow)) {
-				workflow.nodes.push(getStartNode());
-			}
-
 			await replaceInvalidCredentials(workflow);
 
 			addNodeIds(workflow);
 
-			const role = await getWorkflowOwnerRole();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
@@ -63,7 +56,7 @@ export = {
 
 			const workflow = await WorkflowsService.delete(req.user, workflowId);
 			if (!workflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -79,7 +72,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -98,28 +91,15 @@ export = {
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
 
-			let workflows: WorkflowEntity[];
-			let count: number;
-
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
 			};
-			const query: FindManyOptions<WorkflowEntity> = {
-				skip: offset,
-				take: limit,
-				where,
-				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
-			};
 
-			if (isInstanceOwner(req.user)) {
+			if (req.user.isOwner) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
-					Object.assign(where, { id: In(workflowIds) });
+					where.id = In(workflowIds);
 				}
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
 			} else {
 				const options: { workflowIds?: string[] } = {};
 
@@ -137,13 +117,15 @@ export = {
 				}
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
-
-				Object.assign(where, { id: In(workflowsIds) });
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
+				where.id = In(workflowsIds);
 			}
+
+			const [workflows, count] = await getWorkflowsAndCount({
+				skip: offset,
+				take: limit,
+				where,
+				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
+			});
 
 			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
@@ -166,17 +148,14 @@ export = {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
+			updateData.id = id;
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
-			}
-
-			if (!hasStartNode(updateData)) {
-				updateData.nodes.push(getStartNode());
 			}
 
 			await replaceInvalidCredentials(updateData);
@@ -224,7 +203,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -258,7 +237,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}

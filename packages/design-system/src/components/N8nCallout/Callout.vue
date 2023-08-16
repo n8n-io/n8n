@@ -1,8 +1,8 @@
 <template>
 	<div :class="classes" role="alert">
-		<div :class="$style['message-section']">
-			<div :class="$style.icon">
-				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
+		<div :class="$style.messageSection">
+			<div :class="$style.icon" v-if="!iconless">
+				<n8n-icon :icon="getIcon" :size="getIconSize" />
 			</div>
 			<n8n-text size="small">
 				<slot />
@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 
@@ -27,7 +27,7 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	danger: 'times-circle',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-callout',
 	components: {
 		N8nText,
@@ -42,19 +42,43 @@ export default Vue.extend({
 		},
 		icon: {
 			type: String,
-			default: 'info-circle',
+		},
+		iconSize: {
+			type: String,
+			default: 'medium',
+		},
+		iconless: {
+			type: Boolean,
+		},
+		slim: {
+			type: Boolean,
+		},
+		roundCorners: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	computed: {
 		classes(): string[] {
-			return ['n8n-callout', this.$style.callout, this.$style[this.theme]];
+			return [
+				'n8n-callout',
+				this.$style.callout,
+				this.$style[this.theme],
+				this.slim ? this.$style.slim : '',
+				this.roundCorners ? this.$style.round : '',
+			];
 		},
 		getIcon(): string {
-			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
-				return CALLOUT_DEFAULT_ICONS[this.theme];
+			return this.icon ?? CALLOUT_DEFAULT_ICONS?.[this.theme] ?? CALLOUT_DEFAULT_ICONS.info;
+		},
+		getIconSize(): string {
+			if (this.iconSize) {
+				return this.iconSize;
 			}
-
-			return this.icon;
+			if (this.theme === 'secondary') {
+				return 'medium';
+			}
+			return 'large';
 		},
 	},
 });
@@ -67,12 +91,20 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) var(--border-style-base);
-	border-radius: var(--border-radius-base);
 	align-items: center;
 	line-height: var(--font-line-height-loose);
+
+	&.slim {
+		line-height: var(--font-line-height-loose);
+		padding: var(--spacing-3xs) var(--spacing-2xs);
+	}
 }
 
-.message-section {
+.round {
+	border-radius: var(--border-radius-base);
+}
+
+.messageSection {
 	display: flex;
 	align-items: center;
 }
@@ -80,7 +112,7 @@ export default Vue.extend({
 .info,
 .custom {
 	border-color: var(--color-foreground-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color-foreground-xlight);
 	color: var(--color-info);
 }
 
@@ -103,7 +135,8 @@ export default Vue.extend({
 }
 
 .icon {
-	margin-right: var(--spacing-xs);
+	line-height: 1;
+	margin-right: var(--spacing-2xs);
 }
 
 .secondary {

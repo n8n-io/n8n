@@ -1,14 +1,9 @@
-// The Vue build version to load with the `import` command
-// (runtime-only or standalone) has been set in webpack.base.conf with an alias.
-import Vue from 'vue';
+import { createApp } from 'vue';
 
-import './plugins';
-import 'prismjs';
-import 'prismjs/themes/prism.css';
-import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
+
 import './n8n-theme.scss';
 import './styles/autocomplete-theme.scss';
 
@@ -19,29 +14,33 @@ import '@fontsource/open-sans/latin-700.css';
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from '@/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
+import { GlobalComponentsPlugin } from './plugins/components';
+import { GlobalDirectivesPlugin } from './plugins/directives';
+import { FontAwesomePlugin } from './plugins/icons';
 
+import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
-
-Vue.config.productionTip = false;
-
-Vue.use(TelemetryPlugin);
-Vue.use((vue) => I18nPlugin(vue));
-Vue.use(PiniaVuePlugin);
 
 const pinia = createPinia();
 
-new Vue({
-	i18n: i18nInstance,
-	router,
-	pinia,
-	render: (h) => h(App),
-}).$mount('#app');
+const app = createApp(App);
+
+app.use(TelemetryPlugin);
+app.use(PiniaVuePlugin);
+app.use(I18nPlugin);
+app.use(FontAwesomePlugin);
+app.use(GlobalComponentsPlugin);
+app.use(GlobalDirectivesPlugin);
+app.use(pinia);
+app.use(router);
+app.use(i18nInstance);
+
+app.mount('#app');
 
 router.afterEach((to, from) => {
-	runExternalHook('main.routeChange', { from, to });
+	void runExternalHook('main.routeChange', { from, to });
 });
 
 if (!import.meta.env.PROD) {
@@ -53,8 +52,8 @@ if (!import.meta.env.PROD) {
 			// not do anything about it anyway
 			return;
 		}
-		console.error('error caught in main.ts'); // eslint-disable-line no-console
-		console.error(message); // eslint-disable-line no-console
-		console.error(error); // eslint-disable-line no-console
+		console.error('error caught in main.ts');
+		console.error(message);
+		console.error(error);
 	};
 }

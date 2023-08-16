@@ -3,32 +3,19 @@ import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import {
-	Column,
-	Entity,
-	Generated,
-	Index,
-	JoinColumn,
-	JoinTable,
-	ManyToMany,
-	OneToMany,
-	PrimaryColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 
 import config from '@/config';
 import type { TagEntity } from './TagEntity';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { WorkflowStatistics } from './WorkflowStatistics';
-import { idStringifier, objectRetriever, sqlite } from '../utils/transformers';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import type { WorkflowTagMapping } from './WorkflowTagMapping';
+import { objectRetriever, sqlite } from '../utils/transformers';
+import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
-export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
-	@Generated()
-	@PrimaryColumn({ transformer: idStringifier })
-	id: string;
-
+export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
 	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {
@@ -72,6 +59,9 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 		},
 	})
 	tags?: TagEntity[];
+
+	@OneToMany('WorkflowTagMapping', 'workflows')
+	tagMappings: WorkflowTagMapping[];
 
 	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];

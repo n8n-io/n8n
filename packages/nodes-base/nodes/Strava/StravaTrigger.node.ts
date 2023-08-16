@@ -119,7 +119,6 @@ export class StravaTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -271,7 +270,7 @@ export class StravaTrigger implements INodeType {
 			return {};
 		}
 
-		if (resolveData) {
+		if (resolveData && body.aspect_type !== 'delete') {
 			let endpoint = `/athletes/${body.object_id}/stats`;
 			if (body.object_type === 'activity') {
 				endpoint = `/activities/${body.object_id}`;

@@ -1,4 +1,4 @@
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
 export function compileFakeDoorFeatures() {
 	const store = useUIStore();

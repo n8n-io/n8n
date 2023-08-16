@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/naming-convention */
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
@@ -152,8 +150,6 @@ export function matchMissingPackages(
 		try {
 			const parsedPackageData = parseNpmPackageName(missingPackageName);
 			return parsedPackageData.packageName;
-
-			// eslint-disable-next-line no-empty
 		} catch {}
 		return undefined;
 	});
@@ -207,7 +203,7 @@ export function hasPackageLoaded(packageName: string): boolean {
 
 export function removePackageFromMissingList(packageName: string): void {
 	try {
-		const failedPackages = (config.get('nodes.packagesMissing') as string).split(' ');
+		const failedPackages = config.get('nodes.packagesMissing').split(' ');
 
 		const packageFailedToLoad = failedPackages.filter(
 			(packageNameAndVersion) =>
@@ -216,7 +212,7 @@ export function removePackageFromMissingList(packageName: string): void {
 		);
 
 		config.set('nodes.packagesMissing', packageFailedToLoad.join(' '));
-	} catch (_error) {
+	} catch {
 		// Do nothing
 	}
 }

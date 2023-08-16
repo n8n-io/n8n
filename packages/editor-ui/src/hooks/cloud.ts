@@ -13,18 +13,18 @@ import {
 	getNodeEditingFinishedEventData,
 	getExecutionStartedEventData,
 } from '@/hooks/segment';
-import { useNDVStore } from '@/stores/ndv';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	hooksGenerateNodesPanelEvent,
 	hooksResetNodesPanelSession,
 	nodesPanelSession,
 } from '@/hooks/utils/hooksNodesPanel';
-import { ExternalHooks } from '@/mixins/externalHooks';
-import { useSegment } from '@/stores/segment';
-import { PartialDeep } from 'type-fest';
-import { IDataObject } from 'n8n-workflow';
-import { INodeUi } from '@/Interface';
+import type { ExternalHooks } from '@/mixins/externalHooks';
+import { useSegment } from '@/stores/segment.store';
+import type { PartialDeep } from 'type-fest';
+import type { IDataObject } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 
 export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	parameterInput: {
@@ -39,7 +39,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 					(meta.parameter.name === 'resource' || meta.parameter.name === 'operation')
 				) {
 					const inputField = meta.inputFieldRef.$el.querySelector('input');
-					if (inputField && inputField.classList && inputField.classList.value) {
+					if (inputField?.classList?.value) {
 						inputField.classList.value = inputField.classList.value + ' data-hj-allow';
 					}
 				}

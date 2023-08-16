@@ -1,23 +1,11 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class IntroducePinData1654090101303 implements MigrationInterface {
-	name = 'IntroducePinData1654090101303';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class IntroducePinData1654090101303 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD \`pinData\` json`);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN \`pinData\``,
 		);

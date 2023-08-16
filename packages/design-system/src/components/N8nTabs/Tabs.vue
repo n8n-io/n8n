@@ -34,7 +34,7 @@
 
 					<div
 						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
+						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
 						@click="() => handleTabClick(option.value)"
 					>
 						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
@@ -47,10 +47,20 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 
-export default Vue.extend({
+export interface N8nTabOptions {
+	value: string;
+	label?: string;
+	icon?: string;
+	href?: string;
+	tooltip?: string;
+	align?: 'left' | 'right';
+}
+
+export default defineComponent({
 	name: 'N8nTabs',
 	components: {
 		N8nIcon,
@@ -78,7 +88,7 @@ export default Vue.extend({
 			this.canScrollRight = scrollWidth - width > this.scrollPosition;
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.resizeObserver) {
 			this.resizeObserver.disconnect();
 		}
@@ -91,15 +101,21 @@ export default Vue.extend({
 		};
 	},
 	props: {
-		value: {},
-		options: {},
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		options: {
+			type: Array as PropType<N8nTabOptions[]>,
+			default: (): N8nTabOptions[] => [],
+		},
 	},
 	methods: {
 		handleTooltipClick(tab: string, event: MouseEvent) {
 			this.$emit('tooltipClick', tab, event);
 		},
 		handleTabClick(tab: string) {
-			this.$emit('input', tab);
+			this.$emit('update:modelValue', tab);
 		},
 		scrollLeft() {
 			this.scroll(-50);

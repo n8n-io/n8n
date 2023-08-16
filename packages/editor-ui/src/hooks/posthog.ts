@@ -1,10 +1,10 @@
-import { usePostHog } from '@/stores/posthog';
+import { usePostHog } from '@/stores/posthog.store';
 import {
 	hooksGetPosthogAppendNoCaptureClasses,
 	hooksPosthogSetMetadata,
 } from '@/hooks/posthog/index';
-import { ExternalHooks } from '@/mixins/externalHooks';
-import { PartialDeep } from 'type-fest';
+import type { ExternalHooks } from '@/mixins/externalHooks';
+import type { PartialDeep } from 'type-fest';
 
 const postHogUserNodesPanelSession = {
 	sessionId: '',

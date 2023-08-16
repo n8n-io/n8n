@@ -1,4 +1,4 @@
-import { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 export interface TelemetryEventData {
 	eventName: string;

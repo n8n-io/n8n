@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-// eslint-disable-next-line max-classes-per-file
+
 import { parseString } from 'xml2js';
+import { removeCircularRefs, isTraversableObject } from './utils';
 import type { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
 
 /**
@@ -56,8 +51,78 @@ const ERROR_STATUS_PROPERTIES = [
  */
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
+/**
+ * Descriptive messages for common errors.
+ */
+const COMMON_ERRORS: IDataObject = {
+	// nodeJS errors
+	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
+	ECONNRESET:
+		'The connection to the server wes closed unexpectedly, perhaps it is offline. You can retry request immidiately or wait and retry later.',
+	ENOTFOUND:
+		'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+	ETIMEDOUT:
+		"The connection timed out, consider setting 'Retry on Fail' option in the node settings",
+	ERRADDRINUSE:
+		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
+	EADDRNOTAVAIL: 'The address is not available, ensure that you have the right IP address',
+	ECONNABORTED: 'The connection was aborted, perhaps the server is offline',
+	EHOSTUNREACH: 'The host is unreachable, perhaps the server is offline',
+	EAI_AGAIN: 'The DNS server returned an error, perhaps the server is offline',
+	ENOENT: 'The file or directory does not exist',
+	EISDIR: 'The file path expected but a given path is a directory',
+	ENOTDIR: 'The directory path expected but a given path is a file',
+	EACCES: 'Forbidden by access permissions, make sure you have the right permissions',
+	EEXIST: 'The file or directory already exists',
+	EPERM: 'Operation not permitted, make sure you have the right permissions',
+	// other errors
+	GETADDRINFO: 'The server closed the connection unexpectedly',
+};
+
+/**
+ * Descriptive messages for common HTTP status codes
+ * this is used by NodeApiError class
+ */
+const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
+	'4XX': 'Your request is invalid or could not be processed by the service',
+	'400': 'Bad request - please check your parameters',
+	'401': 'Authorization failed - please check your credentials',
+	'402': 'Payment required - perhaps check your payment details?',
+	'403': 'Forbidden - perhaps check your credentials?',
+	'404': 'The resource you are requesting could not be found',
+	'405': 'Method not allowed - please check you are using the right HTTP method',
+	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
+
+	'5XX': 'The service failed to process your request',
+	'500': 'The service was not able to process your request',
+	'502': 'Bad gateway - the service failed to handle your request',
+	'503':
+		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
+	'504': 'Gateway timed out - perhaps try again later?',
+};
+
+const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
+const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
+
+type Severity = 'warning' | 'error';
+
 interface ExecutionBaseErrorOptions {
 	cause?: Error | JsonObject;
+}
+
+interface NodeOperationErrorOptions {
+	message?: string;
+	description?: string;
+	runIndex?: number;
+	itemIndex?: number;
+	severity?: Severity;
+	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
+}
+
+interface NodeApiErrorOptions extends NodeOperationErrorOptions {
+	message?: string;
+	httpCode?: string;
+	parseXml?: boolean;
 }
 
 export abstract class ExecutionBaseError extends Error {
@@ -103,8 +168,10 @@ export abstract class ExecutionBaseError extends Error {
  * Base class for specific NodeError-types, with functionality for finding
  * a value recursively inside an error object.
  */
-abstract class NodeError extends ExecutionBaseError {
+export abstract class NodeError extends ExecutionBaseError {
 	node: INode;
+
+	severity: Severity = 'error';
 
 	constructor(node: INode, error: Error | JsonObject) {
 		const message = error instanceof Error ? error.message : '';
@@ -141,7 +208,6 @@ abstract class NodeError extends ExecutionBaseError {
 		potentialKeys: string[],
 		traversalKeys: string[] = [],
 	): string | null {
-		// eslint-disable-next-line no-restricted-syntax
 		for (const key of potentialKeys) {
 			const value = jsonError[key];
 			if (value) {
@@ -149,10 +215,11 @@ abstract class NodeError extends ExecutionBaseError {
 				if (typeof value === 'number') return value.toString();
 				if (Array.isArray(value)) {
 					const resolvedErrors: string[] = value
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						.map((jsonError) => {
 							if (typeof jsonError === 'string') return jsonError;
 							if (typeof jsonError === 'number') return jsonError.toString();
-							if (this.isTraversableObject(jsonError)) {
+							if (isTraversableObject(jsonError)) {
 								return this.findProperty(jsonError, potentialKeys);
 							}
 							return null;
@@ -164,7 +231,7 @@ abstract class NodeError extends ExecutionBaseError {
 					}
 					return resolvedErrors.join(' | ');
 				}
-				if (this.isTraversableObject(value)) {
+				if (isTraversableObject(value)) {
 					const property = this.findProperty(value, potentialKeys);
 					if (property) {
 						return property;
@@ -173,10 +240,9 @@ abstract class NodeError extends ExecutionBaseError {
 			}
 		}
 
-		// eslint-disable-next-line no-restricted-syntax
 		for (const key of traversalKeys) {
 			const value = jsonError[key];
-			if (this.isTraversableObject(value)) {
+			if (isTraversableObject(value)) {
 				const property = this.findProperty(value, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
@@ -188,52 +254,53 @@ abstract class NodeError extends ExecutionBaseError {
 	}
 
 	/**
-	 * Check if a value is an object with at least one key, i.e. it can be traversed.
+	 * Set descriptive error message if code is provided or if message contains any of the common errors,
+	 * update description to include original message plus the description
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	protected isTraversableObject(value: any): value is JsonObject {
-		return (
-			value &&
-			typeof value === 'object' &&
-			!Array.isArray(value) &&
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			!!Object.keys(value).length
-		);
+	protected setDescriptiveErrorMessage(
+		message: string,
+		description: string | undefined | null,
+		code?: string | null,
+		messageMapping?: { [key: string]: string },
+	) {
+		let newMessage = message;
+		let newDescription = description as string;
+
+		if (messageMapping) {
+			for (const [mapKey, mapMessage] of Object.entries(messageMapping)) {
+				if ((message || '').toUpperCase().includes(mapKey.toUpperCase())) {
+					newMessage = mapMessage;
+					newDescription = this.updateDescription(message, description);
+					break;
+				}
+			}
+			if (newMessage !== message) {
+				return [newMessage, newDescription];
+			}
+		}
+
+		// if code is provided and it is in the list of common errors set the message and return early
+		if (code && COMMON_ERRORS[code.toUpperCase()]) {
+			newMessage = COMMON_ERRORS[code] as string;
+			newDescription = this.updateDescription(message, description);
+			return [newMessage, newDescription];
+		}
+
+		// check if message contains any of the common errors and set the message and description
+		for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
+			if ((message || '').toUpperCase().includes(errorCode.toUpperCase())) {
+				newMessage = errorDescriptiveMessage as string;
+				newDescription = this.updateDescription(message, description);
+				break;
+			}
+		}
+
+		return [newMessage, newDescription];
 	}
 
-	/**
-	 * Remove circular references from objects.
-	 */
-	protected removeCircularRefs(obj: JsonObject, seen = new Set()) {
-		seen.add(obj);
-		Object.entries(obj).forEach(([key, value]) => {
-			if (this.isTraversableObject(value)) {
-				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-				seen.has(value)
-					? (obj[key] = { circularReference: true })
-					: this.removeCircularRefs(value, seen);
-				return;
-			}
-			if (Array.isArray(value)) {
-				value.forEach((val, index) => {
-					if (seen.has(val)) {
-						value[index] = { circularReference: true };
-						return;
-					}
-					if (this.isTraversableObject(val)) {
-						this.removeCircularRefs(val, seen);
-					}
-				});
-			}
-		});
+	protected updateDescription(message: string, description: string | undefined | null) {
+		return `${message}${description ? ` - ${description}` : ''}`;
 	}
-}
-
-interface NodeOperationErrorOptions {
-	message?: string;
-	description?: string;
-	runIndex?: number;
-	itemIndex?: number;
 }
 
 /**
@@ -248,41 +315,23 @@ export class NodeOperationError extends NodeError {
 		}
 		super(node, error);
 
-		if (options.message) {
-			this.message = options.message;
-		}
+		if (options.message) this.message = options.message;
+		if (options.severity) this.severity = options.severity;
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
+
+		if (this.message === this.description) {
+			this.description = undefined;
+		}
+
+		[this.message, this.description] = this.setDescriptiveErrorMessage(
+			this.message,
+			this.description,
+			undefined,
+			options.messageMapping,
+		);
 	}
-}
-
-const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
-	'4XX': 'Your request is invalid or could not be processed by the service',
-	'400': 'Bad request - please check your parameters',
-	'401': 'Authorization failed - please check your credentials',
-	'402': 'Payment required - perhaps check your payment details?',
-	'403': 'Forbidden - perhaps check your credentials?',
-	'404': 'The resource you are requesting could not be found',
-	'405': 'Method not allowed - please check you are using the right HTTP method',
-	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
-
-	'5XX': 'The service failed to process your request',
-	'500': 'The service was not able to process your request',
-	'502': 'Bad gateway - the service failed to handle your request',
-	'503': 'Service unavailable - perhaps try again later?',
-	'504': 'Gateway timed out - perhaps try again later?',
-
-	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
-};
-
-const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
-const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
-
-interface NodeApiErrorOptions extends NodeOperationErrorOptions {
-	message?: string;
-	httpCode?: string;
-	parseXml?: boolean;
 }
 
 /**
@@ -295,53 +344,116 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: JsonObject,
-		{ message, description, httpCode, parseXml, runIndex, itemIndex }: NodeApiErrorOptions = {},
+		{
+			message,
+			description,
+			httpCode,
+			parseXml,
+			runIndex,
+			itemIndex,
+			severity,
+			messageMapping,
+		}: NodeApiErrorOptions = {},
 	) {
 		super(node, error);
+
+		if (severity) this.severity = severity;
+		else if (httpCode?.charAt(0) !== '5') this.severity = 'warning';
+
+		// only for request library error
 		if (error.error) {
-			// only for request library error
-			this.removeCircularRefs(error.error as JsonObject);
+			removeCircularRefs(error.error as JsonObject);
+		}
+
+		// if not description provided, try to find it in the error object
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+		if (!description && (error.description || (error?.reason as IDataObject)?.description)) {
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.description = (error.description ||
+				(error?.reason as IDataObject)?.description) as string;
+		}
+
+		// if not message provided, try to find it in the error object or set description as message
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+		if (!message && (error.message || (error?.reason as IDataObject)?.message || description)) {
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.message = (error.message ||
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				(error?.reason as IDataObject)?.message ||
+				description) as string;
 		}
 
 		// if it's an error generated by axios
 		// look for descriptions in the response object
 		if (error.reason) {
 			const reason: IDataObject = error.reason as unknown as IDataObject;
+
 			if (reason.isAxiosError && reason.response) {
 				error = reason.response as JsonObject;
 			}
 		}
 
+		// set http code of this error
+		if (httpCode) {
+			this.httpCode = httpCode;
+		} else {
+			this.httpCode =
+				this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
+		}
+
+		// set description of this error
+		if (description) {
+			this.description = description;
+		}
+
+		if (!this.description) {
+			if (parseXml) {
+				this.setDescriptionFromXml(error.error as string);
+			} else {
+				this.description = this.findProperty(
+					error,
+					ERROR_MESSAGE_PROPERTIES,
+					ERROR_NESTING_PROPERTIES,
+				);
+			}
+		}
+
+		// set message if provided or set default message based on http code
 		if (message) {
 			this.message = message;
-			this.description = description;
-			this.httpCode = httpCode ?? null;
-			return;
+		} else {
+			this.setDefaultStatusCodeMessage();
 		}
 
-		this.httpCode = this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES);
-		this.setMessage();
-
-		if (parseXml) {
-			this.setDescriptionFromXml(error.error as string);
-			return;
+		// if message and description are the same, unset redundant description
+		if (this.message === this.description) {
+			this.description = undefined;
 		}
 
-		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+		// if message contain common error code set descriptive message and update description
+		[this.message, this.description] = this.setDescriptiveErrorMessage(
+			this.message,
+			this.description,
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.httpCode ||
+				(error?.code as string) ||
+				((error?.reason as JsonObject)?.code as string) ||
+				undefined,
+			messageMapping,
+		);
 
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
 	}
 
 	private setDescriptionFromXml(xml: string) {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
 				result[topLevelKey],
 				ERROR_MESSAGE_PROPERTIES,
 				['Error'].concat(ERROR_NESTING_PROPERTIES),
@@ -351,32 +463,47 @@ export class NodeApiError extends NodeError {
 
 	/**
 	 * Set the error's message based on the HTTP status code.
-	 *
 	 */
-	private setMessage() {
+	private setDefaultStatusCodeMessage() {
+		// Set generic error message for 502 Bad Gateway
+		if (!this.httpCode && this.message && this.message.toLowerCase().includes('bad gateway')) {
+			this.httpCode = '502';
+		}
+
 		if (!this.httpCode) {
 			this.httpCode = null;
-			this.message = UNKNOWN_ERROR_MESSAGE;
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
 			return;
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
+			this.description = this.updateDescription(this.message, this.description);
 			this.message = STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
+				this.description = this.updateDescription(this.message, this.description);
 				this.message = STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
+				this.description = this.updateDescription(this.message, this.description);
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				this.message = UNKNOWN_ERROR_MESSAGE;
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
 		}
 		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
 		}
+	}
+}
+
+export class NodeSSLError extends ExecutionBaseError {
+	constructor(cause: Error) {
+		super("SSL Issue: consider using the 'Ignore SSL issues' option", { cause });
 	}
 }

@@ -14,7 +14,7 @@
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed">
 					<n8n-menu-item
 						v-for="item in upperMenuItems"
 						:key="item.id"
@@ -23,12 +23,13 @@
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
-						@click="onSelect"
+						:handle-select="onSelect"
 					/>
 				</el-menu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
+				<slot name="beforeLowerMenu"></slot>
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
 						:key="item.id"
@@ -37,7 +38,7 @@
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
-						@click="onSelect"
+						:handle-select="onSelect"
 					/>
 				</el-menu>
 				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
@@ -52,13 +53,13 @@
 </template>
 
 <script lang="ts">
-import { Menu as ElMenu } from 'element-ui';
+import { ElMenu } from 'element-plus';
 import N8nMenuItem from '../N8nMenuItem';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { IMenuItem, RouteObject } from '../../types';
 
-import Vue, { PropType } from 'vue';
-import { IMenuItem } from '../../types';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-menu',
 	components: {
 		ElMenu,
@@ -93,9 +94,10 @@ export default Vue.extend({
 		},
 		items: {
 			type: Array as PropType<IMenuItem[]>,
+			default: (): IMenuItem[] => [],
 		},
-		value: {
-			type: String,
+		modelValue: {
+			type: [String, Boolean],
 			default: '',
 		},
 	},
@@ -104,9 +106,9 @@ export default Vue.extend({
 			const found = this.items.find((item) => {
 				return (
 					(Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.$route.name || '')) ||
+						item.activateOnRouteNames.includes(this.currentRoute.name || '')) ||
 					(Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.$route.path))
+						item.activateOnRoutePaths.includes(this.currentRoute.path))
 				);
 			});
 			this.activeTab = found ? found.id : '';
@@ -114,7 +116,7 @@ export default Vue.extend({
 			this.activeTab = this.items.length > 0 ? this.items[0].id : '';
 		}
 
-		this.$emit('input', this.activeTab);
+		this.$emit('update:modelValue', this.activeTab);
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
@@ -127,19 +129,36 @@ export default Vue.extend({
 				(item: IMenuItem) => item.position === 'bottom' && item.available !== false,
 			);
 		},
-	},
-	methods: {
-		onSelect(event: MouseEvent, option: string): void {
-			if (this.mode === 'tabs') {
-				this.activeTab = option;
-			}
-			this.$emit('select', option);
-			this.$emit('input', this.activeTab);
+		currentRoute(): RouteObject {
+			return (
+				(this as typeof this & { $route: RouteObject }).$route || {
+					name: '',
+					path: '',
+				}
+			);
 		},
 	},
-	watch: {
-		value(value: string) {
-			this.activeTab = value;
+	methods: {
+		onSelect(item: IMenuItem): void {
+			if (item && item.type === 'link' && item.properties) {
+				const href: string = item.properties.href;
+				if (!href) {
+					return;
+				}
+
+				if (item.properties.newWindow) {
+					window.open(href);
+				} else {
+					window.location.assign(item.properties.href);
+				}
+			}
+
+			if (this.mode === 'tabs') {
+				this.activeTab = item.id;
+			}
+
+			this.$emit('select', item.id);
+			this.$emit('update:modelValue', item.id);
 		},
 	},
 });
@@ -182,10 +201,5 @@ export default Vue.extend({
 	:global(.hideme) {
 		display: none !important;
 	}
-}
-
-.menuPrefix,
-.menuSuffix {
-	padding: var(--spacing-xs) var(--spacing-l);
 }
 </style>

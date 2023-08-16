@@ -2,9 +2,9 @@
 	<div :class="$style.container" data-test-id="personal-settings-container">
 		<div :class="$style.header">
 			<n8n-heading size="2xlarge">{{
-				$locale.baseText('settings.personal.personalSettings')
+				i18n.baseText('settings.personal.personalSettings')
 			}}</n8n-heading>
-			<div class="ph-no-capture" :class="$style.user">
+			<div :class="$style.user">
 				<span :class="$style.username" data-test-id="current-user-name">
 					<n8n-text color="text-light">{{ currentUser.fullName }}</n8n-text>
 				</span>
@@ -18,7 +18,7 @@
 		<div>
 			<div :class="$style.sectionHeader">
 				<n8n-heading size="large">{{
-					$locale.baseText('settings.personal.basicInformation')
+					i18n.baseText('settings.personal.basicInformation')
 				}}</n8n-heading>
 			</div>
 			<div data-test-id="personal-data-form">
@@ -26,20 +26,20 @@
 					v-if="formInputs"
 					:inputs="formInputs"
 					:eventBus="formBus"
-					@input="onInput"
+					@update="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
 			</div>
 		</div>
-		<div v-if="!signInWithLdap">
+		<div v-if="!signInWithLdap && !signInWithSaml">
 			<div :class="$style.sectionHeader">
-				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
+				<n8n-heading size="large">{{ i18n.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
 			<div>
-				<n8n-input-label :label="$locale.baseText('auth.password')">
+				<n8n-input-label :label="i18n.baseText('auth.password')">
 					<n8n-link @click="openPasswordModal" data-test-id="change-password-link">{{
-						$locale.baseText('auth.changePassword')
+						i18n.baseText('auth.changePassword')
 					}}</n8n-link>
 				</n8n-input-label>
 			</div>
@@ -47,7 +47,7 @@
 		<div>
 			<n8n-button
 				float="right"
-				:label="$locale.baseText('settings.personal.save')"
+				:label="i18n.baseText('settings.personal.save')"
 				size="large"
 				:disabled="!hasAnyChanges || !readyToSubmit"
 				data-test-id="save-settings-button"
@@ -58,23 +58,31 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
-import { IFormInputs, IUser } from '@/Interface';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useI18n, useToast } from '@/composables';
+import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
+import type { IFormInputs, IUser } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsPersonalView',
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
-			formBus: new Vue(),
+			formBus: createEventBus(),
 			readyToSubmit: false,
 		};
 	},
@@ -84,7 +92,7 @@ export default mixins(showMessage).extend({
 				name: 'firstName',
 				initialValue: this.currentUser?.firstName,
 				properties: {
-					label: this.$locale.baseText('auth.firstName'),
+					label: this.i18n.baseText('auth.firstName'),
 					maxlength: 32,
 					required: true,
 					autocomplete: 'given-name',
@@ -96,7 +104,7 @@ export default mixins(showMessage).extend({
 				name: 'lastName',
 				initialValue: this.currentUser?.lastName,
 				properties: {
-					label: this.$locale.baseText('auth.lastName'),
+					label: this.i18n.baseText('auth.lastName'),
 					maxlength: 32,
 					required: true,
 					autocomplete: 'family-name',
@@ -108,13 +116,13 @@ export default mixins(showMessage).extend({
 				name: 'email',
 				initialValue: this.currentUser?.email,
 				properties: {
-					label: this.$locale.baseText('auth.email'),
+					label: this.i18n.baseText('auth.email'),
 					type: 'email',
 					required: true,
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: (this.isLDAPFeatureEnabled && this.signInWithLdap) || this.signInWithSaml,
 				},
 			},
 		];
@@ -129,6 +137,11 @@ export default mixins(showMessage).extend({
 		},
 		isLDAPFeatureEnabled(): boolean {
 			return this.settingsStore.settings.enterprise.ldap === true;
+		},
+		signInWithSaml(): boolean {
+			return (
+				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
+			);
 		},
 	},
 	methods: {
@@ -149,18 +162,18 @@ export default mixins(showMessage).extend({
 					lastName: form.lastName,
 					email: form.email,
 				});
-				this.$showToast({
-					title: this.$locale.baseText('settings.personal.personalSettingsUpdated'),
+				this.showToast({
+					title: this.i18n.baseText('settings.personal.personalSettingsUpdated'),
 					message: '',
 					type: 'success',
 				});
 				this.hasAnyChanges = false;
 			} catch (e) {
-				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
+				this.showError(e, this.i18n.baseText('settings.personal.personalSettingsUpdatedError'));
 			}
 		},
 		onSaveClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		openPasswordModal() {
 			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);

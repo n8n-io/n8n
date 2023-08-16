@@ -1,4 +1,3 @@
-// eslint-disable-next-line n8n-nodes-base/node-filename-against-convention
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,12 +7,11 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep, removeCircularRefs } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
-
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -590,6 +588,13 @@ export class HttpRequestV1 implements INodeType {
 						},
 					],
 				},
+				{
+					displayName:
+						"You can view the raw requests this node makes in your browser's developer console",
+					name: 'infoMessage',
+					type: 'notice',
+					default: '',
+				},
 			],
 		};
 	}
@@ -967,8 +972,9 @@ export class HttpRequestV1 implements INodeType {
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					// throw error;
-					throw new NodeApiError(this.getNode(), response as JsonObject);
+					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
+					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({
 						json: {

@@ -1,7 +1,7 @@
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import type { OptionsWithUri } from 'request';
 
@@ -204,7 +204,8 @@ export async function s3ApiRequestSOAPAllItems(
 				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (

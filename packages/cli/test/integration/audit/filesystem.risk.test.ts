@@ -26,11 +26,10 @@ test('should report filesystem interaction nodes', async () => {
 	);
 
 	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
-		const details = {
+		const details = Db.collections.Workflow.create({
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},
-			nodeTypes: {},
 			nodes: [
 				{
 					id: nodeId,
@@ -38,9 +37,10 @@ test('should report filesystem interaction nodes', async () => {
 					type: nodeType,
 					typeVersion: 1,
 					position: [0, 0] as [number, number],
+					parameters: {},
 				},
 			],
-		};
+		});
 
 		return Db.collections.Workflow.save(details);
 	});

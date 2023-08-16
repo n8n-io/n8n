@@ -18,6 +18,8 @@
 					:inputs="survey"
 					:columnView="true"
 					:eventBus="formBus"
+					:teleported="teleported"
+					tagSize="small"
 					@submit="onSubmit"
 				/>
 			</div>
@@ -36,7 +38,8 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 const SURVEY_VERSION = 'v4';
 
@@ -122,23 +125,30 @@ import {
 	REPORTED_SOURCE_EVENT,
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
-} from '../constants';
+	VIEWS,
+} from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
-import Vue from 'vue';
+import { useToast } from '@/composables';
+import Modal from '@/components/Modal.vue';
+import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import { getAccountAge } from '@/utils';
-import { GenericValue } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useUsersStore } from '@/stores/users';
+import type { GenericValue } from 'n8n-workflow';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage, workflowHelpers).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'PersonalizationModal',
+	mixins: [workflowHelpers],
+	components: { Modal },
+	props: {
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
 			isSaving: false,
@@ -146,8 +156,13 @@ export default mixins(showMessage, workflowHelpers).extend({
 			otherWorkAreaFieldVisible: false,
 			otherCompanyIndustryFieldVisible: false,
 			showAllIndustryQuestions: true,
-			modalBus: new Vue(),
-			formBus: new Vue(),
+			modalBus: createEventBus(),
+			formBus: createEventBus(),
+		};
+	},
+	setup() {
+		return {
+			...useToast(),
 		};
 	},
 	computed: {
@@ -605,13 +620,18 @@ export default mixins(showMessage, workflowHelpers).extend({
 	},
 	methods: {
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
+			// In case the redirect to canvas for new users didn't happen
+			// we try again after closing the modal
+			if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
+				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+			}
 		},
 		onSave() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
-			this.$data.isSaving = true;
+			this.isSaving = true;
 
 			try {
 				const survey: Record<string, GenericValue> = {
@@ -621,7 +641,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				this.$externalHooks().run(
+				await this.$externalHooks().run(
 					'personalizationModal.onSubmit',
 					survey as IPersonalizationLatestVersion,
 				);
@@ -634,10 +654,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				await this.fetchOnboardingPrompt();
 			} catch (e) {
-				this.$showError(e, 'Error while submitting results');
+				this.showError(e, 'Error while submitting results');
 			}
 
-			this.$data.isSaving = false;
+			this.isSaving = false;
 			this.closeDialog();
 		},
 		async fetchOnboardingPrompt() {
@@ -651,7 +671,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				if (onboardingResponse.title && onboardingResponse.description) {
 					setTimeout(async () => {
-						this.$showToast({
+						this.showToast({
 							type: 'info',
 							title: onboardingResponse.title,
 							message: onboardingResponse.description,
