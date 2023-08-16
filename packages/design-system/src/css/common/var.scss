@@ -10,7 +10,8 @@
 $all-transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 $fade-transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
 $fade-linear-transition: opacity 200ms linear;
-$md-fade-transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1),
+$md-fade-transition:
+	transform 300ms cubic-bezier(0.23, 1, 0.32, 1),
 	opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
 $border-transition-base: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 $color-transition-base: color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
@@ -199,9 +200,13 @@ $focus-outline-width: 2px;
 /* Box shadow
 -------------------------- */
 /// boxShadow|1|Shadow|1
-$box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+$box-shadow-base:
+	0 2px 4px rgba(0, 0, 0, 0.12),
+	0 0 6px rgba(0, 0, 0, 0.04);
 // boxShadow|1|Shadow|1
-$box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.12);
+$box-shadow-dark:
+	0 2px 4px rgba(0, 0, 0, 0.12),
+	0 0 6px rgba(0, 0, 0, 0.12);
 /// boxShadow|1|Shadow|1
 $box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 

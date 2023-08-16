@@ -52,7 +52,7 @@
     "nock": "^13.3.2",
     "nodemon": "^3.0.1",
     "p-limit": "^3.1.0",
-    "prettier": "^2.8.8",
+    "prettier": "^3.0.0",
     "rimraf": "^5.0.1",
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^2.0.0",
