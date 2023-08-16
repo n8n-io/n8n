@@ -2684,9 +2684,6 @@ export function getExecuteFunctions(
 						};
 
 						context.getCredentials = async (key: string) => {
-							console.log('getCredentials - overwritten:', key);
-							console.log('connectedNode.name:', connectedNode.name);
-
 							return getCredentials(
 								workflow,
 								connectedNode,
