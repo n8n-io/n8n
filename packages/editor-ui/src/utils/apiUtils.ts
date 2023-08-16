@@ -80,7 +80,7 @@ async function request(config: {
 		return response.data;
 	} catch (error) {
 		if (error.message === 'Network Error') {
-			throw new ResponseError('API-Server can not be reached. It is probably down.', {
+			throw new ResponseError("Can't connect to n8n.", {
 				errorCode: NO_NETWORK_ERROR_CODE,
 			});
 		}
