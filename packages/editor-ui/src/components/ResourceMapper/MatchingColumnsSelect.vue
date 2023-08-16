@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+	INodeProperties,
 	INodePropertyTypeOptions,
 	ResourceMapperField,
 	ResourceMapperFields,
@@ -7,8 +8,10 @@ import type {
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNodeSpecificationValues } from '@/composables';
+import ParameterOptions from '@/components/ParameterOptions.vue';
 
 interface Props {
+	parameter: INodeProperties;
 	initialValue: string[];
 	fieldsToMap: ResourceMapperFields['fields'];
 	typeOptions: INodePropertyTypeOptions | undefined;
@@ -17,6 +20,7 @@ interface Props {
 	loading: boolean;
 	serviceName: string;
 	teleported?: boolean;
+	refreshInProgress: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -47,6 +51,7 @@ watch(
 
 const emit = defineEmits<{
 	(event: 'matchingColumnsChanged', value: string[]): void;
+	(event: 'refreshFieldList'): void;
 }>();
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
@@ -103,6 +108,27 @@ const fieldTooltip = computed<string>(() => {
 	});
 });
 
+const parameterActions = computed<Array<{ label: string; value: string; disabled?: boolean }>>(
+	() => {
+		return [
+			{
+				label: locale.baseText('resourceMapper.refreshFieldList', {
+					interpolate: { fieldWord: singularFieldWordCapitalized.value },
+				}),
+				value: 'refreshFieldList',
+			},
+		];
+	},
+);
+
+const fetchingFieldsLabel = computed<string>(() => {
+	return locale.baseText('resourceMapper.fetchingFields.message', {
+		interpolate: {
+			fieldWord: pluralFieldWord.value,
+		},
+	});
+});
+
 function onSelectionChange(value: string | string[]) {
 	if (resourceMapperTypeOptions.value?.multiKeyMatch === true) {
 		state.selected = value as string[];
@@ -118,6 +144,17 @@ function emitValueChanged() {
 			'matchingColumnsChanged',
 			Array.isArray(state.selected) ? state.selected : [state.selected],
 		);
+	}
+}
+
+function onParameterActionSelected(action: string): void {
+	switch (action) {
+		case 'refreshFieldList':
+			console.log('refreshFieldList');
+			emit('refreshFieldList');
+			break;
+		default:
+			break;
 	}
 }
 
@@ -137,6 +174,15 @@ defineExpose({
 			:size="labelSize"
 			color="text-dark"
 		>
+			<template #options>
+				<parameter-options
+					:parameter="parameter"
+					:customActions="parameterActions"
+					:loading="props.refreshInProgress"
+					:loadingMessage="fetchingFieldsLabel"
+					@update:modelValue="onParameterActionSelected"
+				/>
+			</template>
 			<n8n-select
 				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
 				:modelValue="state.selected"

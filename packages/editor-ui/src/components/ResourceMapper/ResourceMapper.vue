@@ -462,6 +462,7 @@ defineExpose({
 		/>
 		<matching-columns-select
 			v-if="showMatchingColumnsSelector"
+			:parameter="props.parameter"
 			:label-size="labelSize"
 			:fieldsToMap="state.paramValue.schema"
 			:typeOptions="props.parameter.typeOptions"
@@ -470,7 +471,9 @@ defineExpose({
 			:initialValue="matchingColumns"
 			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
 			:teleported="teleported"
+			:refreshInProgress="state.refreshInProgress"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
+			@refreshFieldList="initFetching(true)"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
