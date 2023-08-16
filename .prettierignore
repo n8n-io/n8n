@@ -2,3 +2,6 @@ coverage
 dist
 package.json
 .pnpm-lock.yml
+packages/nodes-base/nodes/**/test
+cypress/fixtures
+CHANGELOG.md
