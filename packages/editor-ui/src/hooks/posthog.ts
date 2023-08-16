@@ -1,6 +1,7 @@
 import { usePostHog } from '@/stores/posthog.store';
 import {
 	hooksGetPosthogAppendNoCaptureClasses,
+	hooksPosthogLog,
 	hooksPosthogSetMetadata,
 } from '@/hooks/posthog/index';
 import type { ExternalHooks } from '@/mixins/externalHooks';
@@ -28,6 +29,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	copyInput: {
 		mounted: [
 			(meta: { copyInputValueRef: HTMLElement }) => {
+				hooksPosthogLog('copyInput.mounted');
+
 				const { value } = meta.copyInputValueRef.classList;
 				meta.copyInputValueRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
@@ -37,6 +40,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	userInfo: {
 		mounted: [
 			(meta: { userInfoRef: HTMLElement }) => {
+				hooksPosthogLog('userInfo.mounted');
+
 				const { value } = meta.userInfoRef.classList;
 				meta.userInfoRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
@@ -46,6 +51,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	mainSidebar: {
 		mounted: [
 			(meta) => {
+				hooksPosthogLog('mainSidebar.mounted');
+
 				const { value } = meta.userRef.classList;
 				meta.userRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
@@ -55,6 +62,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	settingsPersonalView: {
 		mounted: [
 			(meta) => {
+				hooksPosthogLog('settingsPersonalView.mounted');
+
 				const { value } = meta.userRef.classList;
 				meta.userRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
 			},
@@ -64,6 +73,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	workflowOpen: {
 		mounted: [
 			(meta) => {
+				hooksPosthogLog('workflowOpen.mounted');
+
 				// workflow names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.name')) {
@@ -76,6 +87,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	credentialsList: {
 		mounted: [
 			(meta) => {
+				hooksPosthogLog('credentialsList.mounted');
+
 				// credential names in table body
 				const tableBody = meta.tableRef.$refs.bodyWrapper as HTMLElement;
 				for (const item of tableBody.querySelectorAll('.el-table_1_column_1 > .cell')) {
@@ -88,6 +101,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	sticky: {
 		mounted: [
 			(meta) => {
+				hooksPosthogLog('sticky.mounted');
+
 				meta.stickyRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(
 					meta.stickyRef.classList.value,
 				);
@@ -98,6 +113,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	executionsList: {
 		created: [
 			(meta) => {
+				hooksPosthogLog('executionsList.created');
+
 				const { filtersRef, tableRef } = meta;
 
 				// workflow names in filters dropdown
@@ -117,6 +134,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	runData: {
 		updated: [
 			(meta) => {
+				hooksPosthogLog('runData.updated');
+
 				for (const element of meta.elements) {
 					element.classList.value = hooksGetPosthogAppendNoCaptureClasses(element.classList.value);
 				}
@@ -124,6 +143,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 		],
 		onTogglePinData: [
 			(meta) => {
+				hooksPosthogLog('runData.onTogglePinData');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -137,6 +158,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 
 		onDataPinningSuccess: [
 			(meta) => {
+				hooksPosthogLog('runData.onDataPinningSuccess');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -156,12 +179,16 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 		 */
 		createNodeActiveChanged: [
 			() => {
+				hooksPosthogLog('nodeView.createNodeActiveChanged');
+
 				resetNodesPanelSession();
 			},
 		],
 
 		onRunNode: [
 			(meta) => {
+				hooksPosthogLog('nodeView.onRunNode');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -175,6 +202,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 
 		addNodeButton: [
 			(meta) => {
+				hooksPosthogLog('nodeView.addNodeButton');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -191,6 +220,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 
 		onRunWorkflow: [
 			(meta) => {
+				hooksPosthogLog('nodeView.onRunWorkflow');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -206,6 +237,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	credentialsSelectModal: {
 		openCredentialType: [
 			(meta) => {
+				hooksPosthogLog('credentialsSelectModal.openCredentialType');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -221,6 +254,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	nodeExecuteButton: {
 		onClick: [
 			(meta) => {
+				hooksPosthogLog('nodeExecuteButton.onClick');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -236,6 +271,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	credentialEdit: {
 		saveCredential: [
 			(meta) => {
+				hooksPosthogLog('credentialEdit.saveCredential');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -251,6 +288,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	variableSelectorItem: {
 		mounted: [
 			(meta) => {
+				hooksPosthogLog('variableSelectorItem.mounted');
+
 				const { value } = meta.variableSelectorItemRef.classList;
 
 				meta.variableSelectorItemRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(value);
@@ -261,6 +300,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	expressionEdit: {
 		closeDialog: [
 			(meta) => {
+				hooksPosthogLog('expressionEdit.closeDialog');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -274,6 +315,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 
 		mounted: [
 			(meta) => {
+				hooksPosthogLog('expressionEdit.mounted');
+
 				meta.expressionInputRef.classList.value = hooksGetPosthogAppendNoCaptureClasses(
 					meta.expressionInputRef.classList.value,
 				);
@@ -287,6 +330,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	parameterInput: {
 		modeSwitch: [
 			(meta) => {
+				hooksPosthogLog('parameterInput.modeSwitch');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -299,6 +344,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 		],
 		updated: [
 			(meta) => {
+				hooksPosthogLog('parameterInput.updated');
+
 				for (const option of meta.remoteParameterOptions) {
 					option.classList.value = hooksGetPosthogAppendNoCaptureClasses(option.classList.value);
 				}
@@ -309,6 +356,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	personalizationModal: {
 		onSubmit: [
 			(meta) => {
+				hooksPosthogLog('personalizationModal.onSubmit');
+
 				hooksPosthogSetMetadata(meta, 'user');
 			},
 		],
@@ -317,6 +366,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	telemetry: {
 		currentUserIdChanged: [
 			() => {
+				hooksPosthogLog('telemetry.currentUserIdChanged');
+
 				const posthogStore = usePostHog();
 
 				posthogStore.identify();
@@ -327,6 +378,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	workflowActivate: {
 		updateWorkflowActivation: [
 			(meta) => {
+				hooksPosthogLog('workflowActivate.updateWorkflowActivation');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -342,6 +395,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	templatesWorkflowView: {
 		openWorkflow: [
 			(meta) => {
+				hooksPosthogLog('templatesWorkflowView.openWorkflow');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -357,6 +412,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	templatesCollectionView: {
 		onUseWorkflow: [
 			(meta) => {
+				hooksPosthogLog('templatesCollectionView.onUseWorkflow');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {
@@ -372,6 +429,8 @@ export const n8nPosthogHooks: PartialDeep<ExternalHooks> = {
 	runDataTable: {
 		onDragEnd: [
 			(meta) => {
+				hooksPosthogLog('runDataTable.onDragEnd');
+
 				const posthogStore = usePostHog();
 
 				const eventData = {

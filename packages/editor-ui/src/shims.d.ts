@@ -19,6 +19,7 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
+		n8nHooksNext: boolean;
 		n8nExternalHooks?: Record<
 			string,
 			Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>
