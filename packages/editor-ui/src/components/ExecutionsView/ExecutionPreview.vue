@@ -157,7 +157,7 @@ import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
@@ -180,7 +180,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useWorkflowsStore, useUIStore),
+		...mapStores(useWorkflowsStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
