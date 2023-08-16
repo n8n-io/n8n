@@ -7,10 +7,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				1040,
-				640
-			]
+			"position": [1040, 640]
 		},
 		{
 			"parameters": {
@@ -21,10 +18,7 @@
 			"name": "Write Binary File",
 			"type": "n8n-nodes-base.writeBinaryFile",
 			"typeVersion": 1,
-			"position": [
-				1540,
-				640
-			]
+			"position": [1540, 640]
 		},
 		{
 			"parameters": {
@@ -34,10 +28,7 @@
 			"name": "Read Binary File",
 			"type": "n8n-nodes-base.readBinaryFile",
 			"typeVersion": 1,
-			"position": [
-				1300,
-				640
-			]
+			"position": [1300, 640]
 		}
 	],
 	"pinData": {},

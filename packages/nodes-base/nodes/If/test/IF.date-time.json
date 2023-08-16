@@ -7,10 +7,7 @@
 			"name": "On clicking 'execute'",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				140,
-				1560
-			]
+			"position": [140, 1560]
 		},
 		{
 			"parameters": {
@@ -20,10 +17,7 @@
 			"name": "Code",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				340,
-				1560
-			]
+			"position": [340, 1560]
 		},
 		{
 			"parameters": {
@@ -40,10 +34,7 @@
 			"name": "IF Occured After",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				560,
-				1440
-			]
+			"position": [560, 1440]
 		},
 		{
 			"parameters": {},
@@ -51,10 +42,7 @@
 			"name": "On False Occured After",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				980,
-				1460
-			]
+			"position": [980, 1460]
 		},
 		{
 			"parameters": {},
@@ -62,10 +50,7 @@
 			"name": "On True Occured After",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				760,
-				1420
-			]
+			"position": [760, 1420]
 		},
 		{
 			"parameters": {
@@ -83,10 +68,7 @@
 			"name": "IF Occured Before",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				560,
-				1680
-			]
+			"position": [560, 1680]
 		},
 		{
 			"parameters": {},
@@ -94,10 +76,7 @@
 			"name": "On True Occured Before",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				760,
-				1660
-			]
+			"position": [760, 1660]
 		},
 		{
 			"parameters": {},
@@ -105,10 +84,7 @@
 			"name": "On False Occured Before",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				980,
-				1700
-			]
+			"position": [980, 1700]
 		}
 	],
 	"pinData": {

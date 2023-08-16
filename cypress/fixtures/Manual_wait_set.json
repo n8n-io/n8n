@@ -10,10 +10,7 @@
 			"name": "Wait",
 			"type": "n8n-nodes-base.wait",
 			"typeVersion": 1,
-			"position": [
-				900,
-				580
-			],
+			"position": [900, 580],
 			"webhookId": "0f6f94a4-c28d-46f9-8468-6ab315a9fec9"
 		},
 		{
@@ -22,10 +19,7 @@
 			"name": "Manual",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				680,
-				580
-			]
+			"position": [680, 580]
 		},
 		{
 			"parameters": {
@@ -35,10 +29,7 @@
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				1120,
-				580
-			]
+			"position": [1120, 580]
 		}
 	],
 	"pinData": {},

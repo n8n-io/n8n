@@ -7,10 +7,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				-7020,
-				1700
-			]
+			"position": [-7020, 1700]
 		},
 		{
 			"parameters": {
@@ -21,10 +18,7 @@
 			"name": "Switch",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 1,
-			"position": [
-				-6460,
-				1700
-			]
+			"position": [-6460, 1700]
 		},
 		{
 			"parameters": {
@@ -53,10 +47,7 @@
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [
-				-6840,
-				1700
-			]
+			"position": [-6840, 1700]
 		},
 		{
 			"parameters": {},
@@ -64,10 +55,7 @@
 			"name": "Output 0",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-6180,
-				1460
-			]
+			"position": [-6180, 1460]
 		},
 		{
 			"parameters": {
@@ -78,10 +66,7 @@
 			"name": "Item Lists",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 1,
-			"position": [
-				-6660,
-				1700
-			]
+			"position": [-6660, 1700]
 		},
 		{
 			"parameters": {},
@@ -89,10 +74,7 @@
 			"name": "Output 1",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-6180,
-				1620
-			]
+			"position": [-6180, 1620]
 		},
 		{
 			"parameters": {},
@@ -100,10 +82,7 @@
 			"name": "Output 2",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-6180,
-				1780
-			]
+			"position": [-6180, 1780]
 		},
 		{
 			"parameters": {},
@@ -111,10 +90,7 @@
 			"name": "Output 3",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-6180,
-				1940
-			]
+			"position": [-6180, 1940]
 		}
 	],
 	"pinData": {

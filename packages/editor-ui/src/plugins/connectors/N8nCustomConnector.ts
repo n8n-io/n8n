@@ -158,10 +158,7 @@ export class N8nConnector extends AbstractConnector {
 	getEndpointOffset: Function | null;
 	private internalSegments: FlowchartSegment[] = [];
 
-	constructor(
-		public connection: Connection,
-		params: N8nConnectorOptions,
-	) {
+	constructor(public connection: Connection, params: N8nConnectorOptions) {
 		super(connection, params);
 		params = params || {};
 		this.minorAnchor = 0; // seems to be angle at which connector leaves endpoint
