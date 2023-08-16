@@ -66,6 +66,7 @@ import {
 	GENERATED_STATIC_DIR,
 	inDevelopment,
 	inE2ETests,
+	LICENSE_FEATURES,
 	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -311,6 +312,7 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
+				showNonProdBanner: false,
 				debugInEditor: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
@@ -441,6 +443,9 @@ export class Server extends AbstractServer {
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
 			sourceControl: isSourceControlLicensed(),
+			showNonProdBanner: Container.get(License).isFeatureEnabled(
+				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
+			),
 			debugInEditor: isDebugInEditorLicensed(),
 		});
 
