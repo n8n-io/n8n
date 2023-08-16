@@ -31,6 +31,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -141,6 +142,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[SOURCE_CONTROL_PULL_MODAL_KEY]: {
 				open: false,
 			},
+			[DEBUG_PAYWALL_MODAL_KEY]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -196,6 +200,11 @@ export const useUIStore = defineStore(STORES.UI, {
 
 			return {
 				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
+				feature: {
+					unavailable: {
+						title: `contextual.feature.unavailable.title${contextKey}`,
+					},
+				},
 				credentials: {
 					sharing: {
 						unavailable: {

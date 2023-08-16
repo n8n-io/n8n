@@ -79,42 +79,28 @@
 				</n8n-text>
 			</div>
 			<div>
-				<n8n-tooltip>
-					<div>
-						<n8n-button
-							:disabled="!isDebugEnabled"
-							size="large"
-							:type="debugButtonData.type"
-							:class="{
-								[$style.debugLink]: true,
-								[$style.secondary]: debugButtonData.type === 'secondary',
-							}"
-						>
-							<router-link
-								v-if="isDebugEnabled"
-								@click.capture="handleDebugButtonClick"
-								:to="{
-									name: VIEWS.EXECUTION_DEBUG,
-									params: {
-										workflowId: activeExecution.workflowId,
-										executionId: activeExecution.id,
-									},
-								}"
-							>
-								{{ debugButtonData.text }}
-							</router-link>
-							<span v-else>{{ debugButtonData.text }}</span>
-						</n8n-button>
-					</div>
-					<template #content>
-						<span v-if="isDebugEnabled">
-							{{ $locale.baseText('executionsList.debug.tooltip.featureEnabled') }}
-						</span>
-						<span v-else>
-							{{ $locale.baseText('executionsList.debug.tooltip.featureDisabled') }}
-						</span>
-					</template>
-				</n8n-tooltip>
+				<n8n-button
+					size="large"
+					:type="debugButtonData.type"
+					@click.capture="handleDebugButtonClick"
+					:class="{
+						[$style.debugLink]: true,
+						[$style.secondary]: debugButtonData.type === 'secondary',
+					}"
+				>
+					<router-link
+						:to="{
+							name: VIEWS.EXECUTION_DEBUG,
+							params: {
+								workflowId: activeExecution.workflowId,
+								executionId: activeExecution.id,
+							},
+						}"
+					>
+						{{ debugButtonData.text }}
+					</router-link>
+				</n8n-button>
+
 				<el-dropdown
 					v-if="executionUIDetails?.name === 'error'"
 					trigger="click"
@@ -170,8 +156,13 @@ import { useExecutionDebugging, useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useSettingsStore, useWorkflowsStore } from '@/stores';
+import {
+	DEBUG_PAYWALL_MODAL_KEY,
+	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
+	VIEWS,
+} from '@/constants';
+import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
@@ -194,7 +185,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useWorkflowsStore),
+		...mapStores(useSettingsStore, useWorkflowsStore, useUIStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
@@ -247,7 +238,24 @@ export default defineComponent({
 				retryDropdownRef.handleClose();
 			}
 		},
-		handleDebugButtonClick(): void {
+		handleDebugButtonClick(event: Event): void {
+			if (!this.isDebugEnabled) {
+				this.uiStore.openModalWithData({
+					name: DEBUG_PAYWALL_MODAL_KEY,
+					data: {
+						title: this.$locale.baseText(
+							this.uiStore.contextBasedTranslationKeys.feature.unavailable.title,
+						),
+						footerButtonAction: () => {
+							this.uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
+							this.uiStore.goToUpgrade('debug', 'upgrade-debug');
+						},
+					},
+				});
+				event.preventDefault();
+				event.stopPropagation();
+				return;
+			}
 			this.workflowsStore.isInDebugMode = false;
 		},
 	},
@@ -318,6 +326,7 @@ export default defineComponent({
 }
 
 .debugLink {
+	padding: 0;
 	margin-right: var(--spacing-xs);
 
 	&.secondary {
@@ -327,6 +336,7 @@ export default defineComponent({
 	}
 
 	a {
+		padding: var(--spacing-xs) var(--spacing-m);
 		color: var(--color-text-xlight);
 	}
 }
