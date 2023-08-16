@@ -114,6 +114,20 @@ export class Telemetry {
 		});
 	}
 
+	trackAskAI(event: string, properties: IDataObject = {}) {
+		if (this.rudderStack) {
+			properties.session_id = useRootStore().sessionId;
+			switch (event) {
+				case 'askAi.generationFinished':
+					this.track('Ai code generation finished', properties);
+				case 'ask.generationClicked':
+					this.track('User clicked on generate code button', properties);
+				default:
+					break;
+			}
+		}
+	}
+
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
