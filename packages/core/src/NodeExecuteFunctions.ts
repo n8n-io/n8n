@@ -2197,6 +2197,12 @@ const addExecutionDataFunctions = (
 		}
 
 		runExecutionData.resultData.runData[nodeName].push(taskData);
+		if (additionalData.sendDataToUI) {
+			additionalData.sendDataToUI('nodeExecuteBefore', {
+				executionId: additionalData.executionId,
+				nodeName,
+			});
+		}
 	} else {
 		// Outputs
 		// At the moment we expect that there is always an input sent before the output

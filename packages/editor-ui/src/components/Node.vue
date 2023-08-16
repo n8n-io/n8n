@@ -276,7 +276,7 @@ export default defineComponent({
 			return !!(this.nodeType && this.nodeType.polling);
 		},
 		isExecuting(): boolean {
-			return this.workflowsStore.executingNode === this.data.name;
+			return this.workflowsStore.isNodeExecuting(this.data.name);
 		},
 		isSingleActiveTriggerNode(): boolean {
 			const nodes = this.workflowsStore.workflowTriggerNodes.filter((node: INodeUi) => {

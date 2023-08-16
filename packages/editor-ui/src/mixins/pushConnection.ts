@@ -494,7 +494,7 @@ export const pushConnection = defineComponent({
 					runDataExecuted.data.resultData.runData = this.workflowsStore.getWorkflowRunData;
 				}
 
-				this.workflowsStore.executingNode = null;
+				this.workflowsStore.executingNode.length = 0;
 				this.workflowsStore.setWorkflowExecutionData(runDataExecuted as IExecutionResponse);
 				this.uiStore.removeActiveAction('workflowRunning');
 
@@ -543,10 +543,11 @@ export const pushConnection = defineComponent({
 				// A node finished to execute. Add its data
 				const pushData = receivedData.data;
 				this.workflowsStore.addNodeExecutionData(pushData);
+				this.workflowsStore.removeExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'nodeExecuteBefore') {
 				// A node started to be executed. Set it as executing.
 				const pushData = receivedData.data;
-				this.workflowsStore.executingNode = pushData.nodeName;
+				this.workflowsStore.addExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'testWebhookDeleted') {
 				// A test-webhook was deleted
 				const pushData = receivedData.data;

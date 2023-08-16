@@ -1429,7 +1429,7 @@ export default defineComponent({
 						executionId,
 						data: { finished: true, stoppedAt: new Date() },
 					});
-					this.workflowsStore.executingNode = null;
+					this.workflowsStore.executingNode.length = 0;
 					this.uiStore.removeActiveAction('workflowRunning');
 
 					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
@@ -1457,7 +1457,7 @@ export default defineComponent({
 					} as IPushDataExecutionFinished;
 					this.workflowsStore.finishActiveExecution(pushData);
 					this.titleSet(execution.workflowData.name, 'IDLE');
-					this.workflowsStore.executingNode = null;
+					this.workflowsStore.executingNode.length = 0;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
 					this.showMessage({

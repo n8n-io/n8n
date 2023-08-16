@@ -207,17 +207,18 @@ export default defineComponent({
 			}
 			const triggeredNode = this.workflowsStore.executedNode;
 			const executingNode = this.workflowsStore.executingNode;
+
 			if (
 				this.activeNode &&
 				triggeredNode === this.activeNode.name &&
-				this.activeNode.name !== executingNode
+				!this.workflowsStore.isNodeExecuting(this.activeNode.name)
 			) {
 				return true;
 			}
 
-			if (executingNode || triggeredNode) {
+			if (executingNode.length || triggeredNode) {
 				return !!this.parentNodes.find(
-					(node) => node.name === executingNode || node.name === triggeredNode,
+					(node) => this.workflowsStore.isNodeExecuting(node.name) || node.name === triggeredNode,
 				);
 			}
 			return false;

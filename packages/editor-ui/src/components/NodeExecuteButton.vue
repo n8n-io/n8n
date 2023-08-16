@@ -83,10 +83,9 @@ export default defineComponent({
 		},
 		nodeRunning(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode;
 			return (
 				this.workflowRunning &&
-				(executingNode === this.node.name || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node.name) || triggeredNode === this.node.name)
 			);
 		},
 		workflowRunning(): boolean {

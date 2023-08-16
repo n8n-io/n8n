@@ -160,8 +160,7 @@ export default defineComponent({
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
 		isNodeRunning(): boolean {
-			const executingNode = this.workflowsStore.executingNode;
-			return this.node && executingNode === this.node.name;
+			return this.node && this.workflowsStore.isNodeExecuting(this.node.name);
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
