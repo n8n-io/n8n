@@ -2198,6 +2198,9 @@ export interface IN8nUISettings {
 	banners: {
 		dismissed: string[];
 	};
+	ai: {
+		enabled: boolean;
+	};
 }
 
 export type Banners = 'V1' | 'TRIAL_OVER' | 'TRIAL';
