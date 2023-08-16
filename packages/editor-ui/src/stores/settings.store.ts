@@ -198,7 +198,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.saml.loginEnabled = settings.sso.saml.loginEnabled;
 				this.saml.loginLabel = settings.sso.saml.loginLabel;
 			}
-			if (settings.enterprise.showNonProdBanner) {
+			if (settings.enterprise?.showNonProdBanner) {
 				useUIStore().banners.NON_PRODUCTION_LICENSE.dismissed = false;
 			}
 		},
