@@ -82,7 +82,7 @@
 				<n8n-button
 					size="large"
 					:type="debugButtonData.type"
-					@click.capture="handleDebugButtonClick"
+					@click.capture="handleDebugLinkClick"
 					:class="{
 						[$style.debugLink]: true,
 						[$style.secondary]: debugButtonData.type === 'secondary',
@@ -156,12 +156,7 @@ import { useExecutionDebugging, useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import {
-	DEBUG_PAYWALL_MODAL_KEY,
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	VIEWS,
-} from '@/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
@@ -203,9 +198,6 @@ export default defineComponent({
 						type: 'primary',
 				  };
 		},
-		isDebugEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor);
-		},
 	},
 	methods: {
 		async onDeleteExecution(): Promise<void> {
@@ -237,26 +229,6 @@ export default defineComponent({
 			if (retryDropdownRef && event.relatedTarget === null) {
 				retryDropdownRef.handleClose();
 			}
-		},
-		handleDebugButtonClick(event: Event): void {
-			if (!this.isDebugEnabled) {
-				this.uiStore.openModalWithData({
-					name: DEBUG_PAYWALL_MODAL_KEY,
-					data: {
-						title: this.$locale.baseText(
-							this.uiStore.contextBasedTranslationKeys.feature.unavailable.title,
-						),
-						footerButtonAction: () => {
-							this.uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
-							this.uiStore.goToUpgrade('debug', 'upgrade-debug');
-						},
-					},
-				});
-				event.preventDefault();
-				event.stopPropagation();
-				return;
-			}
-			this.workflowsStore.isInDebugMode = false;
 		},
 	},
 });

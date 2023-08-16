@@ -1,7 +1,13 @@
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n, useMessage, useToast } from '@/composables';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useWorkflowsStore } from '@/stores';
+import {
+	DEBUG_PAYWALL_MODAL_KEY,
+	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
+	VIEWS,
+} from '@/constants';
+import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
 import type { INodeUi } from '@/Interface';
 
 export const useExecutionDebugging = () => {
@@ -10,6 +16,12 @@ export const useExecutionDebugging = () => {
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
+	const settingsStore = useSettingsStore();
+	const uiStore = useUIStore();
+
+	const isDebugEnabled = computed(() =>
+		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
@@ -100,7 +112,27 @@ export const useExecutionDebugging = () => {
 		}
 	};
 
+	const handleDebugLinkClick = (event: Event): void => {
+		if (!isDebugEnabled.value) {
+			uiStore.openModalWithData({
+				name: DEBUG_PAYWALL_MODAL_KEY,
+				data: {
+					title: i18n.baseText(uiStore.contextBasedTranslationKeys.feature.unavailable.title),
+					footerButtonAction: () => {
+						uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
+						uiStore.goToUpgrade('debug', 'upgrade-debug');
+					},
+				},
+			});
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+		workflowsStore.isInDebugMode = false;
+	};
+
 	return {
 		applyExecutionData,
+		handleDebugLinkClick,
 	};
 };
