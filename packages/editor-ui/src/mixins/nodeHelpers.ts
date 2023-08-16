@@ -181,6 +181,14 @@ export const nodeHelpers = defineComponent({
 			}
 		},
 
+		updateNodeCredentialIssuesByName(name: string): void {
+			const node = this.workflowsStore.getNodeByName(name);
+
+			if (node) {
+				this.updateNodeCredentialIssues(node);
+			}
+		},
+
 		// Updates the credential-issues of the node
 		updateNodeCredentialIssues(node: INodeUi): void {
 			const fullNodeIssues: INodeIssues | null = this.getNodeCredentialIssues(node);
@@ -195,6 +203,14 @@ export const nodeHelpers = defineComponent({
 				type: 'credentials',
 				value: newIssues,
 			});
+		},
+
+		updateNodeParameterIssuesByName(name: string): void {
+			const node = this.workflowsStore.getNodeByName(name);
+
+			if (node) {
+				this.updateNodeParameterIssues(node);
+			}
 		},
 
 		// Updates the parameter-issues of the node
