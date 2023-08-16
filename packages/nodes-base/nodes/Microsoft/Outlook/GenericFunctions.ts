@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	JsonObject,
@@ -11,7 +10,7 @@ import type {
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 

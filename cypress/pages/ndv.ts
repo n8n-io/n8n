@@ -114,7 +114,7 @@ export class NDV extends BasePage {
 			cy.get('body').type('{enter}');
 		},
 		executePrevious: () => {
-			this.getters.executePrevious().click();
+			this.getters.executePrevious().click({ force: true });
 		},
 		mapDataFromHeader: (col: number, parameterName: string) => {
 			const draggable = `[data-test-id="ndv-input-panel"] [data-test-id="ndv-data-container"] table th:nth-child(${col})`;

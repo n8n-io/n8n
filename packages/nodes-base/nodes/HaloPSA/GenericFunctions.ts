@@ -4,7 +4,6 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
@@ -60,12 +59,7 @@ export async function getAccessTokens(
 }
 
 export async function haloPSAApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IPollFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	accessToken: string,
@@ -127,7 +121,6 @@ export async function haloPSAApiRequest(
 // 	this:
 // 		| IHookFunctions
 // 		| IExecuteFunctions
-// 		| IExecuteSingleFunctions
 // 		| ILoadOptionsFunctions
 // 		| IPollFunctions,
 // 	clientId: string,

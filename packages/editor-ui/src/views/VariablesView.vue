@@ -12,7 +12,7 @@ import { useI18n, useTelemetry, useToast, useMessage } from '@/composables';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type {
 	DatatableColumn,
 	EnvironmentVariable,
@@ -183,7 +183,7 @@ function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable)
 
 async function deleteVariable(data: EnvironmentVariable) {
 	try {
-		await message.confirm(
+		const confirmed = await message.confirm(
 			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
@@ -191,11 +191,11 @@ async function deleteVariable(data: EnvironmentVariable) {
 				cancelButtonText: i18n.baseText('variables.modals.deleteConfirm.cancelButton'),
 			},
 		);
-	} catch (e) {
-		return;
-	}
 
-	try {
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+
 		await environmentsStore.deleteVariable(data);
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} catch (error) {

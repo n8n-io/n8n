@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
@@ -18,7 +17,6 @@ export async function togglApiRequest(
 		| IPollFunctions
 		| IHookFunctions
 		| IExecuteFunctions
-		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions,
 	method: string,
 	resource: string,
