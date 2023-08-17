@@ -78,6 +78,12 @@ declare global {
 			reset?(resetDeviceId?: boolean): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
+			capture?(event: string, properties: IDataObject): void;
+			register?(metadata: IDataObject): void;
+			people?: {
+				set?(metadata: IDataObject): void;
+			};
+			debug?(): void;
 		};
 		analytics?: {
 			track(event: string, proeprties?: ITelemetryTrackProperties): void;
