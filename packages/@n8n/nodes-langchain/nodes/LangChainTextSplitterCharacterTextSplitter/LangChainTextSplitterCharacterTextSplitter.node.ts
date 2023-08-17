@@ -6,7 +6,7 @@ import { CharacterTextSplitter, CharacterTextSplitterParams } from 'langchain/te
 export class LangChainTextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Character Text Splitter',
-		name: 'LangChainTextSplitterCharacterTextSplitter',
+		name: 'langChainTextSplitterCharacterTextSplitter',
 		icon: 'fa:scissors',
 		group: ['transform'],
 		version: 1,

@@ -7,7 +7,7 @@ import { getSingleInputConnectionData } from '../../utils/helpers';
 export class LangChainDocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Workflow Input to JSON Document',
-		name: 'LangChainDocumentJSONInputLoader',
+		name: 'langChainDocumentJSONInputLoader',
 		icon: 'fa:docs',
 		group: ['transform'],
 		version: 1,

@@ -39,8 +39,10 @@
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
       "dist/nodes/LangChainChainRetrievalQA/LangChainChainRetrievalQA.node.js",
+      "dist/nodes/LangChainDocumentGithubLoader/LangChainDocumentGithubLoader.node.js",
       "dist/nodes/LangChainDocumentJSONInputLoader/LangChainDocumentJSONInputLoader.node.js",
       "dist/nodes/LangChainDynamicTool/LangChainDynamicTool.node.js",
+      "dist/nodes/LangChainEmbeddingsOpenAI/LangChainEmbeddingsOpenAI.node.js",
       "dist/nodes/LangChainInMemoryVectorStore/LangChainInMemoryVectorStore.node.js",
       "dist/nodes/LangChainLMOpenAi/LangChainLMOpenAi.node.js",
       "dist/nodes/LangChainLMCohere/LangChainLMCohere.node.js",
@@ -69,6 +71,7 @@
   "dependencies": {
     "@huggingface/inference": "1",
     "cohere-ai": "^6.2.2",
+    "ignore": "^5.2.4",
     "langchain": "^0.0.126"
   }
 }
