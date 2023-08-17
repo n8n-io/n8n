@@ -31,6 +31,7 @@ import type {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	ICredentialTestFunctions,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -53,6 +54,9 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { Container } from 'typedi';
+import { isObjectLiteral } from './utils';
+
+const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
 const mockNode = {
 	name: '',
@@ -466,8 +470,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await Db.collections.Credentials.update(findQuery, newCredentialsData);
 	}
 
+	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
+		const oauthTokenData = credentialsDecrypted?.data?.oauthTokenData;
+
+		if (!isObjectLiteral(oauthTokenData)) return false;
+
+		return 'access_token' in oauthTokenData;
+	}
+
 	private getCredentialTestFunction(
 		credentialType: string,
+		credentialsDecrypted: ICredentialsDecrypted,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
 		// Check if test is defined on credentials
 		const type = this.credentialTypes.getByName(credentialType);
@@ -496,6 +509,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 			for (const nodeType of allNodeTypes) {
 				// Check each of teh credentials
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
+					if (name === credentialType && name.endsWith('OAuth2Api')) {
+						const hasAccessToken = CredentialsHelper.hasAccessToken(credentialsDecrypted);
+
+						return async function oauth2CredTest(
+							this: ICredentialTestFunctions,
+							__: ICredentialsDecrypted,
+						): Promise<INodeCredentialTestResult> {
+							return hasAccessToken
+								? {
+										status: 'OK',
+										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
+								  }
+								: {
+										status: 'Error',
+										message: OAUTH2_CREDENTIAL_TEST_FAILED,
+								  };
+						};
+					}
+
 					if (name === credentialType && !!testedBy) {
 						if (typeof testedBy === 'string') {
 							if (node instanceof VersionedNodeType) {
@@ -532,7 +564,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
-		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
+		const credentialTestFunction = this.getCredentialTestFunction(
+			credentialType,
+			credentialsDecrypted,
+		);
 		if (credentialTestFunction === undefined) {
 			return {
 				status: 'Error',
