@@ -38,7 +38,7 @@ import type { Variables } from '@db/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
 import { InternalHooks } from '@/InternalHooks';
-import { TagService } from '@/services/tag.service';
+import { TagRepository } from '@/databases/repositories';
 
 @Service()
 export class SourceControlService {
@@ -53,7 +53,7 @@ export class SourceControlService {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
-		private tagService: TagService,
+		private tagRepository: TagRepository,
 	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.sshFolder = path.join(userFolder, SOURCE_CONTROL_SSH_FOLDER);
@@ -684,7 +684,7 @@ export class SourceControlService {
 		options: SourceControlGetStatus,
 		sourceControlledFiles: SourceControlledFile[],
 	) {
-		const lastUpdatedTag = await this.tagService.findMany({
+		const lastUpdatedTag = await this.tagRepository.find({
 			order: { updatedAt: 'DESC' },
 			take: 1,
 			select: ['updatedAt'],
