@@ -34,6 +34,7 @@ import type {
 	WorkflowSettings,
 	IUserSettings,
 	Banners,
+	IN8nUISettings,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -700,88 +701,6 @@ export interface ITemplatesCategory {
 }
 
 export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
-
-export interface IN8nUISettings {
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
-	saveManualExecutions: boolean;
-	workflowCallerPolicyDefaultOption: WorkflowCallerPolicyDefaultOption;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	oauthCallbackUrls: {
-		oauth1: string;
-		oauth2: string;
-	};
-	urlBaseEditor: string;
-	urlBaseWebhook: string;
-	versionCli: string;
-	n8nMetadata?: {
-		[key: string]: string | number | undefined;
-	};
-	versionNotifications: IVersionNotificationSettings;
-	instanceId: string;
-	personalizationSurveyEnabled: boolean;
-	userActivationSurveyEnabled: boolean;
-	telemetry: ITelemetrySettings;
-	userManagement: IUserManagementConfig;
-	defaultLocale: string;
-	workflowTagsDisabled: boolean;
-	logLevel: ILogLevel;
-	hiringBannerEnabled: boolean;
-	templates: {
-		enabled: boolean;
-		host: string;
-	};
-	posthog: {
-		enabled: boolean;
-		apiHost: string;
-		apiKey: string;
-		autocapture: boolean;
-		disableSessionRecording: boolean;
-		debug: boolean;
-	};
-	executionMode: string;
-	pushBackend: 'sse' | 'websocket';
-	communityNodesEnabled: boolean;
-	isNpmAvailable: boolean;
-	publicApi: {
-		enabled: boolean;
-		latestVersion: number;
-		path: string;
-		swaggerUi: {
-			enabled: boolean;
-		};
-	};
-	sso: {
-		saml: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-		ldap: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-	};
-	onboardingCallPromptEnabled: boolean;
-	allowedModules: {
-		builtIn?: string[];
-		external?: string[];
-	};
-	enterprise: Record<string, boolean>;
-	deployment?: {
-		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
-	};
-	hideUsagePage: boolean;
-	license: {
-		environment: 'development' | 'production';
-	};
-	mfa: {
-		enabled: boolean;
-	};
-}
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
