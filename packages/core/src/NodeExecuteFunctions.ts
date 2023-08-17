@@ -64,6 +64,7 @@ import type {
 	INodeType,
 	SupplyData,
 	ITaskData,
+	ExecutionError,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -2170,7 +2171,7 @@ export function getWebhookDescription(
 const addExecutionDataFunctions = (
 	type: 'input' | 'output',
 	nodeName: string,
-	data: INodeExecutionData[][],
+	data: INodeExecutionData[][] | ExecutionError,
 	runExecutionData: IRunExecutionData,
 	connectionType: ConnectionTypes,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -2188,8 +2189,6 @@ const addExecutionDataFunctions = (
 			inputOverride: {
 				[connectionType]: data,
 			} as ITaskDataConnections,
-			// TODO: Add support for errors
-			// error?: ExecutionError;
 		} as ITaskData;
 
 		if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
@@ -2213,11 +2212,18 @@ const addExecutionDataFunctions = (
 
 		const taskData = runDataArray[runDataArray.length - 1];
 
-		taskData.executionStatus = 'success';
+		if (data instanceof Error) {
+			// TODO: Or "failed", what is the difference
+			taskData.executionStatus = 'error';
+			taskData.error = data;
+		} else {
+			taskData.executionStatus = 'success';
+			taskData.data = {
+				[connectionType]: data,
+			} as ITaskDataConnections;
+		}
+
 		taskData.executionTime = new Date().getTime() - taskData.startTime;
-		taskData.data = {
-			[connectionType]: data,
-		} as ITaskDataConnections;
 
 		if (additionalData.sendDataToUI) {
 			additionalData.sendDataToUI('nodeExecuteAfter', {
@@ -2811,7 +2817,7 @@ export function getExecuteFunctions(
 
 			async addInputData(
 				connectionType: ConnectionTypes,
-				data: INodeExecutionData[][],
+				data: INodeExecutionData[][] | ExecutionError,
 			): Promise<void> {
 				return addExecutionDataFunctions(
 					'input',
@@ -2824,7 +2830,7 @@ export function getExecuteFunctions(
 			},
 			async addOutputData(
 				connectionType: ConnectionTypes,
-				data: INodeExecutionData[][],
+				data: INodeExecutionData[][] | ExecutionError,
 			): Promise<void> {
 				return addExecutionDataFunctions(
 					'output',

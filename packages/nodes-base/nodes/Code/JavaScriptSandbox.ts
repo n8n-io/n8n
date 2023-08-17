@@ -47,6 +47,15 @@ export class JavaScriptSandbox extends Sandbox {
 		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
 	}
 
+	async runCode(): Promise<string> {
+		const script = `module.exports = async function() {${this.jsCode}\n}()`;
+		try {
+			return await this.vm.run(script, __dirname);
+		} catch (error) {
+			throw new ExecutionError(error);
+		}
+	}
+
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 

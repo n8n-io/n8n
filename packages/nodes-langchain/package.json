@@ -38,6 +38,7 @@
     ],
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
+      "dist/nodes/LangChainDynamicTool/LangChainDynamicTool.node.js",
       "dist/nodes/LangChainLMOpenAi/LangChainLMOpenAi.node.js",
       "dist/nodes/LangChainLMCohere/LangChainLMCohere.node.js",
       "dist/nodes/LangChainLMOpenHuggingFaceInference/LangChainLMOpenHuggingFaceInference.node.js",
@@ -46,6 +47,9 @@
       "dist/nodes/LangChainToolSerpApi/LangChainToolSerpApi.node.js",
       "dist/nodes/LangChainToolWikipedia/LangChainToolWikipedia.node.js"
     ]
+  },
+  "peerDependencies": {
+    "n8n-nodes-base": "*"
   },
   "devDependencies": {
     "@types/express": "^4.17.6",
