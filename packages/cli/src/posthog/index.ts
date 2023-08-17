@@ -33,20 +33,18 @@ const logWorkflowFailureScheduleOrNocoDBAuthWebhook = async ({
 		return false;
 	});
 
-	if (isScheduleTriggerOrNocoDBAuthWebhook) {
-		await createIncidentLog(
-			{
-				errorMessage: properties.error_message as string,
-				incidentTime: new Date(),
-			},
-			{ ...properties },
-			(defaultTitle) => {
-				return isScheduleTriggerOrNocoDBAuthWebhook
-					? `System triggered - ${defaultTitle}`
-					: defaultTitle;
-			},
-		);
-	}
+	await createIncidentLog(
+		{
+			errorMessage: properties.error_message as string,
+			incidentTime: new Date(),
+		},
+		{ ...properties },
+		(defaultTitle) => {
+			return isScheduleTriggerOrNocoDBAuthWebhook
+				? `System triggered - ${defaultTitle}`
+				: defaultTitle;
+		},
+	);
 };
 
 @Service()
