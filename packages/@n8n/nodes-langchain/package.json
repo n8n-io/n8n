@@ -38,11 +38,15 @@
     ],
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
+      "dist/nodes/LangChainChainRetrievalQA/LangChainChainRetrievalQA.node.js",
+      "dist/nodes/LangChainDocumentJSONInputLoader/LangChainDocumentJSONInputLoader.node.js",
       "dist/nodes/LangChainDynamicTool/LangChainDynamicTool.node.js",
+      "dist/nodes/LangChainInMemoryVectorStore/LangChainInMemoryVectorStore.node.js",
       "dist/nodes/LangChainLMOpenAi/LangChainLMOpenAi.node.js",
       "dist/nodes/LangChainLMCohere/LangChainLMCohere.node.js",
       "dist/nodes/LangChainLMOpenHuggingFaceInference/LangChainLMOpenHuggingFaceInference.node.js",
       "dist/nodes/LangChainMemoryMotorhead/LangChainMemoryMotorhead.node.js",
+      "dist/nodes/LangChainTextSplitterCharacterTextSplitter/LangChainTextSplitterCharacterTextSplitter.node.js",
       "dist/nodes/LangChainToolCalculator/LangChainToolCalculator.node.js",
       "dist/nodes/LangChainToolSerpApi/LangChainToolSerpApi.node.js",
       "dist/nodes/LangChainToolWikipedia/LangChainToolWikipedia.node.js"

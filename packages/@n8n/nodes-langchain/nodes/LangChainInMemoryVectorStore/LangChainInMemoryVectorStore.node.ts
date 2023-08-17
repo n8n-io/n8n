@@ -7,7 +7,7 @@ import { getSingleInputConnectionData } from '../../utils/helpers';
 
 export class LangChainInMemoryVectorStore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - In Memory Vector Store',
+		displayName: 'LangChain - In Memory Vector Store Retriever',
 		name: 'LangChainInMemoryVectorStore',
 		icon: 'fa:scissors',
 		group: ['transform'],
