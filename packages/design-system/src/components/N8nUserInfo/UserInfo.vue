@@ -21,18 +21,6 @@
 			<div>
 				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
 			</div>
-			<div v-if="!isOwner">
-				<n8n-text v-if="signInType" size="small" color="text-light">
-					Sign-in type:
-					{{
-						isSamlLoginEnabled
-							? settings?.allowSSOManualLogin
-								? $locale.baseText('settings.sso') + ' + ' + signInType
-								: $locale.baseText('settings.sso')
-							: signInType
-					}}
-				</n8n-text>
-			</div>
 		</div>
 	</div>
 </template>
@@ -73,10 +61,6 @@ export default defineComponent({
 		},
 		disabled: {
 			type: Boolean,
-		},
-		signInType: {
-			type: String,
-			required: false,
 		},
 		settings: {
 			type: Object,
