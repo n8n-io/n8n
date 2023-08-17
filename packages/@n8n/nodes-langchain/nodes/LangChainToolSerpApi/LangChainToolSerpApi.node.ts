@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import { logWrapper } from '../../utils/logWrapper';
 
 import { SerpAPI } from 'langchain/tools';
 
@@ -34,7 +35,7 @@ export class LangChainToolSerpApi implements INodeType {
 		const credentials = await this.getCredentials('serpApi');
 
 		return {
-			response: new SerpAPI(credentials.apiKey as string),
+			response: logWrapper(new SerpAPI(credentials.apiKey as string), this),
 		};
 	}
 }
