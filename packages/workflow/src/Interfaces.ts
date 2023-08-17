@@ -1214,9 +1214,10 @@ export interface INodePropertyValueExtractorRegex extends INodePropertyValueExtr
 }
 
 export interface INodePropertyValueExtractorFunction {
-	(this: IExecuteSingleFunctions, value: string | NodeParameterValue):
-		| Promise<string | NodeParameterValue>
-		| (string | NodeParameterValue);
+	(
+		this: IExecuteSingleFunctions,
+		value: string | NodeParameterValue,
+	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
 }
 
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
@@ -1478,7 +1479,7 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes = 'languageModel' | 'main' | 'memory' | 'tool';
+export type ConnectionTypes = 'languageModel' | 'main' | 'memory' | 'tool' | 'textSplitter' | 'document' | 'vectorRetriever' | 'vectorStore' | 'embedding' | 'chain'
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
