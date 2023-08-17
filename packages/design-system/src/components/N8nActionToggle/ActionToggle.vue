@@ -21,6 +21,7 @@
 						:key="action.value"
 						:command="action.value"
 						:disabled="action.disabled"
+						:data-test-id="`action-${action.value}`"
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
