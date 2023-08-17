@@ -893,6 +893,9 @@ importers:
       prettier:
         specifier: ^3.0.0
         version: 3.0.0
+      qrcode.vue:
+        specifier: ^3.0.0
+        version: 3.0.0(vue@3.3.4)
       stream-browserify:
         specifier: ^3.0.0
         version: 3.0.0
