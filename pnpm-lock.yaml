@@ -140,6 +140,49 @@ importers:
         specifier: ^0.21.1
         version: 0.21.4
 
+  packages/@n8n/nodes-langchain:
+    dependencies:
+      '@huggingface/inference':
+        specifier: '1'
+        version: 1.8.0
+      cohere-ai:
+        specifier: ^6.2.2
+        version: 6.2.2
+      langchain:
+        specifier: ^0.0.126
+        version: 0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)
+      n8n-nodes-base:
+        specifier: '*'
+        version: link:../../nodes-base
+    devDependencies:
+      '@types/express':
+        specifier: ^4.17.6
+        version: 4.17.14
+      '@types/request-promise-native':
+        specifier: ~1.0.15
+        version: 1.0.18
+      '@typescript-eslint/parser':
+        specifier: ~5.45
+        version: 5.45.0(eslint@8.45.0)(typescript@5.1.6)
+      eslint-plugin-n8n-nodes-base:
+        specifier: ^1.11.0
+        version: 1.16.0(eslint@8.45.0)(typescript@5.1.6)
+      gulp:
+        specifier: ^4.0.2
+        version: 4.0.2
+      n8n-core:
+        specifier: '*'
+        version: link:../../core
+      n8n-workflow:
+        specifier: '*'
+        version: link:../../workflow
+      prettier:
+        specifier: ^2.7.1
+        version: 2.8.8
+      typescript:
+        specifier: ^5.1.6
+        version: 5.1.6
+
   packages/@n8n_io/eslint-config:
     devDependencies:
       '@types/eslint':
@@ -198,7 +241,7 @@ importers:
         version: link:../@n8n/client-oauth2
       '@n8n/nodes-langchain':
         specifier: workspace:*
-        version: link:../nodes-langchain
+        version: link:../@n8n/nodes-langchain
       '@n8n_io/license-sdk':
         specifier: ~2.4.0
         version: 2.4.0
@@ -1273,49 +1316,6 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../core
-
-  packages/nodes-langchain:
-    dependencies:
-      '@huggingface/inference':
-        specifier: '1'
-        version: 1.8.0
-      cohere-ai:
-        specifier: ^6.2.2
-        version: 6.2.2
-      langchain:
-        specifier: ^0.0.126
-        version: 0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)
-      n8n-nodes-base:
-        specifier: '*'
-        version: link:../nodes-base
-    devDependencies:
-      '@types/express':
-        specifier: ^4.17.6
-        version: 4.17.14
-      '@types/request-promise-native':
-        specifier: ~1.0.15
-        version: 1.0.18
-      '@typescript-eslint/parser':
-        specifier: ~5.45
-        version: 5.45.0(eslint@8.45.0)(typescript@5.1.6)
-      eslint-plugin-n8n-nodes-base:
-        specifier: ^1.11.0
-        version: 1.16.0(eslint@8.45.0)(typescript@5.1.6)
-      gulp:
-        specifier: ^4.0.2
-        version: 4.0.2
-      n8n-core:
-        specifier: '*'
-        version: link:../core
-      n8n-workflow:
-        specifier: '*'
-        version: link:../workflow
-      prettier:
-        specifier: ^2.7.1
-        version: 2.8.8
-      typescript:
-        specifier: ^5.1.6
-        version: 5.1.6
 
   packages/workflow:
     dependencies:
