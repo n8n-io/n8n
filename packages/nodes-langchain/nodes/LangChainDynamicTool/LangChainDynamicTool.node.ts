@@ -73,6 +73,8 @@ export class LangChainDynamicTool implements INodeType {
 					editorLanguage: 'javaScript',
 				},
 				default: '',
+				// TODO: Add proper text here later
+				hint: 'Use "query" to get the input the tool received, and return a single string as output.',
 				description:
 					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,
@@ -91,6 +93,8 @@ export class LangChainDynamicTool implements INodeType {
 					editorLanguage: 'python',
 				},
 				default: '',
+				// TODO: Add proper text here later
+				hint: 'Use "query" to get the input the tool received, and return a single string as output.',
 				description:
 					'Python code to execute.<br><br>Tip: You can use luxon vars like <code>_today</code> for dates and <code>$_mespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,
