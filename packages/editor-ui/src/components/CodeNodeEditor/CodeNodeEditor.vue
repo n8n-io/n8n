@@ -42,8 +42,9 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import jsParser from 'prettier/parser-babel';
-import prettier from 'prettier/standalone';
+import jsParser from 'prettier/plugins/babel';
+import { format } from 'prettier';
+import * as estree from 'prettier/plugins/estree';
 import { mapStores } from 'pinia';
 import type { LanguageSupport } from '@codemirror/language';
 import type { Extension, Line } from '@codemirror/state';
@@ -203,9 +204,9 @@ export default defineComponent({
 			return true;
 		},
 		async onReplaceCode(code: string) {
-			const formattedCode = prettier.format(code, {
+			const formattedCode = await format(code, {
 				parser: 'babel',
-				plugins: [jsParser],
+				plugins: [jsParser, estree],
 			});
 
 			this.editor?.dispatch({
