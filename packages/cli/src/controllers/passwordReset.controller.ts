@@ -282,9 +282,7 @@ export class PasswordResetController {
 		if (user.mfaEnabled) {
 			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
 
-			const { decryptedSecret: secret } = await this.mfaService.getRawSecretAndRecoveryCodes(
-				user.id,
-			);
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
 
 			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
 

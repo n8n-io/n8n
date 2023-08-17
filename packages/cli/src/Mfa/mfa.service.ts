@@ -53,7 +53,7 @@ export class MfaService {
 		};
 	}
 
-	public async getRawSecretAndRecoveryCodes(userId: string) {
+	public async getSecretAndRecoveryCodes(userId: string) {
 		const { mfaSecret, mfaRecoveryCodes } = await this.userRepository.findOneOrFail({
 			where: { id: userId },
 			select: ['id', 'mfaSecret', 'mfaRecoveryCodes'],

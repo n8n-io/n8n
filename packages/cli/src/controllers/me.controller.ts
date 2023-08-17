@@ -162,7 +162,7 @@ export class MeController {
 		if (mfaEnabled) {
 			if (!token) throw new BadRequestError('If MFA enabled, token is required.');
 
-			const { decryptedSecret: secret } = await this.mfaService.getRawSecretAndRecoveryCodes(id);
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(id);
 
 			const validToken = this.mfaService.totp.verifySecret({ secret, token });
 

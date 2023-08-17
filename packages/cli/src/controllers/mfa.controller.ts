@@ -20,7 +20,7 @@ export class MFAController {
 			);
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
-			await this.mfaService.getRawSecretAndRecoveryCodes(id);
+			await this.mfaService.getSecretAndRecoveryCodes(id);
 
 		if (secret && recoveryCodes.length) {
 			const qrCode = this.mfaService.totp.generateTOTPUri({
@@ -56,7 +56,7 @@ export class MFAController {
 		const { id, mfaEnabled, email } = req.user;
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
-			await this.mfaService.getRawSecretAndRecoveryCodes(id);
+			await this.mfaService.getSecretAndRecoveryCodes(id);
 
 		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
 
@@ -86,7 +86,7 @@ export class MFAController {
 		const { id } = req.user;
 		const { token } = req.body;
 
-		const { decryptedSecret: secret } = await this.mfaService.getRawSecretAndRecoveryCodes(id);
+		const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(id);
 
 		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
 
