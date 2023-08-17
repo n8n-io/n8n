@@ -48,9 +48,6 @@
       "dist/nodes/LangChainToolWikipedia/LangChainToolWikipedia.node.js"
     ]
   },
-  "peerDependencies": {
-    "n8n-nodes-base": "*"
-  },
   "devDependencies": {
     "@types/express": "^4.17.6",
     "@types/request-promise-native": "~1.0.15",
@@ -64,6 +61,7 @@
   },
   "dependencies": {
     "@huggingface/inference": "1",
+    "n8n-nodes-base": "workspace:*",
     "cohere-ai": "^6.2.2",
     "langchain": "^0.0.126"
   }
