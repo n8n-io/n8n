@@ -32,11 +32,6 @@
 									>{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
 								>
 							</template>
-							<template #part3>
-								<span data-test-id="mfa-secret-input" style="display: none" ref="codeSecret">{{
-									secret
-								}}</span>
-							</template>
 						</i18n-t>
 					</n8n-text>
 				</div>
@@ -202,7 +197,7 @@ export default defineComponent({
 				});
 		},
 		onCopySecretToClipboard() {
-			this.copyToClipboard((this.$refs.codeSecret as HTMLInputElement).innerHTML);
+			this.copyToClipboard(this.secret);
 			this.showToast({
 				title: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
 				message: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
