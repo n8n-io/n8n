@@ -3,8 +3,8 @@ import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constan
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useUIStore } from '@/stores/ui.store';
 import type { Completion, CompletionContext } from '@codemirror/autocomplete';
-import { useUIStore } from '@/stores';
 
 // String literal expression is everything enclosed in single, double or tick quotes following a dot
 const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;

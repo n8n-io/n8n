@@ -1,18 +1,26 @@
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
-import { STORES } from '@/constants';
+import { EnterpriseEditionFeature, STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import SettingsExternalSecrets from '@/views/SettingsExternalSecrets.vue';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { createComponentRenderer } from '@/__tests__/render';
+import { useSettingsStore } from '@/stores';
+import { setupServer } from '@/__tests__/server';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
+let server: ReturnType<typeof setupServer>;
 
 const renderComponent = createComponentRenderer(SettingsExternalSecrets);
 
 describe('SettingsExternalSecrets', () => {
-	beforeEach(() => {
+	beforeAll(() => {
+		server = setupServer();
+	});
+
+	beforeEach(async () => {
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -21,10 +29,17 @@ describe('SettingsExternalSecrets', () => {
 			},
 		});
 		externalSecretsStore = useExternalSecretsStore(pinia);
+		settingsStore = useSettingsStore();
+
+		await settingsStore.getSettings();
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	afterAll(() => {
+		server.shutdown();
 	});
 
 	it('should render paywall state when there is no license', () => {
@@ -35,9 +50,7 @@ describe('SettingsExternalSecrets', () => {
 	});
 
 	it('should render licensed content', () => {
-		vi.spyOn(externalSecretsStore, 'isEnterpriseExternalSecretsEnabled', 'get').mockReturnValue(
-			true,
-		);
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 
 		const { getByTestId, queryByTestId } = renderComponent({ pinia });
 
