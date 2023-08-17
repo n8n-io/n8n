@@ -13,6 +13,7 @@ export class AddMfaColumns1690000000030 implements ReversibleMigration {
 			new TableColumn({
 				name: 'mfaSecret',
 				type: 'varchar',
+				length: 'MAX',
 				isNullable: true,
 				default: null,
 			}),
@@ -20,6 +21,7 @@ export class AddMfaColumns1690000000030 implements ReversibleMigration {
 				name: 'mfaRecoveryCodes',
 				type: 'varchar',
 				isNullable: true,
+				length: 'MAX',
 				default: null,
 			}),
 		]);
