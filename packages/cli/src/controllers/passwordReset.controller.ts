@@ -245,7 +245,7 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, password, mfaToken = undefined } = req.body;
+		const { token: resetPasswordToken, password, mfaToken } = req.body;
 
 		if (!resetPasswordToken || !password) {
 			this.logger.debug(
