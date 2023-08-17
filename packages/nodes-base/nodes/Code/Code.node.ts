@@ -13,6 +13,8 @@ import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
 
+const { CODE_DISABLE_STDOUT } = process.env;
+
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
@@ -114,6 +116,8 @@ export class Code implements INodeType {
 				'output',
 				workflowMode === 'manual'
 					? this.sendMessageToUI
+					: CODE_DISABLE_STDOUT === 'true'
+					? () => {}
 					: (...args) =>
 							console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
 			);
