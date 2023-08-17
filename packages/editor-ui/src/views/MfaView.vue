@@ -219,15 +219,15 @@ export default defineComponent({
 				return;
 			}
 
+			this.$telemetry.track('User attempted to login', {
+				result: 'mfa_success',
+			});
+
 			if (this.isRedirectSafe()) {
 				const redirect = this.getRedirectQueryParameter();
 				void this.$router.push(redirect);
 				return;
 			}
-
-			this.$telemetry.track('User attempted to login', {
-				result: 'mfa_success',
-			});
 
 			void this.$router.push({ name: VIEWS.HOMEPAGE });
 		},
