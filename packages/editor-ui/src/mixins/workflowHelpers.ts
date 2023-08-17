@@ -9,7 +9,7 @@ import {
 	MODAL_CONFIRM,
 } from '@/constants';
 
-import {
+import type {
 	IConnections,
 	IDataObject,
 	INode,
@@ -27,8 +27,8 @@ import {
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
-	ExpressionEvaluatorProxy,
 } from 'n8n-workflow';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type {
