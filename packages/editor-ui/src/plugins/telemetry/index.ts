@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
+import { usePostHog } from '@/stores/posthog.store';
 
 export class Telemetry {
 	constructor(
@@ -72,7 +73,11 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track(
+		event: string,
+		properties?: ITelemetryTrackProperties,
+		{ withPostHog } = { withPostHog: false },
+	) {
 		if (!this.rudderStack) return;
 
 		const updatedProperties = {
@@ -81,6 +86,10 @@ export class Telemetry {
 		};
 
 		this.rudderStack.track(event, updatedProperties);
+
+		if (withPostHog) {
+			usePostHog().capture(event, updatedProperties);
+		}
 	}
 
 	page(route: Route) {
@@ -119,7 +128,7 @@ export class Telemetry {
 			properties.session_id = useRootStore().sessionId;
 			switch (event) {
 				case 'askAi.generationFinished':
-					this.track('Ai code generation finished', properties);
+					this.track('Ai code generation finished', properties, { withPostHog: true });
 				case 'ask.generationClicked':
 					this.track('User clicked on generate code button', properties);
 				default:
@@ -189,7 +198,7 @@ export class Telemetry {
 					this.track('User viewed node category', properties);
 					break;
 				case 'nodeView.addNodeButton':
-					this.track('User added node to workflow canvas', properties);
+					this.track('User added node to workflow canvas', properties, { withPostHog: true });
 					break;
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);
