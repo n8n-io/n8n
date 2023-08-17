@@ -81,7 +81,7 @@ describe('Enable MFA setup', () => {
 			expect(response.statusCode).toBe(401);
 		});
 
-		test('POST /verify should fail due to missing token parameter', async () => {
+		test('POST /verify should fail due to invalid MFA token', async () => {
 			const response = await testServer
 				.authAgentFor(owner)
 				.post('/mfa/verify')
@@ -90,7 +90,7 @@ describe('Enable MFA setup', () => {
 			expect(response.statusCode).toBe(400);
 		});
 
-		test('POST /verify should fail due to invalid MFA token', async () => {
+		test('POST /verify should fail due to missing token parameter', async () => {
 			await testServer.authAgentFor(owner).get('/mfa/qr');
 
 			const response = await testServer.authAgentFor(owner).post('/mfa/verify').send({ token: '' });
@@ -122,10 +122,7 @@ describe('Enable MFA setup', () => {
 		});
 
 		test('POST /verify should fail due to missing token parameter', async () => {
-			const response = await testServer
-				.authAgentFor(owner)
-				.post('/mfa/verify')
-				.send({ token: '123' });
+			const response = await testServer.authAgentFor(owner).post('/mfa/verify').send({ token: '' });
 
 			expect(response.statusCode).toBe(400);
 		});
@@ -133,7 +130,10 @@ describe('Enable MFA setup', () => {
 		test('POST /enable should fail due to invalid MFA token', async () => {
 			await testServer.authAgentFor(owner).get('/mfa/qr');
 
-			const response = await testServer.authAgentFor(owner).post('/mfa/enable').send({ token: '' });
+			const response = await testServer
+				.authAgentFor(owner)
+				.post('/mfa/enable')
+				.send({ token: '123' });
 
 			expect(response.statusCode).toBe(400);
 		});
