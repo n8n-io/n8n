@@ -4,7 +4,7 @@ import { useI18n, useMessage, useToast } from '@/composables';
 import { useExternalSecretsStore } from '@/stores';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
-import { ExternalSecretsProvider } from '@/Interface';
+import type { ExternalSecretsProvider } from '@/Interface';
 
 const i18n = useI18n();
 const uiStore = useUIStore();

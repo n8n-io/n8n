@@ -27,14 +27,17 @@ export function useExternalSecretsProvider(
 	};
 
 	const normalizedProviderData = computed(() => {
-		return Object.entries(providerData.value).reduce((acc, [key, value]) => {
-			const property = provider.value?.properties?.find((property) => property.name === key);
-			if (shouldDisplayProperty(property)) {
-				acc[key] = value;
-			}
+		return Object.entries(providerData.value).reduce(
+			(acc, [key, value]) => {
+				const property = provider.value?.properties?.find((property) => property.name === key);
+				if (shouldDisplayProperty(property)) {
+					acc[key] = value;
+				}
 
-			return acc;
-		}, {} as Record<string, IUpdateInformation['value']>);
+				return acc;
+			},
+			{} as Record<string, IUpdateInformation['value']>,
+		);
 	});
 
 	function shouldDisplayProperty(

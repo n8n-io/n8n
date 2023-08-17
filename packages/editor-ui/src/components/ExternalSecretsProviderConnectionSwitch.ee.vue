@@ -4,7 +4,7 @@ import type { ExternalSecretsProvider } from '@/Interface';
 import { useExternalSecretsStore } from '@/stores';
 import { useI18n, useLoadingService, useToast } from '@/composables';
 import { computed, onMounted, ref } from 'vue';
-import { EventBus } from 'n8n-design-system/utils';
+import type { EventBus } from 'n8n-design-system/utils';
 
 const emit = defineEmits<{
 	(e: 'change', value: boolean): void;

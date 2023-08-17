@@ -46,7 +46,8 @@
 
 <script lang="ts">
 import { mapStores } from 'pinia';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';

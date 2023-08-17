@@ -127,10 +127,7 @@ export class InfisicalProvider implements SecretsProvider {
 			return [false, 'Client not initialized'];
 		}
 		try {
-			await populateClientWorkspaceConfigsHelper(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				this.client.clientConfig,
-			);
+			await populateClientWorkspaceConfigsHelper(this.client.clientConfig);
 			return [true];
 		} catch (e) {
 			return [false];

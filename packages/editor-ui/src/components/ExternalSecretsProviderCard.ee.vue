@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import type { PropType, Ref } from 'vue';
-import type { ExternalSecretsProvider, ExternalSecretsProviderData } from '@/Interface';
+import type { ExternalSecretsProvider } from '@/Interface';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { useExternalSecretsStore, useUIStore } from '@/stores';
 import { useExternalSecretsProvider, useI18n, useToast } from '@/composables';
 import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 import { DateTime } from 'luxon';
-import { computed, nextTick, onMounted, ref, toRef, toRefs } from 'vue';
+import { computed, nextTick, onMounted, toRefs } from 'vue';
 
 const props = defineProps({
 	provider: {

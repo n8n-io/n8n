@@ -2,7 +2,8 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import { Expression, ExpressionExtensions, IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { ensureSyntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
