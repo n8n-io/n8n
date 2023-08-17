@@ -2,7 +2,7 @@ import * as tmpl from '@n8n_io/riot-tmpl';
 import type { ReturnValue, TmplDifference } from '@n8n/tournament';
 import { Tournament } from '@n8n/tournament';
 import type { ExpressionEvaluatorType } from './Interfaces';
-import * as ErrorReporterProxy from './ErrorReporterProxy';
+import * as LoggerProxy from './LoggerProxy';
 
 type Evaluator = (expr: string, data: unknown) => tmpl.ReturnValue;
 type ErrorHandler = (error: Error) => void;
@@ -14,16 +14,20 @@ tmpl.brackets.set('{{ }}');
 let errorHandler: ErrorHandler = () => {};
 let differenceHandler: DifferenceHandler = () => {};
 const differenceChecker = (diff: TmplDifference) => {
-	if (diff.same) {
-		return;
-	}
-	if (diff.has?.function || diff.has?.templateString) {
-		return;
-	}
-	if (diff.expression === 'UNPARSEABLE') {
-		differenceHandler(diff.expression);
-	} else {
-		differenceHandler(diff.expression.value);
+	try {
+		if (diff.same) {
+			return;
+		}
+		if (diff.has?.function || diff.has?.templateString) {
+			return;
+		}
+		if (diff.expression === 'UNPARSEABLE') {
+			differenceHandler(diff.expression);
+		} else {
+			differenceHandler(diff.expression.value);
+		}
+	} catch {
+		LoggerProxy.error('Expression evaluator difference checker failed');
 	}
 };
 const tournamentEvaluator = new Tournament(errorHandler, undefined);
@@ -65,7 +69,9 @@ export const checkEvaluatorDifferences = (expr: string): TmplDifference | null =
 		diff = tournamentEvaluator.tmplDiff(expr);
 	} catch (e) {
 		// We don't include the expression for privacy reasons
-		differenceHandler('ERROR');
+		try {
+			differenceHandler('ERROR');
+		} catch {}
 		diff = null;
 	}
 
@@ -116,11 +122,16 @@ export const evaluateExpression: Evaluator = (expr, data) => {
 
 	if (
 		wasTmplError !== wasTournError ||
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		JSON.stringify(tmplValue!) !== JSON.stringify(tournValue!)
 	) {
-		if (diff.expression) {
-			differenceHandler(diff.expression.value);
+		try {
+			if (diff.expression) {
+				differenceHandler(diff.expression.value);
+			} else {
+				differenceHandler('VALUEDIFF');
+			}
+		} catch {
+			LoggerProxy.error('Failed to report error difference');
 		}
 	}
 
@@ -128,13 +139,11 @@ export const evaluateExpression: Evaluator = (expr, data) => {
 		if (wasTmplError) {
 			throw tmplError;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		return tmplValue!;
 	}
 
 	if (wasTournError) {
 		throw tournError;
 	}
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 	return tournValue!;
 };
