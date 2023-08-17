@@ -6,7 +6,6 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
@@ -43,7 +42,7 @@ import MailComposer from 'nodemailer/lib/mail-composer';
 import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
@@ -349,7 +348,7 @@ export const prepareTimestamp = (
 };
 
 export function prepareQuery(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	fields: IDataObject,
 	itemIndex: number,
 ) {
@@ -406,7 +405,7 @@ export function prepareQuery(
 }
 
 export function prepareEmailsInput(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	input: string,
 	fieldName: string,
 	itemIndex: number,
@@ -434,7 +433,7 @@ export function prepareEmailsInput(
 }
 
 export function prepareEmailBody(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;

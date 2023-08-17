@@ -113,7 +113,13 @@ export const webhookRequestHandler =
 
 		// Don't respond, if already responded
 		if (response.noWebhookResponse !== true) {
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			ResponseHelper.sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+			);
 		}
 	};
 

@@ -17,6 +17,7 @@ import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore, useUIStore } from '@/stores';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
 export default defineComponent({
@@ -37,7 +38,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
+		...mapStores(useUsersStore, useSettingsStore, useUIStore, useCloudPlanStore),
 	},
 	mounted() {
 		let emailLabel = this.$locale.baseText('auth.email');
@@ -88,6 +89,8 @@ export default defineComponent({
 			try {
 				this.loading = true;
 				await this.usersStore.loginWithCreds(values as { email: string; password: string });
+				await this.cloudPlanStore.checkForCloudPlanData();
+				await this.uiStore.initBanners();
 				this.clearAllStickyNotifications();
 				this.loading = false;
 

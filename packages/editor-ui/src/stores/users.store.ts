@@ -37,6 +37,7 @@ import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
+import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 
 const isDefaultUser = (user: IUserResponse | null) =>
@@ -191,7 +192,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
+			useCloudPlanStore().reset();
 			usePostHog().reset();
+			await useUIStore().dismissAllBanners();
 		},
 		async createOwner(params: {
 			firstName: string;
@@ -206,6 +209,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
 				settingsStore.stopShowingSetupPage();
+				usePostHog().init(user.featureFlags);
 			}
 		},
 		async validateSignupToken(params: {
@@ -227,9 +231,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (user) {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
+				usePostHog().init(user.featureFlags);
 			}
-
-			usePostHog().init(user.featureFlags);
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();

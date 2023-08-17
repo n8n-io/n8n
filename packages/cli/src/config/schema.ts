@@ -762,7 +762,7 @@ export const schema = {
 	externalFrontendHooksUrls: {
 		doc: 'URLs to external frontend hooks files, ; separated',
 		format: String,
-		default: 'https://public.n8n.cloud/posthog-hooks.js',
+		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
@@ -1181,6 +1181,15 @@ export const schema = {
 				default: 3600 * 1000, // 1 hour
 				env: 'N8N_CACHE_REDIS_TTL',
 			},
+		},
+	},
+
+	ai: {
+		enabled: {
+			doc: 'Whether AI features are enabled',
+			format: Boolean,
+			default: false,
+			env: 'N8N_AI_ENABLED',
 		},
 	},
 };

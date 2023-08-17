@@ -26,7 +26,6 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
-export const ASK_AI_MODAL_KEY = 'askAi';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -180,7 +179,6 @@ export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
-export const ASK_AI_WAITLIST_URL = 'https://n8n-community.typeform.com/to/odKU4oDR';
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
@@ -527,14 +525,14 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const TEMPLATES_EXPERIMENT = {
-	name: '008_template_variants',
+export const ASK_AI_EXPERIMENT = {
+	name: '011_ask_AI',
 	control: 'control',
-	variant: 'variant',
-	variantIds: ['1932', '1930', '1931', '1933', '1750', '1748', '1435'],
+	gpt3: 'gpt3',
+	gpt4: 'gpt4',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATES_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 
@@ -574,3 +572,8 @@ export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
 // A path that does not exist so that nothing is selected by default
 export const nonExistingJsonPath = '_!^&*';
+
+// Ask AI
+export const ASK_AI_MAX_PROMPT_LENGTH = 600;
+export const ASK_AI_MIN_PROMPT_LENGTH = 15;
+export const ASK_AI_LOADING_DURATION_MS = 12000;

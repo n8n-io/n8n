@@ -66,6 +66,7 @@ import {
 	GENERATED_STATIC_DIR,
 	inDevelopment,
 	inE2ETests,
+	LICENSE_FEATURES,
 	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -315,6 +316,7 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
+				showNonProdBanner: false,
 				debugInEditor: false,
 			},
 			mfa: {
@@ -329,6 +331,9 @@ export class Server extends AbstractServer {
 			},
 			banners: {
 				dismissed: [],
+			},
+			ai: {
+				enabled: config.getEnv('ai.enabled'),
 			},
 		};
 	}
@@ -448,6 +453,9 @@ export class Server extends AbstractServer {
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
 			sourceControl: isSourceControlLicensed(),
+			showNonProdBanner: Container.get(License).isFeatureEnabled(
+				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
+			),
 			debugInEditor: isDebugInEditorLicensed(),
 		});
 
@@ -495,7 +503,7 @@ export class Server extends AbstractServer {
 		const controllers: object[] = [
 			new EventBusController(),
 			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
-			new OwnerController({ config, internalHooks, repositories, logger }),
+			new OwnerController({ config, internalHooks, repositories, logger, postHog }),
 			new MeController({ externalHooks, internalHooks, repositories, logger, mfaService }),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({

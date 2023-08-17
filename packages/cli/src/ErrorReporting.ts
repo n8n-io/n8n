@@ -7,6 +7,10 @@ let initialized = false;
 export const initErrorHandling = async () => {
 	if (initialized) return;
 
+	process.on('uncaughtException', (error) => {
+		ErrorReporterProxy.error(error);
+	});
+
 	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
 	if (!config.getEnv('diagnostics.enabled') || !dsn) {
 		initialized = true;
@@ -42,10 +46,6 @@ export const initErrorHandling = async () => {
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
 		return event;
-	});
-
-	process.on('uncaughtException', (error) => {
-		ErrorReporterProxy.error(error);
 	});
 
 	ErrorReporterProxy.init({

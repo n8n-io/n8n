@@ -95,15 +95,11 @@ export class Telemetry {
 				return sum > 0;
 			})
 			.map(async (workflowId) => {
-				const promise = this.track(
-					'Workflow execution count',
-					{
-						event_version: '2',
-						workflow_id: workflowId,
-						...this.executionCountsBuffer[workflowId],
-					},
-					{ withPostHog: true },
-				);
+				const promise = this.track('Workflow execution count', {
+					event_version: '2',
+					workflow_id: workflowId,
+					...this.executionCountsBuffer[workflowId],
+				});
 
 				return promise;
 			});

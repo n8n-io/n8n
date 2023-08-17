@@ -2185,6 +2185,7 @@ export interface IN8nUISettings {
 		variables: boolean;
 		sourceControl: boolean;
 		auditLogs: boolean;
+		showNonProdBanner: boolean;
 		debugInEditor: boolean;
 	};
 	hideUsagePage: boolean;
@@ -2200,6 +2201,9 @@ export interface IN8nUISettings {
 	banners: {
 		dismissed: string[];
 	};
+	ai: {
+		enabled: boolean;
+	};
 }
 
-export type Banners = 'V1' | 'TRIAL_OVER' | 'TRIAL';
+export type BannerName = 'V1' | 'TRIAL_OVER' | 'TRIAL' | 'NON_PRODUCTION_LICENSE';
