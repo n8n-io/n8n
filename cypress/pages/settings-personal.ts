@@ -60,12 +60,13 @@ export class PersonalSettingsPage extends BasePage {
 			cy.visit(this.url);
 			this.getters.enableMfaButton().click();
 			mfaSetupModal.getters.copySecretToClipboardButton().click();
-			mfaSetupModal.getters.secretInput().then(($value) => {
-				const secret = $value.text();
-				cy.generateToken(secret).then((token) => {
-					mfaSetupModal.getters.tokenInput().type(token);
-					mfaSetupModal.getters.downloadRecoveryCodesButton().click();
-					mfaSetupModal.getters.saveButton().click();
+			cy.window().then((win) => {
+				win.navigator.clipboard.readText().then((secret) => {
+					cy.generateToken(secret).then((token) => {
+						mfaSetupModal.getters.tokenInput().type(token);
+						mfaSetupModal.getters.downloadRecoveryCodesButton().click();
+						mfaSetupModal.getters.saveButton().click();
+					});
 				});
 			});
 		},

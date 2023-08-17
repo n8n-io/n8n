@@ -5,7 +5,6 @@ export class MfaSetupModal extends BasePage {
 		modalContainer: () => cy.getByTestId('changePassword-modal').last(),
 		tokenInput: () => cy.getByTestId('mfa-token-input'),
 		copySecretToClipboardButton: () => cy.getByTestId('mfa-secret-button'),
-		secretInput: () => cy.getByTestId('mfa-secret-input'),
 		downloadRecoveryCodesButton: () => cy.getByTestId('mfa-recovery-codes-button'),
 		saveButton: () => cy.getByTestId('mfa-save-button'),
 	};
