@@ -26,6 +26,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { generateHostInstanceId } from '@/databases/utils/generators';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -361,6 +362,8 @@ export class Worker extends BaseCommand {
 				// POST endpoint to set preset credentials
 				app.post(
 					`/${endpointPresetCredentials}`,
+					rawBodyReader,
+					bodyParser,
 					async (req: express.Request, res: express.Response) => {
 						if (!presetCredentialsLoaded) {
 							const body = req.body as ICredentialsOverwrite;
