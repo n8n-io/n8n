@@ -23,6 +23,9 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@/databases/repositories';
+import bodyParser from 'body-parser';
+import { ICredentialsOverwrite } from '@/Interfaces';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -350,9 +353,39 @@ export class Worker extends BaseCommand {
 				},
 			);
 
-			server.listen(port, () => {
-				this.logger.info(`\nn8n worker health check via, port ${port}`);
-			});
+			let presetCredentialsLoaded = false;
+			const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+			if (endpointPresetCredentials !== '') {
+				// POST endpoint to set preset credentials
+				app.post(
+					`/${endpointPresetCredentials}`,
+					bodyParser.json(),
+					async (req: express.Request, res: express.Response) => {
+						if (!presetCredentialsLoaded) {
+							const body = req.body as ICredentialsOverwrite;
+
+							if (req.headers['content-type'] !== 'application/json') {
+								ResponseHelper.sendErrorResponse(
+									res,
+									new Error(
+										'Body must be a valid JSON, make sure the content-type is application/json',
+									),
+								);
+								return;
+							}
+
+							CredentialsOverwrites().setData(body);
+							presetCredentialsLoaded = true;
+							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+						} else {
+							ResponseHelper.sendErrorResponse(
+								res,
+								new Error('Preset credentials can be set once'),
+							);
+						}
+					},
+				);
+			}
 
 			server.on('error', (error: Error & { code: string }) => {
 				if (error.code === 'EADDRINUSE') {
@@ -362,6 +395,10 @@ export class Worker extends BaseCommand {
 					process.exit(1);
 				}
 			});
+
+			await new Promise<void>((resolve) => server.listen(port, () => resolve()));
+			await this.externalHooks.run('worker.ready');
+			this.logger.info(`\nn8n worker health check via, port ${port}`);
 		}
 
 		// Make sure that the process does not close
