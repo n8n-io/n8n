@@ -10,8 +10,8 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import ParameterIssues from '../ParameterIssues.vue';
-import ParameterOptions from '../ParameterOptions.vue';
+import ParameterIssues from '@/components//ParameterIssues.vue';
+import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores';
@@ -276,6 +276,7 @@ defineExpose({
 			:size="labelSize"
 			:showOptions="true"
 			:showExpressionSelector="false"
+			inputName="columns"
 			color="text-dark"
 		>
 			<template #options>

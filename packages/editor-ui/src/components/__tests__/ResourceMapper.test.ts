@@ -3,6 +3,7 @@ import {
 	MAPPING_COLUMNS_RESPONSE,
 	NODE_PARAMETER_VALUES,
 	UPDATED_SCHEMA,
+	getLatestValueChangeEvent,
 } from './utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { waitAllPromises } from '@/__tests__/utils';
@@ -13,7 +14,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { SpyInstance } from 'vitest';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
-let fetchFieldsSpy: SpyInstance, resolveParameterSpy: SpyInstance;
+let fetchFieldsSpy: SpyInstance;
+let resolveParameterSpy: SpyInstance;
 
 const renderComponent = createComponentRenderer(ResourceMapper, DEFAULT_SETUP);
 
@@ -288,5 +290,56 @@ describe('ResourceMapper.vue', () => {
 		});
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('should delete fields from UI and parameter value when they are deleted', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				node: {
+					parameters: {
+						columns: {
+							schema: null,
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		// Add some values so we can test if they are gone after deletion
+		const idInput = getByTestId('parameter-input-value["id"]').querySelector('input');
+		const firstNameInput = getByTestId('parameter-input-value["First name"]').querySelector(
+			'input',
+		);
+		const lastNameInput = getByTestId('parameter-input-value["Last name"]').querySelector('input');
+		const usernameInput = getByTestId('parameter-input-value["Username"]').querySelector('input');
+		const addressInput = getByTestId('parameter-input-value["Address"]').querySelector('input');
+		if (idInput && firstNameInput && lastNameInput && usernameInput && addressInput) {
+			await userEvent.type(idInput, '123');
+			await userEvent.type(firstNameInput, 'John');
+			await userEvent.type(lastNameInput, 'Doe');
+			await userEvent.type(usernameInput, 'johndoe');
+			await userEvent.type(addressInput, '123 Main St');
+			// All field values should be in parameter value
+			const valueBeforeRemove = getLatestValueChangeEvent(emitted());
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('id');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('First name');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('Last name');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('Username');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('Address');
+			// Click on 'Remove all fields' option
+			await userEvent.click(getByTestId('columns-parameter-input-options-container'));
+			await userEvent.click(getByTestId('action-removeAllFields'));
+			// Should delete all non-mandatory fields:
+			// 1. From UI
+			expect(
+				getByTestId('resource-mapper-container').querySelectorAll('.parameter-item').length,
+			).toBe(3);
+			// 2. And their values from parameter value
+			const valueAfterRemove = getLatestValueChangeEvent(emitted());
+			expect(valueAfterRemove[0].value.value).not.toHaveProperty('Username');
+			expect(valueAfterRemove[0].value.value).not.toHaveProperty('Address');
+		} else {
+			throw new Error('Could not find input fields');
+		}
 	});
 });
