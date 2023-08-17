@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div data-test-id="parameter-input">
 		<parameter-input
 			ref="param"
 			:inputSize="inputSize"
