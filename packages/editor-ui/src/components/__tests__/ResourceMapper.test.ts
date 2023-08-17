@@ -3,6 +3,7 @@ import {
 	MAPPING_COLUMNS_RESPONSE,
 	NODE_PARAMETER_VALUES,
 	UPDATED_SCHEMA,
+	getLatestValueChangeEvent,
 } from './utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { waitAllPromises } from '@/__tests__/utils';
@@ -11,7 +12,6 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { SpyInstance } from 'vitest';
-import type { ResourceMapperValue } from 'n8n-workflow';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 let fetchFieldsSpy: SpyInstance;
@@ -319,22 +319,25 @@ describe('ResourceMapper.vue', () => {
 			await userEvent.type(lastNameInput, 'Doe');
 			await userEvent.type(usernameInput, 'johndoe');
 			await userEvent.type(addressInput, '123 Main St');
-			// Remove all fields
+			// All field values should be in parameter value
+			const valueBeforeRemove = getLatestValueChangeEvent(emitted());
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('id');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('First name');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('Last name');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('Username');
+			expect(valueBeforeRemove[0].value.value).toHaveProperty('Address');
+			// Click on 'Remove all fields' option
 			await userEvent.click(getByTestId('columns-parameter-input-options-container'));
 			await userEvent.click(getByTestId('action-removeAllFields'));
-			const valueChangeEmits = emitted().valueChanged as [];
-			const lastEmittedEvent = valueChangeEmits[valueChangeEmits.length - 1] as Array<{
-				name: string;
-				value: ResourceMapperValue;
-				node: string;
-			}>;
-			// Should delete all non-mandatory fields from UI
+			// Should delete all non-mandatory fields:
+			// 1. From UI
 			expect(
 				getByTestId('resource-mapper-container').querySelectorAll('.parameter-item').length,
 			).toBe(3);
-			// And their values from parameter value
-			expect(lastEmittedEvent[0].value.value).not.toHaveProperty('Username');
-			expect(lastEmittedEvent[0].value.value).not.toHaveProperty('Address');
+			// 2. And their values from parameter value
+			const valueAfterRemove = getLatestValueChangeEvent(emitted());
+			expect(valueAfterRemove[0].value.value).not.toHaveProperty('Username');
+			expect(valueAfterRemove[0].value.value).not.toHaveProperty('Address');
 		} else {
 			throw new Error('Could not find input fields');
 		}
