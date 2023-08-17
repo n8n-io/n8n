@@ -8,7 +8,7 @@ export class LangChainDocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Github Document Loader',
 		name: 'langChainDocumentGithubLoader',
-		icon: 'fa:docs',
+		icon: 'file:github.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'To create a document from Github repo',

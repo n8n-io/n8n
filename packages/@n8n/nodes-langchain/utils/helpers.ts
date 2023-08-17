@@ -7,9 +7,11 @@ import { NodeOperationError } from 'n8n-workflow';
 export async function getSingleInputConnectionData(
 	that: IExecuteFunctions,
 	inputKey: ConnectionTypes,
-	inputLabel: string
+	inputLabel: string,
+	itemIndex = 0,
+	inputIndex = 0,
 ) {
-	const inputsNodes = await that.getInputConnectionData(0, 0, inputKey);
+	const inputsNodes = await that.getInputConnectionData(itemIndex, inputIndex, inputKey);
 
 	if (inputsNodes.length === 0) {
 		throw new NodeOperationError(

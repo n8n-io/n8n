@@ -39,6 +39,7 @@ import {
 	faCopy,
 	faCube,
 	faCut,
+	faDatabase,
 	faDotCircle,
 	faEdit,
 	faEllipsisH,
@@ -68,6 +69,7 @@ import {
 	faGlobe,
 	faGraduationCap,
 	faGripVertical,
+	faHandScissors,
 	faHandPointLeft,
 	faHashtag,
 	faHdd,
@@ -105,6 +107,7 @@ import {
 	faSearchMinus,
 	faSearchPlus,
 	faServer,
+	faScrewdriver,
 	faSignInAlt,
 	faSignOutAlt,
 	faSlidersH,
@@ -181,6 +184,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faCopy);
 		addIcon(faCube);
 		addIcon(faCut);
+		addIcon(faDatabase);
 		addIcon(faDotCircle);
 		addIcon(faGripVertical);
 		addIcon(faEdit);
@@ -210,6 +214,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faGlobe);
 		addIcon(faGlobeAmericas);
 		addIcon(faGraduationCap);
+		addIcon(faHandScissors);
 		addIcon(faHandPointLeft);
 		addIcon(faHashtag);
 		addIcon(faHdd);
@@ -247,6 +252,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faSearchMinus);
 		addIcon(faSearchPlus);
 		addIcon(faServer);
+		addIcon(faScrewdriver);
 		addIcon(faSignInAlt);
 		addIcon(faSignOutAlt);
 		addIcon(faSlidersH);

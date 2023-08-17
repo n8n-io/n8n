@@ -3,13 +3,13 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { Document } from 'langchain/document';
 import { MemoryVectorStore  } from 'langchain/vectorstores/memory';
 import { Embeddings  } from 'langchain/embeddings/base';
-import { getSingleInputConnectionData } from '../../utils/helpers';
+// import { getSingleInputConnectionData } from '../../utils/helpers';
 
 export class LangChainInMemoryVectorStore implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - In Memory Vector Store Retriever',
 		name: 'langChainInMemoryVectorStore',
-		icon: 'fa:scissors',
+		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
 		description: 'In Memory Vector Store',
@@ -33,9 +33,11 @@ export class LangChainInMemoryVectorStore implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		console.log('Supply In Memory Vector Store 12')
 		const itemIndex = 0;
 		const topK = this.getNodeParameter('topK', itemIndex) as number;
-		const embeddings = await getSingleInputConnectionData(this, 'embedding', 'Embeddings') as Embeddings;
+		const embeddingNodes = await this.getInputConnectionData(0, 0, 'embedding');
+		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
 		const documentsNodes = await this.getInputConnectionData(0, 0, 'document') || [];
 		const documents = documentsNodes.map((node) => node.response as Document);
 

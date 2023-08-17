@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { type IExecuteFunctions, type INodeType, type INodeTypeDescription, type SupplyData } from 'n8n-workflow';
+import { INodeExecutionData, type IExecuteFunctions, type INodeType, type INodeTypeDescription, type SupplyData } from 'n8n-workflow';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { getSingleInputConnectionData } from '../../utils/helpers';
@@ -8,7 +8,7 @@ export class LangChainDocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Workflow Input to JSON Document',
 		name: 'langChainDocumentJSONInputLoader',
-		icon: 'fa:docs',
+		icon: 'file:json.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'To create a document from input',
@@ -21,14 +21,14 @@ export class LangChainDocumentJSONInputLoader implements INodeType {
 		inputs: ['main', 'textSplitter'],
 		inputNames: ['', 'Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['document'],
-		outputNames: ['Document'],
+		outputs: ['main', 'document'],
+		outputNames: ['', 'Document'],
 		properties: [],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		const items = this.getInputData(0);
-		const textSplitter = await getSingleInputConnectionData(this, 'textSplitter', 'Text Splitter') as CharacterTextSplitter;
+		const textSplitter = await getSingleInputConnectionData(this, 'textSplitter', 'Text Splitter', 0, 1) as CharacterTextSplitter;
 
 
 		const stringifiedItems = JSON.stringify(items)
@@ -41,5 +41,18 @@ export class LangChainDocumentJSONInputLoader implements INodeType {
 		return {
 			response: loaded,
 		};
+	}
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData(0);
+
+		// const returnData: INodeExecutionData[] = [];
+		// for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		// 	const text = this.getNodeParameter('text', itemIndex) as string;
+
+
+		// 	returnData.push({ json: { response } });
+		// }
+		// Only pass it through?
+		return this.prepareOutputData(items);
 	}
 }

@@ -7,7 +7,8 @@ export class LangChainTextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Character Text Splitter',
 		name: 'langChainTextSplitterCharacterTextSplitter',
-		icon: 'fa:scissors',
+		// TODO: Real scissors icon
+		icon: 'fa:hand-scissors',
 		group: ['transform'],
 		version: 1,
 		description: 'Character Text Splitter',

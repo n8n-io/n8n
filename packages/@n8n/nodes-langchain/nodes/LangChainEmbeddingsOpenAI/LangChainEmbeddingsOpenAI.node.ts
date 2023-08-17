@@ -1,12 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { OpenAIEmbeddings, } from 'langchain/embeddings/openai'
+import { logWrapper } from '../../utils/logWrapper';
 
 export class LangChainEmbeddingsOpenAI implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Embeddings OpenAI',
 		name: 'langChainEmbeddingsOpenAI',
-		icon: 'openAi.svg',
+		icon: 'file:openAi.svg',
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -23,20 +24,22 @@ export class LangChainEmbeddingsOpenAI implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['tool'],
-		outputNames: ['Tool'],
+		outputs: ['embedding'],
+		outputNames: ['Embeddings'],
 		properties: [],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		console.log('Supply data for embeddings')
 		const credentials = await this.getCredentials('openAiApi');
+		// const itemIndex = 0;
 
 		const embeddings = new OpenAIEmbeddings({
 			openAIApiKey: credentials.openAIApiKey as string,
 		});
 
 		return {
-			response: embeddings,
+			response: logWrapper(embeddings, this),
 		};
 	}
 }

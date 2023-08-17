@@ -10,7 +10,7 @@ export class LangChainDynamicTool implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - DynamicTool',
 		name: 'langChainDynamicTool',
-		icon: 'fa:calculator',
+		icon: 'fa:screwdriver-wrench',
 		group: ['transform'],
 		version: 1,
 		description: 'DynamicTool',

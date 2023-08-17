@@ -329,6 +329,30 @@ export const nodeBase = defineComponent({
 						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-danger'),
 					cssClass: `dot-${type}-endpoint`,
 				},
+				vectorRetriever: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-avatar-accent-2'),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				embedding: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-json-default'),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				document: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-success-light'),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				textSplitter: {
+					paintStyle: (type === 'input'
+						? NodeViewUtils.getInputEndpointStyle
+						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-secondary-tint-2'),
+					cssClass: `dot-${type}-endpoint`,
+				},
 			};
 
 			if (!connectionTypes.hasOwnProperty(connectionType)) {

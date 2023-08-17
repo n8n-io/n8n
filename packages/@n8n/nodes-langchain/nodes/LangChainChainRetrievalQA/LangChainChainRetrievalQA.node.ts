@@ -30,8 +30,8 @@ export class LangChainChainRetrievalQA implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'vectorRetriever', 'languageModel'],
 		inputNames: ['','Vector Retriever', 'Language Model'],
-		outputs: ['main', 'chain'],
-		outputNames: ['', 'Chain'],
+		outputs: ['main'],
+		// outputNames: ['', 'Chain'],
 		credentials: [],
 		properties: [
 			{
@@ -47,7 +47,7 @@ export class LangChainChainRetrievalQA implements INodeType {
 		const model = await getSingleInputConnectionData(this, 'languageModel', 'Language Model') as BaseLanguageModel;
 		const vectorRetriever = await getSingleInputConnectionData(this, 'vectorRetriever', 'Vector Store Retriever') as BaseRetriever;
 		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever);
-
+		console.log('After chain setup', chain)
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
