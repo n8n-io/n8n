@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
-import type { Banners } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow';
 
 interface Props {
-	name: Banners;
+	name: BannerName;
 	theme?: string;
 	customIcon?: string;
 	dismissible?: boolean;

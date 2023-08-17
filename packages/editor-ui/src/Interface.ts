@@ -34,7 +34,7 @@ import type {
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
-	Banners,
+	BannerName,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -1074,7 +1074,7 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
-	banners: { [key in Banners]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
+	banners: { [key in BannerName]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
 }
 
 export type IFakeDoor = {
