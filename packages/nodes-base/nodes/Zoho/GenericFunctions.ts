@@ -30,7 +30,9 @@ import type {
 
 export function throwOnErrorStatus(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	responseData: { data?: Array<{ status: string; message: string }> },
+	responseData: {
+		data?: Array<{ status: string; message: string }>;
+	},
 ) {
 	if (responseData?.data?.[0].status === 'error') {
 		throw new NodeOperationError(this.getNode(), responseData as Error);
@@ -69,14 +71,15 @@ export async function zohoApiRequest(
 
 	try {
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
-
 		if (responseData === undefined) return [];
-
 		throwOnErrorStatus.call(this, responseData as IDataObject);
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), error as JsonObject, {
+			message: error.cause.data.message || 'The Zoho API returned an error.',
+			description: JSON.stringify(error.cause.data, null, 2),
+		});
 	}
 }
 
