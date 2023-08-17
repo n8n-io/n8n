@@ -69,6 +69,8 @@ export async function zohoApiRequest(
 		delete options.qs;
 	}
 
+	//console.log(JSON.stringify(options, null, 2));
+
 	try {
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 		if (responseData === undefined) return [];
@@ -164,13 +166,18 @@ const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject 
 /**
  * Place a product ID at a nested position in a product details field.
  */
-export const adjustProductDetails = (productDetails: ProductDetails) => {
+export const adjustProductDetails = (productDetails: ProductDetails, operation?: string) => {
 	return productDetails.map((p) => {
-		return {
-			...omit('product', p),
+		const adjustedProduct = {
 			product: { id: p.id },
 			quantity: p.quantity || 1,
 		};
+
+		if (operation === 'upsert') {
+			return adjustedProduct;
+		} else {
+			return { ...adjustedProduct, ...omit('product', p) };
+		}
 	});
 };
 
