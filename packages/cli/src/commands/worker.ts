@@ -24,8 +24,9 @@ import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from '@/services/ownership.service';
 import { generateHostInstanceId } from '@/databases/utils/generators';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { IConfig } from '@oclif/config';
+import type { ICredentialsOverwrite } from '@/Interfaces';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -46,12 +47,7 @@ export class Worker extends BaseCommand {
 
 	static jobQueue: JobQueue;
 
-	readonly uniqueInstanceId: string;
-
-	constructor(argv: string[], cmdConfig: IConfig) {
-		super(argv, cmdConfig);
-		this.uniqueInstanceId = generateHostInstanceId('worker');
-	}
+	readonly uniqueInstanceId = generateHostInstanceId('worker');
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -360,9 +356,40 @@ export class Worker extends BaseCommand {
 				},
 			);
 
-			server.listen(port, () => {
-				this.logger.info(`\nn8n worker health check via, port ${port}`);
-			});
+			let presetCredentialsLoaded = false;
+			const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+			if (endpointPresetCredentials !== '') {
+				// POST endpoint to set preset credentials
+				app.post(
+					`/${endpointPresetCredentials}`,
+					rawBodyReader,
+					bodyParser,
+					async (req: express.Request, res: express.Response) => {
+						if (!presetCredentialsLoaded) {
+							const body = req.body as ICredentialsOverwrite;
+
+							if (req.contentType !== 'application/json') {
+								ResponseHelper.sendErrorResponse(
+									res,
+									new Error(
+										'Body must be a valid JSON, make sure the content-type is application/json',
+									),
+								);
+								return;
+							}
+
+							CredentialsOverwrites().setData(body);
+							presetCredentialsLoaded = true;
+							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+						} else {
+							ResponseHelper.sendErrorResponse(
+								res,
+								new Error('Preset credentials can be set once'),
+							);
+						}
+					},
+				);
+			}
 
 			server.on('error', (error: Error & { code: string }) => {
 				if (error.code === 'EADDRINUSE') {
@@ -372,6 +399,10 @@ export class Worker extends BaseCommand {
 					process.exit(1);
 				}
 			});
+
+			await new Promise<void>((resolve) => server.listen(port, () => resolve()));
+			await this.externalHooks.run('worker.ready');
+			this.logger.info(`\nn8n worker health check via, port ${port}`);
 		}
 
 		// Make sure that the process does not close
