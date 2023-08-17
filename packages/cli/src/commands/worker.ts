@@ -376,11 +376,7 @@ export class Worker extends BaseCommand {
 							}
 
 							CredentialsOverwrites().setData(body);
-
-							await this.loadNodesAndCredentials.generateTypesForFrontend();
-
 							presetCredentialsLoaded = true;
-
 							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 						} else {
 							ResponseHelper.sendErrorResponse(
