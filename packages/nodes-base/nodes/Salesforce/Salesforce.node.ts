@@ -2213,8 +2213,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.phone !== undefined) {
 							body.Phone = updateFields.phone as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						if (updateFields.ownerId !== undefined) {
+							body.OwnerId = updateFields.ownerId as string;
 						}
 						if (updateFields.sicDesc !== undefined) {
 							body.SicDesc = updateFields.sicDesc as string;
