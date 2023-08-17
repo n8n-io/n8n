@@ -1,10 +1,9 @@
-import { BannerStack, MainSidebar, SigninPage, WorkflowPage } from '../pages';
+import { BannerStack, MainSidebar, WorkflowPage } from '../pages';
 import planData from '../fixtures/Plan_data_opt_in_trial.json';
-import { INSTANCE_OWNER, BACKEND_BASE_URL } from '../constants';
+import { INSTANCE_OWNER } from '../constants';
 
 const mainSidebar = new MainSidebar();
 const bannerStack = new BannerStack();
-const signinPage = new SigninPage();
 const workflowPage = new WorkflowPage();
 
 describe('BannerStack', { disableAutoLogin: true }, () => {
@@ -12,14 +11,6 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 		const now = new Date();
 		const fiveDaysFromNow = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
 		planData.expirationDate = fiveDaysFromNow.toJSON();
-	});
-
-	beforeEach(() => {
-		Cypress.session.clearAllSavedSessions();
-		cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
-			owner: INSTANCE_OWNER,
-			members: [],
-		});
 	});
 
 	it('should render trial banner for opt-in cloud user', () => {
@@ -35,7 +26,7 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 			body: planData,
 		}).as('getPlanData');
 
-		signinPage.actions.loginWithEmailAndPassword(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
 		cy.visit(workflowPage.url);
 
@@ -47,9 +38,9 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 
 		bannerStack.getters.banner().should('not.be.visible');
 
-		signinPage.actions.loginWithEmailAndPassword(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
-		cy.visit(signinPage.url);
+		cy.visit(workflowPage.url);
 
 		bannerStack.getters.banner().should('be.visible');
 
@@ -65,7 +56,7 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 			});
 		}).as('loadSettings');
 
-		signinPage.actions.loginWithEmailAndPassword(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 
 		cy.visit(workflowPage.url);
 
