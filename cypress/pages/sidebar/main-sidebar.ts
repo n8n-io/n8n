@@ -1,4 +1,5 @@
 import { BasePage } from '../base';
+import { WorkflowsPage } from '../workflows';
 
 export class MainSidebar extends BasePage {
 	getters = {
@@ -9,7 +10,7 @@ export class MainSidebar extends BasePage {
 		workflows: () => this.getters.menuItem('Workflows'),
 		credentials: () => this.getters.menuItem('Credentials'),
 		executions: () => this.getters.menuItem('Executions'),
-		userMenu: () => cy.getByTestId('main-sidebar-user-menu'),
+		userMenu: () => cy.get('div[class="action-dropdown-container"]'),
 	};
 	actions = {
 		goToSettings: () => {
@@ -25,6 +26,16 @@ export class MainSidebar extends BasePage {
 		},
 		openUserMenu: () => {
 			this.getters.userMenu().find('[role="button"]').last().click();
+		},
+		openUserMenu: () => {
+			this.getters.userMenu().click();
+		},
+		signout: () => {
+			const workflowsPage = new WorkflowsPage();
+			cy.visit(workflowsPage.url);
+			this.actions.openUserMenu();
+			cy.getByTestId('user-menu-item-logout').click();
+			cy.wrap(Cypress.session.clearAllSavedSessions());
 		},
 	};
 }
