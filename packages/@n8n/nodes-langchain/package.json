@@ -61,6 +61,7 @@
   },
   "dependencies": {
     "@huggingface/inference": "1",
+    "n8n-nodes-base": "workspace:*",
     "cohere-ai": "^6.2.2",
     "langchain": "^0.0.126",
     "n8n-nodes-base": "*"

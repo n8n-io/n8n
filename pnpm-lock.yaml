@@ -152,7 +152,7 @@ importers:
         specifier: ^0.0.126
         version: 0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)
       n8n-nodes-base:
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../nodes-base
     devDependencies:
       '@types/express':

@@ -171,7 +171,7 @@ export class LangChainDynamicTool implements INodeType {
 					}
 
 					if (executionError) {
-						this.addOutputData('tool', executionError);
+						this.addOutputData('tool', [[{ json: { error: executionError } }]]);
 					} else {
 						this.addOutputData('tool', [[{ json: { response } }]]);
 					}
