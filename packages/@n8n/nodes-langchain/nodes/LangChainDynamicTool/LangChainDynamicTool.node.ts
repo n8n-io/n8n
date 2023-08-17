@@ -152,6 +152,7 @@ export class LangChainDynamicTool implements INodeType {
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
 					try {
+						// @ts-ignore
 						response = await sandbox.runCode();
 					} catch (error) {
 						executionError = error;
@@ -171,6 +172,7 @@ export class LangChainDynamicTool implements INodeType {
 					}
 
 					if (executionError) {
+						// @ts-ignore
 						this.addOutputData('tool', executionError);
 					} else {
 						this.addOutputData('tool', [[{ json: { response } }]]);
