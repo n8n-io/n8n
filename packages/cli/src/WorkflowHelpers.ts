@@ -1,7 +1,7 @@
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
-import type {
+import {
 	IDataObject,
 	IExecuteData,
 	INode,
@@ -10,7 +10,9 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 	NodeApiError,
+	SubworkflowOperationError,
 	WorkflowExecuteMode,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -22,6 +24,7 @@ import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import type {
 	ICredentialsDb,
+	IExecutionDb,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
@@ -39,10 +42,56 @@ import { UserService } from './user/user.service';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
 import { RoleService } from './services/role.service';
-import { RoleRepository } from './databases/repositories';
+import { ExecutionRepository, RoleRepository } from './databases/repositories';
 import { VariablesService } from './environments/variables/variables.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+
+export function generateFailedExecutionFromError(
+	mode: WorkflowExecuteMode,
+	error: NodeApiError | NodeOperationError | WorkflowOperationError,
+	node: INode,
+): IRun {
+	return {
+		data: {
+			startData: {
+				destinationNode: node.name,
+				runNodeFilter: [node.name],
+			},
+			resultData: {
+				error,
+				runData: {
+					[node.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							error,
+							source: [],
+						},
+					],
+				},
+				lastNodeExecuted: node.name,
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack: [
+					{
+						node,
+						data: {},
+						source: null,
+					},
+				],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		},
+		finished: false,
+		mode,
+		startedAt: new Date(),
+		stoppedAt: new Date(),
+		status: 'failed',
+	};
+}
 
 /**
  * Returns the data of the last executed node
@@ -127,6 +176,34 @@ export async function executeErrorWorkflow(
 				workflowErrorData.workflow.id,
 			);
 		} catch (error) {
+			const initialNode = workflowInstance.getStartNode();
+			if (initialNode) {
+				const errorWorkflowPermissionError = new SubworkflowOperationError(
+					'This workflow could not be triggered due to subworkflow settings or permissions.',
+					`Another workflow with ID ${workflowErrorData.workflow.id} tried to invoke this workflow to handle errors. Please check permissions and whether this workflow allows being called by others`,
+				);
+
+				// Create a fake execution and save it to DB.
+				const fakeExecution = generateFailedExecutionFromError(
+					'error',
+					errorWorkflowPermissionError,
+					initialNode,
+				);
+
+				const fullExecutionData: IExecutionDb = {
+					data: fakeExecution.data,
+					mode: fakeExecution.mode,
+					finished: false,
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+					workflowData,
+					waitTill: null,
+					status: fakeExecution.status,
+					workflowId: workflowData.id,
+				};
+
+				await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
+			}
 			Logger.info('Error workflow execution blocked due to subworkflow settings', {
 				erroredWorkflowId: workflowErrorData.workflow.id,
 				errorWorkflowId: workflowId,
@@ -443,52 +520,6 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	}
 
 	return belowThreshold;
-}
-
-export function generateFailedExecutionFromError(
-	mode: WorkflowExecuteMode,
-	error: NodeApiError | NodeOperationError,
-	node: INode,
-): IRun {
-	return {
-		data: {
-			startData: {
-				destinationNode: node.name,
-				runNodeFilter: [node.name],
-			},
-			resultData: {
-				error,
-				runData: {
-					[node.name]: [
-						{
-							startTime: 0,
-							executionTime: 0,
-							error,
-							source: [],
-						},
-					],
-				},
-				lastNodeExecuted: node.name,
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [
-					{
-						node,
-						data: {},
-						source: null,
-					},
-				],
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		},
-		finished: false,
-		mode,
-		startedAt: new Date(),
-		stoppedAt: new Date(),
-		status: 'failed',
-	};
 }
 
 /** Get all nodes in a workflow where the node credential is not accessible to the user. */
