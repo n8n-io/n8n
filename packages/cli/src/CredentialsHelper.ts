@@ -480,7 +480,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	private getCredentialTestFunction(
 		credentialType: string,
-		credentialsDecrypted: ICredentialsDecrypted,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
 		// Check if test is defined on credentials
 		const type = this.credentialTypes.getByName(credentialType);
@@ -510,13 +509,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 				// Check each of teh credentials
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
 					if (name === credentialType && name.endsWith('OAuth2Api')) {
-						const hasAccessToken = CredentialsHelper.hasAccessToken(credentialsDecrypted);
-
 						return async function oauth2CredTest(
 							this: ICredentialTestFunctions,
-							__: ICredentialsDecrypted,
+							cred: ICredentialsDecrypted,
 						): Promise<INodeCredentialTestResult> {
-							return hasAccessToken
+							return CredentialsHelper.hasAccessToken(cred)
 								? {
 										status: 'OK',
 										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
@@ -564,10 +561,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
-		const credentialTestFunction = this.getCredentialTestFunction(
-			credentialType,
-			credentialsDecrypted,
-		);
+		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
 			return {
 				status: 'Error',
