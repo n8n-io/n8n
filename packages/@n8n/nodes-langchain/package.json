@@ -34,7 +34,8 @@
       "dist/credentials/CohereApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
-      "dist/credentials/SerpApi.credentials.js"
+      "dist/credentials/SerpApi.credentials.js",
+      "dist/credentials/XataApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
@@ -43,6 +44,7 @@
       "dist/nodes/LangChainLMCohere/LangChainLMCohere.node.js",
       "dist/nodes/LangChainLMOpenHuggingFaceInference/LangChainLMOpenHuggingFaceInference.node.js",
       "dist/nodes/LangChainMemoryMotorhead/LangChainMemoryMotorhead.node.js",
+      "dist/nodes/LangChainMemoryXata/LangChainMemoryXata.node.js",
       "dist/nodes/LangChainToolCalculator/LangChainToolCalculator.node.js",
       "dist/nodes/LangChainToolSerpApi/LangChainToolSerpApi.node.js",
       "dist/nodes/LangChainToolWikipedia/LangChainToolWikipedia.node.js"
@@ -61,9 +63,9 @@
   },
   "dependencies": {
     "@huggingface/inference": "1",
-    "n8n-nodes-base": "workspace:*",
+    "@xata.io/cli": "^0.13.4",
     "cohere-ai": "^6.2.2",
     "langchain": "^0.0.126",
-    "n8n-nodes-base": "*"
+    "n8n-nodes-base": "workspace:*"
   }
 }
