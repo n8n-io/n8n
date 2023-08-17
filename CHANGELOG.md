@@ -1,3 +1,47 @@
+# [0.237.0](https://github.com/n8n-io/n8n/compare/n8n@0.236.3...n8n@0.237.0) (2023-08-17)
+
+
+### Bug Fixes
+
+* **API:** Fix issue with workflow setting not supporting newer nanoids ([#6699](https://github.com/n8n-io/n8n/issues/6699)) ([2e64c9d](https://github.com/n8n-io/n8n/commit/2e64c9d1c12940eabc21bc4f6e2295ed803e6760))
+* **AwsS3 Node:** Fix issue if bucket name contains a '.' ([#6542](https://github.com/n8n-io/n8n/issues/6542)) ([219f897](https://github.com/n8n-io/n8n/commit/219f8972ea8845e5b3046b7fe20a7889615b9e38))
+* **core:** Add missing primary key on the `execution_data` table on postgres ([#6797](https://github.com/n8n-io/n8n/issues/6797)) ([1c5f98d](https://github.com/n8n-io/n8n/commit/1c5f98d20d1e43981f150e533ce6618d2c5441bc))
+* **core:** Fix `continueOnFail` for expression error in Set ([#6939](https://github.com/n8n-io/n8n/issues/6939)) ([2a3937f](https://github.com/n8n-io/n8n/commit/2a3937f420c2d8c221614fae07b1ec53149b3024))
+* **core:** Fix property existence checks on AugmentObject ([#6842](https://github.com/n8n-io/n8n/issues/6842)) ([3e4483a](https://github.com/n8n-io/n8n/commit/3e4483a49bf1fab4e8d563e3ea9fec003aed843d))
+* **core:** Log crash causes to console when sentry is disabled ([#6890](https://github.com/n8n-io/n8n/issues/6890)) ([f19c9c1](https://github.com/n8n-io/n8n/commit/f19c9c1d2d357cac9456ed6e57078077ee12a109))
+* **core:** Restrict read/write file paths access ([#6582](https://github.com/n8n-io/n8n/issues/6582)) ([6e6b90e](https://github.com/n8n-io/n8n/commit/6e6b90e0caa415e99f174d624da508d52d4363bd))
+* **core:** Serialize BigInts ([#6805](https://github.com/n8n-io/n8n/issues/6805)) ([17ce49b](https://github.com/n8n-io/n8n/commit/17ce49badf3fdaebcb4637ea1d849f3e02099bb3))
+* **core:** Update frontend urls when using the `--tunnel` option ([#6898](https://github.com/n8n-io/n8n/issues/6898)) ([ec3c066](https://github.com/n8n-io/n8n/commit/ec3c06665521759bd2f2c921e2c639523b58fb03))
+* **core:** Update packages to address CVE-2023-2142 and CVE-2020-28469 ([#6844](https://github.com/n8n-io/n8n/issues/6844)) ([6dd0850](https://github.com/n8n-io/n8n/commit/6dd0850023f8328670988c1dc1d49c25168e6df8))
+* Correct typos in Taiga and ServiceNow nodes ([#6814](https://github.com/n8n-io/n8n/issues/6814)) ([b9f52ec](https://github.com/n8n-io/n8n/commit/b9f52ec7b48cd428d9fc8838373ce9e04ecbce50))
+* **editor:** Fix code node’s content property to be reactive ([#6931](https://github.com/n8n-io/n8n/issues/6931)) ([f3b380d](https://github.com/n8n-io/n8n/commit/f3b380db1a5ba9f200985a61fb58c7c3372755fc))
+* **editor:** Prevent Code node linter from erroring on `null` parse ([#6934](https://github.com/n8n-io/n8n/issues/6934)) ([baada92](https://github.com/n8n-io/n8n/commit/baada9256990e04a511dee3e9f4d8ec706da6be4))
+* **Email Trigger (IMAP) Node:**  UTF-8 attachments are not correctly named ([#6856](https://github.com/n8n-io/n8n/issues/6856)) ([f3f1c14](https://github.com/n8n-io/n8n/commit/f3f1c14c6e361f38ba839ecd4ecad8625fe46120))
+* **Email Trigger (IMAP) Node:** Fix connection issue with unexpected spaces in host ([#6886](https://github.com/n8n-io/n8n/issues/6886)) ([35c29ac](https://github.com/n8n-io/n8n/commit/35c29acd26e14e836e4bc648f69841f364262de6))
+* Fix issue with key based credentials not being read correctly ([#6824](https://github.com/n8n-io/n8n/issues/6824)) ([2459b0a](https://github.com/n8n-io/n8n/commit/2459b0ad48bf13c7e9b4053c7c258d98b0f25e33))
+* Fix issue with key formatting if null or undefined ([#6924](https://github.com/n8n-io/n8n/issues/6924)) ([59d33db](https://github.com/n8n-io/n8n/commit/59d33db0007c7462d1e54e6a23571c28d8556598))
+* Fix issue with key formatting introduced in 1.2.0 ([#6896](https://github.com/n8n-io/n8n/issues/6896)) ([8423153](https://github.com/n8n-io/n8n/commit/84231530138cbb7f51e06483715cfbfabaf8b70c))
+* **FTP Node:** List recursive ignore . and .. to prevent infinite loops ([#6707](https://github.com/n8n-io/n8n/issues/6707)) ([6a787dd](https://github.com/n8n-io/n8n/commit/6a787dded83f53ba8db56b42d22093b4b231380e))
+* **GitLab Trigger Node:** Fix trigger activation 404 error  ([#6711](https://github.com/n8n-io/n8n/issues/6711)) ([8c5145b](https://github.com/n8n-io/n8n/commit/8c5145b319e2353be111cd06b7f323203d5b1d71))
+* **Gmail Trigger Node:** Early returns in case of no data ([#6727](https://github.com/n8n-io/n8n/issues/6727)) ([df2f1d6](https://github.com/n8n-io/n8n/commit/df2f1d6705cb3f09062d5de44c3c69b522c35748))
+* **Google BigQuery Node:** Error description improvement ([#6715](https://github.com/n8n-io/n8n/issues/6715)) ([261d73e](https://github.com/n8n-io/n8n/commit/261d73e179df7ef5f5312f22cd11ce09cb58439c))
+* **GoToWebinar Node:** Fix issue with timezone incorrectly being required ([#6865](https://github.com/n8n-io/n8n/issues/6865)) ([2f61e34](https://github.com/n8n-io/n8n/commit/2f61e3417b791eee804aaacf5c06ae69542dbd1a))
+* **HTTP Request Node:** Improve error handling for TCP socket errors when `Continue On Fail` is enabled ([#6925](https://github.com/n8n-io/n8n/issues/6925)) ([e8e4c9e](https://github.com/n8n-io/n8n/commit/e8e4c9e21d260c3d21b968c9f82d605adf6af6bf))
+* **Lemlist Node:** Fix pagination issues with campaigns and activities ([#6734](https://github.com/n8n-io/n8n/issues/6734)) ([73eddc6](https://github.com/n8n-io/n8n/commit/73eddc628a474f424ff6e20b1c319b3b6ffb1540))
+* **Salesforce Node:** Fix Account update owner operation ([#6958](https://github.com/n8n-io/n8n/issues/6958)) ([e71ff76](https://github.com/n8n-io/n8n/commit/e71ff76a845d930767894e027997aae173ec4fe6))
+* **Telegram Trigger Node:** Add guard to 'include' call on null or undefined ([#6730](https://github.com/n8n-io/n8n/issues/6730)) ([c3c845c](https://github.com/n8n-io/n8n/commit/c3c845c20f5960d39afce739ce8f2515e07038e8))
+* **Todoist Node:** Fix issue with section id being ignored ([#6799](https://github.com/n8n-io/n8n/issues/6799)) ([e53f4a0](https://github.com/n8n-io/n8n/commit/e53f4a0bcc68c95f3e4006af1922d07a810b295f))
+
+
+### Features
+
+* Add support for not requiring SMTP auth with user management ([#3742](https://github.com/n8n-io/n8n/issues/3742)) ([fc97d18](https://github.com/n8n-io/n8n/commit/fc97d18398fe33823888bfb8ccd010ae26744624))
+* **core:** Add support for ready hooks, and credentials overwrite endpoint in workers ([#6954](https://github.com/n8n-io/n8n/issues/6954)) ([e5986c5](https://github.com/n8n-io/n8n/commit/e5986c55a3d2b3c672530328e8284afadcd3b45a))
+* **editor:** Add "Download" button if JSON data is to large ([#6850](https://github.com/n8n-io/n8n/issues/6850)) ([3d815cf](https://github.com/n8n-io/n8n/commit/3d815cfbf7d1243b0a915edfd39812e5bd90ab65))
+* Enable parallel processing on multiple queue nodes ([#6295](https://github.com/n8n-io/n8n/issues/6295)) ([e45461a](https://github.com/n8n-io/n8n/commit/e45461adfa1a56af536fd5e316bcc4872e76c02f))
+
+
+
 ## [0.236.3](https://github.com/n8n-io/n8n/compare/n8n@0.236.2...n8n@0.236.3) (2023-07-18)
 
 
