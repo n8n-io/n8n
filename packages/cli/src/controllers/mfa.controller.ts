@@ -71,37 +71,12 @@ export class MFAController {
 		if (!verified)
 			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
-		if (req.user.isOwner) {
-			await Container.get(ExternalHooks).run('user.mfa.update', [
-				{
-					email,
-					mfaEnabled,
-					mfaSecret: secret,
-					mfaRecoveryCodes: recoveryCodes,
-				},
-			]);
-		}
-
 		await this.mfaService.enableMfa(id);
 	}
 
 	@Delete('/disable')
 	async disableMFA(req: AuthenticatedRequest) {
-		const { id, mfaEnabled, email } = req.user;
-
-		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
-			await this.mfaService.getRawSecretAndRecoveryCodes(id);
-
-		if (req.user.isOwner) {
-			await Container.get(ExternalHooks).run('user.mfa.update', [
-				{
-					email,
-					mfaEnabled,
-					mfaSecret: secret,
-					mfaRecoveryCodes: recoveryCodes,
-				},
-			]);
-		}
+		const { id } = req.user;
 
 		await this.mfaService.disableMfa(id);
 	}
