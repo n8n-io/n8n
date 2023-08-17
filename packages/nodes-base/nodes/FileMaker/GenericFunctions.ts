@@ -1,6 +1,5 @@
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	INodePropertyOptions,
@@ -30,9 +29,7 @@ interface ScriptObject {
 	folderScriptNames?: LayoutObject[];
 }
 
-export async function getToken(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-): Promise<any> {
+export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
 	const host = credentials.host as string;
@@ -76,12 +73,11 @@ export async function getToken(
 
 		return response.response.token;
 	} catch (error) {
-		let message
-		if ( error.statusCode === 502 ) {
-			message = 'The server is not responding. Is the DataAPI enabled?'
-		}
-		else if (error.error ) {
-			message = error.error.messages[0].code + ' - ' + error.error.messages[0].message
+		let message;
+		if (error.statusCode === 502) {
+			message = 'The server is not responding. Is the DataAPI enabled?';
+		} else if (error.error) {
+			message = error.error.messages[0].code + ' - ' + error.error.messages[0].message;
 		} else {
 			message = error.message;
 		}
@@ -109,7 +105,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  *
  */
 export async function layoutsApiRequest(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
@@ -247,7 +243,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 }
 
 export async function logout(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 	token: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
@@ -267,7 +263,7 @@ export async function logout(
 	};
 
 	const response = await this.helpers.request(requestOptions);
-	return response
+	return response;
 }
 
 export function parseSort(this: IExecuteFunctions, i: number): object | null {

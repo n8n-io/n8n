@@ -4,13 +4,16 @@ import { waitFor } from '@testing-library/vue';
 import { setupServer } from '@/__tests__/server';
 import VariablesView from '@/views/VariablesView.vue';
 import { useSettingsStore, useUsersStore } from '@/stores';
-import { renderComponent } from '@/__tests__/utils';
+import { createComponentRenderer } from '@/__tests__/render';
+import { EnterpriseEditionFeature } from '@/constants';
 
 describe('VariablesView', () => {
 	let server: ReturnType<typeof setupServer>;
 	let pinia: ReturnType<typeof createPinia>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let usersStore: ReturnType<typeof useUsersStore>;
+
+	const renderComponent = createComponentRenderer(VariablesView);
 
 	beforeAll(() => {
 		server = setupServer();
@@ -32,19 +35,19 @@ describe('VariablesView', () => {
 	});
 
 	it('should render loading state', () => {
-		const wrapper = renderComponent(VariablesView, { pinia });
+		const wrapper = renderComponent({ pinia });
 
 		expect(wrapper.container.querySelectorAll('.n8n-loading')).toHaveLength(3);
 	});
 
 	describe('should render empty state', () => {
 		it('when feature is enabled and logged in user is owner', async () => {
-			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
 			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
 				isOwner: true,
 			});
 
-			const { queryByTestId } = renderComponent(VariablesView, { pinia });
+			const { queryByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => {
 				expect(queryByTestId('empty-resources-list')).toBeVisible();
@@ -54,7 +57,7 @@ describe('VariablesView', () => {
 		});
 
 		it('when feature is disabled and logged in user is owner', async () => {
-			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(false);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = false;
 			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
 				isOwner: true,
 			});
@@ -69,7 +72,7 @@ describe('VariablesView', () => {
 		});
 
 		it('when feature is eanbled and logged in user is not owner', async () => {
-			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = true;
 			vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
 				isDefaultUser: true,
 			});
@@ -87,7 +90,7 @@ describe('VariablesView', () => {
 	it('should render variable entries', async () => {
 		server.createList('variable', 3);
 
-		const wrapper = renderComponent(VariablesView, { pinia });
+		const wrapper = renderComponent({ pinia });
 
 		const table = await wrapper.findByTestId('resources-table');
 		expect(table).toBeVisible();

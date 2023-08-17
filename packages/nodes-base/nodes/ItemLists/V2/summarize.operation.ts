@@ -29,7 +29,6 @@ type Aggregation = {
 
 type Aggregations = Aggregation[];
 
-// eslint-disable-next-line no-restricted-syntax
 const AggregationDisplayNames = {
 	append: 'appended_',
 	average: 'average_',

@@ -1,5 +1,5 @@
 import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { IMenuItem } from 'n8n-design-system';
 import type {
 	GenericValue,
@@ -1451,8 +1451,6 @@ export type SamlPreferencesExtractedData = {
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
-	authorName: string;
-	authorEmail: string;
 	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
@@ -1550,9 +1548,7 @@ export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
 	| 'upgrade-canvas-nav'
 	| 'upgrade-workflow-sharing'
-	| 'upgrade-canvas-nav'
 	| 'upgrade-credentials-sharing'
-	| 'upgrade-workflow-sharing'
 	| 'upgrade-api'
 	| 'upgrade-audit-logs'
 	| 'upgrade-ldap'

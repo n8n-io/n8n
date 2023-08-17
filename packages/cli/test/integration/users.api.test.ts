@@ -78,7 +78,6 @@ describe('GET /users', () => {
 				personalizationAnswers,
 				globalRole,
 				password,
-				resetPasswordToken,
 				isPending,
 				apiKey,
 			} = user;
@@ -89,7 +88,6 @@ describe('GET /users', () => {
 			expect(lastName).toBeDefined();
 			expect(personalizationAnswers).toBeUndefined();
 			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(globalRole).toBeDefined();
 			expect(apiKey).not.toBeDefined();
@@ -254,7 +252,6 @@ describe('POST /users/:id', () => {
 			lastName,
 			personalizationAnswers,
 			password,
-			resetPasswordToken,
 			globalRole,
 			isPending,
 			apiKey,
@@ -266,7 +263,6 @@ describe('POST /users/:id', () => {
 		expect(lastName).toBe(memberData.lastName);
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
-		expect(resetPasswordToken).toBeUndefined();
 		expect(isPending).toBe(false);
 		expect(globalRole).toBeDefined();
 		expect(apiKey).not.toBeDefined();
@@ -404,14 +400,12 @@ describe('POST /users', () => {
 			}
 
 			const storedUser = await Db.collections.User.findOneByOrFail({ id });
-			const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
-				storedUser;
+			const { firstName, lastName, personalizationAnswers, password } = storedUser;
 
 			expect(firstName).toBeNull();
 			expect(lastName).toBeNull();
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeNull();
-			expect(resetPasswordToken).toBeNull();
 		}
 	});
 

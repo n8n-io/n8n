@@ -13,6 +13,7 @@ interface Props {
 	serviceName: string;
 	loading: boolean;
 	loadingError: boolean;
+	teleported?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -109,45 +110,48 @@ defineExpose({
 			:size="labelSize"
 			color="text-dark"
 		>
-			<template>
-				<div class="mt-5xs">
-					<n8n-select :value="selected" :size="props.inputSize" @change="onModeChanged">
-						<n8n-option
-							v-for="option in mappingModeOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.name"
-							description="sadasd"
-						>
-							<div class="list-option">
-								<div class="option-headline">
-									{{ option.name }}
-								</div>
-								<div class="option-description" v-html="option.description" />
+			<div class="mt-5xs">
+				<n8n-select
+					:modelValue="selected"
+					:teleported="teleported"
+					:size="props.inputSize"
+					@update:modelValue="onModeChanged"
+				>
+					<n8n-option
+						v-for="option in mappingModeOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.name"
+						description="sadasd"
+					>
+						<div class="list-option">
+							<div class="option-headline">
+								{{ option.name }}
 							</div>
-						</n8n-option>
-					</n8n-select>
-				</div>
-				<div class="mt-5xs">
-					<n8n-text v-if="loading" size="small">
-						<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
-						{{
-							locale.baseText('resourceMapper.fetchingFields.message', {
-								interpolate: {
-									fieldWord: pluralFieldWord,
-								},
-							})
-						}}
-					</n8n-text>
-					<n8n-text v-else-if="errorMessage !== ''" size="small" color="danger">
-						<n8n-icon icon="exclamation-triangle" size="xsmall" />
-						{{ errorMessage }}
-						<n8n-link size="small" theme="danger" :underline="true" @click="onRetryClick">
-							{{ locale.baseText('generic.retry') }}
-						</n8n-link>
-					</n8n-text>
-				</div>
-			</template>
+							<div class="option-description" v-html="option.description" />
+						</div>
+					</n8n-option>
+				</n8n-select>
+			</div>
+			<div class="mt-5xs">
+				<n8n-text v-if="loading" size="small">
+					<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+					{{
+						locale.baseText('resourceMapper.fetchingFields.message', {
+							interpolate: {
+								fieldWord: pluralFieldWord,
+							},
+						})
+					}}
+				</n8n-text>
+				<n8n-text v-else-if="errorMessage !== ''" size="small" color="danger">
+					<n8n-icon icon="exclamation-triangle" size="xsmall" />
+					{{ errorMessage }}
+					<n8n-link size="small" theme="danger" :underline="true" @click="onRetryClick">
+						{{ locale.baseText('generic.retry') }}
+					</n8n-link>
+				</n8n-text>
+			</div>
 		</n8n-input-label>
 	</div>
 </template>

@@ -70,11 +70,7 @@ export class Execute extends BaseCommand {
 
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
-			if (
-				workflowData === null ||
-				workflowData.nodes === undefined ||
-				workflowData.connections === undefined
-			) {
+			if (workflowData?.nodes === undefined || workflowData.connections === undefined) {
 				this.logger.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}

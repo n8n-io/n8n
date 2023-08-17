@@ -21,6 +21,7 @@ export class ContentfulApi implements ICredentialType {
 			displayName: 'Content Delivery API Access Token',
 			name: 'ContentDeliveryaccessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description:
 				'Access token that has access to the space. Can be left empty if only Delivery API should be used.',
@@ -29,6 +30,7 @@ export class ContentfulApi implements ICredentialType {
 			displayName: 'Content Preview API Access Token',
 			name: 'ContentPreviewaccessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description:
 				'Access token that has access to the space. Can be left empty if only Preview API should be used.',

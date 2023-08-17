@@ -10,12 +10,14 @@ describe('components', () => {
 
 		it('should render correctly', () => {
 			const wrapper = render(N8nDatatable, {
-				propsData: {
+				props: {
 					columns,
 					rows,
 					rowsPerPage,
 				},
-				stubs,
+				global: {
+					stubs,
+				},
 			});
 
 			expect(wrapper.container.querySelectorAll('thead tr').length).toEqual(1);
@@ -28,12 +30,14 @@ describe('components', () => {
 
 		it('should add column classes', () => {
 			const wrapper = render(N8nDatatable, {
-				propsData: {
+				props: {
 					columns: columns.map((column) => ({ ...column, classes: ['example'] })),
 					rows,
 					rowsPerPage,
 				},
-				stubs,
+				global: {
+					stubs,
+				},
 			});
 
 			expect(wrapper.container.querySelectorAll('.example').length).toEqual(
@@ -43,14 +47,16 @@ describe('components', () => {
 
 		it('should render row slot', () => {
 			const wrapper = render(N8nDatatable, {
-				propsData: {
+				props: {
 					columns,
 					rows,
 					rowsPerPage,
 				},
-				stubs,
-				scopedSlots: {
-					row: '<main><td v-for="column in props.columns" :key="column.id">Row slot</td></main>', // Wrapper is necessary for looping
+				global: {
+					stubs,
+				},
+				slots: {
+					row: '<template #row="props"><td v-for="column in props.columns" :key="column.id">Row slot</td></template>', // Wrapper is necessary for looping
 				},
 			});
 

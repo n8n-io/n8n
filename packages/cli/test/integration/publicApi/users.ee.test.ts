@@ -73,7 +73,6 @@ describe('With license unlimited quota:users', () => {
 					personalizationAnswers,
 					globalRole,
 					password,
-					resetPasswordToken,
 					isPending,
 					createdAt,
 					updatedAt,
@@ -85,7 +84,6 @@ describe('With license unlimited quota:users', () => {
 				expect(lastName).toBeDefined();
 				expect(personalizationAnswers).toBeUndefined();
 				expect(password).toBeUndefined();
-				expect(resetPasswordToken).toBeUndefined();
 				expect(isPending).toBe(false);
 				expect(globalRole).toBeUndefined();
 				expect(createdAt).toBeDefined();
@@ -144,7 +142,6 @@ describe('With license unlimited quota:users', () => {
 				personalizationAnswers,
 				globalRole,
 				password,
-				resetPasswordToken,
 				isPending,
 				createdAt,
 				updatedAt,
@@ -156,7 +153,6 @@ describe('With license unlimited quota:users', () => {
 			expect(lastName).toBeDefined();
 			expect(personalizationAnswers).toBeUndefined();
 			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
 			expect(globalRole).toBeUndefined();
 			expect(createdAt).toBeDefined();
 			expect(isPending).toBeDefined();
@@ -192,7 +188,6 @@ describe('With license unlimited quota:users', () => {
 				personalizationAnswers,
 				globalRole,
 				password,
-				resetPasswordToken,
 				isPending,
 				createdAt,
 				updatedAt,
@@ -204,7 +199,6 @@ describe('With license unlimited quota:users', () => {
 			expect(lastName).toBeDefined();
 			expect(personalizationAnswers).toBeUndefined();
 			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(globalRole).toBeUndefined();
 			expect(createdAt).toBeDefined();

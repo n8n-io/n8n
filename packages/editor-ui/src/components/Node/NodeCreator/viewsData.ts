@@ -14,12 +14,15 @@ import {
 	EMAIL_IMAP_NODE_TYPE,
 	DEFAULT_SUBCATEGORY,
 } from '@/constants';
+import { useI18n } from '@/composables';
 
-export function TriggerView($locale: any) {
+export function TriggerView() {
+	const i18n = useI18n();
+
 	return {
 		value: TRIGGER_NODE_CREATOR_VIEW,
-		title: $locale.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
-		subtitle: $locale.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
+		title: i18n.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
+		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
 			{
 				key: DEFAULT_SUBCATEGORY,
@@ -37,12 +40,8 @@ export function TriggerView($locale: any) {
 				properties: {
 					group: [],
 					name: SCHEDULE_TRIGGER_NODE_TYPE,
-					displayName: $locale.baseText(
-						'nodeCreator.triggerHelperPanel.scheduleTriggerDisplayName',
-					),
-					description: $locale.baseText(
-						'nodeCreator.triggerHelperPanel.scheduleTriggerDescription',
-					),
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDescription'),
 					icon: 'fa:clock',
 				},
 			},
@@ -53,8 +52,8 @@ export function TriggerView($locale: any) {
 				properties: {
 					group: [],
 					name: WEBHOOK_NODE_TYPE,
-					displayName: $locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
-					description: $locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
 					iconData: {
 						type: 'file',
 						icon: 'webhook',
@@ -69,8 +68,8 @@ export function TriggerView($locale: any) {
 				properties: {
 					group: [],
 					name: MANUAL_TRIGGER_NODE_TYPE,
-					displayName: $locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
-					description: $locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
 					icon: 'fa:mouse-pointer',
 				},
 			},
@@ -81,12 +80,8 @@ export function TriggerView($locale: any) {
 				properties: {
 					group: [],
 					name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-					displayName: $locale.baseText(
-						'nodeCreator.triggerHelperPanel.workflowTriggerDisplayName',
-					),
-					description: $locale.baseText(
-						'nodeCreator.triggerHelperPanel.workflowTriggerDescription',
-					),
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDescription'),
 					icon: 'fa:sign-out-alt',
 				},
 			},
@@ -103,10 +98,12 @@ export function TriggerView($locale: any) {
 	};
 }
 
-export function RegularView($locale: any) {
+export function RegularView() {
+	const i18n = useI18n();
+
 	return {
 		value: REGULAR_NODE_CREATOR_VIEW,
-		title: $locale.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
+		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
 			{
 				key: DEFAULT_SUBCATEGORY,
@@ -156,11 +153,9 @@ export function RegularView($locale: any) {
 				key: TRIGGER_NODE_CREATOR_VIEW,
 				type: 'view',
 				properties: {
-					title: $locale.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
+					title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
 					icon: 'bolt',
-					description: $locale.baseText(
-						'nodeCreator.triggerHelperPanel.addAnotherTriggerDescription',
-					),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
 				},
 			},
 		],

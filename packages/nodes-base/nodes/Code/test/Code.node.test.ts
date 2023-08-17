@@ -20,6 +20,7 @@ describe('Test Code Node', () => {
 describe('Code Node unit test', () => {
 	const node = new Code();
 	const thisArg = mock<IExecuteFunctions>({
+		getNode: () => mock(),
 		helpers: { normalizeItems },
 		prepareOutputData: NodeHelpers.prepareOutputData,
 	});

@@ -26,8 +26,8 @@
 				<el-switch
 					class="mr-s"
 					:disabled="!isInstanceOwner"
-					:value="nodeParameters.enabled"
-					@change="onEnabledSwitched($event, destination.id)"
+					:modelValue="nodeParameters.enabled"
+					@update:modelValue="onEnabledSwitched($event, destination.id)"
 					:title="
 						nodeParameters.enabled
 							? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -96,7 +96,7 @@ export default defineComponent({
 		);
 		this.eventBus?.on('destinationWasSaved', this.onDestinationWasSaved);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus?.off('destinationWasSaved', this.onDestinationWasSaved);
 	},
 	computed: {

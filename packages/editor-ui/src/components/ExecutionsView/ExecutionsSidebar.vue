@@ -11,8 +11,8 @@
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
-				:value="autoRefresh"
-				@input="$emit('update:autoRefresh', $event)"
+				:modelValue="autoRefresh"
+				@update:modelValue="$emit('update:autoRefresh', $event)"
 				data-test-id="auto-refresh-checkbox"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
@@ -270,8 +270,10 @@ export default defineComponent({
 </style>
 
 <style lang="scss" scoped>
-:deep(.el-skeleton__item) {
-	height: 60px;
-	border-radius: 0;
+.executions-sidebar {
+	:deep(.el-skeleton__item) {
+		height: 60px;
+		border-radius: 0;
+	}
 }
 </style>

@@ -257,8 +257,9 @@ export class GmailTrigger implements INodeType {
 			);
 			responseData = responseData.messages;
 
-			if (responseData === undefined) {
-				responseData = [];
+			if (!responseData?.length) {
+				webhookData.lastTimeChecked = endDate;
+				return null;
 			}
 
 			const simple = this.getNodeParameter('simple') as boolean;
@@ -310,6 +311,11 @@ export class GmailTrigger implements INodeType {
 					error,
 				},
 			);
+		}
+
+		if (!responseData?.length) {
+			webhookData.lastTimeChecked = endDate;
+			return null;
 		}
 
 		const getEmailDateAsSeconds = (email: IDataObject) => {

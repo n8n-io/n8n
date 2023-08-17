@@ -20,7 +20,6 @@
 					data-test-id="add-sticky-button"
 				>
 					<n8n-icon-button
-						size="medium"
 						type="tertiary"
 						:icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')"
@@ -28,16 +27,18 @@
 				</div>
 			</div>
 		</div>
-		<node-creator
-			:active="createNodeActive"
-			@nodeTypeSelected="nodeTypeSelected"
-			@closeNodeCreator="closeNodeCreator"
-		/>
+		<Suspense>
+			<NodeCreator
+				:active="createNodeActive"
+				@nodeTypeSelected="nodeTypeSelected"
+				@closeNodeCreator="closeNodeCreator"
+			/>
+		</Suspense>
 	</div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -48,10 +49,14 @@ import {
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 
+const NodeCreator = defineAsyncComponent(
+	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+);
+
 export default defineComponent({
 	name: 'node-creation',
 	components: {
-		NodeCreator: async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+		NodeCreator,
 	},
 	props: {
 		nodeViewScale: {

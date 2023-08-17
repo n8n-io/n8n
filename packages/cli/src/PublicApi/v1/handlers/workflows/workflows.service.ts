@@ -8,6 +8,8 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
+import { TagRepository } from '@/databases/repositories';
+import Container from 'typedi';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
@@ -62,7 +64,7 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
  * Intersection! e.g. workflow needs to have all provided tags.
  */
 export async function getWorkflowIdsViaTags(tags: string[]): Promise<string[]> {
-	const dbTags = await Db.collections.Tag.find({
+	const dbTags = await Container.get(TagRepository).find({
 		where: { name: In(tags) },
 		relations: ['workflows'],
 	});

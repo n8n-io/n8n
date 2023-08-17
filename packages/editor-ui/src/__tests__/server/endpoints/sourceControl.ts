@@ -9,8 +9,6 @@ export function routesForSourceControl(server: Server) {
 	const defaultSourceControlPreferences: SourceControlPreferences = {
 		branchName: '',
 		branches: [],
-		authorName: '',
-		authorEmail: '',
 		repositoryUrl: '',
 		branchReadOnly: false,
 		branchColor: '#1d6acb',

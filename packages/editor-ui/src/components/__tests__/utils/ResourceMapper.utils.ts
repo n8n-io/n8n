@@ -101,6 +101,7 @@ export const DEFAULT_SETUP = {
 		dependentParametersValues: 'gid=0',
 		inputSize: 'small',
 		labelSize: 'small',
+		teleported: false,
 		node: {
 			parameters: NODE_PARAMETER_VALUES,
 			id: 'f63efb2d-3cc5-4500-89f9-b39aab19baf5',

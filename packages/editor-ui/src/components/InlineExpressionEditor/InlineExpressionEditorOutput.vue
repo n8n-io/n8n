@@ -1,19 +1,20 @@
 <template>
 	<div :class="visible ? $style.dropdown : $style.hidden">
 		<n8n-text size="small" compact :class="$style.header">
-			{{ $locale.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
+			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 		</n8n-text>
 		<n8n-text :class="$style.body">
 			<div ref="root" data-test-id="inline-expression-editor-output"></div>
 		</n8n-text>
 		<div :class="$style.footer">
 			<n8n-text size="small" compact>
-				{{ $locale.baseText('parameterInput.anythingInside') }}
+				{{ i18n.baseText('parameterInput.anythingInside') }}
 			</n8n-text>
 			<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
 			<n8n-text size="small" compact>
-				{{ $locale.baseText('parameterInput.isJavaScript') }}
+				{{ i18n.baseText('parameterInput.isJavaScript') }}
 			</n8n-text>
+			{{ ' ' }}
 			<n8n-link
 				:class="$style['learn-more']"
 				size="small"
@@ -21,7 +22,7 @@
 				theme="text"
 				:to="expressionsDocsUrl"
 			>
-				{{ $locale.baseText('parameterInput.learnMore') }}
+				{{ i18n.baseText('parameterInput.learnMore') }}
 			</n8n-link>
 		</div>
 	</div>
@@ -39,6 +40,7 @@ import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { useI18n } from '@/composables';
 
 export default defineComponent({
 	name: 'InlineExpressionEditorOutput',
@@ -46,9 +48,6 @@ export default defineComponent({
 		segments: {
 			type: Array as PropType<Segment[]>,
 			required: true,
-		},
-		value: {
-			type: String,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -75,6 +74,13 @@ export default defineComponent({
 			highlighter.removeColor(this.editor, this.plaintextSegments);
 		},
 	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+		};
+	},
 	data() {
 		return {
 			editor: null as EditorView | null,
@@ -90,7 +96,7 @@ export default defineComponent({
 			}),
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	computed: {
@@ -112,19 +118,13 @@ export default defineComponent({
 					cursor +=
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
-							: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-							segment.resolved
+							: segment.resolved
 							? (segment.resolved as any).toString().length
 							: 0;
 					segment.to = cursor;
 					return segment;
 				})
 				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
-		},
-	},
-	methods: {
-		getValue() {
-			return '=' + this.resolvedExpression;
 		},
 	},
 });

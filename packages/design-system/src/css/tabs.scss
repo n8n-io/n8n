@@ -179,7 +179,8 @@
 		> .el-tabs__header .el-tabs__item {
 			border-bottom: 1px solid transparent;
 			border-left: 1px solid var(--border-color-base);
-			transition: color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
+			transition:
+				color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
 				padding 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 			&:first-child {
 				border-left: none;
@@ -211,7 +212,9 @@
 	@include mixins.m(border-card) {
 		background: var.$color-white;
 		border: 1px solid var(--border-color-base);
-		box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12), 0 0 6px 0 rgba(0, 0, 0, 0.04);
+		box-shadow:
+			0 2px 4px 0 rgba(0, 0, 0, 0.12),
+			0 0 6px 0 rgba(0, 0, 0, 0.04);
 
 		> .el-tabs__content {
 			padding: 15px;
@@ -517,19 +520,19 @@
 .slideInLeft-transition {
 	display: inline-block;
 }
-.slideInRight-enter {
+.slideInRight-enter-from {
 	animation: slideInRight-enter 0.3s;
 }
-.slideInRight-leave {
+.slideInRight-leave-to {
 	position: absolute;
 	left: 0;
 	right: 0;
 	animation: slideInRight-leave 0.3s;
 }
-.slideInLeft-enter {
+.slideInLeft-enter-from {
 	animation: slideInLeft-enter 0.3s;
 }
-.slideInLeft-leave {
+.slideInLeft-leave-to {
 	position: absolute;
 	left: 0;
 	right: 0;

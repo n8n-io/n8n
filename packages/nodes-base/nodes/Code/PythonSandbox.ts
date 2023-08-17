@@ -67,10 +67,7 @@ export class PythonSandbox extends Sandbox {
 				globalsDict.set(key, value);
 			}
 
-			await pyodide.runPythonAsync(`
-if 'printOverwrite' in globals():
-	print = printOverwrite
-			`);
+			pyodide.setStdout({ batched: (str) => this.emit('output', str) });
 
 			const runCode = `
 async def __main():

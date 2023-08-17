@@ -1,21 +1,18 @@
 <script lang="ts" setup>
 import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
-import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
+import { MODAL_CONFIRM } from '@/constants';
 import { useUIStore, useSourceControlStore } from '@/stores';
 import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
-const { i18n: locale } = useI18n();
+const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
-const sourceControlDocsSetupUrl = computed(() =>
-	locale.baseText('settings.sourceControl.docs.setup.url'),
-);
 const isConnected = ref(false);
 const branchNameOptions = computed(() =>
 	sourceControlStore.preferences.branches.map((branch) => ({
@@ -26,10 +23,9 @@ const branchNameOptions = computed(() =>
 
 const onConnect = async () => {
 	loadingService.startLoading();
+	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
 		await sourceControlStore.savePreferences({
-			authorName: sourceControlStore.preferences.authorName,
-			authorEmail: sourceControlStore.preferences.authorEmail,
 			repositoryUrl: sourceControlStore.preferences.repositoryUrl,
 		});
 		await sourceControlStore.getBranches();
@@ -115,9 +111,6 @@ onMounted(async () => {
 
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
-	authorName: false,
-	authorEmail: false,
-	branchName: false,
 });
 
 function onValidate(key: string, value: boolean) {
@@ -135,27 +128,8 @@ const repoUrlValidationRules: Array<Rule | RuleGroup> = [
 	},
 ];
 
-const authorNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
-
-const authorEmailValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'REQUIRED' },
-	{
-		name: 'MATCH_REGEX',
-		config: {
-			regex: VALID_EMAIL_REGEX,
-			message: locale.baseText('settings.sourceControl.authorEmailInvalid'),
-		},
-	},
-];
-
+const validForConnection = computed(() => formValidationStatus.repoUrl);
 const branchNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
-
-const validForConnection = computed(
-	() =>
-		formValidationStatus.repoUrl &&
-		formValidationStatus.authorName &&
-		formValidationStatus.authorEmail,
-);
 
 async function refreshSshKey() {
 	try {
@@ -203,13 +177,13 @@ const refreshBranches = async () => {
 			data-test-id="source-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
-				<i18n path="settings.sourceControl.description">
+				<i18n-t keypath="settings.sourceControl.description" tag="span">
 					<template #link>
-						<a :href="sourceControlDocsSetupUrl" target="_blank">
+						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
 							{{ locale.baseText('settings.sourceControl.description.link') }}
 						</a>
 					</template>
-				</i18n>
+				</i18n-t>
 			</n8n-callout>
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
@@ -241,35 +215,6 @@ const refreshBranches = async () => {
 					>
 				</div>
 			</div>
-			<div :class="[$style.group, $style.groupFlex]">
-				<div>
-					<label for="authorName">{{ locale.baseText('settings.sourceControl.authorName') }}</label>
-					<n8n-form-input
-						label
-						id="authorName"
-						name="authorName"
-						validateOnBlur
-						:validationRules="authorNameValidationRules"
-						v-model="sourceControlStore.preferences.authorName"
-						@validate="(value) => onValidate('authorName', value)"
-					/>
-				</div>
-				<div>
-					<label for="authorEmail">{{
-						locale.baseText('settings.sourceControl.authorEmail')
-					}}</label>
-					<n8n-form-input
-						label
-						type="email"
-						id="authorEmail"
-						name="authorEmail"
-						validateOnBlur
-						:validationRules="authorEmailValidationRules"
-						v-model="sourceControlStore.preferences.authorEmail"
-						@validate="(value) => onValidate('authorEmail', value)"
-					/>
-				</div>
-			</div>
 			<div v-if="sourceControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
@@ -291,13 +236,15 @@ const refreshBranches = async () => {
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n path="settings.sourceControl.sshKeyDescription">
+					<i18n-t keypath="settings.sourceControl.sshKeyDescription" tag="span">
 						<template #link>
-							<a :href="sourceControlDocsSetupUrl" target="_blank">{{
-								locale.baseText('settings.sourceControl.sshKeyDescriptionLink')
-							}}</a>
+							<a
+								:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
+								target="_blank"
+								>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
+							>
 						</template>
-					</i18n>
+					</i18n-t>
 				</n8n-notice>
 			</div>
 			<n8n-button
@@ -327,9 +274,9 @@ const refreshBranches = async () => {
 							validateOnBlur
 							:validationRules="branchNameValidationRules"
 							:options="branchNameOptions"
-							:value="sourceControlStore.preferences.branchName"
+							:modelValue="sourceControlStore.preferences.branchName"
 							@validate="(value) => onValidate('branchName', value)"
-							@input="onSelect"
+							@update:modelValue="onSelect"
 						/>
 						<n8n-tooltip placement="top">
 							<template #content>
@@ -352,16 +299,11 @@ const refreshBranches = async () => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n path="settings.sourceControl.readonly">
+						<i18n-t keypath="settings.sourceControl.protected" tag="span">
 							<template #bold>
-								<strong>{{ locale.baseText('settings.sourceControl.readonly.bold') }}</strong>
+								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
 							</template>
-							<template #link>
-								<a :href="sourceControlDocsSetupUrl" target="_blank">
-									{{ locale.baseText('settings.sourceControl.readonly.link') }}
-								</a>
-							</template>
-						</i18n>
+						</i18n-t>
 					</n8n-checkbox>
 				</div>
 				<div :class="$style.group">
@@ -387,7 +329,7 @@ const refreshBranches = async () => {
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sourceControl.actionBox.description')"
 			:buttonText="locale.baseText('settings.sourceControl.actionBox.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.sourceControl.actionBox.title') }}</span>

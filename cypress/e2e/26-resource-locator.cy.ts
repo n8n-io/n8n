@@ -1,4 +1,5 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -32,7 +33,7 @@ describe('Resource Locator', () => {
 		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
 		workflowPage.getters.nodeCredentialsSelect().click();
 		// Add oAuth credentials
-		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		getVisibleSelect().find('li').last().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();

@@ -89,7 +89,6 @@ export class ERPNext implements INodeType {
 
 				docFields.unshift({ name: '*', value: '*' });
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -107,7 +106,6 @@ export class ERPNext implements INodeType {
 					},
 				);
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 		},

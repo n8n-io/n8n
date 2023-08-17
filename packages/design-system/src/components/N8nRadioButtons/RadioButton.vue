@@ -9,7 +9,6 @@
 		}"
 		aria-checked="true"
 	>
-		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value" />
 		<div
 			:class="{
 				[$style.button]: true,
@@ -18,7 +17,6 @@
 				[$style.disabled]: disabled,
 			}"
 			:data-test-id="`radio-button-${value}`"
-			@click="$emit('click')"
 		>
 			{{ label }}
 		</div>
@@ -76,7 +74,6 @@ export default defineComponent({
 }
 
 .button {
-	border-radius: 0;
 	display: flex;
 	align-items: center;
 	border-radius: var(--border-radius-base);

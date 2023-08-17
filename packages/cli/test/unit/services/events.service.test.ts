@@ -15,13 +15,15 @@ import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories';
 import { EventsService } from '@/services/events.service';
 import { UserService } from '@/user/user.service';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { OwnershipService } from '@/services/ownership.service';
+import { mockInstance } from '../../integration/shared/utils';
 
 jest.mock('@/UserManagement/UserManagementHelper', () => ({ getWorkflowOwner: jest.fn() }));
 
 describe('EventsService', () => {
 	const dbType = config.getEnv('database.type');
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
+	const ownershipService = mockInstance(OwnershipService);
 
 	const entityManager = mock<EntityManager>();
 	const dataSource = mock<DataSource>({
@@ -36,10 +38,13 @@ describe('EventsService', () => {
 	LoggerProxy.init(mock<ILogger>());
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
-	mocked(getWorkflowOwner).mockResolvedValue(fakeUser);
+	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
 	const updateUserSettingsMock = jest.spyOn(UserService, 'updateUserSettings').mockImplementation();
 
-	const eventsService = new EventsService(new WorkflowStatisticsRepository(dataSource));
+	const eventsService = new EventsService(
+		new WorkflowStatisticsRepository(dataSource),
+		ownershipService,
+	);
 
 	const onFirstProductionWorkflowSuccess = jest.fn();
 	const onFirstWorkflowDataLoad = jest.fn();

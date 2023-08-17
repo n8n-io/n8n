@@ -1,4 +1,3 @@
-// eslint-disable-next-line n8n-nodes-base/node-filename-against-convention
 import type {
 	IExecuteFunctions,
 	IDataObject,

@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import type { Diagnostic } from '@codemirror/lint';
 import { linter as createLinter } from '@codemirror/lint';
 import { jsonParseLinter } from '@codemirror/lang-json';
@@ -7,12 +7,15 @@ import * as esprima from 'esprima-next';
 import type { Node } from 'estree';
 import type { CodeNodeEditorLanguage } from 'n8n-workflow';
 
-import { DEFAULT_LINTER_DELAY_IN_MS, DEFAULT_LINTER_SEVERITY } from './constants';
-import { OFFSET_FOR_SCRIPT_WRAPPER } from './constants';
+import {
+	DEFAULT_LINTER_DELAY_IN_MS,
+	DEFAULT_LINTER_SEVERITY,
+	OFFSET_FOR_SCRIPT_WRAPPER,
+} from './constants';
 import { walk } from './utils';
-import type { CodeNodeEditorMixin, RangeNode } from './types';
+import type { RangeNode } from './types';
 
-export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
+export const linterExtension = defineComponent({
 	methods: {
 		createLinter(language: CodeNodeEditorLanguage) {
 			switch (language) {
@@ -62,6 +65,8 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					return [];
 				}
 			}
+
+			if (ast === null) return [];
 
 			const lintings: Diagnostic[] = [];
 
@@ -148,7 +153,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const isUnavailableInputItemAccess = (node: Node) =>
 					node.type === 'MemberExpression' &&
-					node.computed === false &&
+					!node.computed &&
 					node.object.type === 'Identifier' &&
 					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
@@ -167,44 +172,6 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								name: 'Remove',
 								apply(view) {
 									view.dispatch({ changes: { from: start - '.'.length, to: end } });
-								},
-							},
-						],
-					});
-				});
-			}
-
-			/**
-			 * Lint for `item` (legacy var from Function Item node) unavailable
-			 * in `runOnceForAllItems` mode, unless user-defined `item`.
-			 *
-			 * item -> $input.all()
-			 */
-			if (this.mode === 'runOnceForAllItems' && !/(let|const|var) item (=|of)/.test(script)) {
-				type TargetNode = RangeNode & { object: RangeNode & { name: string } };
-
-				const isUnavailableLegacyItems = (node: Node) =>
-					node.type === 'Identifier' && node.name === 'item';
-
-				walk<TargetNode>(ast, isUnavailableLegacyItems).forEach((node) => {
-					const [start, end] = this.getRange(node);
-
-					lintings.push({
-						from: start,
-						to: end,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText('codeNodeEditor.linter.allItems.unavailableItem'),
-						actions: [
-							{
-								name: 'Fix',
-								apply(view, from, to) {
-									// prevent second insertion of unknown origin
-									if (view.state.doc.toString().slice(from, to).includes('$input.all()')) {
-										return;
-									}
-
-									view.dispatch({ changes: { from: start, to: end } });
-									view.dispatch({ changes: { from, insert: '$input.all()' } });
 								},
 							},
 						],
@@ -265,7 +232,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 				const isUnavailableMethodinEachItem = (node: Node) =>
 					node.type === 'MemberExpression' &&
-					node.computed === false &&
+					!node.computed &&
 					node.object.type === 'Identifier' &&
 					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
@@ -332,7 +299,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				const inputFirstOrLastCalledWithArg = (node: Node) =>
 					node.type === 'CallExpression' &&
 					node.callee.type === 'MemberExpression' &&
-					node.callee.computed === false &&
+					!node.callee.computed &&
 					node.callee.object.type === 'Identifier' &&
 					node.callee.object.name === '$input' &&
 					node.callee.property.type === 'Identifier' &&
@@ -427,7 +394,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.left.declarations[0].id.type === 'Identifier' &&
 					node.right.type === 'CallExpression' &&
 					node.right.callee.type === 'MemberExpression' &&
-					node.right.callee.computed === false &&
+					!node.right.callee.computed &&
 					node.right.callee.object.type === 'Identifier' &&
 					node.right.callee.object.name.startsWith('$'); // n8n var, e.g $input
 

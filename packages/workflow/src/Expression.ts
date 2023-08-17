@@ -49,7 +49,7 @@ const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
 
 const fnConstructors = {
 	sync: Function.prototype.constructor,
-	// eslint-disable-next-line @typescript-eslint/ban-types
+
 	async: AsyncFunction.prototype.constructor,
 	mock: () => {
 		throw new ExpressionError('Arbitrary code execution detected');
@@ -127,7 +127,7 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign
-		// eslint-disable-next-line no-param-reassign
+
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
@@ -570,7 +570,7 @@ export class Expression {
 
 		// Data is an object
 		const returnData: INodeParameters = {};
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const [key, value] of Object.entries(parameterValue)) {
 			returnData[key] = resolveParameterValue(
 				value as NodeParameterValueType,

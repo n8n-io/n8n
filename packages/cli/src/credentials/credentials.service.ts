@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 import { Credentials, UserSettings } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -22,9 +21,9 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
+import { RoleService } from '@/services/role.service';
 
 export class CredentialsService {
 	static async get(
@@ -111,7 +110,6 @@ export class CredentialsService {
 	static async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These
@@ -223,7 +221,7 @@ export class CredentialsService {
 
 		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
+		const role = await Container.get(RoleService).findCredentialOwnerRole();
 
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
@@ -327,7 +325,6 @@ export class CredentialsService {
 	private static unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];
@@ -340,7 +337,7 @@ export class CredentialsService {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				replacement[key] !== null
 			) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				this.unredactRestoreValues(value, replacement[key]);
 			}
 		}

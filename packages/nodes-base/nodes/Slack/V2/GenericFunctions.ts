@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
 } from 'n8n-workflow';
@@ -12,7 +11,7 @@ import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import get from 'lodash/get';
 
 export async function slackApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 	body: object = {},
@@ -130,10 +129,7 @@ export async function slackApiRequestAllItems(
 	return returnData;
 }
 
-export function getMessageContent(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	i: number,
-) {
+export function getMessageContent(this: IExecuteFunctions | ILoadOptionsFunctions, i: number) {
 	const nodeVersion = this.getNode().typeVersion;
 
 	const includeLinkToWorkflow = this.getNodeParameter(

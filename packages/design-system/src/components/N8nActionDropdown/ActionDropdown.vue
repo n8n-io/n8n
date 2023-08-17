@@ -6,7 +6,7 @@
 			@command="onSelect"
 			ref="elementDropdown"
 		>
-			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
+			<div :class="$style.activator" @click.stop.prevent @blur="onButtonBlur">
 				<n8n-icon :icon="activatorIcon" />
 			</div>
 			<template #dropdown>
@@ -36,11 +36,7 @@
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import {
-	Dropdown as ElDropdown,
-	DropdownMenu as ElDropdownMenu,
-	DropdownItem as ElDropdownItem,
-} from 'element-ui';
+import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 
 export interface IActionDropdownItem {
@@ -108,12 +104,11 @@ export default defineComponent({
 			this.$emit('select', action);
 		},
 		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as
-				| (Vue & { hide: () => void })
-				| undefined;
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<ElDropdown>;
+
 			// Hide dropdown when clicking outside of current document
-			if (elementDropdown && event.relatedTarget === null) {
-				elementDropdown.hide();
+			if (elementDropdown?.handleClose && event.relatedTarget === null) {
+				elementDropdown.handleClose();
 			}
 		},
 	},
@@ -121,6 +116,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+.userActionsMenu {
+	min-width: 160px;
+}
+
 .activator {
 	cursor: pointer;
 	padding: var(--spacing-2xs);

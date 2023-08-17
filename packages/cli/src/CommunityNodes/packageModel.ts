@@ -63,7 +63,7 @@ export async function persistInstalledPackageData(
 
 			return promises;
 		});
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 		return installedPackage!;
 	} catch (error) {
 		LoggerProxy.error('Failed to save installed packages and nodes', {

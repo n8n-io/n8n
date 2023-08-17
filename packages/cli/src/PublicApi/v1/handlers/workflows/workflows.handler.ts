@@ -11,7 +11,6 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole } from '../users/users.service';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -26,6 +25,7 @@ import {
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
 
 export = {
 	createWorkflow: [
@@ -39,7 +39,7 @@ export = {
 
 			addNodeIds(workflow);
 
-			const role = await getWorkflowOwnerRole();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 

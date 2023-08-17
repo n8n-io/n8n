@@ -57,6 +57,7 @@ export const customerCardFields: INodeProperties[] = [
 		displayName: 'Card Token',
 		name: 'token',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		placeholder: 'tok_1IMfKdJhRTnqS5TKQVG1LI9o',

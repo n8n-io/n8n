@@ -411,7 +411,6 @@ export class Coda implements INodeType {
 					return [this.helpers.returnJsonArray(responseData as IDataObject[])];
 				} else {
 					for (const item of responseData) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						returnData.push({
 							id: item.id,
 							...item.values,
@@ -758,7 +757,6 @@ export class Coda implements INodeType {
 					return [this.helpers.returnJsonArray(responseData as IDataObject[])];
 				} else {
 					for (const item of responseData) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						returnData.push({
 							id: item.id,
 							...item.values,

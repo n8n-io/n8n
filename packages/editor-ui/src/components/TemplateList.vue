@@ -71,7 +71,7 @@ export default defineComponent({
 			}
 		}
 	},
-	destroyed() {
+	beforeUnmount() {
 		const content = document.getElementById('content');
 		if (content) {
 			content.removeEventListener('scroll', this.onScroll);

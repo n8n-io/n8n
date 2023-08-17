@@ -128,12 +128,20 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
+	isDebugInEditorLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
+	}
+
 	isVariablesEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
 
 	isSourceControlLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
+	}
+
+	isWorkflowHistoryLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
 	}
 
 	isAPIDisabled() {

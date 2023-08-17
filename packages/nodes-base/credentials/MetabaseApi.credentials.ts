@@ -19,6 +19,7 @@ export class MetabaseApi implements ICredentialType {
 			displayName: 'Session Token',
 			name: 'sessionToken',
 			type: 'hidden',
+
 			typeOptions: {
 				expirable: true,
 			},

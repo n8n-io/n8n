@@ -1,4 +1,4 @@
-import type { Application } from 'express';
+import type { Application, Request, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -22,6 +22,7 @@ import type {
 	IExecutionsSummary,
 	FeatureFlags,
 	IUserSettings,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -53,15 +54,14 @@ import type {
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	TagRepository,
 	UserRepository,
 	VariablesRepository,
-	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
 export interface IActivationError {
 	time: number;
@@ -100,10 +100,8 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
 	SharedWorkflow: SharedWorkflowRepository;
-	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
-	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
@@ -197,7 +195,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
+	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 }
 
 // Flatted data to save memory when saving in database or transferring
@@ -300,6 +298,19 @@ export interface IExternalHooksClass {
 	init(): Promise<void>;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
+}
+
+export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
+
+export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
+
+export type WaitingWebhookRequest = WebhookRequest & {
+	params: WebhookRequest['path'] & { suffix?: string };
+};
+
+export interface IWebhookManager {
+	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
+	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
 }
 
 export interface IDiagnosticInfo {
@@ -766,3 +777,5 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
+
+export type N8nInstanceType = 'main' | 'webhook' | 'worker';

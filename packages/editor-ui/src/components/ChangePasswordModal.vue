@@ -12,7 +12,7 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@input="onInput"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
 		</template>
@@ -37,7 +37,7 @@ import type { IFormInputs } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'ChangePasswordModal',

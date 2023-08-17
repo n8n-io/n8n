@@ -1,9 +1,8 @@
 <template>
-	<div v-if="dialogVisible" @keydown.stop>
+	<div class="expression-edit" v-if="dialogVisible" @keydown.stop>
 		<el-dialog
-			:visible="dialogVisible"
-			custom-class="expression-dialog classic"
-			append-to-body
+			:modelValue="dialogVisible"
+			class="expression-dialog classic"
 			width="80%"
 			:title="$locale.baseText('expressionEdit.editExpression')"
 			:before-close="closeDialog"
@@ -41,6 +40,7 @@
 								<span>
 									{{ $locale.baseText('expressionEdit.isJavaScript') }}
 								</span>
+								{{ ' ' }}
 								<n8n-link size="medium" :to="expressionsDocsUrl">
 									{{ $locale.baseText('expressionEdit.learnMore') }}
 								</n8n-link>
@@ -48,7 +48,7 @@
 						</div>
 						<div class="expression-editor">
 							<ExpressionEditorModalInput
-								:value="value"
+								:modelValue="modelValue"
 								:isReadOnly="isReadOnlyRoute"
 								:path="path"
 								:class="{ 'ph-no-capture': redactValues }"
@@ -102,7 +102,7 @@ import type { Segment } from '@/types/expressions';
 export default defineComponent({
 	name: 'ExpressionEdit',
 	mixins: [externalHooks, genericHelpers, debounceHelper],
-	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource', 'redactValues'],
+	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
 	components: {
 		ExpressionEditorModalInput,
 		ExpressionEditorModalOutput,
@@ -126,7 +126,7 @@ export default defineComponent({
 
 			if (forceUpdate === true) {
 				this.updateDisplayValue();
-				this.$emit('valueChanged', this.latestValue);
+				this.$emit('update:modelValue', this.latestValue);
 			} else {
 				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
 			}
@@ -137,21 +137,20 @@ export default defineComponent({
 		},
 
 		closeDialog() {
-			if (this.latestValue !== this.value) {
+			if (this.latestValue !== this.modelValue) {
 				// Handle the close externally as the visible parameter is an external prop
 				// and is so not allowed to be changed here.
-				this.$emit('valueChanged', this.latestValue);
+				this.$emit('update:modelValue', this.latestValue);
 			}
 			this.$emit('closeDialog');
 			return false;
 		},
 
 		itemSelected(eventData: IVariableItemSelected) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
 			void this.$externalHooks().run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
-				value: this.value,
+				value: this.modelValue,
 				selectedItem: eventData,
 			});
 
@@ -221,24 +220,23 @@ export default defineComponent({
 	},
 	watch: {
 		dialogVisible(newValue) {
-			this.displayValue = this.value;
-			this.latestValue = this.value;
+			this.displayValue = this.modelValue;
+			this.latestValue = this.modelValue;
 
 			const resolvedExpressionValue =
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
 				undefined;
 			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
 				dialogVisible: newValue,
 				parameter: this.parameter,
-				value: this.value,
+				value: this.modelValue,
 				resolvedExpressionValue,
 			});
 
 			if (!newValue) {
 				const telemetryPayload = createExpressionTelemetryPayload(
 					this.segments,
-					this.value,
+					this.modelValue,
 					this.workflowsStore.workflowId,
 					this.ndvStore.sessionId,
 					this.ndvStore.activeNode?.type ?? '',
@@ -253,6 +251,28 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+.expression-edit {
+	:deep(.expression-dialog) {
+		.el-dialog__header {
+			padding: 0;
+		}
+		.el-dialog__title {
+			display: none;
+		}
+
+		.el-dialog__body {
+			padding: 0;
+			font-size: var(--font-size-s);
+		}
+
+		.right-side {
+			background-color: var(--color-background-light);
+			border-top-right-radius: 8px;
+			border-bottom-right-radius: 8px;
+		}
+	}
+}
+
 .editor-description {
 	line-height: 1.5;
 	font-weight: bold;
@@ -293,28 +313,8 @@ export default defineComponent({
 	margin-top: 1em;
 }
 
-::v-deep .expression-dialog {
-	.el-dialog__header {
-		padding: 0;
-	}
-	.el-dialog__title {
-		display: none;
-	}
-
-	.el-dialog__body {
-		padding: 0;
-		font-size: var(--font-size-s);
-	}
-
-	.right-side {
-		background-color: var(--color-background-light);
-		border-top-right-radius: 8px;
-		border-bottom-right-radius: 8px;
-	}
-}
-
 .header-side-menu {
-	padding: 1em 0 0.5em 1.8em;
+	padding: 1em 0 0.5em var(--spacing-s);
 	border-top-left-radius: 8px;
 
 	background-color: var(--color-background-base);
@@ -339,6 +339,6 @@ export default defineComponent({
 }
 
 .variable-selector {
-	margin: 0 1em;
+	margin: 0 var(--spacing-s);
 }
 </style>

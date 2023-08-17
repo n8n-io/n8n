@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
@@ -14,11 +12,10 @@ import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
-import type { WorkflowRequest } from '@/requests';
+import type { ListQueryRequest, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
@@ -26,6 +23,10 @@ import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
+import * as utils from '@/utils';
+import { listQueryMiddleware } from '@/middlewares';
+import { TagRepository } from '@/databases/repositories';
 
 export const workflowsController = express.Router();
 
@@ -64,7 +65,7 @@ workflowsController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.find({
+			newWorkflow.tags = await Container.get(TagRepository).find({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),
@@ -81,7 +82,7 @@ workflowsController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -117,9 +118,18 @@ workflowsController.post(
  */
 workflowsController.get(
 	'/',
-	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		return WorkflowsService.getMany(req.user, req.query.filter);
-	}),
+	listQueryMiddleware,
+	async (req: ListQueryRequest, res: express.Response) => {
+		try {
+			const [data, count] = await WorkflowsService.getMany(req.user, req.listQueryOptions);
+
+			res.json({ count, data });
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+			ResponseHelper.reportError(error);
+			ResponseHelper.sendErrorResponse(res, error);
+		}
+	},
 );
 
 /**
@@ -169,8 +179,7 @@ workflowsController.get(
 
 		// Do a very basic check if it is really a n8n-workflow-json
 		if (
-			workflowData === undefined ||
-			workflowData.nodes === undefined ||
+			workflowData?.nodes === undefined ||
 			!Array.isArray(workflowData.nodes) ||
 			workflowData.connections === undefined ||
 			typeof workflowData.connections !== 'object' ||

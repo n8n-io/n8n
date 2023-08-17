@@ -132,7 +132,7 @@ const formatValue = (value: any, format: string): any => {
 			// Only return if all values are properly parsed
 			if (coordinates.length === points.length) {
 				// If the shape is closed, declare it as Polygon, otherwise as LineString
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				if (first(points) === last(points)) {
 					return {
 						type: 'Polygon',

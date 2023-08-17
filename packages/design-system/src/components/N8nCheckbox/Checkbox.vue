@@ -5,8 +5,8 @@
 		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
-		:value="value"
-		@change="onChange"
+		:modelValue="modelValue"
+		@update:modelValue="onUpdateModelValue"
 	>
 		<slot></slot>
 		<n8n-input-label
@@ -22,7 +22,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { Checkbox as ElCheckbox } from 'element-ui';
+import { ElCheckbox } from 'element-plus';
 import N8nInputLabel from '../N8nInputLabel';
 
 export default defineComponent({
@@ -46,7 +46,7 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		value: {
+		modelValue: {
 			type: Boolean,
 			default: false,
 		},
@@ -57,8 +57,8 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onChange(event: Event) {
-			this.$emit('input', event);
+		onUpdateModelValue(value: boolean) {
+			this.$emit('update:modelValue', value);
 		},
 		onLabelClick() {
 			const checkboxComponent = this.$refs.checkbox as ElCheckbox;

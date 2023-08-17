@@ -5,4 +5,4 @@ properties:
     example: true
   variables:
     type: object
-    example: { "foo": "bar" }
+    example: { 'foo': 'bar' }

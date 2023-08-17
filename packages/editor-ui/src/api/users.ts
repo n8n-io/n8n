@@ -67,14 +67,14 @@ export async function sendForgotPasswordEmail(
 
 export async function validatePasswordToken(
 	context: IRestApiContext,
-	params: { token: string; userId: string },
+	params: { token: string },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'GET', '/resolve-password-token', params);
 }
 
 export async function changePassword(
 	context: IRestApiContext,
-	params: { token: string; password: string; userId: string },
+	params: { token: string; password: string },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
