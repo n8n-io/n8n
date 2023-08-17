@@ -56,7 +56,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
-import type { Banners } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -176,6 +176,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			V1: { dismissed: true },
 			TRIAL: { dismissed: true },
 			TRIAL_OVER: { dismissed: true },
+			NON_PRODUCTION_LICENSE: { dismissed: true },
 		},
 		bannersHeight: 0,
 	}),
@@ -333,12 +334,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
-		setBanners(banners: UIState['banners']): void {
-			this.banners = {
-				...this.banners,
-				...banners,
-			};
-		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
@@ -541,7 +536,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		async dismissBanner(
-			name: Banners,
+			name: BannerName,
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
@@ -556,7 +551,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.banners[name].dismissed = true;
 			this.banners[name].type = 'temporary';
 		},
-		showBanner(name: Banners): void {
+		showBanner(name: BannerName): void {
 			this.banners[name].dismissed = false;
 		},
 		updateBannersHeight(newHeight: number): void {
