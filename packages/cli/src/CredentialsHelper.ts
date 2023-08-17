@@ -508,7 +508,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			for (const nodeType of allNodeTypes) {
 				// Check each of teh credentials
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
-					if (name === credentialType && name.endsWith('OAuth2Api')) {
+					if (
+						name === credentialType &&
+						this.credentialTypes.getParentTypes(name).includes('oAuth2Api')
+					) {
 						return async function oauth2CredTest(
 							this: ICredentialTestFunctions,
 							cred: ICredentialsDecrypted,
