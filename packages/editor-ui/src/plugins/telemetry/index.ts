@@ -114,6 +114,20 @@ export class Telemetry {
 		});
 	}
 
+	trackAskAI(event: string, properties: IDataObject = {}) {
+		if (this.rudderStack) {
+			properties.session_id = useRootStore().sessionId;
+			switch (event) {
+				case 'askAi.generationFinished':
+					this.track('Ai code generation finished', properties);
+				case 'ask.generationClicked':
+					this.track('User clicked on generate code button', properties);
+				default:
+					break;
+			}
+		}
+	}
+
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
@@ -192,7 +206,7 @@ export class Telemetry {
 		if (this.rudderStack) {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
-					if (change.name === 'parameters.includeLinkToWorkflow') {
+					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
 						this.track('User toggled n8n reference option');
 					}
 					break;
