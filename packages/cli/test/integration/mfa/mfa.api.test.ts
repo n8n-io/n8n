@@ -59,7 +59,7 @@ describe('Enable MFA setup', () => {
 			);
 		});
 
-		test('GET /qr should return qr, secret and recocery codes', async () => {
+		test('GET /qr should return qr, secret and recovery codes', async () => {
 			const response = await testServer.authAgentFor(owner).get('/mfa/qr');
 
 			expect(response.statusCode).toBe(200);
