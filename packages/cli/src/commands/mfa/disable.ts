@@ -3,7 +3,7 @@ import * as Db from '@/Db';
 import { BaseCommand } from '../BaseCommand';
 
 export class DisableMFACommand extends BaseCommand {
-	static description = 'Disable MFA authentication for an user';
+	static description = 'Disable MFA authentication for a user';
 
 	static examples = ['$ n8n mfa:disable --email=johndoe@example.com'];
 
