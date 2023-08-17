@@ -39,7 +39,7 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
@@ -143,6 +143,12 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
+		async initBanners() {
+			return this.uiStore.initBanners();
+		},
+		async checkForCloudPlanData() {
+			return this.cloudPlanStore.checkForCloudPlanData();
+		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
@@ -209,35 +215,6 @@ export default defineComponent({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
-		async checkForCloudPlanData(): Promise<void> {
-			try {
-				await this.cloudPlanStore.getOwnerCurrentPlan();
-				if (!this.cloudPlanStore.userIsTrialing) return;
-				await this.cloudPlanStore.getInstanceCurrentUsage();
-				this.startPollingInstanceUsageData();
-			} catch {}
-		},
-		startPollingInstanceUsageData() {
-			const interval = setInterval(async () => {
-				try {
-					await this.cloudPlanStore.getInstanceCurrentUsage();
-					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
-						clearTimeout(interval);
-						return;
-					}
-				} catch {}
-			}, CLOUD_TRIAL_CHECK_INTERVAL);
-		},
-		async initBanners(): Promise<void> {
-			if (this.cloudPlanStore.userIsTrialing) {
-				await this.uiStore.dismissBanner('V1', 'temporary');
-				if (this.cloudPlanStore.trialExpired) {
-					this.uiStore.showBanner('TRIAL_OVER');
-				} else {
-					this.uiStore.showBanner('TRIAL');
-				}
-			}
-		},
 		async postAuthenticate() {
 			if (this.postAuthenticateDone) {
 				return;
@@ -262,9 +239,7 @@ export default defineComponent({
 		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
-		await this.initBanners();
-
-		void this.checkForCloudPlanData();
+		void this.initBanners();
 		void this.postAuthenticate();
 
 		this.loading = false;
