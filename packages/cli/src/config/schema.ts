@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
@@ -353,9 +351,9 @@ export const schema = {
 		},
 		bull: {
 			prefix: {
-				doc: 'Prefix for all queue keys',
+				doc: 'Prefix for all bull queue keys',
 				format: String,
-				default: '',
+				default: 'bull',
 				env: 'QUEUE_BULL_PREFIX',
 			},
 			redis: {
@@ -394,6 +392,12 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'QUEUE_BULL_REDIS_USERNAME',
+				},
+				clusterNodes: {
+					doc: 'Redis Cluster startup nodes (comma separated list of host:port pairs)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
 			},
 			queueRecoveryInterval: {
@@ -478,6 +482,18 @@ export const schema = {
 	},
 
 	security: {
+		restrictFileAccessTo: {
+			doc: 'If set only files in that directories can be accessed. Multiple directories can be separated by semicolon (";").',
+			format: String,
+			default: '',
+			env: 'N8N_RESTRICT_FILE_ACCESS_TO',
+		},
+		blockFileAccessToN8nFiles: {
+			doc: 'If set to true it will block access to all files in the ".n8n" directory and user defined config files.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES',
+		},
 		audit: {
 			daysAbandonedWorkflow: {
 				doc: 'Days for a workflow to be considered abandoned if not executed',
@@ -561,6 +577,18 @@ export const schema = {
 				default: false,
 				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
 				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
+			},
+			includeCacheMetrics: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_CACHE_METRICS',
+				doc: 'Whether to include metrics for cache hits and misses. Default: false',
+			},
+			includeMessageEventBusMetrics: {
+				format: Boolean,
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
+				doc: 'Whether to include metrics for events. Default: false',
 			},
 		},
 		rest: {
@@ -985,8 +1013,7 @@ export const schema = {
 				dsn: {
 					doc: 'Data source name for error tracking on Sentry',
 					format: String,
-					default:
-						'https://1f954e089a054b8e943ae4f4042b2bff@o1420875.ingest.sentry.io/4504016528408576',
+					default: '',
 					env: 'N8N_SENTRY_DSN',
 				},
 			},
@@ -1096,18 +1123,79 @@ export const schema = {
 		},
 	},
 
-	expression: {
-		evaluator: {
-			doc: 'Expression evaluator to use',
-			format: ['tmpl', 'tournament'] as const,
-			default: 'tmpl',
-			env: 'N8N_EXPRESSION_EVALUATOR',
+	redis: {
+		prefix: {
+			doc: 'Prefix for all n8n related keys',
+			format: String,
+			default: 'n8n',
+			env: 'N8N_REDIS_KEY_PREFIX',
 		},
-		reportDifference: {
-			doc: 'Expression evaluator to use',
+	},
+
+	cache: {
+		enabled: {
+			doc: 'Whether caching is enabled',
+			format: Boolean,
+			default: true,
+			env: 'N8N_CACHE_ENABLED',
+		},
+		backend: {
+			doc: 'Backend to use for caching',
+			format: ['memory', 'redis', 'auto'] as const,
+			default: 'auto',
+			env: 'N8N_CACHE_BACKEND',
+		},
+		memory: {
+			maxSize: {
+				doc: 'Maximum size of memory cache in bytes',
+				format: Number,
+				default: 3 * 1024 * 1024, // 3 MB
+				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
+			},
+			ttl: {
+				doc: 'Time to live for cached items in memory (in ms)',
+				format: Number,
+				default: 3600 * 1000, // 1 hour
+				env: 'N8N_CACHE_MEMORY_TTL',
+			},
+		},
+		redis: {
+			prefix: {
+				doc: 'Prefix for all cache keys',
+				format: String,
+				default: 'cache',
+				env: 'N8N_CACHE_REDIS_KEY_PREFIX',
+			},
+			ttl: {
+				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
+				format: Number,
+				default: 3600 * 1000, // 1 hour
+				env: 'N8N_CACHE_REDIS_TTL',
+			},
+		},
+	},
+
+	ai: {
+		enabled: {
+			doc: 'Whether AI features are enabled',
 			format: Boolean,
 			default: false,
-			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+			env: 'N8N_AI_ENABLED',
+		},
+
+		expression: {
+			evaluator: {
+				doc: 'Expression evaluator to use',
+				format: ['tmpl', 'tournament'] as const,
+				default: 'tmpl',
+				env: 'N8N_EXPRESSION_EVALUATOR',
+			},
+			reportDifference: {
+				doc: 'Expression evaluator to use',
+				format: Boolean,
+				default: false,
+				env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+			},
 		},
 	},
 };

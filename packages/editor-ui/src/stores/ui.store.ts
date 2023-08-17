@@ -5,7 +5,6 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
-	ASK_AI_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -15,7 +14,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
@@ -44,6 +42,8 @@ import type {
 	UIState,
 	UTMCampaign,
 	XYPosition,
+	Modals,
+	NewCredentialsModal,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
@@ -53,9 +53,8 @@ import { useSettingsStore } from './settings.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
-import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils';
+import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { Banners } from 'n8n-workflow';
 
@@ -65,9 +64,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		activeCredentialType: null,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
-				open: false,
-			},
-			[ASK_AI_MODAL_KEY]: {
 				open: false,
 			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
@@ -105,9 +101,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
-				open: false,
-			},
-			[EXECUTIONS_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SHARE_MODAL_KEY]: {
@@ -152,16 +145,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		currentView: '',
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
-			{
-				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
-				featureName: 'fakeDoor.settings.environments.name',
-				icon: 'server',
-				infoText: 'fakeDoor.settings.environments.infoText',
-				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
-				uiLocations: ['settings'],
-			},
 			{
 				id: FAKE_DOOR_FEATURES.SSO,
 				featureName: 'fakeDoor.settings.sso.name',

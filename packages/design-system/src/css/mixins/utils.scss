@@ -37,3 +37,18 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+
+@function joinVarName($list) {
+	$name: '--' + 'el';
+	@each $item in $list {
+		@if $item != '' {
+			$name: $name + '-' + $item;
+		}
+	}
+	@return $name;
+}
+
+// getCssVarName('button', 'text-color') => '--el-button-text-color'
+@function getCssVarName($args...) {
+	@return joinVarName($args);
+}

@@ -1,11 +1,8 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-param-reassign */
+
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable no-prototype-builtins */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
@@ -30,6 +27,7 @@ import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
+import { deepCopy } from './utils';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -163,7 +161,7 @@ export class WorkflowDataProxy {
 				},
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
-					// eslint-disable-next-line no-param-reassign
+
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
 
@@ -183,7 +181,7 @@ export class WorkflowDataProxy {
 				ownKeys(target) {
 					return Reflect.ownKeys(target);
 				},
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
@@ -216,6 +214,8 @@ export class WorkflowDataProxy {
 			},
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
+				if (name === 'toJSON') return () => deepCopy(target);
+
 				name = name.toString();
 
 				let returnValue: NodeParameterValueType;
@@ -233,6 +233,9 @@ export class WorkflowDataProxy {
 
 					returnValue = node.parameters[name];
 				}
+
+				// Avoid recursion
+				if (returnValue === `={{ $parameter.${name} }}`) return undefined;
 
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
@@ -326,7 +329,7 @@ export class WorkflowDataProxy {
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
 
-			if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
+			if (!taskData.main?.length || taskData.main[0] === null) {
 				// throw new Error(`No data found for item-index: "${itemIndex}"`);
 				throw new ExpressionError('No data found from "main" input.', {
 					runIndex: that.runIndex,
@@ -425,7 +428,7 @@ export class WorkflowDataProxy {
 								for (const propertyName in binaryData) {
 									if (propertyName === 'data') {
 										// Skip the data property
-										// eslint-disable-next-line no-continue
+
 										continue;
 									}
 									(returnData[keyName] as IDataObject)[propertyName] = binaryData[propertyName];
@@ -440,10 +443,7 @@ export class WorkflowDataProxy {
 						// Get node parameter data
 						return that.nodeParameterGetter(nodeName);
 					} else if (name === 'runIndex') {
-						if (
-							that.runExecutionData === null ||
-							!that.runExecutionData.resultData.runData[nodeName]
-						) {
+						if (!that.runExecutionData?.resultData.runData[nodeName]) {
 							return -1;
 						}
 						return that.runExecutionData.resultData.runData[nodeName].length - 1;

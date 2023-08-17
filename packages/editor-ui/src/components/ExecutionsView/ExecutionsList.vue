@@ -126,8 +126,10 @@ export default defineComponent({
 	},
 	watch: {
 		$route(to: Route, from: Route) {
-			const workflowChanged = from.params.name !== to.params.name;
-			void this.initView(workflowChanged);
+			if (to.params.name) {
+				const workflowChanged = from.params.name !== to.params.name;
+				void this.initView(workflowChanged);
+			}
 
 			if (to.params.executionId) {
 				const execution = this.workflowsStore.getExecutionDataById(to.params.executionId);
@@ -192,12 +194,12 @@ export default defineComponent({
 		}
 
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
-		this.startAutoRefreshInterval();
+		void this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
 		this.loading = false;
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.stopAutoRefreshInterval();
 		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
@@ -349,7 +351,9 @@ export default defineComponent({
 		async startAutoRefreshInterval() {
 			if (this.autoRefresh) {
 				await this.loadAutoRefresh();
-				this.autoRefreshTimeout = setTimeout(() => this.startAutoRefreshInterval(), 4000);
+				this.autoRefreshTimeout = setTimeout(() => {
+					void this.startAutoRefreshInterval();
+				}, 4000);
 			}
 		},
 		stopAutoRefreshInterval() {
@@ -363,13 +367,13 @@ export default defineComponent({
 			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
 
 			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
-			this.startAutoRefreshInterval();
+			void this.startAutoRefreshInterval();
 		},
 		onDocumentVisibilityChange() {
 			if (document.visibilityState === 'hidden') {
-				this.stopAutoRefreshInterval();
+				void this.stopAutoRefreshInterval();
 			} else {
-				this.startAutoRefreshInterval();
+				void this.startAutoRefreshInterval();
 			}
 		},
 		async loadAutoRefresh(): Promise<void> {
@@ -618,8 +622,8 @@ export default defineComponent({
 						console.error(
 							this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
 								`: "${node.name}"`,
-						); // eslint-disable-line no-console
-						console.error(e); // eslint-disable-line no-console
+						);
+						console.error(e);
 					}
 					node.parameters = nodeParameters !== null ? nodeParameters : {};
 

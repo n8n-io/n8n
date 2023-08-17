@@ -8,7 +8,6 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleService } from '@/role/role.service';
 import { UserService } from '@/user/user.service';
 import { WorkflowsService } from './workflows.services';
 import type {
@@ -19,6 +18,8 @@ import type {
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { NodeOperationError } from 'n8n-workflow';
+import { RoleService } from '@/services/role.service';
+import Container from 'typedi';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async getWorkflowIdsForUser(user: User) {
@@ -68,10 +69,8 @@ export class EEWorkflowsService extends WorkflowsService {
 		workflow: WorkflowEntity,
 		shareWithIds: string[],
 	): Promise<SharedWorkflow[]> {
-		const [users, role] = await Promise.all([
-			UserService.getByIds(transaction, shareWithIds),
-			RoleService.trxGet(transaction, { scope: 'workflow', name: 'editor' }),
-		]);
+		const users = await UserService.getByIds(transaction, shareWithIds);
+		const role = await Container.get(RoleService).findWorkflowEditorRole();
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
 			if (user.isPending) {
@@ -89,12 +88,12 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role): void {
-		const ownerId = workflow.shared?.find(
-			({ roleId }) => String(roleId) === workflowOwnerRole.id,
-		)?.userId;
+	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role) {
+		const ownerId = workflow.shared?.find(({ roleId }) => String(roleId) === workflowOwnerRole.id)
+			?.userId;
 		workflow.ownedBy = ownerId ? { id: ownerId } : null;
 		delete workflow.shared;
+		return workflow;
 	}
 
 	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {

@@ -134,7 +134,6 @@ export class ExportCredentialsCommand extends BaseCommand {
 			for (i = 0; i < credentials.length; i++) {
 				fileContents = JSON.stringify(credentials[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/restrict-plus-operands
 					(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
 					credentials[i].id
 				}.json`;

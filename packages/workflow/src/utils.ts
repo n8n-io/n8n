@@ -3,6 +3,12 @@ import type { BinaryFileType, JsonObject } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
+// NOTE: BigInt.prototype.toJSON is not available, which causes JSON.stringify to throw an error
+// as well as the flatted stringify method. This is a workaround for that.
+BigInt.prototype.toJSON = function () {
+	return this.toString();
+};
+
 export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 	if (obj === undefined || obj === null) return true;
 	if (typeof obj === 'object') {
@@ -131,13 +137,7 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 }
 
 export const isTraversableObject = (value: any): value is JsonObject => {
-	return (
-		value &&
-		typeof value === 'object' &&
-		!Array.isArray(value) &&
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		!!Object.keys(value).length
-	);
+	return value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length;
 };
 
 export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {

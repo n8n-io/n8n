@@ -25,6 +25,7 @@
 import { defineComponent } from 'vue';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables';
+import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({
 	mixins: [copyPaste],
@@ -41,13 +42,13 @@ export default defineComponent({
 		copyButtonText: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copy');
+				return i18n.baseText('generic.copy');
 			},
 		},
 		toastTitle: {
 			type: String,
 			default(): string {
-				return this.$locale.baseText('generic.copiedToClipboard');
+				return i18n.baseText('generic.copiedToClipboard');
 			},
 		},
 		toastMessage: {

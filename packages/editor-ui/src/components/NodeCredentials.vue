@@ -17,7 +17,7 @@
 			>
 				<div v-if="readonly || isReadOnlyRoute">
 					<n8n-input
-						:value="getSelectedName(credentialTypeDescription.name)"
+						:modelValue="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
 						data-test-id="node-credentials-select"
@@ -29,8 +29,8 @@
 					data-test-id="node-credentials-select"
 				>
 					<n8n-select
-						:value="getSelectedId(credentialTypeDescription.name)"
-						@change="
+						:modelValue="getSelectedId(credentialTypeDescription.name)"
+						@update:modelValue="
 							(value) =>
 								onCredentialSelected(
 									credentialTypeDescription.name,
@@ -46,6 +46,7 @@
 							v-for="item in getCredentialOptions(
 								getAllRelatedCredentialTypes(credentialTypeDescription),
 							)"
+							:data-test-id="`node-credentials-select-item-${item.id}`"
 							:key="item.id"
 							:label="item.name"
 							:value="item.id"
@@ -56,6 +57,7 @@
 							</div>
 						</n8n-option>
 						<n8n-option
+							data-test-id="node-credentials-select-item-new"
 							:key="NEW_CREDENTIALS_TEXT"
 							:value="NEW_CREDENTIALS_TEXT"
 							:label="NEW_CREDENTIALS_TEXT"
@@ -289,14 +291,14 @@ export default defineComponent({
 			});
 		},
 		credentialTypesNodeDescription(): INodeCredentialDescription[] {
-			const node = this.node as INodeUi;
+			const node = this.node;
 
 			const credType = this.credentialsStore.getCredentialTypeByName(this.overrideCredType);
 
 			if (credType) return [credType];
 
 			const activeNodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (activeNodeType && activeNodeType.credentials) {
+			if (activeNodeType?.credentials) {
 				return activeNodeType.credentials;
 			}
 
@@ -306,11 +308,12 @@ export default defineComponent({
 			const returnData: {
 				[key: string]: string;
 			} = {};
-			let credentialType: ICredentialType | null;
+			let credentialType: ICredentialType | undefined;
 			for (const credentialTypeName of this.credentialTypesNode) {
 				credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeName);
-				returnData[credentialTypeName] =
-					credentialType !== null ? credentialType.displayName : credentialTypeName;
+				returnData[credentialTypeName] = credentialType
+					? credentialType.displayName
+					: credentialTypeName;
 			}
 			return returnData;
 		},
@@ -345,7 +348,7 @@ export default defineComponent({
 				options = options.concat(
 					this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
 						...option,
-						typeDisplayName: this.credentialsStore.getCredentialTypeByName(type).displayName,
+						typeDisplayName: this.credentialsStore.getCredentialTypeByName(type)?.displayName,
 					})),
 				);
 			});
@@ -434,10 +437,9 @@ export default defineComponent({
 
 			const selectedCredentials = this.credentialsStore.getCredentialById(credentialId);
 			const selectedCredentialsType = this.showAll ? selectedCredentials.type : credentialType;
-			const oldCredentials =
-				this.node.credentials && this.node.credentials[selectedCredentialsType]
-					? this.node.credentials[selectedCredentialsType]
-					: {};
+			const oldCredentials = this.node.credentials?.[selectedCredentialsType]
+				? this.node.credentials[selectedCredentialsType]
+				: {};
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 
@@ -511,9 +513,9 @@ export default defineComponent({
 		},
 
 		getIssues(credentialTypeName: string): string[] {
-			const node = this.node as INodeUi;
+			const node = this.node;
 
-			if (node.issues === undefined || node.issues.credentials === undefined) {
+			if (node.issues?.credentials === undefined) {
 				return [];
 			}
 
@@ -524,11 +526,7 @@ export default defineComponent({
 		},
 
 		isCredentialExisting(credentialType: string): boolean {
-			if (
-				!this.node.credentials ||
-				!this.node.credentials[credentialType] ||
-				!this.node.credentials[credentialType].id
-			) {
+			if (!this.node.credentials?.[credentialType]?.id) {
 				return false;
 			}
 			const { id } = this.node.credentials[credentialType];

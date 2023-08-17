@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
@@ -25,7 +22,6 @@ import type {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import { EventsService } from '@/services/events.service';
 import type { User } from '@db/entities/User';
@@ -33,6 +29,7 @@ import { N8N_VERSION } from '@/constants';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from '@db/repositories';
+import { RoleService } from './services/role.service';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -53,6 +50,14 @@ function userToPayload(user: User): {
 @Service()
 export class InternalHooks implements IInternalHooksClass {
 	private instanceId: string;
+
+	public get telemetryInstanceId(): string {
+		return this.instanceId;
+	}
+
+	public get telemetryInstance(): Telemetry {
+		return this.telemetry;
+	}
 
 	constructor(
 		private telemetry: Telemetry,
@@ -170,7 +175,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (user.id && workflow.id) {
-			const role = await this.roleService.getUserRoleForWorkflow(user.id, workflow.id);
+			const role = await this.roleService.findRoleByUserAndWorkflow(user.id, workflow.id);
 			if (role) {
 				userRole = role.name === 'owner' ? 'owner' : 'sharee';
 			}
@@ -376,7 +381,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
+					const role = await this.roleService.findRoleByUserAndWorkflow(userId, workflow.id);
 					if (role) {
 						userRole = role.name === 'owner' ? 'owner' : 'sharee';
 					}
@@ -1042,5 +1047,54 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
 		return this.telemetry.track('User created variable', createData);
+	}
+
+	async onSourceControlSettingsUpdated(data: {
+		branch_name: string;
+		read_only_instance: boolean;
+		repo_type: 'github' | 'gitlab' | 'other';
+		connected: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User updated source control settings', data);
+	}
+
+	async onSourceControlUserStartedPullUI(data: {
+		workflow_updates: number;
+		workflow_conflicts: number;
+		cred_conflicts: number;
+	}): Promise<void> {
+		return this.telemetry.track('User started pull via UI', data);
+	}
+
+	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
+		return this.telemetry.track('User finished pull via UI', {
+			workflow_updates: data.workflow_updates,
+		});
+	}
+
+	async onSourceControlUserPulledAPI(data: {
+		workflow_updates: number;
+		forced: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User pulled via API', data);
+	}
+
+	async onSourceControlUserStartedPushUI(data: {
+		workflows_eligible: number;
+		workflows_eligible_with_conflicts: number;
+		creds_eligible: number;
+		creds_eligible_with_conflicts: number;
+		variables_eligible: number;
+	}): Promise<void> {
+		return this.telemetry.track('User started push via UI', data);
+	}
+
+	async onSourceControlUserFinishedPushUI(data: {
+		workflows_eligible: number;
+		workflows_pushed: number;
+		creds_pushed: number;
+		variables_pushed: number;
+	}): Promise<void> {
+		return this.telemetry.track('User finished push via UI', data);
 	}
 }

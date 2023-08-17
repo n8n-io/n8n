@@ -14,6 +14,7 @@
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.description') }}
 					</n8n-text>
+					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
 						{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
 					</n8n-link>
@@ -59,7 +60,7 @@
 					v-model="userAgreed"
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
-					@change="onCheckboxChecked"
+					@update:modelValue="onCheckboxChecked"
 				>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
@@ -90,7 +91,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import Modal from '@/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,

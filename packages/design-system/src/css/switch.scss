@@ -63,7 +63,9 @@
 		box-sizing: border-box;
 		background: var.$switch-off-color;
 		cursor: pointer;
-		transition: border-color 0.1s, background-color 0.1s;
+		transition:
+			border-color 0.1s,
+			background-color 0.1s;
 		vertical-align: middle;
 
 		&:after {
@@ -109,7 +111,7 @@
 		}
 	}
 
-	& .label-fade-enter,
+	& .label-fade-enter-from,
 	& .label-fade-leave-active {
 		opacity: 0;
 	}

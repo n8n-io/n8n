@@ -68,7 +68,6 @@ const completeOperations: INodeProperties[] = [
 							{
 								type: 'setKeyValue',
 								properties: {
-									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id
 									name: '={{$responseItem.id}}',
 									value: '={{$responseItem.id}}',
 								},

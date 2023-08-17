@@ -1,20 +1,23 @@
 <template>
-	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<template #content>
-			<div>{{ disabledHint }}</div>
-		</template>
-		<div>
-			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
-				:disabled="disabled || !!disabledHint"
-				:label="buttonLabel"
-				:type="type"
-				:size="size"
-				:transparentBackground="transparent"
-				@click="onClick"
-			/>
-		</div>
-	</n8n-tooltip>
+	<div>
+		<n8n-tooltip placement="bottom" :disabled="!disabledHint">
+			<template #content>
+				<div>{{ disabledHint }}</div>
+			</template>
+			<div>
+				<n8n-button
+					v-bind="$attrs"
+					:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
+					:disabled="disabled || !!disabledHint"
+					:label="buttonLabel"
+					:type="type"
+					:size="size"
+					:transparentBackground="transparent"
+					@click="onClick"
+				/>
+			</div>
+		</n8n-tooltip>
+	</div>
 </template>
 
 <script lang="ts">
@@ -32,6 +35,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast, useMessage } from '@/composables';
 
 export default defineComponent({
+	inheritAttrs: false,
 	mixins: [workflowRun, pinData],
 	props: {
 		nodeName: {
@@ -62,6 +66,7 @@ export default defineComponent({
 		return {
 			...useToast(),
 			...useMessage(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
 	},

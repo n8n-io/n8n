@@ -1,4 +1,5 @@
 import { BasePage } from './base';
+import { getVisibleSelect } from '../utils';
 
 export class NDV extends BasePage {
 	getters = {
@@ -101,10 +102,11 @@ export class NDV extends BasePage {
 			this.getters.parameterInput(parameterName).type(content);
 		},
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
-			this.getters.parameterInput(parameterName).find('.option-headline').contains(content).click();
+			getVisibleSelect().find('.option-headline').contains(content).click();
 		},
 		dismissMappingTooltip: () => {
 			cy.getByTestId('dismiss-mapping-tooltip').click();
+			cy.getByTestId('dismiss-mapping-tooltip').should('not.be.visible');
 		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();
@@ -112,7 +114,7 @@ export class NDV extends BasePage {
 			cy.get('body').type('{enter}');
 		},
 		executePrevious: () => {
-			this.getters.executePrevious().click();
+			this.getters.executePrevious().click({ force: true });
 		},
 		mapDataFromHeader: (col: number, parameterName: string) => {
 			const draggable = `[data-test-id="ndv-input-panel"] [data-test-id="ndv-data-container"] table th:nth-child(${col})`;
@@ -139,11 +141,11 @@ export class NDV extends BasePage {
 		},
 		changeInputRunSelector: (runName: string) => {
 			this.getters.inputRunSelector().click();
-			cy.get('.el-select-dropdown:visible .el-select-dropdown__item').contains(runName).click();
+			getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 		},
 		changeOutputRunSelector: (runName: string) => {
 			this.getters.outputRunSelector().click();
-			cy.get('.el-select-dropdown:visible .el-select-dropdown__item').contains(runName).click();
+			getVisibleSelect().find('.el-select-dropdown__item').contains(runName).click();
 		},
 		toggleOutputRunLinking: () => {
 			this.getters.outputRunSelector().find('button').click();
@@ -159,7 +161,7 @@ export class NDV extends BasePage {
 		},
 		setRLCValue: (paramName: string, value: string) => {
 			this.getters.resourceLocatorModeSelector(paramName).click();
-			this.getters.resourceLocatorModeSelector(paramName).find('li').last().click();
+			getVisibleSelect().find('li').last().click();
 			this.getters.resourceLocatorInput(paramName).type(value);
 		},
 		validateExpressionPreview: (paramName: string, value: string) => {

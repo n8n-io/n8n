@@ -6,12 +6,11 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import type { WorkflowRequest } from '@/requests';
+import type { ListQueryRequest, WorkflowRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { RoleRepository } from '@db/repositories';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
@@ -20,6 +19,10 @@ import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
+import * as utils from '@/utils';
+import { listQueryMiddleware } from '@/middlewares';
+import { TagRepository } from '@/databases/repositories';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -134,7 +137,7 @@ EEWorkflowController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.find({
+			newWorkflow.tags = await Container.get(TagRepository).find({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),
@@ -164,7 +167,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -202,17 +205,27 @@ EEWorkflowController.post(
  */
 EEWorkflowController.get(
 	'/',
-	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const [workflows, workflowOwnerRole] = await Promise.all([
-			EEWorkflows.getMany(req.user, req.query.filter),
-			Container.get(RoleRepository).findWorkflowOwnerRoleOrFail(),
-		]);
+	listQueryMiddleware,
+	async (req: ListQueryRequest, res: express.Response) => {
+		try {
+			const [workflows, count] = await EEWorkflows.getMany(req.user, req.listQueryOptions);
 
-		return workflows.map((workflow) => {
-			EEWorkflows.addOwnerId(workflow, workflowOwnerRole);
-			return workflow;
-		});
-	}),
+			let data;
+
+			if (req.listQueryOptions?.select) {
+				data = workflows;
+			} else {
+				const role = await Container.get(RoleService).findWorkflowOwnerRole();
+				data = workflows.map((w) => EEWorkflows.addOwnerId(w, role));
+			}
+
+			res.json({ count, data });
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+			ResponseHelper.reportError(error);
+			ResponseHelper.sendErrorResponse(res, error);
+		}
+	},
 );
 
 EEWorkflowController.patch(

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-class-description-missing-subtitle */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -37,7 +36,6 @@ export class ExecutionData implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Save Execution Data for Search',
 						value: 'save',
 						action: 'Save execution data for search',

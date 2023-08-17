@@ -25,10 +25,10 @@
 			<div :class="$style.titleSection">
 				<n8n-select
 					v-if="parentNodes.length"
-					:popper-append-to-body="true"
+					teleported
 					size="small"
-					:value="currentNodeName"
-					@input="onSelect"
+					:modelValue="currentNodeName"
+					@update:modelValue="onSelect"
 					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 					:placeholder="$locale.baseText('ndv.input.parentNodes')"
 					filterable
@@ -63,11 +63,7 @@
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('ndv.input.noOutputData.title')
 				}}</n8n-text>
-				<n8n-tooltip
-					v-if="!readOnly"
-					:manual="true"
-					:value="showDraggableHint && showDraggableHintWithDelay"
-				>
+				<n8n-tooltip v-if="!readOnly" :visible="showDraggableHint && showDraggableHintWithDelay">
 					<template #content>
 						<div
 							v-html="

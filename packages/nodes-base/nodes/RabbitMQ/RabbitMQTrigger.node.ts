@@ -126,7 +126,7 @@ export class RabbitMQTrigger implements INodeType {
 						default: false,
 						description: 'Whether to return only the content property',
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+
 					{
 						displayName: 'Parallel Message Processing Limit',
 						name: 'parallelMessages',

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
@@ -9,53 +7,32 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
-import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import type { PostHogClient } from '@/posthog';
-
-export async function getWorkflowOwner(workflowId: string): Promise<User> {
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
-
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflowId, roleId: workflowOwnerRole?.id ?? undefined },
-		relations: ['user', 'user.globalRole'],
-	});
-
-	return sharedWorkflow.user;
-}
+import { RoleService } from '@/services/role.service';
 
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
 	const host = !!config.getEnv('userManagement.emails.smtp.host');
-	const user = !!config.getEnv('userManagement.emails.smtp.auth.user');
-	const pass = !!config.getEnv('userManagement.emails.smtp.auth.pass');
 
-	return smtp && host && user && pass;
+	return smtp && host;
 }
 
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
 }
 
-export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
-	return Container.get(RoleRepository)
-		.findRoleOrFail(scope, name)
-		.then((role) => role.id);
-}
+export async function getInstanceOwner() {
+	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
-export async function getInstanceOwner(): Promise<User> {
-	const ownerRoleId = await getRoleId('global', 'owner');
-
-	const owner = await Db.collections.User.findOneOrFail({
+	return Db.collections.User.findOneOrFail({
 		relations: ['globalRole'],
 		where: {
-			globalRoleId: ownerRoleId,
+			globalRoleId: globalOwnerRole.id,
 		},
 	});
-	return owner;
 }
 
 /**
@@ -111,15 +88,7 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const {
-		password,
-		resetPasswordToken,
-		resetPasswordTokenExpiration,
-		updatedAt,
-		apiKey,
-		authIdentities,
-		...rest
-	} = user;
+	const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 	if (withoutKeys) {
 		withoutKeys.forEach((key) => {
 			// @ts-ignore
@@ -204,7 +173,6 @@ export function rightDiff<T1, T2>(
 ): T2[] {
 	// create map { itemKey => true } for fast lookup for diff
 	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
-		// eslint-disable-next-line no-param-reassign
 		map[keyExtractor1(item)] = true;
 		return map;
 	}, {});

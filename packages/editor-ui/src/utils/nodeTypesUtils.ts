@@ -212,7 +212,7 @@ export const getNodeAuthOptions = (
 					const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
 					if (cred) {
 						hasOverrides =
-							useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
+							useCredentialsStore().getCredentialTypeByName(cred.name)?.__overwrittenProperties !==
 							undefined;
 					}
 					return {
