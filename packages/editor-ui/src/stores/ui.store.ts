@@ -49,8 +49,8 @@ import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
-import { useSettingsStore } from './settings.store';
-import { useCloudPlanStore } from './cloudPlan.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 import { useTelemetryStore } from '@/stores/telemetry.store';
@@ -561,6 +561,24 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
+		},
+		async initBanners(): Promise<void> {
+			const cloudPlanStore = useCloudPlanStore();
+			if (cloudPlanStore.userIsTrialing) {
+				await this.dismissBanner('V1', 'temporary');
+				if (cloudPlanStore.trialExpired) {
+					this.showBanner('TRIAL_OVER');
+				} else {
+					this.showBanner('TRIAL');
+				}
+			}
+		},
+		async dismissAllBanners() {
+			return Promise.all([
+				this.dismissBanner('TRIAL', 'temporary'),
+				this.dismissBanner('TRIAL_OVER', 'temporary'),
+				this.dismissBanner('V1', 'temporary'),
+			]);
 		},
 	},
 });
