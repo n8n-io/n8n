@@ -28,7 +28,7 @@ export class LMOpenAi implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Model45',
+				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				noDataExpression: true,
