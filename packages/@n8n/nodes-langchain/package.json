@@ -66,6 +66,7 @@
     "@xata.io/cli": "^0.13.4",
     "cohere-ai": "^6.2.2",
     "langchain": "^0.0.126",
+    "lodash": "^4.17.21",
     "n8n-nodes-base": "workspace:*"
   }
 }

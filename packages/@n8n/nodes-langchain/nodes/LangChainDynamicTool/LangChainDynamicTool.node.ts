@@ -1,10 +1,20 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteWorkflowInfo,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	IWorkflowBase,
+	SupplyData,
+} from 'n8n-workflow';
 import { ExecutionError, NodeOperationError } from 'n8n-workflow';
-import { DynamicTool } from 'langchain/tools';
 import { getSandboxContext, Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
+
+import { DynamicTool } from 'langchain/tools';
+import get from 'lodash/get';
 
 export class LangChainDynamicTool implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,10 +52,121 @@ export class LangChainDynamicTool implements INodeType {
 					rows: 3,
 				},
 			},
+
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Code',
+						value: 'code',
+					},
+					{
+						name: 'Execute Workflow',
+						value: 'executeWorkflow',
+					},
+				],
+				default: 'code',
+			},
+
+			{
+				displayName:
+					'The workflow will receive "query" as input and the output of the last node will be returned as response',
+				name: 'executeNotice',
+				type: 'notice',
+				default: '',
+			},
+
+			// Execute Workflow
+			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: ['executeWorkflow'],
+					},
+				},
+				options: [
+					{
+						name: 'Database',
+						value: 'database',
+						description: 'Load the workflow from the database by ID',
+					},
+					{
+						name: 'Parameter',
+						value: 'parameter',
+						description: 'Load the workflow from a parameter',
+					},
+				],
+				default: 'database',
+				description: 'Where to get the workflow to execute from',
+			},
+
+			// ----------------------------------
+			//         source:database
+			// ----------------------------------
+			{
+				displayName: 'Workflow ID',
+				name: 'workflowId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						mode: ['executeWorkflow'],
+						source: ['database'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'The workflow to execute',
+			},
+
+			// ----------------------------------
+			//         source:parameter
+			// ----------------------------------
+			{
+				displayName: 'Workflow JSON',
+				name: 'workflowJson',
+				type: 'string',
+				typeOptions: {
+					editor: 'json',
+					rows: 10,
+				},
+				displayOptions: {
+					show: {
+						mode: ['executeWorkflow'],
+						source: ['parameter'],
+					},
+				},
+				default: '\n\n\n',
+				required: true,
+				description: 'The workflow JSON code to execute',
+			},
+			{
+				displayName: 'Response Property Name',
+				name: 'responsePropertyName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						mode: ['executeWorkflow'],
+					},
+				},
+				default: 'response',
+				description: 'The name of the property of the last node that will be returned as response',
+			},
+
+			// Code
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
+				displayOptions: {
+					show: {
+						mode: ['code'],
+					},
+				},
 				noDataExpression: true,
 				options: [
 					{
@@ -66,6 +187,7 @@ export class LangChainDynamicTool implements INodeType {
 				displayOptions: {
 					show: {
 						language: ['javaScript'],
+						mode: ['code'],
 					},
 				},
 				typeOptions: {
@@ -86,6 +208,7 @@ export class LangChainDynamicTool implements INodeType {
 				displayOptions: {
 					show: {
 						language: ['python'],
+						mode: ['code'],
 					},
 				},
 				typeOptions: {
@@ -110,34 +233,78 @@ export class LangChainDynamicTool implements INodeType {
 
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
-		const language = this.getNodeParameter('language', itemIndex) as string;
-		let code = '';
-		if (language === 'javaScript') {
-			code = this.getNodeParameter('jsCode', itemIndex) as string;
-		} else {
-			code = this.getNodeParameter('pythonCode', itemIndex) as string;
-		}
+		const mode = this.getNodeParameter('mode', itemIndex) as string;
 
-		const getSandbox = (query: string, index = 0) => {
-			const context = getSandboxContext.call(this, index);
-			context.query = query;
+		let runFunction: (query: string) => Promise<string>;
 
-			let sandbox: Sandbox;
+		if (mode === 'code') {
+			const language = this.getNodeParameter('language', itemIndex) as string;
+			let code = '';
 			if (language === 'javaScript') {
-				sandbox = new JavaScriptSandbox(context, code, index, this.helpers);
+				code = this.getNodeParameter('jsCode', itemIndex) as string;
 			} else {
-				sandbox = new PythonSandbox(context, code, index, this.helpers);
+				code = this.getNodeParameter('pythonCode', itemIndex) as string;
 			}
 
-			sandbox.on(
-				'output',
-				workflowMode === 'manual'
-					? this.sendMessageToUI
-					: (...args) =>
-							console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
-			);
-			return sandbox;
-		};
+			const getSandbox = (query: string, index = 0) => {
+				const context = getSandboxContext.call(this, index);
+				context.query = query;
+
+				let sandbox: Sandbox;
+				if (language === 'javaScript') {
+					sandbox = new JavaScriptSandbox(context, code, index, this.helpers);
+				} else {
+					sandbox = new PythonSandbox(context, code, index, this.helpers);
+				}
+
+				sandbox.on(
+					'output',
+					workflowMode === 'manual'
+						? this.sendMessageToUI
+						: (...args) =>
+								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
+				);
+				return sandbox;
+			};
+
+			runFunction = async (query: string): Promise<string> => {
+				const sandbox = getSandbox(query, itemIndex);
+				return sandbox.runCode();
+			};
+		} else if (mode === 'executeWorkflow') {
+			runFunction = async (query: string): Promise<string> => {
+				try {
+					const source = this.getNodeParameter('source', itemIndex) as string;
+					const responsePropertyName = this.getNodeParameter(
+						'responsePropertyName',
+						itemIndex,
+					) as string;
+
+					const workflowInfo: IExecuteWorkflowInfo = {};
+					if (source === 'database') {
+						// Read workflow from database
+						workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
+					} else if (source === 'parameter') {
+						// ReworkflowInfoad workflow from parameter
+						const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
+						workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+					}
+
+					const items = [{ json: { query } }] as INodeExecutionData[];
+
+					const receivedData = await this.executeWorkflow(workflowInfo, items);
+
+					let response = get(receivedData, [0, 0, 'json', responsePropertyName]);
+					if (response === undefined) {
+						response = `There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`;
+					}
+
+					return response;
+				} catch (error) {
+					return `There was an error: "${error.message}"`;
+				}
+			};
+		}
 
 		return {
 			response: new DynamicTool({
@@ -147,12 +314,10 @@ export class LangChainDynamicTool implements INodeType {
 				func: async (query: string): Promise<string> => {
 					this.addInputData('tool', [[{ json: { query } }]]);
 
-					const sandbox = getSandbox(query, itemIndex);
-
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
 					try {
-						response = await sandbox.runCode();
+						response = await runFunction(query);
 					} catch (error) {
 						executionError = error;
 						response = `There was an error: "${error.message}"`;
