@@ -223,6 +223,7 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
+import { pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
@@ -237,6 +238,7 @@ import type {
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
+	INodeExecutionData,
 	INodeIssues,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
@@ -335,6 +337,7 @@ export default defineComponent({
 		workflowHelpers,
 		workflowRun,
 		debounceHelper,
+		pinData,
 	],
 	components: {
 		NodeDetailsView,
@@ -1650,10 +1653,6 @@ export default defineComponent({
 					});
 				});
 
-				if (workflowData.pinData) {
-					this.workflowsStore.setWorkflowPinData(workflowData.pinData);
-				}
-
 				const tagsEnabled = this.settingsStore.areTagsEnabled;
 				if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
 					const allTags = await this.tagsStore.fetchAll();
@@ -2804,12 +2803,11 @@ export default defineComponent({
 
 				await this.addNodes([newNodeData], [], true);
 
-				const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
-				if (pinData) {
-					this.workflowsStore.pinData({
-						node: newNodeData,
-						data: pinData,
-					});
+				const pinDataForNode = this.workflowsStore.pinDataByNodeName(
+					nodeName,
+				) as INodeExecutionData[];
+				if (pinDataForNode) {
+					this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
 				}
 
 				this.uiStore.stateIsDirty = true;
@@ -3489,6 +3487,15 @@ export default defineComponent({
 					continue;
 				}
 				tempWorkflow.renameNode(oldName, nodeNameTable[oldName]);
+			}
+
+			if (data.pinData) {
+				Object.keys(data.pinData).forEach((nodeName) => {
+					const node = Object.values(tempWorkflow.nodes).find(
+						(node) => node.name === nodeNameTable[nodeName],
+					);
+					this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+				});
 			}
 
 			// Add the nodes with the changed node names, expressions and connections

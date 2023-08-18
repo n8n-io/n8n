@@ -211,8 +211,7 @@ export default defineComponent({
 					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
 
 					if (shouldUnpinAndExecute) {
-						dataPinningEventBus.emit('data-unpinning', { source: 'unpin-and-execute-modal' });
-						this.workflowsStore.unpinData({ node: this.node });
+						this.unsetPinData(this.node, 'unpin-and-execute-modal');
 					}
 				}
 

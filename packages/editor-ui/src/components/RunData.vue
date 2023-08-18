@@ -995,23 +995,16 @@ export default defineComponent({
 
 			this.clearAllStickyNotifications();
 
-			if (!this.isValidPinDataSize(value)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
-				return;
-			}
-
-			if (!this.isValidPinDataJSON(value)) {
-				this.onDataPinningError({ errorType: 'invalid-json', source: 'save-edit' });
+			const pinDataSuccess = this.setPinData(
+				this.node,
+				clearJsonKey(value) as INodeExecutionData[],
+				'save-edit',
+			);
+			if (!pinDataSuccess) {
 				return;
 			}
 
 			this.ndvStore.setOutputPanelEditModeEnabled(false);
-			this.workflowsStore.pinData({
-				node: this.node,
-				data: clearJsonKey(value) as INodeExecutionData[],
-			});
-
-			this.onDataPinningSuccess({ source: 'save-edit' });
 
 			this.onExitEditMode({ type: 'save' });
 		},
@@ -1022,48 +1015,6 @@ export default defineComponent({
 				run_index: this.runIndex,
 				view: this.displayMode,
 				type,
-			});
-		},
-		onDataUnpinning({
-			source,
-		}: {
-			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
-		}) {
-			this.$telemetry.track('User unpinned ndv data', {
-				node_type: this.activeNode?.type,
-				session_id: this.sessionId,
-				run_index: this.runIndex,
-				source,
-				data_size: stringSizeInBytes(this.pinData),
-			});
-		},
-		onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-			const telemetryPayload = {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-			};
-			void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
-			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
-		},
-		onDataPinningError({
-			errorType,
-			source,
-		}: {
-			errorType: 'data-too-large' | 'invalid-json';
-			source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit';
-		}) {
-			this.$telemetry.track('Ndv data pinning failure', {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-				error_type: errorType,
 			});
 		},
 		async onTogglePinData({
@@ -1086,19 +1037,14 @@ export default defineComponent({
 			this.updateNodeParameterIssues(this.node);
 
 			if (this.hasPinData) {
-				this.onDataUnpinning({ source });
-				this.workflowsStore.unpinData({ node: this.node });
+				this.unsetPinData(this.node, source);
 				return;
 			}
 
-			if (!this.isValidPinDataSize(this.rawInputData)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
+			const pinDataSuccess = this.setPinData(this.node, this.rawInputData, 'pin-icon-click');
+			if (!pinDataSuccess) {
 				return;
 			}
-
-			this.onDataPinningSuccess({ source: 'pin-icon-click' });
-
-			this.workflowsStore.pinData({ node: this.node, data: this.rawInputData });
 
 			if (this.maxRunIndex > 0) {
 				this.showToast({

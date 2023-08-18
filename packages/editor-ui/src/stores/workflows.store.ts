@@ -236,17 +236,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		getPinData(): IPinData | undefined {
 			return this.workflow.pinData;
 		},
-		pinDataSize(): number {
-			const ndvStore = useNDVStore();
-			const activeNode = ndvStore.activeNodeName;
-			return this.workflow.nodes.reduce((acc, node) => {
-				if (typeof node.pinData !== 'undefined' && node.name !== activeNode) {
-					acc += stringSizeInBytes(node.pinData);
-				}
-
-				return acc;
-			}, 0);
-		},
 		shouldReplaceInputDataWithPinData(): boolean {
 			return !this.activeWorkflowExecution || this.activeWorkflowExecution?.mode === 'manual';
 		},
@@ -279,6 +268,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 	},
 	actions: {
+		getPinDataSize(pinData?: Record<string, unknown>): number {
+			return Object.values(pinData ?? {}).reduce<number>((acc, value) => {
+				return acc + stringSizeInBytes(value);
+			}, 0);
+		},
 		getNodeTypes(): INodeTypes {
 			const nodeTypes: INodeTypes = {
 				nodeTypes: {},

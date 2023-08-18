@@ -1,6 +1,6 @@
 import { defineComponent } from 'vue';
 import type { INodeUi } from '@/Interface';
-import type { INodeTypeDescription, IPinData } from 'n8n-workflow';
+import type { INodeTypeDescription, IPinData, INodeExecutionData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
@@ -11,7 +11,9 @@ import {
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables';
-import { deepCopy, jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { dataPinningEventBus } from '@/event-bus';
+import { useNDVStore } from '@/stores';
 
 export interface IPinDataContext {
 	node: INodeUi;
@@ -25,8 +27,12 @@ export const pinData = defineComponent({
 			...useToast(),
 		};
 	},
+	mounted() {
+		dataPinningEventBus.on('data-pinning-error', this.onDataPinningError);
+		dataPinningEventBus.on('data-unpinning', this.onDataUnpinning);
+	},
 	computed: {
-		...mapStores(useWorkflowsStore),
+		...mapStores(useWorkflowsStore, useNDVStore),
 		pinData(): IPinData[string] | undefined {
 			return this.node ? this.workflowsStore.pinDataByNodeName(this.node.name) : undefined;
 		},
@@ -92,21 +98,25 @@ export const pinData = defineComponent({
 		isValidPinDataSize(data: string | object): boolean {
 			if (typeof data === 'object') data = JSON.stringify(data);
 
-			const workflow = deepCopy(useWorkflowsStore().getCurrentWorkflow(true));
+			const { activeNodeName } = this.ndvStore;
+			const { pinData: currentPinData, ...workflow } = useWorkflowsStore().getCurrentWorkflow(true);
 			const workflowJson = jsonStringify(workflow, { replaceCircularRefs: true });
 
-			if (
-				this.workflowsStore.pinDataSize + stringSizeInBytes(data) >
-				MAX_WORKFLOW_PINNED_DATA_SIZE
-			) {
+			const newPinData = { ...currentPinData, [activeNodeName]: data };
+			const newPinDataSize = this.workflowsStore.getPinDataSize(newPinData);
+
+			let isValid = true;
+			if (newPinDataSize > MAX_WORKFLOW_PINNED_DATA_SIZE) {
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
 				);
 
-				return false;
-			} else if (
-				stringSizeInBytes(workflowJson) + stringSizeInBytes(data) >
+				isValid = false;
+			}
+
+			if (
+				stringSizeInBytes(workflowJson) + newPinDataSize >
 				MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
 			) {
 				this.showError(
@@ -114,10 +124,76 @@ export const pinData = defineComponent({
 					this.$locale.baseText('ndv.pinData.error.tooLargeWorkflow.title'),
 				);
 
+				isValid = false;
+			}
+
+			return isValid;
+		},
+		setPinData(node: INodeUi | null, data: string | INodeExecutionData[], source: string): boolean {
+			if (typeof data === 'string') {
+				if (!this.isValidPinDataJSON(data)) {
+					this.onDataPinningError({ errorType: 'invalid-json', source });
+					return false;
+				}
+
+				data = jsonParse(data);
+			}
+
+			if (!this.isValidPinDataSize(data)) {
+				this.onDataPinningError({ errorType: 'data-too-large', source });
 				return false;
 			}
 
+			this.onDataPinningSuccess({ source });
+			this.workflowsStore.pinData({ node, data });
+
 			return true;
+		},
+		unsetPinData(node: INodeUi | null, source: string): void {
+			this.onDataUnpinning({ source });
+			this.workflowsStore.unpinData({ node });
+		},
+		onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
+			const telemetryPayload = {
+				pinning_source: source,
+				node_type: this.activeNode?.type,
+				session_id: this.sessionId,
+				data_size: stringSizeInBytes(this.pinData),
+				view: this.displayMode,
+				run_index: this.runIndex,
+			};
+			void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
+		},
+		onDataPinningError({
+			errorType,
+			source,
+		}: {
+			errorType: 'data-too-large' | 'invalid-json';
+			source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit';
+		}) {
+			this.$telemetry.track('Ndv data pinning failure', {
+				pinning_source: source,
+				node_type: this.activeNode?.type,
+				session_id: this.sessionId,
+				data_size: stringSizeInBytes(this.pinData),
+				view: this.displayMode,
+				run_index: this.runIndex,
+				error_type: errorType,
+			});
+		},
+		onDataUnpinning({
+			source,
+		}: {
+			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
+		}) {
+			this.$telemetry.track('User unpinned ndv data', {
+				node_type: this.activeNode?.type,
+				session_id: this.sessionId,
+				run_index: this.runIndex,
+				source,
+				data_size: stringSizeInBytes(this.pinData),
+			});
 		},
 	},
 });
