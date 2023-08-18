@@ -31,7 +31,11 @@ declare global {
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
 			paste(pastePayload: string): void;
-			drag(selector: string | Cypress.Chainable<JQuery<HTMLElement>>, target: [number, number], options?: {abs?: boolean, index?: number, realMouse?: boolean}): void;
+			drag(
+				selector: string | Cypress.Chainable<JQuery<HTMLElement>>,
+				target: [number, number],
+				options?: { abs?: boolean; index?: number; realMouse?: boolean },
+			): void;
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
 		}
 	}

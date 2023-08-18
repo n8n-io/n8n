@@ -251,7 +251,7 @@ export default defineComponent({
 			return '';
 		},
 		nodeTypeDescription(): string {
-			if (this.nodeType && this.nodeType.description) {
+			if (this.nodeType?.description) {
 				const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
 
 				return this.$locale.headerText({
@@ -554,7 +554,7 @@ export default defineComponent({
 					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
 					tempValue = remainingNodeValues;
 
-					if (isArray === true && (tempValue as INodeParameters[]).length === 0) {
+					if (isArray && (tempValue as INodeParameters[]).length === 0) {
 						// If a value from an array got delete and no values are left
 						// delete also the parent
 						lastNamePart = nameParts.pop();
@@ -720,8 +720,8 @@ export default defineComponent({
 
 					this.workflowsStore.setNodeParameters(updateInformation);
 
-					this.updateNodeParameterIssues(node, nodeType);
-					this.updateNodeCredentialIssues(node);
+					this.updateNodeParameterIssuesByName(node.name);
+					this.updateNodeCredentialIssuesByName(node.name);
 				}
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
@@ -803,8 +803,8 @@ export default defineComponent({
 					oldNodeParameters,
 				});
 
-				this.updateNodeParameterIssues(node, nodeType);
-				this.updateNodeCredentialIssues(node);
+				this.updateNodeParameterIssuesByName(node.name);
+				this.updateNodeCredentialIssuesByName(node.name);
 				this.$telemetry.trackNodeParametersValuesChange(nodeType.name, parameterData);
 			} else {
 				// A property on the node itself changed
