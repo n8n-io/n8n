@@ -33,7 +33,8 @@ function startRecoveryProcess() {
 	if (existsSync(buildRecoveryInProgressFileName())) {
 		return false;
 	}
-	openSync(buildRecoveryInProgressFileName(), 'a');
+	const fileHandle = openSync(buildRecoveryInProgressFileName(), 'a');
+	closeSync(fileHandle);
 	return true;
 }
 
