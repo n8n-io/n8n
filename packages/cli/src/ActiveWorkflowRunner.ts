@@ -920,8 +920,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		if (this.activeWorkflows.isActive(workflowId)) {
-			await this.activeWorkflows.remove(workflowId);
-			Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
+			const removalSuccess = await this.activeWorkflows.remove(workflowId);
+			if (removalSuccess) {
+				Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
+			}
 		}
 	}
 }
