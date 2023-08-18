@@ -34,12 +34,11 @@ export class LangChainInMemoryVectorStore implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		console.log('Supply Data for In Memory Vector Store');
 		const itemIndex = 0;
 		const topK = this.getNodeParameter('topK', itemIndex) as number;
-		const documentsNodes = await this.getInputConnectionData(0, 0, 'document') || [];
-		const documents = documentsNodes.map((node) => node.response as Document);
-		const embeddingNodes = await this.getInputConnectionData(0, 0, 'embedding');
+		const documentsNodes = await this.getInputConnectionData(0, 0, 'document', this.getNode().name) || [];
+		const documents = documentsNodes.flatMap((node) => node.response as Document);
+		const embeddingNodes = await this.getInputConnectionData(0, 0, 'embedding', this.getNode().name);
 		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
 
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);

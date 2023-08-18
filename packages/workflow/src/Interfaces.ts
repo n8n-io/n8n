@@ -766,6 +766,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			itemIndex: number,
 			inputIndex?: number,
 			inputName?: ConnectionTypes,
+			nodeNameOverride?: string,
 		): Promise<SupplyData[]>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		prepareOutputData(

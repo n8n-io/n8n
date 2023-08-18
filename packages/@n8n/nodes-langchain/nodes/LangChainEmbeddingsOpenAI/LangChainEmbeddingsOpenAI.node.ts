@@ -32,10 +32,9 @@ export class LangChainEmbeddingsOpenAI implements INodeType {
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		console.log('Supply data for embeddings')
 		const credentials = await this.getCredentials('openAiApi');
-		// const itemIndex = 0;
 
 		const embeddings = new OpenAIEmbeddings({
-			openAIApiKey: credentials.openAIApiKey as string,
+			openAIApiKey: credentials.apiKey as string,
 		});
 
 		return {

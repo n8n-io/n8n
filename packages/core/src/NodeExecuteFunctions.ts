@@ -2641,8 +2641,9 @@ export function getExecuteFunctions(
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
 				inputName?: ConnectionTypes,
+				nodeNameOverride?: string,
 			): Promise<SupplyData[]> {
-				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
+				const parentNodes = workflow.getParentNodes(nodeNameOverride ?? node.name, inputName, 1);
 				if (parentNodes.length === 0) {
 					return [];
 				}

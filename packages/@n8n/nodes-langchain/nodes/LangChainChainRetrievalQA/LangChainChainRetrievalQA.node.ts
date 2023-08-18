@@ -36,6 +36,25 @@ export class LangChainChainRetrievalQA implements INodeType {
 		credentials: [],
 		properties: [
 			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Run Once for All Items',
+						value: 'runOnceForAllItems',
+						description: 'Run this chain only once, no matter how many input items there are',
+					},
+					{
+						name: 'Run Once for Each Item',
+						value: 'runOnceForEachItem',
+						description: 'Run this chain as many times as there are input items',
+					},
+				],
+				default: 'runOnceForAllItems',
+			},
+			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
@@ -85,10 +104,17 @@ export class LangChainChainRetrievalQA implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		// Run for each item?
+		const runMode = this.getNodeParameter('mode', 0) as string;
+
+		if(runMode === 'runOnceForAllItems') {
+			const query = this.getNodeParameter('query', 0) as string;
+			const response = await chain.call({ query })
+
+			return this.prepareOutputData([{ json: { response } }]);
+		}
+		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;
-
 
 			const response = await chain.call({ query })
 			returnData.push({ json: { response } });
