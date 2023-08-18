@@ -1,25 +1,35 @@
 import {
-    HTTP_REQUEST_NODE_NAME,
-    MANUAL_TRIGGER_NODE_NAME,
-    SET_NODE_NAME,
+	HTTP_REQUEST_NODE_NAME,
+	INSTANCE_OWNER,
+	MANUAL_TRIGGER_NODE_NAME,
+	SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage, NDV, WorkflowExecutionsTab } from '../pages';
-import {getVisibleModalOverlay} from "../utils/modal";
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const executionsTab = new WorkflowExecutionsTab();
 
 describe('Debug', () => {
-    beforeEach(() => {
-        workflowPage.actions.visit();
-    });
+	before(() => {
+		cy.viewport(1300, 640)
+	});
+		it('should be able to debug executions', () => {
+				cy.intercept('GET', '/rest/settings', (req) => {
+					req.on('response', (res) => {
+						res.send({
+							data: { ...res.body.data, enterprise: { debugInEditor: true } },
+						});
+					});
+				}).as('loadSettings');
+				cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+				cy.intercept('GET', '/rest/executions/*').as('getExecution');
+				cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+				cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
 
-    it('Should be able to debug executions', () => {
-        cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-        cy.intercept('GET', '/rest/executions/*').as('getExecution');
-        cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
-        cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
+				cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+
+				workflowPage.actions.visit();
 
         workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
         workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
@@ -39,9 +49,8 @@ describe('Debug', () => {
         cy.wait(['@getExecutions', '@getCurrentExecutions']);
 
         executionsTab.getters.executionDebugButton().should('have.text', 'Debug in editor').click();
-        getVisibleModalOverlay().click(1, 1);
+			  cy.get('.matching-pinned-nodes-confirmation').should('not.exist')
 
-        executionsTab.actions.switchToEditorTab();
 
         workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
         ndv.actions.clearParameterInput('url');
@@ -53,6 +62,10 @@ describe('Debug', () => {
 
         cy.wait(['@postWorkflowRun']);
 
+			  workflowPage.actions.openNode(HTTP_REQUEST_NODE_NAME);
+			  ndv.actions.pinData();
+			  ndv.actions.close();
+
         executionsTab.actions.switchToExecutionsTab();
 
         cy.wait(['@getExecutions', '@getCurrentExecutions']);
@@ -60,7 +73,24 @@ describe('Debug', () => {
         executionsTab.getters.executionListItems().should('have.length', 2).first().click();
         cy.wait(['@getExecution']);
 
-        executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor');
+        executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
+
+			  let confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible')
+			  confirmDialog.find('li').should('have.length', 2)
+			  confirmDialog.get('.btn--cancel').click();
+
+				cy.wait(['@getExecutions', '@getCurrentExecutions']);
+
+				executionsTab.getters.executionListItems().should('have.length', 2).first().click();
+				cy.wait(['@getExecution']);
+
+			  executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
+
+				confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible')
+				confirmDialog.find('li').should('have.length', 2)
+			  confirmDialog.get('.btn--confirm').click();
+
+				workflowPage.getters.canvasNodes().filter(':has(.node-pin-data-icon)').should('have.length', 1)
 
     });
 });

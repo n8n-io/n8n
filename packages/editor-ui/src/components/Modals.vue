@@ -118,7 +118,7 @@
 
 		<ModalRoot :name="DEBUG_PAYWALL_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<DebugPaywallModal :modalName="modalName" :data="data" />
+				<DebugPaywallModal data-test-id="debug-paywall-modal" :modalName="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>
