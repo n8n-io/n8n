@@ -34,7 +34,7 @@ import type {
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
-	Banners,
+	BannerName,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -78,6 +78,12 @@ declare global {
 			reset?(resetDeviceId?: boolean): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
+			capture?(event: string, properties: IDataObject): void;
+			register?(metadata: IDataObject): void;
+			people?: {
+				set?(metadata: IDataObject): void;
+			};
+			debug?(): void;
 		};
 		analytics?: {
 			track(event: string, proeprties?: ITelemetryTrackProperties): void;
@@ -1074,7 +1080,7 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
-	banners: { [key in Banners]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
+	banners: { [key in BannerName]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
 }
 
 export type IFakeDoor = {

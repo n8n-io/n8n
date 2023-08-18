@@ -309,6 +309,11 @@ export async function executeWebhook(
 				});
 				req.body = await new Promise((resolve) => {
 					form.parse(req, async (err, data, files) => {
+						for (const key in data) {
+							if (Array.isArray(data[key]) && data[key].length === 1) {
+								data[key] = data[key][0];
+							}
+						}
 						resolve({ data, files });
 					});
 				});
