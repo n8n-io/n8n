@@ -3490,12 +3490,19 @@ export default defineComponent({
 			}
 
 			if (data.pinData) {
-				Object.keys(data.pinData).forEach((nodeName) => {
+				let pinDataSuccess = true;
+				for (const nodeName of Object.keys(data.pinData)) {
+					// Pin data limit reached
+					if (!pinDataSuccess) {
+						continue;
+					}
+
 					const node = Object.values(tempWorkflow.nodes).find(
-						(node) => node.name === nodeNameTable[nodeName],
+						(tempNode) => tempNode.name === nodeNameTable[nodeName],
 					);
-					this.setPinData(node, data.pinData![nodeName], 'add-nodes');
-				});
+
+					pinDataSuccess = this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+				}
 			}
 
 			// Add the nodes with the changed node names, expressions and connections
