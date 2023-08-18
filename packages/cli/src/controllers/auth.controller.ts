@@ -76,7 +76,7 @@ export class AuthController {
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
-		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
+		const { email, password, mfaToken = '', mfaRecoveryCode = '' } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
@@ -110,15 +110,11 @@ export class AuthController {
 				user.mfaSecret = decryptedSecret;
 				user.mfaRecoveryCodes = decryptedRecoveryCodes;
 
-				//login -> ricardo espinoza, ricardo123
+				const isMFATokenValid =
+					(await this.validateMfaToken(user, mfaToken)) ||
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
 
-				if (mfaToken) {
-					await this.validateMfaToken(user, mfaToken);
-				} else if (mfaRecoveryCode) {
-					await this.validateMfaRecoveryCode(user, mfaRecoveryCode);
-				} else {
-					throw new AuthError('MFA Error', 998);
-				}
+				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
 			}
 
 			await issueCookie(res, user);
