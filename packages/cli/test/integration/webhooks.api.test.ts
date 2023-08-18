@@ -113,7 +113,9 @@ describe('Webhook API', () => {
 		test('should handle multipart/form-data', async () => {
 			const response = await agent
 				.post('/webhook/abcd')
-				.field('field', 'value')
+				.field('field1', 'value1')
+				.field('field2', 'value2')
+				.field('field2', 'value3')
 				.attach('file', Buffer.from('random-text'))
 				.set('content-type', 'multipart/form-data');
 
@@ -125,7 +127,7 @@ describe('Webhook API', () => {
 					file: [file],
 				},
 			} = response.body.body;
-			expect(data).toEqual({ field: ['value'] });
+			expect(data).toEqual({ field1: 'value1', field2: ['value2', 'value3'] });
 			expect(file.mimetype).toEqual('application/octet-stream');
 			expect(readFileSync(file.filepath, 'utf-8')).toEqual('random-text');
 		});
