@@ -77,7 +77,7 @@
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					<i18n path="mfa.setup.step2.infobox.description" tag="span">
+					<i18n-t keypath="mfa.setup.step2.infobox.description" tag="span">
 						<template #part1>
 							{{ $locale.baseText('mfa.setup.step2.infobox.description.part1') }}
 						</template>
@@ -86,7 +86,7 @@
 								{{ $locale.baseText('mfa.setup.step2.infobox.description.part2') }}
 							</n8n-text>
 						</template>
-					</i18n>
+					</i18n-t>
 				</n8n-info-tip>
 				<div>
 					<n8n-button
