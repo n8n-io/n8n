@@ -87,6 +87,7 @@
 						[$style.debugLink]: true,
 						[$style.secondary]: debugButtonData.type === 'secondary',
 					}"
+					data-test-id="execution-debug-button"
 				>
 					<router-link
 						:to="{
