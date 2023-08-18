@@ -57,15 +57,3 @@ export type SaveCredentialFunction = (
 export type PostgresSchemaSection = {
 	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
 };
-
-export type InstalledPackagePayload = {
-	packageName: string;
-	installedVersion: string;
-};
-
-export type InstalledNodePayload = {
-	name: string;
-	type: string;
-	latestVersion: number;
-	package: string;
-};
