@@ -4,10 +4,10 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 import { SerpAPI } from 'langchain/tools';
 
-export class LangChainToolSerpApi implements INodeType {
+export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - SerpAPI',
-		name: 'langChainToolSerpApi',
+		name: 'toolSerpApi',
 		icon: 'file:google.svg',
 		group: ['transform'],
 		version: 1,

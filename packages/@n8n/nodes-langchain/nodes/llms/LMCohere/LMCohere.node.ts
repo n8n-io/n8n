@@ -3,11 +3,11 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 
 import { Cohere } from 'langchain/llms/cohere';
 
-export class LangChainLMCohere implements INodeType {
+export class LMCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Cohere',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'langChainLMCohere',
+		name: 'lmCohere',
 		icon: 'file:cohere.svg',
 		group: ['transform'],
 		version: 1,

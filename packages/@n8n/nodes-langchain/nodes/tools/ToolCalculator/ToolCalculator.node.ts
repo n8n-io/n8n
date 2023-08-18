@@ -3,10 +3,10 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { Calculator } from 'langchain/tools/calculator';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class LangChainToolCalculator implements INodeType {
+export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Calculator',
-		name: 'langChainToolCalculator',
+		name: 'toolCalculator',
 		icon: 'fa:calculator',
 		group: ['transform'],
 		version: 1,

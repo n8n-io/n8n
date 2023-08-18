@@ -10,10 +10,10 @@ import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import { BaseRetriever } from 'langchain/schema/retriever';
 
-export class LangChainChainRetrievalQA implements INodeType {
+export class ChainRetrievalQA implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Retrieval QA Chain',
-		name: 'langChainChainRetrievalQa',
+		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,

@@ -3,11 +3,11 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 
 import { HuggingFaceInference } from 'langchain/llms/hf';
 
-export class LangChainLMOpenHuggingFaceInference implements INodeType {
+export class LMOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - HuggingFaceInference',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'langChainLMOpenHuggingFaceInference',
+		name: 'lmOpenHuggingFaceInference',
 		icon: 'file:huggingface.svg',
 		group: ['transform'],
 		version: 1,

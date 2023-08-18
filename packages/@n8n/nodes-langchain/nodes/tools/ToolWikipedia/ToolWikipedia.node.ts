@@ -3,10 +3,10 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { WikipediaQueryRun } from 'langchain/tools';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class LangChainToolWikipedia implements INodeType {
+export class ToolWikipedia implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Wikipedia',
-		name: 'langChainToolWikipedia',
+		name: 'toolWikipedia',
 		icon: 'file:wikipedia.svg',
 		group: ['transform'],
 		version: 1,

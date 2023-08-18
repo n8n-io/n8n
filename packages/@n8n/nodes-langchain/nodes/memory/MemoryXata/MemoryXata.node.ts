@@ -6,10 +6,10 @@ import { XataChatMessageHistory } from 'langchain/stores/message/xata';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class LangChainMemoryXata implements INodeType {
+export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Xata',
-		name: 'LangChainMemoryXata',
+		name: 'memoryXata',
 		icon: 'file:xata.png',
 		group: ['transform'],
 		version: 1,

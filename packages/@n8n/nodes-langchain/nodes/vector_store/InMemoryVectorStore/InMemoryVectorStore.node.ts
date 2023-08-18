@@ -5,10 +5,10 @@ import { MemoryVectorStore  } from 'langchain/vectorstores/memory';
 import { Embeddings  } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class LangChainInMemoryVectorStore implements INodeType {
+export class InMemoryVectorStore implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - In Memory Vector Store Retriever',
-		name: 'langChainInMemoryVectorStore',
+		name: 'inMemoryVectorStore',
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,

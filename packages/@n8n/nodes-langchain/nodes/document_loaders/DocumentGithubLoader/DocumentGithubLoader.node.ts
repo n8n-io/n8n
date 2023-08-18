@@ -3,10 +3,10 @@ import { type IExecuteFunctions, type INodeType, type INodeTypeDescription, type
 import { GithubRepoLoader } from 'langchain/document_loaders/web/github';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 
-export class LangChainDocumentGithubLoader implements INodeType {
+export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Github Document Loader',
-		name: 'langChainDocumentGithubLoader',
+		name: 'documentGithubLoader',
 		icon: 'file:github.svg',
 		group: ['transform'],
 		version: 1,

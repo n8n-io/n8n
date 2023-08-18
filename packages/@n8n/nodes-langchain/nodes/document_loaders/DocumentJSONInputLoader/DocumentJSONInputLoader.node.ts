@@ -6,10 +6,10 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 
-export class LangChainDocumentJSONInputLoader implements INodeType {
+export class DocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Workflow Input to JSON Document',
-		name: 'langChainDocumentJSONInputLoader',
+		name: 'documentJSONInputLoader',
 		icon: 'file:json.svg',
 		group: ['transform'],
 		version: 1,

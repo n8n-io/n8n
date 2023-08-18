@@ -6,10 +6,10 @@ import { getSandboxContext, Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandb
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 
-export class LangChainDynamicTool implements INodeType {
+export class ToolDynamicTool implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - DynamicTool',
-		name: 'langChainDynamicTool',
+		name: 'dynamicTool',
 		icon: 'fa:screwdriver-wrench',
 		group: ['transform'],
 		version: 1,

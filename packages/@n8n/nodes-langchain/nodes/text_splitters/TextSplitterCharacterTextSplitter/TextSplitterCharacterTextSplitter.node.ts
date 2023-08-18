@@ -3,10 +3,10 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { CharacterTextSplitter, CharacterTextSplitterParams } from 'langchain/text_splitter'
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class LangChainTextSplitterCharacterTextSplitter implements INodeType {
+export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Character Text Splitter',
-		name: 'langChainTextSplitterCharacterTextSplitter',
+		name: 'textSplitterCharacterTextSplitter',
 		// TODO: Real scissors icon
 		icon: 'fa:hand-scissors',
 		group: ['transform'],
