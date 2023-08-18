@@ -12,12 +12,12 @@ export class MfaService {
 		private encryptionKey: string,
 	) {}
 
-	public generateRawRecoveryCodes() {
-		return Array.from(Array(10)).map(() => uuid());
+	public generateRecoveryCodes(n = 10) {
+		return Array.from(Array(n)).map(() => uuid());
 	}
 
 	public generateEncryptedRecoveryCodes() {
-		return this.generateRawRecoveryCodes().map((code) =>
+		return this.generateRecoveryCodes().map((code) =>
 			AES.encrypt(code, this.encryptionKey).toString(),
 		);
 	}

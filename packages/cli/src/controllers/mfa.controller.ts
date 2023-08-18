@@ -32,7 +32,7 @@ export class MFAController {
 			};
 		}
 
-		const newRecoveryCodes = this.mfaService.generateRawRecoveryCodes();
+		const newRecoveryCodes = this.mfaService.generateRecoveryCodes();
 
 		const newSecret = this.mfaService.totp.generateSecret();
 

@@ -41,6 +41,7 @@ import { separate } from '@/utils';
 import { v4 as uuid } from 'uuid';
 import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -219,22 +220,26 @@ export async function createUserWithMfaEnabled(
 
 	const secret = toptService.generateSecret();
 
-	const codes = Array.from(Array(data.numberOfRecoveryCodes)).map(() => uuid());
+	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
 
-	const encryptedSecret = AES.encrypt(secret, encryptionKey).toString();
+	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
 
-	const encryptedRecoveryCodes = codes.map((code) => AES.encrypt(code, encryptionKey).toString());
+	const { encryptedSecret, encryptedRecoveryCodes } = mfaService.encryptSecretAndRecoveryCodes(
+		secret,
+		recoveryCodes,
+	);
 
 	return {
 		user: await createUser({
 			mfaEnabled: true,
 			password,
+			email,
 			mfaSecret: encryptedSecret,
 			mfaRecoveryCodes: encryptedRecoveryCodes,
 		}),
 		rawPassword: password,
 		rawSecret: secret,
-		rawRecoveryCodes: codes,
+		rawRecoveryCodes: recoveryCodes,
 	};
 }
 
@@ -622,7 +627,7 @@ export const getBootstrapDBOptions = (type: TestDBType) =>
 		name: type,
 		database: type,
 		...baseOptions(type),
-	}) as const;
+	} as const);
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,
