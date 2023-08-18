@@ -4,7 +4,6 @@ import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
@@ -19,12 +18,7 @@ import { snakeCase } from 'change-case';
 import omit from 'lodash/omit';
 
 export async function woocommerceApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 
