@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import jwt from 'jsonwebtoken';
 import type { Response } from 'express';
 import { createHash } from 'crypto';
@@ -38,7 +36,6 @@ export function issueJWT(user: User): JwtToken {
 
 	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,
-		algorithm: 'HS256',
 	});
 
 	return {

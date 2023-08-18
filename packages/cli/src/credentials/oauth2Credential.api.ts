@@ -265,6 +265,7 @@ oauth2CredentialController.get(
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 				scopes: split(scopes, ','),
 				scopesSeparator: scopes.includes(',') ? ',' : ' ',
+				ignoreSSLIssues: get(oauthCredentials, 'ignoreSSLIssues') as boolean,
 			};
 
 			if (oauthCredentials.grantType === 'pkce') {
@@ -316,7 +317,6 @@ oauth2CredentialController.get(
 				decryptedDataOriginal.oauthTokenData = oauthToken.data;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			unset(decryptedDataOriginal, 'csrfSecret');
 
 			const credentials = new Credentials(

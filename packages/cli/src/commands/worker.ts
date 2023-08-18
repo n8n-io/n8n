@@ -18,11 +18,15 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import config from '@/config';
 import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
+import { OwnershipService } from '@/services/ownership.service';
+import { generateHostInstanceId } from '@/databases/utils/generators';
+import type { ICredentialsOverwrite } from '@/Interfaces';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -42,6 +46,8 @@ export class Worker extends BaseCommand {
 	} = {};
 
 	static jobQueue: JobQueue;
+
+	readonly uniqueInstanceId = generateHostInstanceId('worker');
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -78,7 +84,7 @@ export class Worker extends BaseCommand {
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 			}
 		} catch (error) {
@@ -112,7 +118,7 @@ export class Worker extends BaseCommand {
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
-		const workflowOwner = await getWorkflowOwner(workflowId);
+		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
@@ -227,6 +233,7 @@ export class Worker extends BaseCommand {
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
+		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
 		this.logger.debug('Starting n8n worker...');
 
 		await this.initLicense();
@@ -238,7 +245,6 @@ export class Worker extends BaseCommand {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Worker);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
 		const queue = Container.get(Queue);
@@ -309,7 +315,7 @@ export class Worker extends BaseCommand {
 
 			app.get(
 				'/healthz',
-				// eslint-disable-next-line consistent-return
+
 				async (req: express.Request, res: express.Response) => {
 					LoggerProxy.debug('Health check started!');
 
@@ -350,9 +356,40 @@ export class Worker extends BaseCommand {
 				},
 			);
 
-			server.listen(port, () => {
-				this.logger.info(`\nn8n worker health check via, port ${port}`);
-			});
+			let presetCredentialsLoaded = false;
+			const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+			if (endpointPresetCredentials !== '') {
+				// POST endpoint to set preset credentials
+				app.post(
+					`/${endpointPresetCredentials}`,
+					rawBodyReader,
+					bodyParser,
+					async (req: express.Request, res: express.Response) => {
+						if (!presetCredentialsLoaded) {
+							const body = req.body as ICredentialsOverwrite;
+
+							if (req.contentType !== 'application/json') {
+								ResponseHelper.sendErrorResponse(
+									res,
+									new Error(
+										'Body must be a valid JSON, make sure the content-type is application/json',
+									),
+								);
+								return;
+							}
+
+							CredentialsOverwrites().setData(body);
+							presetCredentialsLoaded = true;
+							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+						} else {
+							ResponseHelper.sendErrorResponse(
+								res,
+								new Error('Preset credentials can be set once'),
+							);
+						}
+					},
+				);
+			}
 
 			server.on('error', (error: Error & { code: string }) => {
 				if (error.code === 'EADDRINUSE') {
@@ -362,6 +399,10 @@ export class Worker extends BaseCommand {
 					process.exit(1);
 				}
 			});
+
+			await new Promise<void>((resolve) => server.listen(port, () => resolve()));
+			await this.externalHooks.run('worker.ready');
+			this.logger.info(`\nn8n worker health check via, port ${port}`);
 		}
 
 		// Make sure that the process does not close

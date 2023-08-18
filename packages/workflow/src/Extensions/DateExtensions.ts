@@ -1,6 +1,5 @@
 import { ExpressionExtensionError } from './../ExpressionError';
-/* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/explicit-member-accessibility */
+
 import { DateTime } from 'luxon';
 import type {
 	DateTimeUnit,

@@ -185,7 +185,7 @@ export class BinaryDataManager {
 	}
 
 	async duplicateBinaryData(
-		inputData: Array<INodeExecutionData[] | null> | unknown,
+		inputData: Array<INodeExecutionData[] | null>,
 		executionId: string,
 	): Promise<INodeExecutionData[][]> {
 		if (inputData && this.managers[this.binaryDataMode]) {

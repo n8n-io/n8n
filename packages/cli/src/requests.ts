@@ -1,6 +1,6 @@
 import type express from 'express';
 import type {
-	Banners,
+	BannerName,
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
@@ -100,8 +100,6 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
-
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetAllActivationErrors = Get;
@@ -110,6 +108,28 @@ export declare namespace WorkflowRequest {
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
+
+// ----------------------------------
+//            list query
+// ----------------------------------
+
+export type ListQueryRequest = AuthenticatedRequest<{}, {}, {}, ListQueryParams> & {
+	listQueryOptions?: ListQueryOptions;
+};
+
+type ListQueryParams = {
+	filter?: string;
+	skip?: string;
+	take?: string;
+	select?: string;
+};
+
+export type ListQueryOptions = {
+	filter?: Record<string, unknown>;
+	select?: Record<string, true>;
+	skip?: number;
+	take?: number;
+};
 
 // ----------------------------------
 //          /credentials
@@ -196,7 +216,7 @@ export interface UserSetupPayload {
 export declare namespace OwnerRequest {
 	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
 
-	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: Banners }>, {}>;
+	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: BannerName }>, {}>;
 }
 
 // ----------------------------------

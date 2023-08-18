@@ -1,4 +1,4 @@
-import type { PluginObject } from 'vue';
+import type { Plugin } from 'vue';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -142,7 +142,7 @@ function addIcon(icon: IconDefinition) {
 	library.add(icon);
 }
 
-export const FontAwesomePlugin: PluginObject<{}> = {
+export const FontAwesomePlugin: Plugin<{}> = {
 	install: (app) => {
 		addIcon(faAngleDoubleLeft);
 		addIcon(faAngleDown);

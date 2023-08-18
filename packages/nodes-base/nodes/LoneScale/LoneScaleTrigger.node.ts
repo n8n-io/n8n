@@ -124,7 +124,6 @@ export class LoneScaleTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}

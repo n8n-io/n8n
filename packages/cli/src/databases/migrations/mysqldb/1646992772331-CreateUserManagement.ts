@@ -1,9 +1,8 @@
 import type { InsertResult, MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuid } from 'uuid';
-import { loadSurveyFromDisk } from '@db/utils/migrationHelpers';
 
 export class CreateUserManagement1646992772331 implements ReversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
+	async up({ queryRunner, tablePrefix, loadSurveyFromDisk }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (
 				\`id\` int NOT NULL AUTO_INCREMENT,

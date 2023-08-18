@@ -1,19 +1,18 @@
 <template>
 	<el-dialog
-		:visible="(!!activeNode || renaming) && !isActiveStickyNode"
+		:modelValue="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
-		custom-class="data-display-wrapper"
-		class="ndv-wrapper"
+		class="data-display-wrapper ndv-wrapper"
+		overlay-class="data-display-overlay"
 		width="auto"
 		append-to-body
 		data-test-id="ndv"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
-			:value="showTriggerWaitingWarning"
+			:visible="showTriggerWaitingWarning"
 			:disabled="!showTriggerWaitingWarning"
-			manual
 		>
 			<template #content>
 				<div :class="$style.triggerWarning">
@@ -48,7 +47,7 @@
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
-				<template #input>
+				<template #input v-if="showTriggerPanel || !isTriggerNode">
 					<TriggerPanel
 						v-if="showTriggerPanel"
 						:nodeName="activeNode.name"
@@ -127,7 +126,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeConnections,
 	INodeTypeDescription,
@@ -193,6 +192,7 @@ export default defineComponent({
 		return {
 			...useDeviceSupport(),
 			...useMessage(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowActivate.setup?.(props),
 		};
 	},
@@ -214,7 +214,7 @@ export default defineComponent({
 	mounted() {
 		dataPinningEventBus.on('data-pinning-discovery', this.setIsTooltipVisible);
 	},
-	destroyed() {
+	beforeUnmount() {
 		dataPinningEventBus.off('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	computed: {
@@ -419,7 +419,7 @@ export default defineComponent({
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(this.ndvStore.setNDVSessionId, 0);
+				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
 				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
@@ -695,13 +695,14 @@ export default defineComponent({
 
 <style lang="scss">
 .ndv-wrapper {
-	overflow: hidden;
+	overflow: visible;
+	margin-top: 0;
 }
 
 .data-display-wrapper {
-	height: 93%;
-	width: 100%;
+	height: calc(100% - var(--spacing-2xl));
 	margin-top: var(--spacing-xl) !important;
+	width: 100%;
 	background: none;
 	border: none;
 
@@ -713,7 +714,7 @@ export default defineComponent({
 		padding: 0 !important;
 		height: 100%;
 		min-height: 400px;
-		overflow: hidden;
+		overflow: visible;
 		border-radius: 8px;
 	}
 }

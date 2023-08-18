@@ -1,6 +1,8 @@
 import type { EntityManager } from 'typeorm';
-import { TagEntity } from '@db/entities/TagEntity';
+import type { TagEntity } from '@db/entities/TagEntity';
 import type { ITagToImport, IWorkflowToImport } from '@/Interfaces';
+import { TagRepository } from './databases/repositories';
+import Container from 'typedi';
 
 // ----------------------------------
 //              utils
@@ -26,8 +28,7 @@ export function sortByRequestOrder(
 // ----------------------------------
 
 const createTag = async (transactionManager: EntityManager, name: string): Promise<TagEntity> => {
-	const tag = new TagEntity();
-	tag.name = name;
+	const tag = Container.get(TagRepository).create({ name: name.trim() });
 	return transactionManager.save<TagEntity>(tag);
 };
 

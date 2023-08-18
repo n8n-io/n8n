@@ -1,4 +1,4 @@
-import vue from '@vitejs/plugin-vue2';
+import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
@@ -11,7 +11,7 @@ export default mergeConfig(
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
-				'vue2-boring-avatars': require.resolve('vue2-boring-avatars'),
+				'n8n-design-system': resolve(__dirname, 'src'),
 			},
 		},
 		build: {
@@ -41,7 +41,7 @@ export default mergeConfig(
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
 			coverage: {
-				provider: 'c8',
+				provider: 'v8',
 				reporter: coverageReporters,
 				all: true,
 			},

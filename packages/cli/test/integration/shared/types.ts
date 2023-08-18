@@ -24,7 +24,9 @@ export type EndpointGroup =
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
-	| 'variables';
+	| 'variables'
+	| 'tags'
+	| 'metrics';
 
 export interface SetupProps {
 	applyAuth?: boolean;

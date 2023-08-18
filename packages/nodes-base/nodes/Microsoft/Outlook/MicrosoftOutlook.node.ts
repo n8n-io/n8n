@@ -120,7 +120,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (const category of categories) {
 					returnData.push({
 						name: category.displayName as string,
-						value: category.id as string,
+						value: category.displayName as string,
 					});
 				}
 				return returnData;

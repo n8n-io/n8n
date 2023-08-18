@@ -13,7 +13,6 @@ export const genericHelpers = defineComponent({
 	},
 	data() {
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			loadingService: null as any | null,
 		};
 	},

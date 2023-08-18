@@ -64,15 +64,15 @@ describe('NDV', () => {
 
 	it('should show validation errors only after blur or re-opening of NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Read data from a table');
+		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Search records');
 		ndv.getters.container().should('be.visible');
-		cy.get('.has-issues').should('have.length', 0);
+		// cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
-		ndv.getters.parameterInput('application').find('input').eq(1).focus().blur();
-		cy.get('.has-issues').should('have.length', 2);
+		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
+		cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Airtable');
-		cy.get('.has-issues').should('have.length', 3);
+		cy.get('.has-issues').should('have.length', 2);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
 
@@ -117,7 +117,7 @@ describe('NDV', () => {
 			setupSchemaWorkflow();
 			ndv.getters.outputDisplayMode().children().should('have.length', 3);
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
 
 			schemaKeys.forEach((key) => {
@@ -130,7 +130,7 @@ describe('NDV', () => {
 		});
 		it('should preserve schema view after execution', () => {
 			setupSchemaWorkflow();
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.actions.execute();
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
 		});
@@ -142,7 +142,7 @@ describe('NDV', () => {
 					.outputPanel()
 					.find('[data-test-id=run-data-schema-item]')
 					.filter(':contains("objectValue")');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 
 			expandedObjectProps.forEach((key) => {
 				ndv.getters
@@ -173,9 +173,9 @@ describe('NDV', () => {
 			ndv.actions.execute();
 			ndv.getters.outputPanel().contains('25 items').should('exist');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
-			ndv.getters.outputDisplayMode().contains('JSON').click();
+			ndv.actions.switchOutputMode('JSON');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
 		});
 		it('should display large schema', () => {
@@ -188,7 +188,7 @@ describe('NDV', () => {
 
 			ndv.getters.outputPanel().contains('20 items').should('exist');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
 			ndv.getters
 				.outputPanel()

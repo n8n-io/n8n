@@ -1,13 +1,7 @@
 <template>
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
-			<n8n-heading
-				tag="h2"
-				bold
-				class="ph-no-capture"
-				:class="$style.cardHeading"
-				data-test-id="workflow-card-name"
-			>
+			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
 			</n8n-heading>
 		</template>
@@ -27,7 +21,7 @@
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
-						@click="onClickTag"
+						@click:tag="onClickTag"
 						@expand="onExpandTags"
 						data-test-id="workflow-card-tags"
 					/>
@@ -54,6 +48,7 @@
 					:actions="actions"
 					theme="dark"
 					@action="onAction"
+					@click.stop
 					data-test-id="workflow-card-actions"
 				/>
 			</div>

@@ -91,7 +91,10 @@ export const workflowActivate = defineComponent({
 					return;
 				}
 
-				await this.updateWorkflow({ workflowId: currWorkflowId, active: newActiveState });
+				await this.updateWorkflow(
+					{ workflowId: currWorkflowId, active: newActiveState },
+					!this.uiStore.stateIsDirty,
+				);
 			} catch (error) {
 				const newStateName = newActiveState === true ? 'activated' : 'deactivated';
 				this.showError(

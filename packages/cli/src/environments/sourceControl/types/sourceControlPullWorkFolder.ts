@@ -24,6 +24,4 @@ export class SourceControllPullOptions {
 	force?: boolean;
 
 	variables?: { [key: string]: string };
-
-	importAfterPull?: boolean = true;
 }

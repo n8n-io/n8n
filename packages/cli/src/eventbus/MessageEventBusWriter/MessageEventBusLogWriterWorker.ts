@@ -90,7 +90,6 @@ if (!isMainThread) {
 					clearInterval(fileStatTimer);
 					break;
 				case 'initialize':
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					const settings: MessageEventBusLogWriterOptions = {
 						logFullBasePath: (data as MessageEventBusLogWriterOptions).logFullBasePath ?? '',
 						keepNumberOfFiles: (data as MessageEventBusLogWriterOptions).keepNumberOfFiles ?? 10,

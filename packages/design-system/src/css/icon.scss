@@ -2,7 +2,8 @@
 
 @font-face {
 	font-family: 'element-icons';
-	src: url('#{var.$font-path}/element-icons.woff') format('woff'),
+	src:
+		url('#{var.$font-path}/element-icons.woff') format('woff'),
 		/* chrome, firefox */ url('#{var.$font-path}/element-icons.ttf') format('truetype'); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
 	font-weight: normal;
 	font-display: var.$font-display;
@@ -27,6 +28,24 @@
 	-moz-osx-font-smoothing: grayscale;
 }
 
+.el-icon {
+	--color: inherit;
+	height: 1em;
+	width: 1em;
+	line-height: 1em;
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+	fill: currentColor;
+	color: var(--color);
+	font-size: inherit;
+
+	svg {
+		height: 1em;
+		width: 1em;
+	}
+}
 .el-icon-ice-cream-round:before {
 	content: '\e6a0';
 }

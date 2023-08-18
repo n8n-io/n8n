@@ -98,7 +98,7 @@ describe('POST /variables', () => {
 	});
 	const toCreate = generatePayload();
 
-	test('should create a new credential and return it for an owner', async () => {
+	test('should create a new variable and return it for an owner', async () => {
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.key).toBe(toCreate.key);
@@ -118,7 +118,7 @@ describe('POST /variables', () => {
 		expect(byKey!.value).toBe(toCreate.value);
 	});
 
-	test('should not create a new credential and return it for a member', async () => {
+	test('should not create a new variable and return it for a member', async () => {
 		const response = await authMemberAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(401);
 		expect(response.body.data?.key).not.toBe(toCreate.key);
@@ -128,7 +128,7 @@ describe('POST /variables', () => {
 		expect(byKey).toBeNull();
 	});
 
-	test("POST /variables should not create a new credential and return it if the instance doesn't have a license", async () => {
+	test("POST /variables should not create a new variable and return it if the instance doesn't have a license", async () => {
 		licenseLike.isVariablesEnabled.mockReturnValue(false);
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(400);
@@ -139,7 +139,7 @@ describe('POST /variables', () => {
 		expect(byKey).toBeNull();
 	});
 
-	test('should fail to create a new credential and if one with the same key exists', async () => {
+	test('should fail to create a new variable and if one with the same key exists', async () => {
 		await testDb.createVariable(toCreate.key, toCreate.value);
 		const response = await authOwnerAgent.post('/variables').send(toCreate);
 		expect(response.statusCode).toBe(500);
@@ -224,7 +224,7 @@ describe('PATCH /variables/:id', () => {
 		value: 'createvalue1',
 	};
 
-	test('should modify existing credential if use is an owner', async () => {
+	test('should modify existing variable if use is an owner', async () => {
 		const variable = await testDb.createVariable('test1', 'value1');
 		const response = await authOwnerAgent.patch(`/variables/${variable.id}`).send(toModify);
 		expect(response.statusCode).toBe(200);
@@ -245,7 +245,7 @@ describe('PATCH /variables/:id', () => {
 		expect(byKey!.value).toBe(toModify.value);
 	});
 
-	test('should modify existing credential if use is an owner', async () => {
+	test('should modify existing variable if use is an owner', async () => {
 		const variable = await testDb.createVariable('test1', 'value1');
 		const response = await authOwnerAgent.patch(`/variables/${variable.id}`).send(toModify);
 		expect(response.statusCode).toBe(200);
@@ -266,7 +266,7 @@ describe('PATCH /variables/:id', () => {
 		expect(byKey!.value).toBe(toModify.value);
 	});
 
-	test('should not modify existing credential if use is a member', async () => {
+	test('should not modify existing variable if use is a member', async () => {
 		const variable = await testDb.createVariable('test1', 'value1');
 		const response = await authMemberAgent.patch(`/variables/${variable.id}`).send(toModify);
 		expect(response.statusCode).toBe(401);
@@ -279,7 +279,7 @@ describe('PATCH /variables/:id', () => {
 		expect(byId!.value).not.toBe(toModify.value);
 	});
 
-	test('should not modify existing credential if one with the same key exists', async () => {
+	test('should not modify existing variable if one with the same key exists', async () => {
 		const [var1, var2] = await Promise.all([
 			testDb.createVariable('test1', 'value1'),
 			testDb.createVariable(toModify.key, toModify.value),
@@ -300,7 +300,7 @@ describe('PATCH /variables/:id', () => {
 // DELETE /variables/:id - change a variable
 // ----------------------------------------
 describe('DELETE /variables/:id', () => {
-	test('should delete a single credential for an owner', async () => {
+	test('should delete a single variable for an owner', async () => {
 		const [var1, var2, var3] = await Promise.all([
 			testDb.createVariable('test1', 'value1'),
 			testDb.createVariable('test2', 'value2'),
@@ -317,7 +317,7 @@ describe('DELETE /variables/:id', () => {
 		expect(getResponse.body.data.length).toBe(2);
 	});
 
-	test('should not delete a single credential for a member', async () => {
+	test('should not delete a single variable for a member', async () => {
 		const [var1, var2, var3] = await Promise.all([
 			testDb.createVariable('test1', 'value1'),
 			testDb.createVariable('test2', 'value2'),

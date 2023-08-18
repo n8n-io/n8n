@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import type { Socket } from 'net';
@@ -16,7 +17,7 @@ import type { IPushDataType } from '@/Interfaces';
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
 @Service()
-export class Push {
+export class Push extends EventEmitter {
 	private backend = useWebSockets ? new WebSocketPush() : new SSEPush();
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
@@ -25,8 +26,9 @@ export class Push {
 		} else if (!useWebSockets) {
 			(this.backend as SSEPush).add(req.query.sessionId, { req, res });
 		} else {
-			res.status(401).send('Unauthorized');
+			res.status(1008).send('Unauthorized');
 		}
+		this.emit('editorUiConnected', req.query.sessionId);
 	}
 
 	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
@@ -71,7 +73,7 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 		if (sessionId === undefined) {
 			if (ws) {
 				ws.send('The query parameter "sessionId" is missing!');
-				ws.close(400);
+				ws.close(1008);
 			} else {
 				next(new Error('The query parameter "sessionId" is missing!'));
 			}
@@ -84,9 +86,9 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 		} catch (error) {
 			if (ws) {
 				ws.send(`Unauthorized: ${(error as Error).message}`);
-				ws.close(401);
+				ws.close(1008);
 			} else {
-				res.status(401).send('Unauthorized');
+				res.status(1008).send('Unauthorized');
 			}
 			return;
 		}

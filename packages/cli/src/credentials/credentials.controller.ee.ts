@@ -36,7 +36,6 @@ EECredentialsController.get(
 				relations: ['shared', 'shared.role', 'shared.user'],
 			});
 
-			// eslint-disable-next-line @typescript-eslint/unbound-method
 			return allCredentials.map((credential: CredentialsEntity & CredentialWithSharings) =>
 				EECredentials.addOwnerAndSharings(credential),
 			);

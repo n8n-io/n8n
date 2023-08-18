@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
 import type { Config } from '@/config';

@@ -23,7 +23,7 @@
 				v-touch:end="touchEnd"
 			>
 				<n8n-sticky
-					:content.sync="node.parameters.content"
+					:modelValue="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
@@ -32,12 +32,12 @@
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
 					:gridSize="gridSize"
-					@input="onInputChange"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
 					@markdown-click="onMarkdownClick"
+					@update:modelValue="onInputChange"
 				/>
 			</div>
 
@@ -56,7 +56,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -162,11 +162,10 @@ export default defineComponent({
 		};
 	},
 	methods: {
-		deleteNode() {
-			Vue.nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('removeNode', this.data.name);
-			});
+		async deleteNode() {
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('removeNode', this.data.name);
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
@@ -190,6 +189,7 @@ export default defineComponent({
 			}
 		},
 		onInputChange(content: string) {
+			this.node.parameters.content = content;
 			this.setParameters({ content });
 		},
 		onResizeStart() {

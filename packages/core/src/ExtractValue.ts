@@ -30,7 +30,6 @@ function findPropertyFromParameterName(
 		);
 	};
 
-	// eslint-disable-next-line no-restricted-syntax
 	for (const p of paramParts) {
 		const param = p.split('[')[0];
 		if (!property) {

@@ -1,55 +1,56 @@
 import { vi } from 'vitest';
-import { render } from '@testing-library/vue';
-import { createPinia, setActivePinia, PiniaVuePlugin } from 'pinia';
-import { merge } from 'lodash-es';
-import { i18nInstance } from '@/plugins/i18n';
+import { createPinia, setActivePinia } from 'pinia';
 import { useAuditLogsStore, useSettingsStore } from '@/stores';
 import SettingsAuditLogs from '@/views/SettingsAuditLogs.vue';
+import { createComponentRenderer } from '@/__tests__/render';
+import { EnterpriseEditionFeature } from '@/constants';
+import { nextTick } from 'vue';
+import { setupServer } from '@/__tests__/server';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let auditLogsStore: ReturnType<typeof useAuditLogsStore>;
+let server: ReturnType<typeof setupServer>;
 
-const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
-	render(
-		SettingsAuditLogs,
-		merge(
-			{
-				pinia,
-				i18n: i18nInstance,
-			},
-			renderOptions,
-		),
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-		},
-	);
+const renderComponent = createComponentRenderer(SettingsAuditLogs);
 
 describe('SettingsAuditLogs', () => {
-	beforeEach(() => {
+	beforeAll(() => {
+		server = setupServer();
+	});
+
+	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
 		auditLogsStore = useAuditLogsStore();
+
+		await settingsStore.getSettings();
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should render paywall state when there is no license', () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(false);
+	afterAll(() => {
+		server.shutdown();
+	});
 
-		const { getByTestId, queryByTestId } = renderComponent();
+	it('should render paywall state when there is no license', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.AuditLogs] = false;
+		await nextTick();
+
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
 
 		expect(queryByTestId('audit-logs-content-licensed')).not.toBeInTheDocument();
 		expect(getByTestId('audit-logs-content-unlicensed')).toBeInTheDocument();
 	});
 
-	it('should render licensed content', () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
+	it('should render licensed content', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.AuditLogs] = true;
+		await nextTick();
 
-		const { getByTestId, queryByTestId } = renderComponent();
+		const { getByTestId, queryByTestId } = renderComponent({ pinia });
 
 		expect(getByTestId('audit-logs-content-licensed')).toBeInTheDocument();
 		expect(queryByTestId('audit-logs-content-unlicensed')).not.toBeInTheDocument();

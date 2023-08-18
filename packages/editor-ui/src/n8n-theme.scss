@@ -13,6 +13,7 @@
 	border: var(--border-base);
 	box-shadow: 0px 6px 16px rgb(68 28 23 / 6%);
 	border-radius: 8px;
+	margin-top: 15vh;
 
 	@media (max-height: 1050px) {
 		margin: 4em auto !important;
@@ -69,6 +70,13 @@
 	.el-message-box__title {
 		color: $custom-dialog-text-color;
 	}
+	.el-message-box-icon {
+		width: var(--spacing-l);
+		height: var(--spacing-l);
+		&--warning {
+			color: var(--color-warning);
+		}
+	}
 }
 
 // Notification Message
@@ -120,6 +128,30 @@
 	font-weight: bold;
 }
 
+.el-tabs__content {
+	border: 1px solid var(--color-foreground-base);
+	border-radius: 0px var(--border-radius-base) var(--border-radius-base);
+}
+.el-tabs__header {
+	border-bottom: 0 !important;
+}
+.el-tabs__nav {
+	padding: 0;
+	overflow: hidden;
+}
+.el-tabs__item {
+	padding: var(--spacing-5xs) var(--spacing-2xs) !important;
+	height: auto;
+	line-height: var(--font-line-height-xloose);
+	font-weight: var(--font-weight-regular);
+	font-size: var(--font-size-2xs);
+
+	&:not([aria-selected='true']) {
+		background-color: var(--color-background-base);
+		border-bottom: 1px solid var(--color-foreground-base) !important;
+	}
+}
+
 // Loading Indicator
 .el-loading-mask {
 	background-color: var(--color-foreground-xlight);
@@ -156,18 +188,17 @@
 }
 
 .tags-container {
-	.el-tag {
-		color: $tag-text-color;
+	.el-select-tags-wrapper .el-tag {
 		font-size: 12px;
-		background-color: $tag-background-color;
-		border-radius: 12px;
-		height: auto;
-		border-color: $tag-background-color;
 		font-weight: 400;
+		display: flex;
+		align-items: flex-end;
 
-		.el-icon-close {
-			color: $tag-background-color;
-			background-color: $tag-close-background-color !important;
+		&.is-closable {
+			overflow-y: hidden;
+		}
+
+		.el-tag__close {
 			max-height: 15px;
 			max-width: 15px;
 			margin-right: 6px;
@@ -190,15 +221,18 @@
 			cursor: not-allowed;
 			color: var(--color-foreground-dark);
 		}
-		.el-input__inner, .el-input__inner::placeholder {
+		.el-input__inner,
+		.el-input__inner::placeholder {
 			opacity: 1;
 			color: var(--color-foreground-dark);
 		}
 	}
-	.el-select .el-input:not(.is-disabled ) .el-input__icon {
+	.el-select .el-input:not(.is-disabled) .el-input__icon {
 		color: var(--color-text-dark);
 	}
-	.el-input .el-input__inner { text-align: center; }
+	.el-input .el-input__inner {
+		text-align: center;
+	}
 	.el-input:not(.is-disabled) .el-input__inner {
 		&,
 		&:hover,

@@ -277,6 +277,7 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				required: true,
 			},

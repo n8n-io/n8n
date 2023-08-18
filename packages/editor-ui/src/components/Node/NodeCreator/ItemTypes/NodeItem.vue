@@ -9,6 +9,7 @@
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
+		:data-test-id="dataTestId"
 	>
 		<template #icon>
 			<node-icon :nodeType="nodeType" />
@@ -18,7 +19,7 @@
 			<p
 				:class="$style.communityNodeIcon"
 				v-html="
-					$locale.baseText('generic.communityNode.tooltip', {
+					i18n.baseText('generic.communityNode.tooltip', {
 						interpolate: {
 							packageName: nodeType.name.split('.')[0],
 							docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -38,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, getCurrentInstance } from 'vue';
+import { computed, ref } from 'vue';
 import type { SimplifiedNodeType } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/constants';
 
@@ -48,6 +49,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
+import { useI18n, useTelemetry } from '@/composables';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -59,21 +61,26 @@ const props = withDefaults(defineProps<Props>(), {
 	active: false,
 });
 
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
 const { actions } = useNodeCreatorStore();
 const { getNodeTypesWithManualTrigger } = useActions();
-const instance = getCurrentInstance();
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
-	return instance?.proxy.$locale.headerText({
+	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,
 	}) as string;
 });
 const showActionArrow = computed(() => hasActions.value);
+const dataTestId = computed(() =>
+	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
+);
 
 const hasActions = computed(() => {
 	return nodeActions.value.length > 1;
@@ -84,9 +91,7 @@ const nodeActions = computed(() => {
 	return nodeActions;
 });
 
-const shortNodeType = computed<string>(
-	() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '',
-);
+const shortNodeType = computed<string>(() => i18n.shortNodeType(props.nodeType.name) || '');
 
 const draggableStyle = computed<{ top: string; left: string }>(() => ({
 	top: `${draggablePosition.value.y}px`,
@@ -95,11 +100,10 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const displayName = computed<any>(() => {
 	const displayName = props.nodeType.displayName.trimEnd();
 
-	return instance?.proxy.$locale.headerText({
+	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.displayName`,
 		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
@@ -153,7 +157,7 @@ function onDragEnd(event: DragEvent): void {
 
 function onCommunityNodeTooltipClick(event: MouseEvent) {
 	if ((event.target as Element).localName === 'a') {
-		instance?.proxy.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
+		telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
 	}
 }
 </script>

@@ -236,7 +236,7 @@ export class Freshservice implements INodeType {
 				fields = fields
 					.concat(...asset_type_fields.map((data) => data.fields))
 					.map((data) => ({ name: data.label, id: data.name }));
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				return toOptions(fields);
 			},
 

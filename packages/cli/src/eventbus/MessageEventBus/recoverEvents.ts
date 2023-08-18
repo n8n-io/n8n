@@ -3,9 +3,6 @@ import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { Push } from '@/push';
-import type { IPushDataExecutionRecovered } from '../../Interfaces';
-import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
-import { eventBus } from './MessageEventBus';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData';
@@ -193,16 +190,12 @@ export async function recoverExecutionDataFromEventLogMessages(
 			// execute workflowExecuteAfter hook to trigger error workflow
 			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [iRunData]);
 
-			// calling workflowExecutionCompleted directly because the eventEmitter is not up yet at this point
-			await workflowExecutionCompleted(executionEntry.workflowData, iRunData);
-
+			const push = Container.get(Push);
 			// wait for UI to be back up and send the execution data
-			eventBus.once('editorUiConnected', function handleUiBackUp() {
+			push.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
-					Container.get(Push).send('executionRecovered', {
-						executionId,
-					} as IPushDataExecutionRecovered);
+					push.send('executionRecovered', { executionId });
 				}, 1000);
 			});
 		}

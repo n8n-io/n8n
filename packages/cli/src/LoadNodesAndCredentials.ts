@@ -133,11 +133,17 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		nodeModulesDir: string,
 		packageName?: string,
 	): Promise<void> {
-		const installedPackagePaths = await glob(packageName ?? ['n8n-nodes-*', '@*/n8n-nodes-*'], {
+		const globOptions = {
 			cwd: nodeModulesDir,
 			onlyDirectories: true,
 			deep: 1,
-		});
+		};
+		const installedPackagePaths = packageName
+			? await glob(packageName, globOptions)
+			: [
+					...(await glob('n8n-nodes-*', globOptions)),
+					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
+			  ];
 
 		for (const packagePath of installedPackagePaths) {
 			try {

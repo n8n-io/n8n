@@ -1,4 +1,4 @@
-const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+const sharedOptions = require('@n8n_io/eslint-config/shared');
 
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
@@ -12,13 +12,13 @@ module.exports = {
 		'n8n-local-rules/dangerously-use-html-string-missing': 'off',
 
 		// TODO: Remove these
-		'import/no-default-export': 'off',
+		'import/no-default-export': 'warn',
 		'import/order': 'off',
 		'@typescript-eslint/no-unsafe-argument': 'warn',
 		'@typescript-eslint/no-unsafe-return': 'warn',
 		'@typescript-eslint/no-unsafe-member-access': 'warn',
-		'@typescript-eslint/prefer-optional-chain': 'off',
-		'@typescript-eslint/prefer-nullish-coalescing': 'off',
+		'@typescript-eslint/prefer-optional-chain': 'warn',
+		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 	},
 
 	overrides: [

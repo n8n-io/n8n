@@ -1,35 +1,29 @@
-import type _Vue from 'vue';
-import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
-import type { Route } from 'vue-router';
+import type { Plugin } from 'vue';
+import type { IDataObject, ITelemetrySettings, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { RouteLocation } from 'vue-router';
 
 import type { INodeCreateElement, IUpdateInformation } from '@/Interface';
-import type { IUserNodesPanelSession } from './telemetry.types';
+import type { IUserNodesPanelSession, RudderStack } from './telemetry.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
+import { usePostHog } from '@/stores/posthog.store';
 
 export class Telemetry {
-	private pageEventQueue: Array<{ route: Route }>;
-	private previousPath: string;
-
-	private get rudderStack() {
-		return window.rudderanalytics;
-	}
-
-	private userNodesPanelSession: IUserNodesPanelSession = {
-		sessionId: '',
-		data: {
-			nodeFilter: '',
-			resultsNodes: [],
-			filterMode: 'Regular',
+	constructor(
+		private rudderStack: RudderStack,
+		private userNodesPanelSession: IUserNodesPanelSession = {
+			sessionId: '',
+			data: {
+				nodeFilter: '',
+				resultsNodes: [],
+				filterMode: 'Regular',
+			},
 		},
-	};
-
-	constructor() {
-		this.pageEventQueue = [];
-		this.previousPath = '';
-	}
+		private pageEventQueue: Array<{ route: RouteLocation }> = [],
+		private previousPath: string = '',
+	) {}
 
 	init(
 		telemetrySettings: ITelemetrySettings,
@@ -43,7 +37,7 @@ export class Telemetry {
 			versionCli: string;
 		},
 	) {
-		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
+		if (!telemetrySettings.enabled || !telemetrySettings.config) return;
 
 		const {
 			config: { key, url },
@@ -79,7 +73,11 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track(
+		event: string,
+		properties?: ITelemetryTrackProperties,
+		{ withPostHog } = { withPostHog: false },
+	) {
 		if (!this.rudderStack) return;
 
 		const updatedProperties = {
@@ -88,6 +86,10 @@ export class Telemetry {
 		};
 
 		this.rudderStack.track(event, updatedProperties);
+
+		if (withPostHog) {
+			usePostHog().capture(event, updatedProperties);
+		}
 	}
 
 	page(route: Route) {
@@ -100,17 +102,12 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: { [key: string]: string } = {};
-			if (
-				route.meta &&
-				route.meta.telemetry &&
-				typeof route.meta.telemetry.getProperties === 'function'
-			) {
+			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 
-			const category =
-				(route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.rudderStack.page(category, pageName!, properties);
+			const category = route.meta?.telemetry?.pageCategory || 'Editor';
+			this.rudderStack.page(category, pageName, properties);
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -124,6 +121,20 @@ export class Telemetry {
 		queue.forEach(({ route }) => {
 			this.page(route);
 		});
+	}
+
+	trackAskAI(event: string, properties: IDataObject = {}) {
+		if (this.rudderStack) {
+			properties.session_id = useRootStore().sessionId;
+			switch (event) {
+				case 'askAi.generationFinished':
+					this.track('Ai code generation finished', properties, { withPostHog: true });
+				case 'ask.generationClicked':
+					this.track('User clicked on generate code button', properties);
+				default:
+					break;
+			}
+		}
 	}
 
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
@@ -187,7 +198,7 @@ export class Telemetry {
 					this.track('User viewed node category', properties);
 					break;
 				case 'nodeView.addNodeButton':
-					this.track('User added node to workflow canvas', properties);
+					this.track('User added node to workflow canvas', properties, { withPostHog: true });
 					break;
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);
@@ -204,7 +215,7 @@ export class Telemetry {
 		if (this.rudderStack) {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
-					if (change.name === 'parameters.includeLinkToWorkflow') {
+					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
 						this.track('User toggled n8n reference option');
 					}
 					break;
@@ -234,8 +245,6 @@ export class Telemetry {
 	}
 
 	private initRudderStack(key: string, url: string, options: IDataObject) {
-		window.rudderanalytics = window.rudderanalytics || [];
-
 		this.rudderStack.methods = [
 			'load',
 			'page',
@@ -262,36 +271,23 @@ export class Telemetry {
 			this.rudderStack[method] = this.rudderStack.factory(method);
 		}
 
-		this.rudderStack.loadJS = () => {
-			const script = document.createElement('script');
-
-			script.type = 'text/javascript';
-			script.async = !0;
-			script.src = 'https://cdn-rs.n8n.io/v1/ra.min.js';
-
-			const element: Element = document.getElementsByTagName('script')[0];
-
-			if (element && element.parentNode) {
-				element.parentNode.insertBefore(script, element);
-			}
-		};
-
-		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
 	}
 }
 
-export const telemetry = new Telemetry();
+export const telemetry = new Telemetry(
+	window.rudderanalytics ?? {
+		identify: () => {},
+		reset: () => {},
+		track: () => {},
+		page: () => {},
+		push: () => {},
+		load: () => {},
+	},
+);
 
-export function TelemetryPlugin(vue: typeof _Vue): void {
-	Object.defineProperty(vue, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() {
-			return telemetry;
-		},
-	});
-}
+export const TelemetryPlugin: Plugin<{}> = {
+	install(app) {
+		app.config.globalProperties.$telemetry = telemetry;
+	},
+};

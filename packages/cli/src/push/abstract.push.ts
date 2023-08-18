@@ -1,6 +1,5 @@
 import { jsonStringify, LoggerProxy as Logger } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
-import { eventBus } from '../eventbus';
 
 export abstract class AbstractPush<T> {
 	protected connections: Record<string, T> = {};
@@ -11,7 +10,6 @@ export abstract class AbstractPush<T> {
 	protected add(sessionId: string, connection: T): void {
 		const { connections } = this;
 		Logger.debug('Add editor-UI session', { sessionId });
-		eventBus.emit('editorUiConnected', sessionId);
 
 		const existingConnection = connections[sessionId];
 		if (existingConnection) {
