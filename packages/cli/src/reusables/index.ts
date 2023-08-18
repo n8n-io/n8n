@@ -42,7 +42,7 @@ export const getIncidentHandlerConfig = ({
 
 	return {
 		app,
-		projectName: 'N8N',
+		projectName: `${process.env.PROJECT_NAME || ''} - N8N`,
 		connection,
 		entities: {
 			ServerIncident: entities.ServerIncident,
