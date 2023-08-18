@@ -357,7 +357,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const currentUser = usersStore.currentUser;
 			if (currentUser) {
 				currentUser.mfaEnabled = true;
-				usersStore.addUsers([currentUser]);
 			}
 		},
 		async disabledMfa() {
@@ -367,7 +366,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const currentUser = usersStore.currentUser;
 			if (currentUser) {
 				currentUser.mfaEnabled = false;
-				usersStore.addUsers([currentUser]);
 			}
 		},
 	},
