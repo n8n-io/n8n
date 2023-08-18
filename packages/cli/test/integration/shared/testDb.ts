@@ -21,7 +21,6 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-import { AES } from 'crypto-js';
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import type {
@@ -38,7 +37,6 @@ import { VariablesService } from '@/environments/variables/variables.service';
 import { TagRepository } from '@/databases/repositories';
 import { separate } from '@/utils';
 
-import { v4 as uuid } from 'uuid';
 import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
@@ -621,13 +619,12 @@ const baseOptions = (type: TestDBType) => ({
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
-export const getBootstrapDBOptions = (type: TestDBType) =>
-	({
-		type,
-		name: type,
-		database: type,
-		...baseOptions(type),
-	} as const);
+export const getBootstrapDBOptions = (type: TestDBType) => ({
+	type,
+	name: type,
+	database: type,
+	...baseOptions(type),
+});
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,
