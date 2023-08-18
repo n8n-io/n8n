@@ -1350,7 +1350,7 @@ export class WorkflowExecute {
 
 		const executionId: string =
 			this.additionalData.executionId ?? 'unknown_execution' + Date.now().toString();
-		await this.storeFullDataInElasticSearch(executionId, fullRunData); // Store in Elastic
+		await this.storeFullDataInElasticSearch(executionId, workflow.id || '', fullRunData); // Store in Elastic
 		await this.storeFullDataInS3(
 			workflow.id,
 			executionId,
@@ -1372,9 +1372,13 @@ export class WorkflowExecute {
 		return fullRunData;
 	}
 
-	private async storeFullDataInElasticSearch(executionId: string, fullRunData: IRun) {
+	private async storeFullDataInElasticSearch(
+		executionId: string,
+		workflowId: string,
+		fullRunData: IRun,
+	) {
 		const client = new ElasticSearchCoreClient();
-		await client.addDocument(executionId, fullRunData.data.resultData.runData);
+		await client.addDocument(executionId, workflowId, fullRunData.data.resultData.runData);
 	}
 
 	private async storeFullDataInS3(

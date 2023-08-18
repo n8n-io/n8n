@@ -15,7 +15,7 @@ export class ElasticSearchCoreClient {
 		this.index = process.env.FOUNDELASTICSEARCH_INDEX ?? '0';
 	}
 
-	addDocument = async (executionId: string, data: any) => {
+	addDocument = async (executionId: string, workflowId: string, data: any) => {
 		let elasticData = deepCopy(data);
 		this.removeNodesWithoutElasticSearchEnabled(elasticData);
 
@@ -37,11 +37,13 @@ export class ElasticSearchCoreClient {
 		};
 		try {
 			await this.client.index(document);
-			Logger.debug(`ElasticSearch: Adding Execution:${executionId} to index:${this.index}`);
+			Logger.debug(
+				`ElasticSearch: Adding Execution:${executionId}, workflow:${workflowId} to index:${this.index}`,
+			);
 		} catch (error) {
 			Logger.error(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				`ElasticSearch: Was not able to add Execution:${executionId} to index:${this.index}, error: ${error}`,
+				`ElasticSearch: Was not able to add Execution:${executionId}, workflow:${workflowId} to index:${this.index}, error: ${error}`,
 			);
 		}
 	};
