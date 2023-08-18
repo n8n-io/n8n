@@ -3,6 +3,7 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { Document } from 'langchain/document';
 import { MemoryVectorStore  } from 'langchain/vectorstores/memory';
 import { Embeddings  } from 'langchain/embeddings/base';
+import { logWrapper } from '../../utils/logWrapper';
 // import { getSingleInputConnectionData } from '../../utils/helpers';
 
 export class LangChainInMemoryVectorStore implements INodeType {
@@ -33,19 +34,19 @@ export class LangChainInMemoryVectorStore implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		console.log('Supply In Memory Vector Store 12')
+		console.log('Supply Data for In Memory Vector Store');
 		const itemIndex = 0;
 		const topK = this.getNodeParameter('topK', itemIndex) as number;
-		const embeddingNodes = await this.getInputConnectionData(0, 0, 'embedding');
-		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
 		const documentsNodes = await this.getInputConnectionData(0, 0, 'document') || [];
 		const documents = documentsNodes.map((node) => node.response as Document);
+		const embeddingNodes = await this.getInputConnectionData(0, 0, 'embedding');
+		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
 
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
 		const retriever = documentsStore.asRetriever(topK);
 
 		return {
-			response: retriever
+			response: logWrapper(retriever, this)
 		};
 	}
 }

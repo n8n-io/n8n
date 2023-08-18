@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { CharacterTextSplitter, CharacterTextSplitterParams } from 'langchain/text_splitter'
+import { logWrapper } from '../../utils/logWrapper';
 // import { logWrapper } from '../../utils/logWrapper';
 
 export class LangChainTextSplitterCharacterTextSplitter implements INodeType {
@@ -44,6 +45,7 @@ export class LangChainTextSplitterCharacterTextSplitter implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		console.log('Supply Data for Text Splitter');
 		const itemIndex = 0;
 		const separator = this.getNodeParameter('separator', itemIndex) as string;
 		const chunkSize = this.getNodeParameter('chunkSize', itemIndex) as number;
@@ -57,10 +59,9 @@ export class LangChainTextSplitterCharacterTextSplitter implements INodeType {
 		}
 
 		const splitter = new CharacterTextSplitter(params);
-		console.log("🚀 ~ file: LangChainTextSplitterCharacterTextSplitter.node.ts:59 ~ LangChainTextSplitterCharacterTextSplitter ~ supplyData ~ splitter:", splitter)
 
 		return {
-			response: splitter
+			response: logWrapper(splitter, this)
 		};
 	}
 }

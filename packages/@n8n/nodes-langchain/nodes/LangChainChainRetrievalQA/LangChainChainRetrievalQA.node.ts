@@ -1,8 +1,9 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 // import { NodeOperationError } from 'n8n-workflow';
 
@@ -12,7 +13,7 @@ import type {
 // import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { getSingleInputConnectionData } from '../../utils/helpers';
+// import { getSingleInputConnectionData } from '../../utils/helpers';
 import { BaseRetriever } from 'langchain/schema/retriever';
 
 export class LangChainChainRetrievalQA implements INodeType {
@@ -44,15 +45,50 @@ export class LangChainChainRetrievalQA implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const model = await getSingleInputConnectionData(this, 'languageModel', 'Language Model') as BaseLanguageModel;
-		const vectorRetriever = await getSingleInputConnectionData(this, 'vectorRetriever', 'Vector Store Retriever') as BaseRetriever;
-		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever);
-		console.log('After chain setup', chain)
+		console.log('Execute Retrieval QA Chain');
+		let vectorRetriever1: BaseRetriever;
+		const languageModelNodes = await this.getInputConnectionData(0, 0, 'languageModel');
+
+		if (languageModelNodes.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'At least one Language Model has to be connected!',
+			);
+		} else if (languageModelNodes.length > 1) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Only one Language Model is allowed to be connected!',
+			);
+		}
+		const model = languageModelNodes[0].response as BaseLanguageModel;
+
+		if (languageModelNodes.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'At least one Language Model has to be connected!',
+			);
+		} else if (languageModelNodes.length > 1) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Only one Language Model is allowed to be connected!',
+			);
+		}
+
+		const vectorRetrieverNodes = await this.getInputConnectionData(0, 0, 'vectorRetriever');
+		if (vectorRetrieverNodes.length === 1) {
+			vectorRetriever1 = vectorRetrieverNodes[0].response as BaseRetriever;
+		} else if (languageModelNodes.length > 1) {
+			throw new NodeOperationError(this.getNode(), 'Only one Vector Retriever is allowed to be connected!');
+		}
+
+		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever1!);
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
+		// Run for each item?
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;
+
 
 			const response = await chain.call({ query })
 			returnData.push({ json: { response } });

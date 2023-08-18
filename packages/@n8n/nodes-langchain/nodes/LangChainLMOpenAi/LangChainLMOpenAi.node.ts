@@ -63,6 +63,7 @@ export class LangChainLMOpenAi implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		console.log('Supply Data for OpenAI')
 		const credentials = await this.getCredentials('openAiApi');
 
 		const itemIndex = 0;
