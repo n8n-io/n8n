@@ -69,8 +69,6 @@ export async function zohoApiRequest(
 		delete options.qs;
 	}
 
-	//console.log(JSON.stringify(options, null, 2));
-
 	try {
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 		if (responseData === undefined) return [];
@@ -78,10 +76,13 @@ export async function zohoApiRequest(
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject, {
-			message: error.cause.data.message || 'The Zoho API returned an error.',
-			description: JSON.stringify(error.cause.data, null, 2),
-		});
+		const args = error.cause?.data
+			? {
+					message: error.cause.data.message || 'The Zoho API returned an error.',
+					description: JSON.stringify(error.cause.data, null, 2),
+			  }
+			: undefined;
+		throw new NodeApiError(this.getNode(), error as JsonObject, args);
 	}
 }
 
