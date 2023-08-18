@@ -197,13 +197,13 @@ export class ActiveWorkflows {
 	 *
 	 * @param {string} id The id of the workflow to deactivate
 	 */
-	async remove(id: string): Promise<void> {
+	async remove(id: string): Promise<boolean> {
 		if (!this.isActive(id)) {
 			// Workflow is currently not registered
 			Logger.warn(
 				`The workflow with the id "${id}" is currently not active and can so not be removed`,
 			);
-			return;
+			return false;
 		}
 
 		const workflowData = this.workflowData[id];
@@ -245,5 +245,7 @@ export class ActiveWorkflows {
 		}
 
 		delete this.workflowData[id];
+
+		return true;
 	}
 }
