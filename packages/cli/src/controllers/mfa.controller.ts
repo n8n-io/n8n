@@ -2,9 +2,6 @@ import { Authorized, Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { BadRequestError } from '@/ResponseHelper';
 import { MfaService } from '@/Mfa/mfa.service';
-import Container from 'typedi';
-import { ExternalHooks } from '@/ExternalHooks';
-
 @Authorized()
 @RestController('/mfa')
 export class MFAController {
@@ -53,7 +50,7 @@ export class MFAController {
 	@Post('/enable')
 	async activateMFA(req: MFA.Activate) {
 		const { token = null } = req.body;
-		const { id, mfaEnabled, email } = req.user;
+		const { id, mfaEnabled } = req.user;
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
 			await this.mfaService.getSecretAndRecoveryCodes(id);
