@@ -27,6 +27,8 @@ import {
 } from '../EventMessageClasses/EventMessageGeneric';
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
+import Container from 'typedi';
+import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -93,6 +95,10 @@ export class MessageEventBus extends EventEmitter {
 		LoggerProxy.debug('Initializing event writer');
 		this.logWriter = await MessageEventBusLogWriter.getInstance();
 
+		if (!this.logWriter) {
+			LoggerProxy.warn('Could not initialize event writer');
+		}
+
 		// unsent event check:
 		// - find unsent messages in current event log(s)
 		// - cycle event logs and start the logging to a fresh file
@@ -105,14 +111,47 @@ export class MessageEventBus extends EventEmitter {
 		this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
 
-		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
-			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
-				await recoverExecutionDataFromEventLogMessages(
-					executionId,
-					unsentAndUnfinished.unfinishedExecutions[executionId],
-					true,
-				);
+		const unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+
+		if (unfinishedExecutionIds.length > 0) {
+			LoggerProxy.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
+			LoggerProxy.info('This could be due to a crash of an active workflow or a restart of n8n.');
+			const activeWorkflows = await Container.get(WorkflowRepository).find({
+				where: { active: true },
+				select: ['id', 'name'],
+			});
+			if (activeWorkflows.length > 0) {
+				LoggerProxy.info('Currently active workflows:');
+				for (const workflowData of activeWorkflows) {
+					LoggerProxy.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+				}
 			}
+			if (this.logWriter?.isRecoveryProcessRunning()) {
+				// if we end up here, it means that the previous recovery process did not finish
+				// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
+				// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
+				LoggerProxy.warn('Skipping recover process since it previously failed.');
+				for (const executionId of unfinishedExecutionIds) {
+					LoggerProxy.info(`Setting status of execution ${executionId} to crashed`);
+					await Container.get(ExecutionRepository).updateExistingExecution(executionId, {
+						status: 'crashed',
+						stoppedAt: new Date(),
+					});
+				}
+			} else {
+				// start actual recovery process and write recovery process flag file
+				this.logWriter?.startRecoveryProcess();
+				for (const executionId of unfinishedExecutionIds) {
+					LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
+					await recoverExecutionDataFromEventLogMessages(
+						executionId,
+						unsentAndUnfinished.unfinishedExecutions[executionId],
+						true,
+					);
+				}
+			}
+			// remove the recovery process flag file
+			this.logWriter?.endRecoveryProcess();
 		}
 
 		// if configured, run this test every n ms
