@@ -107,20 +107,22 @@ describe('CommunityService', () => {
 
 	describe('executeCommand()', () => {
 		beforeEach(() => {
-			// @ts-ignore
-			fsAccess.mockReset();
-			// @ts-ignore
-			fsMkdir.mockReset();
-			// @ts-ignore
-			exec.mockReset();
+			mocked(fsAccess).mockReset();
+			mocked(fsMkdir).mockReset();
+			mocked(exec).mockReset();
 		});
 
 		test('should call command with valid options', async () => {
+			// @TODO: Fix typings
+			// @ts-ignore
 			mocked(exec).mockImplementation((...args) => {
+				// @ts-ignore
 				expect(args[1].cwd).toBeDefined();
+				// @ts-ignore
 				expect(args[1].env).toBeDefined();
 				// PATH or NODE_PATH may be undefined depending on environment so we don't check for these keys.
 				const callbackFunction = args[args.length - 1];
+				// @ts-ignore
 				callbackFunction(null, { stdout: 'Done' });
 			});
 
@@ -135,6 +137,7 @@ describe('CommunityService', () => {
 			// @ts-ignore
 			mocked(exec).mockImplementation((...args) => {
 				const callbackFunction = args[args.length - 1];
+				// @ts-ignore
 				callbackFunction(null, { stdout: 'Done' });
 			});
 
@@ -145,8 +148,11 @@ describe('CommunityService', () => {
 		});
 
 		test('should try to create folder if it does not exist', async () => {
+			// @TODO: Fix typings
+			// @ts-ignore
 			mocked(exec).mockImplementation((...args) => {
 				const callbackFunction = args[args.length - 1];
+				// @ts-ignore
 				callbackFunction(null, { stdout: 'Done' });
 			});
 			mocked(fsAccess).mockImplementation(() => {
@@ -161,8 +167,11 @@ describe('CommunityService', () => {
 		});
 
 		test('should throw especial error when package is not found', async () => {
+			// @TODO: Fix typings
+			// @ts-ignore
 			mocked(exec).mockImplementation((...args) => {
 				const callbackFunction = args[args.length - 1];
+				// @ts-ignore;
 				callbackFunction(
 					new Error(
 						'Something went wrong - ' +
@@ -308,8 +317,9 @@ describe('CommunityService', () => {
 
 	describe('hasPackageLoadedSuccessfully()', () => {
 		test('should return true when failed package list does not exist', () => {
+			// @TODO: Fix typing
 			// @ts-ignore
-			config.set('nodes.packagesMissing', undefined);
+			config.set<>('nodes.packagesMissing', undefined);
 
 			expect(communityService.hasPackageLoaded('package')).toBe(true);
 		});
@@ -329,6 +339,7 @@ describe('CommunityService', () => {
 
 	describe('removePackageFromMissingList()', () => {
 		test('should do nothing if key does not exist', () => {
+			// @TODO: Fix typings
 			// @ts-ignore
 			config.set('nodes.packagesMissing', undefined);
 
