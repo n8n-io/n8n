@@ -1,6 +1,6 @@
 import type express from 'express';
 import type {
-	Banners,
+	BannerName,
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
@@ -246,7 +246,7 @@ export interface UserSetupPayload {
 export declare namespace OwnerRequest {
 	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
 
-	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: Banners }>, {}>;
+	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: BannerName }>, {}>;
 }
 
 // ----------------------------------

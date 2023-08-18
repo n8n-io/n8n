@@ -392,25 +392,13 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			try {
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
 				await this.webhookService.storeWebhook(webhook);
-				const webhookExists = await workflow.runWebhookMethod(
-					'checkExists',
+				await workflow.createWebhookIfNotExists(
 					webhookData,
 					NodeExecuteFunctions,
 					mode,
 					activation,
 					false,
 				);
-				if (webhookExists !== true) {
-					// If webhook does not exist yet create it
-					await workflow.runWebhookMethod(
-						'create',
-						webhookData,
-						NodeExecuteFunctions,
-						mode,
-						activation,
-						false,
-					);
-				}
 			} catch (error) {
 				if (
 					activation === 'init' &&
@@ -489,14 +477,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
-			await workflow.runWebhookMethod(
-				'delete',
-				webhookData,
-				NodeExecuteFunctions,
-				mode,
-				'update',
-				false,
-			);
+			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update', false);
 		}
 
 		await WorkflowHelpers.saveStaticData(workflow);

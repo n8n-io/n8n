@@ -5,7 +5,6 @@ import type {
 	IDataObject,
 	IDisplayOptions,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -44,12 +43,7 @@ const apiVersion: { [key: number]: string } = {
 };
 
 export async function notionApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IPollFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 
