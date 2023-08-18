@@ -145,7 +145,6 @@ import { mfaEventBus } from '@/event-bus';
 import { useToast } from '@/composables';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
-
 export default defineComponent({
 	name: 'MfaSetupModal',
 	mixins: [copyPaste],
@@ -335,11 +334,10 @@ export default defineComponent({
 	color: var(--color-danger);
 }
 
-.error {
-	input {
-		border-color: var(--color-danger);
-	}
+.error input {
+	border-color: var(--color-danger);
 }
+
 .error > div > span {
 	color: var(--color-danger);
 	font-size: var(--font-size-2xs);
