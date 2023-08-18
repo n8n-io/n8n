@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { jsonParse } from 'n8n-workflow';
 import * as ResponseHelper from '@/ResponseHelper';
 import { WorkflowFilter } from './dtos/workflow.filter.dto';
 import { toError } from '@/utils';
@@ -17,24 +16,20 @@ export const filterListQueryMiddleware = async (
 
 	if (!rawFilter) return next();
 
-	let FilterClass;
+	let Filter;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		FilterClass = WorkflowFilter;
+		Filter = WorkflowFilter;
 	} else {
 		return next();
 	}
 
 	try {
-		const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
+		const filter = await Filter.fromString(rawFilter);
 
-		const filter = new FilterClass(dto);
+		if (Object.keys(filter).length === 0) return next();
 
-		const validFilter = await filter.validate();
-
-		if (Object.keys(validFilter).length === 0) return next();
-
-		req.listQueryOptions = { ...req.listQueryOptions, filter: validFilter };
+		req.listQueryOptions = { ...req.listQueryOptions, filter };
 
 		next();
 	} catch (maybeError) {

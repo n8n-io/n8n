@@ -27,6 +27,15 @@ describe('List query middleware', () => {
 	});
 
 	describe('Query filter', () => {
+		test('should not set filter on request if none sent', async () => {
+			mockReq.query = {};
+
+			await filterListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toBeUndefined();
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
 		test('should parse valid filter', async () => {
 			mockReq.query = { filter: '{ "name": "My Workflow" }' };
 
@@ -63,6 +72,15 @@ describe('List query middleware', () => {
 	});
 
 	describe('Query select', () => {
+		test('should not set select on request if none sent', async () => {
+			mockReq.query = {};
+
+			await filterListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toBeUndefined();
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
 		test('should parse valid select', () => {
 			mockReq.query = { select: '["name", "id"]' };
 
@@ -99,6 +117,15 @@ describe('List query middleware', () => {
 	});
 
 	describe('Query pagination', () => {
+		test('should not set pagination options on request if none sent', async () => {
+			mockReq.query = {};
+
+			await filterListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toBeUndefined();
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
 		test('should parse valid pagination', () => {
 			mockReq.query = { skip: '1', take: '2' };
 			paginationListQueryMiddleware(...args);
@@ -146,6 +173,52 @@ describe('List query middleware', () => {
 			paginationListQueryMiddleware(...args);
 
 			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('Combinations', () => {
+		test('should combine filter with select', async () => {
+			mockReq.query = { filter: '{ "name": "My Workflow" }', select: '["name", "id"]' };
+
+			await filterListQueryMiddleware(...args);
+			selectListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toEqual({
+				select: { name: true, id: true },
+				filter: { name: 'My Workflow' },
+			});
+
+			expect(nextFn).toBeCalledTimes(2);
+		});
+
+		test('should combine filter with pagination options', async () => {
+			mockReq.query = { filter: '{ "name": "My Workflow" }', skip: '1', take: '2' };
+
+			await filterListQueryMiddleware(...args);
+			paginationListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toEqual({
+				filter: { name: 'My Workflow' },
+				skip: 1,
+				take: 2,
+			});
+
+			expect(nextFn).toBeCalledTimes(2);
+		});
+
+		test('should combine select with pagination options', async () => {
+			mockReq.query = { select: '["name", "id"]', skip: '1', take: '2' };
+
+			selectListQueryMiddleware(...args);
+			paginationListQueryMiddleware(...args);
+
+			expect(mockReq.listQueryOptions).toEqual({
+				select: { name: true, id: true },
+				skip: 1,
+				take: 2,
+			});
+
+			expect(nextFn).toBeCalledTimes(2);
 		});
 	});
 });

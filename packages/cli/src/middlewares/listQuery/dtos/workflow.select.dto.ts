@@ -1,4 +1,5 @@
 import { isStringArray } from '@/utils';
+import { jsonParse } from 'n8n-workflow';
 
 export class WorkflowSelect {
 	fields: string[];
@@ -16,14 +17,13 @@ export class WorkflowSelect {
 		]);
 	}
 
-	constructor(dto: unknown) {
+	static fromString(rawFilter: string) {
+		const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
+
 		if (!isStringArray(dto)) throw new Error('Parsed select is not a string array');
 
-		this.fields = dto.filter((key) => WorkflowSelect.selectableFields.has(key));
-	}
-
-	validate() {
-		return this.fields.reduce<Record<string, true>>((acc, field) => {
+		return dto.reduce<Record<string, true>>((acc, field) => {
+			if (!WorkflowSelect.selectableFields.has(field)) return acc;
 			return (acc[field] = true), acc;
 		}, {});
 	}

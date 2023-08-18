@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { jsonParse } from 'n8n-workflow';
 import { WorkflowSelect } from './dtos/workflow.select.dto';
 import * as ResponseHelper from '@/ResponseHelper';
 import { toError } from '@/utils';
@@ -13,24 +12,20 @@ export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request
 
 	if (!rawSelect) return next();
 
-	let SelectClass;
+	let Select;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		SelectClass = WorkflowSelect;
+		Select = WorkflowSelect;
 	} else {
 		return next();
 	}
 
 	try {
-		const dto = jsonParse(rawSelect, { errorMessage: 'Failed to parse select JSON' });
+		const select = Select.fromString(rawSelect);
 
-		const select = new SelectClass(dto);
+		if (Object.keys(select).length === 0) return next();
 
-		const validSelect = select.validate();
-
-		if (Object.keys(validSelect).length === 0) return next();
-
-		req.listQueryOptions = { ...req.listQueryOptions, select: validSelect };
+		req.listQueryOptions = { ...req.listQueryOptions, select };
 
 		next();
 	} catch (maybeError) {

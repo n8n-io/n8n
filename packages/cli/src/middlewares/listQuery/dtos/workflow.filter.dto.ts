@@ -1,40 +1,43 @@
-import { isObjectLiteral } from '@/utils';
 import { IsOptional, IsString, IsBoolean, IsArray, validate } from 'class-validator';
-import { instanceToPlain } from 'class-transformer';
+import { Expose, instanceToPlain, plainToInstance } from 'class-transformer';
+import { jsonParse } from 'n8n-workflow';
+import { isObjectLiteral } from '@/utils';
 
 export class WorkflowFilter {
 	@IsString()
 	@IsOptional()
-	name: string;
+	@Expose()
+	name?: string;
 
 	@IsBoolean()
 	@IsOptional()
+	@Expose()
 	active?: boolean;
 
 	@IsArray()
 	@IsString({ each: true })
 	@IsOptional()
+	@Expose()
 	tags?: string[];
 
-	static get filterableFields() {
-		return new Set(['name', 'active', 'tags']);
-	}
+	static async fromString(rawFilter: string) {
+		const dto = jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' });
 
-	constructor(dto: unknown) {
 		if (!isObjectLiteral(dto)) throw new Error('Filter must be an object literal');
 
-		const onlyKnownFields = Object.fromEntries(
-			Object.entries(dto).filter(([key]) => WorkflowFilter.filterableFields.has(key)),
-		);
+		const instance = plainToInstance(WorkflowFilter, dto, {
+			excludeExtraneousValues: true, // remove fields not in class
+			exposeUnsetFields: false, // remove in-class undefined fields
+		});
 
-		Object.assign(this, onlyKnownFields);
+		await instance.validate();
+
+		return instanceToPlain(instance);
 	}
 
-	async validate() {
+	private async validate() {
 		const result = await validate(this);
 
 		if (result.length > 0) throw new Error('Parsed filter does not fit the schema');
-
-		return instanceToPlain(this);
 	}
 }

@@ -1,5 +1,6 @@
-import { isIntegerString, toError } from '@/utils';
+import { toError } from '@/utils';
 import * as ResponseHelper from '@/ResponseHelper';
+import { Pagination } from './dtos/pagination.dto';
 import type { ListQuery } from '@/requests';
 import type { RequestHandler } from 'express';
 
@@ -13,23 +14,9 @@ export const paginationListQueryMiddleware: RequestHandler = (
 	if (!rawTake) return next();
 
 	try {
-		if (!isIntegerString(rawTake)) {
-			throw new Error('Parameter take is not an integer string');
-		}
+		const { take, skip } = Pagination.fromString(rawTake, rawSkip);
 
-		if (!isIntegerString(rawSkip)) {
-			throw new Error('Parameter skip is not an integer string');
-		}
-
-		const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
-
-		const MAX_ITEMS_PER_PAGE = 50;
-
-		req.listQueryOptions = {
-			...req.listQueryOptions,
-			skip,
-			take: Math.min(take, MAX_ITEMS_PER_PAGE),
-		};
+		req.listQueryOptions = { ...req.listQueryOptions, skip, take };
 
 		next();
 	} catch (maybeError) {
