@@ -11,9 +11,6 @@ const ndv = new NDV();
 const executionsTab = new WorkflowExecutionsTab();
 
 describe('Debug', () => {
-	before(() => {
-		cy.viewport(1300, 640)
-	});
 		it('should be able to debug executions', () => {
 				cy.intercept('GET', '/rest/settings', (req) => {
 					req.on('response', (res) => {
@@ -90,7 +87,8 @@ describe('Debug', () => {
 				confirmDialog.find('li').should('have.length', 2)
 			  confirmDialog.get('.btn--confirm').click();
 
-				workflowPage.getters.canvasNodes().filter(':has(.node-pin-data-icon)').should('have.length', 1)
+				workflowPage.getters.canvasNodes().first().should('have.descendants', '.node-pin-data-icon')
+			  workflowPage.getters.canvasNodes().not(':first').should('not.have.descendants', '.node-pin-data-icon')
 
     });
 });
