@@ -74,7 +74,7 @@
 		<template #footer>
 			<n8n-button
 				:loading="loading"
-				:disabled="packageName === '' || loading"
+				:disabled="!userAgreed || packageName === '' || loading"
 				:label="
 					loading
 						? $locale.baseText('settings.communityNodes.installModal.installButton.label.loading')
