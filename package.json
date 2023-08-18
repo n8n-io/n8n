@@ -15,7 +15,7 @@
     "dev": "turbo run dev --parallel",
     "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
-    "lint": "turbo run lint",
+    "lint": "TIMING=1 turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "start": "run-script-os",

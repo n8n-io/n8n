@@ -27,7 +27,7 @@
     "dev:worker": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon worker\"",
     "dev:webhook": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon webhook\"",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint . --quiet",
+    "lint": "TIMING=1 eslint . --quiet",
     "lintfix": "eslint . --fix",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "oclif-dev manifest",
