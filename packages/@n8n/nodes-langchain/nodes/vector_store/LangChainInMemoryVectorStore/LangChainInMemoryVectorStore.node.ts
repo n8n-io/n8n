@@ -3,8 +3,7 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { Document } from 'langchain/document';
 import { MemoryVectorStore  } from 'langchain/vectorstores/memory';
 import { Embeddings  } from 'langchain/embeddings/base';
-import { logWrapper } from '../../utils/logWrapper';
-// import { getSingleInputConnectionData } from '../../utils/helpers';
+import { logWrapper } from '../../../utils/logWrapper';
 
 export class LangChainInMemoryVectorStore implements INodeType {
 	description: INodeTypeDescription = {

@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { CharacterTextSplitter, CharacterTextSplitterParams } from 'langchain/text_splitter'
-import { logWrapper } from '../../utils/logWrapper';
-// import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '../../../utils/logWrapper';
 
 export class LangChainTextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {

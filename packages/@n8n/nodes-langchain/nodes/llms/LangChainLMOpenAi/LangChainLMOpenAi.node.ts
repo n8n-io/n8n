@@ -2,7 +2,7 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
 import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '../../../utils/logWrapper';
 export class LangChainLMOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - OpenAI',

@@ -4,7 +4,7 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { BufferMemory } from 'langchain/memory';
 import { XataChatMessageHistory } from 'langchain/stores/message/xata';
 import { BaseClient } from '@xata.io/client';
-import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '../../../utils/logWrapper';
 
 export class LangChainMemoryXata implements INodeType {
 	description: INodeTypeDescription = {

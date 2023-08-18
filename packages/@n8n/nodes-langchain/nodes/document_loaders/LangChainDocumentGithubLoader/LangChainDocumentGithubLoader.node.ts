@@ -2,7 +2,6 @@
 import { type IExecuteFunctions, type INodeType, type INodeTypeDescription, type SupplyData } from 'n8n-workflow';
 import { GithubRepoLoader } from 'langchain/document_loaders/web/github';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
-import { getSingleInputConnectionData } from '../../utils/helpers';
 
 export class LangChainDocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,11 +49,15 @@ export class LangChainDocumentGithubLoader implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		let textSplitter: CharacterTextSplitter | undefined;
 		const repository = this.getNodeParameter('repository', 0) as string;
 		const branch = this.getNodeParameter('branch', 0) as string;
 		const credentials = await this.getCredentials('githubApi');
 
-		const textSplitter = await getSingleInputConnectionData(this, 'textSplitter', 'Text Splitter') as CharacterTextSplitter;
+		const textSplitterNode = await this.getInputConnectionData(0, 0, 'textSplitter', this.getNode().name);
+		if (textSplitterNode?.[0]?.response) {
+			textSplitter = textSplitterNode?.[0]?.response as CharacterTextSplitter;
+		}
 
 		const docs = new GithubRepoLoader(repository, {
 			branch,

@@ -5,15 +5,9 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-// import { NodeOperationError } from 'n8n-workflow';
 
-// import type { Tool } from 'langchain/tools';
-// import type { BaseChatMemory } from 'langchain/memory';
-// import type { InitializeAgentExecutorOptions } from 'langchain/agents';
-// import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-// import { getSingleInputConnectionData } from '../../utils/helpers';
 import { BaseRetriever } from 'langchain/schema/retriever';
 
 export class LangChainChainRetrievalQA implements INodeType {

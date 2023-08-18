@@ -1,20 +1,18 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { logWrapper } from '../../utils/logWrapper';
+import { Calculator } from 'langchain/tools/calculator';
+import { logWrapper } from '../../../utils/logWrapper';
 
-import { SerpAPI } from 'langchain/tools';
-
-export class LangChainToolSerpApi implements INodeType {
+export class LangChainToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - SerpAPI',
-		name: 'langChainToolSerpApi',
-		icon: 'file:google.svg',
+		displayName: 'LangChain - Calculator',
+		name: 'langChainToolCalculator',
+		icon: 'fa:calculator',
 		group: ['transform'],
 		version: 1,
-		description: 'Search in Google',
+		description: 'Calculator',
 		defaults: {
-			name: 'LangChain - SerpAPI',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
+			name: 'LangChain - Calculator',
 			color: '#400080',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -22,20 +20,12 @@ export class LangChainToolSerpApi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['tool'],
 		outputNames: ['Tool'],
-		credentials: [
-			{
-				name: 'serpApi',
-				required: true,
-			},
-		],
 		properties: [],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const credentials = await this.getCredentials('serpApi');
-
 		return {
-			response: logWrapper(new SerpAPI(credentials.apiKey as string), this),
+			response: logWrapper(new Calculator(), this),
 		};
 	}
 }

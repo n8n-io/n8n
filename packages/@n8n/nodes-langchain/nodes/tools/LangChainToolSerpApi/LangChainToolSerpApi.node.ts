@@ -1,18 +1,19 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { WikipediaQueryRun } from 'langchain/tools';
-import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '../../../utils/logWrapper';
 
-export class LangChainToolWikipedia implements INodeType {
+import { SerpAPI } from 'langchain/tools';
+
+export class LangChainToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Wikipedia',
-		name: 'langChainToolWikipedia',
-		icon: 'file:wikipedia.svg',
+		displayName: 'LangChain - SerpAPI',
+		name: 'langChainToolSerpApi',
+		icon: 'file:google.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Search in Wikipedia',
+		description: 'Search in Google',
 		defaults: {
-			name: 'LangChain - Wikipedia',
+			name: 'LangChain - SerpAPI',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
 			color: '#400080',
 		},
@@ -21,12 +22,20 @@ export class LangChainToolWikipedia implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['tool'],
 		outputNames: ['Tool'],
+		credentials: [
+			{
+				name: 'serpApi',
+				required: true,
+			},
+		],
 		properties: [],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		const credentials = await this.getCredentials('serpApi');
+
 		return {
-			response: logWrapper(new WikipediaQueryRun(), this),
+			response: logWrapper(new SerpAPI(credentials.apiKey as string), this),
 		};
 	}
 }

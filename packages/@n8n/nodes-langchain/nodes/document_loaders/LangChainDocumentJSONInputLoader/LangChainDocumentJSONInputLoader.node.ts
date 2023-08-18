@@ -2,10 +2,9 @@
 import {  INodeExecutionData, type IExecuteFunctions, type INodeType, type INodeTypeDescription, type SupplyData } from 'n8n-workflow';
 
 import { CharacterTextSplitter } from 'langchain/text_splitter';
-// import { getSingleInputConnectionData } from '../../utils/helpers';
-import { logWrapper } from '../../utils/logWrapper';
+import { logWrapper } from '../../../utils/logWrapper';
 import { Document } from 'langchain/document';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
+import { JSONLoader } from 'langchain/document_loaders/fs/json';
 
 export class LangChainDocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +35,6 @@ export class LangChainDocumentJSONInputLoader implements INodeType {
 		const textSplitterNode = await this.getInputConnectionData(0, 0, 'textSplitter', this.getNode().name);
 		if (textSplitterNode?.[0]?.response) {
 			textSplitter = textSplitterNode?.[0]?.response as CharacterTextSplitter;
-			console.log('Text splitter assigned ', textSplitter);
 		}
 
 		const docs: Document[] = [];
@@ -45,7 +43,8 @@ export class LangChainDocumentJSONInputLoader implements INodeType {
 			const itemString = JSON.stringify(itemData);
 
 			const itemBlob = new Blob([itemString], { type: 'application/json' })
-			const jsonDoc = new TextLoader(itemBlob);
+			// TODO: Implement pointers to extract only parts of JSON
+			const jsonDoc = new JSONLoader(itemBlob);
 			const loadedDoc = textSplitter
 				? await jsonDoc.loadAndSplit(textSplitter)
 				: await jsonDoc.load();
