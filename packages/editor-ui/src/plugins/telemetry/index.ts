@@ -37,7 +37,7 @@ export class Telemetry {
 			versionCli: string;
 		},
 	) {
-		if (!telemetrySettings.enabled || !telemetrySettings.config) return;
+		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
 		const {
 			config: { key, url },
