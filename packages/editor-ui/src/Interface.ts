@@ -34,7 +34,6 @@ import type {
 	WorkflowSettings,
 	IUserSettings,
 	IN8nUISettings,
-	Banners,
 	BannerName,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
