@@ -97,3 +97,7 @@ export function isStringArray(value: unknown): value is string[] {
 }
 
 export const isIntegerString = (value: string) => /^\d+$/.test(value);
+
+export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
+}
