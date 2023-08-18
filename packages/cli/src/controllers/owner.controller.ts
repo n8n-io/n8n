@@ -6,6 +6,7 @@ import {
 	hashPassword,
 	sanitizeUser,
 	validatePassword,
+	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
@@ -14,6 +15,7 @@ import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
 import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import type { SettingsRepository, UserRepository } from '@db/repositories';
+import type { PostHogClient } from '@/posthog';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
@@ -28,22 +30,27 @@ export class OwnerController {
 
 	private readonly settingsRepository: SettingsRepository;
 
+	private readonly postHog?: PostHogClient;
+
 	constructor({
 		config,
 		logger,
 		internalHooks,
 		repositories,
+		postHog,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
+		postHog?: PostHogClient;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
 		this.settingsRepository = repositories.Settings;
+		this.postHog = postHog;
 	}
 
 	/**
@@ -122,7 +129,7 @@ export class OwnerController {
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 
-		return sanitizeUser(owner);
+		return withFeatureFlags(this.postHog, sanitizeUser(owner));
 	}
 
 	@Post('/dismiss-banner')
