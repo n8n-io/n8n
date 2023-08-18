@@ -1,3 +1,18 @@
+## [1.3.1](https://github.com/n8n-io/n8n/compare/n8n@1.3.0...n8n@1.3.1) (2023-08-18)
+
+
+### Bug Fixes
+
+* **core:** Fix `continueOnFail` for expression error in Set ([#6939](https://github.com/n8n-io/n8n/issues/6939)) ([e685780](https://github.com/n8n-io/n8n/commit/e6857809928537fe5bc478837632723472d6cf5d))
+* **editor:** Do not flag dynamic load options issue on expression ([#6932](https://github.com/n8n-io/n8n/issues/6932)) ([81367cf](https://github.com/n8n-io/n8n/commit/81367cf9b685e69ee8472ee9a4973b61e94789a0))
+* **editor:** Fix Remove all fields not removing values in resource mapper ([#6940](https://github.com/n8n-io/n8n/issues/6940)) ([c80163f](https://github.com/n8n-io/n8n/commit/c80163fbe63927fa0a21bc64fd69527dcddf4ec1))
+* **editor:** Prevent Code node linter from erroring on `null` parse ([#6934](https://github.com/n8n-io/n8n/issues/6934)) ([239e967](https://github.com/n8n-io/n8n/commit/239e96710976233915e8398e7b9356cb9004b462))
+* **GraphQL Node:** Improve error handling ([#6955](https://github.com/n8n-io/n8n/issues/6955)) ([e8937aa](https://github.com/n8n-io/n8n/commit/e8937aaa21299f757b48c141be2809f6c20a40c3))
+* **Salesforce Node:** Fix Account update owner operation ([#6958](https://github.com/n8n-io/n8n/issues/6958)) ([ffd3ef5](https://github.com/n8n-io/n8n/commit/ffd3ef5b41877f295fc9db79b29b2e1b8c7a1b3e))
+* **Webhook Node:** Backward compatible form-data parsing for non-array fields ([#6967](https://github.com/n8n-io/n8n/issues/6967)) ([db1958c](https://github.com/n8n-io/n8n/commit/db1958cfab59f561ffbcbc57cf1f3c2e6a56d8e0))
+
+
+
 # [1.3.0](https://github.com/n8n-io/n8n/compare/n8n@1.2.0...n8n@1.3.0) (2023-08-16)
 
 
