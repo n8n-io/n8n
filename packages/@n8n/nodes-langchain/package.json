@@ -39,15 +39,21 @@
     ],
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
-      "dist/nodes/LangChainDynamicTool/LangChainDynamicTool.node.js",
-      "dist/nodes/LangChainLMOpenAi/LangChainLMOpenAi.node.js",
-      "dist/nodes/LangChainLMCohere/LangChainLMCohere.node.js",
-      "dist/nodes/LangChainLMOpenHuggingFaceInference/LangChainLMOpenHuggingFaceInference.node.js",
-      "dist/nodes/LangChainMemoryMotorhead/LangChainMemoryMotorhead.node.js",
-      "dist/nodes/LangChainMemoryXata/LangChainMemoryXata.node.js",
-      "dist/nodes/LangChainToolCalculator/LangChainToolCalculator.node.js",
-      "dist/nodes/LangChainToolSerpApi/LangChainToolSerpApi.node.js",
-      "dist/nodes/LangChainToolWikipedia/LangChainToolWikipedia.node.js"
+      "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQA.node.js",
+      "dist/nodes/document_loaders/DocumentGithubLoader/DocumentGithubLoader.node.js",
+      "dist/nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node.js",
+      "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAI.node.js",
+      "dist/nodes/vector_store/InMemoryVectorStore/InMemoryVectorStore.node.js",
+      "dist/nodes/llms/LMOpenAi/LMOpenAi.node.js",
+      "dist/nodes/llms/LMCohere/LMCohere.node.js",
+      "dist/nodes/llms/LMOpenHuggingFaceInference/LMOpenHuggingFaceInference.node.js",
+      "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
+      "dist/nodes/memory/MemoryXata/MemoryXata.node.js",
+      "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
+      "dist/nodes/tools/ToolDynamicTool/ToolDynamicTool.node.js",
+      "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
+      "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
+      "dist/nodes/tools/ToolWikipedia/ToolWikipedia.node.js"
     ]
   },
   "devDependencies": {
@@ -65,6 +71,7 @@
     "@huggingface/inference": "1",
     "@xata.io/cli": "^0.13.4",
     "cohere-ai": "^6.2.2",
+    "ignore": "^5.2.4",
     "langchain": "^0.0.126",
     "lodash": "^4.17.21",
     "n8n-nodes-base": "workspace:*"

@@ -1,19 +1,19 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
-import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { logWrapper } from '../../utils/logWrapper';
-export class LangChainLMOpenAi implements INodeType {
+import { HuggingFaceInference } from 'langchain/llms/hf';
+
+export class LMOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - OpenAI',
+		displayName: 'LangChain - HuggingFaceInference',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'langChainLMOpenAi',
-		icon: 'file:openAi.svg',
+		name: 'lmOpenHuggingFaceInference',
+		icon: 'file:huggingface.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Language Model OpenAI',
+		description: 'Language Model HuggingFaceInference',
 		defaults: {
-			name: 'LangChain - OpenAI',
+			name: 'LangChain - HuggingFaceInference',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
@@ -22,27 +22,23 @@ export class LangChainLMOpenAi implements INodeType {
 		outputNames: ['Language Model'],
 		credentials: [
 			{
-				name: 'openAiApi',
+				name: 'huggingFaceApi',
 				required: true,
 			},
 		],
 		properties: [
 			{
-				displayName: 'Model45',
+				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				noDataExpression: true,
 				options: [
 					{
-						name: 'GTP 3.5 Turbo',
-						value: 'gpt-3.5-turbo',
-					},
-					{
-						name: 'DaVinci-003',
-						value: 'text-davinci-003',
+						name: 'GTP 2',
+						value: 'gpt2',
 					},
 				],
-				default: 'gpt-3.5-turbo',
+				default: 'gpt2',
 			},
 			{
 				displayName: 'Sampling Temperature',
@@ -52,18 +48,12 @@ export class LangChainLMOpenAi implements INodeType {
 				description:
 					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 				type: 'number',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'temperature',
-					},
-				},
 			},
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const credentials = await this.getCredentials('openAiApi');
+		const credentials = await this.getCredentials('huggingFaceApi');
 
 		const itemIndex = 0;
 
@@ -71,14 +61,15 @@ export class LangChainLMOpenAi implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const temperature = this.getNodeParameter('temperature', itemIndex) as number;
 
-		const model = new ChatOpenAI({
-			openAIApiKey: credentials.apiKey as string,
-			modelName,
+		const model = new HuggingFaceInference({
+			model: modelName,
+			apiKey: credentials.apiKey as string,
 			temperature,
+			maxTokens: 100,
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

@@ -149,9 +149,12 @@ importers:
       cohere-ai:
         specifier: ^6.2.2
         version: 6.2.2
+      ignore:
+        specifier: ^5.2.4
+        version: 5.2.4
       langchain:
         specifier: ^0.0.126
-        version: 0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)
+        version: 0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)(ignore@5.2.4)
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
@@ -8891,7 +8894,7 @@ packages:
   /axios@0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
+      follow-redirects: 1.15.2(debug@3.2.7)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -8907,7 +8910,7 @@ packages:
   /axios@0.26.1:
     resolution: {integrity: sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==}
     dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
+      follow-redirects: 1.15.2(debug@3.2.7)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -8928,6 +8931,7 @@ packages:
       form-data: 4.0.0
     transitivePeerDependencies:
       - debug
+    dev: true
 
   /babel-core@7.0.0-bridge.0(@babel/core@7.22.9):
     resolution: {integrity: sha512-poPX9mZH/5CSanm50Q+1toVci6pv5KSRv/5TWCwtzQS5XEwn40BcCrgIeMFWP9CKKIniKXNxoIOnOq4VVlGXhg==}
@@ -12686,6 +12690,7 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.4(supports-color@8.1.1)
+    dev: true
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
@@ -15510,7 +15515,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2):
+  /langchain@0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)(ignore@5.2.4):
     resolution: {integrity: sha512-Z57WjAwLN+ZbJ9D4h2oTN7iDt1Aa67mcXhKYVCQFRu4w8PIPH5k0VBvmrzKyRj2iFIWdUaqVsHch/jz5+1mGnA==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -15714,6 +15719,7 @@ packages:
       decamelize: 1.2.0
       expr-eval: 2.0.2
       flat: 5.0.2
+      ignore: 5.2.4
       js-tiktoken: 1.0.7
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
@@ -18652,7 +18658,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2(debug@4.3.4)
+      axios: 0.27.2(debug@3.2.7)
     transitivePeerDependencies:
       - debug
     dev: false

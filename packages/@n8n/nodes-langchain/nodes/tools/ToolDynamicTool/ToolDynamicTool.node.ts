@@ -16,11 +16,11 @@ import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import { DynamicTool } from 'langchain/tools';
 import get from 'lodash/get';
 
-export class LangChainDynamicTool implements INodeType {
+export class ToolDynamicTool implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - DynamicTool',
-		name: 'langChainDynamicTool',
-		icon: 'fa:calculator',
+		name: 'dynamicTool',
+		icon: 'fa:screwdriver-wrench',
 		group: ['transform'],
 		version: 1,
 		description: 'DynamicTool',

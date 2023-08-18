@@ -3,10 +3,10 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 
 import { MotorheadMemory } from 'langchain/memory';
 
-export class LangChainMemoryMotorhead implements INodeType {
+export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Motorhead',
-		name: 'langChainMemoryMotorhead',
+		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
 		group: ['transform'],
 		version: 1,
