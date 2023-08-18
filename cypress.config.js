@@ -18,6 +18,5 @@ module.exports = defineConfig({
 		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
 		experimentalSessionAndOrigin: true,
-		blockHosts: ['telemetry.n8n.io'],
 	},
 });
