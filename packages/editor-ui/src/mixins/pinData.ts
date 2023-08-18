@@ -4,7 +4,7 @@ import type { INodeTypeDescription, IPinData, INodeExecutionData } from 'n8n-wor
 import { stringSizeInBytes } from '@/utils';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
-	MAX_WORKFLOW_PINNED_DATA_SIZE,
+	MAX_WORKFLOW_PIN_DATA_SIZE,
 	MAX_WORKFLOW_SIZE,
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/constants';
@@ -106,7 +106,7 @@ export const pinData = defineComponent({
 			const newPinDataSize = this.workflowsStore.getPinDataSize(newPinData);
 
 			let isValid = true;
-			if (newPinDataSize > MAX_WORKFLOW_PINNED_DATA_SIZE) {
+			if (newPinDataSize > MAX_WORKFLOW_PIN_DATA_SIZE) {
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),

@@ -69,6 +69,46 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
+	it('Should be duplicating pin data when duplicating node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: false });
+		workflowPage.actions.addNodeToCanvas('Set', true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData([{ test: 1 }]);
+		ndv.actions.close();
+
+		workflowPage.getters
+			.canvasNodes()
+			.last()
+			.find('[data-test-id="duplicate-node-button"]')
+			.click({ force: true });
+
+		workflowPage.actions.saveWorkflowOnButtonClick();
+
+		cy.reload();
+		workflowPage.actions.openNode('Set1');
+
+		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
+		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
+	});
+
+	it('Should show an error when maximum pin data size is exceeded', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: false });
+		workflowPage.actions.addNodeToCanvas('Set', true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData([{ test: '1'.repeat(1024) }]);
+		workflowPage.getters
+			.errorToast()
+			.closest('div')
+			.should('contain', 'You can pin at most 12MB of output per workflow.');
+		ndv.actions.close();
+	});
+
 	it('Should be able to reference paired items in a node located before pinned data', () => {
 		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
