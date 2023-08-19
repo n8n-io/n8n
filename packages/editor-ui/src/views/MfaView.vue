@@ -75,7 +75,6 @@ import Logo from '../components/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
-	VIEWS,
 } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { mapStores } from 'pinia';
@@ -89,10 +88,10 @@ export default defineComponent({
 	components: {
 		Logo,
 	},
+	props: {
+		showError: Boolean,
+	},
 	async mounted() {
-		const { email, password } = window.history.state;
-		this.email = email;
-		this.password = password;
 		this.formInputs = [
 			{
 				name: 'token',
@@ -114,14 +113,12 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			email: '',
-			password: '',
 			hasAnyChanges: false,
 			formBus: mfaEventBus,
 			formInputs: null as null | IFormInputs,
 			showRecoveryCodeForm: false,
-			formError: '',
 			verifyingMfaToken: false,
+			formError: '',
 		};
 	},
 	computed: {
@@ -148,7 +145,7 @@ export default defineComponent({
 		},
 		onBackClick() {
 			if (!this.showRecoveryCodeForm) {
-				void this.$router.push({ name: VIEWS.SIGNIN });
+				this.$emit('onBackClick');
 				return;
 			}
 
@@ -186,50 +183,52 @@ export default defineComponent({
 				.finally(() => (this.verifyingMfaToken = false));
 		},
 		async onSubmit(form: { token: string; recoveryCode: string }) {
-			try {
-				await this.usersStore.loginWithCreds({
-					email: this.email,
-					password: this.password,
-					mfaToken: form.token,
-					mfaRecoveryCode: form.recoveryCode,
-				});
+			this.$emit('submit', form);
 
-				if (this.usersStore.currentUser) {
-					const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
+			// 	try {
+			// 		await this.usersStore.loginWithCreds({
+			// 			email: this.email,
+			// 			password: this.password,
+			// 			mfaToken: form.token,
+			// 			mfaRecoveryCode: form.recoveryCode,
+			// 		});
 
-					if (mfaEnabled && !hasRecoveryCodesLeft) {
-						this.showToast({
-							title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
-							message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
-							type: 'info',
-							duration: 0,
-							dangerouslyUseHTMLString: true,
-						});
-					}
-				}
-			} catch (error) {
-				this.formError = !this.showRecoveryCodeForm
-					? this.$locale.baseText('mfa.code.invalid')
-					: this.$locale.baseText('mfa.recovery.invalid');
+			// 		if (this.usersStore.currentUser) {
+			// 			const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
 
-				this.$telemetry.track('User attempted to login', {
-					result: 'mfa_token_rejected',
-				});
+			// 			if (mfaEnabled && !hasRecoveryCodesLeft) {
+			// 				this.showToast({
+			// 					title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
+			// 					message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
+			// 					type: 'info',
+			// 					duration: 0,
+			// 					dangerouslyUseHTMLString: true,
+			// 				});
+			// 			}
+			// 		}
+			// 	} catch (error) {
+			// 		this.formError = !this.showRecoveryCodeForm
+			// 			? this.$locale.baseText('mfa.code.invalid')
+			// 			: this.$locale.baseText('mfa.recovery.invalid');
 
-				return;
-			}
+			// 		this.$telemetry.track('User attempted to login', {
+			// 			result: 'mfa_token_rejected',
+			// 		});
 
-			this.$telemetry.track('User attempted to login', {
-				result: 'mfa_success',
-			});
+			// 		return;
+			// 	}
 
-			if (this.isRedirectSafe()) {
-				const redirect = this.getRedirectQueryParameter();
-				void this.$router.push(redirect);
-				return;
-			}
+			// 	this.$telemetry.track('User attempted to login', {
+			// 		result: 'mfa_success',
+			// 	});
 
-			void this.$router.push({ name: VIEWS.HOMEPAGE });
+			// 	if (this.isRedirectSafe()) {
+			// 		const redirect = this.getRedirectQueryParameter();
+			// 		void this.$router.push(redirect);
+			// 		return;
+			// 	}
+
+			// 	void this.$router.push({ name: VIEWS.HOMEPAGE });
 		},
 		onSaveClick() {
 			this.formBus.emit('submit');

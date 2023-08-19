@@ -1,16 +1,21 @@
 <template>
-	<AuthView
-		:form="FORM_CONFIG"
-		:formLoading="loading"
-		:with-sso="true"
-		data-test-id="signin-form"
-		@submit="onSubmit"
-	/>
+	<div>
+		<AuthView
+			v-if="!showMfaView"
+			:form="FORM_CONFIG"
+			:formLoading="loading"
+			:with-sso="true"
+			data-test-id="signin-form"
+			@submit="onSubmit"
+		/>
+		<MfaView v-if="showMfaView" @submit="onSubmit" @onBackClick="onBackClick" formError="" />
+	</div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
+import MfaView from './MfaView.vue';
 import { useToast } from '@/composables';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
@@ -25,6 +30,7 @@ export default defineComponent({
 	mixins: [genericHelpers],
 	components: {
 		AuthView,
+		MfaView,
 	},
 	setup() {
 		return {
@@ -35,10 +41,16 @@ export default defineComponent({
 		return {
 			FORM_CONFIG: {} as IFormBoxConfig,
 			loading: false,
+			showMfaView: false,
+			email: '',
+			password: '',
 		};
 	},
 	computed: {
 		...mapStores(useUsersStore, useSettingsStore, useUIStore, useCloudPlanStore),
+		userHasMfaEnabled() {
+			return !!this.usersStore.currentUser?.mfaEnabled;
+		},
 	},
 	mounted() {
 		let emailLabel = this.$locale.baseText('auth.email');
@@ -85,18 +97,45 @@ export default defineComponent({
 		}
 	},
 	methods: {
-		async onSubmit(values: { [key: string]: string }) {
+		async onSubmit(form: {
+			email: string;
+			password: string;
+			token?: string;
+			recoveryCode?: string;
+		}) {
 			try {
 				this.loading = true;
-				await this.usersStore.loginWithCreds(values as { email: string; password: string });
+				await this.usersStore.loginWithCreds({
+					email: form.email ?? this.email,
+					password: form.password ?? this.password,
+					mfaToken: form.token,
+					mfaRecoveryCode: form.recoveryCode,
+				});
+				this.loading = false;
 				await this.cloudPlanStore.checkForCloudPlanData();
 				await this.uiStore.initBanners();
 				this.clearAllStickyNotifications();
-				this.loading = false;
+
+				if (this.usersStore.currentUser) {
+					const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
+
+					if (mfaEnabled && !hasRecoveryCodesLeft) {
+						this.showToast({
+							title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
+							message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
+							type: 'info',
+							duration: 0,
+							dangerouslyUseHTMLString: true,
+						});
+					}
+				}
 
 				this.$telemetry.track('User attempted to login', {
 					result: 'success',
+					withMfa: this.userHasMfaEnabled,
 				});
+
+				this.clearCredentials();
 
 				if (this.isRedirectSafe()) {
 					const redirect = this.getRedirectQueryParameter();
@@ -107,20 +146,35 @@ export default defineComponent({
 				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
 				if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
-					void this.$router.push({
-						name: VIEWS.MFA_VIEW,
-						state: { email: values.email, password: values.password },
-					});
+					this.showMfaView = true;
+					this.loading = false;
+					this.cacheCredentials(form);
 					return;
 				}
 
+				// this.formError = !this.showRecoveryCodeForm
+				// 	? this.$locale.baseText('mfa.code.invalid')
+				// 	: this.$locale.baseText('mfa.recovery.invalid');
+
 				this.$telemetry.track('User attempted to login', {
 					result: 'credentials_error',
+					withMfa: this.userHasMfaEnabled,
 				});
 
 				this.showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;
 			}
+		},
+		onBackClick() {
+			this.showMfaView = false;
+		},
+		clearCredentials() {
+			this.email = '';
+			this.password = '';
+		},
+		cacheCredentials(form: { email: string; password: string }) {
+			this.email = form.email;
+			this.password = form.password;
 		},
 	},
 });
