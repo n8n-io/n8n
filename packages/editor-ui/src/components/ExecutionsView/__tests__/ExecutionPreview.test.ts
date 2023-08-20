@@ -86,7 +86,7 @@ describe('ExecutionPreview.vue', () => {
 				() => availability,
 			);
 
-			// Not using createComponentRenderer helper here because this component should not mock `router-link`
+			// Not using createComponentRenderer helper here because this component should not stub `router-link`
 			const { getByTestId } = render(ExecutionPreview, {
 				global: {
 					plugins: [
@@ -98,7 +98,6 @@ describe('ExecutionPreview.vue', () => {
 						pinia,
 						router,
 					],
-					stubs: {},
 					mocks: {
 						$route,
 					},
