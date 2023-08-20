@@ -10,8 +10,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { badPasswords } from '../shared/testData';
-import { MfaService } from '@/Mfa/mfa.service';
-import { TOTPService } from '@/Mfa/totp.service';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();
@@ -23,7 +21,6 @@ describe('MeController', () => {
 		externalHooks,
 		internalHooks,
 		repositories: { User: userRepository },
-		mfaService: new MfaService(userRepository, new TOTPService(), ''),
 	});
 
 	describe('updateCurrentUser', () => {
@@ -137,7 +134,7 @@ describe('MeController', () => {
 
 		it('should update the password in the DB, and issue a new cookie', async () => {
 			const req = mock<MeRequest.Password>({
-				user: mock({ password: passwordHash, mfaEnabled: false }),
+				user: mock({ password: passwordHash }),
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 			});
 			const res = mock<Response>();

@@ -237,7 +237,7 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new MeController({ logger, externalHooks, internalHooks, repositories, mfaService }),
+							new MeController({ logger, externalHooks, internalHooks, repositories }),
 						);
 						break;
 					case 'passwordReset':

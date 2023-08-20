@@ -76,7 +76,7 @@ export class AuthController {
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
-		const { email, password, mfaToken = '', mfaRecoveryCode = '' } = req.body;
+		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
@@ -115,8 +115,8 @@ export class AuthController {
 				user.mfaRecoveryCodes = decryptedRecoveryCodes;
 
 				const isMFATokenValid =
-					(await this.validateMfaToken(user, mfaToken ?? '')) ||
-					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode ?? ''));
+					(await this.validateMfaToken(user, mfaToken)) ||
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
 
 				if (!isMFATokenValid) {
 					throw new AuthError('Invalid mfa token or recovery code');
@@ -261,14 +261,16 @@ export class AuthController {
 		return { loggedOut: true };
 	}
 
-	private async validateMfaToken(user: User, token: string) {
+	private async validateMfaToken(user: User, token?: string) {
+		if (!!!token) return false;
 		return this.mfaService.totp.verifySecret({
 			secret: user.mfaSecret ?? '',
 			token,
 		});
 	}
 
-	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode: string) {
+	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode?: string) {
+		if (!!!mfaRecoveryCode) return false;
 		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
 		if (index === -1) return false;
 
@@ -276,7 +278,7 @@ export class AuthController {
 		user.mfaRecoveryCodes.splice(index, 1);
 
 		await this.userRepository.update(user.id, {
-			mfaRecoveryCodes: user.mfaRecoveryCodes,
+			mfaRecoveryCodes: this.mfaService.encryptRecoveryCodes(user.mfaRecoveryCodes),
 		});
 
 		return true;

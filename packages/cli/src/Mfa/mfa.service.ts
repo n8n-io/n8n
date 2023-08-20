@@ -65,6 +65,10 @@ export class MfaService {
 		await this.userRepository.update(userId, { mfaEnabled: true });
 	}
 
+	public encryptRecoveryCodes(mfaRecoveryCodes: string[]) {
+		return mfaRecoveryCodes.map((code) => AES.encrypt(code, this.encryptionKey).toString());
+	}
+
 	public async disableMfa(userId: string) {
 		await this.userRepository.update(userId, {
 			mfaEnabled: false,

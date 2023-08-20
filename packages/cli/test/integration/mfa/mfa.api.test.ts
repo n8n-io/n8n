@@ -205,34 +205,6 @@ describe('Change password with MFA enabled', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('PATCH /me/password should fail due to invalid MFA token', async () => {
-		const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
-
-		const newPassword = randomValidPassword();
-
-		const response = await testServer
-			.authAgentFor(user)
-			.patch('/me/password')
-			.send({ currentPassword: rawPassword, newPassword, mfaToken: randomDigit() });
-
-		expect(response.statusCode).toBe(400);
-	});
-
-	test('PATCH /me/password should update password', async () => {
-		const { user, rawPassword, rawSecret } = await testDb.createUserWithMfaEnabled();
-
-		const token = new TOTPService().generateTOTP(rawSecret);
-
-		const newPassword = randomValidPassword();
-
-		const response = await testServer
-			.authAgentFor(user)
-			.patch('/me/password')
-			.send({ currentPassword: rawPassword, newPassword, token });
-
-		expect(response.statusCode).toBe(200);
-	});
-
 	test('POST /change-password should fail due to missing MFA token', async () => {
 		const { user } = await testDb.createUserWithMfaEnabled();
 
@@ -340,7 +312,6 @@ describe('Login', () => {
 			.send({ email: user.email, password: rawPassword });
 
 		expect(response.statusCode).toBe(401);
-		expect(response.body.code).toBe(998);
 	});
 
 	describe('Login with MFA token', () => {
@@ -349,7 +320,17 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaToken: '' });
+				.send({ email: user.email, password: rawPassword, mfaToken: 'wrongvalue' });
+
+			expect(response.statusCode).toBe(401);
+		});
+
+		test('POST /login should fail due two MFA step needed', async () => {
+			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+
+			const response = await testServer.authlessAgent
+				.post('/login')
+				.send({ email: user.email, password: rawPassword });
 
 			expect(response.statusCode).toBe(401);
 			expect(response.body.code).toBe(998);
@@ -377,10 +358,9 @@ describe('Login', () => {
 
 			const response = await testServer.authlessAgent
 				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: '' });
+				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: 'wrongvalue' });
 
 			expect(response.statusCode).toBe(401);
-			expect(response.body.code).toBe(998);
 		});
 
 		test('POST /login should succeed with MFA recovery code', async () => {

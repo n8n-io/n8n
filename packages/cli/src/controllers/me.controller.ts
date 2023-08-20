@@ -29,7 +29,6 @@ import type {
 import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import { UserService } from '@/user/user.service';
-import type { MfaService } from '@/Mfa/mfa.service';
 
 @Authorized()
 @RestController('/me')
@@ -42,26 +41,21 @@ export class MeController {
 
 	private readonly userRepository: UserRepository;
 
-	private readonly mfaService: MfaService;
-
 	constructor({
 		logger,
 		externalHooks,
 		internalHooks,
 		repositories,
-		mfaService,
 	}: {
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
-		mfaService: MfaService;
 	}) {
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
-		this.mfaService = mfaService;
 	}
 
 	/**

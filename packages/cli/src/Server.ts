@@ -504,7 +504,7 @@ export class Server extends AbstractServer {
 			new EventBusController(),
 			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
 			new OwnerController({ config, internalHooks, repositories, logger, postHog }),
-			new MeController({ externalHooks, internalHooks, repositories, logger, mfaService }),
+			new MeController({ externalHooks, internalHooks, repositories, logger }),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({
 				config,
