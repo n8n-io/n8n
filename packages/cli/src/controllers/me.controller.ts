@@ -131,8 +131,7 @@ export class MeController {
 	 */
 	@Patch('/password')
 	async updatePassword(req: MeRequest.Password, res: Response) {
-		const { currentPassword, newPassword, token } = req.body;
-		const { mfaEnabled, id } = req.user;
+		const { currentPassword, newPassword } = req.body;
 
 		// If SAML is enabled, we don't allow the user to change their email address
 		if (isSamlLicensedAndEnabled()) {
@@ -158,16 +157,6 @@ export class MeController {
 		}
 
 		const validPassword = validatePassword(newPassword);
-
-		if (mfaEnabled) {
-			if (!token) throw new BadRequestError('If MFA enabled, token is required.');
-
-			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(id);
-
-			const validToken = this.mfaService.totp.verifySecret({ secret, token });
-
-			if (!validToken) throw new BadRequestError('Invalid MFA token.');
-		}
 
 		req.user.password = await hashPassword(validPassword);
 

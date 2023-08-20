@@ -108,7 +108,7 @@ export async function updateOtherUserSettings(
 
 export async function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: { newPassword: string; currentPassword: string; token: string },
+	params: { newPassword: string; currentPassword: string },
 ): Promise<void> {
 	return makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }

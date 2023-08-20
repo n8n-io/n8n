@@ -31,7 +31,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 
-import { CHANGE_PASSWORD_MODAL_KEY, MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH } from '../constants';
+import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import { useToast } from '@/composables';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
@@ -108,21 +108,6 @@ export default defineComponent({
 			},
 		];
 
-		if (this.usersStore.mfaEnabled) {
-			form.push({
-				name: 'token',
-				initialValue: '',
-				properties: {
-					required: true,
-					label: this.$locale.baseText('mfa.code.input.label'),
-					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
-					capitalize: true,
-					validateOnBlur: true,
-				},
-			});
-		}
-
 		this.config = form;
 	},
 	methods: {
@@ -144,7 +129,7 @@ export default defineComponent({
 				this.password = e.value;
 			}
 		},
-		async onSubmit(values: { currentPassword: string; password: string; token: string }) {
+		async onSubmit(values: { currentPassword: string; password: string }) {
 			try {
 				this.loading = true;
 				await this.usersStore.updateCurrentUserPassword(values);
