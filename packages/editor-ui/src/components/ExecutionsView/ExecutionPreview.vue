@@ -82,23 +82,23 @@
 				<n8n-button
 					size="large"
 					:type="debugButtonData.type"
-					@click.capture="handleDebugLinkClick"
 					:class="{
 						[$style.debugLink]: true,
 						[$style.secondary]: debugButtonData.type === 'secondary',
 					}"
-					data-test-id="execution-debug-button"
 				>
 					<router-link
 						:to="{
 							name: VIEWS.EXECUTION_DEBUG,
 							params: {
-								workflowId: activeExecution.workflowId,
+								name: activeExecution.workflowId,
 								executionId: activeExecution.id,
 							},
 						}"
 					>
-						{{ debugButtonData.text }}
+						<span @click="handleDebugLinkClick" data-test-id="execution-debug-button">{{
+							debugButtonData.text
+						}}</span>
 					</router-link>
 				</n8n-button>
 
@@ -300,12 +300,13 @@ export default defineComponent({
 	margin-right: var(--spacing-xs);
 
 	&.secondary {
-		a {
+		a span {
 			color: var(--color-primary-shade-1);
 		}
 	}
 
-	a {
+	a span {
+		display: block;
 		padding: var(--spacing-xs) var(--spacing-m);
 		color: var(--color-text-xlight);
 	}
