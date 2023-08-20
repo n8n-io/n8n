@@ -11,7 +11,7 @@
 						: $locale.baseText('mfa.code.modal.title')
 				}}</n8n-heading>
 			</div>
-			<div :class="[$style.formContainer, formError ? $style.formError : '']">
+			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
 				<n8n-form-inputs
 					data-test-id="mfa-login-form"
 					v-if="formInputs"
@@ -25,13 +25,13 @@
 						size="small"
 						color="text-base"
 						:bold="false"
-						v-if="!showRecoveryCodeForm && !formError"
+						v-if="!showRecoveryCodeForm && !reportError"
 						>{{ $locale.baseText('mfa.code.input.info') }}
 						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
 							$locale.baseText('mfa.code.input.info.action')
 						}}</a></n8n-text
 					>
-					<n8n-text color="danger" v-if="formError" size="small"
+					<n8n-text color="danger" v-if="reportError" size="small"
 						>{{ formError }}
 						<a
 							v-if="!showRecoveryCodeForm"
@@ -82,6 +82,11 @@ import { mfaEventBus } from '@/event-bus';
 import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
 
+export const FORM = {
+	MFA_TOKEN: 'MFA_TOKEN',
+	MFA_RECOVERY_CODE: 'MFA_RECOVERY_CODE',
+} as const;
+
 export default defineComponent({
 	name: 'MfaView',
 	mixins: [genericHelpers],
@@ -89,22 +94,10 @@ export default defineComponent({
 		Logo,
 	},
 	props: {
-		showError: Boolean,
+		reportError: Boolean,
 	},
 	async mounted() {
-		this.formInputs = [
-			{
-				name: 'token',
-				initialValue: '',
-				properties: {
-					label: this.$locale.baseText('mfa.code.input.label'),
-					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
-					capitalize: true,
-					validateOnBlur: false,
-				},
-			},
-		];
+		this.formInputs = [this.mfaTokenFieldWithDefaults()];
 	},
 	setup() {
 		return {
@@ -129,40 +122,19 @@ export default defineComponent({
 			this.formError = '';
 			this.showRecoveryCodeForm = true;
 			this.hasAnyChanges = false;
-			this.formInputs = [
-				{
-					name: 'recoveryCode',
-					initialValue: '',
-					properties: {
-						label: this.$locale.baseText('mfa.recovery.input.label'),
-						placeholder: this.$locale.baseText('mfa.recovery.input.placeholder'),
-						maxlength: MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
-						capitalize: true,
-						validateOnBlur: false,
-					},
-				},
-			];
+			this.formInputs = [this.mfaRecoveryCodeFieldWithDefaults()];
+			this.$emit('onFormChanged', FORM.MFA_RECOVERY_CODE);
 		},
 		onBackClick() {
 			if (!this.showRecoveryCodeForm) {
-				this.$emit('onBackClick');
+				this.$emit('onBackClick', FORM.MFA_TOKEN);
 				return;
 			}
 
 			this.showRecoveryCodeForm = false;
 			this.hasAnyChanges = true;
-			this.formInputs = [
-				{
-					name: 'token',
-					initialValue: '',
-					properties: {
-						label: this.$locale.baseText('mfa.code.input.label'),
-						placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-						maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
-						capitalize: true,
-					},
-				},
-			];
+			this.formInputs = [this.mfaTokenFieldWithDefaults()];
+			this.$emit('onBackClick', FORM.MFA_RECOVERY_CODE);
 		},
 		onInput({ target: { value, name } }: { target: { value: string; name: string } }) {
 			const isSubmittingMfaToken = name === 'token';
@@ -183,55 +155,42 @@ export default defineComponent({
 				.finally(() => (this.verifyingMfaToken = false));
 		},
 		async onSubmit(form: { token: string; recoveryCode: string }) {
+			this.formError = !this.showRecoveryCodeForm
+				? this.$locale.baseText('mfa.code.invalid')
+				: this.$locale.baseText('mfa.recovery.invalid');
 			this.$emit('submit', form);
-
-			// 	try {
-			// 		await this.usersStore.loginWithCreds({
-			// 			email: this.email,
-			// 			password: this.password,
-			// 			mfaToken: form.token,
-			// 			mfaRecoveryCode: form.recoveryCode,
-			// 		});
-
-			// 		if (this.usersStore.currentUser) {
-			// 			const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
-
-			// 			if (mfaEnabled && !hasRecoveryCodesLeft) {
-			// 				this.showToast({
-			// 					title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
-			// 					message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
-			// 					type: 'info',
-			// 					duration: 0,
-			// 					dangerouslyUseHTMLString: true,
-			// 				});
-			// 			}
-			// 		}
-			// 	} catch (error) {
-			// 		this.formError = !this.showRecoveryCodeForm
-			// 			? this.$locale.baseText('mfa.code.invalid')
-			// 			: this.$locale.baseText('mfa.recovery.invalid');
-
-			// 		this.$telemetry.track('User attempted to login', {
-			// 			result: 'mfa_token_rejected',
-			// 		});
-
-			// 		return;
-			// 	}
-
-			// 	this.$telemetry.track('User attempted to login', {
-			// 		result: 'mfa_success',
-			// 	});
-
-			// 	if (this.isRedirectSafe()) {
-			// 		const redirect = this.getRedirectQueryParameter();
-			// 		void this.$router.push(redirect);
-			// 		return;
-			// 	}
-
-			// 	void this.$router.push({ name: VIEWS.HOMEPAGE });
 		},
 		onSaveClick() {
 			this.formBus.emit('submit');
+		},
+		mfaTokenFieldWithDefaults() {
+			return this.formField(
+				'token',
+				this.$locale.baseText('mfa.code.input.label'),
+				this.$locale.baseText('mfa.code.input.placeholder'),
+				MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+			);
+		},
+		mfaRecoveryCodeFieldWithDefaults() {
+			return this.formField(
+				'recoveryCode',
+				this.$locale.baseText('mfa.recovery.input.label'),
+				this.$locale.baseText('mfa.recovery.input.placeholder'),
+				MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
+			);
+		},
+		formField(name: string, label: string, placeholder: string, maxlength: number) {
+			return {
+				name,
+				initialValue: '',
+				properties: {
+					label,
+					placeholder,
+					maxlength,
+					capitalize: true,
+					validateOnBlur: false,
+				},
+			};
 		},
 	},
 });

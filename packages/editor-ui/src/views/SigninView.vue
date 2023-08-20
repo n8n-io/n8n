@@ -8,7 +8,13 @@
 			data-test-id="signin-form"
 			@submit="onSubmit"
 		/>
-		<MfaView v-if="showMfaView" @submit="onSubmit" @onBackClick="onBackClick" formError="" />
+		<MfaView
+			v-if="showMfaView"
+			@submit="onSubmit"
+			@onBackClick="onBackClick"
+			@onFormChanged="onFormChanged"
+			:reportError="reportError"
+		/>
 	</div>
 </template>
 
@@ -24,6 +30,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore, useUIStore } from '@/stores';
 import { genericHelpers } from '@/mixins/genericHelpers';
+import { FORM } from './MfaView.vue';
+import { ThisExpression } from 'esprima-next';
 
 export default defineComponent({
 	name: 'SigninView',
@@ -44,6 +52,7 @@ export default defineComponent({
 			showMfaView: false,
 			email: '',
 			password: '',
+			reportError: false,
 		};
 	},
 	computed: {
@@ -115,24 +124,10 @@ export default defineComponent({
 				await this.cloudPlanStore.checkForCloudPlanData();
 				await this.uiStore.initBanners();
 				this.clearAllStickyNotifications();
-
-				if (this.usersStore.currentUser) {
-					const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
-
-					if (mfaEnabled && !hasRecoveryCodesLeft) {
-						this.showToast({
-							title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
-							message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
-							type: 'info',
-							duration: 0,
-							dangerouslyUseHTMLString: true,
-						});
-					}
-				}
+				this.checkRecoveryCodesLeft();
 
 				this.$telemetry.track('User attempted to login', {
-					result: 'success',
-					withMfa: this.userHasMfaEnabled,
+					result: this.showMfaView ? 'mfa_success' : 'success',
 				});
 
 				this.clearCredentials();
@@ -147,26 +142,29 @@ export default defineComponent({
 			} catch (error) {
 				if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
 					this.showMfaView = true;
-					this.loading = false;
 					this.cacheCredentials(form);
 					return;
 				}
 
-				// this.formError = !this.showRecoveryCodeForm
-				// 	? this.$locale.baseText('mfa.code.invalid')
-				// 	: this.$locale.baseText('mfa.recovery.invalid');
-
 				this.$telemetry.track('User attempted to login', {
-					result: 'credentials_error',
-					withMfa: this.userHasMfaEnabled,
+					result: this.showMfaView ? 'mfa_token_rejected' : 'credentials_error',
 				});
 
-				this.showError(error, this.$locale.baseText('auth.signin.error'));
+				this.loading = false;
+				this.reportError = true;
+			}
+		},
+		onBackClick(fromForm: string) {
+			this.reportError = false;
+			if (fromForm === FORM.MFA_TOKEN) {
+				this.showMfaView = false;
 				this.loading = false;
 			}
 		},
-		onBackClick() {
-			this.showMfaView = false;
+		onFormChanged(toForm: string) {
+			if (toForm === FORM.MFA_RECOVERY_CODE) {
+				this.reportError = false;
+			}
 		},
 		clearCredentials() {
 			this.email = '';
@@ -175,6 +173,21 @@ export default defineComponent({
 		cacheCredentials(form: { email: string; password: string }) {
 			this.email = form.email;
 			this.password = form.password;
+		},
+		checkRecoveryCodesLeft() {
+			if (this.usersStore.currentUser) {
+				const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
+
+				if (mfaEnabled && !hasRecoveryCodesLeft) {
+					this.showToast({
+						title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
+						message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
+						type: 'info',
+						duration: 0,
+						dangerouslyUseHTMLString: true,
+					});
+				}
+			}
 		},
 	},
 });

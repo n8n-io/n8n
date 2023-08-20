@@ -104,6 +104,10 @@ export class AuthController {
 
 		if (user) {
 			if (user.mfaEnabled) {
+				if (!mfaToken && !mfaRecoveryCode) {
+					throw new AuthError('MFA Error', 998);
+				}
+
 				const { decryptedRecoveryCodes, decryptedSecret } =
 					await this.mfaService.getSecretAndRecoveryCodes(user.id);
 
@@ -111,10 +115,12 @@ export class AuthController {
 				user.mfaRecoveryCodes = decryptedRecoveryCodes;
 
 				const isMFATokenValid =
-					(await this.validateMfaToken(user, mfaToken)) ||
-					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
+					(await this.validateMfaToken(user, mfaToken ?? '')) ||
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode ?? ''));
 
-				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
+				if (!isMFATokenValid) {
+					throw new AuthError('Invalid mfa token or recovery code');
+				}
 			}
 
 			await issueCookie(res, user);
