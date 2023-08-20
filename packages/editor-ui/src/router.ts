@@ -18,7 +18,6 @@ import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
-import Mfa from './views/MfaView.vue';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 
@@ -713,20 +712,6 @@ export const routes = [
 				},
 			},
 		],
-	},
-	{
-		path: '/mfa',
-		name: VIEWS.MFA_VIEW,
-		components: {
-			default: Mfa,
-		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedOut],
-				},
-			},
-		},
 	},
 	{
 		path: '/saml/onboarding',

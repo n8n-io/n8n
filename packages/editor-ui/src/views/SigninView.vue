@@ -31,7 +31,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore, useUIStore } from '@/stores';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { FORM } from './MfaView.vue';
-import { ThisExpression } from 'esprima-next';
 
 export default defineComponent({
 	name: 'SigninView',
