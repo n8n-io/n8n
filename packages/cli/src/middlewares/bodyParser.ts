@@ -1,12 +1,22 @@
 import { parse as parseContentDisposition } from 'content-disposition';
 import { parse as parseContentType } from 'content-type';
 import getRawBody from 'raw-body';
-import { type RequestHandler } from 'express';
+import type { Request, RequestHandler } from 'express';
+import { parse as parseQueryString } from 'querystring';
+import { Parser as XmlParser } from 'xml2js';
 import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
+import { UnprocessableRequestError } from '@/ResponseHelper';
+
+const xmlParser = new XmlParser({
+	async: true,
+	normalize: true, // Trim whitespace inside text nodes
+	normalizeTags: true, // Transform tags to lowercase
+	explicitArray: false, // Only put properties in array if length > 1
+});
 
 const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-export const rawBody: RequestHandler = async (req, res, next) => {
+export const rawBodyReader: RequestHandler = async (req, res, next) => {
 	if ('content-type' in req.headers) {
 		const { type: contentType, parameters } = (() => {
 			try {
@@ -41,21 +51,32 @@ export const rawBody: RequestHandler = async (req, res, next) => {
 	next();
 };
 
-export const jsonParser: RequestHandler = async (req, res, next) => {
+export const parseBody = async (req: Request) => {
 	await req.readRawBody();
-
-	if (Buffer.isBuffer(req.rawBody)) {
-		if (req.contentType === 'application/json') {
-			try {
-				req.body = jsonParse<unknown>(req.rawBody.toString(req.encoding));
-			} catch (error) {
-				res.status(400).send({ error: 'Failed to parse request body' });
-				return;
+	const { rawBody, contentType, encoding } = req;
+	if (rawBody?.length) {
+		try {
+			if (contentType === 'application/json') {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				req.body = jsonParse(rawBody.toString(encoding));
+			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				req.body = await xmlParser.parseStringPromise(rawBody.toString(encoding));
+			} else if (contentType === 'application/x-www-form-urlencoded') {
+				req.body = parseQueryString(rawBody.toString(encoding), undefined, undefined, {
+					maxKeys: 1000,
+				});
+			} else if (contentType === 'text/plain') {
+				req.body = rawBody.toString(encoding);
 			}
-		} else {
-			req.body = {};
+		} catch (error) {
+			throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);
 		}
 	}
+};
 
+export const bodyParser: RequestHandler = async (req, res, next) => {
+	await parseBody(req);
+	if (!req.body) req.body = {};
 	next();
 };

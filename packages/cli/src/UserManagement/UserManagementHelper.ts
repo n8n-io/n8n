@@ -16,10 +16,8 @@ import { RoleService } from '@/services/role.service';
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
 	const host = !!config.getEnv('userManagement.emails.smtp.host');
-	const user = !!config.getEnv('userManagement.emails.smtp.auth.user');
-	const pass = !!config.getEnv('userManagement.emails.smtp.auth.pass');
 
-	return smtp && host && user && pass;
+	return smtp && host;
 }
 
 export function isSharingEnabled(): boolean {

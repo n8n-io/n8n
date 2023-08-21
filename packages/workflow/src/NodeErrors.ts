@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-shadow */
-
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { parseString } from 'xml2js';
 import { removeCircularRefs, isTraversableObject } from './utils';
 import type { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
-
-type Severity = 'warning' | 'error';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -56,8 +51,78 @@ const ERROR_STATUS_PROPERTIES = [
  */
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
+/**
+ * Descriptive messages for common errors.
+ */
+const COMMON_ERRORS: IDataObject = {
+	// nodeJS errors
+	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
+	ECONNRESET:
+		'The connection to the server wes closed unexpectedly, perhaps it is offline. You can retry request immidiately or wait and retry later.',
+	ENOTFOUND:
+		'The connection cannot be established, this usually occurs due to an incorrect host(domain) value',
+	ETIMEDOUT:
+		"The connection timed out, consider setting 'Retry on Fail' option in the node settings",
+	ERRADDRINUSE:
+		'The port is already occupied by some other application, if possible change the port or kill the application that is using it',
+	EADDRNOTAVAIL: 'The address is not available, ensure that you have the right IP address',
+	ECONNABORTED: 'The connection was aborted, perhaps the server is offline',
+	EHOSTUNREACH: 'The host is unreachable, perhaps the server is offline',
+	EAI_AGAIN: 'The DNS server returned an error, perhaps the server is offline',
+	ENOENT: 'The file or directory does not exist',
+	EISDIR: 'The file path expected but a given path is a directory',
+	ENOTDIR: 'The directory path expected but a given path is a file',
+	EACCES: 'Forbidden by access permissions, make sure you have the right permissions',
+	EEXIST: 'The file or directory already exists',
+	EPERM: 'Operation not permitted, make sure you have the right permissions',
+	// other errors
+	GETADDRINFO: 'The server closed the connection unexpectedly',
+};
+
+/**
+ * Descriptive messages for common HTTP status codes
+ * this is used by NodeApiError class
+ */
+const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
+	'4XX': 'Your request is invalid or could not be processed by the service',
+	'400': 'Bad request - please check your parameters',
+	'401': 'Authorization failed - please check your credentials',
+	'402': 'Payment required - perhaps check your payment details?',
+	'403': 'Forbidden - perhaps check your credentials?',
+	'404': 'The resource you are requesting could not be found',
+	'405': 'Method not allowed - please check you are using the right HTTP method',
+	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
+
+	'5XX': 'The service failed to process your request',
+	'500': 'The service was not able to process your request',
+	'502': 'Bad gateway - the service failed to handle your request',
+	'503':
+		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
+	'504': 'Gateway timed out - perhaps try again later?',
+};
+
+const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
+const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
+
+type Severity = 'warning' | 'error';
+
 interface ExecutionBaseErrorOptions {
 	cause?: Error | JsonObject;
+}
+
+interface NodeOperationErrorOptions {
+	message?: string;
+	description?: string;
+	runIndex?: number;
+	itemIndex?: number;
+	severity?: Severity;
+	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
+}
+
+interface NodeApiErrorOptions extends NodeOperationErrorOptions {
+	message?: string;
+	httpCode?: string;
+	parseXml?: boolean;
 }
 
 export abstract class ExecutionBaseError extends Error {
@@ -150,6 +215,7 @@ export abstract class NodeError extends ExecutionBaseError {
 				if (typeof value === 'number') return value.toString();
 				if (Array.isArray(value)) {
 					const resolvedErrors: string[] = value
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						.map((jsonError) => {
 							if (typeof jsonError === 'string') return jsonError;
 							if (typeof jsonError === 'number') return jsonError.toString();
@@ -186,14 +252,55 @@ export abstract class NodeError extends ExecutionBaseError {
 
 		return null;
 	}
-}
 
-interface NodeOperationErrorOptions {
-	message?: string;
-	description?: string;
-	runIndex?: number;
-	itemIndex?: number;
-	severity?: Severity;
+	/**
+	 * Set descriptive error message if code is provided or if message contains any of the common errors,
+	 * update description to include original message plus the description
+	 */
+	protected setDescriptiveErrorMessage(
+		message: string,
+		description: string | undefined | null,
+		code?: string | null,
+		messageMapping?: { [key: string]: string },
+	) {
+		let newMessage = message;
+		let newDescription = description as string;
+
+		if (messageMapping) {
+			for (const [mapKey, mapMessage] of Object.entries(messageMapping)) {
+				if ((message || '').toUpperCase().includes(mapKey.toUpperCase())) {
+					newMessage = mapMessage;
+					newDescription = this.updateDescription(message, description);
+					break;
+				}
+			}
+			if (newMessage !== message) {
+				return [newMessage, newDescription];
+			}
+		}
+
+		// if code is provided and it is in the list of common errors set the message and return early
+		if (code && COMMON_ERRORS[code.toUpperCase()]) {
+			newMessage = COMMON_ERRORS[code] as string;
+			newDescription = this.updateDescription(message, description);
+			return [newMessage, newDescription];
+		}
+
+		// check if message contains any of the common errors and set the message and description
+		for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
+			if ((message || '').toUpperCase().includes(errorCode.toUpperCase())) {
+				newMessage = errorDescriptiveMessage as string;
+				newDescription = this.updateDescription(message, description);
+				break;
+			}
+		}
+
+		return [newMessage, newDescription];
+	}
+
+	protected updateDescription(message: string, description: string | undefined | null) {
+		return `${message}${description ? ` - ${description}` : ''}`;
+	}
 }
 
 /**
@@ -213,36 +320,18 @@ export class NodeOperationError extends NodeError {
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
+
+		if (this.message === this.description) {
+			this.description = undefined;
+		}
+
+		[this.message, this.description] = this.setDescriptiveErrorMessage(
+			this.message,
+			this.description,
+			undefined,
+			options.messageMapping,
+		);
 	}
-}
-
-const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
-	'4XX': 'Your request is invalid or could not be processed by the service',
-	'400': 'Bad request - please check your parameters',
-	'401': 'Authorization failed - please check your credentials',
-	'402': 'Payment required - perhaps check your payment details?',
-	'403': 'Forbidden - perhaps check your credentials?',
-	'404': 'The resource you are requesting could not be found',
-	'405': 'Method not allowed - please check you are using the right HTTP method',
-	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
-
-	'5XX': 'The service failed to process your request',
-	'500': 'The service was not able to process your request',
-	'502': 'Bad gateway - the service failed to handle your request',
-	'503':
-		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
-	'504': 'Gateway timed out - perhaps try again later?',
-
-	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
-};
-
-const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
-const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
-
-interface NodeApiErrorOptions extends NodeOperationErrorOptions {
-	message?: string;
-	httpCode?: string;
-	parseXml?: boolean;
 }
 
 /**
@@ -263,6 +352,7 @@ export class NodeApiError extends NodeError {
 			runIndex,
 			itemIndex,
 			severity,
+			messageMapping,
 		}: NodeApiErrorOptions = {},
 	) {
 		super(node, error);
@@ -270,48 +360,27 @@ export class NodeApiError extends NodeError {
 		if (severity) this.severity = severity;
 		else if (httpCode?.charAt(0) !== '5') this.severity = 'warning';
 
+		// only for request library error
 		if (error.error) {
-			// only for request library error
 			removeCircularRefs(error.error as JsonObject);
 		}
 
-		if ((!message && (error.message || (error?.reason as IDataObject)?.message)) || description) {
-			this.message = (error.message ??
-				(error?.reason as IDataObject)?.message ??
-				description) as string;
-		}
-
+		// if not description provided, try to find it in the error object
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 		if (!description && (error.description || (error?.reason as IDataObject)?.description)) {
-			this.description = (error.description ??
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.description = (error.description ||
 				(error?.reason as IDataObject)?.description) as string;
 		}
 
-		if (
-			!httpCode &&
-			!message &&
-			this.message &&
-			this.message.toUpperCase().includes('ECONNREFUSED')
-		) {
-			httpCode = 'ECONNREFUSED';
-
-			const originalMessage = this.message;
-			if (!description) {
-				this.description = `${originalMessage}; ${this.description ?? ''}`;
-			}
-		}
-
-		if (
-			!httpCode &&
-			!message &&
-			this.message &&
-			this.message.toLowerCase().includes('bad gateway')
-		) {
-			httpCode = '502';
-
-			const originalMessage = this.message;
-			if (!description) {
-				this.description = `${originalMessage}; ${this.description ?? ''}`;
-			}
+		// if not message provided, try to find it in the error object or set description as message
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+		if (!message && (error.message || (error?.reason as IDataObject)?.message || description)) {
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.message = (error.message ||
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				(error?.reason as IDataObject)?.message ||
+				description) as string;
 		}
 
 		// if it's an error generated by axios
@@ -324,27 +393,54 @@ export class NodeApiError extends NodeError {
 			}
 		}
 
-		if (message) {
-			this.message = message;
-			this.description = description;
-			this.httpCode = httpCode ?? null;
-			return;
-		}
-
+		// set http code of this error
 		if (httpCode) {
 			this.httpCode = httpCode;
 		} else {
-			this.httpCode = this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES);
+			this.httpCode =
+				this.findProperty(error, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
 		}
 
-		this.setMessage();
-
-		if (parseXml) {
-			this.setDescriptionFromXml(error.error as string);
-			return;
+		// set description of this error
+		if (description) {
+			this.description = description;
 		}
 
-		this.description = this.findProperty(error, ERROR_MESSAGE_PROPERTIES, ERROR_NESTING_PROPERTIES);
+		if (!this.description) {
+			if (parseXml) {
+				this.setDescriptionFromXml(error.error as string);
+			} else {
+				this.description = this.findProperty(
+					error,
+					ERROR_MESSAGE_PROPERTIES,
+					ERROR_NESTING_PROPERTIES,
+				);
+			}
+		}
+
+		// set message if provided or set default message based on http code
+		if (message) {
+			this.message = message;
+		} else {
+			this.setDefaultStatusCodeMessage();
+		}
+
+		// if message and description are the same, unset redundant description
+		if (this.message === this.description) {
+			this.description = undefined;
+		}
+
+		// if message contain common error code set descriptive message and update description
+		[this.message, this.description] = this.setDescriptiveErrorMessage(
+			this.message,
+			this.description,
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.httpCode ||
+				(error?.code as string) ||
+				((error?.reason as JsonObject)?.code as string) ||
+				undefined,
+			messageMapping,
+		);
 
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
@@ -357,7 +453,7 @@ export class NodeApiError extends NodeError {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
 				result[topLevelKey],
 				ERROR_MESSAGE_PROPERTIES,
 				['Error'].concat(ERROR_NESTING_PROPERTIES),
@@ -367,9 +463,13 @@ export class NodeApiError extends NodeError {
 
 	/**
 	 * Set the error's message based on the HTTP status code.
-	 *
 	 */
-	private setMessage() {
+	private setDefaultStatusCodeMessage() {
+		// Set generic error message for 502 Bad Gateway
+		if (!this.httpCode && this.message && this.message.toLowerCase().includes('bad gateway')) {
+			this.httpCode = '502';
+		}
+
 		if (!this.httpCode) {
 			this.httpCode = null;
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -378,15 +478,18 @@ export class NodeApiError extends NodeError {
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
+			this.description = this.updateDescription(this.message, this.description);
 			this.message = STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
+				this.description = this.updateDescription(this.message, this.description);
 				this.message = STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
+				this.description = this.updateDescription(this.message, this.description);
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
