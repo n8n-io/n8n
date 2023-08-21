@@ -65,6 +65,22 @@ export async function caseSearch(
 	return listResource.call(this, 'listCase', 'title', 'title', 'cases', filter, paginationToken);
 }
 
+export async function commentSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return listResource.call(
+		this,
+		'listComment',
+		'message',
+		'message',
+		undefined,
+		filter,
+		paginationToken,
+	);
+}
+
 export async function alertSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,

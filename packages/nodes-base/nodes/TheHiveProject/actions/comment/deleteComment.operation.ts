@@ -1,21 +1,9 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
+import { commentRLC } from '../../descriptions';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Comment ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-	},
-];
+const properties: INodeProperties[] = [commentRLC];
 
 const displayOptions = {
 	show: {
@@ -27,13 +15,11 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+	const commentId = this.getNodeParameter('commentId', i, '', { extractValue: true }) as string;
 
-	const id = this.getNodeParameter('id', i) as string;
+	await theHiveApiRequest.call(this, 'DELETE', `/v1/comment/${commentId}`);
 
-	responseData = await theHiveApiRequest.call(this, 'DELETE', `/v1/comment/${id}`);
-
-	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
+	const executionData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
 		itemData: { item: i },
 	});
 
