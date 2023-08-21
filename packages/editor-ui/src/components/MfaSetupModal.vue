@@ -302,9 +302,9 @@ export default defineComponent({
 	justify-content: space-between;
 	align-items: normal;
 	align-content: normal;
-	padding-top: 10px;
-	padding-bottom: 10px;
-	gap: 10px;
+	padding-top: var(--spacing-xs);
+	padding-bottom: var(--spacing-xs);
+	gap: var(--spacing-xs);
 	margin-bottom: var(--spacing-2xs);
 	overflow-y: scroll;
 }
@@ -312,7 +312,7 @@ export default defineComponent({
 .recoveryCodesContainer span {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
-	line-height: 19px;
+	line-height: var(--spacing-m);
 	color: #7d7d87;
 }
 
