@@ -12,13 +12,13 @@ export class AddMfaColumns1690000000030 implements ReversibleMigration {
 			}),
 			new TableColumn({
 				name: 'mfaSecret',
-				type: 'string',
+				type: 'text',
 				isNullable: true,
 				default: null,
 			}),
 			new TableColumn({
 				name: 'mfaRecoveryCodes',
-				type: 'string',
+				type: 'text',
 				isNullable: true,
 				default: null,
 			}),
