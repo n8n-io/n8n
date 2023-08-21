@@ -276,7 +276,16 @@ export class Worker extends BaseCommand {
 			'WorkerCommandReceiveHandler',
 			async (channel: string, messageString: string) => {
 				if (channel === COMMAND_REDIS_CHANNEL) {
-					const message = jsonParse<RedisServiceCommandObject>(messageString);
+					if (!messageString) return;
+					let message: RedisServiceCommandObject;
+					try {
+						message = jsonParse<RedisServiceCommandObject>(messageString);
+					} catch {
+						LoggerProxy.debug(
+							`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
+						);
+						return;
+					}
 					if (message) {
 						if (message.targets && !message.targets.includes(this.uniqueInstanceId)) {
 							return; // early return if the message is not for this worker
@@ -285,7 +294,7 @@ export class Worker extends BaseCommand {
 							case 'getStatus':
 								await redisPublisher.publishToWorkerChannel({
 									workerId: this.uniqueInstanceId,
-									command: 'getStatus',
+									command: message.command,
 									payload: {
 										workerId: this.uniqueInstanceId,
 										runningJobs: Object.keys(Worker.runningJobs),
@@ -302,6 +311,12 @@ export class Worker extends BaseCommand {
 												interfaces?.map((net) => `${net.family} - address: ${net.address}`) ?? '',
 										),
 									},
+								});
+								break;
+							case 'getId':
+								await redisPublisher.publishToWorkerChannel({
+									workerId: this.uniqueInstanceId,
+									command: message.command,
 								});
 								break;
 							case 'restartEventBus':
