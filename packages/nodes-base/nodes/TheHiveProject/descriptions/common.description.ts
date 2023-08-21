@@ -257,7 +257,7 @@ export const searchOptions: INodeProperties = {
 			default: [],
 			displayOptions: {
 				show: {
-					'/resource': ['observale'],
+					'/resource': ['observable'],
 				},
 				hide: {
 					returnCount: [true],
