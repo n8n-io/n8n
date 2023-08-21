@@ -37,6 +37,11 @@ export interface MessageWithCallback {
 	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void;
 }
 
+export interface MessageEventBusInitializeOptions {
+	skipRecoveryPass?: boolean;
+	workerId?: string;
+}
+
 export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
@@ -70,7 +75,7 @@ export class MessageEventBus extends EventEmitter {
 	 *
 	 * Sets `isInitialized` to `true` once finished.
 	 */
-	async initialize() {
+	async initialize(options?: MessageEventBusInitializeOptions): Promise<void> {
 		if (this.isInitialized) {
 			return;
 		}
@@ -93,67 +98,77 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		LoggerProxy.debug('Initializing event writer');
-		this.logWriter = await MessageEventBusLogWriter.getInstance();
+		if (options?.workerId) {
+			this.logWriter = await MessageEventBusLogWriter.getInstance({
+				logBaseName:
+					config.getEnv('eventBus.logWriter.logBaseName') + '-worker-' + options.workerId,
+			});
+		} else {
+			this.logWriter = await MessageEventBusLogWriter.getInstance();
+		}
 
 		if (!this.logWriter) {
 			LoggerProxy.warn('Could not initialize event writer');
 		}
 
-		// unsent event check:
-		// - find unsent messages in current event log(s)
-		// - cycle event logs and start the logging to a fresh file
-		// - retry sending events
-		LoggerProxy.debug('Checking for unsent event messages');
-		const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
-		LoggerProxy.debug(
-			`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
-		);
-		this.logWriter?.startLogging();
-		await this.send(unsentAndUnfinished.unsentMessages);
+		if (options?.skipRecoveryPass) {
+			LoggerProxy.debug('Skipping unsent event check');
+		} else {
+			// unsent event check:
+			// - find unsent messages in current event log(s)
+			// - cycle event logs and start the logging to a fresh file
+			// - retry sending events
+			LoggerProxy.debug('Checking for unsent event messages');
+			const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
+			LoggerProxy.debug(
+				`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
+			);
+			this.logWriter?.startLogging();
+			await this.send(unsentAndUnfinished.unsentMessages);
 
-		const unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+			const unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
 
-		if (unfinishedExecutionIds.length > 0) {
-			LoggerProxy.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
-			LoggerProxy.info('This could be due to a crash of an active workflow or a restart of n8n.');
-			const activeWorkflows = await Container.get(WorkflowRepository).find({
-				where: { active: true },
-				select: ['id', 'name'],
-			});
-			if (activeWorkflows.length > 0) {
-				LoggerProxy.info('Currently active workflows:');
-				for (const workflowData of activeWorkflows) {
-					LoggerProxy.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+			if (unfinishedExecutionIds.length > 0) {
+				LoggerProxy.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
+				LoggerProxy.info('This could be due to a crash of an active workflow or a restart of n8n.');
+				const activeWorkflows = await Container.get(WorkflowRepository).find({
+					where: { active: true },
+					select: ['id', 'name'],
+				});
+				if (activeWorkflows.length > 0) {
+					LoggerProxy.info('Currently active workflows:');
+					for (const workflowData of activeWorkflows) {
+						LoggerProxy.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+					}
 				}
+				if (this.logWriter?.isRecoveryProcessRunning()) {
+					// if we end up here, it means that the previous recovery process did not finish
+					// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
+					// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
+					LoggerProxy.warn('Skipping recover process since it previously failed.');
+					for (const executionId of unfinishedExecutionIds) {
+						LoggerProxy.info(`Setting status of execution ${executionId} to crashed`);
+						await Container.get(ExecutionRepository).updateExistingExecution(executionId, {
+							status: 'crashed',
+							stoppedAt: new Date(),
+						});
+					}
+				} else {
+					// start actual recovery process and write recovery process flag file
+					this.logWriter?.startRecoveryProcess();
+					for (const executionId of unfinishedExecutionIds) {
+						LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
+						await recoverExecutionDataFromEventLogMessages(
+							executionId,
+							unsentAndUnfinished.unfinishedExecutions[executionId],
+							true,
+						);
+					}
+				}
+				// remove the recovery process flag file
+				this.logWriter?.endRecoveryProcess();
 			}
-			if (this.logWriter?.isRecoveryProcessRunning()) {
-				// if we end up here, it means that the previous recovery process did not finish
-				// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
-				// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
-				LoggerProxy.warn('Skipping recover process since it previously failed.');
-				for (const executionId of unfinishedExecutionIds) {
-					LoggerProxy.info(`Setting status of execution ${executionId} to crashed`);
-					await Container.get(ExecutionRepository).updateExistingExecution(executionId, {
-						status: 'crashed',
-						stoppedAt: new Date(),
-					});
-				}
-			} else {
-				// start actual recovery process and write recovery process flag file
-				this.logWriter?.startRecoveryProcess();
-				for (const executionId of unfinishedExecutionIds) {
-					LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
-					await recoverExecutionDataFromEventLogMessages(
-						executionId,
-						unsentAndUnfinished.unfinishedExecutions[executionId],
-						true,
-					);
-				}
-			}
-			// remove the recovery process flag file
-			this.logWriter?.endRecoveryProcess();
 		}
-
 		// if configured, run this test every n ms
 		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
 			if (this.pushIntervalTimer) {

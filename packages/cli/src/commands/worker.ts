@@ -27,6 +27,7 @@ import { generateHostInstanceId } from '@/databases/utils/generators';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
+import { eventBus } from '../eventbus';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -239,6 +240,11 @@ export class Worker extends BaseCommand {
 		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
+
+		await eventBus.initialize({
+			workerId: this.uniqueInstanceId,
+		});
+		await this.initRedis();
 	}
 
 	async run() {
