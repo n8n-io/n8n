@@ -82,6 +82,8 @@ export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creati
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
+export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger';
+
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -148,14 +150,13 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	NODE_TRIGGER_CHAT_BUTTON,
 ];
 
 export const NODES_USING_CODE_NODE_EDITOR = [
 	CODE_NODE_TYPE,
 	'@n8n/nodes-langchain.dynamicTool',
 ];
-
-export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger';
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 

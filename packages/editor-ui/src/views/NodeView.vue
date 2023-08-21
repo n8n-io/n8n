@@ -606,14 +606,14 @@ export default defineComponent({
 		},
 		triggerNodes(): INodeUi[] {
 			return this.nodes.filter(
-				(node) => node.type === START_NODE_TYPE || this.nodeTypesStore.isTriggerNode(node.type),
+				(node) => node.type === START_NODE_TYPE || this.nodeTypesStore.isTriggerNode(node.type) && node.type !== NODE_TRIGGER_CHAT_BUTTON,
 			);
 		},
 		containsTrigger(): boolean {
 			return this.triggerNodes.length > 0;
 		},
 		containsChatNodes(): boolean {
-			return !!this.nodes.find((node)=> node.type === NODE_TRIGGER_CHAT_BUTTON);
+			return !!this.nodes.find((node)=> node.type === NODE_TRIGGER_CHAT_BUTTON && node.disabled !== true);
 		},
 		isExecutionDisabled(): boolean {
 			return !this.containsTrigger || this.allTriggersDisabled;
