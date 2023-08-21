@@ -17,6 +17,7 @@ describe('License', () => {
 		config.set('license.serverUrl', MOCK_SERVER_URL);
 		config.set('license.autoRenewEnabled', true);
 		config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
+		config.set('license.tenantId', 1);
 	});
 
 	let license: License;
