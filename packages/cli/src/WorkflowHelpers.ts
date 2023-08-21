@@ -1,7 +1,6 @@
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
-import { SubworkflowOperationError } from 'n8n-workflow';
 
 import type {
 	IDataObject,
@@ -19,6 +18,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	NodeOperationError,
+	SubworkflowOperationError,
 	Workflow,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
