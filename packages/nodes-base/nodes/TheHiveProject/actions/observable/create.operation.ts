@@ -1,8 +1,9 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -90,7 +91,7 @@ export async function execute(
 	i: number,
 	item: INodeExecutionData,
 ): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+	let responseData: IDataObject = {};
 	let body: IDataObject = {};
 
 	const createIn = this.getNodeParameter('createIn', i) as string;
@@ -149,6 +150,13 @@ export async function execute(
 		);
 	} else {
 		responseData = await theHiveApiRequest.call(this, 'POST', endpoint, body);
+	}
+
+	if (responseData.failure) {
+		const message = (responseData.failure as IDataObject[])
+			.map((error: IDataObject) => error.message)
+			.join(', ');
+		throw new NodeOperationError(this.getNode(), message, { itemIndex: i });
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {

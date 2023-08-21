@@ -445,7 +445,7 @@ export const observableCommonFields = [
 		removed: true,
 	},
 	{
-		displayName: 'Message',
+		displayName: 'Description',
 		id: 'message',
 		type: 'string',
 		removed: false,

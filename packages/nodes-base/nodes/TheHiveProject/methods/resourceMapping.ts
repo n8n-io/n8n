@@ -403,6 +403,8 @@ export async function getObservableFields(
 export async function getObservableUpdateFields(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
+	const dataTypes = await loadObservableTypes.call(this);
+
 	const excludedFromMatching = ['addTags', 'removeTags'];
 	const excludeFields: string[] = ['attachment', 'data', 'startDate', 'zipPassword', 'isZip'];
 
@@ -421,6 +423,10 @@ export async function getObservableUpdateFields(
 
 			if (excludedFromMatching.includes(field.id)) {
 				field.canBeUsedToMatch = false;
+			}
+
+			if (field.id === 'dataType') {
+				field.options = dataTypes;
 			}
 
 			return field;
