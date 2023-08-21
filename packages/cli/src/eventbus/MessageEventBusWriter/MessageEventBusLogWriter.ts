@@ -98,6 +98,22 @@ export class MessageEventBusLogWriter {
 		}
 	}
 
+	startRecoveryProcess() {
+		if (this.worker) {
+			this.worker.postMessage({ command: 'startRecoveryProcess', data: {} });
+		}
+	}
+
+	isRecoveryProcessRunning(): boolean {
+		return existsSync(this.getRecoveryInProgressFileName());
+	}
+
+	endRecoveryProcess() {
+		if (this.worker) {
+			this.worker.postMessage({ command: 'endRecoveryProcess', data: {} });
+		}
+	}
+
 	private async startThread() {
 		if (this.worker) {
 			await this.close();
@@ -238,6 +254,10 @@ export class MessageEventBusLogWriter {
 		} else {
 			return `${MessageEventBusLogWriter.options.logFullBasePath}.log`;
 		}
+	}
+
+	getRecoveryInProgressFileName(): string {
+		return `${MessageEventBusLogWriter.options.logFullBasePath}.recoveryInProgress`;
 	}
 
 	cleanAllLogs() {

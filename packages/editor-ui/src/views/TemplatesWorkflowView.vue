@@ -67,6 +67,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
@@ -77,7 +78,7 @@ export default defineComponent({
 		WorkflowPreview,
 	},
 	computed: {
-		...mapStores(useTemplatesStore),
+		...mapStores(useTemplatesStore, usePostHog),
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
 			return this.templatesStore.getTemplateById(this.templateId);
 		},
@@ -101,8 +102,9 @@ export default defineComponent({
 			};
 
 			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload);
-
+			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+				withPostHog: true,
+			});
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
 				window.open(route.href, '_blank');
