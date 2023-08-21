@@ -6,37 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
-import { caseRLC } from '../../descriptions';
+import { attachmentsUi, caseRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	caseRLC,
-	{
-		displayName: 'Attachments',
-		name: 'attachmentsUi',
-		placeholder: 'Add Attachment',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		options: [
-			{
-				name: 'values',
-				displayName: 'Values',
-				values: [
-					{
-						displayName: 'Attachment Field Name',
-						name: 'field',
-						type: 'string',
-						default: 'data',
-						description: 'Add the field name from the input node',
-						hint: 'The name of the field with the attachment in the node input',
-					},
-				],
-			},
-		],
-		default: {},
-		description: 'Array of supported attachments to add to the message',
-	},
+	attachmentsUi,
 	{
 		displayName: 'Options',
 		name: 'options',

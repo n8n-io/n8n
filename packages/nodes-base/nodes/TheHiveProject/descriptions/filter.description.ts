@@ -10,7 +10,7 @@ const field: INodeProperties[] = [
 		description: 'Dot notation is also supported, e.g. customFields.field1',
 		displayOptions: {
 			hide: {
-				'/resource': ['alert', 'case', 'task', 'observable'],
+				'/resource': ['alert', 'case', 'task', 'observable', 'log'],
 			},
 		},
 	},
@@ -79,6 +79,28 @@ const field: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				'/resource': ['observable'],
+			},
+		},
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Field',
+		name: 'field',
+		type: 'options',
+		default: 'message',
+		options: [
+			{
+				name: 'Message',
+				value: 'message',
+			},
+			{
+				name: 'Date',
+				value: 'date',
+			},
+		],
+		displayOptions: {
+			show: {
+				'/resource': ['log'],
 			},
 		},
 	},

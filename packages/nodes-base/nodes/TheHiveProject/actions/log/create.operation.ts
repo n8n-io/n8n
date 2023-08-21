@@ -9,7 +9,7 @@ import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
 
 import { fixFieldType, prepareInputItem } from '../../helpers/utils';
-import { taskRLC } from '../../descriptions';
+import { attachmentsUi, taskRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
 	taskRLC,
@@ -31,14 +31,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'Attachments',
-		name: 'attachments',
-		type: 'string',
-		placeholder: 'e.g. data, data2',
-		default: 'data',
-		hint: 'The names of the input fields containing the binary file data to be sent as attachments',
-	},
+	attachmentsUi,
 ];
 
 const displayOptions = {
@@ -60,7 +53,6 @@ export async function execute(
 
 	const dataMode = this.getNodeParameter('logFields.mappingMode', i) as string;
 	const taskId = this.getNodeParameter('taskId', i, '', { extractValue: true }) as string;
-	const attachments = this.getNodeParameter('attachments', i, '') as string;
 
 	if (dataMode === 'autoMapInputData') {
 		const schema = this.getNodeParameter('logFields.schema', i) as IDataObject[];
@@ -74,12 +66,11 @@ export async function execute(
 
 	body = fixFieldType(body);
 
-	if (attachments) {
-		const inputDataFields = attachments
-			.split(',')
-			.filter((field) => field)
-			.map((field) => field.trim());
+	const inputDataFields = (
+		this.getNodeParameter('attachmentsUi.values', i, []) as IDataObject[]
+	).map((entry) => (entry.field as string).trim());
 
+	if (inputDataFields.length) {
 		const binaries = [];
 
 		for (const inputDataField of inputDataFields) {

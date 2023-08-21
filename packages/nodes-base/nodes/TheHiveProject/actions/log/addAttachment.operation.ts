@@ -1,20 +1,14 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
-import { logRLC } from '../../descriptions';
+import { attachmentsUi, logRLC } from '../../descriptions';
 
-const properties: INodeProperties[] = [
-	logRLC,
-	{
-		displayName: 'Input Data Field Names',
-		name: 'inputDataFiels',
-		type: 'string',
-		placeholder: 'e.g. data, data2',
-		default: 'data',
-		required: true,
-		hint: 'The names of the input fields containing the binary file data to be sent as attachments',
-	},
-];
+const properties: INodeProperties[] = [logRLC, attachmentsUi];
 
 const displayOptions = {
 	show: {
@@ -27,10 +21,10 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const logId = this.getNodeParameter('logId', i, '', { extractValue: true }) as string;
-	const inputDataFields = (this.getNodeParameter('inputDataFiels', i, '') as string)
-		.split(',')
-		.filter((item) => item)
-		.map((item) => item.trim());
+
+	const inputDataFields = (
+		this.getNodeParameter('attachmentsUi.values', i, []) as IDataObject[]
+	).map((entry) => (entry.field as string).trim());
 
 	const attachments = [];
 
