@@ -233,6 +233,11 @@ export class MessageEventBus extends EventEmitter {
 		LoggerProxy.debug('EventBus shut down.');
 	}
 
+	async restart() {
+		await this.close();
+		await this.initialize({ skipRecoveryPass: true });
+	}
+
 	async send(msgs: EventMessageTypes | EventMessageTypes[]) {
 		if (!Array.isArray(msgs)) {
 			msgs = [msgs];

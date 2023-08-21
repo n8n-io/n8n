@@ -7,7 +7,7 @@ import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
 
 import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
-import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
+import { Workflow, NodeOperationError, LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -28,6 +28,12 @@ import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '../eventbus';
+import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
+import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
+import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
+import { COMMAND_REDIS_CHANNEL } from '../services/redis/RedisServiceHelper';
+import type { RedisServiceCommandObject } from '../services/redis/RedisServiceCommands';
+import * as os from 'os';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -245,6 +251,77 @@ export class Worker extends BaseCommand {
 			workerId: this.uniqueInstanceId,
 		});
 		await this.initRedis();
+	}
+
+	/**
+	 * Initializes the redis connection
+	 * A publishing connection to redis is created to publish events to the event log
+	 * A subscription connection to redis is created to subscribe to commands from the main process
+	 * The subscription connection adds a handler to handle the command messages
+	 */
+	async initRedis() {
+		const redisPublisher = Container.get(RedisServicePubSubPublisher);
+		const redisSubscriber = Container.get(RedisServicePubSubSubscriber);
+		await redisPublisher.init();
+		await redisPublisher.publishToEventLog(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+				payload: {
+					workerId: this.uniqueInstanceId,
+				},
+			}),
+		);
+		await redisSubscriber.subscribeToCommandChannel();
+		redisSubscriber.addMessageHandler(
+			'WorkerCommandReceiveHandler',
+			async (channel: string, messageString: string) => {
+				if (channel === COMMAND_REDIS_CHANNEL) {
+					const message = jsonParse<RedisServiceCommandObject>(messageString);
+					if (message) {
+						if (message.targets && !message.targets.includes(this.uniqueInstanceId)) {
+							return; // early return if the message is not for this worker
+						}
+						switch (message.command) {
+							case 'getStatus':
+								await redisPublisher.publishToWorkerChannel({
+									workerId: this.uniqueInstanceId,
+									command: 'getStatus',
+									payload: {
+										workerId: this.uniqueInstanceId,
+										runningJobs: Object.keys(Worker.runningJobs),
+										freeMem: os.freemem(),
+										totalMem: os.totalmem(),
+										uptime: process.uptime(),
+										loadAvg: os.loadavg(),
+										cpus: os.cpus().map((cpu) => `${cpu.model} - speed: ${cpu.speed}`),
+										arch: os.arch(),
+										platform: os.platform(),
+										hostname: os.hostname(),
+										net: Object.values(os.networkInterfaces()).flatMap(
+											(interfaces) =>
+												interfaces?.map((net) => `${net.family} - address: ${net.address}`) ?? '',
+										),
+									},
+								});
+								break;
+							case 'restartEventBus':
+								await eventBus.restart();
+								break;
+							case 'stopWorker':
+								// TODO: implement proper shutdown
+								// await this.stopProcess();
+								break;
+							default:
+								LoggerProxy.debug(
+									// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+									`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
+								);
+								break;
+						}
+					}
+				}
+			},
+		);
 	}
 
 	async run() {
