@@ -230,7 +230,6 @@ export default defineComponent({
 }
 
 .executionList {
-	height: 100%;
 	flex: 1;
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
