@@ -26,6 +26,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
@@ -98,6 +99,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_LM_CHAT_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {

@@ -157,7 +157,7 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		runData: IRunData,
 		startNodes: string[],
-		destinationNode: string,
+		destinationNode?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
@@ -166,6 +166,7 @@ export class WorkflowExecute {
 		this.status = 'running';
 
 		const runIndex = 0;
+		let runNodeFilter: string[] | undefined;
 
 		// Initialize the nodeExecutionStack and waitingExecution with
 		// the data from runData
@@ -179,7 +180,6 @@ export class WorkflowExecute {
 			let incomingSourceData: ITaskDataConnectionsSource | null = null;
 
 			if (incomingNodeConnections === undefined) {
-				// If it has no incoming data add the default empty data
 				incomingData.push([
 					{
 						json: {},
@@ -223,55 +223,56 @@ export class WorkflowExecute {
 
 			nodeExecutionStack.push(executeData);
 
-			// Check if the destinationNode has to be added as waiting
-			// because some input data is already fully available
-			incomingNodeConnections = workflow.connectionsByDestinationNode[destinationNode];
-			if (incomingNodeConnections !== undefined) {
-				for (const connections of incomingNodeConnections.main) {
-					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
-						connection = connections[inputIndex];
+			if (destinationNode) {
+				// Check if the destinationNode has to be added as waiting
+				// because some input data is already fully available
+				incomingNodeConnections = workflow.connectionsByDestinationNode[destinationNode];
+				if (incomingNodeConnections !== undefined) {
+					for (const connections of incomingNodeConnections.main) {
+						for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
+							connection = connections[inputIndex];
 
-						if (waitingExecution[destinationNode] === undefined) {
-							waitingExecution[destinationNode] = {};
-							waitingExecutionSource[destinationNode] = {};
-						}
-						if (waitingExecution[destinationNode][runIndex] === undefined) {
-							waitingExecution[destinationNode][runIndex] = {};
-							waitingExecutionSource[destinationNode][runIndex] = {};
-						}
-						if (waitingExecution[destinationNode][runIndex][connection.type] === undefined) {
-							waitingExecution[destinationNode][runIndex][connection.type] = [];
-							waitingExecutionSource[destinationNode][runIndex][connection.type] = [];
-						}
+							if (waitingExecution[destinationNode] === undefined) {
+								waitingExecution[destinationNode] = {};
+								waitingExecutionSource[destinationNode] = {};
+							}
+							if (waitingExecution[destinationNode][runIndex] === undefined) {
+								waitingExecution[destinationNode][runIndex] = {};
+								waitingExecutionSource[destinationNode][runIndex] = {};
+							}
+							if (waitingExecution[destinationNode][runIndex][connection.type] === undefined) {
+								waitingExecution[destinationNode][runIndex][connection.type] = [];
+								waitingExecutionSource[destinationNode][runIndex][connection.type] = [];
+							}
 
-						if (runData[connection.node] !== undefined) {
-							// Input data exists so add as waiting
-							// incomingDataDestination.push(runData[connection.node!][runIndex].data![connection.type][connection.index]);
-							waitingExecution[destinationNode][runIndex][connection.type].push(
-								runData[connection.node][runIndex].data![connection.type][connection.index],
-							);
-							waitingExecutionSource[destinationNode][runIndex][connection.type].push({
-								previousNode: connection.node,
-								previousNodeOutput: connection.index || undefined,
-								previousNodeRun: runIndex || undefined,
-							} as ISourceData);
-						} else {
-							waitingExecution[destinationNode][runIndex][connection.type].push(null);
-							waitingExecutionSource[destinationNode][runIndex][connection.type].push(null);
+							if (runData[connection.node] !== undefined) {
+								// Input data exists so add as waiting
+								// incomingDataDestination.push(runData[connection.node!][runIndex].data![connection.type][connection.index]);
+								waitingExecution[destinationNode][runIndex][connection.type].push(
+									runData[connection.node][runIndex].data![connection.type][connection.index],
+								);
+								waitingExecutionSource[destinationNode][runIndex][connection.type].push({
+									previousNode: connection.node,
+									previousNodeOutput: connection.index || undefined,
+									previousNodeRun: runIndex || undefined,
+								} as ISourceData);
+							} else {
+								waitingExecution[destinationNode][runIndex][connection.type].push(null);
+								waitingExecutionSource[destinationNode][runIndex][connection.type].push(null);
+							}
 						}
 					}
 				}
+
+				// Only run the parent nodes and no others
+				// eslint-disable-next-line prefer-const
+				runNodeFilter = workflow
+					.getParentNodes(destinationNode)
+					.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
+
+				runNodeFilter.push(destinationNode);
 			}
 		}
-
-		// Only run the parent nodes and no others
-		let runNodeFilter: string[] | undefined;
-		// eslint-disable-next-line prefer-const
-		runNodeFilter = workflow
-			.getParentNodes(destinationNode)
-			.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
-
-		runNodeFilter.push(destinationNode);
 
 		this.runExecutionData = {
 			startData: {

@@ -2,7 +2,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 
-import type { IRunData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import type { IRunData, IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -57,9 +57,11 @@ export const workflowRun = defineComponent({
 
 			return response;
 		},
-		async runWorkflow(
-			nodeName?: string,
-			source?: string,
+
+		async runWorkflow(options:
+			{ destinationNode: string, source?: string } |
+			{ triggerNode: string, nodeData: ITaskData, source?: string } |
+			{ source?: string }
 		): Promise<IExecutionPushResponse | undefined> {
 			const workflow = this.getCurrentWorkflow();
 
@@ -76,7 +78,7 @@ export const workflowRun = defineComponent({
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist === true) {
 					// If issues exist get all of the issues of all nodes
-					const workflowIssues = this.checkReadyForExecution(workflow, nodeName);
+					const workflowIssues = this.checkReadyForExecution(workflow, options.destinationNode);
 					if (workflowIssues !== null) {
 						const errorMessages = [];
 						let nodeIssues: string[];
@@ -115,13 +117,13 @@ export const workflowRun = defineComponent({
 							duration: 0,
 						});
 						this.titleSet(workflow.name as string, 'ERROR');
-						void this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
+						void this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName: options.destinationNode });
 
 						await this.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {
 								workflow_id: workflow.id,
 								workflow_name: workflow.name,
-								execution_type: nodeName ? 'node' : 'workflow',
+								execution_type: (options.destinationNode || options.triggerNode) ? 'node' : 'workflow',
 								node_graph_string: JSON.stringify(
 									TelemetryHelpers.generateNodesGraph(
 										workflowData as IWorkflowBase,
@@ -138,8 +140,8 @@ export const workflowRun = defineComponent({
 
 				// Get the direct parents of the node
 				let directParentNodes: string[] = [];
-				if (nodeName !== undefined) {
-					directParentNodes = workflow.getParentNodes(nodeName, 'main', 1);
+				if (options.destinationNode !== undefined) {
+					directParentNodes = workflow.getParentNodes(options.destinationNode, 'main', 1);
 				}
 
 				const runData = this.workflowsStore.getWorkflowRunData;
@@ -181,8 +183,16 @@ export const workflowRun = defineComponent({
 					}
 				}
 
-				if (startNodes.length === 0 && nodeName !== undefined) {
-					startNodes.push(nodeName);
+				let executedNode: string | undefined;
+				if (startNodes.length === 0 && 'destinationNode' in options && options.destinationNode !== undefined) {
+					executedNode = options.destinationNode;
+					startNodes.push(options.destinationNode);
+				} else if ('triggerNode' in options && 'nodeData' in options) {
+					startNodes.push.apply(startNodes, workflow.getChildNodes(options.triggerNode, 'main', 1));
+					newRunData = {
+						[options.triggerNode]: [options.nodeData],
+					};
+					executedNode = options.triggerNode;
 				}
 
 				const isNewWorkflow = this.workflowsStore.isNewWorkflow;
@@ -199,8 +209,8 @@ export const workflowRun = defineComponent({
 					pinData: workflowData.pinData,
 					startNodes,
 				};
-				if (nodeName) {
-					startRunData.destinationNode = nodeName;
+				if ('destinationNode' in options) {
+					startRunData.destinationNode = options.destinationNode;
 				}
 
 				// Init the execution data to represent the start of the execution
@@ -213,7 +223,7 @@ export const workflowRun = defineComponent({
 					startedAt: new Date(),
 					stoppedAt: undefined,
 					workflowId: workflow.id,
-					executedNode: nodeName,
+					executedNode,
 					data: {
 						resultData: {
 							runData: newRunData || {},
@@ -236,7 +246,7 @@ export const workflowRun = defineComponent({
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
-				await this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
+				await this.$externalHooks().run('workflowRun.runWorkflow', { nodeName: options.destinationNode, source: options.source });
 
 				return runWorkflowApiResponse;
 			} catch (error) {

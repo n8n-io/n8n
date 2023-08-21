@@ -121,6 +121,17 @@
 					/>
 				</span>
 
+				<n8n-button
+					v-if="containsChatNodes"
+					@click.stop="onOpenChat"
+					:loading="workflowRunning"
+					label="Chat"
+					size="large"
+					icon="play-circle"
+					type="primary"
+					data-test-id="workflow-chat-button"
+				/>
+
 				<n8n-icon-button
 					v-if="workflowRunning === true && !executionWaitingForWebhook"
 					icon="stop"
@@ -207,6 +218,8 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
+	NODE_TRIGGER_CHAT_BUTTON,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -599,6 +612,9 @@ export default defineComponent({
 		containsTrigger(): boolean {
 			return this.triggerNodes.length > 0;
 		},
+		containsChatNodes(): boolean {
+			return !!this.nodes.find((node)=> node.type === NODE_TRIGGER_CHAT_BUTTON);
+		},
 		isExecutionDisabled(): boolean {
 			return !this.containsTrigger || this.allTriggersDisabled;
 		},
@@ -682,7 +698,15 @@ export default defineComponent({
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
-			void this.runWorkflow(nodeName, source);
+			void this.runWorkflow({destinationNode: nodeName, source});
+		},
+		async onOpenChat() {
+			const telemetryPayload = {
+				workflow_id: this.workflowsStore.workflowId,
+			};
+			this.$telemetry.track('User clicked chat open button', telemetryPayload);
+			void this.$externalHooks().run('nodeView.onOpenChat', telemetryPayload);
+			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
 		},
 		async onRunWorkflow() {
 			void this.getWorkflowDataToSave().then((workflowData) => {
@@ -697,7 +721,7 @@ export default defineComponent({
 				void this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
-			await this.runWorkflow();
+			await this.runWorkflow({});
 		},
 		onRunContainerClick() {
 			if (this.containsTrigger && !this.allTriggersDisabled) return;

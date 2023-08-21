@@ -43,7 +43,6 @@
       "dist/nodes/document_loaders/DocumentGithubLoader/DocumentGithubLoader.node.js",
       "dist/nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node.js",
       "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAI.node.js",
-      "dist/nodes/vector_store/InMemoryVectorStore/InMemoryVectorStore.node.js",
       "dist/nodes/llms/LMOpenAi/LMOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LMCohere.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LMOpenHuggingFaceInference.node.js",
@@ -53,7 +52,9 @@
       "dist/nodes/tools/ToolDynamicTool/ToolDynamicTool.node.js",
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
-      "dist/nodes/tools/ToolWikipedia/ToolWikipedia.node.js"
+      "dist/nodes/tools/ToolWikipedia/ToolWikipedia.node.js",
+      "dist/nodes/trigger/ManualChatTrigger/ManualChatTrigger.node.js",
+      "dist/nodes/vector_store/InMemoryVectorStore/InMemoryVectorStore.node.js"
     ]
   },
   "devDependencies": {

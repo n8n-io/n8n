@@ -34,7 +34,7 @@ export class LangChain implements INodeType {
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				default: '',
+				default: '={{ $json.input }}',
 			},
 		],
 	};
@@ -98,7 +98,7 @@ export class LangChain implements INodeType {
 				input: text,
 			});
 
-			returnData.push({ json: { response } });
+			returnData.push({ json: response });
 		}
 		return this.prepareOutputData(returnData);
 	}

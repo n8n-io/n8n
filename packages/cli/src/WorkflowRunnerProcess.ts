@@ -287,8 +287,7 @@ class WorkflowRunnerProcess {
 		if (
 			this.data.runData === undefined ||
 			this.data.startNodes === undefined ||
-			this.data.startNodes.length === 0 ||
-			this.data.destinationNode === undefined
+			this.data.startNodes.length === 0
 		) {
 			// Execute all nodes
 

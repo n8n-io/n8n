@@ -1,4 +1,4 @@
-lockfileVersion: '6.0'
+lockfileVersion: '6.1'
 
 settings:
   autoInstallPeers: true
@@ -155,6 +155,9 @@ importers:
       langchain:
         specifier: ^0.0.126
         version: 0.0.126(@huggingface/inference@1.8.0)(cohere-ai@6.2.2)(ignore@5.2.4)
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       n8n-nodes-base:
         specifier: workspace:*
         version: link:../../nodes-base
@@ -181,8 +184,8 @@ importers:
         specifier: '*'
         version: link:../../workflow
       prettier:
-        specifier: ^2.7.1
-        version: 2.8.8
+        specifier: ^3.0.0
+        version: 3.0.0
       typescript:
         specifier: ^5.1.6
         version: 5.1.6
@@ -8148,7 +8151,7 @@ packages:
     dependencies:
       '@xata.io/client': 0.25.2(typescript@5.1.6)
       case: 1.6.3
-      prettier: 2.8.8
+      prettier: 3.0.0
       ts-morph: 19.0.0
       typescript: 5.1.6
       zod: 3.21.4
