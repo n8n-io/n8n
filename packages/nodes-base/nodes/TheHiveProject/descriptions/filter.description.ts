@@ -83,7 +83,6 @@ const field: INodeProperties[] = [
 		},
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',

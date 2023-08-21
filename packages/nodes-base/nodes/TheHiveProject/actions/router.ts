@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/dot-notation */
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { TheHiveType } from './node.type';
