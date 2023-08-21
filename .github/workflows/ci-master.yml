@@ -16,12 +16,12 @@ jobs:
         node-version: [18.x, 20.x]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.5.3
 
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v3.7.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -33,7 +33,7 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.1
         with:
           path: |
             /github/home/.cache
@@ -50,13 +50,13 @@ jobs:
       matrix:
         node-version: [18.x, 20.x]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.5.3
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
       - name: Restore cached build artifacts
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.1
         with:
           path: |
             /github/home/.cache
@@ -65,10 +65,10 @@ jobs:
             ./packages
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v3.7.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -89,13 +89,13 @@ jobs:
       matrix:
         node-version: [18.x, 20.x]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.5.3
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
       - name: Restore cached build artifacts
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.1
         with:
           path: |
             /github/home/.cache
@@ -104,10 +104,10 @@ jobs:
             ./packages
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v3.7.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
