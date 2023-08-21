@@ -22,7 +22,7 @@ type NodeMap = {
 		| 'getAttachment'
 		| 'getTimeline'
 		| 'update';
-	comment: 'add' | 'deleteComment' | 'update';
+	comment: 'add' | 'deleteComment' | 'search' | 'update';
 	log:
 		| 'addAttachment'
 		| 'create'
@@ -39,7 +39,7 @@ type NodeMap = {
 		| 'get'
 		| 'search'
 		| 'update';
-	page: 'create' | 'deletePage' | 'update';
+	page: 'create' | 'deletePage' | 'search' | 'update';
 	query: 'executeQuery';
 	task: 'create' | 'deleteTask' | 'executeResponder' | 'get' | 'search' | 'update';
 };

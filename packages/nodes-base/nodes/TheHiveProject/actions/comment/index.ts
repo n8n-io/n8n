@@ -2,9 +2,10 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as add from './add.operation';
 import * as deleteComment from './deleteComment.operation';
+import * as search from './search.operation';
 import * as update from './update.operation';
 
-export { add, deleteComment, update };
+export { add, deleteComment, search, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -26,6 +27,11 @@ export const description: INodeProperties[] = [
 				action: 'Delete a comment',
 			},
 			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search comments',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update a comment',
@@ -39,5 +45,6 @@ export const description: INodeProperties[] = [
 	},
 	...add.description,
 	...deleteComment.description,
+	...search.description,
 	...update.description,
 ];

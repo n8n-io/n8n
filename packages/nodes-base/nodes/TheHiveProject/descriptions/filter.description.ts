@@ -10,7 +10,7 @@ const field: INodeProperties[] = [
 		description: 'Dot notation is also supported, e.g. customFields.field1',
 		displayOptions: {
 			hide: {
-				'/resource': ['alert', 'case', 'task', 'observable', 'log'],
+				'/resource': ['alert', 'case', 'comment', 'task', 'observable', 'log', 'page'],
 			},
 		},
 	},
@@ -86,7 +86,7 @@ const field: INodeProperties[] = [
 		displayName: 'Field',
 		name: 'field',
 		type: 'options',
-		default: 'message',
+		default: '',
 		options: [
 			{
 				name: 'Message',
@@ -100,6 +100,48 @@ const field: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				'/resource': ['log'],
+			},
+		},
+	},
+	{
+		displayName: 'Field',
+		name: 'field',
+		type: 'options',
+		default: '',
+		options: [
+			{
+				name: 'Message',
+				value: 'message',
+			},
+		],
+		displayOptions: {
+			show: {
+				'/resource': ['comment'],
+			},
+		},
+	},
+	{
+		displayName: 'Field',
+		name: 'field',
+		type: 'options',
+		default: '',
+		options: [
+			{
+				name: 'Category',
+				value: 'category',
+			},
+			{
+				name: 'Content',
+				value: 'content',
+			},
+			{
+				name: 'Title',
+				value: 'title',
+			},
+		],
+		displayOptions: {
+			show: {
+				'/resource': ['page'],
 			},
 		},
 	},

@@ -444,6 +444,28 @@ export const searchOptions: INodeProperties = {
 			description: 'Additional data to include in the response',
 			options: [
 				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'links',
+					value: 'links',
+				},
+			],
+			default: [],
+			displayOptions: {
+				show: {
+					'/resource': ['comment'],
+				},
+				hide: {
+					returnCount: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Extra Data',
+			name: 'extraData',
+			type: 'multiOptions',
+			description: 'Additional data to include in the response',
+			options: [
+				{
 					name: 'actionCount',
 					value: 'actionCount',
 				},
