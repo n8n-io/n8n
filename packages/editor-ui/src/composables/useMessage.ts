@@ -1,4 +1,3 @@
-import type { VNode } from "vue";
 import type { ElMessageBoxOptions } from 'element-plus';
 import { ElMessageBox as MessageBox } from 'element-plus';
 
