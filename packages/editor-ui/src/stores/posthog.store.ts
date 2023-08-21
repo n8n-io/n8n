@@ -4,7 +4,7 @@ import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { FeatureFlags } from 'n8n-workflow';
+import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
 import { debounce } from 'lodash-es';
@@ -161,10 +161,29 @@ export const usePostHog = defineStore('posthog', () => {
 		trackedDemoExp.value[name] = variant;
 	};
 
+	const capture = (event: string, properties: IDataObject) => {
+		if (typeof window.posthog?.capture === 'function') {
+			window.posthog.capture(event, properties);
+		}
+	};
+
+	const setMetadata = (metadata: IDataObject, target: 'user' | 'events') => {
+		if (typeof window.posthog?.people?.set !== 'function') return;
+		if (typeof window.posthog?.register !== 'function') return;
+
+		if (target === 'user') {
+			window.posthog?.people?.set(metadata);
+		} else if (target === 'events') {
+			window.posthog?.register(metadata);
+		}
+	};
+
 	return {
 		init,
 		isVariantEnabled,
 		getVariant,
 		reset,
+		capture,
+		setMetadata,
 	};
 });
