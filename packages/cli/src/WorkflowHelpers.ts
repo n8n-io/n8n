@@ -180,8 +180,8 @@ export async function executeErrorWorkflow(
 			const initialNode = workflowInstance.getStartNode();
 			if (initialNode) {
 				const errorWorkflowPermissionError = new SubworkflowOperationError(
-					'This workflow could not be triggered due to subworkflow settings or permissions.',
-					`Another workflow with ID ${workflowErrorData.workflow.id} tried to invoke this workflow to handle errors. Please check permissions and whether this workflow allows being called by others`,
+					`Another workflow: (ID ${workflowErrorData.workflow.id}) tried to invoke this workflow to handle errors.`,
+					"Unfortunately current permissions do not allow this. Please check that this workflow's settings allow it to be called by others",
 				);
 
 				// Create a fake execution and save it to DB.
