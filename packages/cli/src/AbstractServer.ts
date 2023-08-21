@@ -158,7 +158,7 @@ export abstract class AbstractServer {
 					const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(message);
 					if (workerResponse) {
 						// TODO: Handle worker response
-						console.log('Received worker response', workerResponse);
+						// console.log('Received worker response', workerResponse);
 					}
 				}
 			},
