@@ -61,7 +61,7 @@ import type {
 import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
@@ -71,7 +71,7 @@ import {
 	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
-import { useUIStore } from './ui.store';
+import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import {
 	isJsonKeyObject,
@@ -82,8 +82,8 @@ import {
 	makeRestApiRequest,
 	unflattenExecutionData,
 } from '@/utils';
-import { useNDVStore } from './ndv.store';
-import { useNodeTypesStore } from './nodeTypes.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -336,6 +336,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				// @ts-ignore
 				pinData: this.getPinData,
 			});
+
+			console.log('cachedWorkflow', cachedWorkflow);
 
 			return cachedWorkflow;
 		},

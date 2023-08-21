@@ -10,10 +10,10 @@ import {
 } from '@/constants';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify, Workflow } from 'n8n-workflow';
 import { dataPinningEventBus } from '@/event-bus';
-import { useNDVStore } from '@/stores';
 
 export interface IPinDataContext {
 	node: INodeUi;
@@ -95,11 +95,10 @@ export const pinData = defineComponent({
 				return false;
 			}
 		},
-		isValidPinDataSize(data: string | object): boolean {
+		isValidPinDataSize(data: string | object, activeNodeName: string): boolean {
 			if (typeof data === 'object') data = JSON.stringify(data);
 
-			const { activeNodeName } = this.ndvStore;
-			const { pinData: currentPinData, ...workflow } = useWorkflowsStore().getCurrentWorkflow(true);
+			const { pinData: currentPinData, ...workflow } = this.workflowsStore.getCurrentWorkflow();
 			const workflowJson = jsonStringify(workflow, { replaceCircularRefs: true });
 
 			const newPinData = { ...currentPinData, [activeNodeName]: data };
@@ -139,7 +138,7 @@ export const pinData = defineComponent({
 				data = jsonParse(data);
 			}
 
-			if (!this.isValidPinDataSize(data)) {
+			if (!this.isValidPinDataSize(data, node?.name ?? '')) {
 				this.onDataPinningError({ errorType: 'data-too-large', source });
 				return false;
 			}
