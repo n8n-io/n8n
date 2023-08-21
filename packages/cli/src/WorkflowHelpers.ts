@@ -1,7 +1,9 @@
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
-import {
+import { SubworkflowOperationError } from 'n8n-workflow';
+
+import type {
 	IDataObject,
 	IExecuteData,
 	INode,
@@ -10,7 +12,6 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	NodeApiError,
-	SubworkflowOperationError,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
 } from 'n8n-workflow';
