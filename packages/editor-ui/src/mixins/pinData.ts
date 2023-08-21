@@ -12,7 +12,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables';
-import { jsonParse, jsonStringify, Workflow } from 'n8n-workflow';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 import { dataPinningEventBus } from '@/event-bus';
 
 export interface IPinDataContext {
