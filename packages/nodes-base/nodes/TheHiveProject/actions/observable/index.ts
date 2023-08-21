@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		required: true,
-		default: 'getMany',
+		default: 'create',
 		options: [
 			{
 				name: 'Create',

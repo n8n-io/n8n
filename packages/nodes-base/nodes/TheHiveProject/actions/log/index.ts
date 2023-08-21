@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		type: 'options',
 		required: true,
-		default: 'getMany',
+		default: 'create',
 		options: [
 			{
 				name: 'Add Attachment',

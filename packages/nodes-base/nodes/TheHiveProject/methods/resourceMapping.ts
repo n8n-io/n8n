@@ -5,6 +5,7 @@ import type {
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
+
 import { theHiveApiRequest } from '../transport';
 
 import {
@@ -14,6 +15,7 @@ import {
 	loadObservableTypes,
 	loadUsers,
 } from './loadOptions';
+
 import {
 	alertCommonFields,
 	caseCommonFields,
@@ -21,7 +23,7 @@ import {
 	taskCommonFields,
 } from '../helpers/constants';
 
-async function getCustomFields(this: ILoadOptionsFunctions, isRemoved?: boolean) {
+async function getCustomFields(this: ILoadOptionsFunctions) {
 	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
 		query: [
 			{
@@ -40,7 +42,7 @@ async function getCustomFields(this: ILoadOptionsFunctions, isRemoved?: boolean)
 		options: (field.options as string[])?.length
 			? (field.options as string[]).map((option) => ({ name: option, value: option }))
 			: undefined,
-		removed: isRemoved,
+		removed: true,
 	}));
 }
 
@@ -61,12 +63,10 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 				required: false,
 				display: true,
 				defaultMatch: false,
-				removed: true,
 			};
 
 			if (requiredFields.includes(entry.id)) {
 				field.required = true;
-				field.removed = false;
 			}
 
 			if (field.id === 'status') {
@@ -79,7 +79,7 @@ export async function getAlertFields(this: ILoadOptionsFunctions): Promise<Resou
 			return field;
 		});
 
-	const customFields = (await getCustomFields.call(this, true)) || [];
+	const customFields = (await getCustomFields.call(this)) || [];
 	fields.push(...customFields);
 
 	const columnData: ResourceMapperFields = {
@@ -148,10 +148,10 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 	const users = await loadUsers.call(this);
 
 	const requiredFields = ['title', 'description'];
-	const excludeFields = ['impactStatus', 'taskRule', 'addTags', 'removeTags'];
+	const excludeCreateFields = ['impactStatus', 'taskRule', 'addTags', 'removeTags'];
 
-	const fields: ResourceMapperField[] = alertCommonFields
-		.filter((entry) => !excludeFields.includes(entry.id))
+	const fields: ResourceMapperField[] = caseCommonFields
+		.filter((entry) => !excludeCreateFields.includes(entry.id))
 		.map((entry) => {
 			const type = entry.type as FieldType;
 			const field: ResourceMapperField = {
@@ -160,12 +160,10 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 				required: false,
 				display: true,
 				defaultMatch: false,
-				removed: true,
 			};
 
 			if (requiredFields.includes(entry.id)) {
 				field.required = true;
-				field.removed = false;
 			}
 
 			if (field.id === 'assignee') {
@@ -182,7 +180,7 @@ export async function getCaseFields(this: ILoadOptionsFunctions): Promise<Resour
 			return field;
 		});
 
-	const customFields = (await getCustomFields.call(this, true)) || [];
+	const customFields = (await getCustomFields.call(this)) || [];
 	fields.push(...customFields);
 
 	const columnData: ResourceMapperFields = {
@@ -199,10 +197,10 @@ export async function getCaseUpdateFields(
 	const users = await loadUsers.call(this);
 
 	const excludedFromMatching = ['addTags', 'removeTags', 'taskRule', 'observableRule'];
-	const excludeFields = ['caseTemplate', 'tasks', 'sharingParameters'];
+	const excludeUpdateFields = ['caseTemplate', 'tasks', 'sharingParameters'];
 
 	const caseUpdateFields = caseCommonFields
-		.filter((entry) => !excludeFields.includes(entry.id))
+		.filter((entry) => !excludeUpdateFields.includes(entry.id))
 		.map((entry) => {
 			const type = entry.type as FieldType;
 			const field: ResourceMapperField = {
@@ -382,12 +380,10 @@ export async function getObservableFields(
 				required: false,
 				display: true,
 				defaultMatch: false,
-				removed: true,
 			};
 
 			if (requiredFields.includes(entry.id)) {
 				field.required = true;
-				field.removed = false;
 			}
 
 			if (field.id === 'dataType') {

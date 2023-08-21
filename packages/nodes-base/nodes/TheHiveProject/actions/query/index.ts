@@ -11,7 +11,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		type: 'options',
 		required: true,
-		default: 'create',
+		default: 'executeQuery',
 		options: [
 			{
 				name: 'Execute Query',
