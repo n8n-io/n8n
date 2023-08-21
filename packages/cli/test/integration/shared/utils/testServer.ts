@@ -30,7 +30,7 @@ import {
 	TagsController,
 	UsersController,
 } from '@/controllers';
-import { rawBody, jsonParser, setupAuthMiddlewares } from '@/middlewares';
+import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
 
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -118,7 +118,7 @@ export const setupTestServer = ({
 	enabledFeatures,
 }: SetupProps): TestServer => {
 	const app = express();
-	app.use(rawBody);
+	app.use(rawBodyReader);
 	app.use(cookieParser());
 
 	const testServer: TestServer = {
@@ -153,7 +153,7 @@ export const setupTestServer = ({
 
 		if (!endpointGroups) return;
 
-		app.use(jsonParser);
+		app.use(bodyParser);
 
 		const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 

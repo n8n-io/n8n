@@ -31,6 +31,7 @@ import type {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	ICredentialTestFunctions,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -53,6 +54,9 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { Container } from 'typedi';
+import { isObjectLiteral } from './utils';
+
+const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
 const mockNode = {
 	name: '',
@@ -466,6 +470,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await Db.collections.Credentials.update(findQuery, newCredentialsData);
 	}
 
+	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
+		const oauthTokenData = credentialsDecrypted?.data?.oauthTokenData;
+
+		if (!isObjectLiteral(oauthTokenData)) return false;
+
+		return 'access_token' in oauthTokenData;
+	}
+
 	private getCredentialTestFunction(
 		credentialType: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
@@ -496,6 +508,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 			for (const nodeType of allNodeTypes) {
 				// Check each of teh credentials
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
+					if (
+						name === credentialType &&
+						this.credentialTypes.getParentTypes(name).includes('oAuth2Api')
+					) {
+						return async function oauth2CredTest(
+							this: ICredentialTestFunctions,
+							cred: ICredentialsDecrypted,
+						): Promise<INodeCredentialTestResult> {
+							return CredentialsHelper.hasAccessToken(cred)
+								? {
+										status: 'OK',
+										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
+								  }
+								: {
+										status: 'Error',
+										message: OAUTH2_CREDENTIAL_TEST_FAILED,
+								  };
+						};
+					}
+
 					if (name === credentialType && !!testedBy) {
 						if (typeof testedBy === 'string') {
 							if (node instanceof VersionedNodeType) {

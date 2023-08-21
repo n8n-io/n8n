@@ -5,7 +5,6 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
-	ASK_AI_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -43,20 +42,21 @@ import type {
 	UIState,
 	UTMCampaign,
 	XYPosition,
+	Modals,
+	NewCredentialsModal,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
-import { useSettingsStore } from './settings.store';
-import { useCloudPlanStore } from './cloudPlan.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
-import type { Modals, NewCredentialsModal } from '@/Interface';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
-import type { Banners } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -64,9 +64,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		activeCredentialType: null,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
-				open: false,
-			},
-			[ASK_AI_MODAL_KEY]: {
 				open: false,
 			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
@@ -179,6 +176,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			V1: { dismissed: true },
 			TRIAL: { dismissed: true },
 			TRIAL_OVER: { dismissed: true },
+			NON_PRODUCTION_LICENSE: { dismissed: true },
 		},
 		bannersHeight: 0,
 	}),
@@ -336,12 +334,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
-		setBanners(banners: UIState['banners']): void {
-			this.banners = {
-				...this.banners,
-				...banners,
-			};
-		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
@@ -544,7 +536,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		async dismissBanner(
-			name: Banners,
+			name: BannerName,
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
@@ -559,11 +551,29 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.banners[name].dismissed = true;
 			this.banners[name].type = 'temporary';
 		},
-		showBanner(name: Banners): void {
+		showBanner(name: BannerName): void {
 			this.banners[name].dismissed = false;
 		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
+		},
+		async initBanners(): Promise<void> {
+			const cloudPlanStore = useCloudPlanStore();
+			if (cloudPlanStore.userIsTrialing) {
+				await this.dismissBanner('V1', 'temporary');
+				if (cloudPlanStore.trialExpired) {
+					this.showBanner('TRIAL_OVER');
+				} else {
+					this.showBanner('TRIAL');
+				}
+			}
+		},
+		async dismissAllBanners() {
+			return Promise.all([
+				this.dismissBanner('TRIAL', 'temporary'),
+				this.dismissBanner('TRIAL_OVER', 'temporary'),
+				this.dismissBanner('V1', 'temporary'),
+			]);
 		},
 	},
 });
