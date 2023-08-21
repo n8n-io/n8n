@@ -6,16 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
+import { logRLC } from '../../descriptions';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Log ID',
-		name: 'id',
-		type: 'string',
-		default: '',
-		required: true,
-	},
-];
+const properties: INodeProperties[] = [logRLC];
 
 const displayOptions = {
 	show: {
@@ -29,9 +22,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	let responseData: IDataObject | IDataObject[] = [];
 
-	const logId = this.getNodeParameter('id', i) as string;
-
-	const qs: IDataObject = {};
+	const logId = this.getNodeParameter('logId', i, '', { extractValue: true }) as string;
 
 	const body = {
 		query: [
@@ -42,9 +33,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		],
 	};
 
-	qs.name = `get-log-${logId}`;
-
-	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
+	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
 		itemData: { item: i },
