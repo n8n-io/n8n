@@ -32,6 +32,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				_name: 'getCase',
 				idOrName: caseId,
 			},
+			{
+				_name: 'page',
+				from: 0,
+				to: 10,
+				extraData: ['attachmentCount'],
+			},
 		],
 	};
 

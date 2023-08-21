@@ -11,13 +11,31 @@ import { caseRLC } from '../../descriptions';
 const properties: INodeProperties[] = [
 	caseRLC,
 	{
-		displayName: 'Input Data Field Names',
-		name: 'inputDataFiels',
-		type: 'string',
-		placeholder: 'e.g. data, data2',
-		default: 'data',
-		required: true,
-		hint: 'The names of the input fields containing the binary file data to be sent as attachments',
+		displayName: 'Attachments',
+		name: 'attachmentsUi',
+		placeholder: 'Add Attachment',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		options: [
+			{
+				name: 'values',
+				displayName: 'Values',
+				values: [
+					{
+						displayName: 'Attachment Field Name',
+						name: 'field',
+						type: 'string',
+						default: 'data',
+						description: 'Add the field name from the input node',
+						hint: 'The name of the field with the attachment in the node input',
+					},
+				],
+			},
+		],
+		default: {},
+		description: 'Array of supported attachments to add to the message',
 	},
 	{
 		displayName: 'Options',
@@ -51,10 +69,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
 	const canRename = this.getNodeParameter('options.canRename', i, false) as boolean;
-	const inputDataFields = (this.getNodeParameter('inputDataFiels', i, '') as string)
-		.split(',')
-		.filter((item) => item)
-		.map((item) => item.trim());
+
+	const inputDataFields = (
+		this.getNodeParameter('attachmentsUi.values', i, []) as IDataObject[]
+	).map((entry) => (entry.field as string).trim());
 
 	const attachments = [];
 
