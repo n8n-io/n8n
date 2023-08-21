@@ -1,3 +1,4 @@
+import type { VNode } from "vue";
 import type { ElMessageBoxOptions } from 'element-plus';
 import { ElMessageBox as MessageBox } from 'element-plus';
 
@@ -10,7 +11,7 @@ export function useMessage() {
 	};
 
 	async function alert(
-		message: string,
+		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions,
 	) {
@@ -27,7 +28,7 @@ export function useMessage() {
 	}
 
 	async function confirm(
-		message: string,
+		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions,
 	): Promise<MessageBoxConfirmResult> {
@@ -51,7 +52,7 @@ export function useMessage() {
 	}
 
 	async function prompt(
-		message: string,
+		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions,
 	) {

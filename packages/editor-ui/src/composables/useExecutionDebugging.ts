@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n, useMessage, useToast } from '@/composables';
 import {
@@ -45,15 +45,19 @@ export const useExecutionDebugging = () => {
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
-		const matchingPinnedNodeNamesToHtmlList = `<ul class="ml-l">${matchingPinnedNodeNames
-			.map((name) => `<li>${name}</li>`)
-			.join('')}</ul>`;
 
 		if (matchingPinnedNodeNames.length > 0) {
+			const confirmMessage = h('p', [
+				i18n.baseText('nodeView.confirmMessage.debug.message'),
+				h(
+					'ul',
+					{ class: 'mt-l ml-l' },
+					matchingPinnedNodeNames.map((name) => h('li', name)),
+				),
+			]);
+
 			const overWritePinnedDataConfirm = await message.confirm(
-				i18n.baseText('nodeView.confirmMessage.debug.message', {
-					interpolate: { nodeNames: matchingPinnedNodeNamesToHtmlList },
-				}),
+				confirmMessage,
 				i18n.baseText('nodeView.confirmMessage.debug.headline'),
 				{
 					type: 'warning',
