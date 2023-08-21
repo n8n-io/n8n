@@ -97,7 +97,7 @@ export class User extends WithTimestamps implements IUser {
 	apiKey?: string | null;
 
 	@Column({ type: Boolean, default: false })
-	mfaEnabled?: boolean;
+	mfaEnabled: boolean;
 
 	@Column({ type: String, nullable: true, select: false })
 	mfaSecret?: string | null;

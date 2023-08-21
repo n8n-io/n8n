@@ -160,7 +160,11 @@ export class PasswordResetController {
 			},
 		);
 
-		const url = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		const url = await UserService.generatePasswordResetUrl(
+			baseUrl,
+			resetPasswordToken,
+			user.mfaEnabled,
+		);
 
 		try {
 			await this.mailer.passwordReset({

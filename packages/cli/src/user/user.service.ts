@@ -23,9 +23,14 @@ export class UserService {
 		return Db.collections.User.update(id, { settings: { ...currentSettings, ...userSettings } });
 	}
 
-	static async generatePasswordResetUrl(instanceBaseUrl: string, token: string): Promise<string> {
+	static async generatePasswordResetUrl(
+		instanceBaseUrl: string,
+		token: string,
+		mfaEnabled: boolean,
+	): Promise<string> {
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 		url.searchParams.append('token', token);
+		url.searchParams.append('mfaEnabled', mfaEnabled.toString());
 		return url.toString();
 	}
 }
