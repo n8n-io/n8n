@@ -822,8 +822,8 @@ importers:
         specifier: ^5.13.2
         version: 5.13.2
       '@n8n/codemirror-lang-sql':
-        specifier: ^1.0.1
-        version: 1.0.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+        specifier: ^1.0.2
+        version: 1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       '@vueuse/components':
         specifier: ^10.2.0
         version: 10.2.0(vue@3.3.4)
@@ -4119,8 +4119,8 @@ packages:
     dev: false
     optional: true
 
-  /@n8n/codemirror-lang-sql@1.0.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
-    resolution: {integrity: sha512-wwuYHg+iCP6HMZjzBiBSO7oQ44EXnfkLaPl+9ZMvr4/8QYURqbulDdUhIW0A9d/zQcXhqkyoxS7ukS3s5oN6Hg==}
+  /@n8n/codemirror-lang-sql@1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+    resolution: {integrity: sha512-sOf/KyewSu3Ikij0CkRtzJJDhRDZcwNCEYl8UdH4U/riL0/XZGcBD7MYofCCcKszanJZiEWRZ2KU1sRp234iMg==}
     dependencies:
       '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       '@codemirror/language': 6.2.1
