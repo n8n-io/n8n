@@ -492,15 +492,12 @@ export class SourceControlImportService {
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
-				await this.tagRepository.upsert(
-					{
-						...tag,
-					},
-					{
-						skipUpdateIfNoValuesChanged: true,
-						conflictPaths: { id: true },
-					},
-				);
+
+				const tagCopy = this.tagRepository.create(tag);
+				await this.tagRepository.upsert(tagCopy, {
+					skipUpdateIfNoValuesChanged: true,
+					conflictPaths: { id: true },
+				});
 			}),
 		);
 
