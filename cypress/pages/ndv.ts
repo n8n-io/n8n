@@ -38,6 +38,7 @@ export class NDV extends BasePage {
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
+		parameterInputIssues: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`).should('have.length', 1).findChildByTestId('parameter-issues'),
 		parameterExpressionPreview: (parameterName: string) =>
 			this.getters
 				.nodeParameters()
@@ -98,8 +99,8 @@ export class NDV extends BasePage {
 		clearParameterInput: (parameterName: string) => {
 			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
 		},
-		typeIntoParameterInput: (parameterName: string, content: string) => {
-			this.getters.parameterInput(parameterName).type(content);
+		typeIntoParameterInput: (parameterName: string, content: string, opts?: { parseSpecialCharSequences: boolean }) => {
+			this.getters.parameterInput(parameterName).type(content, opts);
 		},
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
 			getVisibleSelect().find('.option-headline').contains(content).click();
