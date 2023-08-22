@@ -50,7 +50,6 @@ import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } f
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { JwtService } from '@/services/jwt.service';
-import { RoleService } from '@/services/role.service';
 import { MetricsService } from '@/services/metrics.service';
 
 /**
@@ -198,7 +197,12 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new AuthController({ config, logger, internalHooks, repositories }),
+							new AuthController({
+								config,
+								logger,
+								internalHooks,
+								repositories,
+							}),
 						);
 						break;
 					case 'ldap':
@@ -229,7 +233,11 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new MeController({ logger, externalHooks, internalHooks, repositories }),
+							new MeController({
+								logger,
+								externalHooks,
+								internalHooks,
+							}),
 						);
 						break;
 					case 'passwordReset':
@@ -242,8 +250,6 @@ export const setupTestServer = ({
 								externalHooks,
 								internalHooks,
 								mailer,
-								repositories,
-								jwtService,
 							}),
 						);
 						break;
@@ -251,7 +257,12 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new OwnerController({ config, logger, internalHooks, repositories }),
+							new OwnerController({
+								config,
+								logger,
+								internalHooks,
+								repositories,
+							}),
 						);
 						break;
 					case 'users':
@@ -266,8 +277,6 @@ export const setupTestServer = ({
 								repositories,
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
-								jwtService,
-								roleService: Container.get(RoleService),
 							}),
 						);
 						break;
