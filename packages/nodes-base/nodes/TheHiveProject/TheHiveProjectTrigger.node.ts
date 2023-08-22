@@ -135,15 +135,14 @@ export class TheHiveProjectTrigger implements INodeType {
 		// Get the request body
 		const bodyData = this.getBodyData();
 		const events = this.getNodeParameter('events', []) as string[];
-		if (!bodyData.operation || !bodyData.objectType) {
+		if (!bodyData.action || !bodyData.objectType) {
 			// Don't start the workflow if mandatory fields are not specified
 			return {};
 		}
 
-		// Don't start the workflow if the event is not fired
-		// Replace Creation with Create for TheHive 3 support
-		const operation = (bodyData.operation as string).replace('Creation', 'Create');
-		const event = `${(bodyData.objectType as string).toLowerCase()}_${operation.toLowerCase()}`;
+		const action = (bodyData.action as string).toLowerCase();
+		const objectType = (bodyData.objectType as string).toLowerCase();
+		const event = `${objectType}_${action}`;
 
 		if (events.indexOf('*') === -1 && events.indexOf(event) === -1) {
 			return {};
