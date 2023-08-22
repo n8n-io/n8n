@@ -1,4 +1,9 @@
-import type { INodeExecutionData, INodeListSearchResult, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	INodeExecutionData,
+	INodeListSearchResult,
+	INodePropertyOptions,
+	ResourceMapperFields,
+} from 'n8n-workflow';
 
 export const returnData: INodeExecutionData[] = [
 	{
@@ -23,6 +28,29 @@ export const remoteOptions: INodePropertyOptions[] = [
 		value: 'resource3',
 	},
 ];
+
+export const resourceMapperFields: ResourceMapperFields = {
+	fields: [
+		{
+			id: 'id',
+			displayName: 'ID',
+			defaultMatch: true,
+			canBeUsedToMatch: true,
+			required: true,
+			display: true,
+			type: 'string',
+		},
+		{
+			id: 'name',
+			displayName: 'Name',
+			defaultMatch: false,
+			canBeUsedToMatch: false,
+			required: false,
+			display: true,
+			type: 'string',
+		},
+	],
+};
 
 export const searchOptions: INodeListSearchResult['results'] = [
 	{

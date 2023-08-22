@@ -6,8 +6,9 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	ResourceMapperFields,
 } from 'n8n-workflow';
-import { remoteOptions, returnData, searchOptions } from './mock';
+import { remoteOptions, resourceMapperFields, returnData, searchOptions } from './mock';
 
 export class E2eTest implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,7 +41,7 @@ export class E2eTest implements INodeType {
 					},
 					{
 						name: 'Resource Mapping Component',
-						value: 'resourceMappingComponent',
+						value: 'resourceMapper',
 					},
 				],
 				default: 'remoteOptions',
@@ -129,6 +130,35 @@ export class E2eTest implements INodeType {
 				],
 			},
 			{
+				displayName: 'Resource Mapping Component',
+				name: 'resourceMapper',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: {
+					mappingMode: 'defineBelow',
+					value: null,
+				},
+				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['fieldId'],
+					resourceMapper: {
+						resourceMapperMethod: 'getMappingColumns',
+						mode: 'upsert',
+						fieldWords: {
+							singular: 'column',
+							plural: 'columns',
+						},
+						addAllFields: true,
+						multiKeyMatch: false,
+					},
+				},
+				displayOptions: {
+					show: {
+						operation: ['resourceMapper'],
+					},
+				},
+			},
+			{
 				displayName: 'Other Non Important Field',
 				name: 'otherField',
 				type: 'string',
@@ -162,6 +192,11 @@ export class E2eTest implements INodeType {
 					results,
 					paginationToken: offset + pageSize,
 				};
+			},
+		},
+		resourceMapping: {
+			async getMappingColumns(this: ILoadOptionsFunctions): Promise<ResourceMapperFields> {
+				return resourceMapperFields;
 			},
 		},
 	};
