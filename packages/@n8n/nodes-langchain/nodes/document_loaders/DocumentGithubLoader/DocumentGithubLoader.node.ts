@@ -20,11 +20,6 @@ export class DocumentGithubLoader implements INodeType {
 			{
 				name: 'githubApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['accessToken'],
-					},
-				},
 			}
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
