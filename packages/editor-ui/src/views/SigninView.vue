@@ -129,8 +129,6 @@ export default defineComponent({
 					result: this.showMfaView ? 'mfa_success' : 'success',
 				});
 
-				this.clearCredentials();
-
 				if (this.isRedirectSafe()) {
 					const redirect = this.getRedirectQueryParameter();
 					void this.$router.push(redirect);
@@ -164,10 +162,6 @@ export default defineComponent({
 			if (toForm === FORM.MFA_RECOVERY_CODE) {
 				this.reportError = false;
 			}
-		},
-		clearCredentials() {
-			this.email = '';
-			this.password = '';
 		},
 		cacheCredentials(form: { email: string; password: string }) {
 			this.email = form.email;
