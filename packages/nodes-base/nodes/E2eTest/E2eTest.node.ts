@@ -2,38 +2,12 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-const data = [
-	{
-		id: '23423532',
-		name: 'Hello World',
-	},
-];
-
-const options = [
-	{
-		name: 'Resource 1',
-		value: 'resource1',
-	},
-	{
-		name: 'Resource 2',
-		value: 'resource2',
-	},
-	{
-		name: 'Resource 3',
-		value: 'resource3',
-	},
-];
-
-const loadOptions = {
-	async getOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-		return options;
-	},
-};
+import { remoteOptions, returnData, searchOptions } from './mock';
 
 export class E2eTest implements INodeType {
 	description: INodeTypeDescription = {
@@ -96,6 +70,65 @@ export class E2eTest implements INodeType {
 				},
 			},
 			{
+				displayName: 'Resource Locator',
+				name: 'rlc',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['resourceLocator'],
+					},
+				},
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'optionsSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://example.com/user/a4071e98-7d40-41fb-8911-ce3e7bf94fb2',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https://example.com/user/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+									errorMessage: 'Not a valid example URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https://example.com/user/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+									errorMessage: 'Not a valid UUI',
+								},
+							},
+						],
+						placeholder: 'a4071e98-7d40-41fb-8911-ce3e7bf94fb2',
+					},
+				],
+			},
+			{
 				displayName: 'Other Non Important Field',
 				name: 'otherField',
 				type: 'string',
@@ -105,42 +138,35 @@ export class E2eTest implements INodeType {
 	};
 
 	methods = {
-		loadOptions,
+		loadOptions: {
+			async getOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				return remoteOptions;
+			},
+		},
+		listSearch: {
+			async optionsSearch(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const pageSize = 5;
+				let results = searchOptions;
+				if (filter) {
+					results = results.filter((option) => option.name.includes(filter));
+				}
+
+				const offset = paginationToken ? parseInt(paginationToken, 10) : 0;
+				results = results.slice(offset, offset + pageSize);
+
+				return {
+					results,
+					paginationToken: offset + pageSize,
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
-		const length = items.length;
-		const operation = this.getNodeParameter('operation', 0);
-		let responseData;
-
-		for (let i = 0; i < length; i++) {
-			if (operation === 'getOnePerson') {
-				responseData = data[0];
-			}
-
-			if (operation === 'getAllPeople') {
-				const returnAll = this.getNodeParameter('returnAll', i);
-
-				if (returnAll) {
-					responseData = data;
-				} else {
-					const limit = this.getNodeParameter('limit', i);
-					responseData = data.slice(0, limit);
-				}
-			}
-
-			if (Array.isArray(responseData)) {
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
-					{ itemData: { item: i } },
-				);
-				returnData.push.apply(returnData, executionData);
-			} else if (responseData !== undefined) {
-				returnData.push({ json: responseData });
-			}
-		}
 		return this.prepareOutputData(returnData);
 	}
 }
