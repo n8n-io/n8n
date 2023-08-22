@@ -87,7 +87,7 @@ export class ChainRetrievalQA implements INodeType {
 			);
 		}
 
-		const vectorRetrieverNodes = await this.getInputConnectionData(0, 0, 'vectorRetriever');
+		const vectorRetrieverNodes = await this.getInputConnectionData('vectorRetriever', 0);
 		if (vectorRetrieverNodes.length === 1) {
 			vectorRetriever1 = vectorRetrieverNodes[0].response as BaseRetriever;
 		} else if (languageModelNodes.length > 1) {
