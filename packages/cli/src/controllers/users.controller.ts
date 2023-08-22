@@ -38,7 +38,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import { type SharedCredentialsRepository, type SharedWorkflowRepository } from '@db/repositories';
+import type { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
 import { plainToInstance } from 'class-transformer';
 import { License } from '@/License';
 import { Container } from 'typedi';
