@@ -427,18 +427,6 @@ export const observableCommonFields = [
 		removed: false,
 	},
 	{
-		displayName: 'Attachment',
-		id: 'attachment',
-		type: 'string',
-		removed: true,
-	},
-	{
-		displayName: 'Data',
-		id: 'data',
-		type: 'string',
-		removed: false,
-	},
-	{
 		displayName: 'Start Date',
 		id: 'startDate',
 		type: 'dateTime',

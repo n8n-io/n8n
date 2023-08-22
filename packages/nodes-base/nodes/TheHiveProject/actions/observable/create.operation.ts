@@ -10,7 +10,7 @@ import { updateDisplayOptions, wrapData } from '@utils/utilities';
 import { theHiveApiRequest } from '../../transport';
 
 import { fixFieldType, prepareInputItem } from '../../helpers/utils';
-import { alertRLC, caseRLC } from '../../descriptions';
+import { alertRLC, attachmentsUi, caseRLC } from '../../descriptions';
 
 import FormData from 'form-data';
 
@@ -51,12 +51,31 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName:
-			'If Data Type is attachment use "Attachment" field to specify input names with binary data, otherwise use "Data" field ("Attachment" would be ignored)',
-		name: 'noticeDataType',
-		type: 'notice',
-		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Data Type',
+		name: 'dataType',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		required: true,
+		default: 'file',
+		typeOptions: {
+			loadOptionsMethod: 'loadObservableTypes',
+		},
 	},
+	{
+		displayName: 'Data',
+		name: 'data',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			hide: {
+				dataType: ['file'],
+			},
+		},
+	},
+	{ ...attachmentsUi, required: true, displayOptions: { show: { dataType: ['file'] } } },
 	{
 		displayName: 'Fields',
 		name: 'observableFields',
@@ -110,15 +129,16 @@ export async function execute(
 		body = observableFields;
 	}
 
-	const { attachment } = body;
-
 	body = fixFieldType(body);
 
-	if (attachment) {
-		const inputDataFields = (attachment as string)
-			.split(',')
-			.filter((field) => field)
-			.map((field) => field.trim());
+	const dataType = this.getNodeParameter('dataType', i) as string;
+
+	body.dataType = dataType;
+
+	if (dataType === 'file') {
+		const inputDataFields = (
+			this.getNodeParameter('attachmentsUi.values', i, []) as IDataObject[]
+		).map((entry) => (entry.field as string).trim());
 
 		const formData = new FormData();
 
@@ -149,6 +169,8 @@ export async function execute(
 			},
 		);
 	} else {
+		const data = this.getNodeParameter('data', i) as string;
+		body.data = data;
 		responseData = await theHiveApiRequest.call(this, 'POST', endpoint, body);
 	}
 

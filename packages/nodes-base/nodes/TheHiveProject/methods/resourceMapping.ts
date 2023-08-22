@@ -365,10 +365,7 @@ export async function getLogFields(this: ILoadOptionsFunctions): Promise<Resourc
 export async function getObservableFields(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const dataTypes = await loadObservableTypes.call(this);
-
-	const requiredFields = ['dataType'];
-	const excludeFields = ['addTags', 'removeTags'];
+	const excludeFields = ['addTags', 'removeTags', 'dataType'];
 
 	const fields: ResourceMapperField[] = observableCommonFields
 		.filter((entry) => !excludeFields.includes(entry.id))
@@ -381,14 +378,6 @@ export async function getObservableFields(
 				display: true,
 				defaultMatch: false,
 			};
-
-			if (requiredFields.includes(entry.id)) {
-				field.required = true;
-			}
-
-			if (field.id === 'dataType') {
-				field.options = dataTypes;
-			}
 
 			return field;
 		});
