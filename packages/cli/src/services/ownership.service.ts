@@ -1,8 +1,9 @@
 import { Service } from 'typedi';
 import { CacheService } from './cache.service';
-import { SharedWorkflowRepository, UserRepository } from '@/databases/repositories';
+import { SharedWorkflowRepository } from '@/databases/repositories';
 import type { User } from '@/databases/entities/User';
 import { RoleService } from './role.service';
+import { UserService } from './user.service';
 import type { ListQuery } from '@/requests';
 import type { Role } from '@/databases/entities/Role';
 
@@ -10,7 +11,7 @@ import type { Role } from '@/databases/entities/Role';
 export class OwnershipService {
 	constructor(
 		private cacheService: CacheService,
-		private userRepository: UserRepository,
+		private userService: UserService,
 		private roleService: RoleService,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
@@ -21,7 +22,7 @@ export class OwnershipService {
 	async getWorkflowOwnerCached(workflowId: string) {
 		const cachedValue = (await this.cacheService.get(`cache:workflow-owner:${workflowId}`)) as User;
 
-		if (cachedValue) return this.userRepository.create(cachedValue);
+		if (cachedValue) return this.userService.create(cachedValue);
 
 		const workflowOwnerRole = await this.roleService.findWorkflowOwnerRole();
 
