@@ -225,6 +225,7 @@ export default defineComponent({
 				padding: 1em;
 				border-radius: 10px;
 				max-width: 75%;
+				white-space: pre-wrap;
 
 				&.ai {
 					background-color: #E0D0D0;
