@@ -48,7 +48,7 @@ export class E2eTest implements INodeType {
 			},
 			{
 				displayName: 'Field ID',
-				name: 'fieldID',
+				name: 'fieldId',
 				type: 'string',
 				default: '',
 			},
