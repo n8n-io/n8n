@@ -6,6 +6,14 @@ import userEvent from '@testing-library/user-event';
 import { retry } from '@/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
+	props: {
+		appendToBody: false,
+	},
+	data() {
+		return {
+			packageName: 'n8n-nodes-hello',
+		};
+	},
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
@@ -39,5 +47,9 @@ describe('CommunityPackageInstallModal', () => {
 		await userEvent.click(wrapper.getByTestId('user-agreement-checkbox'));
 
 		expect(installButton).toBeEnabled();
+
+		await userEvent.click(wrapper.getByTestId('user-agreement-checkbox'));
+
+		expect(installButton).toBeDisabled();
 	});
 });
