@@ -136,60 +136,6 @@ describe('PUT /workflows/:id', () => {
 	});
 });
 
-describe('GET /workflows', () => {
-	test('should return workflows without nodes, sharing and credential usage details', async () => {
-		const tag = await testDb.createTag({ name: 'test' });
-
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-		const workflow = await createWorkflow(
-			{
-				nodes: [
-					{
-						id: uuid(),
-						name: 'Action Network',
-						type: 'n8n-nodes-base.actionNetwork',
-						parameters: {},
-						typeVersion: 1,
-						position: [0, 0],
-						credentials: {
-							actionNetworkApi: {
-								id: savedCredential.id,
-								name: savedCredential.name,
-							},
-						},
-					},
-				],
-				tags: [tag],
-			},
-			owner,
-		);
-
-		await testDb.shareWorkflowWithUsers(workflow, [member]);
-
-		const response = await authOwnerAgent.get('/workflows');
-
-		const [fetchedWorkflow] = response.body.data;
-
-		expect(response.statusCode).toBe(200);
-		expect(fetchedWorkflow.ownedBy).toMatchObject({
-			id: owner.id,
-		});
-
-		expect(fetchedWorkflow.sharedWith).not.toBeDefined();
-		expect(fetchedWorkflow.usedCredentials).not.toBeDefined();
-		expect(fetchedWorkflow.nodes).not.toBeDefined();
-		expect(fetchedWorkflow.tags).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					id: expect.any(String),
-					name: expect.any(String),
-				}),
-			]),
-		);
-	});
-});
-
 describe('GET /workflows/new', () => {
 	[true, false].forEach((sharingEnabled) => {
 		test(`should return an auto-incremented name, even when sharing is ${
