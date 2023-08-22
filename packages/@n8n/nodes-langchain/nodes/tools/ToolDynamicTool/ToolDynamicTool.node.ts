@@ -20,7 +20,7 @@ export class ToolDynamicTool implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - DynamicTool',
 		name: 'dynamicTool',
-		icon: 'fa:screwdriver-wrench',
+		icon: 'fa:screwdriver',
 		group: ['transform'],
 		version: 1,
 		description: 'DynamicTool',

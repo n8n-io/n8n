@@ -124,10 +124,10 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				);
 				this.__addEndpointTestingData(endpoint, 'input', i);
-				if (nodeTypeData.inputNames) {
+				if (nodeTypeData.inputNames && nodeTypeData.inputNames[i]) {
 					// Apply input names if they got set
 					endpoint.addOverlay(
-						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[i], inputName),
+						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[i]),
 					);
 				}
 				if (!Array.isArray(endpoint)) {
@@ -216,7 +216,7 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				);
 				this.__addEndpointTestingData(endpoint, 'output', i);
-				if (nodeTypeData.outputNames) {
+				if (nodeTypeData.outputNames && nodeTypeData.outputNames[i]) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[i]);
 					endpoint.addOverlay(overlaySpec);
