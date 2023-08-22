@@ -131,8 +131,8 @@ import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { EventBusController } from '@/eventbus/eventBus.controller';
-import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
+// import { EventBusController } from '@/eventbus/eventBus.controller';
+// import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
@@ -148,7 +148,7 @@ import { configureMetrics } from './metrics';
 import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
-import { eventBus } from './eventbus';
+// import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import {
@@ -435,7 +435,7 @@ export class Server extends AbstractServer {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
-			logStreaming: isLogStreamingEnabled(),
+			logStreaming: false,
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
@@ -481,7 +481,7 @@ export class Server extends AbstractServer {
 		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 
 		const controllers: object[] = [
-			new EventBusController(),
+			// new EventBusController(),
 			new AuthController({ config, internalHooks, repositories, logger, postHog }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
@@ -1407,9 +1407,9 @@ export class Server extends AbstractServer {
 		// EventBus Setup
 		// ----------------------------------------
 
-		if (!eventBus.isInitialized) {
-			await eventBus.initialize();
-		}
+		// if (!eventBus.isInitialized) {
+		// 	await eventBus.initialize();
+		// }
 
 		// ----------------------------------------
 		// Webhooks
