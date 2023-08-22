@@ -499,7 +499,7 @@ export class Server extends AbstractServer {
 
 		const controllers: object[] = [
 			new EventBusController(),
-			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
+			new AuthController({ config, internalHooks, logger, postHog, mfaService }),
 			new OwnerController({ config, internalHooks, repositories, logger, postHog }),
 			new MeController({ externalHooks, internalHooks, logger }),
 			new NodeTypesController({ config, nodeTypes }),
