@@ -60,7 +60,7 @@ export class ChainRetrievalQA implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		console.log('Execute Retrieval QA Chain');
 		let vectorRetriever1: BaseRetriever;
-		const languageModelNodes = await this.getInputConnectionData(0, 0, 'languageModel');
+		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
 
 		if (languageModelNodes.length === 0) {
 			throw new NodeOperationError(

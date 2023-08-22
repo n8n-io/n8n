@@ -2647,14 +2647,12 @@ export function getExecuteFunctions(
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			async getInputConnectionData(
+				inputName: ConnectionTypes,
 				itemIndex: number,
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
-				// TODO: Should not be optional, change later to not break existing nodes now
-				inputName?: ConnectionTypes,
-				nodeNameOverride?: string,
 			): Promise<SupplyData[]> {
-				const parentNodes = workflow.getParentNodes(nodeNameOverride ?? node.name, inputName, 1);
+				const parentNodes = workflow.getParentNodes(this.getNode().name, inputName, 1);
 				if (parentNodes.length === 0) {
 					return [];
 				}
