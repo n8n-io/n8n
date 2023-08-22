@@ -207,8 +207,11 @@ export default defineComponent({
 <style scoped lang="scss">
 .workflow-lm-chat {
 	font-size: var(--font-size-s);
+	color: $custom-font-black;
+
 	.messages {
 		border: 1px solid #E0E0E0;
+		border-radius: 4px;
 		height: 400px;
 		overflow: auto;
 

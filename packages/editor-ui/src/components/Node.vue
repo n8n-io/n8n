@@ -690,14 +690,7 @@ export default defineComponent({
 	}
 
 	&--configurable {
-		height: 250px;
-		.node-description {
-			top: 250px;
-		}
-
-		.node-executing-info {
-			top: 75px !important;
-		}
+		width: 250px;
 	}
 
 	.node-default {
@@ -888,7 +881,7 @@ export default defineComponent({
 		width: 108px !important;
 	}
 	.node-wrapper--configurable & {
-		height: 266px;
+		width: 266px !important;
 	}
 }
 

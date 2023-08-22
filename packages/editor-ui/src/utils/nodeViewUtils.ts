@@ -142,9 +142,8 @@ export const getAnchorPosition = (
 	connectionType: ConnectionTypes,
 	type: 'input' | 'output',
 	amount: number,
-	hasMultipleTypes: boolean,
 ): ArrayAnchorSpec[] => {
-	if (!hasMultipleTypes) {
+	if (connectionType === 'main') {
 		const positions = {
 			input: {
 				1: [[0.01, 0.5, -1, 0]],
@@ -187,25 +186,17 @@ export const getAnchorPosition = (
 		return positions[type][amount] as ArrayAnchorSpec[];
 	}
 
-	amount = connectionType === 'main' ? amount : 4;
-
-	const x = type === 'input' ? 0.01 : 0.99;
-	const ox = type === 'input' ? -1 : 1;
-	const oy = 0;
+	const y = type === 'input' ? 0.99: 0.01;
+	const oy = type === 'input' ? 1 : -1;
+	const ox = 0;
 
 	const returnPositions: ArrayAnchorSpec[] = [];
 	for (let i = 0; i < amount; i++) {
-		// [ x, y, ox, oy ]
-
-		const stepSize = 0.5 / (amount + 1);
-		let y = stepSize * (i + 1);
+		const stepSize = 1 / (amount + 1);
+		let x = stepSize * i;
 
 		if (connectionType !== 'main') {
-			y += stepSize;
-		}
-
-		if (connectionType !== 'main') {
-			y += 0.5;
+			x += stepSize;
 		}
 
 		returnPositions.push([x, y, ox, oy]);
@@ -217,13 +208,25 @@ export const getAnchorPosition = (
 export const getInputEndpointStyle = (
 	nodeTypeData: INodeTypeDescription,
 	color: string,
-): EndpointStyle => ({
-	width: 8,
-	height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
-	fill: getStyleTokenValue(color),
-	stroke: getStyleTokenValue(color),
-	lineWidth: 0,
-});
+	connectionType: ConnectionTypes = 'main',
+): EndpointStyle => {
+	let width = 8;
+	let height = nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20;
+
+	if (connectionType !== 'main') {
+		let temp = width;
+		width = height;
+		height = temp;
+	}
+
+	return {
+		width,
+		height,
+		fill: getStyleTokenValue(color),
+		stroke: getStyleTokenValue(color),
+		lineWidth: 0,
+	}
+};
 
 export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
 	type: 'Custom',
