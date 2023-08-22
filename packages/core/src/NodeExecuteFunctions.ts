@@ -79,6 +79,7 @@ import {
 	deepCopy,
 	fileTypeFromMimeType,
 	ExpressionError,
+	ExecutionBaseError,
 	validateFieldType,
 	NodeSSLError,
 } from 'n8n-workflow';
@@ -2172,7 +2173,7 @@ export function getWebhookDescription(
 const addExecutionDataFunctions = (
 	type: 'input' | 'output',
 	nodeName: string,
-	data: INodeExecutionData[][] | ExecutionError,
+	data: INodeExecutionData[][] | ExecutionBaseError,
 	runExecutionData: IRunExecutionData,
 	connectionType: ConnectionTypes,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -2181,16 +2182,43 @@ const addExecutionDataFunctions = (
 		throw new Error(`Setting the ${type} is not supported for the main connection!`);
 	}
 
+	let taskData: ITaskData;
 	if (type === 'input') {
-		const taskData = {
+		taskData = {
 			startTime: new Date().getTime(),
 			executionTime: 0,
 			executionStatus: 'running',
 			source: [null],
-			inputOverride: {
+		};
+	} else {
+		// At the moment we expect that there is always an input sent before the output
+		const runDataArray = get(runExecutionData, `resultData.runData[${nodeName}]`, []);
+		if (runDataArray.length === 0) {
+			return;
+		}
+		taskData = runDataArray[runDataArray.length - 1];
+	}
+
+	if (data instanceof Error) {
+		// TODO: Or "failed", what is the difference
+		taskData.executionStatus = 'error';
+		taskData.error = data;
+	} else {
+		if (type === 'output') {
+			taskData.executionStatus = 'success';
+		}
+		taskData.data = {
+			[connectionType]: data,
+		} as ITaskDataConnections;
+	}
+
+
+	if (type === 'input') {
+		if (!(data instanceof Error)) {
+			taskData.inputOverride = {
 				[connectionType]: data,
-			} as ITaskDataConnections,
-		} as ITaskData;
+			} as ITaskDataConnections;
+		}
 
 		if (!runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 			runExecutionData.resultData.runData[nodeName] = [];
@@ -2205,25 +2233,6 @@ const addExecutionDataFunctions = (
 		}
 	} else {
 		// Outputs
-		// At the moment we expect that there is always an input sent before the output
-		const runDataArray = get(runExecutionData, `resultData.runData[${nodeName}]`, []);
-		if (runDataArray.length === 0) {
-			return;
-		}
-
-		const taskData = runDataArray[runDataArray.length - 1];
-
-		if (data instanceof Error) {
-			// TODO: Or "failed", what is the difference
-			taskData.executionStatus = 'error';
-			taskData.error = data;
-		} else {
-			taskData.executionStatus = 'success';
-			taskData.data = {
-				[connectionType]: data,
-			} as ITaskDataConnections;
-		}
-
 		taskData.executionTime = new Date().getTime() - taskData.startTime;
 
 		if (additionalData.sendDataToUI) {
@@ -2641,6 +2650,7 @@ export function getExecuteFunctions(
 				itemIndex: number,
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
+				// TODO: Should not be optional, change later to not break existing nodes now
 				inputName?: ConnectionTypes,
 				nodeNameOverride?: string,
 			): Promise<SupplyData[]> {
@@ -2698,20 +2708,61 @@ export function getExecuteFunctions(
 						};
 
 						context.getCredentials = async (key: string) => {
-							return getCredentials(
-								workflow,
-								connectedNode,
-								key,
-								additionalData,
-								mode,
-								runExecutionData,
-								runIndex,
-								connectionInputData,
-								itemIndex,
-							);
+							try {
+								return await getCredentials(
+									workflow,
+									connectedNode,
+									key,
+									additionalData,
+									mode,
+									runExecutionData,
+									runIndex,
+									connectionInputData,
+									itemIndex,
+								);
+							} catch (error) {
+								// Display the error on the node which is causing it
+								addExecutionDataFunctions(
+									'input',
+									connectedNode.name,
+									error,
+									runExecutionData,
+									inputName!,
+									additionalData,
+								);
+
+								// Display on the calling node which node has the error
+								throw new NodeOperationError(connectedNode, `Error on node "${connectedNode.name}" connected via input "${inputName}"`, {
+									itemIndex,
+								});
+							}
 						};
 
-						return nodeType.supplyData.call(context);
+						try {
+							return await nodeType.supplyData.call(context);
+						} catch (error) {
+
+							if (!(error instanceof ExecutionBaseError)) {
+								error = new NodeOperationError(connectedNode, error, {
+									itemIndex,
+								});
+							}
+
+							// Display the error on the node which is causing it
+							addExecutionDataFunctions(
+								'input',
+								connectedNode.name,
+								error,
+								runExecutionData,
+								inputName!,
+								additionalData,
+							);
+
+							// Display on the calling node which node has the error
+							throw new NodeOperationError(connectedNode, `Error on node "${connectedNode.name}" connected via input "${inputName}"`, {
+								itemIndex,
+							});
+						}
 					});
 
 				return Promise.all(constParentNodes);
