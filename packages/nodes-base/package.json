@@ -726,6 +726,7 @@
       "dist/nodes/Telegram/Telegram.node.js",
       "dist/nodes/Telegram/TelegramTrigger.node.js",
       "dist/nodes/TheHiveProject/TheHiveProject.node.js",
+      "dist/nodes/TheHiveProject/TheHiveProjectTrigger.node.js",
       "dist/nodes/TheHive/TheHive.node.js",
       "dist/nodes/TheHive/TheHiveTrigger.node.js",
       "dist/nodes/TimescaleDb/TimescaleDb.node.js",
