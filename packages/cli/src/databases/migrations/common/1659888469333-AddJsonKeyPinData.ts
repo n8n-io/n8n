@@ -1,3 +1,4 @@
+import { isObjectLiteral } from '@/utils';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import { isObjectLiteral } from '@/utils';
