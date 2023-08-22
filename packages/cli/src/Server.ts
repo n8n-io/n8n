@@ -168,11 +168,9 @@ import { SourceControlService } from '@/environments/sourceControl/sourceControl
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
 import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { JwtService } from './services/jwt.service';
 import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
-import { RoleService } from './services/role.service';
 
 const exec = promisify(callbackExec);
 
@@ -497,23 +495,20 @@ export class Server extends AbstractServer {
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const jwtService = Container.get(JwtService);
 		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
 
 		const controllers: object[] = [
 			new EventBusController(),
 			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
 			new OwnerController({ config, internalHooks, repositories, logger, postHog }),
-			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new MeController({ externalHooks, internalHooks, logger }),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({
 				config,
 				externalHooks,
 				internalHooks,
 				mailer,
-				repositories,
 				logger,
-				jwtService,
 				mfaService,
 			}),
 			Container.get(TagsController),
@@ -527,8 +522,6 @@ export class Server extends AbstractServer {
 				activeWorkflowRunner,
 				logger,
 				postHog,
-				jwtService,
-				roleService: Container.get(RoleService),
 			}),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
@@ -634,8 +627,6 @@ export class Server extends AbstractServer {
 		await handleLdapInit();
 
 		await handleMfaDisable();
-
-		await this.registerControllers(ignoredEndpoints);
 
 		await this.registerControllers(ignoredEndpoints);
 

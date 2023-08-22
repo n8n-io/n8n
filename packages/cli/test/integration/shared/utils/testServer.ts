@@ -50,11 +50,9 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
-import { JwtService } from '@/services/jwt.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { TOTPService } from '@/Mfa/totp.service';
 import { UserSettings } from 'n8n-core';
-import { RoleService } from '@/services/role.service';
 import { MetricsService } from '@/services/metrics.service';
 
 /**
@@ -189,7 +187,6 @@ export const setupTestServer = ({
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
-			const jwtService = Container.get(JwtService);
 			const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
 
 			for (const group of functionEndpoints) {
@@ -237,7 +234,11 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new MeController({ logger, externalHooks, internalHooks, repositories }),
+							new MeController({
+								logger,
+								externalHooks,
+								internalHooks,
+							}),
 						);
 						break;
 					case 'passwordReset':
@@ -250,8 +251,6 @@ export const setupTestServer = ({
 								externalHooks,
 								internalHooks,
 								mailer,
-								repositories,
-								jwtService,
 								mfaService,
 							}),
 						);
@@ -260,7 +259,12 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new OwnerController({ config, logger, internalHooks, repositories }),
+							new OwnerController({
+								config,
+								logger,
+								internalHooks,
+								repositories,
+							}),
 						);
 						break;
 					case 'users':
@@ -275,8 +279,6 @@ export const setupTestServer = ({
 								repositories,
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
-								jwtService,
-								roleService: Container.get(RoleService),
 							}),
 						);
 						break;
