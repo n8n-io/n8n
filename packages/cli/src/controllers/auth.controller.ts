@@ -29,9 +29,9 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import type { UserRepository } from '@db/repositories';
 import { InternalHooks } from '../InternalHooks';
 import { License } from '@/License';
+import { UserService } from '@/services/user.service';
 
 @RestController()
 export class AuthController {
@@ -41,7 +41,7 @@ export class AuthController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: UserRepository;
+	private readonly userService: UserService;
 
 	private readonly postHog?: PostHogClient;
 
@@ -49,7 +49,6 @@ export class AuthController {
 		config,
 		logger,
 		internalHooks,
-		repositories,
 		postHog,
 	}: {
 		config: Config;
@@ -61,8 +60,8 @@ export class AuthController {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
 		this.postHog = postHog;
+		this.userService = Container.get(UserService);
 	}
 
 	/**
@@ -137,10 +136,7 @@ export class AuthController {
 		}
 
 		try {
-			user = await this.userRepository.findOneOrFail({
-				relations: ['globalRole'],
-				where: {},
-			});
+			user = await this.userService.findOneOrFail({ where: {} });
 		} catch (error) {
 			throw new InternalServerError(
 				'No users found in database - did you wipe the users table? Create at least one user.',
@@ -189,7 +185,7 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userRepository.find({ where: { id: In([inviterId, inviteeId]) } });
+		const users = await this.userService.findMany({ where: { id: In([inviterId, inviteeId]) } });
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
