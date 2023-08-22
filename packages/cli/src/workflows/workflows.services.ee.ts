@@ -5,7 +5,6 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { ICredentialsDb } from '@/Interfaces';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { UserService } from '@/user/user.service';
@@ -13,20 +12,13 @@ import { WorkflowsService } from './workflows.services';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
-	WorkflowForList,
 } from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 
 export class EEWorkflowsService extends WorkflowsService {
-	static async getWorkflowIdsForUser(user: User) {
-		// Get all workflows regardless of role
-		return getSharedWorkflowIds(user);
-	}
-
 	static async isOwned(
 		user: User,
 		workflowId: string,
@@ -86,14 +78,6 @@ export class EEWorkflowsService extends WorkflowsService {
 		}, []);
 
 		return transaction.save(newSharedWorkflows);
-	}
-
-	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role) {
-		const ownerId = workflow.shared?.find(({ roleId }) => String(roleId) === workflowOwnerRole.id)
-			?.userId;
-		workflow.ownedBy = ownerId ? { id: ownerId } : null;
-		delete workflow.shared;
-		return workflow;
 	}
 
 	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
