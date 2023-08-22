@@ -56,6 +56,10 @@ const properties: INodeProperties[] = [
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Both',
+				value: 'both',
+			},
 		],
 		default: 'text',
 	},
@@ -70,7 +74,7 @@ const properties: INodeProperties[] = [
 		description: 'Plain text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['text'],
+				emailFormat: ['text', 'both'],
 			},
 		},
 	},
@@ -85,7 +89,7 @@ const properties: INodeProperties[] = [
 		description: 'HTML text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['html'],
+				emailFormat: ['html', 'both'],
 			},
 		},
 	},
@@ -208,11 +212,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				replyTo: options.replyTo,
 			};
 
-			if (emailFormat === 'text') {
+			if (emailFormat === 'text' || emailFormat === 'both') {
 				mailOptions.text = this.getNodeParameter('text', itemIndex, '');
 			}
 
-			if (emailFormat === 'html') {
+			if (emailFormat === 'html' || emailFormat === 'both') {
 				mailOptions.html = this.getNodeParameter('html', itemIndex, '');
 			}
 
