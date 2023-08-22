@@ -6,11 +6,11 @@
 			:formLoading="loading"
 			:with-sso="true"
 			data-test-id="signin-form"
-			@submit="onSubmit"
+			@submit="onEmailPasswordSubmitted"
 		/>
 		<MfaView
 			v-if="showMfaView"
-			@submit="onSubmit"
+			@submit="onMFASubmitted"
 			@onBackClick="onBackClick"
 			@onFormChanged="onFormChanged"
 			:reportError="reportError"
@@ -105,17 +105,23 @@ export default defineComponent({
 		}
 	},
 	methods: {
-		async onSubmit(form: {
-			email: string;
-			password: string;
-			token?: string;
-			recoveryCode?: string;
-		}) {
+		async onMFASubmitted(form: { token?: string; recoveryCode?: string }) {
+			await this.login({
+				email: this.email,
+				password: this.password,
+				token: form.token,
+				recoveryCode: form.recoveryCode,
+			});
+		},
+		async onEmailPasswordSubmitted(form: { email: string; password: string }) {
+			await this.login(form);
+		},
+		async login(form: { email: string; password: string; token?: string; recoveryCode?: string }) {
 			try {
 				this.loading = true;
 				await this.usersStore.loginWithCreds({
-					email: form.email ?? this.email,
-					password: form.password ?? this.password,
+					email: form.email,
+					password: form.password,
 					mfaToken: form.token,
 					mfaRecoveryCode: form.recoveryCode,
 				});
