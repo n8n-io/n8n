@@ -33,13 +33,9 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache@v3.3.1
+        uses: actions/cache/save@v3.3.1
         with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
+          path: ./packages/**/dist
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
   unit-test:
@@ -55,16 +51,6 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - name: Restore cached build artifacts
-        uses: actions/cache@v3.3.1
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
-
       - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
@@ -72,6 +58,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@v3.3.1
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
       - name: Test
         run: pnpm test
@@ -94,16 +89,6 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - name: Restore cached build artifacts
-        uses: actions/cache@v3.3.1
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
-
       - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
@@ -111,6 +96,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@v3.3.1
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
       - name: Lint
         env:
