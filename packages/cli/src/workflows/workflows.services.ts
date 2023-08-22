@@ -16,7 +16,7 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as TagHelpers from '@/TagHelpers';
+import { TagService } from '@/services/tag.service';
 import type { ListQueryOptions, WorkflowRequest } from '@/requests';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -299,7 +299,7 @@ export class WorkflowsService {
 		}
 
 		if (updatedWorkflow.tags?.length && tagIds?.length) {
-			updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
+			updatedWorkflow.tags = Container.get(TagService).sortByRequestOrder(updatedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
 		}
