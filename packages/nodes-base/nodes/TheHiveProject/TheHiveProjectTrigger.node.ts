@@ -7,6 +7,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import get from 'lodash/get';
+
 export class TheHiveProjectTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive 5 Trigger',
@@ -73,44 +75,144 @@ export class TheHiveProjectTrigger implements INodeType {
 						description: 'Triggered when a case is updated',
 					},
 					{
+						name: 'Comment Created',
+						value: 'comment_create',
+						description: 'Triggered when a comment is created',
+					},
+					{
+						name: 'Comment Deleted',
+						value: 'comment_delete',
+						description: 'Triggered when a comment is deleted',
+					},
+					{
+						name: 'Comment Updated',
+						value: 'comment_update',
+						description: 'Triggered when a comment is updated',
+					},
+					{
 						name: 'Log Created',
-						value: 'case_task_log_create',
+						value: 'log_create',
 						description: 'Triggered when a task log is created',
 					},
 					{
 						name: 'Log Deleted',
-						value: 'case_task_log_delete',
+						value: 'log_delete',
 						description: 'Triggered when a task log is deleted',
 					},
 					{
 						name: 'Log Updated',
-						value: 'case_task_log_update',
+						value: 'log_update',
 						description: 'Triggered when a task log is updated',
 					},
 					{
 						name: 'Observable Created',
-						value: 'case_artifact_create',
+						value: 'observable_create',
 						description: 'Triggered when an observable is created',
 					},
 					{
 						name: 'Observable Deleted',
-						value: 'case_artifact_delete',
+						value: 'observable_delete',
 						description: 'Triggered when an observable is deleted',
 					},
 					{
 						name: 'Observable Updated',
-						value: 'case_artifact_update',
+						value: 'observable_update',
 						description: 'Triggered when an observable is updated',
 					},
 					{
+						name: 'Page Created',
+						value: 'page_create',
+						description: 'Triggered when an page is created',
+					},
+					{
+						name: 'Page Deleted',
+						value: 'page_delete',
+						description: 'Triggered when an page is deleted',
+					},
+					{
+						name: 'Page Updated',
+						value: 'page_update',
+						description: 'Triggered when an page is updated',
+					},
+					{
 						name: 'Task Created',
-						value: 'case_task_create',
+						value: 'task_create',
 						description: 'Triggered when a task is created',
 					},
 					{
 						name: 'Task Updated',
-						value: 'case_task_update',
+						value: 'task_update',
 						description: 'Triggered when a task is updated',
+					},
+				],
+			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'fixedCollection',
+				placeholder: 'Add Filter',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'string',
+								placeholder: 'e.g. context.severity',
+								default: '',
+								hint: 'The field to filter on, supports dot notation',
+							},
+							{
+								displayName: 'Operator',
+								name: 'operator',
+								type: 'options',
+								options: [
+									{
+										name: 'Equal',
+										value: 'equal',
+										description: 'Field is equal to value',
+									},
+									{
+										name: 'Not Equal',
+										value: 'notEqual',
+										description: 'Field is not equal to value',
+									},
+									{
+										name: 'Includes',
+										value: 'includes',
+										description: 'Field includes value',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Output Only Data',
+						name: 'outputOnlyData',
+						type: 'boolean',
+						default: false,
 					},
 				],
 			},
@@ -135,6 +237,7 @@ export class TheHiveProjectTrigger implements INodeType {
 		// Get the request body
 		const bodyData = this.getBodyData();
 		const events = this.getNodeParameter('events', []) as string[];
+
 		if (!bodyData.action || !bodyData.objectType) {
 			// Don't start the workflow if mandatory fields are not specified
 			return {};
@@ -148,14 +251,48 @@ export class TheHiveProjectTrigger implements INodeType {
 			return {};
 		}
 
+		const filters = this.getNodeParameter('filters.values', []) as IDataObject[];
+
+		if (filters.length) {
+			for (const filter of filters) {
+				const field = filter.field as string;
+				const operator = filter.operator as string;
+				const expectedValue = filter.value as string;
+				const actualValue = get(bodyData, field);
+
+				if (operator === 'equal') {
+					if (actualValue !== expectedValue) {
+						return {};
+					}
+				}
+				if (operator === 'notEqual') {
+					if (actualValue === expectedValue) {
+						return {};
+					}
+				}
+				if (operator === 'includes') {
+					if (!String(actualValue).includes(expectedValue)) {
+						return {};
+					}
+				}
+			}
+		}
+
 		// The data to return and so start the workflow with
 		const returnData: IDataObject[] = [];
-		returnData.push({
-			event,
-			body: this.getBodyData(),
-			headers: this.getHeaderData(),
-			query: this.getQueryData(),
-		});
+
+		const outputOnlyData = this.getNodeParameter('options.outputOnlyData', false) as boolean;
+
+		if (outputOnlyData) {
+			returnData.push(bodyData);
+		} else {
+			returnData.push({
+				event,
+				body: this.getBodyData(),
+				headers: this.getHeaderData(),
+				query: this.getQueryData(),
+			});
+		}
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(returnData)],
