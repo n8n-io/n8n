@@ -153,7 +153,12 @@ export default defineComponent({
 					result: this.showMfaView ? 'mfa_token_rejected' : 'credentials_error',
 				});
 
-				this.loading = false;
+				if (!this.showMfaView) {
+					this.showError(error, this.$locale.baseText('auth.signin.error'));
+					this.loading = false;
+					return;
+				}
+
 				this.reportError = true;
 			}
 		},
