@@ -30,6 +30,14 @@ jest.mock('fs/promises');
 jest.mock('child_process');
 jest.mock('axios');
 
+type ExecOptions = NonNullable<Parameters<typeof exec>[1]>;
+type ExecCallback = NonNullable<Parameters<typeof exec>[2]>;
+
+const execMock = ((...args) => {
+	const cb = args[args.length - 1] as ExecCallback;
+	cb(null, 'Done', '');
+}) as typeof exec;
+
 describe('CommunityService', () => {
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	Container.set(InstalledNodesRepository, installedNodesRepository);
@@ -113,18 +121,16 @@ describe('CommunityService', () => {
 		});
 
 		test('should call command with valid options', async () => {
-			// @TODO: Fix typings
-			// @ts-ignore
-			mocked(exec).mockImplementation((...args) => {
-				// @ts-ignore
-				expect(args[1].cwd).toBeDefined();
-				// @ts-ignore
-				expect(args[1].env).toBeDefined();
+			const execMock = ((...args) => {
+				const arg = args[1] as ExecOptions;
+				expect(arg.cwd).toBeDefined();
+				expect(arg.env).toBeDefined();
 				// PATH or NODE_PATH may be undefined depending on environment so we don't check for these keys.
-				const callbackFunction = args[args.length - 1];
-				// @ts-ignore
-				callbackFunction(null, { stdout: 'Done' });
-			});
+				const cb = args[args.length - 1] as ExecCallback;
+				cb(null, 'Done', '');
+			}) as typeof exec;
+
+			mocked(exec).mockImplementation(execMock);
 
 			await communityService.executeNpmCommand('ls');
 
@@ -134,12 +140,7 @@ describe('CommunityService', () => {
 		});
 
 		test('should make sure folder exists', async () => {
-			// @ts-ignore
-			mocked(exec).mockImplementation((...args) => {
-				const callbackFunction = args[args.length - 1];
-				// @ts-ignore
-				callbackFunction(null, { stdout: 'Done' });
-			});
+			mocked(exec).mockImplementation(execMock);
 
 			await communityService.executeNpmCommand('ls');
 			expect(fsAccess).toHaveBeenCalled();
@@ -148,13 +149,7 @@ describe('CommunityService', () => {
 		});
 
 		test('should try to create folder if it does not exist', async () => {
-			// @TODO: Fix typings
-			// @ts-ignore
-			mocked(exec).mockImplementation((...args) => {
-				const callbackFunction = args[args.length - 1];
-				// @ts-ignore
-				callbackFunction(null, { stdout: 'Done' });
-			});
+			mocked(exec).mockImplementation(execMock);
 			mocked(fsAccess).mockImplementation(() => {
 				throw new Error('Folder does not exist.');
 			});
@@ -167,19 +162,13 @@ describe('CommunityService', () => {
 		});
 
 		test('should throw especial error when package is not found', async () => {
-			// @TODO: Fix typings
-			// @ts-ignore
-			mocked(exec).mockImplementation((...args) => {
-				const callbackFunction = args[args.length - 1];
-				// @ts-ignore;
-				callbackFunction(
-					new Error(
-						'Something went wrong - ' +
-							NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR +
-							'. Aborting.',
-					),
-				);
-			});
+			const erroringExecMock = ((...args) => {
+				const cb = args[args.length - 1] as ExecCallback;
+				const msg = `Something went wrong - ${NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR}. Aborting.`;
+				cb(new Error(msg), '', '');
+			}) as typeof exec;
+
+			mocked(exec).mockImplementation(erroringExecMock);
 
 			const call = async () => communityService.executeNpmCommand('ls');
 
@@ -317,9 +306,7 @@ describe('CommunityService', () => {
 
 	describe('hasPackageLoadedSuccessfully()', () => {
 		test('should return true when failed package list does not exist', () => {
-			// @TODO: Fix typing
-			// @ts-ignore
-			config.set<>('nodes.packagesMissing', undefined);
+			config.set<string>('nodes.packagesMissing', undefined);
 
 			expect(communityService.hasPackageLoaded('package')).toBe(true);
 		});
@@ -339,9 +326,7 @@ describe('CommunityService', () => {
 
 	describe('removePackageFromMissingList()', () => {
 		test('should do nothing if key does not exist', () => {
-			// @TODO: Fix typings
-			// @ts-ignore
-			config.set('nodes.packagesMissing', undefined);
+			config.set<string>('nodes.packagesMissing', undefined);
 
 			communityService.removePackageFromMissingList('packageA');
 
