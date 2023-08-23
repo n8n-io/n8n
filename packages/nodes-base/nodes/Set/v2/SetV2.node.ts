@@ -17,7 +17,7 @@ import * as manual from './manual.mode';
 type Mode = 'manual' | 'raw';
 
 const versionDescription: INodeTypeDescription = {
-	displayName: 'Add or Edit Fields (Set)',
+	displayName: 'Edit Fields (Set)',
 	name: 'set',
 	icon: 'fa:pen',
 	group: ['input'],
@@ -25,7 +25,7 @@ const versionDescription: INodeTypeDescription = {
 	description: 'Change the structure of your items',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
-		name: 'Add or Edit Fields',
+		name: 'Edit Fields',
 		color: '#0000FF',
 	},
 	inputs: ['main'],
