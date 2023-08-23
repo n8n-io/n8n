@@ -65,47 +65,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { getWorkflowPermissions } from '@/permissions';
 import type { IPermissions } from '@/permissions';
 
-export function resolveRequiredParameters(
-	currentParameter: INodeProperties,
-	parameters: INodeParameters,
-	opts: {
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-	} = {},
-): IDataObject | null {
-	const loadOptionsDependsOn = currentParameter?.typeOptions?.loadOptionsDependsOn ?? [];
-
-	const initial: { required: INodeParameters; nonrequired: INodeParameters } = {
-		required: {},
-		nonrequired: {},
-	};
-
-	const { required, nonrequired }: INodeParameters = Object.keys(parameters).reduce(
-		(accu, name: string) => {
-			const required = loadOptionsDependsOn.includes(name);
-			accu[required ? 'required' : 'nonrequired'][name] = parameters[name];
-
-			return accu;
-		},
-		initial,
-	);
-
-	const resolvedRequired = resolveParameter(required, opts);
-	let resolvedNonrequired: IDataObject | null = {};
-	try {
-		resolvedNonrequired = resolveParameter(nonrequired, opts);
-	} catch (e) {
-		// ignore any expression errors for example
-	}
-
-	return {
-		...resolvedRequired,
-		...(resolvedNonrequired ?? {}),
-	};
-}
-
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: {
@@ -213,6 +172,47 @@ export function resolveParameter(
 		_executeData,
 		false,
 	) as IDataObject;
+}
+
+export function resolveRequiredParameters(
+	currentParameter: INodeProperties,
+	parameters: INodeParameters,
+	opts: {
+		targetItem?: TargetItem;
+		inputNodeName?: string;
+		inputRunIndex?: number;
+		inputBranchIndex?: number;
+	} = {},
+): IDataObject | null {
+	const loadOptionsDependsOn = currentParameter?.typeOptions?.loadOptionsDependsOn ?? [];
+
+	const initial: { required: INodeParameters; nonrequired: INodeParameters } = {
+		required: {},
+		nonrequired: {},
+	};
+
+	const { required, nonrequired }: INodeParameters = Object.keys(parameters).reduce(
+		(accu, name: string) => {
+			const required = loadOptionsDependsOn.includes(name);
+			accu[required ? 'required' : 'nonrequired'][name] = parameters[name];
+
+			return accu;
+		},
+		initial,
+	);
+
+	const resolvedRequired = resolveParameter(required, opts);
+	let resolvedNonrequired: IDataObject | null = {};
+	try {
+		resolvedNonrequired = resolveParameter(nonrequired, opts);
+	} catch (e) {
+		// ignore any expression errors for example
+	}
+
+	return {
+		...resolvedRequired,
+		...(resolvedNonrequired ?? {}),
+	};
 }
 
 function getCurrentWorkflow(copyData?: boolean): Workflow {
