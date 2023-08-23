@@ -681,7 +681,7 @@ export default defineComponent({
 					});
 				}
 
-				const resolvedNodeParameters = this.resolveRelevantParameters(
+				const resolvedNodeParameters = this.resolveRequiredParameters(
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;

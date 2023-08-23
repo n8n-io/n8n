@@ -65,7 +65,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { getWorkflowPermissions } from '@/permissions';
 import type { IPermissions } from '@/permissions';
 
-export function resolveRelevantParameters(
+export function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
 	opts: {
@@ -81,21 +81,33 @@ export function resolveRelevantParameters(
 		return {};
 	}
 
-	const relevant: INodeParameters = loadOptionsDependsOn.reduce(
-		(accu: INodeParameters, name: string) => {
-			if (parameters.hasOwnProperty(name)) {
-				return {
-					...accu,
-					[name]: parameters[name],
-				};
-			}
+	const initial: { required: INodeParameters; nonrequired: INodeParameters } = {
+		required: {},
+		nonrequired: {},
+	};
+
+	const { required, nonrequired }: INodeParameters = Object.keys(parameters).reduce(
+		(accu, name: string) => {
+			const required = loadOptionsDependsOn.includes(name);
+			accu[required ? 'required' : 'nonrequired'][name] = parameters[name];
 
 			return accu;
 		},
-		{} as INodeParameters,
+		initial,
 	);
 
-	return resolveParameter(relevant, opts);
+	const resolvedRequired = resolveParameter(required, opts);
+	let resolvedNonrequired: IDataObject | null = {};
+	try {
+		resolvedNonrequired = resolveParameter(nonrequired, opts);
+	} catch (e) {
+		// ignore any expression errors for example
+	}
+
+	return {
+		...resolvedRequired,
+		...(resolvedNonrequired || {}),
+	};
 }
 
 export function resolveParameter(
@@ -388,7 +400,7 @@ export const workflowHelpers = defineComponent({
 	},
 	methods: {
 		resolveParameter,
-		resolveRelevantParameters,
+		resolveRequiredParameters,
 		getCurrentWorkflow,
 		getNodes,
 		getWorkflow,

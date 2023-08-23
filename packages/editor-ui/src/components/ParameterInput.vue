@@ -895,7 +895,7 @@ export default defineComponent({
 
 			try {
 				const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
-				const resolvedNodeParameters = this.resolveRelevantParameters(
+				const resolvedNodeParameters = this.resolveRequiredParameters(
 					this.parameter,
 					currentNodeParameters,
 				) as INodeParameters;
