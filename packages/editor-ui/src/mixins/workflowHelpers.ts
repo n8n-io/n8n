@@ -29,6 +29,7 @@ import type {
 	IWebhookDescription,
 	INodeProperties,
 	IWorkflowSettings,
+	INodePropertyMode,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
