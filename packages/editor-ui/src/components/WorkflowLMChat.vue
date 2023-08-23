@@ -13,6 +13,39 @@
 					<div :class="['message', message.sender]" v-for="message in messages">
 						<div :class="['content', message.sender]">
 							{{ message.text }}
+
+							<div class="message-options no-select-on-click">
+								<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="message.sender === 'bot'">
+									<div v-if="message.executionId">
+										<n8n-text :bold="true" size="small">
+											<span @click.stop="displayExecution(message.executionId)">
+												Execution ID: <a href="#" class="link">{{ message.executionId }}</a>
+											</span>
+										</n8n-text>
+
+									</div>
+								</n8n-info-tip>
+
+								<div
+									@click="repostMessage(message)"
+									class="option"
+									title="Repost Message"
+									data-test-id="repost-message-button"
+									v-if="message.sender === 'user'"
+								>
+									<font-awesome-icon icon="redo" />
+								</div>
+								<div
+									@click="reuseMessage(message)"
+									class="option"
+									title="Reuse Message"
+									data-test-id="reuse-message-button"
+									v-if="message.sender === 'user'"
+								>
+									<font-awesome-icon icon="copy" />
+								</div>
+
+							</div>
 						</div>
 					</div>
 				</div>
@@ -29,7 +62,7 @@
 					@keydown="updated"
 				/>
 				<n8n-button
-					@click.stop="sendChatMessage"
+					@click.stop="sendChatMessage(currentMessage)"
 					class="send-button"
 					:loading="isLoading"
 					label="Chat"
@@ -51,6 +84,7 @@ import { useToast } from '@/composables';
 import Modal from '@/components/Modal.vue';
 import {
 	NODE_TRIGGER_CHAT_BUTTON,
+	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
@@ -65,15 +99,11 @@ import { INodeType, ITaskData } from 'n8n-workflow';
 
 interface ChatMessage {
 	text: string;
-	sender: 'ai' | 'human';
-	// TODO: Link them with an execution ID. So we can later
-	//       allow people to debug easier
+	sender: 'bot' | 'user';
 	executionId?: string;
 }
 
 // TODO:
-// - add buttons to resend same message, load past message
-// - allow to jump to execution
 // - display additional information like execution time, tokens used, ...
 // - display errors better
 // - persist messages in memory & load them again (load from model memory?)
@@ -112,16 +142,31 @@ export default defineComponent({
 		this.messages = this.getChatMessages();
 	},
 	methods: {
+		displayExecution(executionId: string) {
+			const workflow = this.getCurrentWorkflow();
+			const route = this.$router.resolve({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: workflow.id, executionId: executionId },
+			});
+			window.open(route.href, '_blank');
+		},
+		repostMessage(message: ChatMessage) {
+			this.sendChatMessage(message.text);
+		},
+		reuseMessage(message: ChatMessage) {
+			this.currentMessage = message.text;
+			const inputField = this.$refs.inputField as HTMLInputElement;
+			inputField.focus();
+		},
 		updated(event: KeyboardEvent) {
 			if (event.ctrlKey && event.key === 'Enter') {
-				this.sendChatMessage();
+				this.sendChatMessage(this.currentMessage);
 			}
 		},
-		async sendChatMessage() {
-			const message = this.currentMessage;
+		async sendChatMessage(message: string) {
 			this.messages.push({
 				text: message,
-				sender: 'human',
+				sender: 'user',
 			} as ChatMessage);
 
 			this.currentMessage = '';
@@ -169,11 +214,16 @@ export default defineComponent({
 				source: [null],
 			};
 
-			await this.runWorkflow({ triggerNode: triggerNode[0].name, nodeData, source: 'RunData.ManualChatMessage' });
+			const response = await this.runWorkflow({ triggerNode: triggerNode[0].name, nodeData, source: 'RunData.ManualChatMessage' });
 
-			this.waitForExecution();
+			if (!response) {
+				this.showError(new Error('It was not possible to start workflow!'), 'Workflow could not be started')
+				return;
+			}
+
+			this.waitForExecution(response.executionId);
 		},
-		waitForExecution() {
+		waitForExecution(executionId?: string) {
 			const that = this;
 			const waitInterval = setInterval(() => {
 				if (!that.isLoading) {
@@ -188,7 +238,8 @@ export default defineComponent({
 
 					this.messages.push({
 						text: responseMessage,
-						sender: 'ai',
+						sender: 'bot',
+						executionId,
 					} as ChatMessage);
 
 				}
@@ -206,35 +257,74 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .workflow-lm-chat {
-	font-size: var(--font-size-s);
 	color: $custom-font-black;
+	font-size: var(--font-size-s);
 
 	.messages {
 		border: 1px solid #E0E0E0;
 		border-radius: 4px;
 		height: 400px;
-		overflow: auto;
+		overflow: hidden auto;
+		padding-top: 1.5em;
 
 		.message {
-			position: relative;
 			float: left;
+			position: relative;
 			width: 100%;
 
 			.content {
-				margin: 0.5em 1em;
-				padding: 1em;
 				border-radius: 10px;
+				margin: 0.5em 1em;
 				max-width: 75%;
+				padding: 1em;
 				white-space: pre-wrap;
 
-				&.ai {
+				&.bot {
 					background-color: #E0D0D0;
 					float: left;
+
+					.message-options {
+						left: 1.5em;
+					}
 				}
-				&.human {
+
+				&.user {
 					background-color: #D0E0D0;
 					float: right;
 					text-align: right;
+
+					.message-options {
+						right: 1.5em;
+						text-align: right;
+					}
+				}
+
+				.message-options {
+					color: #aaa;
+					display: none;
+					font-size: 0.9em;
+					height: 26px;
+					position: absolute;
+					text-align: left;
+					top: -1.2em;
+					width: 120px;
+					z-index: 10;
+
+					.option {
+						cursor: pointer;
+						display: inline-block;
+						width: 28px;
+					}
+
+					.link {
+						text-decoration: underline;
+					}
+				}
+
+				&:hover {
+					.message-options {
+						display: initial;
+					}
 				}
 			}
 		}
