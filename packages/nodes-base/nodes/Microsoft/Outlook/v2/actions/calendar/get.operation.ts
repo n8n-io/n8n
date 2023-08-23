@@ -14,7 +14,9 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const qs: IDataObject = {};
 
-	const calendarId = this.getNodeParameter('calendarId', index) as string;
+	const calendarId = this.getNodeParameter('calendarId', index, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const responseData = await microsoftApiRequest.call(
 		this,

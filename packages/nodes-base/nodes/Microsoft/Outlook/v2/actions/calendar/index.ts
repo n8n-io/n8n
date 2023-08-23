@@ -4,6 +4,7 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as del from './delete.operation';
 import * as update from './update.operation';
+import { calendarRLC } from '../../descriptions';
 
 export { create, del as delete, get, getAll, update };
 
@@ -53,11 +54,7 @@ export const description: INodeProperties[] = [
 		default: 'getAll',
 	},
 	{
-		displayName: 'Calendar ID',
-		name: 'calendarId',
-		type: 'string',
-		required: true,
-		default: '',
+		...calendarRLC,
 		displayOptions: {
 			show: {
 				resource: ['calendar'],

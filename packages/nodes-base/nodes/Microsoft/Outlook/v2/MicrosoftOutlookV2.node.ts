@@ -8,8 +8,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { loadOptions } from './methods';
-import { versionDescription } from './actions/versionDescription';
+import { loadOptions, listSearch } from './methods';
+import { description } from './actions/node.description';
 import { router } from './actions/router';
 
 export class MicrosoftOutlookV2 implements INodeType {
@@ -18,11 +18,11 @@ export class MicrosoftOutlookV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			...versionDescription,
+			...description,
 		};
 	}
 
-	methods = { loadOptions };
+	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return router.call(this);

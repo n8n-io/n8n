@@ -7,7 +7,10 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const calendarId = this.getNodeParameter('calendarId', index) as string;
+	const calendarId = this.getNodeParameter('calendarId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	await microsoftApiRequest.call(this, 'DELETE', `/calendars/${calendarId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(

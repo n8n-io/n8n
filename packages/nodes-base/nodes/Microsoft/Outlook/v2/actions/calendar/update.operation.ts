@@ -88,7 +88,10 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const updateFields = this.getNodeParameter('updateFields', index);
-	const calendarId = this.getNodeParameter('calendarId', index) as string;
+
+	const calendarId = this.getNodeParameter('calendarId', index, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const endpoint = `/calendars/${calendarId}`;
 

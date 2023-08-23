@@ -38,7 +38,6 @@ export const description: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-
 	{
 		displayName: 'Filters',
 		name: 'filters',
