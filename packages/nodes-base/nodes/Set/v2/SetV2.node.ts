@@ -166,7 +166,7 @@ const versionDescription: INodeTypeDescription = {
 					name: 'ignoreConversionErrors',
 					type: 'boolean',
 					default: false,
-					description: 'Whether to ignore field type errors',
+					description: 'Whether to ignore field type errors and apply a less strict type conversion',
 					displayOptions: {
 						show: {
 							'/mode': ['manual'],
