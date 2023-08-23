@@ -29,7 +29,6 @@ import type {
 	IWebhookDescription,
 	INodeProperties,
 	IWorkflowSettings,
-	INodePropertyMode,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -76,11 +75,7 @@ export function resolveRequiredParameters(
 		inputBranchIndex?: number;
 	} = {},
 ): IDataObject | null {
-	const loadOptionsDependsOn = currentParameter?.typeOptions?.loadOptionsDependsOn;
-
-	if (!Array.isArray(loadOptionsDependsOn)) {
-		return {};
-	}
+	const loadOptionsDependsOn = currentParameter?.typeOptions?.loadOptionsDependsOn ?? [];
 
 	const initial: { required: INodeParameters; nonrequired: INodeParameters } = {
 		required: {},
@@ -107,7 +102,7 @@ export function resolveRequiredParameters(
 
 	return {
 		...resolvedRequired,
-		...(resolvedNonrequired || {}),
+		...(resolvedNonrequired ?? {}),
 	};
 }
 
