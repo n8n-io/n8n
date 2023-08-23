@@ -18,7 +18,7 @@ export class UserService {
 	}
 
 	async findMany(options: FindManyOptions<User>) {
-		return this.userRepository.find({ relations: ['globalRole'], ...options });
+		return this.userRepository.find(options);
 	}
 
 	async findOneBy(options: FindOptionsWhere<User>) {

@@ -1,4 +1,5 @@
 import validator from 'validator';
+import type { FindManyOptions } from 'typeorm';
 import { In } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
@@ -25,7 +26,7 @@ import {
 } from '@/ResponseHelper';
 import { Response } from 'express';
 import type { Config } from '@/config';
-import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
+import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type {
 	PublicUser,
@@ -46,6 +47,7 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
+import { listQueryMiddleware } from '@/middlewares';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -179,6 +181,7 @@ export class UsersController {
 		// remove/exclude existing users from creation
 		const existingUsers = await this.userService.findMany({
 			where: { email: In(Object.keys(createUsers)) },
+			relations: ['globalRole'],
 		});
 		existingUsers.forEach((user) => {
 			if (user.password) {
@@ -361,9 +364,30 @@ export class UsersController {
 	}
 
 	@Authorized('any')
-	@Get('/')
-	async listUsers(req: UserRequest.List) {
-		const users = await this.userService.findMany({ relations: ['globalRole', 'authIdentities'] });
+	@Get('/', { middlewares: listQueryMiddleware })
+	async listUsers(req: ListQuery.Request) {
+		const { listQueryOptions } = req;
+
+		let findManyOptions: FindManyOptions<User> = {};
+
+		if (!listQueryOptions) {
+			findManyOptions.relations = ['globalRole', 'authIdentities'];
+		} else {
+			findManyOptions = listQueryOptions;
+
+			if (listQueryOptions?.select?.globalRole) {
+				delete listQueryOptions?.select?.globalRole; // non-entity field
+				findManyOptions.relations = ['globalRole', 'authIdentities'];
+			}
+		}
+
+		const users = await this.userService.findMany(findManyOptions);
+
+		// @TODO: Handle filter for computed properties, e.g. isOwner, isPending
+		// @TODO: Refactor generation of public user into service
+		// @TODO: Add and handle signInType added during public user generation
+		// @TODO: Tests
+
 		return users.map(
 			(user): PublicUser =>
 				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
@@ -437,6 +461,7 @@ export class UsersController {
 
 		const users = await this.userService.findMany({
 			where: { id: In([transferId, idToDelete]) },
+			relations: ['globalRole'],
 		});
 
 		if (!users.length || (transferId && users.length !== 2)) {

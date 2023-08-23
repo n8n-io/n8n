@@ -185,7 +185,10 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userService.findMany({ where: { id: In([inviterId, inviteeId]) } });
+		const users = await this.userService.findMany({
+			where: { id: In([inviterId, inviteeId]) },
+			relations: ['globalRole'],
+		});
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
