@@ -26,7 +26,7 @@ export class LangChain implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'tool', 'memory', 'languageModel'],
-		inputNames: ['', 'Tools', 'Memory', 'Language Model'],
+		inputNames: ['', 'Tools', 'Memory', 'Model'],
 		outputs: ['main'],
 		credentials: [],
 		properties: [

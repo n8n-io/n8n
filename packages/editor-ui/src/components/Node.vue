@@ -802,7 +802,6 @@ export default defineComponent({
 			width: 120px;
 			height: 26px;
 			font-size: 0.9em;
-			text-align: left;
 			z-index: 10;
 			color: #aaa;
 			text-align: center;
@@ -1130,6 +1129,58 @@ export default defineComponent({
 	}
 }
 
+.add-input-endpoint {
+	&:not(.jtk-endpoint-connected) {
+		cursor: pointer;
+	}
+
+	.add-input-endpoint-plus-rectangle {
+		fill: var(--color-foreground-xlight);
+		stroke: var(--color-foreground-xdark);
+	}
+
+	.add-input-endpoint-plus-icon {
+		stroke: none;
+		fill: var(--color-foreground-xdark);
+	}
+
+	.add-input-endpoint-connected-rectangle {
+		fill: var(--color-foreground-xdark);
+		stroke: var(--color-foreground-xdark);
+		display: none;
+	}
+
+	&.rect-input-endpoint-hover {
+		rect {
+			stroke: var(--color-primary);
+		}
+
+		path {
+			fill: var(--color-primary);
+		}
+	}
+
+	&.jtk-endpoint-connected {
+		.add-input-endpoint-plus-rectangle {
+			display: none;
+		}
+
+		.add-input-endpoint-plus-icon {
+			display: none;
+		}
+
+		.add-input-endpoint-connected-rectangle {
+			display: initial;
+		}
+
+		&.rect-input-endpoint-hover {
+			.add-input-endpoint-connected-rectangle {
+				fill: var(--color-primary);
+			}
+		}
+	}
+}
+
 .node-input-endpoint-label,
 .node-output-endpoint-label {
 	background-color: hsla(
@@ -1146,7 +1197,16 @@ export default defineComponent({
 
 .node-output-endpoint-label {
 	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
+
+	&--tool,
+	&--memory,
+	&--languageModel {
+		text-align: center;
+		margin-top: calc(var(--spacing-m) * -1);
+		margin-left: 0;
+	}
 }
+
 .node-input-endpoint-label {
 	text-align: right;
 	margin-left: -25px;
@@ -1154,7 +1214,16 @@ export default defineComponent({
 	&--moved {
 		margin-left: -40px;
 	}
+
+	&--tool,
+	&--memory,
+	&--languageModel {
+		text-align: center;
+		margin-top: calc(var(--spacing-m) * -1);
+		margin-left: 0;
+	}
 }
+
 .hover-message.jtk-overlay {
 	--hover-message-width: 110px;
 	font-weight: var(--font-weight-bold);

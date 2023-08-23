@@ -15,6 +15,14 @@ import type { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { EndpointSpec } from '@jsplumb/common';
+
+const addInputEndpointSpec: EndpointSpec = {
+	type: 'N8nAddInput',
+	options: {
+		size: 24,
+	},
+};
 
 export const nodeBase = defineComponent({
 	mixins: [deviceSupportHelpers],
@@ -98,13 +106,24 @@ export const nodeBase = defineComponent({
 					inputsOfSameType.length,
 				)[typeIndex];
 
+				const scope = NodeViewUtils.getEndpointScope(inputName);
+
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, i),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
-					paintStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark', inputName),
-					hoverPaintStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-primary', inputName),
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-foreground-xdark',
+						inputName,
+					),
+					hoverPaintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-primary',
+						inputName,
+					),
+					scope,
 					source: false,
 					target: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
@@ -115,8 +134,8 @@ export const nodeBase = defineComponent({
 					enabled: !this.isReadOnly, // enabled in default case to allow dragging
 					cssClass: 'rect-input-endpoint',
 					dragAllowedWhenFull: true,
-					hoverClass: 'dropHover',
-					...this.__getConnectionStyle('input', inputName, nodeTypeData),
+					hoverClass: 'rect-input-endpoint-hover',
+					...this.__getInputConnectionStyle(inputName, nodeTypeData),
 				};
 
 				const endpoint = this.instance?.addEndpoint(
@@ -124,10 +143,10 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				);
 				this.__addEndpointTestingData(endpoint, 'input', i);
-				if (nodeTypeData.inputNames && nodeTypeData.inputNames[i]) {
+				if (nodeTypeData.inputNames?.[i]) {
 					// Apply input names if they got set
 					endpoint.addOverlay(
-						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[i]),
+						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[i], inputName),
 					);
 				}
 				if (!Array.isArray(endpoint)) {
@@ -186,6 +205,8 @@ export const nodeBase = defineComponent({
 					outputsOfSameType.length,
 				)[typeIndex];
 
+				const scope = NodeViewUtils.getEndpointScope(outputName);
+
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
 					anchor: anchorPosition,
@@ -197,6 +218,7 @@ export const nodeBase = defineComponent({
 						},
 					},
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
+					scope,
 					source: true,
 					target: false,
 					enabled: !this.isReadOnly,
@@ -208,7 +230,7 @@ export const nodeBase = defineComponent({
 					hoverClass: 'dot-output-endpoint-hover',
 					connectionsDirected: true,
 					dragAllowedWhenFull: false,
-					...this.__getConnectionStyle('output', outputName, nodeTypeData),
+					...this.__getOutputConnectionStyle(outputName, nodeTypeData),
 				};
 
 				const endpoint = this.instance.addEndpoint(
@@ -216,9 +238,12 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				);
 				this.__addEndpointTestingData(endpoint, 'output', i);
-				if (nodeTypeData.outputNames && nodeTypeData.outputNames[i]) {
+				if (nodeTypeData.outputNames?.[i]) {
 					// Apply output names if they got set
-					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[i]);
+					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
+						nodeTypeData.outputNames[i],
+						outputName,
+					);
 					endpoint.addOverlay(overlaySpec);
 				}
 
@@ -287,60 +312,139 @@ export const nodeBase = defineComponent({
 			this.__addInputEndpoints(node, nodeTypeData);
 			this.__addOutputEndpoints(node, nodeTypeData);
 		},
-		__getConnectionStyle(
-			type: 'input' | 'output',
+		__getInputConnectionStyle(
 			connectionType: ConnectionTypes,
 			nodeTypeData: INodeTypeDescription,
 		): EndpointOptions {
+			const type = 'input';
+
 			const connectionTypes: {
 				[key: string]: EndpointOptions;
 			} = {
 				languageModel: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-primary', connectionType),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				main: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-foreground-xdark', connectionType),
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-foreground-xdark',
+						connectionType,
+					),
 					cssClass: `dot-${type}-endpoint`,
 				},
 				memory: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-secondary', connectionType),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				tool: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-danger', connectionType),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				vectorRetriever: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-avatar-accent-2', connectionType),
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-avatar-accent-2',
+						connectionType,
+					),
 					cssClass: `dot-${type}-endpoint`,
 				},
 				embedding: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-json-default', connectionType),
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-json-default',
+						connectionType,
+					),
 					cssClass: `dot-${type}-endpoint`,
 				},
 				document: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-success-light', connectionType),
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-success-light',
+						connectionType,
+					),
 					cssClass: `dot-${type}-endpoint`,
 				},
 				textSplitter: {
-					paintStyle: (type === 'input'
-						? NodeViewUtils.getInputEndpointStyle
-						: NodeViewUtils.getOutputEndpointStyle)(nodeTypeData, '--color-secondary-tint-2', connectionType),
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-secondary-tint-2',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+			};
+
+			if (!connectionTypes.hasOwnProperty(connectionType)) {
+				return {};
+			}
+
+			return connectionTypes[connectionType];
+		},
+		__getOutputConnectionStyle(
+			connectionType: ConnectionTypes,
+			nodeTypeData: INodeTypeDescription,
+		): EndpointOptions {
+			const type = 'output';
+			const connectionTypes: {
+				[key: string]: EndpointOptions;
+			} = {
+				languageModel: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-primary',
+						connectionType,
+					),
+				},
+				main: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-foreground-xdark',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				memory: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-primary',
+						connectionType,
+					),
+				},
+				tool: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-primary',
+						connectionType,
+					),
+				},
+				vectorRetriever: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-avatar-accent-2',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				embedding: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-json-default',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				document: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-success-light',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				textSplitter: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-secondary-tint-2',
+						connectionType,
+					),
 					cssClass: `dot-${type}-endpoint`,
 				},
 			};

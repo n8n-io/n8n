@@ -186,7 +186,7 @@ export const getAnchorPosition = (
 		return positions[type][amount] as ArrayAnchorSpec[];
 	}
 
-	const y = type === 'input' ? 0.99: 0.01;
+	const y = type === 'input' ? 0.99 : 0.01;
 	const oy = type === 'input' ? 1 : -1;
 	const ox = 0;
 
@@ -203,6 +203,16 @@ export const getAnchorPosition = (
 	}
 
 	return returnPositions;
+};
+
+export const getEndpointScope = (endpointType: string): string | undefined => {
+	const scopedEndpointTypes = ['tool', 'memory', 'languageModel'];
+
+	if (scopedEndpointTypes.includes(endpointType)) {
+		return endpointType;
+	}
+
+	return undefined;
 };
 
 export const getInputEndpointStyle = (
@@ -225,18 +235,20 @@ export const getInputEndpointStyle = (
 		fill: getStyleTokenValue(color),
 		stroke: getStyleTokenValue(color),
 		lineWidth: 0,
-	}
+	};
 };
 
-export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
+export const getInputNameOverlay = (labelText: string, inputName: string): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_INPUT_NAME_LABEL,
 		visible: true,
+		location: [-1, -1],
 		create: (component: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-input-endpoint-label');
+			label.classList.add(`node-input-endpoint-label--${inputName}`);
 			return label;
 		},
 	},
@@ -245,13 +257,14 @@ export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
 export const getOutputEndpointStyle = (
 	nodeTypeData: INodeTypeDescription,
 	color: string,
+	connectionType: ConnectionTypes = 'main',
 ): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
 	fill: getStyleTokenValue(color),
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (labelText: string): OverlaySpec => ({
+export const getOutputNameOverlay = (labelText: string, outputName: string): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
@@ -260,6 +273,7 @@ export const getOutputNameOverlay = (labelText: string): OverlaySpec => ({
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
+			label.classList.add(`node-output-endpoint-label--${outputName}`);
 			return label;
 		},
 	},
