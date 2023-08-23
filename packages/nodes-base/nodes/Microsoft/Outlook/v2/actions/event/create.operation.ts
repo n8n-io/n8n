@@ -26,7 +26,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Subject',
+		displayName: 'Title',
 		name: 'subject',
 		type: 'string',
 		default: '',
@@ -78,18 +78,6 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Body',
-				name: 'body',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Body Preview',
-				name: 'bodyPreview',
-				type: 'string',
-				default: '',
-			},
-			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Categories',
 				name: 'categories',
@@ -102,12 +90,27 @@ export const description: INodeProperties[] = [
 				default: [],
 			},
 			{
+				displayName: 'Description',
+				name: 'body',
+				type: 'string',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description Preview',
+				name: 'bodyPreview',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Hide Attendees',
 				name: 'hideAttendees',
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether set to true, each attendee only sees themselves in the meeting request and meeting Tracking list',
+					'Whether to allow each attendee to only see themselves in the meeting request and meeting tracking list',
 			},
 			{
 				displayName: 'Importance',
@@ -148,10 +151,10 @@ export const description: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'isOnlineMeeting',
+				displayName: 'Is Online Meeting',
 				name: 'isOnlineMeeting',
 				type: 'boolean',
-				default: true,
+				default: false,
 			},
 			{
 				displayName: 'Sensitivity',

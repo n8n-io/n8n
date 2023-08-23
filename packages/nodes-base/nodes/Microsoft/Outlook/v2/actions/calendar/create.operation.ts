@@ -9,6 +9,8 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
+		description: 'The name of the calendar to create',
+		placeholder: 'e.g. My Calendar',
 		displayOptions: {
 			show: {
 				resource: ['calendar'],
@@ -84,8 +86,7 @@ export const description: INodeProperties[] = [
 						value: 'lightYellow',
 					},
 				],
-				description:
-					'Specify the color theme to distinguish the calendar from other calendars in a UI',
+				description: 'Specify the color to distinguish the calendar from the others',
 			},
 		],
 	},

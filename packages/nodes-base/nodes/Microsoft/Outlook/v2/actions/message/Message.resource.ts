@@ -30,25 +30,25 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a single message',
+				description: 'Retrieve a single message',
 				action: 'Get a message',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: "Get many messages in the signed-in user's mailbox",
+				description: 'List and search messages',
 				action: 'Get many messages',
 			},
 			{
 				name: 'Move',
 				value: 'move',
-				description: 'Move a message',
+				description: 'Move a message to a folder',
 				action: 'Move a message',
 			},
 			{
 				name: 'Reply',
 				value: 'reply',
-				description: 'Create reply to a message',
+				description: 'Create a reply to a message',
 				action: 'Reply to a message',
 			},
 			{

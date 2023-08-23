@@ -23,7 +23,7 @@ export const description: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new calendar',
-				action: 'Create a new calendar',
+				action: 'Create a calendar',
 			},
 			{
 				name: 'Delete',
@@ -34,13 +34,13 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a calendar',
+				description: 'Retrieve a calendar',
 				action: 'Get a calendar',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many calendars',
+				description: 'List and search calendars',
 				action: 'Get many calendars',
 			},
 			{

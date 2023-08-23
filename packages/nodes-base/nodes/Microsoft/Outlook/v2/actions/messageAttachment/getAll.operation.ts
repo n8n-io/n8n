@@ -51,6 +51,7 @@ export const description: INodeProperties[] = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'multiOptions',
+				description: 'The fields to add to the output',
 				default: [],
 				options: [
 					{
@@ -76,14 +77,13 @@ export const description: INodeProperties[] = [
 						value: 'size',
 					},
 				],
-				description: 'Fields the response will contain',
 			},
 			{
-				displayName: 'Filter',
+				displayName: 'Filter Query',
 				name: 'filter',
 				type: 'string',
 				default: '',
-				hint: 'Information about the syntax can be found <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">here</a>',
+				hint: 'Search query to filter attachments. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 			},
 		],
 	},

@@ -18,7 +18,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many messages in a folder',
+				description: 'Retrieves the messages in a folder',
 				action: 'Get many folder messages',
 			},
 		],

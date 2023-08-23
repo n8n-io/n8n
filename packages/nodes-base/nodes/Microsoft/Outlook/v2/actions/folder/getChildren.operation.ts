@@ -55,12 +55,11 @@ export const description: INodeProperties[] = [
 				description: 'Fields the response will contain. Multiple can be added separated by ,.',
 			},
 			{
-				displayName: 'Filter',
+				displayName: 'Filter Query',
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description:
-					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+				hint: 'Search query to filter folders. <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">More info</a>.',
 			},
 			{
 				displayName: 'Include Child Folders',

@@ -23,7 +23,7 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: "Create a new mail folder in the root folder of the user's mailbox",
+				description: "Create a mail folder in the root folder of the user's mailbox",
 				action: 'Create a folder',
 			},
 			{
@@ -35,19 +35,19 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a single folder details',
+				description: 'Retrieve a folder',
 				action: 'Get a folder',
 			},
 			{
 				name: 'Get Children',
 				value: 'getChildren',
-				description: 'Lists all child folders under the folder',
-				action: 'Get items in a folder',
+				description: 'Lists all child folders under a parent folder',
+				action: 'Get children in a folder',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many folders under the root folder of the signed-in user',
+				description: 'Get many folders',
 				action: 'Get many folders',
 			},
 			{

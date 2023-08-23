@@ -6,7 +6,7 @@ import { contactFields } from './descriptions';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Update Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',

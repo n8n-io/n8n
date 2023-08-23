@@ -20,6 +20,7 @@ export const description: INodeProperties[] = [
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'multiOptions',
+				description: 'The fields to add to the output',
 				default: [],
 				options: [
 					{
@@ -45,7 +46,6 @@ export const description: INodeProperties[] = [
 						value: 'size',
 					},
 				],
-				description: 'Fields the response will contain',
 			},
 		],
 	},

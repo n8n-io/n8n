@@ -69,6 +69,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'multiOptions',
+		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -125,7 +126,7 @@ export const description: INodeProperties[] = [
 						name: 'search',
 						type: 'string',
 						default: '',
-						placeholder: 'pizza',
+						placeholder: 'e.g. automation',
 						description: 'Only return messages that contains search term',
 						displayOptions: {
 							show: {
@@ -146,12 +147,12 @@ export const description: INodeProperties[] = [
 						},
 						options: [
 							{
-								displayName: 'Custom Filter',
+								displayName: 'Filter Query',
 								name: 'custom',
 								type: 'string',
 								default: '',
-								placeholder: 'isRead eq false',
-								hint: 'Information about the syntax can be found <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">here</a>',
+								placeholder: 'e.g. isRead eq false',
+								hint: 'Search query to filter messages. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 							},
 							{
 								displayName: 'Has Attachments',
@@ -260,7 +261,7 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: 'attachment_',
 				description:
-					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+					'Prefix for name of the output fields to put the binary files data in. An index starting from 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
 			},
 			{
 				displayName: 'Download Attachments',

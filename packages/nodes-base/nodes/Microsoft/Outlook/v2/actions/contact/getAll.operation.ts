@@ -65,6 +65,7 @@ export const description: INodeProperties[] = [
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'multiOptions',
+		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
 				resource: ['contact'],
@@ -90,20 +91,19 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Custom Filter',
+				displayName: 'Filter Query',
 				name: 'custom',
 				type: 'string',
 				default: '',
-				placeholder: "displayName eq 'John Doe'",
-				hint: 'Information about the syntax can be found <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">here</a>',
+				placeholder: "e.g. displayName eq 'John Doe'",
+				hint: 'Search query to filter contacts. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 			},
 			{
 				displayName: 'Email Address',
 				name: 'emailAddress',
 				type: 'string',
 				default: '',
-				description: 'Filter contacts based on their email addresses',
-				hint: 'Multiple emails can be added separated by ,',
+				description: 'Comma-separated list of email addresses to filter the contacts',
 			},
 		],
 	},
