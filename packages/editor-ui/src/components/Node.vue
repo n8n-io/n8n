@@ -1128,6 +1128,30 @@ export default defineComponent({
 	}
 }
 
+.add-input-endpoint {
+	cursor: pointer;
+
+	rect {
+		fill: var(--color-foreground-xlight);
+		stroke: var(--color-foreground-xdark);
+	}
+
+	path {
+		fill: var(--color-foreground-xdark);
+	}
+
+	&.rect-input-endpoint-hover,
+	&:hover {
+		rect {
+			stroke: var(--color-primary);
+		}
+
+		path {
+			fill: var(--color-primary);
+		}
+	}
+}
+
 .node-input-endpoint-label,
 .node-output-endpoint-label {
 	background-color: hsla(
@@ -1145,6 +1169,7 @@ export default defineComponent({
 .node-output-endpoint-label {
 	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
 }
+
 .node-input-endpoint-label {
 	text-align: right;
 	margin-left: -25px;
@@ -1152,7 +1177,17 @@ export default defineComponent({
 	&--moved {
 		margin-left: -40px;
 	}
+
+	&--tool,
+	&--memory,
+	&--languageModel {
+		text-align: center;
+		margin-top: calc(var(--spacing-m) * -1);
+		margin-left: 0;
+		cursor: pointer;
+	}
 }
+
 .hover-message.jtk-overlay {
 	--hover-message-width: 110px;
 	font-weight: var(--font-weight-bold);
