@@ -1,7 +1,7 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';

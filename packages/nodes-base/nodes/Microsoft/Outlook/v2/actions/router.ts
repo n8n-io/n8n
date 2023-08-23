@@ -1,6 +1,5 @@
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions } from 'n8n-core';
 
 import type { MicrosoftOutlook } from './node.type';
 import * as calendar from './calendar/Calendar.resource';
