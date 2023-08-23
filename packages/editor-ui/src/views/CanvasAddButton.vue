@@ -16,7 +16,7 @@
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>
-				<p v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')" />
+				{{ $locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
 		</n8n-tooltip>
 		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
@@ -79,10 +79,6 @@ const containerCssVars = computed(() => ({
 			fill: var(--color-foreground-xdark);
 		}
 	}
-}
-
-:root .tooltip {
-	max-width: 180px;
 }
 
 .label {

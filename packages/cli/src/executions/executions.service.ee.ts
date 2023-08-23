@@ -4,8 +4,7 @@ import { ExecutionsService } from './executions.service';
 import type { ExecutionRequest } from '@/requests';
 import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
 import { EEWorkflowsService as EEWorkflows } from '../workflows/workflows.services.ee';
-import { WorkflowRepository } from '@/databases/repositories';
-import Container from 'typedi';
+import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
 
 export class EEExecutionsService extends ExecutionsService {
 	/**
@@ -23,12 +22,22 @@ export class EEExecutionsService extends ExecutionsService {
 
 		if (!execution) return;
 
-		const workflow = Container.get(WorkflowRepository).create(execution.workflowData);
+		const relations = ['shared', 'shared.user', 'shared.role'];
+		const workflow = (await EEWorkflows.get(
+			{ id: execution.workflowId },
+			{ relations },
+		)) as WorkflowWithSharingsAndCredentials;
+		if (!workflow) return;
 
 		EEWorkflows.addOwnerAndSharings(workflow);
 		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
 
-		execution.workflowData = workflow;
+		execution.workflowData = {
+			...execution.workflowData,
+			ownedBy: workflow.ownedBy,
+			sharedWith: workflow.sharedWith,
+			usedCredentials: workflow.usedCredentials,
+		} as WorkflowWithSharingsAndCredentials;
 
 		return execution;
 	}

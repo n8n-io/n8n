@@ -223,7 +223,7 @@ export const keysToLowercase = <T>(headers: T) => {
  * @returns The formatted private key.
  */
 export function formatPrivateKey(privateKey: string): string {
-	if (/\n/.test(privateKey)) {
+	if (!privateKey || /\n/.test(privateKey)) {
 		return privateKey;
 	}
 	let formattedPrivateKey = '';

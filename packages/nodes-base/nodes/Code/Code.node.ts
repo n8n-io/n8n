@@ -21,7 +21,7 @@ export class Code implements INodeType {
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,
-		description: 'Run custom JavaScript code',
+		description: 'Run custom JavaScript or Python code',
 		defaults: {
 			name: 'Code',
 			color: '#FF9922',

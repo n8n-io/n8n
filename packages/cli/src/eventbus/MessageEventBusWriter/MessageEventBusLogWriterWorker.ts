@@ -25,6 +25,25 @@ function setKeepFiles(keepNumberOfFiles: number) {
 	keepFiles = keepNumberOfFiles;
 }
 
+function buildRecoveryInProgressFileName(): string {
+	return `${logFileBasePath}.recoveryInProgress`;
+}
+
+function startRecoveryProcess() {
+	if (existsSync(buildRecoveryInProgressFileName())) {
+		return false;
+	}
+	const fileHandle = openSync(buildRecoveryInProgressFileName(), 'a');
+	closeSync(fileHandle);
+	return true;
+}
+
+function endRecoveryProcess() {
+	if (existsSync(buildRecoveryInProgressFileName())) {
+		rmSync(buildRecoveryInProgressFileName());
+	}
+}
+
 function buildLogFileNameWithCounter(counter?: number): string {
 	if (counter) {
 		return `${logFileBasePath}-${counter}.log`;
@@ -111,6 +130,14 @@ if (!isMainThread) {
 				case 'cleanLogs':
 					cleanAllLogs();
 					parentPort?.postMessage('cleanedAllLogs');
+					break;
+				case 'startRecoveryProcess':
+					const recoveryStarted = startRecoveryProcess();
+					parentPort?.postMessage({ command, data: recoveryStarted });
+					break;
+				case 'endRecoveryProcess':
+					endRecoveryProcess();
+					parentPort?.postMessage({ command, data: true });
 					break;
 				default:
 					break;

@@ -1,44 +1,38 @@
-import { jsonParse } from 'n8n-workflow';
-import { handleListQueryError } from './error';
-import { WorkflowSchema } from './workflow.schema';
-import type { ListQueryRequest } from '@/requests';
-import type { RequestHandler } from 'express';
-import type { Schema } from './schema';
+/* eslint-disable @typescript-eslint/naming-convention */
 
-function toQueryFilter(rawFilter: string, schema: typeof Schema) {
-	const parsedFilter = new schema(
-		jsonParse(rawFilter, { errorMessage: 'Failed to parse filter JSON' }),
-	);
+import * as ResponseHelper from '@/ResponseHelper';
+import { WorkflowFilter } from './dtos/workflow.filter.dto';
+import { toError } from '@/utils';
 
-	return Object.fromEntries(
-		Object.entries(parsedFilter)
-			.filter(([_, value]) => value !== undefined)
-			.map(([key, _]: [keyof Schema, unknown]) => [key, parsedFilter[key]]),
-	);
-}
+import type { NextFunction, Response } from 'express';
+import type { ListQuery } from '@/requests';
 
-export const filterListQueryMiddleware: RequestHandler = (req: ListQueryRequest, res, next) => {
+export const filterListQueryMiddleware = async (
+	req: ListQuery.Request,
+	res: Response,
+	next: NextFunction,
+) => {
 	const { filter: rawFilter } = req.query;
 
 	if (!rawFilter) return next();
 
-	let schema;
+	let Filter;
 
 	if (req.baseUrl.endsWith('workflows')) {
-		schema = WorkflowSchema;
+		Filter = WorkflowFilter;
 	} else {
 		return next();
 	}
 
 	try {
-		const filter = toQueryFilter(rawFilter, schema);
+		const filter = await Filter.fromString(rawFilter);
 
 		if (Object.keys(filter).length === 0) return next();
 
 		req.listQueryOptions = { ...req.listQueryOptions, filter };
 
 		next();
-	} catch (error) {
-		handleListQueryError('filter', rawFilter, error);
+	} catch (maybeError) {
+		ResponseHelper.sendErrorResponse(res, toError(maybeError));
 	}
 };
